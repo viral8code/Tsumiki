@@ -33,7 +33,12 @@ namespace Tsumiki.Util
             return filePath;
         }
 
-        public string nextData()
+        public bool HasNext()
+        {
+            return !reader.EndOfStream;
+        }
+
+        public string NextData()
         {
             var dataLine = reader.ReadLine();
             while (string.IsNullOrWhiteSpace(dataLine))
@@ -47,10 +52,10 @@ namespace Tsumiki.Util
         {
             try
             {
-                var id = nextData();
-                var read = nextData();
-                _ = nextData();
-                var quality = nextData();
+                var id = NextData();
+                var read = NextData();
+                _ = NextData();
+                var quality = NextData();
 
                 return new ReadData()
                 {
@@ -61,7 +66,7 @@ namespace Tsumiki.Util
             }
             catch (Exception ex)
             {
-                Logger.PrintInnerException(Logger.GetMethodName(), ex);
+                Logger.PrintWarning(Logger.GetMethodName(), ex);
                 throw;
             }
         }

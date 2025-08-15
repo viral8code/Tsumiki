@@ -1,4 +1,6 @@
-﻿using Tsumiki.Common;
+﻿using System.Reflection.Metadata;
+using Tsumiki.Common;
+using Tsumiki.Util;
 
 namespace Tsumiki
 {
@@ -8,8 +10,11 @@ namespace Tsumiki
         {
             if (args.Length == 0)
             {
-                Console.Error.WriteLine(Consts.DETAILS_TEXT);
+                Console.WriteLine(Consts.DETAILS_TEXT);
+                Environment.Exit(0);
             }
+
+            var param = ArgumentsReader.ReadArguments(args);
             Console.WriteLine("開発中！");
         }
     }

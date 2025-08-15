@@ -13,5 +13,20 @@
             author: {string.Join(", ", AUTHOR_LIST)}
             version: {VERSION}
             """;
+
+        public static class ArgumentKey
+        {
+            public const string READPATH1 = "-1";
+
+            public const string READPATH2 = "-2";
+
+            public const string KMER = "-k";
+
+            public const string KMERCUTOFF = "-kc";
+
+            public const string PHRED = "-p";
+
+            public const string QUARITYCUTOFF = "-q";
+        }
     }
 }
