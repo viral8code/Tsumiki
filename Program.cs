@@ -4,7 +4,11 @@
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            if (args.Length == 0)
+            {
+                Console.Error.WriteLine(Consts.DETAILS_TEXT);
+            }
+            Console.WriteLine("開発中！");
         }
     }
 }
