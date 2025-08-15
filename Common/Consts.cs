@@ -9,7 +9,7 @@
             ];
 
         public static readonly string DETAILS_TEXT = $"""
-            Tsumiki is a genome assebly.
+            Tsumiki is a genome assembly.
             author: {string.Join(", ", AUTHOR_LIST)}
             version: {VERSION}
             """;
