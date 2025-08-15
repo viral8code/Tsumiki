@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Tsumiki
+﻿namespace Tsumiki.Common
 {
     internal class Consts
     {
@@ -15,7 +9,7 @@ namespace Tsumiki
             ];
 
         public static readonly string DETAILS_TEXT = $"""
-            This Program 'Tsumiki' is a genome assebly.
+            Tsumiki is a genome assebly.
             author: {string.Join(", ", AUTHOR_LIST)}
             version: {VERSION}
             """;
