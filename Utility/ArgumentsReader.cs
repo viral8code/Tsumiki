@@ -1,51 +1,67 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
-using static Tsumiki.Common.Consts;
 
-namespace Tsumiki.Util
+namespace Tsumiki.Utility
 {
     internal class ArgumentsReader
     {
+
+        private static class ArgumentKey
+        {
+            public const string READPATH1 = "-1";
+
+            public const string READPATH2 = "-2";
+
+            public const string KMER = "-k";
+
+            public const string KMERCUTOFF = "-kc";
+
+            public const string PHRED = "-p";
+
+            public const string QUARITYCUTOFF = "-q";
+
+            public const string BITSIZE = "-b";
+        }
+
         public static Parameters ReadArguments(string[] args)
         {
-            var index = 0;
             var param = new Parameters();
             try
             {
+                var index = 0;
                 while (index < args.Length)
                 {
                     var key = args[index++];
                     switch (key)
                     {
                         case ArgumentKey.READPATH1:
-                            var path1 = args[index++];
-                            param.ReadPath1 = path1;
+                            param.ReadPath1 = args[index++];
                             break;
+
                         case ArgumentKey.READPATH2:
-                            var path2 = args[index++];
-                            param.ReadPath2 = path2;
+                            param.ReadPath2 = args[index++];
                             break;
+
                         case ArgumentKey.KMER:
-                            var kmer = args[index++];
-                            param.Kmer = int.Parse(kmer);
+                            param.Kmer = int.Parse(args[index++]);
                             break;
+
                         case ArgumentKey.KMERCUTOFF:
-                            var kmerCutoff = args[index++];
-                            param.KmerCutoff = int.Parse(kmerCutoff);
+                            param.KmerCutoff = int.Parse(args[index++]);
                             break;
+
                         case ArgumentKey.PHRED:
-                            var phred = args[index++];
-                            param.Phred = int.Parse(phred);
+                            param.Phred = int.Parse(args[index++]);
                             break;
+
                         case ArgumentKey.QUARITYCUTOFF:
-                            var qualityCutoff = args[index++];
-                            param.QualityCutoff = int.Parse(qualityCutoff);
+                            param.QualityCutoff = int.Parse(args[index++]);
                             break;
+
+                        case ArgumentKey.BITSIZE:
+                            param.BitSize = args[index++];
+                            break;
+
                         default:
                             Logger.PrintWarning(Logger.GetMethodName(), new ArgumentException($"Unknown argment: {key}"));
                             break;

@@ -27,5 +27,10 @@ namespace Tsumiki.Common
             Console.Error.WriteLine($"Method: {methodName}");
             Console.Error.WriteLine(ex.ToString());
         }
+
+        public static void PrintTimeStamp()
+        {
+            Console.WriteLine($"[Log] {DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss")}");
+        }
     }
 }
