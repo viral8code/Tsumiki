@@ -47,7 +47,7 @@ namespace Tsumiki.Utility
                             break;
 
                         case ArgumentKey.KMERCUTOFF:
-                            param.KmerCutoff = int.Parse(args[index++]);
+                            param.KmerCutoff = ulong.Parse(args[index++]);
                             break;
 
                         case ArgumentKey.PHRED:

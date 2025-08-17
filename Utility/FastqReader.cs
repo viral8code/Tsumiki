@@ -14,7 +14,7 @@ namespace Tsumiki.Utility
             return !this.reader.EndOfStream;
         }
 
-        public string NextData()
+        private string NextData()
         {
             var dataLine = this.reader.ReadLine();
             while (string.IsNullOrWhiteSpace(dataLine))

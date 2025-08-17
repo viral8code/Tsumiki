@@ -75,5 +75,18 @@ namespace Tsumiki.Common
                 return reversedRead;
             }
         }
+
+        public static string ByteToNucleotideSequence(byte read)
+        {
+            return string.Join(string.Empty, new[] { (read >>> 6) & 3, (read >>> 4) & 3, (read >>> 2) & 3, read & 3 }
+                .Select(x => x switch
+                {
+                    NucleotideID.A => "A",
+                    NucleotideID.C => "C",
+                    NucleotideID.G => "G",
+                    NucleotideID.T => "T",
+                    _ => "N",
+                }));
+        }
     }
 }

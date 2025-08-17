@@ -55,8 +55,8 @@ namespace Tsumiki.Model
             }
         }
 
-        private int _kmerCutoff = 2;
-        public int KmerCutoff
+        private ulong _kmerCutoff = 2;
+        public ulong KmerCutoff
         {
             get
             {
@@ -76,12 +76,12 @@ namespace Tsumiki.Model
 
         public int QualityCutoff { get; set; } = 0;
 
-        private ulong _bitSize = int.MaxValue;
+        public ulong RowBitSize = int.MaxValue;
         public string BitSize
         {
             get
             {
-                double aboutSize = _bitSize;
+                double aboutSize = RowBitSize;
                 string unit = "";
                 if (aboutSize >= 1e12)
                 {
@@ -109,23 +109,23 @@ namespace Tsumiki.Model
             {
                 if (value[^1] is 'K' or 'k')
                 {
-                    _bitSize = (ulong)(double.Parse(value[..^1]) * 1e3);
+                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e3);
                 }
                 else if (value[^1] is 'M' or 'm')
                 {
-                    _bitSize = (ulong)(double.Parse(value[..^1]) * 1e6);
+                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e6);
                 }
                 else if (value[^1] is 'G' or 'g')
                 {
-                    _bitSize = (ulong)(double.Parse(value[..^1]) * 1e9);
+                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e9);
                 }
                 else if (value[^1] is 'T' or 't')
                 {
-                    _bitSize = (ulong)(double.Parse(value[..^1]) * 1e12);
+                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e12);
                 }
                 else
                 {
-                    _bitSize = (ulong)double.Parse(value);
+                    RowBitSize = (ulong)double.Parse(value);
                 }
             }
         }
