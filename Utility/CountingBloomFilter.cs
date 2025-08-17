@@ -22,7 +22,7 @@ namespace Tsumiki.Utility
         public bool Contains(string read)
         {
             read = Util.CanonicalRead(read);
-            var hashList = GetHashList(read);
+            var hashList = this.GetHashList(read);
             var hash = hashList.FirstOrDefault();
             return this._bitArray[hash];
         }
@@ -51,7 +51,7 @@ namespace Tsumiki.Utility
 
         private void SetHash(string read)
         {
-            var hashList = GetHashList(read);
+            var hashList = this.GetHashList(read);
             foreach (var hash in hashList)
             {
                 this._bitArray[hash] = true;
@@ -78,7 +78,7 @@ namespace Tsumiki.Utility
                         foreach (var val in hashValues)
                         {
                             var hash = (val << shift) | (uint)id;
-                            next.Add(hash % _mod);
+                            next.Add(hash % this._mod);
                         }
                     }
                     hashValues = next;

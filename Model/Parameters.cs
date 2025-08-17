@@ -1,74 +1,60 @@
-﻿using System.IO;
-
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model
 {
     internal class Parameters
     {
         private string _path1 = string.Empty;
         public string ReadPath1
         {
-            get
-            {
-                return _path1;
-            }
+            get => this._path1;
             set
             {
                 if (!Path.Exists(value))
                 {
                     throw new ArgumentException($"Read1's path {value} is not found");
                 }
-                _path1 = value;
+                this._path1 = value;
             }
         }
 
         private string _path2 = string.Empty;
         public string ReadPath2
         {
-            get
-            {
-                return _path2;
-            }
+            get => this._path2;
             set
             {
                 if (!Path.Exists(value))
                 {
                     throw new ArgumentException($"Read2's path {value} is not found");
                 }
-                _path2 = value;
+                this._path2 = value;
             }
         }
 
         private int _kmer = 31;
         public int Kmer
         {
-            get
-            {
-                return _kmer;
-            }
+            get => this._kmer;
             set
             {
                 if (value <= 0)
                 {
                     throw new ArgumentException("Please make the value of kmer a positive integer");
                 }
-                _kmer = value;
+                this._kmer = value;
             }
         }
 
         private ulong _kmerCutoff = 2;
         public ulong KmerCutoff
         {
-            get
-            {
-                return _kmerCutoff;
-            }
+            get => this._kmerCutoff;
             set
             {
                 if (value <= 0)
                 {
                     throw new ArgumentException("Please make the value of kmer cut off a positive integer");
                 }
-                _kmerCutoff = value;
+                this._kmerCutoff = value;
             }
         }
 
@@ -81,8 +67,8 @@ namespace Tsumiki.Model
         {
             get
             {
-                double aboutSize = RowBitSize;
-                string unit = "";
+                double aboutSize = this.RowBitSize;
+                var unit = "";
                 if (aboutSize >= 1e12)
                 {
                     aboutSize /= 1e12;
@@ -109,23 +95,17 @@ namespace Tsumiki.Model
             {
                 if (value[^1] is 'K' or 'k')
                 {
-                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e3);
+                    this.RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e3);
                 }
                 else if (value[^1] is 'M' or 'm')
                 {
-                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e6);
-                }
-                else if (value[^1] is 'G' or 'g')
-                {
-                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e9);
-                }
-                else if (value[^1] is 'T' or 't')
-                {
-                    RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e12);
+                    this.RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e6);
                 }
                 else
                 {
-                    RowBitSize = (ulong)double.Parse(value);
+                    this.RowBitSize = value[^1] is 'G' or 'g'
+                        ? (ulong)(double.Parse(value[..^1]) * 1e9)
+                        : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 1e12) : (ulong)double.Parse(value);
                 }
             }
         }
@@ -135,13 +115,13 @@ namespace Tsumiki.Model
             return $"""
                 === Parameters ===
 
-                read1: {ReadPath1}
-                read2: {ReadPath2}
-                kmer: {Kmer}
-                kmer cutoff: {KmerCutoff}
-                phred: {Phred}
-                quality cutoff: {QualityCutoff}
-                bit size: {BitSize}
+                read1: {this.ReadPath1}
+                read2: {this.ReadPath2}
+                kmer: {this.Kmer}
+                kmer cutoff: {this.KmerCutoff}
+                phred: {this.Phred}
+                quality cutoff: {this.QualityCutoff}
+                bit size: {this.BitSize}
 
                 ==================
                 """;

@@ -66,14 +66,7 @@ namespace Tsumiki.Common
         public static string CanonicalRead(string read)
         {
             var reversedRead = Util.ReverseComprement(read);
-            if (read.CompareTo(reversedRead) <= 0)
-            {
-                return read;
-            }
-            else
-            {
-                return reversedRead;
-            }
+            return read.CompareTo(reversedRead) <= 0 ? read : reversedRead;
         }
 
         public static string ByteToNucleotideSequence(byte read)
