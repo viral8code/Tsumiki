@@ -195,12 +195,14 @@ namespace Tsumiki.Utility
                 }
                 _count++;
 
-                _writer.Write(values);
+                _writer?.Write(values);
             }
 
             public string MergeAll()
             {
-                var Length = (ConfigurationManager.Arguments.Kmer + 7) / 8;
+                _writer.Close();
+                _writer = null!;
+                var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
                 var mergedFileList = new List<string>();
                 for (var i = 1; i <= _fileCount; i++)
                 {
@@ -226,10 +228,11 @@ namespace Tsumiki.Utility
                     {
                         foreach (var kv in dict)
                         {
-                            _writer.Write(kv.Key);
-                            _writer.Write(kv.Value);
+                            writer.Write(kv.Key);
+                            writer.Write(kv.Value);
                         }
                     }
+                    mergedFileList.Add(mergedFileName);
                 }
                 var index = _fileCount + 1;
                 while (mergedFileList.Count > 1)
