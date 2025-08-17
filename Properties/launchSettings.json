@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Tsumiki": {
+      "commandName": "Project",
+      "commandLineArgs": "-1 read.1.fq -2 read.2.fq"
+    }
+  }
+}
