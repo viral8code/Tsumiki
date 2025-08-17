@@ -109,6 +109,7 @@ namespace Tsumiki.Utility
                         }
                     }
                 }
+                File.Delete(fileName);
                 var mergedFileName = $"{this.filePrefix}_merged_{i}";
                 using (var writer = new BinaryWriter(File.Open(mergedFileName, FileMode.Create, FileAccess.Write)))
                 {
@@ -174,6 +175,8 @@ namespace Tsumiki.Utility
                         read2 = reader2.BaseStream.Position < reader2.BaseStream.Length ? reader2.ReadBytes(Length) : null;
                     }
                 }
+                File.Delete(file1);
+                File.Delete(file2);
                 mergedFileList.Add(mergedFileName);
             }
             return mergedFileList[0];

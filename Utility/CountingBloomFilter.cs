@@ -32,21 +32,24 @@ namespace Tsumiki.Utility
             var filePath = this._counter.MergeAll();
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             this._bitArray.Clear();
-            using var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read));
-            while (reader.BaseStream.Position < reader.BaseStream.Length)
+            using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
-                var read = reader.ReadBytes(Length);
-                var count = reader.ReadUInt64();
-                if (count > bounds)
+                while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
-                    StringBuilder sb = new();
-                    foreach (var b in read)
+                    var read = reader.ReadBytes(Length);
+                    var count = reader.ReadUInt64();
+                    if (count > bounds)
                     {
-                        _ = sb.Append(Util.ByteToNucleotideSequence(b));
+                        StringBuilder sb = new();
+                        foreach (var b in read)
+                        {
+                            _ = sb.Append(Util.ByteToNucleotideSequence(b));
+                        }
+                        this.Add(sb.ToString()[..ConfigurationManager.Arguments.Kmer]);
                     }
-                    this.Add(sb.ToString()[..ConfigurationManager.Arguments.Kmer]);
                 }
             }
+            File.Delete(filePath);
         }
 
         private void SetHash(string read)
