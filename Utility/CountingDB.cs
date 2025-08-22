@@ -81,7 +81,7 @@ namespace Tsumiki.Utility
             }
             this._count++;
 
-            this._writer?.Write(values);
+            this._writer.Write(values);
         }
 
         public string MergeAll()
@@ -184,7 +184,7 @@ namespace Tsumiki.Utility
 
         public void Dispose()
         {
-            this._writer.Close();
+            this._writer?.Close();
         }
     }
 }

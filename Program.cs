@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Common;
+using Tsumiki.Core;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -104,7 +105,12 @@ namespace Tsumiki
                 }
             }
             Console.WriteLine("Fix Bloom filter");
-            bloomFilter.Cutoff(param.KmerCutoff);
+            var initKmer = bloomFilter.Cutoff(param.KmerCutoff);
+
+            var dbg = new BeamDBG(bloomFilter, 20);
+            var unitig = dbg.ExtendFrom(initKmer);
+
+            Console.WriteLine(unitig.ToString());
 
             Console.WriteLine("開発中！");
 

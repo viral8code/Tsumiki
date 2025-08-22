@@ -110,6 +110,8 @@
             }
         }
 
+        public int InsertSize { get; set; } = 350;
+
         public override string ToString()
         {
             return $"""

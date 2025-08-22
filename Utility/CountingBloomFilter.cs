@@ -11,27 +11,41 @@ namespace Tsumiki.Utility
 
         private readonly ulong _mod = bitSize;
 
-        private readonly CountingDB _counter = new();
+        private CountingDB _counter = new();
 
         public void Add(string read)
         {
-            read = Util.CanonicalRead(read);
             this.SetHash(read);
+            this.SetHash(Util.ReverseComprement(read));
         }
 
         public bool Contains(string read)
         {
-            read = Util.CanonicalRead(read);
             var hashList = this.GetHashList(read);
             var hash = hashList.FirstOrDefault();
+            if (this._bitArray[hash])
+            {
+                return true;
+            }
+            read = Util.ReverseComprement(read);
+            hashList = this.GetHashList(read);
+            hash = hashList.FirstOrDefault();
             return this._bitArray[hash];
         }
 
-        public void Cutoff(ulong bounds)
+        public bool Contains(ulong read)
+        {
+            return this._bitArray[read];
+        }
+
+        public string Cutoff(ulong bounds)
         {
             var filePath = this._counter.MergeAll();
+            this._counter.Dispose();
+            this._counter = null!;
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             this._bitArray.Clear();
+            string? initKmer = null;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
@@ -46,10 +60,12 @@ namespace Tsumiki.Utility
                             _ = sb.Append(Util.ByteToNucleotideSequence(b));
                         }
                         this.Add(sb.ToString()[..ConfigurationManager.Arguments.Kmer]);
+                        initKmer ??= sb.ToString()[..ConfigurationManager.Arguments.Kmer];
                     }
                 }
             }
             File.Delete(filePath);
+            return initKmer ?? string.Empty;
         }
 
         private void SetHash(string read)
@@ -59,7 +75,7 @@ namespace Tsumiki.Utility
             {
                 this._bitArray[hash] = true;
             }
-            this._counter.Add(read);
+            this._counter?.Add(read);
         }
 
         private List<ulong> GetHashList(string read)
@@ -97,7 +113,7 @@ namespace Tsumiki.Utility
 
         public void Dispose()
         {
-            this._counter.Dispose();
+            this._counter?.Dispose();
         }
     }
 }

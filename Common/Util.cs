@@ -63,12 +63,6 @@ namespace Tsumiki.Common
             };
         }
 
-        public static string CanonicalRead(string read)
-        {
-            var reversedRead = Util.ReverseComprement(read);
-            return read.CompareTo(reversedRead) <= 0 ? read : reversedRead;
-        }
-
         public static string ByteToNucleotideSequence(byte read)
         {
             return string.Join(string.Empty, new[] { (read >>> 6) & 3, (read >>> 4) & 3, (read >>> 2) & 3, read & 3 }
@@ -80,6 +74,18 @@ namespace Tsumiki.Common
                     NucleotideID.T => "T",
                     _ => "N",
                 }));
+        }
+
+        public static string ByteToBase(byte read)
+        {
+            return read switch
+            {
+                NucleotideID.A => "A",
+                NucleotideID.C => "C",
+                NucleotideID.G => "G",
+                NucleotideID.T => "T",
+                _ => "N",
+            };
         }
     }
 }
