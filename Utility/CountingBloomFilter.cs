@@ -22,15 +22,23 @@ namespace Tsumiki.Utility
         public bool Contains(string read)
         {
             var hashList = this.GetHashList(read);
-            var hash = hashList.FirstOrDefault();
-            if (this._bitArray[hash])
+            bool flag = true;
+            foreach (var hash in hashList)
+            {
+                flag &= this._bitArray[hash];
+            }
+            if (flag)
             {
                 return true;
             }
             read = Util.ReverseComprement(read);
             hashList = this.GetHashList(read);
-            hash = hashList.FirstOrDefault();
-            return this._bitArray[hash];
+            flag = true;
+            foreach (var hash in hashList)
+            {
+                flag &= this._bitArray[hash];
+            }
+            return flag;
         }
 
         public bool Contains(ulong read)
@@ -38,14 +46,14 @@ namespace Tsumiki.Utility
             return this._bitArray[read];
         }
 
-        public string Cutoff(ulong bounds)
+        public List<string> Cutoff(ulong bounds)
         {
             var filePath = this._counter.MergeAll();
             this._counter.Dispose();
             this._counter = null!;
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             this._bitArray.Clear();
-            string? initKmer = null;
+            List<string> kmers = [];
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
@@ -59,13 +67,14 @@ namespace Tsumiki.Utility
                         {
                             _ = sb.Append(Util.ByteToNucleotideSequence(b));
                         }
-                        this.Add(sb.ToString()[..ConfigurationManager.Arguments.Kmer]);
-                        initKmer ??= sb.ToString()[..ConfigurationManager.Arguments.Kmer];
+                        var kmer = sb.ToString()[..ConfigurationManager.Arguments.Kmer];
+                        this.Add(kmer);
+                        kmers.Add(kmer);
                     }
                 }
             }
             File.Delete(filePath);
-            return initKmer ?? string.Empty;
+            return kmers;
         }
 
         private void SetHash(string read)

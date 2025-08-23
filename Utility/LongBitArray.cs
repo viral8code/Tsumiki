@@ -12,7 +12,7 @@
             {
                 var subIndex = index / BitSize;
                 var bitIndex = index % BitSize;
-                return (this._bitArray[subIndex] & (1UL << (int)bitIndex)) == 1;
+                return (this._bitArray[subIndex] & (1UL << (int)bitIndex)) > 0UL;
             }
             set
             {
@@ -31,7 +31,7 @@
 
         public void Clear()
         {
-            Array.Clear(this._bitArray);
+            Array.Fill(this._bitArray, 0UL);
         }
     }
 }

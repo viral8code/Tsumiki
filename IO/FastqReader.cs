@@ -1,7 +1,7 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
-namespace Tsumiki.Utility
+namespace Tsumiki.IO
 {
     internal class FastqReader(string path) : IDisposable
     {

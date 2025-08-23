@@ -4,7 +4,7 @@ namespace Tsumiki.Utility
 {
     internal class CountingDB : IDisposable
     {
-        private const int MaxCount = 1_000_000;
+        private const int MaxCount = 1 << 20;
 
         private readonly FastByteArrayComparer _comparator;
 

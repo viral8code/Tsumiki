@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.Core;
+using Tsumiki.IO;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -105,12 +106,18 @@ namespace Tsumiki
                 }
             }
             Console.WriteLine("Fix Bloom filter");
-            var initKmer = bloomFilter.Cutoff(param.KmerCutoff);
+            var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
 
-            var dbg = new BeamDBG(bloomFilter, 20);
-            var unitig = dbg.ExtendFrom(initKmer);
-
-            Console.WriteLine(unitig.ToString());
+            Console.WriteLine("Make unitigs");
+            using (var writer = new FastaWriter("unitigs.fasta"))
+            {
+                foreach (var kmer in initKmers)
+                {
+                    var dbg = new BeamDBG(bloomFilter, 20);
+                    var unitig = dbg.ExtendFrom(kmer);
+                    writer.Write(kmer, unitig.ToString());
+                }
+            }
 
             Console.WriteLine("開発中！");
 

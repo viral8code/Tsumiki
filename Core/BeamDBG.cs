@@ -23,7 +23,7 @@ namespace Tsumiki.Core
             beam.Enqueue(new()
             {
                 End = start,
-                Len = 1,
+                Len = ConfigurationManager.Arguments.Kmer,
                 Revisits = 0,
                 Hash = 0L,
                 BeforeState = null,
@@ -32,10 +32,10 @@ namespace Tsumiki.Core
             State? bestSeen = null;
             var bestScore = double.MinValue;
 
-            var cycle = 0;
-            while (beam.Count > 0)
+            var unchanged = false;
+            while (beam.Count > 0 && !unchanged)
             {
-                Console.WriteLine("cycle " + cycle++);
+                unchanged = true;
                 List<(State state, double score)> cand = [];
                 while (beam.TryDequeue(out var nowState, out var nowScore))
                 {
@@ -43,7 +43,7 @@ namespace Tsumiki.Core
                     for (var i = 0; i < 4; i++)
                     {
                         var nextNode = NodeExtend(nowState.End, i);
-                        if (!bloomFilter.Contains(nextNode))
+                        if (start == nextNode || !bloomFilter.Contains(nextNode))
                         {
                             continue;
                         }
@@ -73,6 +73,7 @@ namespace Tsumiki.Core
                         }
                         cand.Add((nextState, nextScore));
                         expanded = true;
+                        unchanged = false;
                     }
                     if (!expanded)
                     {
@@ -90,22 +91,22 @@ namespace Tsumiki.Core
                     next.Add(cand[i]);
                 }
                 (var head, var score) = next[0];
-                if (bestSeen == null || score > bestScore)
-                {
-                    bestSeen = head;
-                    bestScore = score;
-                }
-                if (Converged(next))
-                {
-                    break;
-                }
+                //if (bestSeen == null || score > bestScore)
+                //{
+                bestSeen = head;
+                //    bestScore = score;
+                //}
+                //if (Converged(next))
+                //{
+                //    break;
+                //}
                 beam.Clear();
                 foreach ((var state, var sore) in next)
                 {
                     beam.Enqueue(state, score);
                 }
             }
-            return materialize(bestSeen!);
+            return Materialize(bestSeen!);
         }
 
         private static string NodeExtend(string node, int nextBase)
@@ -156,7 +157,7 @@ namespace Tsumiki.Core
             return d > 3.0 && beamTop[0].state.Len > 100;
         }
 
-        private static Unitig materialize(State best)
+        private static Unitig Materialize(State best)
         {
             StringBuilder stringBuilder = new();
             while (best.BeforeState != null)
