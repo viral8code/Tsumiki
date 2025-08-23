@@ -91,23 +91,14 @@
                 }
                 return $"{aboutSize:0.#} {unit}";
             }
-            set
-            {
-                if (value[^1] is 'K' or 'k')
-                {
-                    this.RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e3);
-                }
-                else if (value[^1] is 'M' or 'm')
-                {
-                    this.RowBitSize = (ulong)(double.Parse(value[..^1]) * 1e6);
-                }
-                else
-                {
-                    this.RowBitSize = value[^1] is 'G' or 'g'
+
+            set => this.RowBitSize = value[^1] is 'K' or 'k'
+                    ? (ulong)(double.Parse(value[..^1]) * 1e3)
+                    : value[^1] is 'M' or 'm'
+                        ? (ulong)(double.Parse(value[..^1]) * 1e6)
+                        : value[^1] is 'G' or 'g'
                         ? (ulong)(double.Parse(value[..^1]) * 1e9)
                         : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 1e12) : (ulong)double.Parse(value);
-                }
-            }
         }
 
         public int InsertSize { get; set; } = 350;

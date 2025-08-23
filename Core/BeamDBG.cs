@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Utility;
 
@@ -91,15 +90,7 @@ namespace Tsumiki.Core
                     next.Add(cand[i]);
                 }
                 (var head, var score) = next[0];
-                //if (bestSeen == null || score > bestScore)
-                //{
                 bestSeen = head;
-                //    bestScore = score;
-                //}
-                //if (Converged(next))
-                //{
-                //    break;
-                //}
                 beam.Clear();
                 foreach ((var state, var sore) in next)
                 {
@@ -140,21 +131,7 @@ namespace Tsumiki.Core
 
         private static bool Prunable(State t, double nowScore, State? bestSeen, double bestScore)
         {
-            if (bestSeen != null && nowScore < bestScore - 5.0)
-            {
-                return true;
-            }
-            return t.Revisits > 8;
-        }
-
-        private static bool Converged(List<(State state, double score)> beamTop)
-        {
-            if (beamTop.Count == 1)
-            {
-                return true;
-            }
-            var d = beamTop[0].score - beamTop[1].score;
-            return d > 3.0 && beamTop[0].state.Len > 100;
+            return (bestSeen != null && nowScore < bestScore - 5.0) || t.Revisits > 8;
         }
 
         private static Unitig Materialize(State best)
@@ -167,7 +144,7 @@ namespace Tsumiki.Core
             }
             foreach (var c in best.End.Reverse())
             {
-                stringBuilder.Append(c);
+                _ = stringBuilder.Append(c);
             }
             return new Unitig(string.Join(string.Empty, stringBuilder.ToString().Reverse()));
         }

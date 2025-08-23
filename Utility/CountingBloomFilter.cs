@@ -22,7 +22,7 @@ namespace Tsumiki.Utility
         public bool Contains(string read)
         {
             var hashList = this.GetHashList(read);
-            bool flag = true;
+            var flag = true;
             foreach (var hash in hashList)
             {
                 flag &= this._bitArray[hash];
