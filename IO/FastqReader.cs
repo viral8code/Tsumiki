@@ -1,13 +1,29 @@
-﻿using Tsumiki.Common;
+﻿using System.IO.Compression;
+using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
 {
-    internal class FastqReader(string path) : IDisposable
+    internal class FastqReader : IDisposable
     {
-        public string FilePath { get; private set; } = path;
+        public string FilePath { get; private set; }
 
-        private readonly StreamReader reader = new(path);
+        private readonly StreamReader reader;
+
+        public FastqReader(string path)
+        {
+            FilePath = path;
+            if (Path.GetExtension(path)?.ToLower() == ".gz")
+            {
+                var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
+                var decompressionStream = new GZipStream(inputFileStream, CompressionMode.Decompress);
+                reader = new(decompressionStream);
+            }
+            else
+            {
+                reader = new(path);
+            }
+        }
 
         public bool HasNext()
         {
