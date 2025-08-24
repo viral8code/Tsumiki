@@ -60,7 +60,7 @@ namespace Tsumiki.Utility
                 {
                     var read = reader.ReadBytes(Length);
                     var count = reader.ReadUInt64();
-                    if (count > bounds)
+                    if (count >= bounds)
                     {
                         StringBuilder sb = new();
                         foreach (var b in read)
