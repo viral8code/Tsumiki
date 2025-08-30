@@ -6,10 +6,10 @@ namespace Tsumiki.Common
     {
         private static class NucleotideID
         {
-            public const int A = 0;
-            public const int C = 1;
-            public const int G = 2;
-            public const int T = 3;
+            public const int A = 1;
+            public const int C = 2;
+            public const int G = 3;
+            public const int T = 4;
         }
 
         public static string ReverseComprement(string genome)
@@ -66,7 +66,7 @@ namespace Tsumiki.Common
         public static string ByteToNucleotideSequence(byte read)
         {
             return string.Join(string.Empty, new[] { (read >>> 6) & 3, (read >>> 4) & 3, (read >>> 2) & 3, read & 3 }
-                .Select(x => x switch
+                .Select(x => (x + 1) switch
                 {
                     NucleotideID.A => "A",
                     NucleotideID.C => "C",

@@ -4,7 +4,7 @@
     {
         private readonly StreamWriter _writer = new(fileName);
 
-        public void Write(string seqID, string sequence)
+        public void Write(object seqID, string sequence)
         {
             this._writer.Write(">");
             this._writer.WriteLine(seqID);

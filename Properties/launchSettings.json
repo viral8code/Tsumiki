@@ -2,7 +2,7 @@
   "profiles": {
     "Tsumiki": {
       "commandName": "Project",
-      "commandLineArgs": "-1 read.1.fq -2 read.2.fq"
+      "commandLineArgs": "-1 read.1.fq -2 read.2.fq -p 64 -k 31 -b 200M"
     }
   }
 }

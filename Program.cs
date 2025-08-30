@@ -109,13 +109,13 @@ namespace Tsumiki
             var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
 
             Console.WriteLine("Make unitigs");
+            var unitigMaker = new UnitigMaker(bloomFilter);
             using (var writer = new FastaWriter("unitigs.fasta"))
             {
                 foreach (var kmer in initKmers)
                 {
-                    var dbg = new BeamDBG(bloomFilter, 20);
-                    var unitig = dbg.ExtendFrom(kmer);
-                    writer.Write(kmer, unitig.ToString());
+                    var unitig = unitigMaker.MakeUnitig(kmer);
+                    writer.Write(unitig.Id, unitig.Sequence);
                 }
             }
 

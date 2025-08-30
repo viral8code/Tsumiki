@@ -39,11 +39,11 @@
             return x.Length.CompareTo(y.Length);
         }
 
-        private static int GetHash(byte[] data)
+        private static ulong GetHash(byte[] data)
         {
             unchecked
             {
-                var hash = (int)2166136261;
+                var hash = 2166136261UL;
                 foreach (var b in data)
                 {
                     hash ^= b;

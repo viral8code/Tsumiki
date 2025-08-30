@@ -50,7 +50,7 @@ namespace Tsumiki.Utility
                     {
                         foreach (var b in next)
                         {
-                            subNext.Add((b << 2) | id);
+                            subNext.Add((b << 2) | (id - 1));
                         }
                     }
                     next = subNext;

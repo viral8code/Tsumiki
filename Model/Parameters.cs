@@ -69,36 +69,37 @@
             {
                 double aboutSize = this.RowBitSize;
                 var unit = "";
-                if (aboutSize >= 1e12)
+                if (aboutSize >= 8e12)
                 {
-                    aboutSize /= 1e12;
+                    aboutSize /= 8e12;
                     unit = "T";
                 }
-                else if (aboutSize >= 1e9)
+                else if (aboutSize >= 8e9)
                 {
-                    aboutSize /= 1e9;
+                    aboutSize /= 8e9;
                     unit = "G";
                 }
-                else if (aboutSize >= 1e6)
+                else if (aboutSize >= 8e6)
                 {
-                    aboutSize /= 1e6;
+                    aboutSize /= 8e6;
                     unit = "M";
                 }
-                else if (aboutSize >= 1e3)
+                else if (aboutSize >= 8e3)
                 {
-                    aboutSize /= 1e3;
+                    aboutSize /= 8e3;
                     unit = "K";
                 }
                 return $"{aboutSize:0.#} {unit}";
             }
 
-            set => this.RowBitSize = value[^1] is 'K' or 'k'
-                    ? (ulong)(double.Parse(value[..^1]) * 1e3)
+            set => this.RowBitSize =
+                      value[^1] is 'K' or 'k'
+                    ? (ulong)(double.Parse(value[..^1]) * 8e3)
                     : value[^1] is 'M' or 'm'
-                        ? (ulong)(double.Parse(value[..^1]) * 1e6)
-                        : value[^1] is 'G' or 'g'
-                        ? (ulong)(double.Parse(value[..^1]) * 1e9)
-                        : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 1e12) : (ulong)double.Parse(value);
+                    ? (ulong)(double.Parse(value[..^1]) * 8e6)
+                    : value[^1] is 'G' or 'g'
+                    ? (ulong)(double.Parse(value[..^1]) * 8e9)
+                    : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 8e12) : (ulong)double.Parse(value);
         }
 
         public int InsertSize { get; set; } = 350;
