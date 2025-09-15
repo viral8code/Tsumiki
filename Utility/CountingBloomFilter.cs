@@ -57,27 +57,28 @@ namespace Tsumiki.Utility
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 using var writer = new BinaryWriter(File.Open(KmerFileName, FileMode.Create, FileAccess.Write));
+                ulong addedKmer = 0;
+                ulong countKmer = 0;
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
                     var read = reader.ReadBytes(Length);
                     var count = reader.ReadUInt64();
+                    countKmer += 1;
                     if (count >= bounds)
                     {
+                        addedKmer += 1;
                         StringBuilder sb = new();
                         foreach (var b in read)
                         {
                             _ = sb.Append(Util.ByteToNucleotideSequence(b));
                         }
                         var kmer = sb.ToString()[..ConfigurationManager.Arguments.Kmer];
-                        if (kmer.Contains("N"))
-                        {
-                            Console.WriteLine(kmer);
-                            Environment.Exit(0);
-                        }
                         this.Add(kmer);
                         writer.Write(kmer);
                     }
                 }
+                Console.WriteLine("kmer count: " + countKmer);
+                Console.WriteLine("good kmer: " + addedKmer);
             }
             File.Delete(filePath);
             Console.WriteLine("Search First k-mer");

@@ -11,7 +11,7 @@ namespace Tsumiki.Model
         {
             var sb = new StringBuilder();
             _ = sb.AppendLine($"ID: {this.Id}")
-                .AppendLine($"Seq: {Sequence}");
+                .AppendLine($"Seq: {this.Sequence}");
             return sb.ToString();
         }
     }

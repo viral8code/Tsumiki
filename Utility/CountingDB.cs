@@ -6,7 +6,7 @@ namespace Tsumiki.Utility
     {
         private const int MaxCount = 1 << 20;
 
-        private readonly FastByteArrayComparer _comparator;
+        private readonly ByteArrayComparer _comparator;
 
         private readonly string filePrefix;
 
@@ -14,7 +14,7 @@ namespace Tsumiki.Utility
 
         private int _count;
 
-        private BinaryWriter _writer;
+        private BinaryWriter? _writer;
 
         public CountingDB()
         {
@@ -29,7 +29,7 @@ namespace Tsumiki.Utility
 
         private void CreateNewFile()
         {
-            this._writer.Close();
+            this._writer?.Close();
             this._fileCount += 1;
             this._count = 0;
             var newFileName = $"{this.filePrefix}_{this._fileCount}";
@@ -42,10 +42,10 @@ namespace Tsumiki.Utility
             for (var i = 0; i < key.Length; i += 4)
             {
                 List<int> next = [0];
-                for (var j = 0; j < 4 && i + j < key.Length; j++)
+                for (var j = 0; j < 4; j++)
                 {
                     List<int> subNext = [];
-                    var ids = Util.GetNucleotideIDs(key[i + j]);
+                    var ids = i + j < key.Length ? Util.GetNucleotideIDs(key[i + j]) : Util.GetNucleotideIDs('A');
                     foreach (var id in ids)
                     {
                         foreach (var b in next)
@@ -81,13 +81,13 @@ namespace Tsumiki.Utility
             }
             this._count++;
 
-            this._writer.Write(values);
+            this._writer!.Write(values);
         }
 
         public string MergeAll()
         {
-            this._writer.Close();
-            this._writer = null!;
+            this._writer!.Close();
+            this._writer = null;
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             var mergedFileList = new List<string>();
             for (var i = 1; i <= this._fileCount; i++)

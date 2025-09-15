@@ -12,16 +12,16 @@ namespace Tsumiki.IO
 
         public FastqReader(string path)
         {
-            FilePath = path;
+            this.FilePath = path;
             if (Path.GetExtension(path)?.ToLower() == ".gz")
             {
                 var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
                 var decompressionStream = new GZipStream(inputFileStream, CompressionMode.Decompress);
-                reader = new(decompressionStream);
+                this.reader = new(decompressionStream);
             }
             else
             {
-                reader = new(path);
+                this.reader = new(path);
             }
         }
 
