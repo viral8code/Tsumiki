@@ -1,4 +1,4 @@
-﻿using System.Text;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 
 namespace Tsumiki.Utility
@@ -15,13 +15,13 @@ namespace Tsumiki.Utility
 
         private CountingDB? _counter = new();
 
-        public void Add(string read)
+        public void Add(Span<byte[]> read)
         {
-            this.SetHash(read);
-            this.SetHash(Util.ReverseComprement(read));
+            this.Regist(read);
+            this.Regist(Util.ReverseComprement(read));
         }
 
-        public bool Contains(string read)
+        public bool Contains(Span<byte> read)
         {
             var hashList = this.GetHashList(read);
             var flag = true;
@@ -48,7 +48,7 @@ namespace Tsumiki.Utility
             return this._bitArray[read];
         }
 
-        public List<string> Cutoff(ulong bounds)
+        public List<byte[]> Cutoff(ulong bounds)
         {
             var filePath = this._counter!.MergeAll();
             this._counter.Dispose();
@@ -67,13 +67,13 @@ namespace Tsumiki.Utility
                     if (count >= bounds)
                     {
                         addedKmer += 1;
-                        StringBuilder sb = new();
+                        List<byte> bytes = [];
                         foreach (var b in read)
                         {
-                            _ = sb.Append(Util.ByteToNucleotideSequence(b));
+                            bytes.AddRange(Util.ByteToNucleotideSequence(b));
                         }
-                        var kmer = sb.ToString()[..ConfigurationManager.Arguments.Kmer];
-                        this.Add(kmer);
+                        var kmer = CollectionsMarshal.AsSpan(bytes)[..ConfigurationManager.Arguments.Kmer];
+                        this.SetHash(kmer);
                         writer.Write(kmer);
                     }
                 }
@@ -82,12 +82,12 @@ namespace Tsumiki.Utility
             }
             File.Delete(filePath);
             Console.WriteLine("Search First k-mer");
-            List<string> kmers = [];
+            List<byte[]> kmers = [];
             using (var reader = new BinaryReader(File.Open(KmerFileName, FileMode.Open, FileAccess.Read)))
             {
                 while (reader.BaseStream.Position < reader.BaseStream.Length)
                 {
-                    var read = reader.ReadString();
+                    var read = reader.ReadBytes(ConfigurationManager.Arguments.Kmer);
                     if (this.IsFirstKmer(read))
                     {
                         kmers.Add(read);
@@ -98,13 +98,32 @@ namespace Tsumiki.Utility
             return kmers;
         }
 
-        private bool IsFirstKmer(string kmer)
+        private bool IsFirstKmer(Span<byte> kmer)
         {
-            var count = 0;
-            for (byte i = 1; i <= 4; i++)
+            List<ulong> hashList = [];
+            foreach (var shift in ShiftValues)
             {
-                var prevRead = Util.ByteToBase(i) + kmer[..^1];
-                if (this.Contains(prevRead))
+                ulong hashValue = 0UL;
+
+                foreach (var id in kmer[..^1])
+                {
+                    hashValue = (hashValue * (ulong)shift) + id;
+                }
+
+                hashList.Add(hashValue);
+            }
+            var exp = ConfigurationManager.Arguments.Kmer - 1;
+            var count = 0;
+
+            for (ulong i = 1; i <= 4; i++)
+            {
+                var isContains = true;
+                for (var j = 0; j < hashList.Count; j++)
+                {
+                    var index = (hashList[j] + i * Util.Pow((ulong)ShiftValues[j], exp)) % this._mod;
+                    isContains &= this._bitArray[index];
+                }
+                if (isContains)
                 {
                     count++;
                 }
@@ -112,52 +131,36 @@ namespace Tsumiki.Utility
             return count != 1;
         }
 
-        private void SetHash(string read)
+        private void Regist(Span<byte[]> read)
         {
-            if (this._counter != null)
+            this._counter?.Add(read);
+        }
+
+        private void SetHash(Span<byte> read)
+        {
+            var hashList = this.GetHashList(read);
+            foreach (var hash in hashList)
             {
-                this._counter.Add(read);
-            }
-            else
-            {
-                var hashList = this.GetHashList(read);
-                foreach (var hash in hashList)
-                {
-                    this._bitArray[hash] = true;
-                }
+                this._bitArray[hash] = true;
             }
         }
 
-        private List<ulong> GetHashList(string read)
+        private List<ulong> GetHashList(Span<byte> read)
         {
             var hashList = new HashSet<ulong>();
+
             foreach (var shift in ShiftValues)
             {
-                var hashValues = new List<ulong>
-                {
-                    0UL
-                };
+                ulong hashValue = 0UL;
 
-                foreach (var c in read)
+                foreach (var id in read)
                 {
-                    var ids = Util.GetNucleotideIDs(c);
-                    var next = new List<ulong>();
-                    foreach (var id in ids.Select(v => (ulong)v))
-                    {
-                        foreach (var val in hashValues)
-                        {
-                            var hash = (val * (ulong)shift) + id;
-                            next.Add(hash);
-                        }
-                    }
-                    hashValues = next;
+                    hashValue = (hashValue * (ulong)shift) + id;
                 }
 
-                foreach (var hash in hashValues)
-                {
-                    _ = hashList.Add(hash);
-                }
+                _ = hashList.Add(hashValue);
             }
+
             return [.. hashList.Select(num => num % this._mod)];
         }
 

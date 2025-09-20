@@ -1,4 +1,5 @@
-﻿using Tsumiki.Common;
+﻿using System.Runtime.InteropServices;
+using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Utility;
@@ -27,86 +28,15 @@ namespace Tsumiki
             ConfigurationManager.BloomFilter = bloomFilter;
 
             Console.WriteLine("Loading Read1");
-            using (var reader = new FastqReader(param.ReadPath1))
-            {
-                while (reader.HasNext())
-                {
-                    var readData = reader.NextRead();
-                    if (readData.Read.Length < param.Kmer)
-                    {
-                        continue;
-                    }
-                    var badQualityCount = 0;
-                    for (var i = 0; i < param.Kmer; i++)
-                    {
-                        if (readData.Quality[i] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount++;
-                        }
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readData.Read[..param.Kmer]);
-                    }
-                    for (var i = param.Kmer; i < readData.Read.Length; i++)
-                    {
-                        if (readData.Quality[i - param.Kmer] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount--;
-                        }
-                        if (readData.Quality[i] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount++;
-                        }
-                        if (badQualityCount == 0)
-                        {
-                            bloomFilter.Add(readData.Read.Substring(i - param.Kmer + 1, param.Kmer));
-                        }
-                    }
-                }
-            }
+            LoadReadFileToBloomFilter(param.ReadPath1, bloomFilter);
 
             Console.WriteLine("Loading Read2");
-            using (var reader = new FastqReader(param.ReadPath2))
-            {
-                while (reader.HasNext())
-                {
-                    var readData = reader.NextRead();
-                    if (readData.Read.Length < param.Kmer)
-                    {
-                        continue;
-                    }
-                    var badQualityCount = 0;
-                    for (var i = 0; i < param.Kmer; i++)
-                    {
-                        if (readData.Quality[i] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount++;
-                        }
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readData.Read[..param.Kmer]);
-                    }
-                    for (var i = param.Kmer; i < readData.Read.Length; i++)
-                    {
-                        if (readData.Quality[i - param.Kmer] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount--;
-                        }
-                        if (readData.Quality[i] - param.Phred - param.QualityCutoff < 0)
-                        {
-                            badQualityCount++;
-                        }
-                        if (badQualityCount == 0)
-                        {
-                            bloomFilter.Add(readData.Read.Substring(i - param.Kmer + 1, param.Kmer));
-                        }
-                    }
-                }
-            }
+            LoadReadFileToBloomFilter(param.ReadPath2, bloomFilter);
+
             Console.WriteLine("Fix Bloom filter");
             var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
+
+            Logger.PrintTimeStamp();
 
             Console.WriteLine("Make unitigs");
             var unitigMaker = new UnitigMaker(bloomFilter);
@@ -119,9 +49,58 @@ namespace Tsumiki
                 }
             }
 
+            Logger.PrintTimeStamp();
+
             Console.WriteLine("開発中！");
 
             Logger.PrintTimeStamp();
+        }
+
+        private static void LoadReadFileToBloomFilter(string fileName, CountingBloomFilter bloomFilter)
+        {
+            const int ProgressLogInterval = 100000;
+            using var reader = new FastqReader(fileName);
+            ulong count = 0;
+            while (reader.HasNext())
+            {
+                var readData = reader.NextRead();
+                if (readData.Read.Count < ConfigurationManager.Arguments.Kmer)
+                {
+                    continue;
+                }
+                var badQualityCount = 0;
+                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
+                {
+                    if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount++;
+                    }
+                }
+                var readSpan = CollectionsMarshal.AsSpan(readData.Read);
+                if (badQualityCount == 0)
+                {
+                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
+                }
+                for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
+                {
+                    if (readData.Quality[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount--;
+                    }
+                    if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount++;
+                    }
+                    if (badQualityCount == 0)
+                    {
+                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
+                    }
+                }
+                if (++count % ProgressLogInterval == 0)
+                {
+                    Console.WriteLine(count + " reads Loaded");
+                }
+            }
         }
     }
 }

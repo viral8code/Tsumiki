@@ -4,7 +4,7 @@ namespace Tsumiki.Utility
 {
     internal class CountingDB : IDisposable
     {
-        private const int MaxCount = 1 << 20;
+        private const int MaxCount = 1 << 25;
 
         private readonly ByteArrayComparer _comparator;
 
@@ -36,7 +36,7 @@ namespace Tsumiki.Utility
             this._writer = new BinaryWriter(File.Open(newFileName, FileMode.Create, FileAccess.Write));
         }
 
-        public void Add(string key)
+        public void Add(Span<byte[]> key)
         {
             List<byte[]> bytes = [[]];
             for (var i = 0; i < key.Length; i += 4)
@@ -45,7 +45,7 @@ namespace Tsumiki.Utility
                 for (var j = 0; j < 4; j++)
                 {
                     List<int> subNext = [];
-                    var ids = i + j < key.Length ? Util.GetNucleotideIDs(key[i + j]) : Util.GetNucleotideIDs('A');
+                    var ids = i + j < key.Length ? [.. key[i + j]] : Util.GetNucleotideIDs('A');
                     foreach (var id in ids)
                     {
                         foreach (var b in next)

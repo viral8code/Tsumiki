@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.InteropServices;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -9,34 +10,37 @@ namespace Tsumiki.Core
     {
         private readonly CountingBloomFilter set = bloomFilter;
 
-        public Unitig MakeUnitig(string kmer)
+        public Unitig MakeUnitig(Span<byte> bytes)
         {
-            var sb = new StringBuilder(kmer[..^1]);
-            var now = kmer;
+            List<byte> list = [.. bytes[..^1]];
+            var now = string.Join(string.Empty, bytes.ToArray().Select(Util.ByteToBaseString));
             HashSet<string> visited = [];
             while (visited.Add(now))
             {
-                _ = sb.Append(now[^1]);
+                list.Add((byte)Util.GetNucleotideIDs(now[^1])[0]);
                 string? nextKmer = null;
+                list.Add(0);
                 for (byte i = 1; i <= 4; i++)
                 {
-                    var next = now[1..] + Util.ByteToBase(i);
-                    if (this.set.Contains(next))
+                    list[^1] = i;
+                    if (this.set.Contains(CollectionsMarshal.AsSpan(list)[(list.Count - ConfigurationManager.Arguments.Kmer)..]))
                     {
                         if (nextKmer != null)
                         {
+                            nextKmer = null;
                             break;
                         }
-                        nextKmer = next;
+                        nextKmer = now[1..] + Util.ByteToBaseString(i);
                     }
                 }
+                list.RemoveAt(list.Count - 1);
                 if (nextKmer == null)
                 {
                     break;
                 }
                 now = nextKmer;
             }
-            return new Unitig(kmer.GetHashCode(), sb.ToString());
+            return new Unitig(list.GetHashCode(), string.Join(string.Empty, list.Select(Util.ByteToBaseString)));
         }
     }
 }

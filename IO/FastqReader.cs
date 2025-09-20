@@ -52,7 +52,7 @@ namespace Tsumiki.IO
                 return new ReadData()
                 {
                     ID = id,
-                    Read = read,
+                    Read = Util.ToByteList(read),
                     Quality = quality,
                 };
             }
