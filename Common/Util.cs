@@ -1,15 +1,9 @@
-﻿namespace Tsumiki.Common
+﻿using static Tsumiki.Common.Consts;
+
+namespace Tsumiki.Common
 {
     internal class Util
     {
-        private static class NucleotideID
-        {
-            public const byte A = 1;
-            public const byte C = 2;
-            public const byte G = 3;
-            public const byte T = 4;
-        }
-
         public static Span<byte> ReverseComprement(Span<byte> genome)
         {
             var buffer = new byte[genome.Length];

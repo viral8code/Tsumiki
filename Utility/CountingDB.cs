@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
+using static Tsumiki.Common.Consts;
 
 namespace Tsumiki.Utility
 {
@@ -42,7 +43,7 @@ namespace Tsumiki.Utility
                 for (var j = 0; j < 4; j++)
                 {
                     List<int> subNext = [];
-                    var ids = i + j < key.Length ? [.. key[i + j]] : Util.GetNucleotideIDs('A');
+                    List<int> ids = i + j < key.Length ? [.. key[i + j]] : [NucleotideID.A];
                     foreach (var id in ids)
                     {
                         foreach (var b in next)
@@ -79,7 +80,7 @@ namespace Tsumiki.Utility
                 var b = 0;
                 for (var j = 0; j < 4; j++)
                 {
-                    var id = i + j < key.Length ? key[i + j] : 0;
+                    var id = i + j < key.Length ? key[i + j] : NucleotideID.A;
                     b <<= 2;
                     b |= id - 1;
                 }

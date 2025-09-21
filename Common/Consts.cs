@@ -51,5 +51,13 @@
             """;
 
         public const string UnitigFileName = "unitigs.fasta";
+
+        public static class NucleotideID
+        {
+            public const byte A = 1;
+            public const byte C = 2;
+            public const byte G = 3;
+            public const byte T = 4;
+        }
     }
 }
