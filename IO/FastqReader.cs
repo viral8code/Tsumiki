@@ -10,18 +10,20 @@ namespace Tsumiki.IO
 
         private readonly StreamReader reader;
 
+        private const int BufferedSize = 1 << 25;
+
         public FastqReader(string path)
         {
             this.FilePath = path;
+            var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
             if (Path.GetExtension(path)?.ToLower() == ".gz")
             {
-                var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
                 var decompressionStream = new GZipStream(inputFileStream, CompressionMode.Decompress);
-                this.reader = new(decompressionStream);
+                this.reader = new(decompressionStream, bufferSize: BufferedSize);
             }
             else
             {
-                this.reader = new(path);
+                this.reader = new(inputFileStream, bufferSize: BufferedSize);
             }
         }
 

@@ -58,9 +58,10 @@ namespace Tsumiki
 
         private static void LoadReadFileToBloomFilter(string fileName, CountingBloomFilter bloomFilter)
         {
-            const int ProgressLogInterval = 100000;
+            const ulong ProgressLogInterval = 100000;
             using var reader = new FastqReader(fileName);
             ulong count = 0;
+            ulong mult = 0;
             while (reader.HasNext())
             {
                 var readData = reader.NextRead();
@@ -69,9 +70,10 @@ namespace Tsumiki
                     continue;
                 }
                 var badQualityCount = 0;
+                var qualitySpan = readData.Quality.ToCharArray().AsSpan();
                 for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
                 {
-                    if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
                     }
@@ -83,11 +85,11 @@ namespace Tsumiki
                 }
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    if (readData.Quality[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    if (qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount--;
                     }
-                    if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
                     }
@@ -96,9 +98,39 @@ namespace Tsumiki
                         bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
                     }
                 }
-                if (++count % ProgressLogInterval == 0)
+                badQualityCount = 0;
+                readSpan = Util.ReverseComprement(readSpan);
+                qualitySpan.Reverse();
+                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
                 {
-                    Console.WriteLine(count + " reads Loaded");
+                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount++;
+                    }
+                }
+                if (badQualityCount == 0)
+                {
+                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
+                }
+                for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
+                {
+                    if (qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount--;
+                    }
+                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        badQualityCount++;
+                    }
+                    if (badQualityCount == 0)
+                    {
+                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
+                    }
+                }
+                if (++count == ProgressLogInterval)
+                {
+                    Console.WriteLine(++mult * ProgressLogInterval + " reads Loaded");
+                    count = 0;
                 }
             }
         }

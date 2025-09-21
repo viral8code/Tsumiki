@@ -18,7 +18,6 @@ namespace Tsumiki.Utility
         public void Add(Span<byte[]> read)
         {
             this.Regist(read);
-            this.Regist(Util.ReverseComprement(read));
         }
 
         public bool Contains(Span<byte> read)
