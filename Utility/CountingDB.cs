@@ -1,18 +1,17 @@
-﻿using Tsumiki.Common;
+﻿using System.Runtime.InteropServices;
+using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
     internal class CountingDB : IDisposable
     {
-        private const int MaxCount = 1 << 27;
+        private const int MaxCount = 1 << 30;
 
         private readonly ByteArrayComparer _comparator;
 
         private readonly string filePrefix;
 
         private int _fileCount;
-
-        private int _count;
 
         private BinaryWriter? _writer;
 
@@ -22,7 +21,6 @@ namespace Tsumiki.Utility
             this._comparator = new();
 
             this._fileCount = 1;
-            this._count = 0;
             var fileName = $"{this.filePrefix}_{this._fileCount}";
             this._writer = new BinaryWriter(File.Open(fileName, FileMode.Create, FileAccess.Write));
         }
@@ -31,7 +29,6 @@ namespace Tsumiki.Utility
         {
             this._writer?.Close();
             this._fileCount += 1;
-            this._count = 0;
             var newFileName = $"{this.filePrefix}_{this._fileCount}";
             this._writer = new BinaryWriter(File.Open(newFileName, FileMode.Create, FileAccess.Write));
         }
@@ -73,13 +70,31 @@ namespace Tsumiki.Utility
             }
         }
 
+        public void Add(Span<byte> key)
+        {
+            var arr = new byte[(key.Length + 3) / 4];
+            var idx = 0;
+            for (var i = 0; i < key.Length; i += 4)
+            {
+                var b = 0;
+                for (var j = 0; j < 4; j++)
+                {
+                    var id = i + j < key.Length ? key[i + j] : 0;
+                    b <<= 2;
+                    b |= id - 1;
+                }
+                arr[idx++] = (byte)b;
+            }
+
+            this.Add(arr);
+        }
+
         private void Add(byte[] values)
         {
-            if (this._count == MaxCount)
+            if (this._writer!.BaseStream.Position >= MaxCount)
             {
                 this.CreateNewFile();
             }
-            this._count++;
 
             this._writer!.Write(values);
         }

@@ -45,7 +45,11 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.ArgumentKey.Help:
-                            param.BitSize = args[index++];
+                            param.IsHelpMode = true;
+                            break;
+
+                        case Consts.ArgumentKey.AllowAmbiguousBases:
+                            param.AllowAmbiguousBases = true;
                             break;
 
                         default:

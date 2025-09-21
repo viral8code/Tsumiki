@@ -118,6 +118,8 @@
 
         public bool IsHelpMode { get; set; } = false;
 
+        public bool AllowAmbiguousBases { get; set; } = false;
+
         public override string ToString()
         {
             return $"""
@@ -130,6 +132,8 @@
                 phred: {this.Phred}
                 quality cutoff: {this.QualityCutoff}
                 bit size: {this.BitSize}
+                insert size: {this.InsertSize?.ToString() ?? "unspecified"}
+                allow ambiguous bases : {this.AllowAmbiguousBases}
 
                 ==================
                 """;

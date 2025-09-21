@@ -20,6 +20,11 @@ namespace Tsumiki.Utility
             this.Regist(read);
         }
 
+        public void Add(Span<byte> read)
+        {
+            this.Regist(read);
+        }
+
         public bool Contains(Span<byte> read)
         {
             var hashList = this.GetHashList(read);
@@ -131,6 +136,11 @@ namespace Tsumiki.Utility
         }
 
         private void Regist(Span<byte[]> read)
+        {
+            this._counter?.Add(read);
+        }
+
+        private void Regist(Span<byte> read)
         {
             this._counter?.Add(read);
         }

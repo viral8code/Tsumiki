@@ -30,6 +30,8 @@
 
             public const string BloomFilterSize = "-b";
 
+            public const string AllowAmbiguousBases = "-ab";
+
             public const string Help = "-h";
         }
 
@@ -44,6 +46,7 @@
             {ArgumentKey.Phred} : base of phred score (33 or 64)
             {ArgumentKey.QualityCutOff} : threshold of base quality (use kmers with this value or higher)
             {ArgumentKey.BloomFilterSize} : memory allocation for the Bloom Filter
+            {ArgumentKey.AllowAmbiguousBases} : allow ambiguous bases as valid bases (default : false)
             {ArgumentKey.Help} : output this text
             """;
 
