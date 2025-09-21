@@ -102,7 +102,7 @@ namespace Tsumiki.Utility
             List<ulong> hashList = [];
             foreach (var shift in ShiftValues)
             {
-                ulong hashValue = 0UL;
+                var hashValue = 0UL;
 
                 foreach (var id in kmer[..^1])
                 {
@@ -119,7 +119,7 @@ namespace Tsumiki.Utility
                 var isContains = true;
                 for (var j = 0; j < hashList.Count; j++)
                 {
-                    var index = (hashList[j] + i * Util.Pow((ulong)ShiftValues[j], exp)) % this._mod;
+                    var index = (hashList[j] + (i * Util.Pow((ulong)ShiftValues[j], exp))) % this._mod;
                     isContains &= this._bitArray[index];
                 }
                 if (isContains)
@@ -150,7 +150,7 @@ namespace Tsumiki.Utility
 
             foreach (var shift in ShiftValues)
             {
-                ulong hashValue = 0UL;
+                var hashValue = 0UL;
 
                 foreach (var id in read)
                 {

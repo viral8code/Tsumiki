@@ -129,7 +129,7 @@ namespace Tsumiki
                 }
                 if (++count == ProgressLogInterval)
                 {
-                    Console.WriteLine(++mult * ProgressLogInterval + " reads Loaded");
+                    Console.WriteLine((++mult * ProgressLogInterval) + " reads Loaded");
                     count = 0;
                 }
             }

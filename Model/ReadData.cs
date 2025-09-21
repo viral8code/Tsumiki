@@ -11,9 +11,9 @@
         public override string ToString()
         {
             return $@"
-                ID      : {ID}
-                read    : {Read}
-                quality : {Quality}";
+                ID      : {this.ID}
+                read    : {this.Read}
+                quality : {this.Quality}";
         }
     }
 }
