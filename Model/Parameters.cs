@@ -58,7 +58,19 @@
             }
         }
 
-        public int Phred { get; set; } = 33;
+        private int _phred = 33;
+        public int Phred
+        {
+            get => this._phred;
+            set
+            {
+                if (value is not 33 and not 64)
+                {
+                    throw new ArgumentException("Phred value is must 33 or 64");
+                }
+                this._phred = value;
+            }
+        }
 
         public int QualityCutoff { get; set; } = 0;
 
@@ -102,7 +114,9 @@
                     : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 8e12) : (ulong)double.Parse(value);
         }
 
-        public int InsertSize { get; set; } = 350;
+        public int? InsertSize { get; set; } = null;
+
+        public bool IsHelpMode { get; set; } = false;
 
         public override string ToString()
         {

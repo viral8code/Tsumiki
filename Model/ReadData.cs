@@ -10,10 +10,11 @@
 
         public override string ToString()
         {
-            return $@"
+            return $"""
                 ID      : {this.ID}
                 read    : {this.Read}
-                quality : {this.Quality}";
+                quality : {this.Quality}
+                """;
         }
     }
 }

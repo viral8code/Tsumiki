@@ -12,16 +12,22 @@ namespace Tsumiki
         {
             if (args.Length == 0)
             {
-                Console.WriteLine(Consts.DETAILS_TEXT);
+                Console.WriteLine(Consts.DetailsText);
                 Environment.Exit(0);
             }
-
-            Logger.PrintTimeStamp();
 
             var param = ArgumentsReader.ReadArguments(args);
             ConfigurationManager.Arguments = param;
 
+            if (param.IsHelpMode)
+            {
+                Console.WriteLine(Consts.HelpText);
+                Environment.Exit(0);
+            }
+
             Console.WriteLine(param);
+
+            Logger.PrintTimeStamp();
 
             Console.WriteLine("Start construction Bloom filter");
             var bloomFilter = new CountingBloomFilter(param.RowBitSize);
@@ -33,14 +39,17 @@ namespace Tsumiki
             Console.WriteLine("Loading Read2");
             LoadReadFileToBloomFilter(param.ReadPath2, bloomFilter);
 
+            Logger.PrintTimeStamp();
+
             Console.WriteLine("Fix Bloom filter");
             var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
 
             Logger.PrintTimeStamp();
 
             Console.WriteLine("Make unitigs");
+
             var unitigMaker = new UnitigMaker(bloomFilter);
-            using (var writer = new FastaWriter("unitigs.fasta"))
+            using (var writer = new FastaWriter(Consts.UnitigFileName))
             {
                 foreach (var kmer in initKmers)
                 {
@@ -56,12 +65,14 @@ namespace Tsumiki
             Logger.PrintTimeStamp();
         }
 
-        private static void LoadReadFileToBloomFilter(string fileName, CountingBloomFilter bloomFilter)
+        private static void LoadReadFileToBloomFilter(string filePath, CountingBloomFilter bloomFilter)
         {
             const ulong ProgressLogInterval = 100000;
-            using var reader = new FastqReader(fileName);
+
             ulong count = 0;
             ulong mult = 0;
+
+            using var reader = new FastqReader(filePath);
             while (reader.HasNext())
             {
                 var readData = reader.NextRead();
@@ -133,6 +144,8 @@ namespace Tsumiki
                     count = 0;
                 }
             }
+            var fileName = Path.GetFileName(filePath);
+            Console.WriteLine($"Loaded {(mult * ProgressLogInterval) + count} reads from {fileName}");
         }
     }
 }

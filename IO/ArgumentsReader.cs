@@ -5,24 +5,6 @@ namespace Tsumiki.IO
 {
     internal class ArgumentsReader
     {
-
-        private static class ArgumentKey
-        {
-            public const string READPATH1 = "-1";
-
-            public const string READPATH2 = "-2";
-
-            public const string KMER = "-k";
-
-            public const string KMERCUTOFF = "-kc";
-
-            public const string PHRED = "-p";
-
-            public const string QUARITYCUTOFF = "-q";
-
-            public const string BITSIZE = "-b";
-        }
-
         public static Parameters ReadArguments(string[] args)
         {
             var param = new Parameters();
@@ -34,31 +16,35 @@ namespace Tsumiki.IO
                     var key = args[index++];
                     switch (key)
                     {
-                        case ArgumentKey.READPATH1:
+                        case Consts.ArgumentKey.ReadPath1:
                             param.ReadPath1 = args[index++];
                             break;
 
-                        case ArgumentKey.READPATH2:
+                        case Consts.ArgumentKey.ReadPath2:
                             param.ReadPath2 = args[index++];
                             break;
 
-                        case ArgumentKey.KMER:
+                        case Consts.ArgumentKey.Kmer:
                             param.Kmer = int.Parse(args[index++]);
                             break;
 
-                        case ArgumentKey.KMERCUTOFF:
+                        case Consts.ArgumentKey.KmerCutOff:
                             param.KmerCutoff = ulong.Parse(args[index++]);
                             break;
 
-                        case ArgumentKey.PHRED:
+                        case Consts.ArgumentKey.Phred:
                             param.Phred = int.Parse(args[index++]);
                             break;
 
-                        case ArgumentKey.QUARITYCUTOFF:
+                        case Consts.ArgumentKey.QualityCutOff:
                             param.QualityCutoff = int.Parse(args[index++]);
                             break;
 
-                        case ArgumentKey.BITSIZE:
+                        case Consts.ArgumentKey.BloomFilterSize:
+                            param.BitSize = args[index++];
+                            break;
+
+                        case Consts.ArgumentKey.Help:
                             param.BitSize = args[index++];
                             break;
 
