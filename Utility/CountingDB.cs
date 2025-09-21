@@ -92,6 +92,7 @@ namespace Tsumiki.Utility
             var mergedFileList = new List<string>();
             for (var i = 1; i <= this._fileCount; i++)
             {
+                GC.Collect();
                 var fileName = $"{this.filePrefix}_{i}";
                 var dict = new SortedDictionary<byte[], ulong>(this._comparator);
                 using (var reader = new BinaryReader(File.Open(fileName, FileMode.Open, FileAccess.Read)))
