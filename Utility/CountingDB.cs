@@ -21,6 +21,7 @@ namespace Tsumiki.Utility
         {
             this.filePrefix = Guid.NewGuid().ToString("N");
             this._comparator = new();
+            this._equalityComparator = new();
 
             this._fileCount = 1;
             var fileName = $"{this.filePrefix}_{this._fileCount}";
