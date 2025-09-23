@@ -5,9 +5,11 @@ namespace Tsumiki.Utility
 {
     internal class CountingDB : IDisposable
     {
-        private const int MaxCount = 1 << 30;
+        private const int MaxCount = 128 * 1024 * 1024;
 
         private readonly ByteArrayComparer _comparator;
+
+        private readonly ByteArrayEqualityComparer _equalityComparator;
 
         private readonly string filePrefix;
 
@@ -109,7 +111,7 @@ namespace Tsumiki.Utility
             {
                 GC.Collect();
                 var fileName = $"{this.filePrefix}_{i}";
-                var dict = new SortedDictionary<byte[], ulong>(this._comparator);
+                var dict = new Dictionary<byte[], ulong>(MaxCount / Length, this._equalityComparator);
                 using (var reader = new BinaryReader(File.Open(fileName, FileMode.Open, FileAccess.Read)))
                 {
                     while (reader.BaseStream.Position < reader.BaseStream.Length)
@@ -129,7 +131,9 @@ namespace Tsumiki.Utility
                 var mergedFileName = $"{this.filePrefix}_merged_{i}";
                 using (var writer = new BinaryWriter(File.Open(mergedFileName, FileMode.Create, FileAccess.Write)))
                 {
-                    foreach (var kv in dict)
+                    var arr = dict.ToArray();
+                    Array.Sort(arr, (item1, item2) => this._comparator.Compare(item1.Key, item2.Key));
+                    foreach (var kv in arr)
                     {
                         writer.Write(kv.Key);
                         writer.Write(kv.Value);
