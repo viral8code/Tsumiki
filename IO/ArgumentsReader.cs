@@ -64,9 +64,15 @@ namespace Tsumiki.IO
                 Environment.Exit(1);
             }
 
-            if (string.IsNullOrWhiteSpace(param.ReadPath1) || string.IsNullOrWhiteSpace(param.ReadPath2))
+            if (string.IsNullOrWhiteSpace(param.ReadPath1))
             {
-                Logger.PrintError(Logger.GetMethodName(), new ArgumentException("Please set pair end read's pathes"));
+                param.ReadPath1 = param.ReadPath2;
+                param.ReadPath2 = string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(param.ReadPath1))
+            {
+                Logger.PrintError(Logger.GetMethodName(), new ArgumentException("Please set read path"));
                 Environment.Exit(1);
             }
 

@@ -33,7 +33,15 @@ namespace Tsumiki
             var bloomFilter = new CountingBloomFilter(param.RowBitSize);
             ConfigurationManager.BloomFilter = bloomFilter;
 
-            Console.WriteLine("Loading Read1");
+            if (string.IsNullOrWhiteSpace(param.ReadPath2))
+            {
+                Console.WriteLine("Loading File");
+            }
+            else
+            {
+                Console.WriteLine("Loading File1");
+            }
+
             if (param.AllowAmbiguousBases)
             {
                 LoadReadFileToBloomFilterWithAmbiguity(param.ReadPath1, bloomFilter);
@@ -43,14 +51,17 @@ namespace Tsumiki
                 LoadReadFileToBloomFilterIgnoreAmbiguity(param.ReadPath1, bloomFilter);
             }
 
-            Console.WriteLine("Loading Read2");
-            if (param.AllowAmbiguousBases)
+            if (!string.IsNullOrWhiteSpace(param.ReadPath2))
             {
-                LoadReadFileToBloomFilterWithAmbiguity(param.ReadPath2, bloomFilter);
-            }
-            else
-            {
-                LoadReadFileToBloomFilterIgnoreAmbiguity(param.ReadPath2, bloomFilter);
+                Console.WriteLine("Loading File2");
+                if (param.AllowAmbiguousBases)
+                {
+                    LoadReadFileToBloomFilterWithAmbiguity(param.ReadPath2, bloomFilter);
+                }
+                else
+                {
+                    LoadReadFileToBloomFilterIgnoreAmbiguity(param.ReadPath2, bloomFilter);
+                }
             }
 
             Logger.PrintTimeStamp();
