@@ -129,5 +129,10 @@ namespace Tsumiki.Common
             }
             return ans;
         }
+
+        public static bool HasNext(BinaryReader stream)
+        {
+            return stream.BaseStream.Position < stream.BaseStream.Length;
+        }
     }
 }

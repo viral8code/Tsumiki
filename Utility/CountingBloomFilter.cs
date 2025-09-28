@@ -5,10 +5,6 @@ namespace Tsumiki.Utility
 {
     internal class CountingBloomFilter(ulong bitSize) : IDisposable
     {
-        private const string KmerFileName = "kmers";
-
-        private static readonly List<int> ShiftValues = [1, 3, 4];
-
         private readonly LongBitArray _bitArray = new(bitSize);
 
         private readonly ulong _mod = bitSize;
@@ -60,10 +56,10 @@ namespace Tsumiki.Utility
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
-                using var writer = new BinaryWriter(File.Open(KmerFileName, FileMode.Create, FileAccess.Write));
+                using var writer = new BinaryWriter(File.Open(Consts.KmerFileName, FileMode.Create, FileAccess.Write));
                 ulong addedKmer = 0;
                 ulong countKmer = 0;
-                while (reader.BaseStream.Position < reader.BaseStream.Length)
+                while (Util.HasNext(reader))
                 {
                     var read = reader.ReadBytes(Length);
                     var count = reader.ReadUInt64();
@@ -87,9 +83,9 @@ namespace Tsumiki.Utility
             File.Delete(filePath);
             Console.WriteLine("Search First k-mer");
             List<byte[]> kmers = [];
-            using (var reader = new BinaryReader(File.Open(KmerFileName, FileMode.Open, FileAccess.Read)))
+            using (var reader = new BinaryReader(File.Open(Consts.KmerFileName, FileMode.Open, FileAccess.Read)))
             {
-                while (reader.BaseStream.Position < reader.BaseStream.Length)
+                while (Util.HasNext(reader))
                 {
                     var read = reader.ReadBytes(ConfigurationManager.Arguments.Kmer);
                     if (this.IsFirstKmer(read))
@@ -98,14 +94,14 @@ namespace Tsumiki.Utility
                     }
                 }
             }
-            File.Delete(KmerFileName);
+            File.Delete(Consts.KmerFileName);
             return kmers;
         }
 
         private bool IsFirstKmer(Span<byte> kmer)
         {
             List<ulong> hashList = [];
-            foreach (var shift in ShiftValues)
+            foreach (var shift in Consts.ShiftValues)
             {
                 var hashValue = 0UL;
 
@@ -124,7 +120,7 @@ namespace Tsumiki.Utility
                 var isContains = true;
                 for (var j = 0; j < hashList.Count; j++)
                 {
-                    var index = (hashList[j] + (i * Util.Pow((ulong)ShiftValues[j], exp))) % this._mod;
+                    var index = (hashList[j] + (i * Util.Pow((ulong)Consts.ShiftValues[j], exp))) % this._mod;
                     isContains &= this._bitArray[index];
                 }
                 if (isContains)
@@ -158,7 +154,7 @@ namespace Tsumiki.Utility
         {
             var hashList = new HashSet<ulong>();
 
-            foreach (var shift in ShiftValues)
+            foreach (var shift in Consts.ShiftValues)
             {
                 var hashValue = 0UL;
 

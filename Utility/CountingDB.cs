@@ -115,7 +115,7 @@ namespace Tsumiki.Utility
                 var dict = new Dictionary<byte[], ulong>(MaxCount / Length, this._equalityComparator);
                 using (var reader = new BinaryReader(File.Open(fileName, FileMode.Open, FileAccess.Read)))
                 {
-                    while (reader.BaseStream.Position < reader.BaseStream.Length)
+                    while (Util.HasNext(reader))
                     {
                         var read = reader.ReadBytes(Length);
                         if (dict.ContainsKey(read))
@@ -163,22 +163,22 @@ namespace Tsumiki.Utility
                             var sum = reader1.ReadUInt64() + reader2.ReadUInt64();
                             writer.Write(read1);
                             writer.Write(sum);
-                            read1 = reader1.BaseStream.Position < reader1.BaseStream.Length ? reader1.ReadBytes(Length) : null;
-                            read2 = reader2.BaseStream.Position < reader2.BaseStream.Length ? reader2.ReadBytes(Length) : null;
+                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
+                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
                         }
                         else if (result < 0)
                         {
                             var sum = reader1.ReadUInt64();
                             writer.Write(read1);
                             writer.Write(sum);
-                            read1 = reader1.BaseStream.Position < reader1.BaseStream.Length ? reader1.ReadBytes(Length) : null;
+                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
                         }
                         else
                         {
                             var sum = reader2.ReadUInt64();
                             writer.Write(read2);
                             writer.Write(sum);
-                            read2 = reader2.BaseStream.Position < reader2.BaseStream.Length ? reader2.ReadBytes(Length) : null;
+                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
                         }
                     }
                     while (read1 != null)
@@ -186,14 +186,14 @@ namespace Tsumiki.Utility
                         var sum = reader1.ReadUInt64();
                         writer.Write(read1);
                         writer.Write(sum);
-                        read1 = reader1.BaseStream.Position < reader1.BaseStream.Length ? reader1.ReadBytes(Length) : null;
+                        read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
                     }
                     while (read2 != null)
                     {
                         var sum = reader2.ReadUInt64();
                         writer.Write(read2);
                         writer.Write(sum);
-                        read2 = reader2.BaseStream.Position < reader2.BaseStream.Length ? reader2.ReadBytes(Length) : null;
+                        read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
                     }
                 }
                 File.Delete(file1);

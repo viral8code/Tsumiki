@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.Model
+﻿using Tsumiki.Common;
+
+namespace Tsumiki.Model
 {
     internal class Parameters
     {
@@ -30,7 +32,7 @@
             }
         }
 
-        private int _kmer = 31;
+        private int _kmer = Consts.DefaultKmerValue;
         public int Kmer
         {
             get => this._kmer;
@@ -44,7 +46,7 @@
             }
         }
 
-        private ulong _kmerCutoff = 2;
+        private ulong _kmerCutoff = Consts.DefaultKmerCutoffValue;
         public ulong KmerCutoff
         {
             get => this._kmerCutoff;
@@ -58,21 +60,21 @@
             }
         }
 
-        private int _phred = 33;
+        private int _phred = Consts.DefaultPhredValue;
         public int Phred
         {
             get => this._phred;
             set
             {
-                if (value is not 33 and not 64)
+                if (!Consts.AllowedPhredValue.Contains(value))
                 {
-                    throw new ArgumentException("Phred value is must 33 or 64");
+                    throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.AllowedPhredValue)}");
                 }
                 this._phred = value;
             }
         }
 
-        public int QualityCutoff { get; set; } = 0;
+        public int QualityCutoff { get; set; } = Consts.DefaultQualityCutoffValue;
 
         public ulong RowBitSize = int.MaxValue;
         public string BitSize

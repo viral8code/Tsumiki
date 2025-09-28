@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.Common
+﻿using System.Threading;
+
+namespace Tsumiki.Common
 {
     internal class Consts
     {
@@ -22,11 +24,11 @@
 
             public const string Kmer = "-k";
 
-            public const string KmerCutOff = "-kc";
+            public const string KmerCutoff = "-kc";
 
             public const string Phred = "-p";
 
-            public const string QualityCutOff = "-q";
+            public const string QualityCutoff = "-q";
 
             public const string BloomFilterSize = "-b";
 
@@ -35,20 +37,34 @@
             public const string Help = "-h";
         }
 
+        public const int DefaultKmerValue = 31;
+
+        public const int DefaultKmerCutoffValue = 2;
+
+        public const int DefaultPhredValue = 33;
+
+        public const int DefaultQualityCutoffValue = 1;
+
+        public const ulong DefaultBloolFilterSize = int.MaxValue;
+
+        public static readonly int[] AllowedPhredValue = [33, 64];
+
         public static readonly string HelpText = $"""
             {DetailsText}
 
             # Arguments
-            {ArgumentKey.ReadPath1} : forward fastq(.gz) path
-            {ArgumentKey.ReadPath2} : backward fastq(.gz) path
-            {ArgumentKey.Kmer} : length of k-mer
-            {ArgumentKey.KmerCutOff} : threshold of k-mer count (use kmers with this value or higher)
-            {ArgumentKey.Phred} : base of phred score (33 or 64)
-            {ArgumentKey.QualityCutOff} : threshold of base quality (use kmers with this value or higher)
-            {ArgumentKey.BloomFilterSize} : memory allocation for the Bloom Filter
+            {ArgumentKey.ReadPath1} [path] : forward fastq(.gz) path (required) (when using single reads, set the path using this argument)
+            {ArgumentKey.ReadPath2} [path] : backward fastq(.gz) path
+            {ArgumentKey.Kmer} [integer] : length of k-mer (default : {DefaultKmerValue})
+            {ArgumentKey.KmerCutoff} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : {DefaultKmerCutoffValue})
+            {ArgumentKey.Phred} [integer] : base of phred score ({string.Join(" or ", AllowedPhredValue)}) (default : {DefaultPhredValue})
+            {ArgumentKey.QualityCutoff} [integer] : threshold of base quality (use kmers with this value or higher) (default : {DefaultQualityCutoffValue})
+            {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
             {ArgumentKey.AllowAmbiguousBases} : allow ambiguous bases as valid bases (default : false)
-            {ArgumentKey.Help} : output this text
+            {ArgumentKey.Help} : output this text (default : false)
             """;
+
+        public const string KmerFileName = "kmers";
 
         public const string UnitigFileName = "unitigs.fasta";
 
@@ -59,5 +75,7 @@
             public const byte G = 3;
             public const byte T = 4;
         }
+
+        public static readonly int[] ShiftValues = [1, 3, 4];
     }
 }

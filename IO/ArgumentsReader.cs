@@ -28,7 +28,7 @@ namespace Tsumiki.IO
                             param.Kmer = int.Parse(args[index++]);
                             break;
 
-                        case Consts.ArgumentKey.KmerCutOff:
+                        case Consts.ArgumentKey.KmerCutoff:
                             param.KmerCutoff = ulong.Parse(args[index++]);
                             break;
 
@@ -36,7 +36,7 @@ namespace Tsumiki.IO
                             param.Phred = int.Parse(args[index++]);
                             break;
 
-                        case Consts.ArgumentKey.QualityCutOff:
+                        case Consts.ArgumentKey.QualityCutoff:
                             param.QualityCutoff = int.Parse(args[index++]);
                             break;
 
