@@ -3,13 +3,13 @@ using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
-    internal class CountingBloomFilter(ulong bitSize) : IDisposable
+    internal class CountingBloomFilter(ulong bitSize, string tempDirectory) : IDisposable
     {
         private readonly LongBitArray _bitArray = new(bitSize);
 
         private readonly ulong _mod = bitSize;
 
-        private CountingDB? _counter = new();
+        private CountingDB? _counter = new(tempDirectory);
 
         public void Add(Span<byte[]> read)
         {
@@ -54,9 +54,10 @@ namespace Tsumiki.Utility
             this._counter.Dispose();
             this._counter = null;
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
+            var kmerPath = Path.Combine(tempDirectory, Consts.KmerFileName);
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
-                using var writer = new BinaryWriter(File.Open(Consts.KmerFileName, FileMode.Create, FileAccess.Write));
+                using var writer = new BinaryWriter(File.Open(kmerPath, FileMode.Create, FileAccess.Write));
                 ulong addedKmer = 0;
                 ulong countKmer = 0;
                 while (Util.HasNext(reader))
@@ -83,7 +84,7 @@ namespace Tsumiki.Utility
             File.Delete(filePath);
             Console.WriteLine("Search First k-mer");
             List<byte[]> kmers = [];
-            using (var reader = new BinaryReader(File.Open(Consts.KmerFileName, FileMode.Open, FileAccess.Read)))
+            using (var reader = new BinaryReader(File.Open(kmerPath, FileMode.Open, FileAccess.Read)))
             {
                 while (Util.HasNext(reader))
                 {
@@ -94,7 +95,7 @@ namespace Tsumiki.Utility
                     }
                 }
             }
-            File.Delete(Consts.KmerFileName);
+            File.Delete(kmerPath);
             return kmers;
         }
 

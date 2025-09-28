@@ -122,6 +122,8 @@ namespace Tsumiki.Model
 
         public bool AllowAmbiguousBases { get; set; } = false;
 
+        public string TempDirectory { get; set; } = "temp";
+
         public override string ToString()
         {
             return $"""
@@ -134,8 +136,9 @@ namespace Tsumiki.Model
                 phred: {this.Phred}
                 quality cutoff: {this.QualityCutoff}
                 bit size: {this.BitSize}
-                insert size: {this.InsertSize?.ToString() ?? "unspecified"}
+                insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}
+                temp directory : {this.TempDirectory}
 
                 ==================
                 """;

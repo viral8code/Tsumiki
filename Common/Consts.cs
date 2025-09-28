@@ -30,10 +30,16 @@
 
             public const string BloomFilterSize = "-b";
 
+            public const string InsertSize = "-i";
+
             public const string AllowAmbiguousBases = "-ab";
 
             public const string Help = "-h";
+
+            public const string TempDirectory = "-t";
         }
+
+        public const string NullInsertSizeText = "unspecified";
 
         public const int DefaultKmerValue = 31;
 
@@ -58,7 +64,8 @@
             {ArgumentKey.Phred} [integer] : base of phred score ({string.Join(" or ", AllowedPhredValue)}) (default : {DefaultPhredValue})
             {ArgumentKey.QualityCutoff} [integer] : threshold of base quality (use kmers with this value or higher) (default : {DefaultQualityCutoffValue})
             {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
-            {ArgumentKey.AllowAmbiguousBases} : allow ambiguous bases as valid bases (default : false)
+            {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
+            {ArgumentKey.InsertSize} : excepted insert size of pair-end reads (default : {NullInsertSizeText})
             {ArgumentKey.Help} : output this text (default : false)
             """;
 

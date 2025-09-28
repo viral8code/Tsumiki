@@ -29,8 +29,19 @@ namespace Tsumiki
 
             Logger.PrintTimeStamp();
 
+            var tempDir = Path.Combine(Environment.CurrentDirectory, param.TempDirectory);
+
+            if (Path.Exists(tempDir))
+            {
+                Console.WriteLine($"{param.TempDirectory} already exists");
+                Console.WriteLine("Please check path!");
+                Environment.Exit(0);
+            }
+
+            _ = Directory.CreateDirectory(tempDir);
+
             Console.WriteLine("Start construction Bloom filter");
-            var bloomFilter = new CountingBloomFilter(param.RowBitSize);
+            var bloomFilter = new CountingBloomFilter(param.RowBitSize, tempDir);
             ConfigurationManager.BloomFilter = bloomFilter;
 
             if (string.IsNullOrWhiteSpace(param.ReadPath2))
@@ -74,11 +85,18 @@ namespace Tsumiki
             Console.WriteLine("Make unitigs");
 
             var unitigMaker = new UnitigMaker(bloomFilter);
+            HashSet<string> unitigSet = [];
             using (var writer = new FastaWriter(Consts.UnitigFileName))
             {
                 foreach (var kmer in initKmers)
                 {
                     var unitig = unitigMaker.MakeUnitig(kmer);
+                    if (unitigSet.Contains(unitig.Sequence) || unitigSet.Contains(Util.ReverseComprement(unitig.Sequence)))
+                    {
+                        continue;
+                    }
+                    unitigSet.Add(unitig.Sequence);
+                    unitigSet.Add(Util.ReverseComprement(unitig.Sequence));
                     writer.Write(unitig.Id, unitig.Sequence);
                 }
             }
@@ -86,6 +104,8 @@ namespace Tsumiki
             Logger.PrintTimeStamp();
 
             Console.WriteLine("開発中！");
+
+            Directory.Delete(tempDir);
 
             Logger.PrintTimeStamp();
         }

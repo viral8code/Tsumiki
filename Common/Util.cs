@@ -1,4 +1,5 @@
-﻿using static Tsumiki.Common.Consts;
+﻿using System.Text;
+using static Tsumiki.Common.Consts;
 
 namespace Tsumiki.Common
 {
@@ -19,6 +20,23 @@ namespace Tsumiki.Common
                 };
             }
             return buffer.AsSpan();
+        }
+
+        public static string ReverseComprement(string genome)
+        {
+            StringBuilder sb = new();
+            for (var i = 0; i < genome.Length; i++)
+            {
+                _ = sb.Append(genome[i] switch
+                {
+                    'A' => 'T',
+                    'C' => 'G',
+                    'G' => 'C',
+                    'T' => 'A',
+                    _ => throw new ArgumentException($"{genome[i]} is not the expected value for a base")
+                });
+            }
+            return string.Join(string.Empty, sb.ToString().Reverse());
         }
 
         public static Span<byte[]> ReverseComprement(Span<byte[]> genome)

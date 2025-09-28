@@ -11,20 +11,23 @@ namespace Tsumiki.Utility
 
         private readonly ByteArrayEqualityComparer _equalityComparator;
 
+        private readonly string TempDirectory;
+
         private readonly string filePrefix;
 
         private int _fileCount;
 
         private BinaryWriter? _writer;
 
-        public CountingDB()
+        public CountingDB(string tempDirectory)
         {
             this.filePrefix = Guid.NewGuid().ToString("N");
             this._comparator = new();
             this._equalityComparator = new();
+            this.TempDirectory = tempDirectory;
 
             this._fileCount = 1;
-            var fileName = $"{this.filePrefix}_{this._fileCount}";
+            var fileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{this._fileCount}");
             this._writer = new BinaryWriter(File.Open(fileName, FileMode.Create, FileAccess.Write));
         }
 
@@ -32,7 +35,7 @@ namespace Tsumiki.Utility
         {
             this._writer?.Close();
             this._fileCount += 1;
-            var newFileName = $"{this.filePrefix}_{this._fileCount}";
+            var newFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{this._fileCount}");
             this._writer = new BinaryWriter(File.Open(newFileName, FileMode.Create, FileAccess.Write));
         }
 
@@ -111,7 +114,7 @@ namespace Tsumiki.Utility
             for (var i = 1; i <= this._fileCount; i++)
             {
                 GC.Collect();
-                var fileName = $"{this.filePrefix}_{i}";
+                var fileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{i}");
                 var dict = new Dictionary<byte[], ulong>(MaxCount / Length, this._equalityComparator);
                 using (var reader = new BinaryReader(File.Open(fileName, FileMode.Open, FileAccess.Read)))
                 {
@@ -129,7 +132,7 @@ namespace Tsumiki.Utility
                     }
                 }
                 File.Delete(fileName);
-                var mergedFileName = $"{this.filePrefix}_merged_{i}";
+                var mergedFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_merged_{i}");
                 using (var writer = new BinaryWriter(File.Open(mergedFileName, FileMode.Create, FileAccess.Write)))
                 {
                     var arr = dict.ToArray();
@@ -147,7 +150,7 @@ namespace Tsumiki.Utility
             {
                 var file1 = mergedFileList[0];
                 var file2 = mergedFileList[1];
-                var mergedFileName = $"{this.filePrefix}_merged_{index++}";
+                var mergedFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_merged_{index++}");
                 mergedFileList.RemoveRange(0, 2);
                 using (var reader1 = new BinaryReader(File.Open(file1, FileMode.Open, FileAccess.Read)))
                 {
