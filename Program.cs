@@ -112,8 +112,6 @@ namespace Tsumiki
 
         private static void LoadReadFileToBloomFilterWithAmbiguity(string filePath, CountingBloomFilter bloomFilter)
         {
-            const ulong ProgressLogInterval = 100000;
-
             ulong count = 0;
             ulong mult = 0;
 
@@ -125,79 +123,37 @@ namespace Tsumiki
                 {
                     continue;
                 }
-                var badQualityCount = 0;
-                var qualitySpan = readData.Quality.ToCharArray().AsSpan();
-                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
-                {
-                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                }
                 var readSpan = CollectionsMarshal.AsSpan(readData.Read);
-                if (badQualityCount == 0)
+                for (int i = 0; i < readData.Quality.Length; i++)
                 {
-                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
+                    if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                    {
+                        readSpan[i] = [Consts.NucleotideID.A, Consts.NucleotideID.C, Consts.NucleotideID.G, Consts.NucleotideID.T];
+                    }
                 }
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    if (qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount--;
-                    }
-                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
-                    }
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
                 }
-                badQualityCount = 0;
                 readSpan = Util.ReverseComprement(readSpan);
-                qualitySpan.Reverse();
-                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
-                {
-                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                }
-                if (badQualityCount == 0)
-                {
-                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
-                }
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    if (qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount--;
-                    }
-                    if (qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
-                    }
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
                 }
-                if (++count == ProgressLogInterval)
+                if (++count == Consts.ProgressLogInterval)
                 {
-                    Console.WriteLine((++mult * ProgressLogInterval) + " reads Loaded");
+                    Console.WriteLine((++mult * Consts.ProgressLogInterval) + " reads Loaded");
                     count = 0;
                 }
             }
             var fileName = Path.GetFileName(filePath);
-            Console.WriteLine($"Loaded {(mult * ProgressLogInterval) + count} reads from {fileName}");
+            Console.WriteLine($"Loaded {(mult * Consts.ProgressLogInterval) + count} reads from {fileName}");
         }
 
         private static void LoadReadFileToBloomFilterIgnoreAmbiguity(string filePath, CountingBloomFilter bloomFilter)
         {
-            const ulong ProgressLogInterval = 100000;
-            const byte InvalidBase = 5;
-
             ulong count = 0;
             ulong mult = 0;
 
@@ -211,10 +167,10 @@ namespace Tsumiki
                 }
                 var badQualityCount = 0;
                 var qualitySpan = readData.Quality.ToCharArray().AsSpan();
-                var readSpan = CollectionsMarshal.AsSpan(readData.Read.Select(x => x.Length > 1 ? InvalidBase : x[0]).ToList());
+                var readSpan = CollectionsMarshal.AsSpan(readData.Read.Select(x => x.Length > 1 ? Consts.InvalidBase : x[0]).ToList());
                 for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
                 {
-                    if (readSpan[i] == InvalidBase ||
+                    if (readSpan[i] == Consts.InvalidBase ||
                         qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
@@ -226,12 +182,12 @@ namespace Tsumiki
                 }
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == InvalidBase ||
+                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
                         qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount--;
                     }
-                    if (readSpan[i] == InvalidBase ||
+                    if (readSpan[i] == Consts.InvalidBase ||
                         qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
@@ -246,7 +202,7 @@ namespace Tsumiki
                 qualitySpan.Reverse();
                 for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
                 {
-                    if (readSpan[i] == InvalidBase ||
+                    if (readSpan[i] == Consts.InvalidBase ||
                         qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
@@ -258,12 +214,12 @@ namespace Tsumiki
                 }
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == InvalidBase ||
+                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
                         qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount--;
                     }
-                    if (readSpan[i] == InvalidBase ||
+                    if (readSpan[i] == Consts.InvalidBase ||
                         qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
                         badQualityCount++;
@@ -273,14 +229,14 @@ namespace Tsumiki
                         bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
                     }
                 }
-                if (++count == ProgressLogInterval)
+                if (++count == Consts.ProgressLogInterval)
                 {
-                    Console.WriteLine((++mult * ProgressLogInterval) + " reads Loaded");
+                    Console.WriteLine((++mult * Consts.ProgressLogInterval) + " reads Loaded");
                     count = 0;
                 }
             }
             var fileName = Path.GetFileName(filePath);
-            Console.WriteLine($"Loaded {(mult * ProgressLogInterval) + count} reads from {fileName}");
+            Console.WriteLine($"Loaded {(mult * Consts.ProgressLogInterval) + count} reads from {fileName}");
         }
     }
 }

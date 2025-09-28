@@ -82,5 +82,9 @@
         }
 
         public static readonly int[] ShiftValues = [1, 3, 4];
+
+        public const ulong ProgressLogInterval = 100000;
+
+        public const byte InvalidBase = 5;
     }
 }
