@@ -51,6 +51,8 @@
 
         public const ulong DefaultBloolFilterSize = int.MaxValue;
 
+        public const string DefaultTempFolder = "temp";
+
         public static readonly int[] AllowedPhredValue = [33, 64];
 
         public static readonly string HelpText = $"""

@@ -28,7 +28,7 @@ namespace Tsumiki.Utility
 
             this._fileCount = 1;
             var fileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{this._fileCount}");
-            this._writer = new BinaryWriter(File.Open(fileName, FileMode.Create, FileAccess.Write));
+            this._writer = new BinaryWriter(new BufferedStream(File.Open(fileName, FileMode.Create, FileAccess.Write)));
         }
 
         private void CreateNewFile()
@@ -36,43 +36,29 @@ namespace Tsumiki.Utility
             this._writer?.Close();
             this._fileCount += 1;
             var newFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{this._fileCount}");
-            this._writer = new BinaryWriter(File.Open(newFileName, FileMode.Create, FileAccess.Write));
+            this._writer = new BinaryWriter(new BufferedStream(File.Open(newFileName, FileMode.Create, FileAccess.Write)));
         }
 
         public void Add(Span<byte[]> key)
         {
-            List<byte[]> bytes = [[]];
-            for (var i = 0; i < key.Length; i += 4)
-            {
-                List<int> next = [0];
-                for (var j = 0; j < 4; j++)
-                {
-                    List<int> subNext = [];
-                    List<int> ids = i + j < key.Length ? [.. key[i + j]] : [NucleotideID.A];
-                    foreach (var id in ids)
-                    {
-                        foreach (var b in next)
-                        {
-                            subNext.Add((b << 2) | (id - 1));
-                        }
-                    }
-                    next = subNext;
-                }
+            this.CreateByteArray(key, 0, new byte[(key.Length + 3) >> 2]);
+        }
 
-                List<byte[]> nextBytes = [];
-                foreach (var bs in bytes)
-                {
-                    foreach (var b in next)
-                    {
-                        nextBytes.Add([.. bs, (byte)b]);
-                    }
-                }
-                bytes = nextBytes;
+        private void CreateByteArray(Span<byte[]> key, int now, byte[] buffer)
+        {
+            if (now == key.Length)
+            {
+                this.Add(buffer);
+                return;
             }
-
-            foreach (var bs in bytes)
+            var index = now >> 2;
+            var shift = (3 - (now & 3)) << 1;
+            foreach (var b in key[now])
             {
-                this.Add(bs);
+                var val = (byte)(b - 1 << shift);
+                buffer[index] |= val;
+                this.CreateByteArray(key, now + 1, buffer);
+                buffer[index] &= (byte)~val;
             }
         }
 

@@ -122,12 +122,13 @@ namespace Tsumiki.Model
 
         public bool AllowAmbiguousBases { get; set; } = false;
 
-        public string TempDirectory { get; set; } = "temp";
+        public string TempDirectory { get; set; } = Consts.DefaultTempFolder;
 
         public override string ToString()
         {
             return $"""
-                === Parameters ===
+
+                ============= Parameters =============
 
                 read1: {this.ReadPath1}
                 read2: {this.ReadPath2}
@@ -140,7 +141,8 @@ namespace Tsumiki.Model
                 allow ambiguous bases : {this.AllowAmbiguousBases}
                 temp directory : {this.TempDirectory}
 
-                ==================
+                ======================================
+
                 """;
         }
     }

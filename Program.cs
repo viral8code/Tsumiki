@@ -10,6 +10,18 @@ namespace Tsumiki
     {
         private static void Main(string[] args)
         {
+            try
+            {
+                Run(args);
+            }
+            catch (Exception ex)
+            {
+                Logger.PrintError("Unhandled Tsumiki's method", ex);
+            }
+        }
+
+        private static void Run(string[] args)
+        {
             if (args.Length == 0)
             {
                 Console.WriteLine(Consts.DetailsText);
