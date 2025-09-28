@@ -55,7 +55,7 @@ namespace Tsumiki.Utility
             var shift = (3 - (now & 3)) << 1;
             foreach (var b in key[now])
             {
-                var val = (byte)(b - 1 << shift);
+                var val = (byte)((b - 1) << shift);
                 buffer[index] |= val;
                 this.CreateByteArray(key, now + 1, buffer);
                 buffer[index] &= (byte)~val;

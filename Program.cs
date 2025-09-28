@@ -107,8 +107,8 @@ namespace Tsumiki
                     {
                         continue;
                     }
-                    unitigSet.Add(unitig.Sequence);
-                    unitigSet.Add(Util.ReverseComprement(unitig.Sequence));
+                    _ = unitigSet.Add(unitig.Sequence);
+                    _ = unitigSet.Add(Util.ReverseComprement(unitig.Sequence));
                     writer.Write(unitig.Id, unitig.Sequence);
                 }
             }
@@ -136,7 +136,7 @@ namespace Tsumiki
                     continue;
                 }
                 var readSpan = CollectionsMarshal.AsSpan(readData.Read);
-                for (int i = 0; i < readData.Quality.Length; i++)
+                for (var i = 0; i < readData.Quality.Length; i++)
                 {
                     if (readData.Quality[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
                     {
