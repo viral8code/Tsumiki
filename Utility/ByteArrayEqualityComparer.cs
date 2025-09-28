@@ -37,10 +37,10 @@
 
         public int GetHashCode(byte[] obj)
         {
-            int hash = 17;
-            foreach (byte b in obj)
+            var hash = 17;
+            foreach (var b in obj)
             {
-                hash = hash * 31 + b;
+                hash = (hash * 31) + b;
             }
             return hash;
         }

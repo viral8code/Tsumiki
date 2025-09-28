@@ -1,6 +1,4 @@
-﻿using System.Threading;
-
-namespace Tsumiki.Common
+﻿namespace Tsumiki.Common
 {
     internal class Consts
     {
