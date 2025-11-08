@@ -9,9 +9,11 @@
             ];
 
         public static readonly string DetailsText = $"""
+
             Tsumiki is a genome assembler.
             author: {string.Join(", ", AuthorList)}
             version: {Version}
+
             """;
 
         public static class ArgumentKey
@@ -69,11 +71,14 @@
             {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
             {ArgumentKey.InsertSize} : excepted insert size of pair-end reads (default : {NullInsertSizeText})
             {ArgumentKey.Help} : output this text (default : false)
+
             """;
 
         public const string KmerFileName = "kmers";
 
         public const string UnitigFileName = "unitigs.fasta";
+
+        public const string ContigFileName = "contigs.fasta";
 
         public static class NucleotideID
         {
@@ -85,8 +90,10 @@
 
         public static readonly int[] ShiftValues = [1, 3, 4];
 
-        public const ulong ProgressLogInterval = 100000;
+        public const ulong ProgressLogInterval = 100_000;
 
         public const byte InvalidBase = 5;
+
+        public const int MaximumUnitigCount = 100_000;
     }
 }

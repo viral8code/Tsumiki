@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
@@ -17,6 +17,14 @@ namespace Tsumiki
             catch (Exception ex)
             {
                 Logger.PrintError("Unhandled Tsumiki's method", ex);
+            }
+            finally
+            {
+                var tempDir = Path.Combine(Environment.CurrentDirectory, ConfigurationManager.Arguments.TempDirectory);
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
             }
         }
 
@@ -98,6 +106,7 @@ namespace Tsumiki
 
             var unitigMaker = new UnitigMaker(bloomFilter);
             HashSet<string> unitigSet = [];
+            var id = 1;
             using (var writer = new FastaWriter(Consts.UnitigFileName))
             {
                 foreach (var kmer in initKmers)
@@ -109,15 +118,48 @@ namespace Tsumiki
                     }
                     _ = unitigSet.Add(unitig.Sequence);
                     _ = unitigSet.Add(Util.ReverseComprement(unitig.Sequence));
-                    writer.Write(unitig.Id, unitig.Sequence);
+                    writer.Write(id++, unitig.Sequence);
+                    if (id > Consts.MaximumUnitigCount)
+                    {
+                        break;
+                    }
                 }
             }
 
             Logger.PrintTimeStamp();
 
-            Console.WriteLine("開発中！");
+            if (id > Consts.MaximumUnitigCount)
+            {
+                Console.WriteLine("""
+                    
+                    This genome is too complex to assembly...
+                    Please adjust the parameters!
+                    
+                    """);
+                Environment.Exit(0);
+            }
 
-            Directory.Delete(tempDir);
+            Console.WriteLine("Map reads to unitigs");
+
+            var contigMaker = new ContigMaker(Consts.UnitigFileName);
+
+            Console.WriteLine(param.ReadPath1);
+            contigMaker.MappingRead(param.ReadPath1);
+
+            Console.WriteLine(param.ReadPath2);
+            contigMaker.MappingRead(param.ReadPath2);
+
+            Logger.PrintTimeStamp();
+
+            Console.WriteLine("unite unitigs");
+
+            contigMaker.UniteContigs(Consts.ContigFileName, 0.8m, 10);
+
+            Console.WriteLine("Maked contigs");
+
+            Logger.PrintTimeStamp();
+
+            Console.WriteLine("開発中！");
 
             Logger.PrintTimeStamp();
         }

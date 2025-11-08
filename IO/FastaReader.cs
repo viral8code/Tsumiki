@@ -4,7 +4,7 @@ using Tsumiki.Model;
 
 namespace Tsumiki.IO
 {
-    internal class FastqReader : IDisposable
+    internal class FastaReader : IDisposable
     {
         public string FilePath { get; private set; }
 
@@ -12,7 +12,7 @@ namespace Tsumiki.IO
 
         private const int BufferedSize = 1 << 25;
 
-        public FastqReader(string path)
+        public FastaReader(string path)
         {
             this.FilePath = path;
             var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
@@ -42,22 +42,14 @@ namespace Tsumiki.IO
             return dataLine;
         }
 
-        public ReadData NextRead()
+        public Sequence NextSequence()
         {
             try
             {
                 var id = this.NextData();
                 var read = this.NextData();
-                _ = this.NextData();
-                var quality = this.NextData();
 
-                return new ReadData()
-                {
-                    ID = id,
-                    Read = Util.ToByteList(read),
-                    RowRead = read,
-                    Quality = quality,
-                };
+                return new Sequence(id, read);
             }
             catch (Exception ex)
             {
