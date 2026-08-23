@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Tsumiki.Common;
 
 namespace Tsumiki.Utility
@@ -99,37 +99,84 @@ namespace Tsumiki.Utility
             return kmers;
         }
 
+        /// <summary>
+        /// 与えられた k-mer が unitig の開始点(入次数が1でない = 0個または2個以上の
+        /// prefix 拡張が存在する)かどうかを判定する。
+        /// 入次数は「kmer の末尾 k-1 文字」の先頭に任意の1塩基を付加した k-mer が
+        /// Bloom filter に存在するかで数える。逆相補鎖側からの接続も存在としてカウントする。
+        /// </summary>
         private bool IsFirstKmer(Span<byte> kmer)
         {
-            List<ulong> hashList = [];
+            var count = this.CountInEdges(kmer);
+            return count != 1;
+        }
+
+        /// <summary>
+        /// kmer への入次数（前方に接続しうる異なる1塩基拡張の数）を数える。
+        /// 順鎖・逆相補鎖の両方を試す点は Contains と同様。
+        /// </summary>
+        private int CountInEdges(Span<byte> kmer)
+        {
+            // kmer の末尾 k-1 文字（先頭の1文字を除いたもの）をベースに、
+            // 先頭に1塩基 i を追加したときのハッシュを計算する。
+            var suffixHashList = new List<ulong>();
             foreach (var shift in Consts.ShiftValues)
             {
                 var hashValue = 0UL;
-
-                foreach (var id in kmer[..^1])
+                foreach (var id in kmer[1..])
                 {
                     hashValue = (hashValue * (ulong)shift) + id;
                 }
-
-                hashList.Add(hashValue);
+                suffixHashList.Add(hashValue);
             }
+
             var exp = ConfigurationManager.Arguments.Kmer - 1;
             var count = 0;
 
             for (ulong i = 1; i <= 4; i++)
             {
                 var isContains = true;
-                for (var j = 0; j < hashList.Count; j++)
+                for (var j = 0; j < suffixHashList.Count; j++)
                 {
-                    var index = (hashList[j] + (i * Util.Pow((ulong)Consts.ShiftValues[j], exp))) % this._mod;
+                    // 先頭に付加する1塩基 i は最上位桁(shift^exp)に乗る
+                    var index = ((i * Util.Pow((ulong)Consts.ShiftValues[j], exp)) + suffixHashList[j]) % this._mod;
                     isContains &= this._bitArray[index];
                 }
+
+                if (!isContains)
+                {
+                    // 順鎖側で見つからない場合、逆相補鎖側での存在も確認する。
+                    // 「先頭に塩基 i を追加した k-mer」の逆相補鎖は
+                    // 「kmer の逆相補鎖の末尾に comp(i) を追加した k-mer」に等しい。
+                    var candidate = new byte[kmer.Length];
+                    kmer.CopyTo(candidate);
+                    candidate[0] = (byte)i;
+                    var revCandidate = Util.ReverseComprement(candidate);
+                    isContains = this.ContainsExact(revCandidate);
+                }
+
                 if (isContains)
                 {
                     count++;
                 }
             }
-            return count != 1;
+
+            return count;
+        }
+
+        /// <summary>
+        /// 与えられた k-mer が（逆相補は取らずに）そのままの向きで
+        /// Bloom filter に存在するかを判定する。
+        /// </summary>
+        private bool ContainsExact(Span<byte> read)
+        {
+            var hashList = this.GetHashList(read);
+            var flag = true;
+            foreach (var hash in hashList)
+            {
+                flag &= this._bitArray[hash];
+            }
+            return flag;
         }
 
         private void Regist(Span<byte[]> read)

@@ -173,7 +173,7 @@ namespace Tsumiki
             while (reader.HasNext())
             {
                 var readData = reader.NextRead();
-                if (readData.Read.Count < ConfigurationManager.Arguments.Kmer)
+                if (readData.Read!.Count < ConfigurationManager.Arguments.Kmer)
                 {
                     continue;
                 }
@@ -214,14 +214,17 @@ namespace Tsumiki
             using var reader = new FastqReader(filePath);
             while (reader.HasNext())
             {
-                var readData = reader.NextRead();
-                if (readData.Read.Count < ConfigurationManager.Arguments.Kmer)
+                // 曖昧塩基は無視するだけなので、List<byte[]> ではなく軽量な byte[] を直接使う。
+                // NextRead + Select().ToList() による per-base の配列アロケーションを回避する。
+                var readData = reader.NextReadSimple();
+                var simpleRead = readData.SimpleRead!;
+                if (simpleRead.Length < ConfigurationManager.Arguments.Kmer)
                 {
                     continue;
                 }
                 var badQualityCount = 0;
                 var qualitySpan = readData.Quality.ToCharArray().AsSpan();
-                var readSpan = CollectionsMarshal.AsSpan(readData.Read.Select(x => x.Length > 1 ? Consts.InvalidBase : x[0]).ToList());
+                var readSpan = simpleRead.AsSpan();
                 for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
                 {
                     if (readSpan[i] == Consts.InvalidBase ||
@@ -234,7 +237,7 @@ namespace Tsumiki
                 {
                     bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
                 }
-                for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
+                for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
                 {
                     if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
                         qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
@@ -266,7 +269,7 @@ namespace Tsumiki
                 {
                     bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
                 }
-                for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
+                for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
                 {
                     if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
                         qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)

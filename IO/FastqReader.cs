@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
@@ -55,6 +55,34 @@ namespace Tsumiki.IO
                 {
                     ID = id,
                     Read = Util.ToByteList(read),
+                    RowRead = read,
+                    Quality = quality,
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.PrintWarning(Logger.GetMethodName(), ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 曖昧塩基を無視する経路向けの軽量版。Read(List&lt;byte[]&gt;)の代わりに
+        /// SimpleRead(byte[])のみを構築する。LoadReadFileToBloomFilterIgnoreAmbiguity から使用する。
+        /// </summary>
+        public ReadData NextReadSimple()
+        {
+            try
+            {
+                var id = this.NextData();
+                var read = this.NextData();
+                _ = this.NextData();
+                var quality = this.NextData();
+
+                return new ReadData()
+                {
+                    ID = id,
+                    SimpleRead = Util.ToSimpleByteArray(read),
                     RowRead = read,
                     Quality = quality,
                 };

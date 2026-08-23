@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using static Tsumiki.Common.Consts;
 
 namespace Tsumiki.Common
@@ -85,6 +85,25 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// 単一の塩基文字を ID に変換する軽量版。
+        /// A/C/G/T はそのまま NucleotideID を返し、それ以外(曖昧塩基)は
+        /// 一律 Consts.InvalidBase を返す。曖昧塩基を無視する経路
+        /// (LoadReadFileToBloomFilterIgnoreAmbiguity 等)専用で、
+        /// GetNucleotideIDs のような List 確保を伴わないため高速。
+        /// </summary>
+        public static byte GetSimpleNucleotideID(char baseChar)
+        {
+            return baseChar switch
+            {
+                'A' => NucleotideID.A,
+                'C' => NucleotideID.C,
+                'G' => NucleotideID.G,
+                'T' => NucleotideID.T,
+                _ => InvalidBase,
+            };
+        }
+
         public static byte[] ByteToNucleotideSequence(byte read)
         {
             return [.. new[] { (read >>> 6) & 3, (read >>> 4) & 3, (read >>> 2) & 3, read & 3 }
@@ -131,6 +150,21 @@ namespace Tsumiki.Common
                 'T' => [NucleotideID.T],
                 _ => throw new ArgumentException($"{c} is not nucleotide base code")
             })];
+        }
+
+        /// <summary>
+        /// 曖昧塩基を無視する経路向けの軽量版。read の各文字を1バイトIDに変換する。
+        /// A/C/G/T 以外は Consts.InvalidBase になる。ToByteList と異なり
+        /// LINQ・per-char の byte[] アロケーションを行わないため大幅に高速。
+        /// </summary>
+        public static byte[] ToSimpleByteArray(string read)
+        {
+            var result = new byte[read.Length];
+            for (var i = 0; i < read.Length; i++)
+            {
+                result[i] = GetSimpleNucleotideID(read[i]);
+            }
+            return result;
         }
 
         public static ulong Pow(ulong value, long exp)
