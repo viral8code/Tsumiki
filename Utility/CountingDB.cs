@@ -8,11 +8,11 @@ namespace Tsumiki.Utility
         // フラッシュ前にメモリ上へ保持するエントリ数の上限を決める基準サイズ(バイト)。
         // 従来はここが「1ファイルあたりの生バイト数上限(128MB)」だったが、
         // 事前集約方式ではエントリ数(=ユニークなk-mer数)で管理する。
-        private const int MaxCount = 128 * 1024 * 1024;
+        private const int MaxCount = 256 * 1024 * 1024;
 
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する。
-        private const int IoBufferSize = 1 << 20; // 1MB
+        private const int IoBufferSize = 16 * 1024 * 1024;
 
         private readonly ByteArrayComparer _comparator;
 
