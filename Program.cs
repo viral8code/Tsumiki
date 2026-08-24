@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -143,11 +145,19 @@ namespace Tsumiki
 
             var contigMaker = new ContigMaker(Consts.UnitigFileName);
 
-            Console.WriteLine(param.ReadPath1);
-            contigMaker.MappingRead(param.ReadPath1);
-
-            Console.WriteLine(param.ReadPath2);
-            contigMaker.MappingRead(param.ReadPath2);
+            if (string.IsNullOrWhiteSpace(param.ReadPath2))
+            {
+                Console.WriteLine(param.ReadPath1);
+                contigMaker.MappingRead(param.ReadPath1);
+            }
+            else
+            {
+                // ペアエンドの場合、read1/read2 を同時に読み進めて
+                // インサートサイズによる隣接検出も行う。
+                Console.WriteLine(param.ReadPath1);
+                Console.WriteLine(param.ReadPath2);
+                contigMaker.MappingPairedReads(param.ReadPath1, param.ReadPath2);
+            }
 
             Logger.PrintTimeStamp();
 
@@ -164,6 +174,8 @@ namespace Tsumiki
             Logger.PrintTimeStamp();
         }
 
+        // 曖昧塩基を許容する経路は現状シングルスレッドのまま(workerIndex固定)。
+        // 呼ばれる頻度が低い想定のため、並列化の優先度を下げている。
         private static void LoadReadFileToBloomFilterWithAmbiguity(string filePath, CountingBloomFilter bloomFilter)
         {
             ulong count = 0;
@@ -185,16 +197,16 @@ namespace Tsumiki
                         readSpan[i] = [Consts.NucleotideID.A, Consts.NucleotideID.C, Consts.NucleotideID.G, Consts.NucleotideID.T];
                     }
                 }
-                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
                 }
                 readSpan = Util.ReverseComprement(readSpan);
-                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
                 }
                 if (++count == Consts.ProgressLogInterval)
                 {
@@ -206,94 +218,147 @@ namespace Tsumiki
             Console.WriteLine($"Loaded {(mult * Consts.ProgressLogInterval) + count} reads from {fileName}");
         }
 
+        /// <summary>
+        /// FASTQ を1本のスレッドで順に読み進めつつ(ディスクI/Oはシーケンシャルなまま)、
+        /// 読み取ったリードを BlockingCollection 経由でワーカースレッド群に配る
+        /// プロデューサー/コンシューマ方式。各ワーカーは自分専用の workerIndex を使って
+        /// CountingBloomFilter.Add を呼ぶため、ロックなしで並列に k-mer を登録できる。
+        /// (CPU 側の処理 = k-mer 分解・品質判定・Dictionary 更新 が重い場合に効果が出る。
+        ///  ディスクI/O自体が律速の場合は改善が小さい点に注意。)
+        /// </summary>
         private static void LoadReadFileToBloomFilterIgnoreAmbiguity(string filePath, CountingBloomFilter bloomFilter)
         {
-            ulong count = 0;
+            var threadCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
+            ulong totalCount = 0;
             ulong mult = 0;
+            var countLock = new object();
 
-            using var reader = new FastqReader(filePath);
-            while (reader.HasNext())
+            // キューの深さはスレッド数に応じて適当な余裕を持たせる。
+            // 大きすぎるとメモリを圧迫するため、ある程度で背圧をかける。
+            using var queue = new BlockingCollection<ReadData>(boundedCapacity: threadCount * 64);
+
+            var workers = new Task[threadCount];
+            for (var w = 0; w < threadCount; w++)
             {
-                // 曖昧塩基は無視するだけなので、List<byte[]> ではなく軽量な byte[] を直接使う。
-                // NextRead + Select().ToList() による per-base の配列アロケーションを回避する。
-                var readData = reader.NextReadSimple();
-                var simpleRead = readData.SimpleRead!;
-                if (simpleRead.Length < ConfigurationManager.Arguments.Kmer)
+                var workerIndex = w;
+                workers[w] = Task.Run(() =>
                 {
-                    continue;
-                }
-                var badQualityCount = 0;
-                var qualitySpan = readData.Quality.ToCharArray().AsSpan();
-                var readSpan = simpleRead.AsSpan();
-                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
+                    foreach (var readData in queue.GetConsumingEnumerable())
+                    {
+                        ProcessRead(readData, bloomFilter, workerIndex);
+
+                        var shouldLog = false;
+                        ulong logValue = 0;
+                        lock (countLock)
+                        {
+                            totalCount++;
+                            if (totalCount % Consts.ProgressLogInterval == 0)
+                            {
+                                mult++;
+                                shouldLog = true;
+                                logValue = mult * Consts.ProgressLogInterval;
+                            }
+                        }
+                        if (shouldLog)
+                        {
+                            Console.WriteLine(logValue + " reads Loaded");
+                        }
+                    }
+                });
+            }
+
+            using (var reader = new FastqReader(filePath))
+            {
+                while (reader.HasNext())
                 {
-                    if (readSpan[i] == Consts.InvalidBase ||
-                        qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                }
-                if (badQualityCount == 0)
-                {
-                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
-                }
-                for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
-                {
-                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
-                        qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount--;
-                    }
-                    if (readSpan[i] == Consts.InvalidBase ||
-                        qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
-                    }
-                }
-                badQualityCount = 0;
-                readSpan = Util.ReverseComprement(readSpan);
-                qualitySpan.Reverse();
-                for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
-                {
-                    if (readSpan[i] == Consts.InvalidBase ||
-                        qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                }
-                if (badQualityCount == 0)
-                {
-                    bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer]);
-                }
-                for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
-                {
-                    if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
-                        qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount--;
-                    }
-                    if (readSpan[i] == Consts.InvalidBase ||
-                        qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                    {
-                        badQualityCount++;
-                    }
-                    if (badQualityCount == 0)
-                    {
-                        bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer));
-                    }
-                }
-                if (++count == Consts.ProgressLogInterval)
-                {
-                    Console.WriteLine((++mult * Consts.ProgressLogInterval) + " reads Loaded");
-                    count = 0;
+                    var readData = reader.NextReadSimple();
+                    queue.Add(readData);
                 }
             }
+            queue.CompleteAdding();
+
+            Task.WaitAll(workers);
+
             var fileName = Path.GetFileName(filePath);
-            Console.WriteLine($"Loaded {(mult * Consts.ProgressLogInterval) + count} reads from {fileName}");
+            Console.WriteLine($"Loaded {totalCount} reads from {fileName}");
+        }
+
+        /// <summary>
+        /// 1リード分の k-mer 抽出・品質フィルタリング・Bloom filter 登録を行う。
+        /// LoadReadFileToBloomFilterIgnoreAmbiguity の元の逐次実装と同一のロジックを、
+        /// ワーカースレッドから呼び出せる形に切り出したもの。
+        /// </summary>
+        private static void ProcessRead(ReadData readData, CountingBloomFilter bloomFilter, int workerIndex)
+        {
+            var simpleRead = readData.SimpleRead!;
+            if (simpleRead.Length < ConfigurationManager.Arguments.Kmer)
+            {
+                return;
+            }
+            var badQualityCount = 0;
+            var qualitySpan = readData.Quality.ToCharArray().AsSpan();
+            var readSpan = simpleRead.AsSpan();
+            for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
+            {
+                if (readSpan[i] == Consts.InvalidBase ||
+                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount++;
+                }
+            }
+            if (badQualityCount == 0)
+            {
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], workerIndex);
+            }
+            for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
+            {
+                if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
+                    qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount--;
+                }
+                if (readSpan[i] == Consts.InvalidBase ||
+                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount++;
+                }
+                if (badQualityCount == 0)
+                {
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), workerIndex);
+                }
+            }
+            badQualityCount = 0;
+            readSpan = Util.ReverseComprement(readSpan);
+            qualitySpan.Reverse();
+            for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
+            {
+                if (readSpan[i] == Consts.InvalidBase ||
+                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount++;
+                }
+            }
+            if (badQualityCount == 0)
+            {
+                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], workerIndex);
+            }
+            for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
+            {
+                if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
+                    qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount--;
+                }
+                if (readSpan[i] == Consts.InvalidBase ||
+                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
+                {
+                    badQualityCount++;
+                }
+                if (badQualityCount == 0)
+                {
+                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), workerIndex);
+                }
+            }
         }
     }
 }

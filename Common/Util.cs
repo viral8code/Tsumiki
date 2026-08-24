@@ -39,6 +39,30 @@ namespace Tsumiki.Common
             return string.Join(string.Empty, sb.ToString().Reverse());
         }
 
+        /// <summary>
+        /// FASTQ の生リードなど、N を含む曖昧塩基が混入しうる文字列向けの逆相補。
+        /// A/C/G/T 以外の文字はそのまま(位置だけ反転して)出力し、例外を投げない。
+        /// unitig/contig 配列(Bloom filter を通過した A/C/G/T のみの配列)には
+        /// このメソッドを使わないこと。そちらは ReverseComprement(string) の方を使い、
+        /// 想定外の文字が混入していた場合は例外で早期検知する。
+        /// </summary>
+        public static string ReverseComprementAllowAmbiguous(string genome)
+        {
+            StringBuilder sb = new();
+            for (var i = 0; i < genome.Length; i++)
+            {
+                _ = sb.Append(genome[i] switch
+                {
+                    'A' => 'T',
+                    'C' => 'G',
+                    'G' => 'C',
+                    'T' => 'A',
+                    var c => c,
+                });
+            }
+            return string.Join(string.Empty, sb.ToString().Reverse());
+        }
+
         public static Span<byte[]> ReverseComprement(Span<byte[]> genome)
         {
             var buffer = new byte[genome.Length][];
@@ -185,6 +209,39 @@ namespace Tsumiki.Common
         public static bool HasNext(BinaryReader stream)
         {
             return stream.BaseStream.Position < stream.BaseStream.Length;
+        }
+
+        /// <summary>
+        /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す。
+        /// 対応する例:
+        ///   "@READ001/1"                       -> "@READ001"
+        ///   "@READ001/2"                       -> "@READ001"
+        ///   "@INST:RUN:FLOWCELL:1:1:1:1 1:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
+        ///   "@INST:RUN:FLOWCELL:1:1:1:1 2:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
+        /// 上記どちらの記法にも当てはまらない場合は ID をそのまま返す
+        /// (この場合、呼び出し側で「ペアかどうか」の確証が得られないことに注意)。
+        /// </summary>
+        public static string GetPairedReadBaseId(string id)
+        {
+            // Casava 1.8+ 形式: 空白区切りの後半が "1:..." または "2:..." で始まる。
+            var spaceIndex = id.IndexOf(' ');
+            if (spaceIndex >= 0 && spaceIndex + 1 < id.Length)
+            {
+                var suffix = id[(spaceIndex + 1)..];
+                if (suffix.Length > 1 && suffix[1] == ':' && (suffix[0] == '1' || suffix[0] == '2'))
+                {
+                    return id[..spaceIndex];
+                }
+            }
+
+            // 旧来の "/1", "/2" 形式。
+            if (id.Length > 2 && id[^2] == '/' && (id[^1] == '1' || id[^1] == '2'))
+            {
+                return id[..^2];
+            }
+
+            // "/A", "/B" のような表記に対応する亜種も一応見ておく。
+            return id.Length > 2 && id[^2] == '/' && (id[^1] == 'A' || id[^1] == 'B') ? id[..^2] : id;
         }
     }
 }

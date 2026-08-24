@@ -124,6 +124,20 @@ namespace Tsumiki.Model
 
         public string TempDirectory { get; set; } = Consts.DefaultTempFolder;
 
+        private int _threadCount = Environment.ProcessorCount;
+        public int ThreadCount
+        {
+            get => this._threadCount;
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentException("Please make the value of thread count a positive integer");
+                }
+                this._threadCount = value;
+            }
+        }
+
         public override string ToString()
         {
             return $"""
@@ -140,6 +154,7 @@ namespace Tsumiki.Model
                 insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}
                 temp directory : {this.TempDirectory}
+                thread count : {this.ThreadCount}
 
                 ======================================
 

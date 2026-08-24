@@ -49,7 +49,11 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.ArgumentKey.TempDirectory:
-                            param.InsertSize = int.Parse(args[index++]);
+                            param.TempDirectory = args[index++];
+                            break;
+
+                        case Consts.ArgumentKey.ThreadCount:
+                            param.ThreadCount = int.Parse(args[index++]);
                             break;
 
                         case Consts.ArgumentKey.Help:
@@ -72,6 +76,14 @@ namespace Tsumiki.IO
                 Environment.Exit(1);
             }
 
+            // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない。
+            // (以前は -h のみを指定してもここで「Please set read path」エラーになり
+            //  ヘルプが表示できなかった)
+            if (param.IsHelpMode)
+            {
+                return param;
+            }
+
             if (string.IsNullOrWhiteSpace(param.ReadPath1))
             {
                 param.ReadPath1 = param.ReadPath2;
@@ -81,7 +93,7 @@ namespace Tsumiki.IO
             if (string.IsNullOrWhiteSpace(param.ReadPath1))
             {
                 Logger.PrintError(Logger.GetMethodName(), new ArgumentException("Please set read path"));
-                Environment.Exit(1);
+                Environment.Exit(0);
             }
 
             return param;

@@ -39,6 +39,8 @@
             public const string Help = "-h";
 
             public const string TempDirectory = "-t";
+
+            public const string ThreadCount = "-th";
         }
 
         public const string NullInsertSizeText = "unspecified";
@@ -68,8 +70,9 @@
             {ArgumentKey.Phred} [integer] : base of phred score ({string.Join(" or ", AllowedPhredValue)}) (default : {DefaultPhredValue})
             {ArgumentKey.QualityCutoff} [integer] : threshold of base quality (use kmers with this value or higher) (default : {DefaultQualityCutoffValue})
             {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
-            {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
             {ArgumentKey.InsertSize} : excepted insert size of pair-end reads (default : {NullInsertSizeText})
+            {ArgumentKey.TempDirectory} [path] : temp directory (default : {DefaultTempFolder})
+            {ArgumentKey.ThreadCount} [integer] : number of worker threads used for loading reads (default : number of logical processors)
             {ArgumentKey.Help} : output this text (default : false)
 
             """;

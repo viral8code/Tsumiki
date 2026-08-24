@@ -13,8 +13,19 @@ namespace Tsumiki.Model
             {
                 var index = i >> 5;
                 var shift = (31 ^ (i & 31)) << 1;
-                var val = (ulong)Util.GetNucleotideIDs(kmer[i])[0] - 1;
-                this.Data[index] = val << shift;
+                // GetNucleotideIDs は曖昧塩基対応のため List<int> を確保するが、
+                // ContigMaker 側では badBase/revBadBase によって曖昧塩基を含む
+                // 区間はそもそも KmerKey 化されない(呼ばれない)ため、
+                // ここでは List 確保のない軽量な単一塩基変換で十分。
+                // (曖昧塩基が来た場合は GetSimpleNucleotideID が InvalidBase(5) を
+                //  返すが、そのようなケースは呼び出し元で事前に除外されている前提。)
+                var val = (ulong)Util.GetSimpleNucleotideID(kmer[i]) - 1;
+                // 32塩基ごとに同じ ulong 要素(2bit x 32 = 64bit)を共有するため、
+                // 代入(=)ではなく OR(|=)で詰め込まないと、直前までに書き込んだ
+                // 塩基の情報が上書きで消えてしまう。
+                // (この不具合により、同じ ulong 要素に収まる k-mer 同士が
+                //  実質「末尾の数文字だけで同一視される」形になっていた。)
+                this.Data[index] |= val << shift;
             }
         }
 
@@ -25,7 +36,7 @@ namespace Tsumiki.Model
 
         public KmerKey ReverseComprement()
         {
-            int kmerLength = ConfigurationManager.Arguments.Kmer;
+            var kmerLength = ConfigurationManager.Arguments.Kmer;
             var offSet = kmerLength & 31;
             var reversedKmer = new ulong[this.Data.Length];
             for (var i = 0; i < reversedKmer.Length; i++)
@@ -91,5 +102,4 @@ namespace Tsumiki.Model
             return (int)(hash ^ (hash >> 32));
         }
     }
-
 }

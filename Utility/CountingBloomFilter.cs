@@ -3,22 +3,48 @@ using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
-    internal class CountingBloomFilter(ulong bitSize, string tempDirectory) : IDisposable
+    internal class CountingBloomFilter : IDisposable
     {
-        private readonly LongBitArray _bitArray = new(bitSize);
+        private readonly LongBitArray _bitArray;
 
-        private readonly ulong _mod = bitSize;
+        private readonly ulong _mod;
 
-        private CountingDB? _counter = new(tempDirectory);
+        private readonly string _tempDirectory;
 
-        public void Add(Span<byte[]> read)
+        // 並列読み込み用に、ワーカースレッドの数だけ CountingDB を用意する。
+        // 各スレッドは自分専用のインスタンスにのみ書き込むため、
+        // Add 呼び出し時のロックが不要になる。
+        private CountingDB[]? _counters;
+
+        public CountingBloomFilter(ulong bitSize, string tempDirectory)
         {
-            this.Regist(read);
+            this._bitArray = new(bitSize);
+            this._mod = bitSize;
+            this._tempDirectory = tempDirectory;
+            var workerCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
+            this._counters = new CountingDB[workerCount];
+            for (var i = 0; i < workerCount; i++)
+            {
+                this._counters[i] = new CountingDB(tempDirectory);
+            }
         }
 
-        public void Add(Span<byte> read)
+        /// <summary>
+        /// 指定したワーカー番号(0 始まり)専用の CountingDB に登録する。
+        /// 並列読み込み時、各スレッドは自分の workerIndex を固定して呼び出すことで
+        /// スレッドセーフに(ロックなしで)k-mer を登録できる。
+        /// </summary>
+        public void Add(Span<byte[]> read, int workerIndex)
         {
-            this.Regist(read);
+            this.Regist(read, workerIndex);
+        }
+
+        /// <summary>
+        /// 指定したワーカー番号(0 始まり)専用の CountingDB に登録する。
+        /// </summary>
+        public void Add(Span<byte> read, int workerIndex)
+        {
+            this.Regist(read, workerIndex);
         }
 
         public bool Contains(Span<byte> read)
@@ -50,11 +76,20 @@ namespace Tsumiki.Utility
 
         public List<byte[]> Cutoff(ulong bounds)
         {
-            var filePath = this._counter!.MergeAll();
-            this._counter.Dispose();
-            this._counter = null;
+            // 各ワーカーの CountingDB をそれぞれ MergeAll し、
+            // 出来上がった複数のソート済みファイルをさらに1本にマージする。
+            var mergedFiles = new List<string>();
+            foreach (var counter in this._counters!)
+            {
+                mergedFiles.Add(counter.MergeAll());
+                counter.Dispose();
+            }
+            this._counters = null;
+
+            var filePath = CountingDB.MergeExternalFiles(this._tempDirectory, mergedFiles);
+
             var Length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            var kmerPath = Path.Combine(tempDirectory, Consts.KmerFileName);
+            var kmerPath = Path.Combine(this._tempDirectory, Consts.KmerFileName);
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 using var writer = new BinaryWriter(File.Open(kmerPath, FileMode.Create, FileAccess.Write));
@@ -179,14 +214,14 @@ namespace Tsumiki.Utility
             return flag;
         }
 
-        private void Regist(Span<byte[]> read)
+        private void Regist(Span<byte[]> read, int workerIndex)
         {
-            this._counter?.Add(read);
+            this._counters?[workerIndex].Add(read);
         }
 
-        private void Regist(Span<byte> read)
+        private void Regist(Span<byte> read, int workerIndex)
         {
-            this._counter?.Add(read);
+            this._counters?[workerIndex].Add(read);
         }
 
         private void SetHash(Span<byte> read)
@@ -219,7 +254,13 @@ namespace Tsumiki.Utility
 
         public void Dispose()
         {
-            this._counter?.Dispose();
+            if (this._counters != null)
+            {
+                foreach (var counter in this._counters)
+                {
+                    counter.Dispose();
+                }
+            }
         }
     }
 }

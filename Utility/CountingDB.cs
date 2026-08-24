@@ -8,11 +8,11 @@ namespace Tsumiki.Utility
         // フラッシュ前にメモリ上へ保持するエントリ数の上限を決める基準サイズ(バイト)。
         // 従来はここが「1ファイルあたりの生バイト数上限(128MB)」だったが、
         // 事前集約方式ではエントリ数(=ユニークなk-mer数)で管理する。
-        private const int MaxCount = 256 * 1024 * 1024;
+        private const int MaxCount = 128 * 1024 * 1024;
 
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する。
-        private const int IoBufferSize = 16 * 1024 * 1024;
+        private const int IoBufferSize = 1 << 20; // 1MB
 
         private readonly ByteArrayComparer _comparator;
 
@@ -252,6 +252,92 @@ namespace Tsumiki.Utility
                     File.Delete(file);
                 }
             }
+        }
+
+        /// <summary>
+        /// 複数の CountingDB インスタンス(スレッドごとに用意したもの)が
+        /// それぞれ MergeAll() で出力したソート済み・集約済みファイルを
+        /// さらにペアワイズマージして1つに統合する。
+        /// 並列読み込み(スレッドごとに独立した CountingDB を使う設計)で、
+        /// 最後にワーカーごとの結果を1本化するために使用する。
+        /// </summary>
+        public static string MergeExternalFiles(string tempDirectory, List<string> filePaths)
+        {
+            var comparator = new ByteArrayComparer();
+            var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
+            var mergedFileList = new List<string>(filePaths);
+            var prefix = Guid.NewGuid().ToString("N");
+            var index = 1;
+
+            if (mergedFileList.Count == 0)
+            {
+                var emptyFileName = Path.Combine(tempDirectory, $"{prefix}_empty");
+                using (CreateWriteStream(emptyFileName))
+                {
+                }
+                return emptyFileName;
+            }
+
+            while (mergedFileList.Count > 1)
+            {
+                GC.Collect();
+                var file1 = mergedFileList[0];
+                var file2 = mergedFileList[1];
+                var mergedFileName = Path.Combine(tempDirectory, $"{prefix}_workermerge_{index++}");
+                mergedFileList.RemoveRange(0, 2);
+                using (var reader1 = new BinaryReader(CreateReadStream(file1)))
+                {
+                    using var reader2 = new BinaryReader(CreateReadStream(file2));
+                    using var writer = new BinaryWriter(CreateWriteStream(mergedFileName));
+                    var read1 = reader1.ReadBytes(length);
+                    var read2 = reader2.ReadBytes(length);
+                    while (read1 != null && read2 != null)
+                    {
+                        var result = comparator.Compare(read1, read2);
+                        if (result == 0)
+                        {
+                            var sum = reader1.ReadUInt64() + reader2.ReadUInt64();
+                            writer.Write(read1);
+                            writer.Write(sum);
+                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
+                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
+                        }
+                        else if (result < 0)
+                        {
+                            var sum = reader1.ReadUInt64();
+                            writer.Write(read1);
+                            writer.Write(sum);
+                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
+                        }
+                        else
+                        {
+                            var sum = reader2.ReadUInt64();
+                            writer.Write(read2);
+                            writer.Write(sum);
+                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
+                        }
+                    }
+                    while (read1 != null)
+                    {
+                        var sum = reader1.ReadUInt64();
+                        writer.Write(read1);
+                        writer.Write(sum);
+                        read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
+                    }
+                    while (read2 != null)
+                    {
+                        var sum = reader2.ReadUInt64();
+                        writer.Write(read2);
+                        writer.Write(sum);
+                        read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
+                    }
+                }
+                File.Delete(file1);
+                File.Delete(file2);
+                mergedFileList.Add(mergedFileName);
+            }
+
+            return mergedFileList[0];
         }
     }
 }
