@@ -622,37 +622,7 @@ namespace Tsumiki.Core
                     unitigCount++;
                 }
             }
-            List<List<(int, ulong)>> adjacencyList = [];
-            for (var i = 0; i < unitigList.Count; i++)
-            {
-                adjacencyList.Add([]);
-            }
-            for (var i = 1; i <= unitigCount; i++)
-            {
-                for (var j = 1; j <= unitigCount; j++)
-                {
-                    if (i == j)
-                    {
-                        continue;
-                    }
-                    if (this.kmerPath.TryGetValue((i, j), out var count))
-                    {
-                        adjacencyList[i << 1].Add((j << 1, count));
-                    }
-                    if (this.kmerPath.TryGetValue((i, -j), out count))
-                    {
-                        adjacencyList[i << 1].Add((j << 1 | 1, count));
-                    }
-                    if (this.kmerPath.TryGetValue((-i, j), out count))
-                    {
-                        adjacencyList[i << 1 | 1].Add((j << 1, count));
-                    }
-                    if (this.kmerPath.TryGetValue((-i, -j), out count))
-                    {
-                        adjacencyList[i << 1 | 1].Add((j << 1 | 1, count));
-                    }
-                }
-            }
+            var adjacencyList = BuildAdjacencyList(this.kmerPath, unitigList.Count);
 
             // FixPath 適用前の「候補を持つ頂点数」「合計候補数」を記録しておき、
             // countThreshold / uniteThreshold によってどれだけ絞り込まれた(あるいは
@@ -861,6 +831,37 @@ namespace Tsumiki.Core
             }
 
             Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {collected}.");
+        }
+
+        /// <summary>
+        /// 符号付き unitig ID(正=順鎖、負=逆鎖)を adjacencyList の頂点インデックスに変換する。
+        /// </summary>
+        internal static int VertexIndex(int signedUnitigId)
+        {
+            return (Math.Abs(signedUnitigId) << 1) | (signedUnitigId > 0 ? 0 : 1);
+        }
+
+        /// <summary>
+        /// kmerPath(疎な隣接情報)から、頂点インデックス空間(vertexCount 個、
+        /// unitigId &lt;&lt; 1 / unitigId &lt;&lt; 1 | 1)での隣接リストを構築する。
+        /// kmerPath.Count に比例する計算量で済む(全 unitig ペアを総当りしない)。
+        /// </summary>
+        internal static List<List<(int, ulong)>> BuildAdjacencyList(IReadOnlyDictionary<(int, int), ulong> kmerPath, int vertexCount)
+        {
+            List<List<(int, ulong)>> adjacencyList = [];
+            for (var i = 0; i < vertexCount; i++)
+            {
+                adjacencyList.Add([]);
+            }
+            foreach (var ((from, to), count) in kmerPath)
+            {
+                if (from == to)
+                {
+                    continue;
+                }
+                adjacencyList[VertexIndex(from)].Add((VertexIndex(to), count));
+            }
+            return adjacencyList;
         }
 
         private static void FixPath(List<List<(int, ulong)>> adjacencyList, int index, decimal uniteThreshold, ulong countThreshold)

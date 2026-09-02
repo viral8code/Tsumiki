@@ -18,4 +18,14 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tsumiki.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tsumiki.Tests がサブディレクトリにあるため、既定のglobに巻き込まれないよう除外する。 -->
+    <Compile Remove="Tsumiki.Tests\**\*.cs" />
+    <None Remove="Tsumiki.Tests\**\*" />
+  </ItemGroup>
+
 </Project>

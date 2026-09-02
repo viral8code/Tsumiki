@@ -29,44 +29,79 @@ namespace Tsumiki.Model
             }
         }
 
+        /// <summary>
+        /// Consts.NucleotideID(1=A,2=C,3=G,4=T)のバイト列から直接構築する版。
+        /// UnitigMaker/TrustedKmerIndex はbyte-ID空間で動作しているため、
+        /// char経由の変換を挟まずに済む(ホットパス向け)。
+        /// </summary>
+        public KmerKey(ReadOnlySpan<byte> kmer)
+        {
+            this.Data = new ulong[(kmer.Length + 31) >> 5];
+            for (var i = 0; i < kmer.Length; i++)
+            {
+                var index = i >> 5;
+                var shift = (31 ^ (i & 31)) << 1;
+                var val = (ulong)kmer[i] - 1;
+                this.Data[index] |= val << shift;
+            }
+        }
+
         private KmerKey(ulong[] Data)
         {
             this.Data = Data;
         }
 
+        /// <summary>
+        /// この k-mer とその逆相補のうち、Data を辞書式順序で比較して小さい方を返す。
+        /// 挿入時・検索時の双方でこれを使えば、順鎖/逆鎖どちらから見ても
+        /// 同一のキーに正規化されるため、逆相補を別途リトライする必要がなくなる。
+        /// </summary>
+        public KmerKey Canonical()
+        {
+            var rev = this.ReverseComprement();
+            return CompareData(this.Data, rev.Data) <= 0 ? this : rev;
+        }
+
+        private static int CompareData(ulong[] a, ulong[] b)
+        {
+            for (var i = 0; i < a.Length; i++)
+            {
+                if (a[i] != b[i])
+                {
+                    return a[i] < b[i] ? -1 : 1;
+                }
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// 以前はビット単位の反転("ReverseBit")とNOTの組み合わせで逆相補を
+        /// 計算していたが、64bit全体を単純にビット反転すると各2bitコドン
+        /// (塩基1個分)の内部のビット順まで入れ替わってしまい
+        /// (例: コドン順序は正しく反転されるが、C(01)とG(10)のような
+        /// 「2bit内の上位/下位」を持つ塩基同士で値が化けていた)、
+        /// 実際には正しい逆相補になっていなかった(k=4,31,33,64のいずれでも
+        /// Util.ReverseComprement(string)の結果と一致しないことをテストで確認)。
+        /// このバグは Core/ContigMaker.cs の kmerDict 構築(逆鎖k-merの登録)で
+        /// 使われており、逆鎖側の読み取りマッピングを広範囲で壊していた。
+        ///
+        /// 塩基ID列へいったんデコードし、既に実績のある
+        /// Util.ReverseComprement(Span&lt;byte&gt;) で逆相補を取ってから
+        /// 再エンコードすることで、確実に正しい結果にする。
+        /// </summary>
         public KmerKey ReverseComprement()
         {
             var kmerLength = ConfigurationManager.Arguments.Kmer;
-            var offSet = kmerLength & 31;
-            var reversedKmer = new ulong[this.Data.Length];
-            for (var i = 0; i < reversedKmer.Length; i++)
+            var bytes = new byte[kmerLength];
+            for (var i = 0; i < kmerLength; i++)
             {
-                reversedKmer[i] = ~ReverseBit(this.Data[^(i + 1)]);
+                var index = i >> 5;
+                var shift = (31 ^ (i & 31)) << 1;
+                var val = (byte)((this.Data[index] >> shift) & 0x3UL);
+                bytes[i] = (byte)(val + 1);
             }
-            if (offSet > 0)
-            {
-                var shift = 31 - offSet;
-                var temp = 0UL;
-                for (var i = 1; i <= reversedKmer.Length; i++)
-                {
-                    var sub = reversedKmer[^i] >> offSet;
-                    reversedKmer[^i] <<= shift;
-                    reversedKmer[^i] |= temp;
-                    temp = sub;
-                }
-            }
-            return new KmerKey(reversedKmer);
-        }
-
-        private static ulong ReverseBit(ulong x)
-        {
-            x = ((x & 0x5555555555555555UL) << 1) | ((x >> 1) & 0x5555555555555555UL);
-            x = ((x & 0x3333333333333333UL) << 2) | ((x >> 2) & 0x3333333333333333UL);
-            x = ((x & 0x0F0F0F0F0F0F0F0FUL) << 4) | ((x >> 4) & 0x0F0F0F0F0F0F0F0FUL);
-            x = ((x & 0x00FF00FF00FF00FFUL) << 8) | ((x >> 8) & 0x00FF00FF00FF00FFUL);
-            x = ((x & 0x0000FFFF0000FFFFUL) << 16) | ((x >> 16) & 0x0000FFFF0000FFFFUL);
-            x = (x << 32) | (x >> 32);
-            return x;
+            var revBytes = Util.ReverseComprement(bytes.AsSpan());
+            return new KmerKey(revBytes);
         }
 
         public bool Equals(KmerKey other)

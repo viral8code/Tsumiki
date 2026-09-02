@@ -7,6 +7,6 @@ namespace Tsumiki.Common
     {
         public static Parameters Arguments { get; set; } = new();
 
-        public static CountingBloomFilter BloomFilter { get; set; } = null!;
+        public static TrustedKmerIndex TrustedKmerIndex { get; set; } = null!;
     }
 }

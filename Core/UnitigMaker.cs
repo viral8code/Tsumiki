@@ -5,9 +5,9 @@ using Tsumiki.Utility;
 
 namespace Tsumiki.Core
 {
-    internal class UnitigMaker(CountingBloomFilter bloomFilter)
+    internal class UnitigMaker(TrustedKmerIndex bloomFilter)
     {
-        private readonly CountingBloomFilter set = bloomFilter;
+        private readonly TrustedKmerIndex set = bloomFilter;
 
         public Unitig MakeUnitig(Span<byte> bytes)
         {

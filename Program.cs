@@ -49,6 +49,12 @@ namespace Tsumiki
 
             Console.WriteLine(param);
 
+            PhredSniffer.WarnIfImplausible(param.ReadPath1, param.Phred);
+            if (!string.IsNullOrWhiteSpace(param.ReadPath2))
+            {
+                PhredSniffer.WarnIfImplausible(param.ReadPath2, param.Phred);
+            }
+
             Logger.PrintTimeStamp();
 
             var tempDir = Path.Combine(Environment.CurrentDirectory, param.TempDirectory);
@@ -62,9 +68,15 @@ namespace Tsumiki
 
             _ = Directory.CreateDirectory(tempDir);
 
-            Console.WriteLine("Start construction Bloom filter");
-            var bloomFilter = new CountingBloomFilter(param.RowBitSize, tempDir);
-            ConfigurationManager.BloomFilter = bloomFilter;
+            if (param.RowBitSize != int.MaxValue)
+            {
+                Console.WriteLine($"[Info] {Consts.ArgumentKey.BloomFilterSize} is deprecated and no longer has any effect " +
+                    "(k-mer membership is now tracked with an exact set built from the trusted k-mer count, not a Bloom filter).");
+            }
+
+            Console.WriteLine("Start construction k-mer index");
+            var bloomFilter = new TrustedKmerIndex(tempDir);
+            ConfigurationManager.TrustedKmerIndex = bloomFilter;
 
             if (string.IsNullOrWhiteSpace(param.ReadPath2))
             {
@@ -99,7 +111,7 @@ namespace Tsumiki
 
             Logger.PrintTimeStamp();
 
-            Console.WriteLine("Fix Bloom filter");
+            Console.WriteLine("Applying k-mer cutoff");
             var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
 
             Logger.PrintTimeStamp();
@@ -127,6 +139,8 @@ namespace Tsumiki
                     }
                 }
             }
+
+            AssemblyStatsReporter.Report("unitigs", Consts.UnitigFileName);
 
             Logger.PrintTimeStamp();
 
@@ -167,6 +181,8 @@ namespace Tsumiki
 
             Console.WriteLine("Maked contigs");
 
+            AssemblyStatsReporter.Report("contigs", Consts.ContigFileName);
+
             Logger.PrintTimeStamp();
 
             // スキャフォールディングはペアエンド情報(pairPath)を前提とするため、
@@ -178,6 +194,8 @@ namespace Tsumiki
                 var scaffolder = new Scaffolder(contigMaker, Consts.ContigFileName);
                 scaffolder.Run(Consts.ScaffoldFileName);
 
+                AssemblyStatsReporter.Report("scaffolds", Consts.ScaffoldFileName);
+
                 Logger.PrintTimeStamp();
             }
 
@@ -188,7 +206,7 @@ namespace Tsumiki
 
         // 曖昧塩基を許容する経路は現状シングルスレッドのまま(workerIndex固定)。
         // 呼ばれる頻度が低い想定のため、並列化の優先度を下げている。
-        private static void LoadReadFileToBloomFilterWithAmbiguity(string filePath, CountingBloomFilter bloomFilter)
+        private static void LoadReadFileToBloomFilterWithAmbiguity(string filePath, TrustedKmerIndex bloomFilter)
         {
             ulong count = 0;
             ulong mult = 0;
@@ -234,11 +252,11 @@ namespace Tsumiki
         /// FASTQ を1本のスレッドで順に読み進めつつ(ディスクI/Oはシーケンシャルなまま)、
         /// 読み取ったリードを BlockingCollection 経由でワーカースレッド群に配る
         /// プロデューサー/コンシューマ方式。各ワーカーは自分専用の workerIndex を使って
-        /// CountingBloomFilter.Add を呼ぶため、ロックなしで並列に k-mer を登録できる。
+        /// TrustedKmerIndex.Add を呼ぶため、ロックなしで並列に k-mer を登録できる。
         /// (CPU 側の処理 = k-mer 分解・品質判定・Dictionary 更新 が重い場合に効果が出る。
         ///  ディスクI/O自体が律速の場合は改善が小さい点に注意。)
         /// </summary>
-        private static void LoadReadFileToBloomFilterIgnoreAmbiguity(string filePath, CountingBloomFilter bloomFilter)
+        private static void LoadReadFileToBloomFilterIgnoreAmbiguity(string filePath, TrustedKmerIndex bloomFilter)
         {
             var threadCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
             ulong totalCount = 0;
@@ -300,7 +318,7 @@ namespace Tsumiki
         /// LoadReadFileToBloomFilterIgnoreAmbiguity の元の逐次実装と同一のロジックを、
         /// ワーカースレッドから呼び出せる形に切り出したもの。
         /// </summary>
-        private static void ProcessRead(ReadData readData, CountingBloomFilter bloomFilter, int workerIndex)
+        private static void ProcessRead(ReadData readData, TrustedKmerIndex bloomFilter, int workerIndex)
         {
             var simpleRead = readData.SimpleRead!;
             if (simpleRead.Length < ConfigurationManager.Arguments.Kmer)
