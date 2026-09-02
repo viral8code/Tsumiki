@@ -45,6 +45,8 @@
             public const string PairUniteThreshold = "-pu";
 
             public const string PairCountThreshold = "-pc";
+
+            public const string ErrorCorrection = "-ec";
         }
 
         public const string NullInsertSizeText = "unspecified";
@@ -83,6 +85,7 @@
             {ArgumentKey.ThreadCount} [integer] : number of worker threads used for loading reads (default : number of logical processors)
             {ArgumentKey.PairUniteThreshold} [decimal] : minimum ratio of the best-supported pair-end scaffold edge among all candidates for a node (default : {DefaultPairUniteThreshold})
             {ArgumentKey.PairCountThreshold} [integer] : minimum read-pair support required for a pair-end scaffold edge (default : {DefaultPairCountThreshold})
+            {ArgumentKey.ErrorCorrection} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {ArgumentKey.Help} : output this text (default : false)
 
             """;

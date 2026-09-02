@@ -33,7 +33,19 @@ namespace Tsumiki.Utility
         // (常に正規化(Canonical)された形で保持する)。以降のグラフ探索
         // (IsFirstKmer/CountInEdges/UnitigMakerの伸長判定)はすべて
         // この集合への厳密な所属判定のみで行う。
+        //
+        // k<=32(実用上ほぼ常にこちら。デフォルトk=31)の場合は、KmerKeyの
+        // ulong[]割り当てを経由せず、2bitパックしたulong1個で直接HashSet<ulong>を
+        // 引く高速経路(_trustedKmersSmall)を使う。ErrorCorrector は1リードあたり
+        // 数百〜数千回 Contains を呼ぶため、KmerKey経由(構築のたびに
+        // ulong[]・byte[]を複数回ヒープ確保する)のオーバーヘッドが無視できず、
+        // 実データ規模で致命的に遅くなることが実測で判明したため導入した。
+        // k>32の場合のみ、従来通り厳密だが低速な HashSet&lt;KmerKey&gt; にフォールバックする。
         private HashSet<KmerKey>? _trustedKmers;
+
+        private HashSet<ulong>? _trustedKmersSmall;
+
+        private static bool UseSmallPath => ConfigurationManager.Arguments.Kmer <= 32;
 
         public TrustedKmerIndex(string tempDirectory)
         {
@@ -70,7 +82,48 @@ namespace Tsumiki.Utility
         /// </summary>
         public bool Contains(Span<byte> kmer)
         {
-            return this._trustedKmers!.Contains(new KmerKey(kmer).Canonical());
+            return UseSmallPath
+                ? this._trustedKmersSmall!.Contains(CanonicalSmall(kmer))
+                : this._trustedKmers!.Contains(new KmerKey(kmer).Canonical());
+        }
+
+        /// <summary>
+        /// kmer(塩基ID 1-4、長さ32以下)を2bit/塩基でulong1個にパックする。
+        /// kmer[0]が最上位側、kmer[^1]が最下位側に来る(空きビットは下位側に残る)。
+        /// </summary>
+        private static ulong PackSmall(ReadOnlySpan<byte> kmer)
+        {
+            var value = 0UL;
+            foreach (var b in kmer)
+            {
+                value = (value << 2) | ((ulong)b - 1);
+            }
+            return value;
+        }
+
+        /// <summary>
+        /// PackSmallでパックした値の逆相補を、ヒープ確保なしで直接計算する。
+        /// 2bitコドンごとに comp = codon ^ 0b11 (A&lt;-&gt;T, C&lt;-&gt;G)で複製し、
+        /// 下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる。
+        /// </summary>
+        private static ulong ReverseComplementSmall(ulong packed, int length)
+        {
+            var temp = packed;
+            var result = 0UL;
+            for (var i = 0; i < length; i++)
+            {
+                var codon = temp & 0x3UL;
+                result = (result << 2) | (codon ^ 0x3UL);
+                temp >>= 2;
+            }
+            return result;
+        }
+
+        private static ulong CanonicalSmall(ReadOnlySpan<byte> kmer)
+        {
+            var packed = PackSmall(kmer);
+            var rev = ReverseComplementSmall(packed, kmer.Length);
+            return Math.Min(packed, rev);
         }
 
         public List<byte[]> Cutoff(ulong bounds)
@@ -89,7 +142,9 @@ namespace Tsumiki.Utility
 
             var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             var kmerPath = Path.Combine(this._tempDirectory, Consts.KmerFileName);
-            var trustedKmers = new HashSet<KmerKey>();
+            var useSmallPath = UseSmallPath;
+            var trustedKmers = useSmallPath ? null : new HashSet<KmerKey>();
+            var trustedKmersSmall = useSmallPath ? new HashSet<ulong>() : null;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 using var writer = new BinaryWriter(File.Open(kmerPath, FileMode.Create, FileAccess.Write));
@@ -115,7 +170,14 @@ namespace Tsumiki.Utility
                             bytes.AddRange(Util.ByteToNucleotideSequence(b));
                         }
                         var kmer = CollectionsMarshal.AsSpan(bytes)[..ConfigurationManager.Arguments.Kmer];
-                        _ = trustedKmers.Add(new KmerKey(kmer).Canonical());
+                        if (useSmallPath)
+                        {
+                            _ = trustedKmersSmall!.Add(CanonicalSmall(kmer));
+                        }
+                        else
+                        {
+                            _ = trustedKmers!.Add(new KmerKey(kmer).Canonical());
+                        }
                         writer.Write(kmer);
                     }
                 }
@@ -135,6 +197,7 @@ namespace Tsumiki.Utility
             }
             File.Delete(filePath);
             this._trustedKmers = trustedKmers;
+            this._trustedKmersSmall = trustedKmersSmall;
 
             Console.WriteLine("Search First k-mer");
             List<byte[]> kmers = [];

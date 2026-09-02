@@ -72,6 +72,10 @@ namespace Tsumiki.IO
                             param.AllowAmbiguousBases = true;
                             break;
 
+                        case Consts.ArgumentKey.ErrorCorrection:
+                            param.EnableErrorCorrection = true;
+                            break;
+
                         default:
                             Logger.PrintWarning(Logger.GetMethodName(), new ArgumentException($"Unknown argment: {key}"));
                             break;

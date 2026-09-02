@@ -71,5 +71,32 @@ namespace Tsumiki.Tests.Utility
 
             Assert.False(index.Contains(belowThreshold));
         }
+
+        /// <summary>
+        /// k=33(k&lt;=32の高速経路が使えない)でも、従来通り厳密な
+        /// HashSet&lt;KmerKey&gt;経路で正しく動作することを確認する回帰テスト。
+        /// </summary>
+        [Fact]
+        public void Contains_WorksForKmerLongerThan32_UsingKmerKeyFallbackPath()
+        {
+            ConfigurationManager.Arguments = new Parameters { Kmer = 33, ThreadCount = 1 };
+
+            using var index = new TrustedKmerIndex(this._tempDir);
+            var seq = "ACGTACGTACGTACGTACGTACGTACGTACGTA"; // 34塩基(kmer長33を1つ取れる)
+            var inserted = ToBytes(seq[..33]);
+            var revComp = ToBytes(Util.ReverseComprement(seq[..33]));
+            var neverInserted = ToBytes(new string('T', 33));
+
+            for (var i = 0; i < 5; i++)
+            {
+                index.Add(inserted.AsSpan(), workerIndex: 0);
+            }
+
+            _ = index.Cutoff(bounds: 2);
+
+            Assert.True(index.Contains(inserted));
+            Assert.True(index.Contains(revComp));
+            Assert.False(index.Contains(neverInserted));
+        }
     }
 }

@@ -128,6 +128,8 @@ namespace Tsumiki.Model
 
         public bool AllowAmbiguousBases { get; set; } = false;
 
+        public bool EnableErrorCorrection { get; set; } = false;
+
         public string TempDirectory { get; set; } = Consts.DefaultTempFolder;
 
         private int _threadCount = Environment.ProcessorCount;
@@ -187,6 +189,7 @@ namespace Tsumiki.Model
                 bit size: {this.BitSize}
                 insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}
+                error correction : {this.EnableErrorCorrection}
                 temp directory : {this.TempDirectory}
                 thread count : {this.ThreadCount}
                 pair unite threshold : {this.PairUniteThreshold}
