@@ -238,7 +238,16 @@ namespace Tsumiki.Utility
                 File.Delete(file2);
                 mergedFileList.Add(mergedFileName);
             }
-            return mergedFileList[0];
+
+            // フラッシュ済みファイルが1件のみだった場合、マージが一度も走らず
+            // その元ファイル(_flushedFiles に登録済み)がそのまま返される。
+            // 登録したままだと、この直後に Dispose() が呼ばれた際
+            // _flushedFiles を掃除する処理で削除されてしまい、
+            // 呼び出し元に返したパスが消える(FileNotFoundException の原因)。
+            // 呼び出し元へ所有権を渡すため、返す前に登録を外しておく。
+            var finalFile = mergedFileList[0];
+            _ = this._flushedFiles.Remove(finalFile);
+            return finalFile;
         }
 
         public void Dispose()

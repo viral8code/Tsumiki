@@ -116,6 +116,12 @@ namespace Tsumiki.Model
                     : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 8e12) : (ulong)double.Parse(value);
         }
 
+        /// <summary>
+        /// 期待挿入サイズ。CLI で明示指定されなかった場合は null のままとし、
+        /// スキャフォールディング実行時にマップ済みペアからサンプリング推定を試みる。
+        /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で
+        ///  別途保持する。CLI 指定値と自動推定値を区別するため。)
+        /// </summary>
         public int? InsertSize { get; set; } = null;
 
         public bool IsHelpMode { get; set; } = false;
@@ -138,6 +144,34 @@ namespace Tsumiki.Model
             }
         }
 
+        private decimal _pairUniteThreshold = Consts.DefaultPairUniteThreshold;
+        public decimal PairUniteThreshold
+        {
+            get => this._pairUniteThreshold;
+            set
+            {
+                if (value is <= 0 or > 1)
+                {
+                    throw new ArgumentException("Please make the value of pair unite threshold a ratio between 0 (exclusive) and 1");
+                }
+                this._pairUniteThreshold = value;
+            }
+        }
+
+        private ulong _pairCountThreshold = Consts.DefaultPairCountThreshold;
+        public ulong PairCountThreshold
+        {
+            get => this._pairCountThreshold;
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentException("Please make the value of pair count threshold a positive integer");
+                }
+                this._pairCountThreshold = value;
+            }
+        }
+
         public override string ToString()
         {
             return $"""
@@ -155,6 +189,8 @@ namespace Tsumiki.Model
                 allow ambiguous bases : {this.AllowAmbiguousBases}
                 temp directory : {this.TempDirectory}
                 thread count : {this.ThreadCount}
+                pair unite threshold : {this.PairUniteThreshold}
+                pair count threshold : {this.PairCountThreshold}
 
                 ======================================
 

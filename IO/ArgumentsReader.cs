@@ -56,6 +56,14 @@ namespace Tsumiki.IO
                             param.ThreadCount = int.Parse(args[index++]);
                             break;
 
+                        case Consts.ArgumentKey.PairUniteThreshold:
+                            param.PairUniteThreshold = decimal.Parse(args[index++]);
+                            break;
+
+                        case Consts.ArgumentKey.PairCountThreshold:
+                            param.PairCountThreshold = ulong.Parse(args[index++]);
+                            break;
+
                         case Consts.ArgumentKey.Help:
                             param.IsHelpMode = true;
                             break;

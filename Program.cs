@@ -169,6 +169,18 @@ namespace Tsumiki
 
             Logger.PrintTimeStamp();
 
+            // スキャフォールディングはペアエンド情報(pairPath)を前提とするため、
+            // read2 が指定されている(=ペアエンドで実行された)場合のみ行う。
+            if (!string.IsNullOrWhiteSpace(param.ReadPath2))
+            {
+                Console.WriteLine("Scaffolding contigs");
+
+                var scaffolder = new Scaffolder(contigMaker, Consts.ContigFileName);
+                scaffolder.Run(Consts.ScaffoldFileName);
+
+                Logger.PrintTimeStamp();
+            }
+
             Console.WriteLine("開発中！");
 
             Logger.PrintTimeStamp();
