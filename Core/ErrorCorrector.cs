@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Utility;
 
@@ -66,26 +66,64 @@ namespace Tsumiki.Core
 
         private readonly record struct FileCorrectionStats(int TotalReads, int CorrectedReads, int TotalCorrections);
 
+        /// <summary>
+        /// 1バッチあたりのリード数。訂正はリードごとに独立なので並列化できるが、
+        /// 出力の行順はペアエンドの対応付け(read1のn番目とread2のn番目が同じ
+        /// フラグメント)を保つため入力と厳密に一致させる必要がある。
+        /// そのため「まとめて読む → 並列に訂正 → 順番通りに書く」形にする。
+        /// バッチサイズはメモリ使用量(1リードあたり数百バイト)と
+        /// 並列化の粒度のバランスで決めた値。
+        /// </summary>
+        private const int CorrectionBatchSize = 20000;
+
         private static FileCorrectionStats CorrectFile(string inPath, string outPath, TrustedKmerIndex trustedIndex, int kmerLength)
         {
             var totalReads = 0;
             var correctedReads = 0;
             var totalCorrections = 0;
 
+            // CorrectRead は副作用のない純粋関数で、TrustedKmerIndex も
+            // Cutoff 後は読み取り専用なので、リード単位で安全に並列化できる。
+            // 実データ(35x, 800k ペア)で単一スレッドだと 40 分以上かかっており、
+            // パイプライン全体の律速になっていた。
+            var threadCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
+
             using var reader = new FastqReader(inPath);
             using var writer = new FastqWriter(outPath);
+
+            var ids = new string[CorrectionBatchSize];
+            var qualities = new string[CorrectionBatchSize];
+            var reads = new byte[CorrectionBatchSize][];
+            var results = new CorrectionResult[CorrectionBatchSize];
+
             while (reader.HasNext())
             {
-                var readData = reader.NextReadSimple();
-                totalReads++;
-                var result = CorrectRead(readData.SimpleRead!, trustedIndex, kmerLength);
-                if (result.CorrectionCount > 0)
+                var count = 0;
+                while (count < CorrectionBatchSize && reader.HasNext())
                 {
-                    correctedReads++;
-                    totalCorrections += result.CorrectionCount;
+                    var readData = reader.NextReadSimple();
+                    ids[count] = readData.ID;
+                    qualities[count] = readData.Quality;
+                    reads[count] = readData.SimpleRead!;
+                    count++;
                 }
-                var correctedSeq = string.Join(string.Empty, result.Read.Select(Util.ByteToBaseString));
-                writer.Write(readData.ID, correctedSeq, readData.Quality);
+                totalReads += count;
+
+                _ = Parallel.For(0, count, new ParallelOptions { MaxDegreeOfParallelism = threadCount }, i =>
+                {
+                    results[i] = CorrectRead(reads[i], trustedIndex, kmerLength);
+                });
+
+                for (var i = 0; i < count; i++)
+                {
+                    var result = results[i];
+                    if (result.CorrectionCount > 0)
+                    {
+                        correctedReads++;
+                        totalCorrections += result.CorrectionCount;
+                    }
+                    writer.Write(ids[i], string.Join(string.Empty, result.Read.Select(Util.ByteToBaseString)), qualities[i]);
+                }
             }
 
             return new FileCorrectionStats(totalReads, correctedReads, totalCorrections);
