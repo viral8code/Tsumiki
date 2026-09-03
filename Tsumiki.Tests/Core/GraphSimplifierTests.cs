@@ -88,10 +88,13 @@ namespace Tsumiki.Tests.Core
             foreach (var kmer in simplifiedFirstKmers)
             {
                 var u = unitigMaker.MakeUnitig(kmer);
-                if (seen.Add(u.Sequence) || seen.Add(Util.ReverseComprement(u.Sequence)))
+                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
                 {
-                    unitigs.Add(u.Sequence);
+                    continue;
                 }
+                _ = seen.Add(u.Sequence);
+                _ = seen.Add(Util.ReverseComprement(u.Sequence));
+                unitigs.Add(u.Sequence);
             }
 
             // tip自体はもう存在しないはずなので、tip由来の短い配列を含む
@@ -172,10 +175,13 @@ namespace Tsumiki.Tests.Core
             foreach (var kmer in simplifiedFirstKmers)
             {
                 var u = unitigMaker.MakeUnitig(kmer);
-                if (seen.Add(u.Sequence) || seen.Add(Util.ReverseComprement(u.Sequence)))
+                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
                 {
-                    unitigs.Add(u.Sequence);
+                    continue;
                 }
+                _ = seen.Add(u.Sequence);
+                _ = seen.Add(Util.ReverseComprement(u.Sequence));
+                unitigs.Add(u.Sequence);
             }
 
             // 低カバレッジ経路の分岐点を含む短い断片は残っていないはず
@@ -190,5 +196,77 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(unitigs, u => u == fullHigh || u == fullHighRevComp || u.Contains(fullHigh) || u.Contains(fullHighRevComp));
         }
 
+        /// <summary>
+        /// 2つの異なる経路が同じ配列へ合流する構造(reverse bubble)で、
+        /// 合流後の共有配列が複数のunitigに重複して現れないことを確認する。
+        /// unitigの定義は「内部の全節点が入次数1かつ出次数1の極大パス」であり、
+        /// 合流点(入次数2)からは別のunitigが始まらなければならない。
+        /// この規則が無いと、両方の経路のwalkが共有配列を走り抜けてしまい、
+        /// 同じ配列を2度出力する(実データでk-mer延べ数が実内容の1.43倍に
+        /// 膨らんでいた原因)。
+        /// </summary>
+        [Fact]
+        public void MakeUnitig_StopsAtMergePoint_SoSharedSuffixIsNotDuplicated()
+        {
+            const string prefixA = "ATATCACACCCAACCTTCAA";
+            const string prefixB = "ATGCCGTGCCCTAACGCCCT";
+            const string shared = "AATCCTGCGCTAGGGGTTGCAGCGACCAGA";
+            const int k = 8;
+
+            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            using var index = new TrustedKmerIndex(this._tempDir);
+
+            void AddAllKmers(string seq)
+            {
+                var bytes = ToBytes(seq);
+                for (var i = 0; i + k <= bytes.Length; i++)
+                {
+                    for (var rep = 0; rep < 10; rep++)
+                    {
+                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                    }
+                }
+            }
+
+            AddAllKmers(prefixA + shared);
+            AddAllKmers(prefixB + shared);
+
+            var firstKmers = index.Cutoff(bounds: 2);
+
+            var unitigMaker = new UnitigMaker(index);
+            HashSet<string> seen = [];
+            var unitigs = new List<string>();
+            foreach (var kmer in firstKmers)
+            {
+                var u = unitigMaker.MakeUnitig(kmer);
+                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
+                {
+                    continue;
+                }
+                _ = seen.Add(u.Sequence);
+                _ = seen.Add(Util.ReverseComprement(u.Sequence));
+                unitigs.Add(u.Sequence);
+            }
+
+            // 共有配列の先頭k-mer(またはその逆相補)が、全unitigを通じて
+            // 延べ1回しか現れないこと(=重複出力されていないこと)を確認する。
+            var sharedKmer = shared[..k];
+            var sharedKmerRc = Util.ReverseComprement(sharedKmer);
+            var occurrences = unitigs.Sum(u => CountOccurrences(u, sharedKmer) + CountOccurrences(u, sharedKmerRc));
+            Assert.Equal(1, occurrences);
+        }
+
+        private static int CountOccurrences(string haystack, string needle)
+        {
+            var count = 0;
+            for (var i = 0; i + needle.Length <= haystack.Length; i++)
+            {
+                if (string.CompareOrdinal(haystack, i, needle, 0, needle.Length) == 0)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
     }
 }
