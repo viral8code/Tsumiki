@@ -750,7 +750,7 @@ namespace Tsumiki.Core
                 }
             }
             Console.WriteLine($"[Debug] Exact de Bruijn unitig graph: {edgeCount} directed edge(s), {branchingVertices} branching vertex(es) out of {graph.VertexCount - 2}.");
-            Console.WriteLine($"kmerPath entries (raw read-support pairs found): {this.kmerPath.Count}");
+            
 
             // リード由来の支持数を逆鎖対称に集計する。辺 v→w と w^1→v^1 は
             // 同一の物理的な隣接を表すため、重みも同一でなければ順鎖側と
@@ -767,6 +767,32 @@ namespace Tsumiki.Core
                 support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
                 support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
             }
+
+            // ペアエンド由来の支持も同じ重みに足し込む。1本のリード(150bp)では
+            // それより長い反復配列を跨げず、分岐でどちらへ進むべきか決められないが、
+            // フラグメント(実データで約350bp)なら跨げる場合がある。
+            // pairPath のキーは (read1のヒット, read2のヒットの符号反転) なので、
+            // 既に「read1 の向きに揃えた from -> to」の形になっている。
+            //
+            // ここで参照されるのは、あくまで de Bruijn グラフ上に実在する辺
+            // (v の OutEdges に含まれる w)についての値だけである。フラグメント長
+            // ぶん離れているだけで隣接していない unitig 対も pairPath には入るが、
+            // それらは辺が無いため選択に影響しない。
+            var pairSupportAdded = 0;
+            foreach (var ((from, to), samples) in this.pairPath)
+            {
+                if (from == to)
+                {
+                    continue;
+                }
+                var v = VertexIndex(from);
+                var w = VertexIndex(to);
+                var count = (ulong)samples.Count;
+                support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
+                support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
+                pairSupportAdded++;
+            }
+            Console.WriteLine($"[Debug] Branch-selection weights: {this.kmerPath.Count} single-read adjacency pair(s) + {pairSupportAdded} paired-end pair(s).");
 
             // 単純バブルを潰してから辺を選ぶ。相互一意性を課す以上、
             // 再合流点の入次数が2以上のまま残っているとその経路全体が
