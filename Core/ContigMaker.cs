@@ -254,16 +254,50 @@ namespace Tsumiki.Core
                                 // 両方についてサンプルを集めておき、実際にどちらが
                                 // 多数派かを全ワーカー分集計してから判断する
                                 // (このメソッドの最後で多数派側だけを採用する)。
-                                var distance = Math.Abs(ToForwardFrame(hit1) - ToForwardFrame(hit2));
-                                if (distance > 0)
+                                // ToForwardFrame は「そのヒットの向きで見た既知長」を
+                                // 順鎖座標へ写した値、すなわち順鎖から見たリードの
+                                // 「内側の端」の座標になる。したがって2つの差は
+                                // フラグメント長ではなく、2リードに挟まれた内側の
+                                // 未読区間(inner distance)の長さである。
+                                //
+                                // 実データ(150bpリード・IS350ライブラリ)で
+                                // この差の中央値が58になり、リード長150bpより
+                                // 短いという物理的にありえない推定値になっていた。
+                                // 内側距離 d と真のフラグメント長 F の関係は
+                                // FR配置で F = d + len(read1) + len(read2) であり、
+                                // 58 + 150 + 150 = 358 でライブラリ名(IS350)と一致する。
+                                // ここで両リード長を足し戻し、以降の推定値が
+                                // 一貫して「フラグメント長」の単位になるようにする。
+                                if ((hit1.UnitigId > 0) == (hit2.UnitigId > 0))
                                 {
-                                    if ((hit1.UnitigId > 0) == (hit2.UnitigId > 0))
+                                    // 同じ向き同士(FF/RR相当)。両リードの内側の端は
+                                    // どちらも同じ側を向いているため、差は
+                                    // 「開始位置の差」に相当する。下流側リード1本分を
+                                    // 足すとフラグメント長になる。
+                                    var offsetDistance = Math.Abs(ToForwardFrame(hit1) - ToForwardFrame(hit2));
+                                    var fragment = offsetDistance + Math.Max(read1.Length, read2.Length);
+                                    if (fragment > 0)
                                     {
-                                        localSameOrientationSamples.Add(distance);
+                                        localSameOrientationSamples.Add(fragment);
                                     }
-                                    else
+                                }
+                                else
+                                {
+                                    // 互いに逆向き(FR相当、Illuminaペアエンドの通常配置)。
+                                    // 順鎖側ヒットのリードがフラグメントの左端、
+                                    // 逆鎖側ヒットのリードが右端を占める。
+                                    var hit1IsForward = hit1.UnitigId > 0;
+                                    var forwardEnd = ToForwardFrame(hit1IsForward ? hit1 : hit2);
+                                    var reverseStart = ToForwardFrame(hit1IsForward ? hit2 : hit1);
+                                    var forwardReadLength = hit1IsForward ? read1.Length : read2.Length;
+                                    var reverseReadLength = hit1IsForward ? read2.Length : read1.Length;
+
+                                    // フラグメントの左端 = 順鎖リードの開始位置、
+                                    // 右端 = 逆鎖リードの終了位置。
+                                    var fragment = (reverseStart + reverseReadLength) - (forwardEnd - forwardReadLength);
+                                    if (fragment > 0)
                                     {
-                                        localOppositeOrientationSamples.Add(distance);
+                                        localOppositeOrientationSamples.Add(fragment);
                                     }
                                 }
                             }
@@ -288,15 +322,28 @@ namespace Tsumiki.Core
                                 var remaining1 = hit1.RemainingLength;
                                 var remaining2 = FlipOffsetToRemaining(hit2);
 
+                                // 記録するのは「フラグメントのうち、2つのunitigの
+                                // 内側に既に見えている分の長さ」:
+                                //   read1の長さ + unitig1末端までの残り
+                                //   + unitig2先頭からの残り + read2の長さ
+                                // 未知区間(ギャップ)長を G とすると
+                                //   フラグメント長 = この値 + G
+                                // という関係が常に成り立つ(直接k-1で結合された
+                                // 場合は G = -(k-1))。
+                                //
+                                // 以前は read1/read2 の長さを含めない
+                                // remaining1 + remaining2 だけを記録していたため、
+                                // ここから逆算されるインサートサイズもギャップ長も
+                                // 両リード長ぶん(実データで300bp)ずれていた。
                                 var pairLocal = localPair;
-                                var totalRemaining = remaining1 + remaining2;
+                                var spannedLength = remaining1 + remaining2 + read1.Length + read2.Length;
                                 if (pairLocal.TryGetValue(pathKey, out var list))
                                 {
-                                    list.Add(totalRemaining);
+                                    list.Add(spannedLength);
                                 }
                                 else
                                 {
-                                    pairLocal[pathKey] = [totalRemaining];
+                                    pairLocal[pathKey] = [spannedLength];
                                 }
                             }
                         }
@@ -414,7 +461,7 @@ namespace Tsumiki.Core
                 // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
                 // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromMerges
                 // が出力)と比較することで、このバイアスの有無を確認できる。
-                Console.WriteLine($"[Info] Same-unitig sample median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; may be biased short if unitigs are shorter than the true insert size).");
+                Console.WriteLine($"[Info] Same-unitig fragment-length median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; read lengths added back to the inner distance, so this is a true fragment length. May still be biased short if unitigs are shorter than the true insert size).");
             }
         }
 
@@ -896,14 +943,19 @@ namespace Tsumiki.Core
                 var fromUnitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
                 var toUnitig = (next >> 1) * ((next & 1) == 0 ? 1 : -1);
 
-                if (!this.pairPath.TryGetValue((fromUnitig, toUnitig), out var totalRemainingSamples))
+                if (!this.pairPath.TryGetValue((fromUnitig, toUnitig), out var spannedLengthSamples))
                 {
                     continue;
                 }
 
-                foreach (var totalRemaining in totalRemainingSamples)
+                foreach (var spannedLength in spannedLengthSamples)
                 {
-                    var insertSize = totalRemaining + overlap;
+                    // 直接結合されたエッジでは2つのunitigがk-1塩基重なるので、
+                    // 未知区間の長さは G = -(k-1)。よって
+                    // フラグメント長 = spannedLength - (k-1)。
+                    // (以前は符号を逆にした + (k-1) を使っており、
+                    //  リード長ぶんのずれと合わせて推定値が大きく外れていた。)
+                    var insertSize = spannedLength - overlap;
                     if (insertSize > 0)
                     {
                         resolvedEdgeSamples.Add(insertSize);

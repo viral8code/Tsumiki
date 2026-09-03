@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -134,7 +134,31 @@ namespace Tsumiki.Core
                 Console.WriteLine($"[Info] {skippedUnplacedEdges} pair-end candidate(s) referenced unitigs that were not placed into any contig (e.g. too short) and were skipped.");
             }
 
+            // 辺 v→w と、その逆鎖側の双子 w^1→v^1 は同一の物理的な隣接を表す。
+            // ペアエンドの観測はどちらか一方の向きでしか記録されないため、
+            // 対称化しないと「順鎖側では十分な支持があるのに逆鎖側では
+            // 支持ゼロ」という状態になり、下の相互一意性の検査が常に落ちる。
+            // 双方に同じ支持(サンプルの和集合)を持たせる。
+            // 二重計上にはならない: ある観測は edgeMap 上のどちらか一方の
+            // キーにしか入っていないため、和を取ると各観測はちょうど1回ずつ数えられる。
+            Dictionary<(int, int), (ulong Count, List<int> GapSamples)> symmetric = [];
             foreach (var ((from, to), (count, gapSamples)) in edgeMap)
+            {
+                foreach (var key in new[] { (from, to), (to ^ 1, from ^ 1) })
+                {
+                    if (symmetric.TryGetValue(key, out var acc))
+                    {
+                        acc.GapSamples.AddRange(gapSamples);
+                        symmetric[key] = (acc.Count + count, acc.GapSamples);
+                    }
+                    else
+                    {
+                        symmetric[key] = (count, [.. gapSamples]);
+                    }
+                }
+            }
+
+            foreach (var ((from, to), (count, gapSamples)) in symmetric)
             {
                 adjacency[from].Add((to, count, gapSamples));
             }
@@ -151,18 +175,6 @@ namespace Tsumiki.Core
                 this.FixScaffoldEdge(adjacency, v, uniteThreshold, countThreshold, resolvedEdge);
             }
 
-            // enterCount: 各頂点を「唯一の行き先」として指している頂点の数。
-            // 2以上の場合、競合により WalkScaffold の visited 管理で
-            // 最初に到達した経路のみが実際に結合される。
-            var enterCount = new int[vertexCount];
-            for (var v = 2; v < vertexCount; v++)
-            {
-                if (resolvedEdge[v] is { } edge)
-                {
-                    enterCount[edge.To]++;
-                }
-            }
-
             var resolvedCount = 0;
             for (var v = 2; v < vertexCount; v++)
             {
@@ -171,12 +183,36 @@ namespace Tsumiki.Core
                     resolvedCount++;
                 }
             }
-            Console.WriteLine($"[Info] Scaffold edges resolved after thresholding: {resolvedCount}");
 
+            // 相互一意(mutual unique)な辺だけを採用する。v→w を繋いでよいのは
+            // 「v の唯一の行き先が w」であり、かつ「w の唯一の来訪元が v」で
+            // あるときに限る。後者は逆鎖対称性より resolvedEdge[w^1] が v^1 を
+            // 指すことと同値。これを課さないと、複数の contig が同じ次の contig を
+            // 指した場合に先着1本だけが繋がれ、残りは黙って千切れる
+            // (どれが正しいかの根拠がないまま1本を選ぶことになる)。
+            var candidateEdge = (( int To, int GapLength)?[])resolvedEdge.Clone();
+            var rejectedByReciprocity = 0;
+            for (var v = 2; v < vertexCount; v++)
+            {
+                if (candidateEdge[v] is not { } edge)
+                {
+                    continue;
+                }
+                var twin = edge.To ^ 1;
+                if (twin >= vertexCount || candidateEdge[twin] is not { } back || back.To != (v ^ 1))
+                {
+                    resolvedEdge[v] = null;
+                    rejectedByReciprocity++;
+                }
+            }
+            Console.WriteLine($"[Info] Scaffold edges resolved after thresholding: {resolvedCount}; {rejectedByReciprocity} rejected by the mutual-uniqueness check, {resolvedCount - rejectedByReciprocity} kept.");
+
+            // 「入ってくる結合を持たない」頂点が経路の始点。v への結合が
+            // 存在することは、逆鎖対称性より resolvedEdge[v^1] != null と同値。
             var startVertices = new List<int>();
             for (var v = 2; v < vertexCount; v++)
             {
-                if (this.contigSequences.ContainsKey(v >> 1) && enterCount[v] == 0)
+                if (this.contigSequences.ContainsKey(v >> 1) && (v ^ 1) < vertexCount && resolvedEdge[v ^ 1] == null)
                 {
                     startVertices.Add(v);
                 }
@@ -379,23 +415,26 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// あるエッジについて観測された「未読了長の合計」サンプル群から
-        /// 実際に挿入する N の数を決める。ギャップ長 = InsertSize - 未読了長合計、
-        /// という関係で個々のサンプルからギャップ長候補を計算し、その中央値を採用する。
+        /// あるエッジについて観測された「既に見えている長さ」のサンプル群から
+        /// 実際に挿入する N の数を決める。ContigMaker が記録する各サンプルは
+        /// 「read1長 + contig1末端までの残り + contig2先頭からの残り + read2長」
+        /// であり、フラグメント長 = サンプル + ギャップ長 という関係が成り立つ。
+        /// したがってギャップ長 = InsertSize - サンプル として個々の候補を計算し、
+        /// その中央値を採用する。
         /// 中央値が Consts.MinimumGapLength を下回る場合はその最小値に丸める
         /// (負の推定値や 0 になった場合でも、隣接している事実自体は
         /// 相応の証拠があるため、少なくとも1つの N でギャップを明示する)。
         /// </summary>
-        private int EstimateGapLength(List<int> totalRemainingLengthSamples)
+        private int EstimateGapLength(List<int> spannedLengthSamples)
         {
             var insertSize = this.EffectiveInsertSize ?? 0;
-            if (totalRemainingLengthSamples.Count == 0)
+            if (spannedLengthSamples.Count == 0)
             {
                 return Consts.MinimumGapLength;
             }
 
-            var gapEstimates = totalRemainingLengthSamples
-                .Select(remaining => insertSize - remaining)
+            var gapEstimates = spannedLengthSamples
+                .Select(spanned => insertSize - spanned)
                 .OrderBy(x => x)
                 .ToList();
 
