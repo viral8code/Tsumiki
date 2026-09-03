@@ -873,18 +873,28 @@ namespace Tsumiki.Core
 
             List<string> contigList = [];
             List<List<int>> walkOrders = [];
+            List<bool> circularFlags = [];
 
-            string Walk(int startVertex, List<int> walkOrder)
+            (string Sequence, bool IsCircular) Walk(int startVertex, List<int> walkOrder)
             {
                 var sb = new StringBuilder(unitigList[startVertex]);
                 walkOrder.Add(startVertex);
                 unitigVisited[startVertex >> 1] = true;
                 var cur = startVertex;
+                var isCircular = false;
                 while (true)
                 {
                     var next = merge[cur];
-                    if (next < 0 || unitigVisited[next >> 1])
+                    if (next < 0)
                     {
+                        break;
+                    }
+                    if (unitigVisited[next >> 1])
+                    {
+                        // 始点へ戻ってきた = 経路が閉じている。細菌の染色体と
+                        // プラスミドは環状なので、これは「その複製単位を
+                        // 完全に1周組み上げられた」ことを意味する。
+                        isCircular = next == startVertex;
                         break;
                     }
                     var seq = unitigList[next];
@@ -903,7 +913,28 @@ namespace Tsumiki.Core
                     walkOrder.Add(next);
                     cur = next;
                 }
-                return sb.ToString();
+
+                // 環状の場合、末尾 unitig は「始点 unitig と重なる k-1 塩基」を
+                // 自分の末尾に含んでいる。その k-1 塩基は配列の先頭にも現れて
+                // いるので、そのまま出すと円周が k-1 塩基ぶん長くなってしまう。
+                // 線状 contig の連結では次の unitig 側から重なりを取り除いて
+                // いるが、環状の場合は「次」が既に出力済みの始点なので、
+                // ここで末尾から取り除く。
+                if (isCircular && sb.Length > overlap)
+                {
+                    _ = sb.Remove(sb.Length - overlap, overlap);
+                }
+
+                return (sb.ToString(), isCircular);
+            }
+
+            void RunWalk(int startVertex)
+            {
+                List<int> walkOrder = [];
+                var (sequence, isCircular) = Walk(startVertex, walkOrder);
+                contigList.Add(sequence);
+                walkOrders.Add(walkOrder);
+                circularFlags.Add(isCircular);
             }
 
             // 結合グラフ上で「入ってくる結合を持たない」頂点が経路の始点。
@@ -914,9 +945,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                List<int> walkOrder = [];
-                contigList.Add(Walk(v, walkOrder));
-                walkOrders.Add(walkOrder);
+                RunWalk(v);
             }
 
             // 始点を持たない=循環している経路を拾う(環状ゲノム/プラスミド等)。
@@ -926,9 +955,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                List<int> walkOrder = [];
-                contigList.Add(Walk(v, walkOrder));
-                walkOrders.Add(walkOrder);
+                RunWalk(v);
             }
 
             using var writer = new FastaWriter(contigPath);
@@ -940,7 +967,10 @@ namespace Tsumiki.Core
                 var walkOrder = walkOrders[c];
                 var revContig = Util.ReverseComprement(contig);
                 var isReverseComplemented = string.CompareOrdinal(contig, revContig) > 0;
-                writer.Write($"NODE{ID}", isReverseComplemented ? revContig : contig);
+                // 環状に閉じた contig は、その複製単位(染色体・プラスミド)を
+                // 完全に組み上げられたことを意味するため、名前に明示する。
+                var name = circularFlags[c] ? $"NODE{ID}_circular" : $"NODE{ID}";
+                writer.Write(name, isReverseComplemented ? revContig : contig);
 
                 // walkOrder に含まれる各頂点(unitig の向き付きインデックス)を
                 // unitigPlacements に記録する。walkOrder は「実際に配列へ
@@ -963,6 +993,19 @@ namespace Tsumiki.Core
                 genomeSize += contig.Length;
             }
             Console.WriteLine("Total Length of contigs : " + genomeSize);
+
+            var circularContigs = Enumerable.Range(0, contigList.Count).Where(i => circularFlags[i]).ToList();
+            if (circularContigs.Count > 0)
+            {
+                var lengths = string.Join(", ", circularContigs.Select(i => $"{contigList[i].Length}bp"));
+                Console.WriteLine(
+                    $"[Info] {circularContigs.Count} contig(s) closed into a circle ({lengths}). " +
+                    "A closed circle means that replicon (chromosome or plasmid) was assembled end to end.");
+            }
+            else
+            {
+                Console.WriteLine("[Info] No contig closed into a circle; every replicon is still fragmented.");
+            }
         }
 
         /// <summary>
