@@ -30,20 +30,24 @@ namespace Tsumiki.Utility
         private CountingDB[]? _counters;
 
         // Cutoff() 実行後に確定する、カットオフを通過したk-merの厳密な集合
-        // (常に正規化(Canonical)された形で保持する)。以降のグラフ探索
-        // (IsFirstKmer/CountInEdges/UnitigMakerの伸長判定)はすべて
-        // この集合への厳密な所属判定のみで行う。
+        // (常に正規化(Canonical)された形で保持する)。値はそのk-merの
+        // 出現回数(カバレッジ)。GraphSimplifierの低カバレッジunitig除去
+        // (bubble/tip相当のアーティファクトを、厳密なトポロジー判定なしに
+        // カバレッジの相対的な低さで検出する)に使う。以降のグラフ探索
+        // (IsFirstKmer/CountInEdges/UnitigMakerの伸長判定)は、値を見ない
+        // 所属判定(ContainsKey相当)のみで行う。
         //
         // k<=32(実用上ほぼ常にこちら。デフォルトk=31)の場合は、KmerKeyの
-        // ulong[]割り当てを経由せず、2bitパックしたulong1個で直接HashSet<ulong>を
-        // 引く高速経路(_trustedKmersSmall)を使う。ErrorCorrector は1リードあたり
-        // 数百〜数千回 Contains を呼ぶため、KmerKey経由(構築のたびに
-        // ulong[]・byte[]を複数回ヒープ確保する)のオーバーヘッドが無視できず、
-        // 実データ規模で致命的に遅くなることが実測で判明したため導入した。
-        // k>32の場合のみ、従来通り厳密だが低速な HashSet&lt;KmerKey&gt; にフォールバックする。
-        private HashSet<KmerKey>? _trustedKmers;
+        // ulong[]割り当てを経由せず、2bitパックしたulong1個で直接
+        // Dictionary<ulong,ulong>を引く高速経路(_trustedKmersSmall)を使う。
+        // ErrorCorrector は1リードあたり数百〜数千回 Contains を呼ぶため、
+        // KmerKey経由(構築のたびにulong[]・byte[]を複数回ヒープ確保する)の
+        // オーバーヘッドが無視できず、実データ規模で致命的に遅くなることが
+        // 実測で判明したため導入した。k>32の場合のみ、従来通り厳密だが
+        // 低速な Dictionary&lt;KmerKey,ulong&gt; にフォールバックする。
+        private Dictionary<KmerKey, ulong>? _trustedKmers;
 
-        private HashSet<ulong>? _trustedKmersSmall;
+        private Dictionary<ulong, ulong>? _trustedKmersSmall;
 
         private static bool UseSmallPath => ConfigurationManager.Arguments.Kmer <= 32;
 
@@ -83,8 +87,21 @@ namespace Tsumiki.Utility
         public bool Contains(Span<byte> kmer)
         {
             return UseSmallPath
-                ? this._trustedKmersSmall!.Contains(CanonicalSmall(kmer))
-                : this._trustedKmers!.Contains(new KmerKey(kmer).Canonical());
+                ? this._trustedKmersSmall!.ContainsKey(CanonicalSmall(kmer))
+                : this._trustedKmers!.ContainsKey(new KmerKey(kmer).Canonical());
+        }
+
+        /// <summary>
+        /// kmerの出現回数(カバレッジ)を返す。信頼できるk-mer集合に
+        /// 含まれない場合は0を返す。
+        /// </summary>
+        public ulong GetCoverage(Span<byte> kmer)
+        {
+            if (UseSmallPath)
+            {
+                return this._trustedKmersSmall!.GetValueOrDefault(CanonicalSmall(kmer), 0UL);
+            }
+            return this._trustedKmers!.GetValueOrDefault(new KmerKey(kmer).Canonical(), 0UL);
         }
 
         /// <summary>
@@ -148,14 +165,14 @@ namespace Tsumiki.Utility
             var kmerLength = ConfigurationManager.Arguments.Kmer;
             if (UseSmallPath)
             {
-                foreach (var packed in this._trustedKmersSmall!)
+                foreach (var packed in this._trustedKmersSmall!.Keys)
                 {
                     yield return UnpackSmall(packed, kmerLength);
                 }
             }
             else
             {
-                foreach (var key in this._trustedKmers!)
+                foreach (var key in this._trustedKmers!.Keys)
                 {
                     yield return key.ToBytes(kmerLength);
                 }
@@ -183,6 +200,16 @@ namespace Tsumiki.Utility
         /// 「入次数が1でない」k-merをすべて再検出する。ファイルの読み直しではなく
         /// インメモリの集合をそのまま使うため、tip clippingで集合を縮小した後の
         /// 再構築にも安価に使える。
+        ///
+        /// EnumerateTrustedKmersは各座位ごとに正規化された(canonicalな)
+        /// 向きのk-merを1つだけ返すが、IsFirstKmerは向き依存(そのk-mer自身の
+        /// 入次数を見る)の判定である。ある座位が「順鎖では分岐点の直後」でも
+        /// 「逆鎖(=canonical側)では分岐点そのものではない」ことがありえるため、
+        /// canonical側だけを調べると本来開始点であるべき向きを見逃す
+        /// (小さなbubbleのテストケースで実際に見逃しを確認: 分岐解消後も
+        /// 低カバレッジ側の枝が除去されないままになっていた)。
+        /// そのため、各座位について両方の向き(kmerとその逆相補)を
+        /// 個別に判定する。
         /// </summary>
         public List<byte[]> FindFirstKmers()
         {
@@ -192,6 +219,12 @@ namespace Tsumiki.Utility
                 if (this.IsFirstKmer(kmer))
                 {
                     kmers.Add(kmer);
+                }
+
+                var revComp = Util.ReverseComprement(kmer).ToArray();
+                if (this.IsFirstKmer(revComp))
+                {
+                    kmers.Add(revComp);
                 }
             }
             return kmers;
@@ -213,8 +246,8 @@ namespace Tsumiki.Utility
 
             var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             var useSmallPath = UseSmallPath;
-            var trustedKmers = useSmallPath ? null : new HashSet<KmerKey>();
-            var trustedKmersSmall = useSmallPath ? new HashSet<ulong>() : null;
+            var trustedKmers = useSmallPath ? null : new Dictionary<KmerKey, ulong>();
+            var trustedKmersSmall = useSmallPath ? new Dictionary<ulong, ulong>() : null;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 ulong addedKmer = 0;
@@ -239,13 +272,20 @@ namespace Tsumiki.Utility
                             bytes.AddRange(Util.ByteToNucleotideSequence(b));
                         }
                         var kmer = CollectionsMarshal.AsSpan(bytes)[..ConfigurationManager.Arguments.Kmer];
+                        // カウント段階(ProcessRead)では正規化前の順鎖/逆鎖を
+                        // 別々のキーとしてカウントしているため、同じ正規化k-merに
+                        // 対応する2エントリ(順鎖側・逆鎖側)が別々にここへ来うる。
+                        // 上書きではなく加算することで、両ストランド分の
+                        // カバレッジを正しく合算する。
                         if (useSmallPath)
                         {
-                            _ = trustedKmersSmall!.Add(CanonicalSmall(kmer));
+                            var canonical = CanonicalSmall(kmer);
+                            trustedKmersSmall![canonical] = trustedKmersSmall.GetValueOrDefault(canonical, 0UL) + count;
                         }
                         else
                         {
-                            _ = trustedKmers!.Add(new KmerKey(kmer).Canonical());
+                            var canonical = new KmerKey(kmer).Canonical();
+                            trustedKmers![canonical] = trustedKmers.GetValueOrDefault(canonical, 0UL) + count;
                         }
                     }
                 }

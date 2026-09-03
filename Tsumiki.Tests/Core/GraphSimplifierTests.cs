@@ -128,5 +128,67 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(before, after);
             Assert.NotEmpty(firstKmers);
         }
+
+        [Fact]
+        public void ClipTips_RemovesLowCoverageBubbleBranch_KeepsHighCoverageBranch()
+        {
+            // 分岐点(commonBefore末尾)から1塩基だけ異なる('A' vs 'C')経路B/Cに
+            // 分かれ、その後sharedAfterへ合流するSNP様の単純なbubble構造。
+            // Python(scripts外、事前検証)でk=8内に重複が生じないことを確認済み。
+            const string commonBefore = "GAAGTTGCCGTACTAAATTA"; // 20bp
+            const string sharedAfter = "TGACAGCCGGGGATCTTCCC"; // 20bp
+            const string seqHighCoverage = commonBefore + "A" + sharedAfter; // 分岐点でA
+            const string seqLowCoverage = commonBefore + "C" + sharedAfter; // 分岐点でC(エラー相当)
+            const int k = 8;
+
+            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            using var index = new TrustedKmerIndex(this._tempDir);
+
+            void AddAllKmers(string seq, int repetitions)
+            {
+                var bytes = ToBytes(seq);
+                for (var i = 0; i + k <= bytes.Length; i++)
+                {
+                    for (var rep = 0; rep < repetitions; rep++)
+                    {
+                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                    }
+                }
+            }
+
+            // 高カバレッジ経路(真のゲノム由来相当)は20回、低カバレッジ経路
+            // (エラー由来相当)は3回登録する(カットオフ2は超えるが、
+            // baseline(高カバレッジ経路水準)に比べて著しく低い)。
+            AddAllKmers(seqHighCoverage, repetitions: 20);
+            AddAllKmers(seqLowCoverage, repetitions: 3);
+
+            _ = index.Cutoff(bounds: 2);
+
+            var simplifiedFirstKmers = GraphSimplifier.ClipTips(index, k, tipLengthThreshold: k * 2);
+
+            var unitigMaker = new UnitigMaker(index);
+            HashSet<string> seen = [];
+            var unitigs = new List<string>();
+            foreach (var kmer in simplifiedFirstKmers)
+            {
+                var u = unitigMaker.MakeUnitig(kmer);
+                if (seen.Add(u.Sequence) || seen.Add(Util.ReverseComprement(u.Sequence)))
+                {
+                    unitigs.Add(u.Sequence);
+                }
+            }
+
+            // 低カバレッジ経路の分岐点を含む短い断片は残っていないはず
+            // (再構築された配列のいずれにも "C" + sharedAfter の先頭部分は
+            // 現れない = 低カバレッジ経路は除去された)。
+            Assert.DoesNotContain(unitigs, u => u.Contains('C' + sharedAfter[..(k - 1)]));
+
+            // 高カバレッジ経路(commonBefore + "A" + sharedAfter の全体、または
+            // その逆相補)を含む、ほぼ全長のunitigが存在するはず。
+            var fullHigh = seqHighCoverage;
+            var fullHighRevComp = Util.ReverseComprement(fullHigh);
+            Assert.Contains(unitigs, u => u == fullHigh || u == fullHighRevComp || u.Contains(fullHigh) || u.Contains(fullHighRevComp));
+        }
+
     }
 }

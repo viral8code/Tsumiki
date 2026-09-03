@@ -72,6 +72,46 @@ namespace Tsumiki.Tests.Utility
             Assert.False(index.Contains(belowThreshold));
         }
 
+        [Fact]
+        public void GetCoverage_SumsForwardAndReverseStrandCounts()
+        {
+            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+
+            using var index = new TrustedKmerIndex(this._tempDir);
+            var forward = ToBytes("ACGTACGT");
+            var revComp = ToBytes(Util.ReverseComprement("ACGTACGT"));
+
+            // 順鎖を3回、逆鎖を2回登録する。カウント段階では別キー扱いだが、
+            // カットオフ後の正規化されたエントリでは合算されているはず。
+            for (var i = 0; i < 3; i++)
+            {
+                index.Add(forward.AsSpan(), workerIndex: 0);
+            }
+            for (var i = 0; i < 2; i++)
+            {
+                index.Add(revComp.AsSpan(), workerIndex: 0);
+            }
+
+            _ = index.Cutoff(bounds: 2);
+
+            Assert.Equal(5UL, index.GetCoverage(forward));
+            Assert.Equal(5UL, index.GetCoverage(revComp)); // 正規化されるため同じ値
+        }
+
+        [Fact]
+        public void GetCoverage_ReturnsZeroForAbsentKmer()
+        {
+            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+
+            using var index = new TrustedKmerIndex(this._tempDir);
+            index.Add(ToBytes("AAAAAAAA").AsSpan(), workerIndex: 0);
+            index.Add(ToBytes("AAAAAAAA").AsSpan(), workerIndex: 0);
+
+            _ = index.Cutoff(bounds: 2);
+
+            Assert.Equal(0UL, index.GetCoverage(ToBytes("TTTTGGGG")));
+        }
+
         /// <summary>
         /// k=33(k&lt;=32の高速経路が使えない)でも、従来通り厳密な
         /// HashSet&lt;KmerKey&gt;経路で正しく動作することを確認する回帰テスト。
