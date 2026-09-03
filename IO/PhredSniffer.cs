@@ -1,9 +1,11 @@
+using Tsumiki.Model;
+
 namespace Tsumiki.IO
 {
     /// <summary>
-    /// FASTQ のクオリティ文字列から、現在有効な Phred オフセット(33 or 64)が
-    /// もっともらしいかどうかを推測する。オフセットの自動切り替えは行わず、
-    /// 怪しい場合に警告を出すだけに留める(判断はユーザーに委ねる)。
+    /// FASTQ のクオリティ文字列から Phred オフセット(33 or 64)を推定する。
+    /// -p が明示指定されていない場合に限り推定値を自動採用し、明示指定されて
+    /// いる場合は(ユーザーの判断を尊重して)警告のみに留める。
     /// </summary>
     internal readonly record struct PhredSample(int MinAscii, int MaxAscii, int SampledReads, int SampledChars)
     {
@@ -88,6 +90,91 @@ namespace Tsumiki.IO
             }
 
             return issues.Count == 0 ? null : string.Join(" ", issues);
+        }
+
+        /// <summary>
+        /// サンプルから、どちらのオフセットが妥当かを判定する。
+        /// 片方だけが「Q が負にならず、かつ現実的な上限を超えない」を満たす場合に
+        /// そのオフセットを返す。両方満たす/両方満たさない場合は判別できないため
+        /// null を返す。
+        /// </summary>
+        public static int? InferOffset(PhredSample sample)
+        {
+            if (sample.SampledChars == 0)
+            {
+                return null;
+            }
+
+            bool IsPlausible(int offset)
+            {
+                return sample.MinAscii - offset >= 0 && sample.MaxAscii - offset <= PlausibleMaxQ;
+            }
+
+            var plausible33 = IsPlausible(33);
+            var plausible64 = IsPlausible(64);
+            if (plausible33 == plausible64)
+            {
+                return null;
+            }
+            return plausible33 ? 33 : 64;
+        }
+
+        /// <summary>
+        /// リードファイルをサンプリングして Phred オフセットを推定し、
+        /// -p が明示指定されていなければ推定値を param に適用する。
+        ///
+        /// 自動適用する理由: クオリティによる k-mer 除外は
+        /// 「quality - Phred - QualityCutoff が負なら捨てる」で判定するため、
+        /// 実際は Phred64 のデータを Phred33 として読むと、すべての塩基のスコアが
+        /// 31 以上に見えてしまい品質フィルタが事実上まったく効かなくなる
+        /// (実データで ASCII 64 = Q0 の塩基がそのまま k-mer に使われていた)。
+        /// 警告を出すだけでは静かに品質が落ちるため、判別がついた場合は
+        /// 自動で正しい側に寄せる。
+        ///
+        /// read1 と read2 で推定結果が食い違う場合は自信が持てないため、
+        /// 自動適用せず警告のみに留める。
+        /// </summary>
+        public static void ResolveOffset(Parameters param, string readPath1, string? readPath2, int maxReadsToSample = 20_000)
+        {
+            var sample1 = Sample(SampleQualityLines(readPath1, maxReadsToSample), maxReadsToSample);
+            var inferred = InferOffset(sample1);
+
+            if (!string.IsNullOrWhiteSpace(readPath2))
+            {
+                var sample2 = Sample(SampleQualityLines(readPath2, maxReadsToSample), maxReadsToSample);
+                var inferred2 = InferOffset(sample2);
+                if (inferred != inferred2)
+                {
+                    Console.WriteLine(
+                        "[Warning] Phred offset inference disagreed between the two read files " +
+                        $"(read1 -> {inferred?.ToString() ?? "undetermined"}, read2 -> {inferred2?.ToString() ?? "undetermined"}). " +
+                        $"Keeping -p {param.Phred} as-is.");
+                    inferred = null;
+                }
+            }
+
+            if (inferred is { } offset && offset != param.Phred)
+            {
+                if (param.IsPhredExplicitlySet)
+                {
+                    Console.WriteLine(
+                        $"[Warning] Quality strings look like Phred{offset}, but -p {param.Phred} was given explicitly. " +
+                        $"Honouring the explicit value; re-run with -p {offset} if the data really is Phred{offset}.");
+                }
+                else
+                {
+                    param.SetInferredPhred(offset);
+                    Console.WriteLine(
+                        $"[Info] Phred offset auto-detected as {offset} from the quality strings " +
+                        $"(observed ASCII range [{sample1.MinAscii}, {sample1.MaxAscii}]). Pass -p explicitly to override.");
+                }
+            }
+
+            WarnIfImplausible(readPath1, param.Phred, maxReadsToSample);
+            if (!string.IsNullOrWhiteSpace(readPath2))
+            {
+                WarnIfImplausible(readPath2!, param.Phred, maxReadsToSample);
+            }
         }
 
         /// <summary>

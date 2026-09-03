@@ -48,11 +48,7 @@ namespace Tsumiki
 
             Console.WriteLine(param);
 
-            PhredSniffer.WarnIfImplausible(param.ReadPath1, param.Phred);
-            if (!string.IsNullOrWhiteSpace(param.ReadPath2))
-            {
-                PhredSniffer.WarnIfImplausible(param.ReadPath2, param.Phred);
-            }
+            PhredSniffer.ResolveOffset(param, param.ReadPath1, param.ReadPath2);
 
             Logger.PrintTimeStamp();
 

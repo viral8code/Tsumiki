@@ -60,6 +60,13 @@ namespace Tsumiki.Model
             }
         }
 
+        /// <summary>
+        /// -p が明示的に指定されたかどうか。指定されていない場合に限り、
+        /// FASTQ のクオリティ文字列から推定したオフセットを自動採用する。
+        /// 明示指定はユーザーの判断なので、推定結果で上書きはしない。
+        /// </summary>
+        public bool IsPhredExplicitlySet { get; private set; }
+
         private int _phred = Consts.DefaultPhredValue;
         public int Phred
         {
@@ -71,7 +78,19 @@ namespace Tsumiki.Model
                     throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.AllowedPhredValue)}");
                 }
                 this._phred = value;
+                this.IsPhredExplicitlySet = true;
             }
+        }
+
+        /// <summary>
+        /// 推定結果から Phred オフセットを設定する。IsPhredExplicitlySet は立てないため、
+        /// 「ユーザーが明示指定した」扱いにはならない。
+        /// </summary>
+        public void SetInferredPhred(int value)
+        {
+            var wasExplicit = this.IsPhredExplicitlySet;
+            this.Phred = value;
+            this.IsPhredExplicitlySet = wasExplicit;
         }
 
         public int QualityCutoff { get; set; } = Consts.DefaultQualityCutoffValue;

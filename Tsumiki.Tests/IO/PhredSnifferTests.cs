@@ -98,5 +98,46 @@ namespace Tsumiki.Tests.IO
 
             Assert.Null(PhredSniffer.BuildWarning(sample, 33));
         }
+
+        /// <summary>
+        /// 実データ(Achromobacter の IS350 ライブラリ)で観測された ASCII 範囲
+        /// [64, 104]。Phred33 と解釈すると Q[31, 71] となり上限がありえないが、
+        /// Phred64 なら Q[0, 40] で完全に妥当。この判別ができないと、
+        /// 「quality - Phred - QualityCutoff が負なら捨てる」という品質フィルタが
+        /// 事実上まったく効かなくなる(Q0 の塩基が Q31 に見えるため)。
+        /// </summary>
+        [Fact]
+        public void InferOffset_RealWorldPhred64Range_InfersPhred64()
+        {
+            var sample = PhredSniffer.Sample([new string((char)64, 4) + new string((char)104, 4)]);
+
+            Assert.Equal(64, PhredSniffer.InferOffset(sample));
+        }
+
+        [Fact]
+        public void InferOffset_TypicalPhred33Range_InfersPhred33()
+        {
+            // '!'(ASCII 33, Q0)から 'I'(ASCII 73, Q40)までの一般的な Phred33 範囲。
+            // Phred64 と解釈すると Q が負になるため、33 side のみが妥当。
+            var sample = PhredSniffer.Sample(["!!!!IIII"]);
+
+            Assert.Equal(33, PhredSniffer.InferOffset(sample));
+        }
+
+        [Fact]
+        public void InferOffset_AmbiguousRange_ReturnsNull()
+        {
+            // ASCII 66-70 は Phred33 なら Q[33,37]、Phred64 なら Q[2,6]。
+            // どちらの解釈でも現実的な範囲に収まるため判別できない。
+            var sample = PhredSniffer.Sample(["BCDEF"]);
+
+            Assert.Null(PhredSniffer.InferOffset(sample));
+        }
+
+        [Fact]
+        public void InferOffset_EmptySample_ReturnsNull()
+        {
+            Assert.Null(PhredSniffer.InferOffset(PhredSniffer.Sample([])));
+        }
     }
 }
