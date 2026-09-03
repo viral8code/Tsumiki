@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 
@@ -142,6 +142,91 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(2, graph.OutEdges[aForward].Count);
             Assert.Contains(ContigMaker.VertexIndex(2), graph.OutEdges[aForward]);
             Assert.Contains(ContigMaker.VertexIndex(3), graph.OutEdges[aForward]);
+        }
+
+        /// <summary>
+        /// 単純バブル(u から2本に分かれ、それぞれ1本の unitig を経て
+        /// 同じ w へ再合流する)で、リード支持の高い枝だけが経路として
+        /// 残ることを確認する。
+        ///
+        /// 結合の採用条件を相互一意にした結果、再合流点 w の入次数が
+        /// 2 のままだと u から w へ至る経路が一切結合されなくなるため、
+        /// この処理が無いとバブルのたびに contig が千切れる。
+        /// </summary>
+        [Fact]
+        public void PopSimpleBubbles_KeepsTheBestSupportedBranch_AndRemovesTheOtherSymmetrically()
+        {
+            const int k = 8;
+            // k=8 で全 unitig を通じて重複する正規化 k-mer が無いことを確認済みの構成。
+            const string u = "GCTAAAGACAATTACGCA";
+            const string b1 = "TTACGCAAGGATCCTGCACGT"; // u の末尾7塩基 + 'A' で始まり、w の先頭7塩基で終わる
+            const string b2 = "TTACGCACTTAGCATGCACGT"; // 分岐点の1塩基だけ b1 と異なる同長の枝
+            const string w = "TGCACGTAAGGCTTACCA";
+
+            var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
+            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+
+            var uV = ContigMaker.VertexIndex(1);
+            var b1V = ContigMaker.VertexIndex(2);
+            var b2V = ContigMaker.VertexIndex(3);
+            var wV = ContigMaker.VertexIndex(4);
+
+            // 前提: バブル構造が実際に構築されている。
+            Assert.Equal(2, graph.OutEdges[uV].Count);
+            Assert.Equal(2, graph.InDegree(wV));
+
+            // b1 側にだけリード支持を与える。
+            Dictionary<(int, int), ulong> support = new()
+            {
+                [(uV, b1V)] = 40,
+                [(uV, b2V)] = 3,
+            };
+
+            var popped = graph.PopSimpleBubbles(unitigList, support);
+
+            Assert.Equal(1, popped);
+            Assert.Equal([b1V], graph.OutEdges[uV]);
+            Assert.Equal([wV], graph.OutEdges[b1V]);
+            Assert.Empty(graph.OutEdges[b2V]);
+
+            // 逆鎖側も対称に取り除かれていること(片側だけ消すと順鎖と逆鎖で
+            // 別々の経路が組まれてしまう)。
+            Assert.Equal(1, graph.InDegree(wV));
+            Assert.DoesNotContain(b2V ^ 1, graph.OutEdges[wV ^ 1]);
+            Assert.DoesNotContain(uV ^ 1, graph.OutEdges[b2V ^ 1]);
+        }
+
+        /// <summary>
+        /// 長さが大きく異なる分岐は、同じ領域の別表現(バブル)ではなく
+        /// 本物の分岐(反復配列の出入口など)である可能性が高いため、
+        /// 支持の低い側であっても勝手に経路から外してはならない。
+        /// </summary>
+        [Fact]
+        public void PopSimpleBubbles_LeavesBranchesOfVeryDifferentLengthsAlone()
+        {
+            const int k = 8;
+            const string u = "GCTAAAGACAATTACGCA";
+            const string b1 = "TTACGCAAGGATCCTGCACGT";
+            // b2 は b1 より大幅に長い(長さ比が既定の閾値1.5を超える)。
+            const string b2 = "TTACGCACTTAGCAGGTCCAATTGGACCAATGCACGT";
+            const string w = "TGCACGTAAGGCTTACCA";
+
+            var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
+            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+
+            var uV = ContigMaker.VertexIndex(1);
+            Assert.Equal(2, graph.OutEdges[uV].Count);
+
+            Dictionary<(int, int), ulong> support = new()
+            {
+                [(uV, ContigMaker.VertexIndex(2))] = 40,
+                [(uV, ContigMaker.VertexIndex(3))] = 3,
+            };
+
+            var popped = graph.PopSimpleBubbles(unitigList, support);
+
+            Assert.Equal(0, popped);
+            Assert.Equal(2, graph.OutEdges[uV].Count);
         }
 
         [Fact]

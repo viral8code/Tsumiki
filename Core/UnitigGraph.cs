@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Core
@@ -124,6 +124,113 @@ namespace Tsumiki.Core
             }
 
             return new UnitigGraph(outEdges);
+        }
+
+        /// <summary>
+        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして取り除く。
+        /// 片方だけ消すとグラフの逆鎖対称性が崩れ、順鎖側と逆鎖側で
+        /// 別々の経路が組まれてしまう。
+        /// </summary>
+        private void RemoveEdgePair(int from, int to)
+        {
+            _ = this.OutEdges[from].Remove(to);
+            _ = this.OutEdges[to ^ 1].Remove(from ^ 1);
+        }
+
+        /// <summary>
+        /// 単純バブル(ある頂点 u から分かれた複数の枝が、それぞれ1本の
+        /// unitig を経て同じ頂点 w へ再合流する構造)を検出し、
+        /// リード支持が最も高い枝だけを残して他の枝の辺を取り除く。
+        ///
+        /// これが必要な理由: 結合の採用条件を相互一意(vの唯一の行き先がw、
+        /// かつwの唯一の来訪元がv)にしたため、バブルがあると再合流点 w の
+        /// 入次数が2以上のままになり、u から w へ至る経路全体が一切
+        /// 結合されなくなる。バブルは半数体である細菌ゲノムでは本来
+        /// 存在しないはず(シーケンスエラーか株レベルの変異)なので、
+        /// 支持の低い枝を経路から外すのが妥当。
+        ///
+        /// ただし敗者の unitig 配列そのものは削除しない。実配列を消すのは
+        /// 誤りだった場合の損害が大きく、辺だけ外せば孤立した単独 contig
+        /// として出力されるため内容は失われない。
+        ///
+        /// 長さが大きく異なる枝は「バブル」ではなく本物の分岐(反復配列の
+        /// 出入口など)である可能性が高いため、長さ比が
+        /// maxLengthRatio を超える組は対象外とする。
+        /// </summary>
+        /// <returns>取り除いた枝の数。</returns>
+        public int PopSimpleBubbles(
+            List<string> unitigList,
+            IReadOnlyDictionary<(int, int), ulong> support,
+            double maxLengthRatio = 1.5)
+        {
+            var popped = 0;
+
+            for (var u = 2; u < this.VertexCount; u++)
+            {
+                var outs = this.OutEdges[u];
+                if (outs.Count < 2)
+                {
+                    continue;
+                }
+
+                // 「1本の unitig を経て同じ頂点へ再合流する」枝を、
+                // その再合流先ごとにまとめる。
+                Dictionary<int, List<int>> byMergePoint = [];
+                foreach (var branch in outs)
+                {
+                    // 枝は u からのみ入られ、1箇所へのみ出て行く単純な中継でなければならない。
+                    if (this.OutEdges[branch].Count != 1 || this.InDegree(branch) != 1)
+                    {
+                        continue;
+                    }
+                    var mergePoint = this.OutEdges[branch][0];
+                    if (mergePoint == u || (mergePoint >> 1) == (branch >> 1))
+                    {
+                        continue;
+                    }
+                    if (!byMergePoint.TryGetValue(mergePoint, out var list))
+                    {
+                        list = [];
+                        byMergePoint[mergePoint] = list;
+                    }
+                    list.Add(branch);
+                }
+
+                foreach (var (mergePoint, branches) in byMergePoint)
+                {
+                    if (branches.Count < 2)
+                    {
+                        continue;
+                    }
+
+                    var shortest = branches.Min(b => unitigList[b].Length);
+                    var longest = branches.Max(b => unitigList[b].Length);
+                    if (shortest <= 0 || (double)longest / shortest > maxLengthRatio)
+                    {
+                        // 長さが揃っていない = 同じ領域の別表現ではなく
+                        // 本物の分岐の可能性が高い。触らない。
+                        continue;
+                    }
+
+                    var winner = branches
+                        .OrderByDescending(b => support.GetValueOrDefault((u, b)))
+                        .ThenByDescending(b => unitigList[b].Length)
+                        .First();
+
+                    foreach (var loser in branches)
+                    {
+                        if (loser == winner)
+                        {
+                            continue;
+                        }
+                        this.RemoveEdgePair(u, loser);
+                        this.RemoveEdgePair(loser, mergePoint);
+                        popped++;
+                    }
+                }
+            }
+
+            return popped;
         }
     }
 }

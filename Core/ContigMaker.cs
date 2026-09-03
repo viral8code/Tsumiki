@@ -461,6 +461,7 @@ namespace Tsumiki.Core
                 // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
                 // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromMerges
                 // が出力)と比較することで、このバイアスの有無を確認できる。
+                Console.WriteLine($"[Info] Same-unitig fragment-length distribution: {FormatDistribution(sameUnitigSamples)}.");
                 Console.WriteLine($"[Info] Same-unitig fragment-length median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; read lengths added back to the inner distance, so this is a true fragment length. May still be biased short if unitigs are shorter than the true insert size).");
             }
         }
@@ -470,6 +471,20 @@ namespace Tsumiki.Core
             var sorted = values.OrderBy(x => x).ToList();
             var mid = sorted.Count / 2;
             return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+        }
+
+        /// <summary>
+        /// フラグメント長分布の分位点を要約する。中央値だけでは
+        /// 「このライブラリがどれだけの長さのギャップを跨げるか」が分からない。
+        /// リード長の2倍を超える分だけがスキャフォールディングで橋渡しできる
+        /// 未知区間の長さなので、分布の裾(特に上側)が実際の橋渡し能力を決める。
+        /// </summary>
+        private static string FormatDistribution(List<int> values)
+        {
+            var sorted = values.OrderBy(x => x).ToList();
+            int At(double q) => sorted[Math.Clamp((int)(q * (sorted.Count - 1)), 0, sorted.Count - 1)];
+            return $"p1={At(0.01)}, p10={At(0.10)}, p25={At(0.25)}, p50={At(0.50)}, " +
+                $"p75={At(0.75)}, p90={At(0.90)}, p99={At(0.99)}, max={sorted[^1]}";
         }
 
         /// <summary>
@@ -751,6 +766,15 @@ namespace Tsumiki.Core
                 var w = VertexIndex(to);
                 support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
                 support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
+            }
+
+            // 単純バブルを潰してから辺を選ぶ。相互一意性を課す以上、
+            // 再合流点の入次数が2以上のまま残っているとその経路全体が
+            // 結合されなくなるため、先に枝を1本に絞っておく必要がある。
+            var poppedBubbles = graph.PopSimpleBubbles(unitigList, support);
+            if (poppedBubbles > 0)
+            {
+                Console.WriteLine($"[Debug] Popped {poppedBubbles} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");
             }
 
             // 各頂点について「出て行く先」を高々 1 つに絞る。
