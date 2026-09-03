@@ -137,6 +137,125 @@ namespace Tsumiki.Core
             _ = this.OutEdges[to ^ 1].Remove(from ^ 1);
         }
 
+        /// <summary>辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして追加する。</summary>
+        private void AddEdgePair(int from, int to)
+        {
+            this.OutEdges[from].Add(to);
+            this.OutEdges[to ^ 1].Add(from ^ 1);
+        }
+
+        /// <summary>
+        /// 短い反復配列を、ペアエンドの証拠に基づいて「通り抜ける経路ごとに複製」して
+        /// 解きほぐす(repeat resolution)。
+        ///
+        /// なぜ必要か: 反復配列 R がゲノム中に2回現れ、それぞれ a→R→c と b→R→d と
+        /// いう文脈を持つ場合、de Bruijn グラフ上では R は1個の頂点に潰れ、
+        /// 入次数2・出次数2になる。R の内部から読まれたリードはどちらのコピー由来か
+        /// 区別できないため、R→c と R→d はどちらも同程度の支持を得てしまい、
+        /// リード支持による分岐解決では原理的に解けない(比率が5割前後になり、
+        /// 「根拠がないので繋がない」と正しく判断されて経路が途切れる)。
+        ///
+        /// 解ける唯一の手がかりは「R を丸ごと跨いだフラグメント」である。
+        /// 片端が a に、もう片端が c に載ったペアが多数あり、かつ a-d / b-c の
+        /// 組み合わせには乏しいなら、対応は (a,c) と (b,d) だと判断できる。
+        ///
+        /// 判断がついたら R を複製し、片方の経路を複製側へ付け替える。こうすると
+        /// どちらの経路も入次数1・出次数1の一本道になり、既存の相互一意性の検査と
+        /// walk がそのまま両方を伸ばせる。複製によって R の配列は2回出力されるが、
+        /// これは「実際にゲノム中に2回現れる」ことの正しい反映であって水増しではない。
+        ///
+        /// 実データ(k=63)ではこの形(入次数2かつ出次数2)の unitig が151本あり、
+        /// うち143本がフラグメント長(中央値245bp)より短く、跨げる見込みがあった。
+        /// </summary>
+        /// <param name="unitigList">複製した配列を追加するため書き換える。</param>
+        /// <param name="support">複製した頂点にも元の辺の支持を引き継がせるため書き換える。</param>
+        /// <param name="pairLink">頂点対 (v, w) を跨いだフラグメントの本数。</param>
+        /// <param name="maxRepeatLength">これより長い unitig は跨げる見込みが無いので対象外。</param>
+        /// <returns>解きほぐした反復の数。</returns>
+        public int ResolveShortRepeats(
+            List<string> unitigList,
+            Dictionary<(int, int), ulong> support,
+            IReadOnlyDictionary<(int, int), ulong> pairLink,
+            int maxRepeatLength,
+            decimal uniteThreshold,
+            ulong countThreshold)
+        {
+            var resolved = 0;
+            // 複製で頂点が増えるが、増えた分(複製そのもの)は対象にしない。
+            var originalVertexCount = this.VertexCount;
+
+            for (var repeat = 2; repeat < originalVertexCount; repeat += 2)
+            {
+                if (unitigList[repeat].Length > maxRepeatLength)
+                {
+                    continue;
+                }
+
+                var outs = this.OutEdges[repeat];
+                var insTwins = this.OutEdges[repeat ^ 1];
+                if (outs.Count != 2 || insTwins.Count != 2)
+                {
+                    continue;
+                }
+
+                // repeat へ入ってくる頂点は、双子の出辺の双子。
+                var a = insTwins[0] ^ 1;
+                var b = insTwins[1] ^ 1;
+                var c = outs[0];
+                var d = outs[1];
+
+                // 同じ unitig が複数の役回りで現れる退化したケース(自己反復など)は
+                // 付け替えの意味が定まらないため触らない。
+                int[] involved = [a >> 1, b >> 1, c >> 1, d >> 1, repeat >> 1];
+                if (involved.Distinct().Count() != involved.Length)
+                {
+                    continue;
+                }
+
+                var straight = pairLink.GetValueOrDefault((a, c)) + pairLink.GetValueOrDefault((b, d));
+                var crossed = pairLink.GetValueOrDefault((a, d)) + pairLink.GetValueOrDefault((b, c));
+                var total = straight + crossed;
+                if (total < countThreshold)
+                {
+                    continue;
+                }
+
+                var best = Math.Max(straight, crossed);
+                if ((decimal)best / total < uniteThreshold)
+                {
+                    // どちらの対応付けとも決めきれない。無理に繋がない。
+                    continue;
+                }
+
+                // 勝った対応付けのうち片方を元の repeat に残し、もう片方を複製へ移す。
+                var (moveIn, moveOut) = straight >= crossed ? (b, d) : (b, c);
+
+                var duplicate = unitigList.Count; // 常に偶数 = 順鎖側の頂点
+                unitigList.Add(unitigList[repeat]);
+                unitigList.Add(unitigList[repeat ^ 1]);
+                this.OutEdges.Add([]);
+                this.OutEdges.Add([]);
+
+                var inSupport = support.GetValueOrDefault((moveIn, repeat));
+                var outSupport = support.GetValueOrDefault((repeat, moveOut));
+
+                this.RemoveEdgePair(moveIn, repeat);
+                this.RemoveEdgePair(repeat, moveOut);
+                this.AddEdgePair(moveIn, duplicate);
+                this.AddEdgePair(duplicate, moveOut);
+
+                // 付け替えた辺の支持を複製側へ引き継ぐ(逆鎖側も対称に)。
+                support[(moveIn, duplicate)] = inSupport;
+                support[(duplicate ^ 1, moveIn ^ 1)] = inSupport;
+                support[(duplicate, moveOut)] = outSupport;
+                support[(moveOut ^ 1, duplicate ^ 1)] = outSupport;
+
+                resolved++;
+            }
+
+            return resolved;
+        }
+
         /// <summary>
         /// 単純バブル(ある頂点 u から分かれた複数の枝が、それぞれ1本の
         /// unitig を経て同じ頂点 w へ再合流する構造)を検出し、

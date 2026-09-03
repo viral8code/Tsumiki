@@ -803,6 +803,36 @@ namespace Tsumiki.Core
                 Console.WriteLine($"[Debug] Popped {poppedBubbles} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");
             }
 
+            // 短い反復配列を、それを丸ごと跨いだフラグメントの証拠で解きほぐす。
+            // 反復内部から読まれたリードはどちらのコピー由来か区別できないため、
+            // 分岐でのリード支持は原理的に5割前後にしかならず解けない。跨いだ
+            // ペアだけが手がかりになる(詳細は UnitigGraph.ResolveShortRepeats)。
+            Dictionary<(int, int), ulong> pairLink = [];
+            foreach (var ((from, to), samples) in this.pairPath)
+            {
+                if (from == to)
+                {
+                    continue;
+                }
+                var v = VertexIndex(from);
+                var w = VertexIndex(to);
+                var count = (ulong)samples.Count;
+                pairLink[(v, w)] = pairLink.GetValueOrDefault((v, w)) + count;
+                pairLink[(w ^ 1, v ^ 1)] = pairLink.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
+            }
+
+            // 跨げる見込みのある長さの上限。フラグメント長の実測中央値を使う
+            // (これより長い反復は、そもそも両端を別々の unitig に載せた
+            //  ペアが存在しえない)。標本が無い場合は控えめな既定値。
+            var maxRepeatLength = this.SameUnitigInsertSizeSamples.Count > 0
+                ? Median(this.SameUnitigInsertSizeSamples)
+                : kmerLength * 4;
+            var resolvedRepeats = graph.ResolveShortRepeats(
+                unitigList, support, pairLink, maxRepeatLength, uniteThreshold, countThreshold);
+            Console.WriteLine(
+                $"[Debug] Repeat resolution: {resolvedRepeats} short repeat(s) (<= {maxRepeatLength}bp) were duplicated " +
+                "and untangled using read pairs that span them.");
+
             // 各頂点について「出て行く先」を高々 1 つに絞る。
             var chosen = new int[graph.VertexCount];
             Array.Fill(chosen, -1);
