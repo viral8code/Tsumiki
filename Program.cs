@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
@@ -244,6 +244,20 @@ namespace Tsumiki
                 {
                     AssemblyStatsReporter.Report("scaffolds (gaps filled)", Consts.ScaffoldFileName);
                 }
+
+                // 出来上がったアセンブリが、観測された k-mer とその出現回数に
+                // 対して辻褄が合っているかを自己検査する(リファレンス不要)。
+                AssemblyValidator.Report(
+                    "scaffolds",
+                    AssemblyValidator.Validate(Consts.ScaffoldFileName, bloomFilter, param.Kmer, copyNumbers.Baseline));
+
+                Logger.PrintTimeStamp();
+            }
+            else
+            {
+                AssemblyValidator.Report(
+                    "contigs",
+                    AssemblyValidator.Validate(Consts.ContigFileName, bloomFilter, param.Kmer, copyNumbers.Baseline));
 
                 Logger.PrintTimeStamp();
             }
