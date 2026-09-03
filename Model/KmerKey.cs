@@ -91,17 +91,25 @@ namespace Tsumiki.Model
         /// </summary>
         public KmerKey ReverseComprement()
         {
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            var bytes = new byte[kmerLength];
-            for (var i = 0; i < kmerLength; i++)
+            var revBytes = Util.ReverseComprement(this.ToBytes(ConfigurationManager.Arguments.Kmer).AsSpan());
+            return new KmerKey(revBytes);
+        }
+
+        /// <summary>
+        /// パックしたDataを、Consts.NucleotideID(1=A,2=C,3=G,4=T)のバイト列へ
+        /// デコードする。length は元のk-mer長(コンストラクタに渡した長さ)を指定する。
+        /// </summary>
+        public byte[] ToBytes(int length)
+        {
+            var bytes = new byte[length];
+            for (var i = 0; i < length; i++)
             {
                 var index = i >> 5;
                 var shift = (31 ^ (i & 31)) << 1;
                 var val = (byte)((this.Data[index] >> shift) & 0x3UL);
                 bytes[i] = (byte)(val + 1);
             }
-            var revBytes = Util.ReverseComprement(bytes.AsSpan());
-            return new KmerKey(revBytes);
+            return bytes;
         }
 
         public bool Equals(KmerKey other)

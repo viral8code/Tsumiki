@@ -137,7 +137,12 @@ namespace Tsumiki
             Logger.PrintTimeStamp();
 
             Console.WriteLine("Applying k-mer cutoff");
-            var initKmers = bloomFilter.Cutoff(param.KmerCutoff);
+            _ = bloomFilter.Cutoff(param.KmerCutoff);
+
+            Logger.PrintTimeStamp();
+
+            Console.WriteLine("Clipping short tips");
+            var initKmers = GraphSimplifier.ClipTips(bloomFilter, param.Kmer);
 
             Logger.PrintTimeStamp();
 

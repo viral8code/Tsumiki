@@ -126,6 +126,77 @@ namespace Tsumiki.Utility
             return Math.Min(packed, rev);
         }
 
+        /// <summary>PackSmallの逆変換。kmer[^1]が最下位ビット側にあるため、末尾から復元する。</summary>
+        private static byte[] UnpackSmall(ulong packed, int length)
+        {
+            var bytes = new byte[length];
+            for (var i = length - 1; i >= 0; i--)
+            {
+                bytes[i] = (byte)((packed & 0x3UL) + 1);
+                packed >>= 2;
+            }
+            return bytes;
+        }
+
+        /// <summary>
+        /// カットオフを通過した信頼できるk-merを(正規化された、いずれかの向きの)
+        /// byte配列として1件ずつ列挙する。GraphSimplifier のtip clipping等、
+        /// 集合全体を舐めて再判定する処理から使う。
+        /// </summary>
+        public IEnumerable<byte[]> EnumerateTrustedKmers()
+        {
+            var kmerLength = ConfigurationManager.Arguments.Kmer;
+            if (UseSmallPath)
+            {
+                foreach (var packed in this._trustedKmersSmall!)
+                {
+                    yield return UnpackSmall(packed, kmerLength);
+                }
+            }
+            else
+            {
+                foreach (var key in this._trustedKmers!)
+                {
+                    yield return key.ToBytes(kmerLength);
+                }
+            }
+        }
+
+        /// <summary>
+        /// kmerを信頼できるk-mer集合から除去する(順鎖・逆鎖どちらの向きで
+        /// 渡してもよい)。GraphSimplifier がtipの構成k-merを取り除く際に使う。
+        /// </summary>
+        public void RemoveTrusted(ReadOnlySpan<byte> kmer)
+        {
+            if (UseSmallPath)
+            {
+                _ = this._trustedKmersSmall!.Remove(CanonicalSmall(kmer));
+            }
+            else
+            {
+                _ = this._trustedKmers!.Remove(new KmerKey(kmer).Canonical());
+            }
+        }
+
+        /// <summary>
+        /// 現在の信頼できるk-mer集合を1回走査し、unitigの開始点となる
+        /// 「入次数が1でない」k-merをすべて再検出する。ファイルの読み直しではなく
+        /// インメモリの集合をそのまま使うため、tip clippingで集合を縮小した後の
+        /// 再構築にも安価に使える。
+        /// </summary>
+        public List<byte[]> FindFirstKmers()
+        {
+            List<byte[]> kmers = [];
+            foreach (var kmer in this.EnumerateTrustedKmers())
+            {
+                if (this.IsFirstKmer(kmer))
+                {
+                    kmers.Add(kmer);
+                }
+            }
+            return kmers;
+        }
+
         public List<byte[]> Cutoff(ulong bounds)
         {
             // 各ワーカーの CountingDB をそれぞれ MergeAll し、
@@ -141,13 +212,11 @@ namespace Tsumiki.Utility
             var filePath = CountingDB.MergeExternalFiles(this._tempDirectory, mergedFiles);
 
             var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            var kmerPath = Path.Combine(this._tempDirectory, Consts.KmerFileName);
             var useSmallPath = UseSmallPath;
             var trustedKmers = useSmallPath ? null : new HashSet<KmerKey>();
             var trustedKmersSmall = useSmallPath ? new HashSet<ulong>() : null;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
-                using var writer = new BinaryWriter(File.Open(kmerPath, FileMode.Create, FileAccess.Write));
                 ulong addedKmer = 0;
                 ulong countKmer = 0;
                 // count(k-merの出現回数) -> その回数を持つユニークk-merの種類数。
@@ -178,7 +247,6 @@ namespace Tsumiki.Utility
                         {
                             _ = trustedKmers!.Add(new KmerKey(kmer).Canonical());
                         }
-                        writer.Write(kmer);
                     }
                 }
                 Console.WriteLine("kmer count: " + countKmer);
@@ -200,46 +268,92 @@ namespace Tsumiki.Utility
             this._trustedKmersSmall = trustedKmersSmall;
 
             Console.WriteLine("Search First k-mer");
-            List<byte[]> kmers = [];
-            using (var reader = new BinaryReader(File.Open(kmerPath, FileMode.Open, FileAccess.Read)))
-            {
-                while (Util.HasNext(reader))
-                {
-                    var read = reader.ReadBytes(ConfigurationManager.Arguments.Kmer);
-                    if (this.IsFirstKmer(read))
-                    {
-                        kmers.Add(read);
-                    }
-                }
-            }
-            File.Delete(kmerPath);
-            return kmers;
+            // 以前はここで一度カットオフ通過k-merをファイルへ書き出し、
+            // 読み直して各k-merのIsFirstKmerを判定していた。厳密な集合を
+            // インメモリで保持するようになった(Phase 1)ため、その集合を
+            // 直接走査すれば同じ結果が得られ、ディスクI/Oを1往復省略できる。
+            return this.FindFirstKmers();
         }
 
         /// <summary>
-        /// 与えられた k-mer が unitig の開始点(入次数が1でない = 0個または2個以上の
-        /// prefix 拡張が存在する)かどうかを判定する。
-        /// 入次数は「kmer の末尾 k-1 文字」の先頭に任意の1塩基を付加した k-mer が
-        /// 信頼できるk-mer集合に存在するかで数える。
+        /// 与えられた k-mer が unitig の開始点かどうかを判定する。
+        ///
+        /// 入次数が0または2個以上(=分岐点そのもの)であれば当然開始点になる。
+        /// 入次数がちょうど1の場合でも、その唯一の予測元(predecessor)自身が
+        /// 分岐点(出次数が1でない)であれば、UnitigMaker の前進walkは
+        /// predecessorの時点で停止してしまいこのk-merへは到達しない
+        /// (=このk-merは誰からも「walkで訪れてもらえない」)ため、
+        /// 新たなunitigの開始点として別途扱う必要がある。
+        /// これを見落とすと、分岐点の直後から始まる配列がunitig化されず
+        /// 丸ごと欠落する(小さなテストケースで実際に発生を確認した)。
         /// </summary>
-        private bool IsFirstKmer(Span<byte> kmer)
+        public bool IsFirstKmer(Span<byte> kmer)
         {
-            return this.CountInEdges(kmer) != 1;
+            var inDegree = this.CountInEdges(kmer, out var uniquePredecessor);
+            if (inDegree != 1)
+            {
+                return true;
+            }
+            return this.CountOutEdges(uniquePredecessor!) != 1;
         }
 
         /// <summary>
         /// kmer への入次数(前方に接続しうる異なる1塩基拡張の数)を数える。
-        /// Contains が順鎖・逆鎖のどちらでも正しく判定するため、
-        /// ここでは逆相補側への個別フォールバックは不要。
+        ///
+        /// Core/UnitigMaker.cs の前進伸長規則は「kmerの先頭1文字を落とし、
+        /// 末尾に候補塩基cを付加する」(successor = kmer[1..] + c)。
+        /// この関係の逆(predecessor)を解くと、predecessor P は
+        /// 「P[1..] + (kmerの末尾文字) == kmer」を満たす必要があり、
+        /// P[1..] = kmer[..^1](kmerの末尾を落としたもの)、
+        /// P[0] = 任意の候補塩基c、すなわち P = c + kmer[..^1] となる。
+        ///
+        /// 以前の実装は candidate = c + kmer[1..](kmerの"先頭"を落としたもの)
+        /// を試しており、c = kmer[0] のとき candidate が kmer 自身と一致して
+        /// しまう(=常に最低1回は自己ヒットする)退化バグがあった。これにより
+        /// 真の入次数0(=配列の先頭)が絶対に検出できず、IsFirstKmer が
+        /// 意図通りに開始点を拾えていなかった。
         /// </summary>
-        private int CountInEdges(Span<byte> kmer)
+        public int CountInEdges(Span<byte> kmer)
+        {
+            return this.CountInEdges(kmer, out _);
+        }
+
+        /// <summary>
+        /// CountInEdgesの本体。入次数がちょうど1だった場合、その唯一の
+        /// predecessor(kmer長のbyte配列)も同時に返す(IsFirstKmerが使う)。
+        /// </summary>
+        private int CountInEdges(Span<byte> kmer, out byte[]? uniquePredecessor)
         {
             var candidate = new byte[kmer.Length];
-            kmer[1..].CopyTo(candidate.AsSpan(1));
+            kmer[..^1].CopyTo(candidate.AsSpan(1));
             var count = 0;
+            byte[]? match = null;
             for (byte i = 1; i <= 4; i++)
             {
                 candidate[0] = i;
+                if (this.Contains(candidate))
+                {
+                    count++;
+                    match = count == 1 ? (byte[])candidate.Clone() : null;
+                }
+            }
+            uniquePredecessor = count == 1 ? match : null;
+            return count;
+        }
+
+        /// <summary>
+        /// kmer からの出次数(後方に接続しうる異なる1塩基拡張の数)を数える。
+        /// Core/UnitigMaker.cs の前進伸長規則(kmer[1..] + c)そのものを試す。
+        /// GraphSimplifier がunitigの末尾端の次数(=tip判定)を見る際に使う。
+        /// </summary>
+        public int CountOutEdges(Span<byte> kmer)
+        {
+            var candidate = new byte[kmer.Length];
+            kmer[1..].CopyTo(candidate.AsSpan(0, kmer.Length - 1));
+            var count = 0;
+            for (byte i = 1; i <= 4; i++)
+            {
+                candidate[^1] = i;
                 if (this.Contains(candidate))
                 {
                     count++;

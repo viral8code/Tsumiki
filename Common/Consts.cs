@@ -90,8 +90,6 @@
 
             """;
 
-        public const string KmerFileName = "kmers";
-
         public const string UnitigFileName = "unitigs.fasta";
 
         public const string ContigFileName = "contigs.fasta";
