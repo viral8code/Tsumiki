@@ -53,7 +53,18 @@ namespace Tsumiki.Core
         {
             // アセンブリ中に各 k-mer が何回現れるかを数える。
             // 正規化(canonical)して数えるため、逆相補は同じものとして扱う。
-            Dictionary<string, int> observed = [];
+            //
+            // キーは 2bit パックした UInt128(k<=64)。文字列をキーにすると
+            // k=63・6.5Mbp のアセンブリで 1GB を超え、同時に生きている
+            // k-mer インデックスと合わせてメモリが厳しくなる。
+            // k>64 は現状の高速経路の対象外なので、その場合は検査を諦める。
+            if (kmerLength > 64)
+            {
+                Console.WriteLine($"[Check] {Path.GetFileName(fastaPath)}: skipped (self-check currently supports k <= 64 only).");
+                return default;
+            }
+
+            Dictionary<UInt128, int> observed = [];
             long instances = 0;
 
             using (var reader = new FastaReader(fastaPath))
@@ -63,12 +74,10 @@ namespace Tsumiki.Core
                     var seq = reader.NextSequence().Seq;
                     for (var i = 0; i + kmerLength <= seq.Length; i++)
                     {
-                        var kmer = seq.Substring(i, kmerLength);
-                        if (kmer.Contains('N'))
+                        if (!TryCanonicalPack(seq, i, kmerLength, out var canonical))
                         {
                             continue;
                         }
-                        var canonical = Canonical(kmer);
                         observed[canonical] = observed.GetValueOrDefault(canonical) + 1;
                         instances++;
                     }
@@ -83,8 +92,7 @@ namespace Tsumiki.Core
             foreach (var kmerBytes in index.EnumerateTrustedKmers())
             {
                 trusted++;
-                var text = string.Concat(kmerBytes.Select(Util.ByteToBaseString));
-                var canonical = Canonical(text);
+                var canonical = CanonicalPack(kmerBytes);
 
                 var seen = observed.GetValueOrDefault(canonical);
                 if (seen == 0)
@@ -112,10 +120,50 @@ namespace Tsumiki.Core
             return new Result(trusted, instances, observed.Count, missing, overRepresented, excessInstances);
         }
 
-        private static string Canonical(string kmer)
+        /// <summary>
+        /// 配列 seq の位置 start から kmerLength 塩基を 2bit パックし、
+        /// 逆相補と比べて小さいほう(正規化された形)を返す。
+        /// 曖昧塩基(N など)を含む場合は false を返す。
+        /// </summary>
+        private static bool TryCanonicalPack(string seq, int start, int kmerLength, out UInt128 canonical)
         {
-            var revComp = Util.ReverseComprement(kmer);
-            return string.CompareOrdinal(kmer, revComp) <= 0 ? kmer : revComp;
+            UInt128 forward = 0;
+            for (var i = 0; i < kmerLength; i++)
+            {
+                var id = Util.GetSimpleNucleotideID(seq[start + i]);
+                if (id is < Consts.NucleotideID.A or > Consts.NucleotideID.T)
+                {
+                    canonical = 0;
+                    return false;
+                }
+                forward = (forward << 2) | (UInt128)(id - 1);
+            }
+            canonical = Smaller(forward, kmerLength);
+            return true;
+        }
+
+        private static UInt128 CanonicalPack(ReadOnlySpan<byte> kmer)
+        {
+            UInt128 forward = 0;
+            foreach (var b in kmer)
+            {
+                forward = (forward << 2) | (UInt128)(b - 1);
+            }
+            return Smaller(forward, kmer.Length);
+        }
+
+        /// <summary>packed とその逆相補のうち小さいほうを返す。</summary>
+        private static UInt128 Smaller(UInt128 packed, int length)
+        {
+            var temp = packed;
+            UInt128 reverse = 0;
+            for (var i = 0; i < length; i++)
+            {
+                var codon = temp & 3;
+                reverse = (reverse << 2) | (codon ^ 3);
+                temp >>= 2;
+            }
+            return packed < reverse ? packed : reverse;
         }
 
         public static void Report(string label, Result result)
