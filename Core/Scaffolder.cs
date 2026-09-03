@@ -232,9 +232,16 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// InsertSize を確定する。CLI で明示指定されていればそれを使う。
-        /// 未指定の場合、ContigMaker.InsertSizeSamples から中央値を推定する。
-        /// サンプル数が Consts.MinInsertSizeSampleCount 未満の場合は推定を諦め、
-        /// false を返す(呼び出し側はスキャフォールディングをスキップする)。
+        ///
+        /// 未指定の場合、2種類のサンプル群のうち「resolved-edge由来」を
+        /// 優先して使う。同一unitig内サンプルは、unitig自体がフラグメント長
+        /// より短いと両端が収まるペアしか観測できず、より短いフラグメントに
+        /// 偏った標本になる(実測で確認済み: unitigがまだ短い段階では
+        /// 同一unitigサンプルの中央値が真の値の1/5程度まで下振れしていた)。
+        /// resolved-edge由来はunitig長に制約されないため、十分な数
+        /// (Consts.MinInsertSizeSampleCount以上)あればこちらを信頼する。
+        /// resolved-edge由来が不足する場合のみ、同一unitig由来も合わせた
+        /// 全体プールにフォールバックする(バイアスはあるが無いよりはまし)。
         /// </summary>
         private bool TryResolveInsertSize(out int insertSize)
         {
@@ -244,20 +251,32 @@ namespace Tsumiki.Core
                 return true;
             }
 
-            var samples = contigMaker.InsertSizeSamples;
-            if (samples.Count < Consts.MinInsertSizeSampleCount)
+            var resolvedEdgeSamples = contigMaker.ResolvedEdgeInsertSizeSamples;
+            if (resolvedEdgeSamples.Count >= Consts.MinInsertSizeSampleCount)
             {
-                Console.WriteLine($"[Info] Insert size auto-estimation requires at least {Consts.MinInsertSizeSampleCount} samples (both reads mapping uniquely to the same unitig); only {samples.Count} were collected.");
+                insertSize = Median(resolvedEdgeSamples);
+                Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {resolvedEdgeSamples.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples to avoid short-fragment bias).");
+                return true;
+            }
+
+            var allSamples = contigMaker.InsertSizeSamples;
+            if (allSamples.Count < Consts.MinInsertSizeSampleCount)
+            {
+                Console.WriteLine($"[Info] Insert size auto-estimation requires at least {Consts.MinInsertSizeSampleCount} samples; only {resolvedEdgeSamples.Count} resolved-edge and {allSamples.Count} total samples were collected.");
                 insertSize = 0;
                 return false;
             }
 
-            var sorted = samples.OrderBy(x => x).ToList();
-            var mid = sorted.Count / 2;
-            var median = sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-            Console.WriteLine($"[Info] Insert size auto-estimated as {median} from {samples.Count} sampled pairs (median).");
-            insertSize = median;
+            insertSize = Median(allSamples);
+            Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {allSamples.Count} sampled pairs (median; resolved-edge samples were too few ({resolvedEdgeSamples.Count}), fell back to the full pool which may be biased short).");
             return true;
+        }
+
+        private static int Median(List<int> values)
+        {
+            var sorted = values.OrderBy(x => x).ToList();
+            var mid = sorted.Count / 2;
+            return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
         }
 
         private void LoadContigs()

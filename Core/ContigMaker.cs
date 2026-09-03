@@ -13,7 +13,11 @@ namespace Tsumiki.Core
         // unitig ID は 1 始まりの正数、逆鎖側はその負数を使うため int.MinValue と衝突しない。
         private const int AmbiguousKmer = int.MinValue;
 
-        private readonly Dictionary<KmerKey, int> kmerDict;
+        // 値は (符号付きunitig ID, そのunitig内でのk-mer開始位置(0始まり、
+        // 符号が示す向きの座標系))。位置情報は FindDominantUnitig が
+        // 「read内での最後のヒット位置」ではなく「unitig内での最後のヒット
+        // 位置」を正しく求めるために必要(ギャップ長・インサートサイズ推定に使う)。
+        private readonly Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict;
 
         // unitig ID(1始まり) -> unitig の塩基長。ギャップ長推定で
         // 「unitig の末尾からリードのヒット位置までの残り長」を求めるのに使う。
@@ -61,10 +65,16 @@ namespace Tsumiki.Core
                 }
                 for (var i = kmerLength; i <= unitig.Seq.Length; i++)
                 {
-                    var key = new KmerKey(unitig.Seq.AsSpan(i - kmerLength, kmerLength));
+                    var startPos = i - kmerLength;
+                    var key = new KmerKey(unitig.Seq.AsSpan(startPos, kmerLength));
                     var revKey = key.ReverseComprement();
-                    ambiguousCount += RegisterKmer(this.kmerDict, key, id);
-                    ambiguousCount += RegisterKmer(this.kmerDict, revKey, -id);
+                    // revKey は unitig 全体を逆相補した(=逆鎖の向きで読んだ)場合の
+                    // 配列に対応する。区間 [startPos, startPos+kmerLength) を
+                    // 長さ L の配列の逆側に写すと [L-i, L-startPos) になるため、
+                    // 逆鎖側での開始位置は L-i。
+                    var revStartPos = unitig.Seq.Length - i;
+                    ambiguousCount += RegisterKmer(this.kmerDict, key, id, startPos);
+                    ambiguousCount += RegisterKmer(this.kmerDict, revKey, -id, revStartPos);
                 }
                 id++;
             }
@@ -86,18 +96,18 @@ namespace Tsumiki.Core
         /// マッピング時にはヒットとして扱わないようにする。
         /// 戻り値: 新たに曖昧マークを付けた場合は 1、そうでなければ 0。
         /// </summary>
-        private static int RegisterKmer(Dictionary<KmerKey, int> dict, KmerKey key, int id)
+        private static int RegisterKmer(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
         {
             if (dict.TryGetValue(key, out var existing))
             {
-                if (existing == AmbiguousKmer || existing == id)
+                if (existing.Item1 == AmbiguousKmer || existing.Item1 == id)
                 {
                     return 0;
                 }
-                dict[key] = AmbiguousKmer;
+                dict[key] = (AmbiguousKmer, 0);
                 return 1;
             }
-            dict[key] = id;
+            dict[key] = (id, position);
             return 0;
         }
 
@@ -224,8 +234,17 @@ namespace Tsumiki.Core
                             {
                                 // 両リードが同一unitigにマップされた場合、
                                 // インサートサイズの実測サンプルとして使える。
-                                // hit1/hit2 はいずれも「その unitig ID の符号が
-                                // 示す向き」の座標系での LastMatchEndOffset を持つ。
+                                //
+                                // hit1/hit2 の LastMatchEndOffset は、それぞれの
+                                // ヒット自身の符号が示す向きの座標系(順鎖なら
+                                // unitig先頭起点、逆鎖ならunitigを逆相補した
+                                // 向きの起点)で測られている。符号が一致しない
+                                // (=一方は順鎖、他方は逆鎖でヒットした)場合、
+                                // 座標系が異なる2つの値をそのまま引き算しても
+                                // 意味のある距離にはならない。ToForwardFrame で
+                                // 両方を共通の(順鎖)座標系に変換してから
+                                // 差を取る(順鎖同士・逆鎖同士の場合はこの変換は
+                                // 距離を変えないため、常にこの経路で問題ない)。
                                 //
                                 // ペアエンドライブラリの向きの組み合わせ(FR/RF/FF/RR)は
                                 // シーケンサ・ライブラリ調製方法に依存し、コード側で
@@ -235,7 +254,7 @@ namespace Tsumiki.Core
                                 // 両方についてサンプルを集めておき、実際にどちらが
                                 // 多数派かを全ワーカー分集計してから判断する
                                 // (このメソッドの最後で多数派側だけを採用する)。
-                                var distance = Math.Abs(hit1.LastMatchEndOffset - hit2.LastMatchEndOffset);
+                                var distance = Math.Abs(ToForwardFrame(hit1) - ToForwardFrame(hit2));
                                 if (distance > 0)
                                 {
                                     if ((hit1.UnitigId > 0) == (hit2.UnitigId > 0))
@@ -377,14 +396,33 @@ namespace Tsumiki.Core
                 chosenLabel = "opposite-orientation";
             }
 
+            var sameUnitigSamples = new List<int>();
             foreach (var samples in chosenLists)
             {
-                this.InsertSizeSamples.AddRange(samples);
+                sameUnitigSamples.AddRange(samples);
             }
+            this.InsertSizeSamples.AddRange(sameUnitigSamples);
+            this.SameUnitigInsertSizeSamples.AddRange(sameUnitigSamples);
 
             var pairSupportCount = this.pairPath.Values.Sum(v => v.Count);
             Console.WriteLine($"[Info] Paired-end adjacency candidates detected: {this.pairPath.Count} edges ({pairSupportCount} supporting pairs total).");
-            Console.WriteLine($"[Info] Same-unitig pair orientation counts: same-orientation={sameOrientationTotal}, opposite-orientation={oppositeOrientationTotal}. Using '{chosenLabel}' as the library's observed orientation for InsertSize estimation ({this.InsertSizeSamples.Count} samples).");
+            Console.WriteLine($"[Info] Same-unitig pair orientation counts: same-orientation={sameOrientationTotal}, opposite-orientation={oppositeOrientationTotal}. Using '{chosenLabel}' as the library's observed orientation for InsertSize estimation ({sameUnitigSamples.Count} samples).");
+            if (sameUnitigSamples.Count > 0)
+            {
+                // 同一unitig内サンプルは、unitig自体がフラグメント長より短い場合
+                // 両端が同じunitig内に収まるペアしか観測できず、より短い
+                // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
+                // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromResolvedEdges
+                // が出力)と比較することで、このバイアスの有無を確認できる。
+                Console.WriteLine($"[Info] Same-unitig sample median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; may be biased short if unitigs are shorter than the true insert size).");
+            }
+        }
+
+        private static int Median(List<int> values)
+        {
+            var sorted = values.OrderBy(x => x).ToList();
+            var mid = sorted.Count / 2;
+            return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
         }
 
         /// <summary>
@@ -403,11 +441,40 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// InsertSize 自動推定用にサンプリングされた、単一unitig内での
-        /// read1-read2 間距離のリスト。MappingPairedReads 実行後に
-        /// Scaffolder から参照される。
+        /// hit の LastMatchEndOffset(hit自身の符号が示す向きの座標系での値)を、
+        /// 常に unitig の「順鎖」座標系での位置に変換する。順鎖ヒットは
+        /// そのまま、逆鎖ヒットは UnitigLength - LastMatchEndOffset に変換する
+        /// (順鎖・逆鎖どちらも同じ変換を経由するため、同じ符号同士を比較する
+        /// 場合でも距離は変わらず、異符号同士の比較でも正しく意味を持つ)。
+        /// 同一unitig上の2ヒット間の距離(インサートサイズ推定)を求める際、
+        /// 座標系を揃えるために使う。
+        /// </summary>
+        private static int ToForwardFrame(DominantUnitigHit hit)
+        {
+            return hit.UnitigId > 0 ? hit.LastMatchEndOffset : hit.UnitigLength - hit.LastMatchEndOffset;
+        }
+
+        /// <summary>
+        /// InsertSize 自動推定用にサンプリングされた距離のリスト
+        /// (SameUnitigInsertSizeSamples と ResolvedEdgeInsertSizeSamples の結合)。
+        /// 後方互換のため残しているが、Scaffolder はサンプリング元による
+        /// バイアスの違いを考慮するため個別のリストを優先的に参照する。
         /// </summary>
         public List<int> InsertSizeSamples { get; } = [];
+
+        /// <summary>
+        /// 単一unitig内で両リードがヒットしたペアからのサンプル。
+        /// unitig自体がフラグメント長より短い場合、両端が収まるペアしか
+        /// 観測できないため、より短いフラグメントに偏りやすい
+        /// (unitigが短いほど顕著)。
+        /// </summary>
+        public List<int> SameUnitigInsertSizeSamples { get; } = [];
+
+        /// <summary>
+        /// unitig同士がk-1オーバーラップで直接結合されたペアからのサンプル。
+        /// SameUnitigInsertSizeSamples のような長さバイアスを受けない。
+        /// </summary>
+        public List<int> ResolvedEdgeInsertSizeSamples { get; } = [];
 
         /// <summary>
         /// ペアエンド由来の隣接候補。キーは (from, to) の unitig ID(符号は向き)、
@@ -429,7 +496,7 @@ namespace Tsumiki.Core
         /// どの unitig にもヒットしなかった場合は DominantUnitigHit.None を返す。
         /// ペアエンドの隣接検出でのみ使用する軽量な単方向スキャン。
         /// </summary>
-        private DominantUnitigHit FindDominantUnitig(string read)
+        internal DominantUnitigHit FindDominantUnitig(string read)
         {
             if (string.IsNullOrEmpty(read))
             {
@@ -444,13 +511,14 @@ namespace Tsumiki.Core
 
             var counts = new Dictionary<int, int>();
             // 各候補 id ごとに、その id として最後にヒットしたk-merの
-            // read内終端位置(exclusive, 0-based)を記録しておく。
-            // read 中の相対位置は id の向きが unitig の順鎖(id>0)であれば
-            // そのまま unitig 内オフセットとみなせる
-            // (kmerDict は unitig の順鎖・逆鎖それぞれの k-mer をそのまま
-            //  登録しているため、一致した時点の read 側の位置 = unitig 内の
-            //  対応位置になる)。
-            var lastReadEndOffset = new Dictionary<int, int>();
+            // 「unitig内での」終端位置(exclusive, 0-based, idの符号が示す
+            // 向きの座標系)を記録する。kmerDict が (unitigId, unitig内開始位置)
+            // を保持するようになったため、read内での相対位置ではなく
+            // kmerDict から得た本物のunitig内位置を使う
+            // (以前はread内終端位置をそのままunitig内終端位置として誤用しており、
+            //  unitigがread長より十分短い場合はたまたま近い値になり問題が
+            //  表面化しにくかったが、unitigが長くなると全く違う値になっていた)。
+            var lastUnitigEndOffset = new Dictionary<int, int>();
             var badBase = 0;
             for (var i = 0; i < kmerLength; i++)
             {
@@ -468,10 +536,11 @@ namespace Tsumiki.Core
                 if (badBase == 0)
                 {
                     var key = new KmerKey(read.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(key, out var id) && id != AmbiguousKmer)
+                    if (this.kmerDict.TryGetValue(key, out var entry) && entry.UnitigId != AmbiguousKmer)
                     {
+                        var id = entry.UnitigId;
                         counts[id] = counts.GetValueOrDefault(id) + 1;
-                        lastReadEndOffset[id] = i;
+                        lastUnitigEndOffset[id] = entry.Position + kmerLength;
                     }
                 }
             }
@@ -494,19 +563,7 @@ namespace Tsumiki.Core
 
             var unitigId = Math.Abs(best);
             var unitigLength = this.unitigLengths.GetValueOrDefault(unitigId, 0);
-            var readEndOffset = lastReadEndOffset[best];
-
-            // best > 0 の場合、read の k-mer は unitig の順鎖にそのまま一致して
-            // いるため、read 内終端位置がそのまま unitig 内終端位置になる。
-            // best < 0 の場合、read の k-mer は unitig の逆鎖(=unitig の
-            // 逆相補鎖)に一致している。この場合、read を順方向に読み進めるほど
-            // unitig の座標としては先頭側へ向かって進むことになるため、
-            // 「unitig をその逆鎖の向きで見た座標系」での終端位置は
-            // read の終端位置をそのまま使ってよい(逆鎖の kmerDict エントリは
-            // 既に逆鎖の並びで登録されているため、座標系はその逆鎖基準になっている)。
-            // つまりどちらの符号でも、read 内終端位置 = 「best の符号が示す
-            // 向きで見た unitig 内終端位置」としてそのまま使える。
-            var lastMatchEndOffset = readEndOffset;
+            var lastMatchEndOffset = lastUnitigEndOffset[best];
 
             return new DominantUnitigHit(best, bestCount, lastMatchEndOffset, unitigLength);
         }
@@ -548,8 +605,9 @@ namespace Tsumiki.Core
                 if (badBase == 0)
                 {
                     var key = new KmerKey(read.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(key, out var id) && id != AmbiguousKmer)
+                    if (this.kmerDict.TryGetValue(key, out var entry) && entry.UnitigId != AmbiguousKmer)
                     {
+                        var id = entry.UnitigId;
                         if (bef == 0)
                         {
                             bef = id;
@@ -573,8 +631,9 @@ namespace Tsumiki.Core
                 if (revBadBase == 0)
                 {
                     var revKey = new KmerKey(revRead.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(revKey, out var revId) && revId != AmbiguousKmer)
+                    if (this.kmerDict.TryGetValue(revKey, out var revEntry) && revEntry.UnitigId != AmbiguousKmer)
                     {
+                        var revId = revEntry.UnitigId;
                         if (revBef == 0)
                         {
                             revBef = revId;
@@ -799,7 +858,7 @@ namespace Tsumiki.Core
         {
             var kmerLength = ConfigurationManager.Arguments.Kmer;
             var overlap = kmerLength - 1;
-            var collected = 0;
+            List<int> resolvedEdgeSamples = [];
 
             for (var v = 2; v < adjacencyList.Count; v++)
             {
@@ -824,13 +883,23 @@ namespace Tsumiki.Core
                     var insertSize = totalRemaining + overlap;
                     if (insertSize > 0)
                     {
-                        this.InsertSizeSamples.Add(insertSize);
-                        collected++;
+                        resolvedEdgeSamples.Add(insertSize);
                     }
                 }
             }
 
-            Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {collected}.");
+            this.InsertSizeSamples.AddRange(resolvedEdgeSamples);
+            this.ResolvedEdgeInsertSizeSamples.AddRange(resolvedEdgeSamples);
+
+            Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {resolvedEdgeSamples.Count}.");
+            if (resolvedEdgeSamples.Count > 0)
+            {
+                // このプールは「unitig同士がk-1オーバーラップで直接結合された」
+                // ペアのみを対象とするため、same-unitigサンプルのような
+                // 「フラグメントが1つのunitigに収まる必要がある」制約が
+                // なく、短いunitigによる短フラグメントへの偏りを受けにくい。
+                Console.WriteLine($"[Info] Resolved-edge sample median: {Median(resolvedEdgeSamples)} (from {resolvedEdgeSamples.Count} samples; not subject to the same-unitig length bias).");
+            }
         }
 
         /// <summary>
