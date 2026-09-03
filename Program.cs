@@ -89,15 +89,9 @@ namespace Tsumiki
                 Logger.PrintTimeStamp();
             }
 
-            if (param.RowBitSize != int.MaxValue)
-            {
-                Console.WriteLine($"[Info] {Consts.ArgumentKey.BloomFilterSize} is deprecated and no longer has any effect " +
-                    "(k-mer membership is now tracked with an exact set built from the trusted k-mer count, not a Bloom filter).");
-            }
-
             Console.WriteLine("Start construction k-mer index");
-            var bloomFilter = new TrustedKmerIndex(tempDir);
-            ConfigurationManager.TrustedKmerIndex = bloomFilter;
+            var kmerIndex = new TrustedKmerIndex(tempDir);
+            ConfigurationManager.TrustedKmerIndex = kmerIndex;
 
             if (string.IsNullOrWhiteSpace(param.ReadPath2))
             {
@@ -110,11 +104,11 @@ namespace Tsumiki
 
             if (param.AllowAmbiguousBases)
             {
-                LoadReadFileToBloomFilterWithAmbiguity(param.ReadPath1, bloomFilter);
+                LoadReadFileWithAmbiguousBases(param.ReadPath1, kmerIndex);
             }
             else
             {
-                KmerCounting.LoadReadFile(param.ReadPath1, bloomFilter);
+                KmerCounting.LoadReadFile(param.ReadPath1, kmerIndex);
             }
 
             if (!string.IsNullOrWhiteSpace(param.ReadPath2))
@@ -122,29 +116,29 @@ namespace Tsumiki
                 Console.WriteLine("Loading File2");
                 if (param.AllowAmbiguousBases)
                 {
-                    LoadReadFileToBloomFilterWithAmbiguity(param.ReadPath2, bloomFilter);
+                    LoadReadFileWithAmbiguousBases(param.ReadPath2, kmerIndex);
                 }
                 else
                 {
-                    KmerCounting.LoadReadFile(param.ReadPath2, bloomFilter);
+                    KmerCounting.LoadReadFile(param.ReadPath2, kmerIndex);
                 }
             }
 
             Logger.PrintTimeStamp();
 
             Console.WriteLine("Applying k-mer cutoff");
-            _ = bloomFilter.Cutoff(param.KmerCutoff);
+            _ = kmerIndex.Cutoff(param.KmerCutoff);
 
             Logger.PrintTimeStamp();
 
             Console.WriteLine("Clipping short tips");
-            var initKmers = GraphSimplifier.ClipTips(bloomFilter, param.Kmer);
+            var initKmers = GraphSimplifier.ClipTips(kmerIndex, param.Kmer);
 
             Logger.PrintTimeStamp();
 
             Console.WriteLine("Make unitigs");
 
-            var unitigMaker = new UnitigMaker(bloomFilter);
+            var unitigMaker = new UnitigMaker(kmerIndex);
             HashSet<string> unitigSet = [];
             Dictionary<int, string> unitigSequences = [];
             var id = 1;
@@ -175,7 +169,7 @@ namespace Tsumiki
             // 「この unitig は何回まで使ってよいか」という予算になる。
             // k-mer インデックスがまだ生きているこの時点でしか計算できない。
             var unitigLengthMap = unitigSequences.ToDictionary(kv => kv.Key, kv => kv.Value.Length);
-            var unitigCoverage = CopyNumberEstimator.ComputeCoverage(bloomFilter, unitigSequences, param.Kmer);
+            var unitigCoverage = CopyNumberEstimator.ComputeCoverage(kmerIndex, unitigSequences, param.Kmer);
             var copyNumbers = CopyNumberEstimator.Estimate(unitigCoverage, unitigLengthMap);
             CopyNumberEstimator.Report(copyNumbers, unitigLengthMap);
 
@@ -238,7 +232,7 @@ namespace Tsumiki
                 // 分岐で決められなかったからであることが多く、その場合
                 // ギャップを埋める配列はグラフ上に実在する。
                 Console.WriteLine("Filling scaffold gaps");
-                var gapStats = GapFiller.Run(Consts.ScaffoldFileName, bloomFilter, param.Kmer);
+                var gapStats = GapFiller.Run(Consts.ScaffoldFileName, kmerIndex, param.Kmer);
                 GapFiller.Report(gapStats);
                 if (gapStats.FilledGaps > 0)
                 {
@@ -249,7 +243,7 @@ namespace Tsumiki
                 // 対して辻褄が合っているかを自己検査する(リファレンス不要)。
                 AssemblyValidator.Report(
                     "scaffolds",
-                    AssemblyValidator.Validate(Consts.ScaffoldFileName, bloomFilter, param.Kmer, copyNumbers.Baseline));
+                    AssemblyValidator.Validate(Consts.ScaffoldFileName, kmerIndex, param.Kmer, copyNumbers.Baseline));
 
                 Logger.PrintTimeStamp();
             }
@@ -257,7 +251,7 @@ namespace Tsumiki
             {
                 AssemblyValidator.Report(
                     "contigs",
-                    AssemblyValidator.Validate(Consts.ContigFileName, bloomFilter, param.Kmer, copyNumbers.Baseline));
+                    AssemblyValidator.Validate(Consts.ContigFileName, kmerIndex, param.Kmer, copyNumbers.Baseline));
 
                 Logger.PrintTimeStamp();
             }
@@ -271,7 +265,7 @@ namespace Tsumiki
         // 呼ばれる頻度が低い想定のため、並列化の優先度を下げている。
         // (Core.KmerCounting.LoadReadFile は既定の「曖昧塩基を無視する」経路のみ
         //  切り出したもので、こちらは対象外。)
-        private static void LoadReadFileToBloomFilterWithAmbiguity(string filePath, TrustedKmerIndex bloomFilter)
+        private static void LoadReadFileWithAmbiguousBases(string filePath, TrustedKmerIndex kmerIndex)
         {
             ulong count = 0;
             ulong mult = 0;
@@ -292,16 +286,16 @@ namespace Tsumiki
                         readSpan[i] = [Consts.NucleotideID.A, Consts.NucleotideID.C, Consts.NucleotideID.G, Consts.NucleotideID.T];
                     }
                 }
-                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
+                kmerIndex.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
+                    kmerIndex.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
                 }
                 readSpan = Util.ReverseComprement(readSpan);
-                bloomFilter.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
+                kmerIndex.Add(readSpan[..ConfigurationManager.Arguments.Kmer], 0);
                 for (var i = ConfigurationManager.Arguments.Kmer; i < readData.Read.Count; i++)
                 {
-                    bloomFilter.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
+                    kmerIndex.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), 0);
                 }
                 if (++count == Consts.ProgressLogInterval)
                 {

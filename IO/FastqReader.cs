@@ -68,7 +68,7 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// 曖昧塩基を無視する経路向けの軽量版。Read(List&lt;byte[]&gt;)の代わりに
-        /// SimpleRead(byte[])のみを構築する。LoadReadFileToBloomFilterIgnoreAmbiguity から使用する。
+        /// SimpleRead(byte[])のみを構築する。KmerCounting.LoadReadFile から使用する。
         /// </summary>
         public ReadData NextReadSimple()
         {

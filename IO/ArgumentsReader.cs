@@ -44,10 +44,6 @@ namespace Tsumiki.IO
                             param.MemoryBudget = args[index++];
                             break;
 
-                        case Consts.ArgumentKey.BloomFilterSize:
-                            param.BitSize = args[index++];
-                            break;
-
                         case Consts.ArgumentKey.InsertSize:
                             param.InsertSize = int.Parse(args[index++]);
                             break;

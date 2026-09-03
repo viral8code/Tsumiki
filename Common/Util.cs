@@ -42,7 +42,7 @@ namespace Tsumiki.Common
         /// <summary>
         /// FASTQ の生リードなど、N を含む曖昧塩基が混入しうる文字列向けの逆相補。
         /// A/C/G/T 以外の文字はそのまま(位置だけ反転して)出力し、例外を投げない。
-        /// unitig/contig 配列(Bloom filter を通過した A/C/G/T のみの配列)には
+        /// unitig/contig 配列(カットオフを通過した A/C/G/T のみの配列)には
         /// このメソッドを使わないこと。そちらは ReverseComprement(string) の方を使い、
         /// 想定外の文字が混入していた場合は例外で早期検知する。
         /// </summary>
@@ -113,7 +113,7 @@ namespace Tsumiki.Common
         /// 単一の塩基文字を ID に変換する軽量版。
         /// A/C/G/T はそのまま NucleotideID を返し、それ以外(曖昧塩基)は
         /// 一律 Consts.InvalidBase を返す。曖昧塩基を無視する経路
-        /// (LoadReadFileToBloomFilterIgnoreAmbiguity 等)専用で、
+        /// (KmerCounting.LoadReadFile 等)専用で、
         /// GetNucleotideIDs のような List 確保を伴わないため高速。
         /// </summary>
         public static byte GetSimpleNucleotideID(char baseChar)

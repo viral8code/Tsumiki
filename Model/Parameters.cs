@@ -112,46 +112,6 @@ namespace Tsumiki.Model
             set => this.MemoryBudgetBytes = Util.ParseMemorySize(value);
         }
 
-        public ulong RowBitSize = int.MaxValue;
-        public string BitSize
-        {
-            get
-            {
-                double aboutSize = this.RowBitSize;
-                var unit = "";
-                if (aboutSize >= 8e12)
-                {
-                    aboutSize /= 8e12;
-                    unit = "T";
-                }
-                else if (aboutSize >= 8e9)
-                {
-                    aboutSize /= 8e9;
-                    unit = "G";
-                }
-                else if (aboutSize >= 8e6)
-                {
-                    aboutSize /= 8e6;
-                    unit = "M";
-                }
-                else if (aboutSize >= 8e3)
-                {
-                    aboutSize /= 8e3;
-                    unit = "K";
-                }
-                return $"{aboutSize:0.#} {unit}";
-            }
-
-            set => this.RowBitSize =
-                      value[^1] is 'K' or 'k'
-                    ? (ulong)(double.Parse(value[..^1]) * 8e3)
-                    : value[^1] is 'M' or 'm'
-                    ? (ulong)(double.Parse(value[..^1]) * 8e6)
-                    : value[^1] is 'G' or 'g'
-                    ? (ulong)(double.Parse(value[..^1]) * 8e9)
-                    : value[^1] is 'T' or 't' ? (ulong)(double.Parse(value[..^1]) * 8e12) : (ulong)double.Parse(value);
-        }
-
         /// <summary>
         /// 期待挿入サイズ。CLI で明示指定されなかった場合は null のままとし、
         /// スキャフォールディング実行時にマップ済みペアからサンプリング推定を試みる。
@@ -223,7 +183,6 @@ namespace Tsumiki.Model
                 phred: {this.Phred}
                 quality cutoff: {this.QualityCutoff}
                 counting memory budget: {this.MemoryBudget}
-                bit size: {this.BitSize}
                 insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}
                 error correction : {this.EnableErrorCorrection}

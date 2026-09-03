@@ -9,7 +9,7 @@ namespace Tsumiki.Core
     /// <summary>
     /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理
     /// (曖昧塩基を無視する既定経路)。元は Program.cs の
-    /// LoadReadFileToBloomFilterIgnoreAmbiguity / ProcessRead だったものを、
+    /// KmerCounting 切り出し前の Program.LoadReadFile 系 / ProcessRead だったものを、
     /// 本パイプラインと ErrorCorrector の事前カウントパスの両方から
     /// 呼べるよう切り出したもの。ロジック自体は変更していない。
     /// </summary>

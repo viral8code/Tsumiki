@@ -5,9 +5,9 @@ using Tsumiki.Utility;
 
 namespace Tsumiki.Core
 {
-    internal class UnitigMaker(TrustedKmerIndex bloomFilter)
+    internal class UnitigMaker(TrustedKmerIndex kmerIndex)
     {
-        private readonly TrustedKmerIndex set = bloomFilter;
+        private readonly TrustedKmerIndex set = kmerIndex;
 
         // 循環検出用。walk 中に同じ k-mer へ戻ってきたら打ち切る。
         // k<=64 なら 2bit パックした UInt128 をキーにでき、1歩ごとの

@@ -30,8 +30,6 @@
 
             public const string QualityCutoff = "-q";
 
-            public const string BloomFilterSize = "-b";
-
             public const string InsertSize = "-i";
 
             public const string AllowAmbiguousBases = "-ab";
@@ -70,8 +68,6 @@
 
         public const int DefaultQualityCutoffValue = 1;
 
-        public const ulong DefaultBloolFilterSize = int.MaxValue;
-
         public const string DefaultTempFolder = "temp";
 
         public static readonly int[] AllowedPhredValue = [33, 64];
@@ -91,7 +87,6 @@
             {ArgumentKey.Phred} [integer] : base of phred score ({string.Join(" or ", AllowedPhredValue)}) (default : {DefaultPhredValue})
             {ArgumentKey.QualityCutoff} [integer] : threshold of base quality (use kmers with this value or higher) (default : {DefaultQualityCutoffValue})
             {ArgumentKey.MemoryBudget} [decimal] : memory budget for k-mer counting (e.g. 2G, 512M; a bare number means MB). Raise it to reduce disk I/O, lower it to fit a smaller machine (default : {Util.FormatMemorySize(DefaultMemoryBudgetBytes)})
-            {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
             {ArgumentKey.InsertSize} : excepted insert size of pair-end reads (default : {NullInsertSizeText}, auto-estimated from mapped pairs when possible)
             {ArgumentKey.TempDirectory} [path] : temp directory (default : {DefaultTempFolder})
             {ArgumentKey.ThreadCount} [integer] : number of worker threads used for loading reads (default : number of logical processors)
