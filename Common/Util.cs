@@ -212,6 +212,81 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
+        /// "2G" / "512M" / "1.5g" / "2048" のようなサイズ指定をバイト数に変換する。
+        ///
+        /// 接尾辞 K/M/G/T は2進接頭辞として扱う(1K = 1024)。メモリ量の指定なので
+        /// 1000 ではなく 1024 刻みのほうが直感に合う。
+        /// 接尾辞が無い場合は MB とみなす(-mem を数値だけで指定したときの単位)。
+        /// </summary>
+        public static long ParseMemorySize(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                throw new ArgumentException("Memory size must not be empty (e.g. 2G, 512M, 1024)");
+            }
+
+            var trimmed = text.Trim();
+            // "2GB" のように B が付いていても受け付ける。
+            if (trimmed.Length >= 2 && (trimmed[^1] is 'B' or 'b') && !char.IsDigit(trimmed[^2]))
+            {
+                trimmed = trimmed[..^1];
+            }
+
+            var multiplier = 1024L * 1024L; // 接尾辞なしは MB
+            var lastChar = trimmed[^1];
+            switch (lastChar)
+            {
+                case 'K' or 'k':
+                    multiplier = 1024L;
+                    trimmed = trimmed[..^1];
+                    break;
+                case 'M' or 'm':
+                    multiplier = 1024L * 1024L;
+                    trimmed = trimmed[..^1];
+                    break;
+                case 'G' or 'g':
+                    multiplier = 1024L * 1024L * 1024L;
+                    trimmed = trimmed[..^1];
+                    break;
+                case 'T' or 't':
+                    multiplier = 1024L * 1024L * 1024L * 1024L;
+                    trimmed = trimmed[..^1];
+                    break;
+                default:
+                    break;
+            }
+
+            if (!double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var value) || value <= 0)
+            {
+                throw new ArgumentException($"Could not read '{text}' as a memory size (e.g. 2G, 512M, 1024)");
+            }
+
+            var bytes = (long)(value * multiplier);
+            if (bytes <= 0)
+            {
+                throw new ArgumentException($"Memory size '{text}' is too small");
+            }
+            return bytes;
+        }
+
+        /// <summary>
+        /// バイト数を "2 G" のような読みやすい形に戻す(パラメータ表示用)。
+        /// </summary>
+        public static string FormatMemorySize(long bytes)
+        {
+            string[] units = ["", "K", "M", "G", "T"];
+            double size = bytes;
+            var unitIndex = 0;
+            while (size >= 1024 && unitIndex < units.Length - 1)
+            {
+                size /= 1024;
+                unitIndex++;
+            }
+            return $"{size:0.#} {units[unitIndex]}B";
+        }
+
+        /// <summary>
         /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す。
         /// 対応する例:
         ///   "@READ001/1"                       -> "@READ001"

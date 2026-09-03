@@ -95,24 +95,21 @@ namespace Tsumiki.Model
 
         public int QualityCutoff { get; set; } = Consts.DefaultQualityCutoffValue;
 
-        private int _memoryBudgetMB = Consts.DefaultMemoryBudgetMB;
-
         /// <summary>
-        /// k-mer カウント時にメモリ上へ保持するカウントの総量(MB)。
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量(バイト)。
         /// メモリとディスク I/O のトレードオフを環境に合わせて調整するためのもの。
         /// 増やすとフラッシュ回数が減って I/O が軽くなり、減らすとメモリが軽くなる。
         /// </summary>
-        public int MemoryBudgetMB
+        public long MemoryBudgetBytes { get; private set; } = Consts.DefaultMemoryBudgetBytes;
+
+        /// <summary>
+        /// メモリ量の指定。"2G" / "512M" / "1024"(接尾辞なしは MB)を受け付ける。
+        /// -b と同じ書き方で指定できるようにしてある。
+        /// </summary>
+        public string MemoryBudget
         {
-            get => this._memoryBudgetMB;
-            set
-            {
-                if (value <= 0)
-                {
-                    throw new ArgumentException("Please make the value of memory budget a positive integer (MB)");
-                }
-                this._memoryBudgetMB = value;
-            }
+            get => Util.FormatMemorySize(this.MemoryBudgetBytes);
+            set => this.MemoryBudgetBytes = Util.ParseMemorySize(value);
         }
 
         public ulong RowBitSize = int.MaxValue;
@@ -225,7 +222,7 @@ namespace Tsumiki.Model
                 kmer cutoff: {this.KmerCutoff}
                 phred: {this.Phred}
                 quality cutoff: {this.QualityCutoff}
-                counting memory budget: {this.MemoryBudgetMB} MB
+                counting memory budget: {this.MemoryBudget}
                 bit size: {this.BitSize}
                 insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}

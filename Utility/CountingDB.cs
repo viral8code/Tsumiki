@@ -57,7 +57,7 @@ namespace Tsumiki.Utility
             this.TempDirectory = tempDirectory;
             this._length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             // 総予算をシャード数で分け合う。shardCount は呼び出し側が渡す。
-            var totalBudgetBytes = (long)ConfigurationManager.Arguments.MemoryBudgetMB * 1024 * 1024;
+            var totalBudgetBytes = ConfigurationManager.Arguments.MemoryBudgetBytes;
             var perShardBytes = totalBudgetBytes / Math.Max(1, shardCount);
             this._flushThreshold = (int)Math.Max(1024, Math.Min(int.MaxValue, perShardBytes / EstimatedBytesPerEntry));
             this._buffer = new Dictionary<byte[], ulong>(this._flushThreshold, this._equalityComparator);
