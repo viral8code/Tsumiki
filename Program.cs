@@ -146,6 +146,7 @@ namespace Tsumiki
 
             var unitigMaker = new UnitigMaker(bloomFilter);
             HashSet<string> unitigSet = [];
+            Dictionary<int, string> unitigSequences = [];
             var id = 1;
             using (var writer = new FastaWriter(Consts.UnitigFileName))
             {
@@ -158,6 +159,7 @@ namespace Tsumiki
                     }
                     _ = unitigSet.Add(unitig.Sequence);
                     _ = unitigSet.Add(Util.ReverseComprement(unitig.Sequence));
+                    unitigSequences[id] = unitig.Sequence;
                     writer.Write(id++, unitig.Sequence);
                     if (id > Consts.MaximumUnitigCount)
                     {
@@ -167,6 +169,15 @@ namespace Tsumiki
             }
 
             AssemblyStatsReporter.Report("unitigs", Consts.UnitigFileName);
+
+            // 各 unitig のカバレッジからコピー数を推定する。反復配列かどうかを
+            // グラフの形ではなく量的な根拠で判定でき、後段の経路探索では
+            // 「この unitig は何回まで使ってよいか」という予算になる。
+            // k-mer インデックスがまだ生きているこの時点でしか計算できない。
+            var unitigLengthMap = unitigSequences.ToDictionary(kv => kv.Key, kv => kv.Value.Length);
+            var unitigCoverage = CopyNumberEstimator.ComputeCoverage(bloomFilter, unitigSequences, param.Kmer);
+            var copyNumbers = CopyNumberEstimator.Estimate(unitigCoverage, unitigLengthMap);
+            CopyNumberEstimator.Report(copyNumbers, unitigLengthMap);
 
             Logger.PrintTimeStamp();
 
@@ -221,6 +232,18 @@ namespace Tsumiki
                 scaffolder.Run(Consts.ScaffoldFileName);
 
                 AssemblyStatsReporter.Report("scaffolds", Consts.ScaffoldFileName);
+
+                // スキャフォールドの N を、グラフ上で両端を繋ぐ経路を探して
+                // 実配列に置き換える。contig が途切れたのは配列が無いからではなく
+                // 分岐で決められなかったからであることが多く、その場合
+                // ギャップを埋める配列はグラフ上に実在する。
+                Console.WriteLine("Filling scaffold gaps");
+                var gapStats = GapFiller.Run(Consts.ScaffoldFileName, bloomFilter, param.Kmer);
+                GapFiller.Report(gapStats);
+                if (gapStats.FilledGaps > 0)
+                {
+                    AssemblyStatsReporter.Report("scaffolds (gaps filled)", Consts.ScaffoldFileName);
+                }
 
                 Logger.PrintTimeStamp();
             }
