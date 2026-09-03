@@ -40,6 +40,10 @@ namespace Tsumiki.IO
                             param.QualityCutoff = int.Parse(args[index++]);
                             break;
 
+                        case Consts.ArgumentKey.MemoryBudget:
+                            param.MemoryBudgetMB = int.Parse(args[index++]);
+                            break;
+
                         case Consts.ArgumentKey.BloomFilterSize:
                             param.BitSize = args[index++];
                             break;

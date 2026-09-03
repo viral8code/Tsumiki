@@ -47,6 +47,8 @@
             public const string PairCountThreshold = "-pc";
 
             public const string ErrorCorrection = "-ec";
+
+            public const string MemoryBudget = "-mem";
         }
 
         public const string NullInsertSizeText = "unspecified";
@@ -54,6 +56,15 @@
         public const int DefaultKmerValue = 31;
 
         public const int DefaultKmerCutoffValue = 2;
+
+        /// <summary>
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量(MB)。
+        ///
+        /// 大きくするほどディスクへのフラッシュ回数が減り I/O が軽くなるが、
+        /// そのぶんメモリを使う。小さくすると逆になる。ノートPCでも動くよう
+        /// 既定は控えめにしてある。
+        /// </summary>
+        public const int DefaultMemoryBudgetMB = 768;
 
         public const int DefaultPhredValue = 33;
 
@@ -79,6 +90,7 @@
             {ArgumentKey.KmerCutoff} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : {DefaultKmerCutoffValue})
             {ArgumentKey.Phred} [integer] : base of phred score ({string.Join(" or ", AllowedPhredValue)}) (default : {DefaultPhredValue})
             {ArgumentKey.QualityCutoff} [integer] : threshold of base quality (use kmers with this value or higher) (default : {DefaultQualityCutoffValue})
+            {ArgumentKey.MemoryBudget} [integer] : memory budget in MB for k-mer counting; raise it to reduce disk I/O, lower it to fit a smaller machine (default : {DefaultMemoryBudgetMB})
             {ArgumentKey.BloomFilterSize} [decimal] : memory allocation for the Bloom Filter (e.g. 300M, 1.2G) (default : 200M)
             {ArgumentKey.InsertSize} : excepted insert size of pair-end reads (default : {NullInsertSizeText}, auto-estimated from mapped pairs when possible)
             {ArgumentKey.TempDirectory} [path] : temp directory (default : {DefaultTempFolder})

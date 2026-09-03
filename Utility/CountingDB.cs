@@ -14,8 +14,6 @@ namespace Tsumiki.Utility
         //
         // 1エントリあたりの実消費は、キーの byte[](オブジェクトヘッダ24B +
         // 中身)と Dictionary のエントリ構造体を合わせて概ね 80B 前後。
-        private const long DefaultTotalBudgetBytes = 768L * 1024 * 1024;
-
         private const int EstimatedBytesPerEntry = 80;
 
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
@@ -52,7 +50,8 @@ namespace Tsumiki.Utility
             this.TempDirectory = tempDirectory;
             this._length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             // 総予算をシャード数で分け合う。shardCount は呼び出し側が渡す。
-            var perShardBytes = DefaultTotalBudgetBytes / Math.Max(1, shardCount);
+            var totalBudgetBytes = (long)ConfigurationManager.Arguments.MemoryBudgetMB * 1024 * 1024;
+            var perShardBytes = totalBudgetBytes / Math.Max(1, shardCount);
             this._flushThreshold = (int)Math.Max(1024, Math.Min(int.MaxValue, perShardBytes / EstimatedBytesPerEntry));
             this._buffer = new Dictionary<byte[], ulong>(this._flushThreshold, this._equalityComparator);
             this._fileCount = 0;

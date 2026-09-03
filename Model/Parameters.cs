@@ -95,6 +95,26 @@ namespace Tsumiki.Model
 
         public int QualityCutoff { get; set; } = Consts.DefaultQualityCutoffValue;
 
+        private int _memoryBudgetMB = Consts.DefaultMemoryBudgetMB;
+
+        /// <summary>
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量(MB)。
+        /// メモリとディスク I/O のトレードオフを環境に合わせて調整するためのもの。
+        /// 増やすとフラッシュ回数が減って I/O が軽くなり、減らすとメモリが軽くなる。
+        /// </summary>
+        public int MemoryBudgetMB
+        {
+            get => this._memoryBudgetMB;
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentException("Please make the value of memory budget a positive integer (MB)");
+                }
+                this._memoryBudgetMB = value;
+            }
+        }
+
         public ulong RowBitSize = int.MaxValue;
         public string BitSize
         {
@@ -205,6 +225,7 @@ namespace Tsumiki.Model
                 kmer cutoff: {this.KmerCutoff}
                 phred: {this.Phred}
                 quality cutoff: {this.QualityCutoff}
+                counting memory budget: {this.MemoryBudgetMB} MB
                 bit size: {this.BitSize}
                 insert size: {this.InsertSize?.ToString() ?? Consts.NullInsertSizeText}
                 allow ambiguous bases : {this.AllowAmbiguousBases}
