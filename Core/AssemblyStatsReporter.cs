@@ -118,7 +118,18 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// 他アセンブラとの比較で慣習的に使われる最小長。ABySS 付属の
+        /// abyss-fac が既定でこの長さ以上の配列だけを集計するため、
+        /// 公表されている N50 等はほぼこの条件で計算されている。
+        /// 全件の統計だけを出していると、数十bpの断片が大量に混じった
+        /// こちらの数字と比較して不当に悪く見える(あるいはその逆になる)。
+        /// </summary>
+        public const int ComparableMinLength = 500;
+
+        /// <summary>
         /// fastaPath の統計量を計算し、"[Stats] label: ..." の形式でコンソールへ出力する。
+        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
+        /// ComparableMinLength 以上の配列だけに絞った統計も併記する。
         /// </summary>
         public static void Report(string label, string fastaPath)
         {
@@ -129,6 +140,9 @@ namespace Tsumiki.Core
             }
             var stats = ComputeFromFasta(fastaPath);
             Console.WriteLine($"[Stats] {label}: {stats}");
+
+            var filtered = Compute(ReadSequences(fastaPath).Where(s => s.Length >= ComparableMinLength));
+            Console.WriteLine($"[Stats] {label} (>={ComparableMinLength}bp, comparable to abyss-fac): {filtered}");
         }
     }
 }
