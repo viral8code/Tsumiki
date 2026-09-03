@@ -267,17 +267,33 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// 同一unitig内サンプルを信頼してよいと判断する、
+        /// 「unitig長 / 推定フラグメント長」の下限比。
+        ///
+        /// 同一unitig内サンプルの唯一の弱点は、unitig がフラグメントより短いと
+        /// 両端が収まるペアしか観測できず短いフラグメントに偏ること。
+        /// unitig がフラグメント長よりこの倍率以上に長ければ、その打ち切りは
+        /// 事実上起きないため偏りは無視できる。
+        /// </summary>
+        private const int UnbiasedSameUnitigLengthRatio = 10;
+
+        /// <summary>
         /// InsertSize を確定する。CLI で明示指定されていればそれを使う。
         ///
-        /// 未指定の場合、2種類のサンプル群のうち「resolved-edge由来」を
-        /// 優先して使う。同一unitig内サンプルは、unitig自体がフラグメント長
-        /// より短いと両端が収まるペアしか観測できず、より短いフラグメントに
-        /// 偏った標本になる(実測で確認済み: unitigがまだ短い段階では
-        /// 同一unitigサンプルの中央値が真の値の1/5程度まで下振れしていた)。
-        /// resolved-edge由来はunitig長に制約されないため、十分な数
-        /// (Consts.MinInsertSizeSampleCount以上)あればこちらを信頼する。
-        /// resolved-edge由来が不足する場合のみ、同一unitig由来も合わせた
-        /// 全体プールにフォールバックする(バイアスはあるが無いよりはまし)。
+        /// 未指定の場合、2種類のサンプル群から選ぶ。
+        ///
+        /// 同一unitig内サンプルは、unitig自体がフラグメント長より短いと
+        /// 両端が収まるペアしか観測できず、より短いフラグメントに偏った標本に
+        /// なる。ただしこの打ち切りは unitig が十分長ければ起きないため、
+        /// unitig の N50 が推定値の UnbiasedSameUnitigLengthRatio 倍以上ある
+        /// 場合は、桁違いに多い標本数(実データで76万件 対 600件)を活かして
+        /// こちらを採用する。
+        ///
+        /// resolved-edge由来は unitig 長に制約されない代わりに、
+        /// 「結合が確定した辺」だけを対象とするため標本数が非常に少なく、
+        /// 誤結合や誤マッピングの影響を受けやすい(実データで同一unitig側が
+        /// 中央値245・分布も素直だったのに対し、resolved-edge側は437と
+        /// 8割ほど上振れしていた)。
         /// </summary>
         private bool TryResolveInsertSize(out int insertSize)
         {
@@ -287,11 +303,26 @@ namespace Tsumiki.Core
                 return true;
             }
 
+            var sameUnitigSamples = contigMaker.SameUnitigInsertSizeSamples;
+            if (sameUnitigSamples.Count >= Consts.MinInsertSizeSampleCount)
+            {
+                var sameUnitigEstimate = Median(sameUnitigSamples);
+                var unitigN50 = UnitigN50(contigMaker.UnitigLengths);
+                if (sameUnitigEstimate > 0 && unitigN50 >= (long)sameUnitigEstimate * UnbiasedSameUnitigLengthRatio)
+                {
+                    insertSize = sameUnitigEstimate;
+                    Console.WriteLine(
+                        $"[Info] Insert size auto-estimated as {insertSize} from {sameUnitigSamples.Count} same-unitig sampled pairs " +
+                        $"(median; unitig N50 {unitigN50} is >= {UnbiasedSameUnitigLengthRatio}x the estimate, so the short-fragment truncation bias does not apply).");
+                    return true;
+                }
+            }
+
             var resolvedEdgeSamples = contigMaker.ResolvedEdgeInsertSizeSamples;
             if (resolvedEdgeSamples.Count >= Consts.MinInsertSizeSampleCount)
             {
                 insertSize = Median(resolvedEdgeSamples);
-                Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {resolvedEdgeSamples.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples to avoid short-fragment bias).");
+                Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {resolvedEdgeSamples.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples because the unitigs are not long enough for same-unitig samples to be unbiased).");
                 return true;
             }
 
@@ -306,6 +337,33 @@ namespace Tsumiki.Core
             insertSize = Median(allSamples);
             Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {allSamples.Count} sampled pairs (median; resolved-edge samples were too few ({resolvedEdgeSamples.Count}), fell back to the full pool which may be biased short).");
             return true;
+        }
+
+        /// <summary>
+        /// unitig の N50(長い順に並べて累積長が全長の半分に達した時点の長さ)。
+        /// 「同一unitig内サンプルが打ち切りバイアスを受けていないか」の判断に使う。
+        /// 平均ではなく N50 を使うのは、短い断片が本数として多くても
+        /// 実際にペアが観測される場所はゲノムの大部分を占める長い unitig に
+        /// 偏るため、そちらの長さ水準を見るべきだから。
+        /// </summary>
+        private static long UnitigN50(IReadOnlyDictionary<int, int> unitigLengths)
+        {
+            if (unitigLengths.Count == 0)
+            {
+                return 0;
+            }
+            var lengths = unitigLengths.Values.OrderByDescending(x => x).ToList();
+            var half = lengths.Sum(x => (long)x) / 2.0;
+            long cumulative = 0;
+            foreach (var length in lengths)
+            {
+                cumulative += length;
+                if (cumulative >= half)
+                {
+                    return length;
+                }
+            }
+            return lengths[^1];
         }
 
         private static int Median(List<int> values)
