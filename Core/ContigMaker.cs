@@ -718,7 +718,15 @@ namespace Tsumiki.Core
 
         public IReadOnlyDictionary<int, UnitigPlacement> UnitigPlacements => this.unitigPlacements;
 
-        public void UniteContigs(string contigPath, decimal uniteThreshold, ulong countThreshold)
+        /// <param name="copyNumber">
+        /// unitig ID -> 推定コピー数。先読み探索で「この unitig を何回まで通ってよいか」の
+        /// 予算に使う。渡さない場合はすべて1コピーとして扱い、先読み探索も控えめになる。
+        /// </param>
+        public void UniteContigs(
+            string contigPath,
+            decimal uniteThreshold,
+            ulong countThreshold,
+            IReadOnlyDictionary<int, int>? copyNumber = null)
         {
             var kmerLength = ConfigurationManager.Arguments.Kmer;
             var overlap = kmerLength - 1;
@@ -891,6 +899,26 @@ namespace Tsumiki.Core
                 }
             }
             Console.WriteLine($"[Debug] Edge selection: {unambiguous} vertex(es) had a single out-edge, {resolvedByReads} branch(es) resolved by read support; {mergeCount} directed merge(s) survived the mutual-uniqueness check ({mergeCount / 2} undirected join(s)).");
+
+            // 1歩だけを見る相互一意性の判定では決めきれなかった分岐を、
+            // 数kb先まで複数経路を並行して伸ばして(ビームサーチ)解けるだけ解く。
+            // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
+            // ペアエンドの証拠と整合する、という状況を拾える。
+            var extended = BeamSearchExtender.Extend(
+                graph,
+                unitigList,
+                merge,
+                pairLink,
+                copyNumber ?? new Dictionary<int, int>(),
+                insertSize: maxRepeatLength,
+                dominanceThreshold: uniteThreshold,
+                minimumEvidence: countThreshold);
+            if (extended > 0)
+            {
+                Console.WriteLine(
+                    $"[Debug] Beam-search lookahead resolved {extended / 2} further junction(s) that the " +
+                    "single-step mutual-uniqueness rule could not decide.");
+            }
 
             this.CollectInsertSizeSamplesFromMerges(merge);
 

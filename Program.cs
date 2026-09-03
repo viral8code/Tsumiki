@@ -214,7 +214,7 @@ namespace Tsumiki
 
             Console.WriteLine("unite unitigs");
 
-            contigMaker.UniteContigs(Consts.ContigFileName, 0.8m, 10);
+            contigMaker.UniteContigs(Consts.ContigFileName, param.PairUniteThreshold, param.PairCountThreshold, copyNumbers.CopyNumber);
 
             Console.WriteLine("Maked contigs");
 
