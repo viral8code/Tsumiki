@@ -26,6 +26,8 @@ import random
 from pathlib import Path
 
 BASES = "ACGT"
+TAB = chr(9)
+NEWLINE = chr(10)
 COMPLEMENT = str.maketrans("ACGT", "TGCA")
 
 
@@ -35,6 +37,40 @@ def revcomp(seq: str) -> str:
 
 def random_genome(length: int, rng: random.Random) -> str:
     return "".join(rng.choice(BASES) for _ in range(length))
+
+
+def insert_repeats(genome: str, count: int, repeat_length: int, rng: random.Random):
+    """
+    ゲノム中に、同一配列の反復を count 箇所に埋め込む。
+
+    反復配列はアセンブリが途切れる主要因であり、de Bruijn グラフ上では
+    1個の頂点に潰れて入次数・出次数が複数になる。リード自体は反復の内側から
+    読まれてもどのコピー由来か区別できないため、これを解くにはコピー全体を
+    跨いだペアエンドの情報が要る。repeat resolution が正しく働くかを
+    真値つきで確かめるために、その状況を意図的に作る。
+
+    埋め込み位置は互いに十分離し(反復同士が隣接して構造が入れ子にならないよう)、
+    元のゲノム長は変えない(同じ長さの区間を置き換える)。
+    戻り値は (反復入りゲノム, [埋め込み開始位置...], 反復配列)。
+    """
+    if count <= 0 or repeat_length <= 0:
+        return genome, [], ""
+
+    unit = "".join(rng.choice(BASES) for _ in range(repeat_length))
+    bases = list(genome)
+
+    # 位置は等間隔に散らし、周囲に十分な固有配列が残るようにする。
+    span = len(genome) // (count + 1)
+    if span <= repeat_length * 3:
+        raise SystemExit("genome is too short for the requested number/length of repeats")
+
+    positions = []
+    for i in range(count):
+        start = span * (i + 1)
+        bases[start:start + repeat_length] = list(unit)
+        positions.append(start)
+
+    return "".join(bases), positions, unit
 
 
 def mutate_base(true_base: str, rng: random.Random) -> str:
@@ -81,6 +117,10 @@ def main():
     parser.add_argument("--min-qual", type=int, default=30, help="min simulated Phred quality (default: 30)")
     parser.add_argument("--max-qual", type=int, default=40, help="max simulated Phred quality (default: 40)")
     parser.add_argument("--seed", type=int, default=42, help="RNG seed for reproducibility (default: 42)")
+    parser.add_argument("--repeat-count", type=int, default=0,
+                        help="number of identical repeat copies to embed in the genome (default: 0 = no repeats)")
+    parser.add_argument("--repeat-length", type=int, default=200,
+                        help="length of each embedded repeat copy in bp (default: 200)")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
@@ -88,6 +128,14 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     genome = random_genome(args.genome_length, rng)
+    genome, repeat_positions, repeat_unit = insert_repeats(
+        genome, args.repeat_count, args.repeat_length, rng)
+    if repeat_positions:
+        print(f"embedded {len(repeat_positions)} identical repeat(s) of {len(repeat_unit)}bp "
+              f"at positions {repeat_positions}")
+        rows = ["start" + TAB + "length"]
+        rows += [str(pos) + TAB + str(len(repeat_unit)) for pos in repeat_positions]
+        (out_dir / "repeats.tsv").write_text(NEWLINE.join(rows) + NEWLINE)
     write_fasta(out_dir / "reference.fasta", "synthetic_reference", genome)
 
     num_pairs = int((args.genome_length * args.coverage) / (2 * args.read_length))

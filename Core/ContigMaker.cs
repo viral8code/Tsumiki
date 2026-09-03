@@ -846,6 +846,7 @@ namespace Tsumiki.Core
             Array.Fill(chosen, -1);
             var unambiguous = 0;
             var resolvedByReads = 0;
+            var ambiguousRepeatBranches = 0;
             for (var v = 2; v < graph.VertexCount; v++)
             {
                 var outs = graph.OutEdges[v];
@@ -857,6 +858,22 @@ namespace Tsumiki.Core
                 {
                     chosen[v] = outs[0];
                     unambiguous++;
+                    continue;
+                }
+
+                // 分岐元が多コピー(反復配列)の場合、そこから出るリード支持は
+                // どのコピー由来か区別できないため、行き先を選ぶ根拠にならない。
+                // 反復の各コピーの続きが全部この1頂点に集まっているので、
+                // 支持はすべての行き先に付いてしまう。
+                //
+                // これを見落として支持で選んでいたため、A-R-B-R-C という構造の
+                // 合成ゲノム(R は2コピーの反復)で、R から出る分岐を誤って選び
+                // A-R-C という「中間を飛ばして端同士を繋いだ」contig を出力していた
+                // (真値照合で発覚)。正しい続きは、反復の外側にある単一コピー領域
+                // からのペアエンドでしか決められない。
+                if (copyNumber is not null && copyNumber.GetValueOrDefault(v >> 1, 1) > 1)
+                {
+                    ambiguousRepeatBranches++;
                     continue;
                 }
 
@@ -886,19 +903,57 @@ namespace Tsumiki.Core
             // chosen[w^1] == v^1 と同値。この条件を欠くと、複数の異なる
             // unitig が同じ次の unitig を指し(実データで 1550 頂点)、
             // 先着 1 本だけが結合されて残りが千切れる形になっていた。
+            // 多コピーの unitig を「通り抜ける」ことは許さない。
+            //
+            // 反復配列 R がゲノム中に2回現れ A-R-B-R-C という並びだった場合、
+            // A→R と R→C はどちらも個別には本物の隣接である(前者は1つ目の
+            // コピー、後者は2つ目のコピー)。しかし walk は各 unitig を1回しか
+            // 使えないため、この2つを R 経由で連鎖させると A-R-C という
+            // 「中間の B を飛ばして端同士を繋いだ」配列ができてしまう。
+            // 合成ゲノムの真値照合で実際にこれが起きていた。
+            //
+            // 通り抜けてよいのは、反復解決(ResolveShortRepeats)によって
+            // 解きほぐされ、入次数・出次数がどちらも1になった場合だけ。
+            // その状態なら「どのコピーにいるか」が確定している。
+            bool CanChainThrough(int vertex)
+            {
+                if ((copyNumber?.GetValueOrDefault(vertex >> 1, 1) ?? 1) <= 1)
+                {
+                    return true;
+                }
+                return graph.OutEdges[vertex].Count == 1 && graph.InDegree(vertex) == 1;
+            }
+
             var merge = new int[graph.VertexCount];
             Array.Fill(merge, -1);
             var mergeCount = 0;
+            var blockedByRepeat = 0;
             for (var v = 2; v < graph.VertexCount; v++)
             {
                 var w = chosen[v];
-                if (w >= 0 && chosen[w ^ 1] == (v ^ 1))
+                if (w < 0 || chosen[w ^ 1] != (v ^ 1))
                 {
-                    merge[v] = w;
-                    mergeCount++;
+                    continue;
                 }
+                // 結合は逆鎖側と対で成立する。片側だけ許すと merge の対称性が
+                // 崩れ、walk の始点判定(merge[v^1] == -1)が壊れるため、
+                // どちらかが通り抜け不可なら対ごと採用しない。
+                if (!CanChainThrough(v) || !CanChainThrough(w ^ 1))
+                {
+                    blockedByRepeat++;
+                    continue;
+                }
+                merge[v] = w;
+                mergeCount++;
             }
-            Console.WriteLine($"[Debug] Edge selection: {unambiguous} vertex(es) had a single out-edge, {resolvedByReads} branch(es) resolved by read support; {mergeCount} directed merge(s) survived the mutual-uniqueness check ({mergeCount / 2} undirected join(s)).");
+            if (blockedByRepeat > 0)
+            {
+                Console.WriteLine(
+                    $"[Debug] {blockedByRepeat / 2} join(s) were refused because they would chain through a multi-copy " +
+                    "repeat that has not been untangled (doing so skips whatever lies between the repeat's copies).");
+            }
+            Console.WriteLine($"[Debug] Edge selection: {unambiguous} vertex(es) had a single out-edge, {resolvedByReads} branch(es) resolved by read support, " +
+                $"{ambiguousRepeatBranches} branch(es) left unresolved because they leave a multi-copy repeat (reads inside a repeat cannot tell the copies apart); {mergeCount} directed merge(s) survived the mutual-uniqueness check ({mergeCount / 2} undirected join(s)).");
 
             // 1歩だけを見る相互一意性の判定では決めきれなかった分岐を、
             // 数kb先まで複数経路を並行して伸ばして(ビームサーチ)解けるだけ解く。

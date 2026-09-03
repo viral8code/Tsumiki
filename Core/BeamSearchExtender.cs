@@ -81,7 +81,14 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                var anchors = CollectAnchors(v, unitigList, merge, insertSize);
+                var anchors = CollectAnchors(v, unitigList, merge, insertSize, copyNumber);
+                if (anchors.Count == 0)
+                {
+                    // 単一コピーの足場が1つも取れない = いま反復配列の上にいて、
+                    // どのコピーにいるのか分からない。この状態で進む方向を選ぶ
+                    // 根拠は原理的に存在しない。
+                    continue;
+                }
 
                 var best = SearchBestFirstStep(
                     graph, unitigList, v, anchors, pairLink, copyNumber,
@@ -98,6 +105,15 @@ namespace Tsumiki.Core
                     continue;
                 }
 
+                // 解きほぐされていない多コピーの反復を通り抜ける結合は作らない。
+                // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
+                // R を1回しか使えない walk でこれを連鎖させると中間の B が
+                // 飛ばされる(詳細は ContigMaker 側の同名の判定を参照)。
+                if (!CanChainThrough(graph, copyNumber, v) || !CanChainThrough(graph, copyNumber, chosen ^ 1))
+                {
+                    continue;
+                }
+
                 merge[v] = chosen;
                 merge[chosen ^ 1] = v ^ 1;
                 committed += 2;
@@ -108,12 +124,33 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// v から遡って、いま組み上がっている contig の末尾インサートサイズぶんに
-        /// あたる頂点を集める。ここに載ったリードの相方が、続きの証拠になる。
+        /// あたる頂点のうち、<b>単一コピーのものだけ</b>を集める。
+        /// ここに載ったリードの相方が、続きの証拠になる。
         /// 直前の頂点は、逆鎖対称性より merge[v^1] の双子で辿れる。
+        ///
+        /// 多コピーの unitig を足場から外すのが要点。反復配列の内部から読まれた
+        /// リードは、どのコピー由来か区別できない(それが反復が解けない理由そのもの)。
+        /// そこを起点にしたペアの証拠はどの行き先にも付いてしまい、標本数が少ないと
+        /// 偶然の偏りが閾値を超えて誤った側を選ぶ。
+        ///
+        /// 実際、反復入りの合成ゲノム(A-R-B-R-C、R は150bpの2コピー反復)で、
+        /// R 自身を足場にしたために A-R-C という中間を飛ばした contig が
+        /// 出力されていた(真値照合で発覚)。単一コピーに限れば、A を足場として
+        /// A-B のペアだけが支持されるため正しく B が選ばれる。
+        ///
+        /// 通過はするが足場には数えない、という扱いにする(多コピー領域の
+        /// 向こう側にある単一コピー領域は、証拠として有効なため)。
         /// </summary>
-        private static List<int> CollectAnchors(int v, List<string> unitigList, int[] merge, int insertSize)
+        private static List<int> CollectAnchors(
+            int v, List<string> unitigList, int[] merge, int insertSize, IReadOnlyDictionary<int, int> copyNumber)
         {
-            List<int> anchors = [v];
+            List<int> anchors = [];
+            List<int> walked = [v];
+            if (copyNumber.GetValueOrDefault(v >> 1, 1) <= 1)
+            {
+                anchors.Add(v);
+            }
+
             var accumulated = unitigList[v].Length;
             var current = v;
             while (accumulated < insertSize)
@@ -124,11 +161,15 @@ namespace Tsumiki.Core
                     break;
                 }
                 var predecessor = twinMerge ^ 1;
-                if (predecessor == current || anchors.Contains(predecessor))
+                if (predecessor == current || walked.Contains(predecessor))
                 {
                     break;
                 }
-                anchors.Add(predecessor);
+                walked.Add(predecessor);
+                if (copyNumber.GetValueOrDefault(predecessor >> 1, 1) <= 1)
+                {
+                    anchors.Add(predecessor);
+                }
                 accumulated += unitigList[predecessor].Length;
                 current = predecessor;
             }
@@ -244,6 +285,20 @@ namespace Tsumiki.Core
             }
 
             return top.Key;
+        }
+
+        /// <summary>
+        /// その頂点を「通り抜けて」よいか。多コピーの反復は、解きほぐされて
+        /// 入次数・出次数がどちらも1になっている場合(=どのコピーにいるかが
+        /// 確定している場合)にだけ通り抜けてよい。
+        /// </summary>
+        private static bool CanChainThrough(UnitigGraph graph, IReadOnlyDictionary<int, int> copyNumber, int vertex)
+        {
+            if (copyNumber.GetValueOrDefault(vertex >> 1, 1) <= 1)
+            {
+                return true;
+            }
+            return graph.OutEdges[vertex].Count == 1 && graph.InDegree(vertex) == 1;
         }
 
         private static long ScoreOf(List<int> anchors, int candidate, IReadOnlyDictionary<(int, int), ulong> pairLink)

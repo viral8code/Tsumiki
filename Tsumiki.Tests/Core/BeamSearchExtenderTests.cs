@@ -162,6 +162,40 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// いま反復配列(多コピー)の上にいて、単一コピーの足場が1つも取れない
+        /// 場合は、どのコピーにいるのか分からないので進む方向を選べない。
+        ///
+        /// 反復の内部から読まれたリードはどのコピー由来か区別できない。それが
+        /// 反復が解けない理由そのものなので、そこを起点にしたペアの証拠は
+        /// どの行き先にも付いてしまう。標本数が少ないと偶然の偏りが閾値を超えて
+        /// 誤った側が選ばれる。
+        ///
+        /// これは実際に起きた: 反復入りの合成ゲノム(A-R-B-R-C、R は150bpの
+        /// 2コピー反復)で、R 自身を足場にしたために A-R-C という中間の B を
+        /// 飛ばした contig が出力されていた(真値照合で発覚)。
+        /// </summary>
+        [Fact]
+        public void Extend_DoesNothing_WhenStandingOnARepeatWithNoSingleCopyAnchor()
+        {
+            var (unitigList, graph) = Build();
+            var a = ContigMaker.VertexIndex(1);
+            var d = ContigMaker.VertexIndex(4);
+
+            // A 自身が2コピーの反復。足場に使える単一コピーの unitig が無い。
+            Dictionary<int, int> copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            // 片側にだけ強い(しかし信用してはいけない)証拠を置く。
+            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
+
+            var merge = NoMerges(graph);
+            var committed = BeamSearchExtender.Extend(
+                graph, unitigList, merge, pairLink, copyNumber,
+                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+
+            Assert.Equal(0, committed);
+            Assert.Equal(-1, merge[a]);
+        }
+
+        /// <summary>
         /// 既に別の結合が入っている行き先へは、それを壊してまで繋がない
         /// (相互一意性を保つ)。
         /// </summary>
