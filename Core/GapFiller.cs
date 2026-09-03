@@ -183,36 +183,43 @@ namespace Tsumiki.Core
             var minLength = Math.Max(0, gapLength - LengthMargin);
             var maxLength = gapLength + LengthMargin;
 
-            // 幅優先で1塩基ずつ伸ばす。状態は「これまでに追加した塩基列」。
-            // 深さは maxLength + kmerLength までで打ち切る(右側の k-mer に
-            // 重なるところまで伸ばして一致を見るため)。
-            var found = new List<string>();
-            var states = 0;
+            // 幅優先で1塩基ずつ伸ばす。
+            //
+            // 各状態が「これまでに継ぎ足した塩基列」そのものを持つと、
+            // 状態数の上限(20万)× 経路長ぶんのメモリと文字列コピーが発生する。
+            // 代わりに親へのインデックスと追加した1塩基だけを持ち、
+            // 解が見つかったときに親を辿って復元する。1状態あたり定数サイズで済む。
+            var nodes = new List<(int Parent, byte Base)>(1024) { (-1, 0) };
+            var kmers = new List<byte[]>(1024) { leftKmer };
+            var depths = new List<int>(1024) { 0 };
 
-            var queue = new Queue<(byte[] Kmer, StringBuilder Added)>();
-            queue.Enqueue((leftKmer, new StringBuilder()));
+            var found = new List<string>();
+            var queue = new Queue<int>();
+            queue.Enqueue(0);
+
+            var buffer = new byte[kmerLength];
 
             while (queue.Count > 0)
             {
-                var (kmer, added) = queue.Dequeue();
+                var currentIndex = queue.Dequeue();
+                var kmer = kmers[currentIndex];
+                var added = depths[currentIndex];
 
-                // added は「左の足場 k-mer の後ろに継ぎ足した塩基」。目標 k-mer に
+                // added は「左の足場 k-mer の後ろに継ぎ足した塩基数」。目標 k-mer に
                 // 到達した時点では、その末尾 kmerLength 塩基が目標 k-mer 自身に
                 // あたる(それは元の配列に既にある)ので、ギャップを実際に埋める
-                // 長さは added.Length - kmerLength になる。
+                // 長さは added - kmerLength になる。
                 // 打ち切りもこの「埋める長さ」で判断しないと、正解の経路を
                 // 目標到達の直前で切ってしまう。
-                var fillLength = added.Length - kmerLength;
+                var fillLength = added - kmerLength;
                 if (fillLength > maxLength)
                 {
                     continue;
                 }
 
-                // 現在の k-mer が目標 k-mer と一致したら、そこまでの追加分が
-                // ギャップを埋める配列になる。
                 if (fillLength >= minLength && kmer.AsSpan().SequenceEqual(targetKmer))
                 {
-                    found.Add(added.ToString(0, fillLength));
+                    found.Add(Reconstruct(nodes, currentIndex, fillLength));
                     if (found.Count > 1)
                     {
                         // 2本見つかった時点で一意には定まらない。
@@ -222,24 +229,24 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                if (++states > MaxStatesPerGap)
+                if (nodes.Count > MaxStatesPerGap)
                 {
                     outcome = FillOutcome.Ambiguous;
                     return null;
                 }
 
-                var next = new byte[kmerLength];
                 for (byte b = Consts.NucleotideID.A; b <= Consts.NucleotideID.T; b++)
                 {
-                    Array.Copy(kmer, 1, next, 0, kmerLength - 1);
-                    next[kmerLength - 1] = b;
-                    if (!index.Contains(next))
+                    Array.Copy(kmer, 1, buffer, 0, kmerLength - 1);
+                    buffer[kmerLength - 1] = b;
+                    if (!index.Contains(buffer))
                     {
                         continue;
                     }
-                    var child = new StringBuilder(added.ToString());
-                    _ = child.Append(Util.ByteToBaseString(b));
-                    queue.Enqueue(((byte[])next.Clone(), child));
+                    nodes.Add((currentIndex, b));
+                    kmers.Add((byte[])buffer.Clone());
+                    depths.Add(added + 1);
+                    queue.Enqueue(nodes.Count - 1);
                 }
             }
 
@@ -251,6 +258,23 @@ namespace Tsumiki.Core
 
             outcome = found.Count > 1 ? FillOutcome.Ambiguous : FillOutcome.Unreachable;
             return null;
+        }
+
+        /// <summary>
+        /// 親を辿って、継ぎ足した塩基列のうち先頭 fillLength 塩基を復元する。
+        /// 末尾側(目標 k-mer と重なる分)は捨てる。
+        /// </summary>
+        private static string Reconstruct(List<(int Parent, byte Base)> nodes, int leafIndex, int fillLength)
+        {
+            List<byte> reversed = [];
+            var index = leafIndex;
+            while (index > 0)
+            {
+                reversed.Add(nodes[index].Base);
+                index = nodes[index].Parent;
+            }
+            reversed.Reverse();
+            return string.Concat(reversed.Take(fillLength).Select(Util.ByteToBaseString));
         }
 
         public static void Report(Stats stats)
