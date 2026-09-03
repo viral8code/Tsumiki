@@ -1,14 +1,22 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using static Tsumiki.Common.Consts;
 
 namespace Tsumiki.Utility
 {
     internal class CountingDB : IDisposable
     {
-        // フラッシュ前にメモリ上へ保持するエントリ数の上限を決める基準サイズ(バイト)。
-        // 従来はここが「1ファイルあたりの生バイト数上限(128MB)」だったが、
-        // 事前集約方式ではエントリ数(=ユニークなk-mer数)で管理する。
-        private const int MaxCount = 128 * 1024 * 1024;
+        // メモリ上に保持する k-mer カウントの総量(全シャード合計)の目安。
+        //
+        // 以前はこの値を「1シャードあたり」の基準として使っていたため、
+        // -th 16 で実行すると 16 倍に膨らみ、実データ(100x)で
+        // ピーク 12.5GB を消費してノートPCでは実行が困難だった。
+        // 全シャードで分け合う総量として扱い、既定値も実測に基づいて下げる。
+        //
+        // 1エントリあたりの実消費は、キーの byte[](オブジェクトヘッダ24B +
+        // 中身)と Dictionary のエントリ構造体を合わせて概ね 80B 前後。
+        private const long DefaultTotalBudgetBytes = 768L * 1024 * 1024;
+
+        private const int EstimatedBytesPerEntry = 80;
 
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する。
@@ -32,14 +40,20 @@ namespace Tsumiki.Utility
 
         private readonly List<string> _flushedFiles = [];
 
-        public CountingDB(string tempDirectory)
+        /// <summary>
+        /// shardCount には、同時に生きている CountingDB の総数を渡す。
+        /// メモリ予算を等分するために使う。
+        /// </summary>
+        public CountingDB(string tempDirectory, int shardCount = 1)
         {
             this.filePrefix = Guid.NewGuid().ToString("N");
             this._comparator = new();
             this._equalityComparator = new();
             this.TempDirectory = tempDirectory;
             this._length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            this._flushThreshold = Math.Max(1, MaxCount / Math.Max(1, this._length + sizeof(ulong)));
+            // 総予算をシャード数で分け合う。shardCount は呼び出し側が渡す。
+            var perShardBytes = DefaultTotalBudgetBytes / Math.Max(1, shardCount);
+            this._flushThreshold = (int)Math.Max(1024, Math.Min(int.MaxValue, perShardBytes / EstimatedBytesPerEntry));
             this._buffer = new Dictionary<byte[], ulong>(this._flushThreshold, this._equalityComparator);
             this._fileCount = 0;
         }
@@ -64,29 +78,6 @@ namespace Tsumiki.Utility
                 FileShare.Read,
                 IoBufferSize,
                 FileOptions.SequentialScan);
-        }
-
-        public void Add(Span<byte[]> key)
-        {
-            this.CreateByteArray(key, 0, new byte[(key.Length + 3) >> 2]);
-        }
-
-        private void CreateByteArray(Span<byte[]> key, int now, byte[] buffer)
-        {
-            if (now == key.Length)
-            {
-                this.Add(buffer);
-                return;
-            }
-            var index = now >> 2;
-            var shift = (3 - (now & 3)) << 1;
-            foreach (var b in key[now])
-            {
-                var val = (byte)((b - 1) << shift);
-                buffer[index] |= val;
-                this.CreateByteArray(key, now + 1, buffer);
-                buffer[index] &= (byte)~val;
-            }
         }
 
         public void Add(Span<byte> key)
@@ -114,7 +105,7 @@ namespace Tsumiki.Utility
         /// 再出現をディスク書き込みに変換しないようにする。
         /// 閾値に達したら整列済みの状態でディスクへフラッシュする。
         /// </summary>
-        private void Add(byte[] values)
+        public void AddPacked(byte[] values)
         {
             if (this._buffer.TryGetValue(values, out var count))
             {
@@ -191,8 +182,13 @@ namespace Tsumiki.Utility
                 {
                     using var reader2 = new BinaryReader(CreateReadStream(file2));
                     using var writer = new BinaryWriter(CreateWriteStream(mergedFileName));
-                    var read1 = reader1.ReadBytes(Length);
-                    var read2 = reader2.ReadBytes(Length);
+                    // BinaryReader.ReadBytes は EOF でも null ではなく長さ0の配列を
+                    // 返すため、初回読み取りを保護しないと空ファイルを
+                    // 「まだ中身がある」と誤認し、続く ReadUInt64 で破綻する。
+                    // k-mer をハッシュでシャードへ振り分けるようにして以降、
+                    // 空のシャードが普通に発生するようになったため必須。
+                    var read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
+                    var read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
                     while (read1 != null && read2 != null)
                     {
                         var result = this._comparator.Compare(read1, read2);
@@ -298,8 +294,9 @@ namespace Tsumiki.Utility
                 {
                     using var reader2 = new BinaryReader(CreateReadStream(file2));
                     using var writer = new BinaryWriter(CreateWriteStream(mergedFileName));
-                    var read1 = reader1.ReadBytes(length);
-                    var read2 = reader2.ReadBytes(length);
+                    // 上と同じ理由で、初回読み取りを HasNext で保護する。
+                    var read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
+                    var read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
                     while (read1 != null && read2 != null)
                     {
                         var result = comparator.Compare(read1, read2);

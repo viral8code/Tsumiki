@@ -29,6 +29,10 @@ namespace Tsumiki.Utility
         // Add 呼び出し時のロックが不要になる。
         private CountingDB[]? _counters;
 
+        // シャードごとのロック。k-mer をワーカー単位ではなくハッシュ値で
+        // 振り分けるようにしたため、複数スレッドが同じシャードへ書きうる。
+        private object[]? _counterLocks;
+
         // Cutoff() 実行後に確定する、カットオフを通過したk-merの厳密な集合
         // (常に正規化(Canonical)された形で保持する)。値はそのk-merの
         // 出現回数(カバレッジ)。GraphSimplifierの低カバレッジunitig除去
@@ -65,9 +69,11 @@ namespace Tsumiki.Utility
             this._tempDirectory = tempDirectory;
             var workerCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
             this._counters = new CountingDB[workerCount];
+            this._counterLocks = new object[workerCount];
             for (var i = 0; i < workerCount; i++)
             {
-                this._counters[i] = new CountingDB(tempDirectory);
+                this._counters[i] = new CountingDB(tempDirectory, workerCount);
+                this._counterLocks[i] = new object();
             }
         }
 
@@ -76,17 +82,124 @@ namespace Tsumiki.Utility
         /// 並列読み込み時、各スレッドは自分の workerIndex を固定して呼び出すことで
         /// スレッドセーフに(ロックなしで)k-mer を登録できる。
         /// </summary>
+        /// <summary>
+        /// 曖昧塩基(N など、候補が複数ある位置)を含む k-mer を、
+        /// ありうる塩基の組み合わせすべてに展開して登録する。
+        /// read[i] はその位置で取りうる塩基ID の一覧。
+        ///
+        /// 展開は塩基ID の空間で行い、1件ずつ通常の Add へ渡す。
+        /// こうすることで正規化(順鎖・逆鎖の寄せ)とシャード振り分けが
+        /// 通常経路とまったく同じ扱いになる。
+        ///
+        /// 以前は CountingDB 側でパック済みバイト列を組み立てており、
+        /// (a) 正規化されない (b) 組み立て途中のバッファをそのまま辞書のキーと
+        /// して格納しており、その後も書き換え続けるため既に登録済みのキーが
+        /// 壊れる、という2つの問題があった。
+        /// </summary>
         public void Add(Span<byte[]> read, int workerIndex)
         {
-            this._counters?[workerIndex].Add(read);
+            if (this._counters is null)
+            {
+                return;
+            }
+            var kmer = new byte[read.Length];
+            this.AddCombinations(read, 0, kmer, workerIndex);
+        }
+
+        private void AddCombinations(Span<byte[]> options, int position, byte[] kmer, int workerIndex)
+        {
+            if (position == options.Length)
+            {
+                this.Add(kmer.AsSpan(), workerIndex);
+                return;
+            }
+            foreach (var id in options[position])
+            {
+                kmer[position] = id;
+                this.AddCombinations(options, position + 1, kmer, workerIndex);
+            }
         }
 
         /// <summary>
-        /// 指定したワーカー番号(0 始まり)専用の CountingDB に登録する。
+        /// k-mer を1件カウントする。
+        ///
+        /// 振り分けは workerIndex ではなく k-mer 自身のハッシュ値で行う。
+        /// ワーカーごとに別の辞書へ入れていた頃は、同じ k-mer が最大で
+        /// スレッド数ぶんの辞書に重複して載り、メモリも書き出し量も
+        /// そのぶん膨らんでいた(実データ 100x・16スレッドでピーク12.5GB)。
+        /// ハッシュで振り分ければ、ある k-mer は必ず1つのシャードにしか載らない。
+        ///
+        /// さらに、順鎖・逆鎖のうち辞書順で小さいほう(正規化形)に寄せてから
+        /// 数える。以前は両向きを別キーとして数え、カットオフ時に合算していたため、
+        /// エントリ数・書き出し量ともに2倍になっていた。
         /// </summary>
         public void Add(Span<byte> read, int workerIndex)
         {
-            this._counters?[workerIndex].Add(read);
+            if (this._counters is not { } counters)
+            {
+                return;
+            }
+
+            var packed = PackCanonical(read);
+            var shard = (int)(Hash(packed) % (uint)counters.Length);
+            lock (this._counterLocks![shard])
+            {
+                counters[shard].AddPacked(packed);
+            }
+        }
+
+        /// <summary>
+        /// k-mer を、順鎖・逆鎖のうち塩基列として辞書順で小さいほうの向きで
+        /// 2bit パックした byte 配列にする。
+        ///
+        /// パック後のバイト列の辞書順は塩基列の辞書順と一致する(先頭塩基が
+        /// 上位ビットに来るため)ので、外部マージソートの順序とも整合する。
+        /// </summary>
+        private static byte[] PackCanonical(ReadOnlySpan<byte> kmer)
+        {
+            var useForward = IsCanonicalForward(kmer);
+            var arr = new byte[(kmer.Length + 3) / 4];
+            for (var i = 0; i < kmer.Length; i++)
+            {
+                // 逆鎖側を採用する場合は、末尾から相補塩基を取り出す。
+                // 相補は A(1)<->T(4), C(2)<->G(3) なので 5 - x で得られる。
+                var id = useForward ? kmer[i] : (byte)(5 - kmer[kmer.Length - 1 - i]);
+                arr[i >> 2] |= (byte)((id - 1) << ((3 - (i & 3)) << 1));
+            }
+            return arr;
+        }
+
+        /// <summary>
+        /// 順鎖側がその逆相補以下(辞書順)かどうか。確保なしで判定する。
+        /// </summary>
+        private static bool IsCanonicalForward(ReadOnlySpan<byte> kmer)
+        {
+            int i = 0, j = kmer.Length - 1;
+            while (i <= j)
+            {
+                var forward = kmer[i];
+                var reverse = (byte)(5 - kmer[j]);
+                if (forward != reverse)
+                {
+                    return forward < reverse;
+                }
+                i++;
+                j--;
+            }
+            // 回文(自身が逆相補と一致)。どちらでも同じなので順鎖扱い。
+            return true;
+        }
+
+        /// <summary>パック済みキーの FNV-1a ハッシュ。シャードの振り分けに使う。</summary>
+        private static uint Hash(byte[] packed)
+        {
+            var hash = 2166136261u;
+            foreach (var b in packed)
+            {
+                hash ^= b;
+                hash *= 16777619u;
+            }
+            return hash;
         }
 
         /// <summary>

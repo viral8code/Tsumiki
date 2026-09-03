@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -118,38 +118,16 @@ namespace Tsumiki.Core
                     index.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), workerIndex);
                 }
             }
-            badQualityCount = 0;
-            readSpan = Util.ReverseComprement(readSpan);
-            qualitySpan.Reverse();
-            for (var i = 0; i < ConfigurationManager.Arguments.Kmer; i++)
-            {
-                if (readSpan[i] == Consts.InvalidBase ||
-                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                {
-                    badQualityCount++;
-                }
-            }
-            if (badQualityCount == 0)
-            {
-                index.Add(readSpan[..ConfigurationManager.Arguments.Kmer], workerIndex);
-            }
-            for (var i = ConfigurationManager.Arguments.Kmer; i < simpleRead.Length; i++)
-            {
-                if (readSpan[i - ConfigurationManager.Arguments.Kmer] == Consts.InvalidBase ||
-                    qualitySpan[i - ConfigurationManager.Arguments.Kmer] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                {
-                    badQualityCount--;
-                }
-                if (readSpan[i] == Consts.InvalidBase ||
-                    qualitySpan[i] - ConfigurationManager.Arguments.Phred - ConfigurationManager.Arguments.QualityCutoff < 0)
-                {
-                    badQualityCount++;
-                }
-                if (badQualityCount == 0)
-                {
-                    index.Add(readSpan.Slice(i - ConfigurationManager.Arguments.Kmer + 1, ConfigurationManager.Arguments.Kmer), workerIndex);
-                }
-            }
+            // かつてはこの後、リードを逆相補にしてもう一度すべての k-mer を
+            // 登録していた。カウント段階で正規化していなかったため、どちらの
+            // 向きから問い合わせても当たるようにするには両向きを入れる必要が
+            // あったからである。
+            //
+            // 現在は TrustedKmerIndex.Add が順鎖・逆鎖のうち辞書順で小さいほう
+            // (正規化形)に寄せてから数えるため、この2周目は完全に冗長であり、
+            // すべてのカウントをちょうど2倍にしてしまう(実データのヒストグラムが
+            // 偶数のカウントしか持たない、という形で表面化した)。
+            // 削除したことで、登録回数・メモリ・ディスク書き込みがいずれも半減する。
         }
     }
 }
