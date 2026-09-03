@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -113,23 +113,37 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// k=33(k&lt;=32の高速経路が使えない)でも、従来通り厳密な
-        /// HashSet&lt;KmerKey&gt;経路で正しく動作することを確認する回帰テスト。
+        /// k が 32 を超え 64 以下のとき使われる UInt128 経路(_trustedKmersMid)と、
+        /// 64 を超えたときの KmerKey フォールバック経路のそれぞれで、
+        /// 正規化(順鎖・逆鎖のどちらから問い合わせても同じ結果)と
+        /// カバレッジ合算が正しく行われることを確認する。
+        ///
+        /// 150bp リードでは k=31 のままだと 31bp 以上の反復配列がすべて潰れ
+        /// contig N50 が伸びないため、k=63 前後で正しく動くことは品質上重要。
         /// </summary>
-        [Fact]
-        public void Contains_WorksForKmerLongerThan32_UsingKmerKeyFallbackPath()
+        [Theory]
+        [InlineData(33)] // UInt128 経路の下限
+        [InlineData(63)] // 150bp リードでの実用値
+        [InlineData(64)] // UInt128 経路の上限(ちょうど128bitを使い切る)
+        [InlineData(65)] // KmerKey フォールバック経路
+        public void Contains_And_GetCoverage_WorkForKmerLongerThan32(int k)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = 33, ThreadCount = 1 };
+            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
-            var seq = "ACGTACGTACGTACGTACGTACGTACGTACGTA"; // 34塩基(kmer長33を1つ取れる)
-            var inserted = ToBytes(seq[..33]);
-            var revComp = ToBytes(Util.ReverseComprement(seq[..33]));
-            var neverInserted = ToBytes(new string('T', 33));
+            // 逆相補と自己一致しないよう、非周期的な塩基列を決定的に生成する。
+            var seq = string.Concat(Enumerable.Range(0, k).Select(i => "ACGGTCATTGAC"[(i * 7) % 12]));
+            var inserted = ToBytes(seq);
+            var revComp = ToBytes(Util.ReverseComprement(seq));
+            var neverInserted = ToBytes(new string('T', k));
 
-            for (var i = 0; i < 5; i++)
+            for (var i = 0; i < 3; i++)
             {
                 index.Add(inserted.AsSpan(), workerIndex: 0);
+            }
+            for (var i = 0; i < 2; i++)
+            {
+                index.Add(revComp.AsSpan(), workerIndex: 0);
             }
 
             _ = index.Cutoff(bounds: 2);
@@ -137,6 +151,37 @@ namespace Tsumiki.Tests.Utility
             Assert.True(index.Contains(inserted));
             Assert.True(index.Contains(revComp));
             Assert.False(index.Contains(neverInserted));
+
+            // 順鎖3回 + 逆鎖2回 が同一の正規化キーへ合算されているはず。
+            Assert.Equal(5UL, index.GetCoverage(inserted));
+            Assert.Equal(5UL, index.GetCoverage(revComp));
+        }
+
+        /// <summary>
+        /// k=63 の直鎖配列で、EnumerateTrustedKmers が UInt128 経路でも
+        /// 正しく塩基列へ復元でき(UnpackMid)、隣接判定(CountOutEdges)が
+        /// 成立することを確認する。パック/アンパックの往復が壊れていると
+        /// unitig 構築が丸ごと機能しなくなるため、経路ごとに固定しておく。
+        /// </summary>
+        [Fact]
+        public void EnumerateAndDegrees_RoundTripThroughUInt128Path()
+        {
+            const int k = 63;
+            // 70塩基の非周期的な配列(k=63のk-merが8個取れる)。
+            var seq = string.Concat(Enumerable.Range(0, 70).Select(i => "ACGGTCATTGACCTA"[(i * 11) % 15]));
+
+            using var index = this.BuildLinearIndex(seq, k);
+
+            var kmers = index.EnumerateTrustedKmers().ToList();
+            Assert.NotEmpty(kmers);
+            Assert.All(kmers, km => Assert.Equal(k, km.Length));
+            // 復元した k-mer は必ず集合に含まれていなければならない。
+            Assert.All(kmers, km => Assert.True(index.Contains(km)));
+
+            var bytes = ToBytes(seq);
+            Assert.Equal(1, index.CountOutEdges(bytes.AsSpan(0, k)));
+            Assert.Equal(0, index.CountOutEdges(bytes.AsSpan(bytes.Length - k, k)));
+            Assert.Equal(0, index.CountInEdges(bytes.AsSpan(0, k)));
         }
 
         /// <summary>

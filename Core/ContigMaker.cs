@@ -412,7 +412,7 @@ namespace Tsumiki.Core
                 // 同一unitig内サンプルは、unitig自体がフラグメント長より短い場合
                 // 両端が同じunitig内に収まるペアしか観測できず、より短い
                 // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
-                // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromResolvedEdges
+                // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromMerges
                 // が出力)と比較することで、このバイアスの有無を確認できる。
                 Console.WriteLine($"[Info] Same-unitig sample median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; may be biased short if unitigs are shorter than the true insert size).");
             }
@@ -658,19 +658,10 @@ namespace Tsumiki.Core
 
         public void UniteContigs(string contigPath, decimal uniteThreshold, ulong countThreshold)
         {
-            // リードマッピングによって得られた unitig 間の隣接情報(kmerPath)の
-            // 規模を可視化する。ここが極端に少ない/空の場合、unitig の結合が
-            // ほとんど起きず contigs.fasta が unitigs.fasta とほぼ同一になる。
-            Console.WriteLine($"kmerPath entries (raw adjacency pairs found): {this.kmerPath.Count}");
-            if (this.kmerPath.Count > 0)
-            {
-                var totalSupport = this.kmerPath.Values.Aggregate(0UL, (acc, v) => acc + v);
-                var maxSupport = this.kmerPath.Values.Max();
-                Console.WriteLine($"kmerPath total read support: {totalSupport}, max single-edge support: {maxSupport}");
-            }
+            var kmerLength = ConfigurationManager.Arguments.Kmer;
+            var overlap = kmerLength - 1;
 
             List<string> unitigList = [string.Empty, string.Empty];
-            var unitigCount = 0;
             using (FastaReader reader = new(this.unitigFilePath))
             {
                 while (reader.HasNext())
@@ -678,115 +669,171 @@ namespace Tsumiki.Core
                     var unitig = reader.NextSequence().Seq;
                     unitigList.Add(unitig);
                     unitigList.Add(Util.ReverseComprement(unitig));
-                    unitigCount++;
                 }
             }
-            var adjacencyList = BuildAdjacencyList(this.kmerPath, unitigList.Count);
 
-            // FixPath 適用前の「候補を持つ頂点数」「合計候補数」を記録しておき、
-            // countThreshold / uniteThreshold によってどれだけ絞り込まれた(あるいは
-            // 消え去った)かを比較できるようにする。
-            var verticesWithCandidatesBefore = 0;
-            var totalCandidatesBefore = 0;
-            for (var i = 2; i < adjacencyList.Count; i++)
+            // 隣接は de Bruijn グラフから厳密に導く(UnitigGraph の説明を参照)。
+            // リードマッピング由来の kmerPath は「辺を作る」ためではなく、
+            // 分岐点でどの辺を選ぶかの「重み」としてのみ使う。
+            var graph = UnitigGraph.Build(unitigList, this.kmerDict, kmerLength, AmbiguousKmer);
+
+            var edgeCount = 0;
+            var branchingVertices = 0;
+            for (var v = 2; v < graph.VertexCount; v++)
             {
-                if (adjacencyList[i].Count > 0)
+                edgeCount += graph.OutEdges[v].Count;
+                if (graph.OutEdges[v].Count > 1)
                 {
-                    verticesWithCandidatesBefore++;
-                    totalCandidatesBefore += adjacencyList[i].Count;
+                    branchingVertices++;
                 }
             }
-            Console.WriteLine($"[Debug] Before FixPath: {verticesWithCandidatesBefore} vertices have candidate edges (total {totalCandidatesBefore} candidates).");
+            Console.WriteLine($"[Debug] Exact de Bruijn unitig graph: {edgeCount} directed edge(s), {branchingVertices} branching vertex(es) out of {graph.VertexCount - 2}.");
+            Console.WriteLine($"kmerPath entries (raw read-support pairs found): {this.kmerPath.Count}");
 
-            for (var i = 2; i < adjacencyList.Count; i++)
+            // リード由来の支持数を逆鎖対称に集計する。辺 v→w と w^1→v^1 は
+            // 同一の物理的な隣接を表すため、重みも同一でなければ順鎖側と
+            // 逆鎖側で異なる経路が選ばれ、同じ領域が 2 通りに組み立てられてしまう。
+            Dictionary<(int, int), ulong> support = [];
+            foreach (var ((from, to), count) in this.kmerPath)
             {
-                FixPath(adjacencyList, i, uniteThreshold, countThreshold);
-            }
-
-            var verticesResolvedAfter = 0;
-            for (var i = 2; i < adjacencyList.Count; i++)
-            {
-                if (adjacencyList[i].Count == 1)
+                if (from == to)
                 {
-                    verticesResolvedAfter++;
+                    continue;
                 }
+                var v = VertexIndex(from);
+                var w = VertexIndex(to);
+                support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
+                support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
             }
-            Console.WriteLine($"[Debug] After FixPath: {verticesResolvedAfter} vertices resolved to exactly one edge (i.e. will actually be joined).");
 
-            // InsertSize 自動推定: FixPath によって「実際に結合される」と確定した
-            // unitig ペア(k-1 オーバーラップで直接連結される = ギャップなし)について、
-            // pairPath に記録済みの「未読了長の合計」から
-            // InsertSize = totalRemaining + (k-1) として逆算し、サンプルとして使う。
-            // (pairPath 自体は MappingPairedReads 時点で「まだ結合されるかどうか
-            //  わからない」候補として全件保持されているため、ここで FixPath の
-            //  結果と突き合わせて実際に使うものだけを選び出す。)
-            this.CollectInsertSizeSamplesFromResolvedEdges(adjacencyList);
-
-            var enterCount = new int[adjacencyList.Count];
-            for (var i = 2; i < adjacencyList.Count; i++)
+            // 各頂点について「出て行く先」を高々 1 つに絞る。
+            var chosen = new int[graph.VertexCount];
+            Array.Fill(chosen, -1);
+            var unambiguous = 0;
+            var resolvedByReads = 0;
+            for (var v = 2; v < graph.VertexCount; v++)
             {
-                if (adjacencyList[i].Count == 1)
+                var outs = graph.OutEdges[v];
+                if (outs.Count == 0)
                 {
-                    enterCount[adjacencyList[i][0].Item1]++;
+                    continue;
+                }
+                if (outs.Count == 1)
+                {
+                    chosen[v] = outs[0];
+                    unambiguous++;
+                    continue;
+                }
+
+                var sum = 0UL;
+                var best = -1;
+                var bestCount = 0UL;
+                foreach (var w in outs)
+                {
+                    var c = support.GetValueOrDefault((v, w));
+                    sum += c;
+                    if (c > bestCount)
+                    {
+                        bestCount = c;
+                        best = w;
+                    }
+                }
+                if (best >= 0 && bestCount >= countThreshold && sum > 0 && (decimal)bestCount / sum >= uniteThreshold)
+                {
+                    chosen[v] = best;
+                    resolvedByReads++;
                 }
             }
 
-            // enterCount(その頂点を「唯一の行き先」として指している頂点の数)の分布。
-            // 2以上になっている頂点が多い場合、複数の異なる unitig が同じ次の
-            // unitig を指しており、WalkPath の visited 管理によって
-            // 最初に辿り着いた1本しか結合されず、残りは孤立 unitig として
-            // 個別出力される(=contig数が unitig 数を上回る一因になりうる)。
-            var enterCountZero = 0;
-            var enterCountOne = 0;
-            var enterCountMulti = 0;
-            for (var i = 2; i < adjacencyList.Count; i++)
+            // 相互一意(mutual unique)な辺だけを実際の結合として採用する。
+            // v→w を結合してよいのは「v の唯一の行き先が w」であり、かつ
+            // 「w の唯一の来訪元が v」であるときに限る。後者は逆鎖対称性より
+            // chosen[w^1] == v^1 と同値。この条件を欠くと、複数の異なる
+            // unitig が同じ次の unitig を指し(実データで 1550 頂点)、
+            // 先着 1 本だけが結合されて残りが千切れる形になっていた。
+            var merge = new int[graph.VertexCount];
+            Array.Fill(merge, -1);
+            var mergeCount = 0;
+            for (var v = 2; v < graph.VertexCount; v++)
             {
-                switch (enterCount[i])
+                var w = chosen[v];
+                if (w >= 0 && chosen[w ^ 1] == (v ^ 1))
                 {
-                    case 0:
-                        enterCountZero++;
-                        break;
-                    case 1:
-                        enterCountOne++;
-                        break;
-                    default:
-                        enterCountMulti++;
-                        break;
+                    merge[v] = w;
+                    mergeCount++;
                 }
             }
-            Console.WriteLine($"[Debug] enterCount distribution: 0={enterCountZero}, 1={enterCountOne}, 2+={enterCountMulti}");
+            Console.WriteLine($"[Debug] Edge selection: {unambiguous} vertex(es) had a single out-edge, {resolvedByReads} branch(es) resolved by read support; {mergeCount} directed merge(s) survived the mutual-uniqueness check ({mergeCount / 2} undirected join(s)).");
 
-            var firstUnitig = new List<int>();
-            for (var i = 2; i < adjacencyList.Count; i++)
-            {
-                if (enterCount[i] == 0)
-                {
-                    firstUnitig.Add(i);
-                }
-            }
-            Console.WriteLine($"[Debug] firstUnitig (walk start points) count: {firstUnitig.Count}");
+            this.CollectInsertSizeSamplesFromMerges(merge);
+
+            // 双子(v と v^1)は同一 unitig の裏表なので、unitig 単位で訪問済みを
+            // 管理する。これを頂点単位でやっていたため、順鎖側の walk と逆鎖側の
+            // walk が同じ unitig を別々に出力し、contig 総長が unitig 総長の
+            // ちょうど 2 倍に膨れていた。
+            var unitigCount = (unitigList.Count - 2) / 2;
+            var unitigVisited = new bool[unitigCount + 1];
+
             List<string> contigList = [];
-            // 各 contig ごとの walk 順(vertexIndex のリスト)。vertexIndex は
-            // adjacencyList の添字(unitig ID の << 1 / << 1|1 形式)であり、
-            // unitig ID と向きの両方を含む。
             List<List<int>> walkOrders = [];
-            var visited = new bool[adjacencyList.Count];
-            foreach (var index in firstUnitig)
+
+            string Walk(int startVertex, List<int> walkOrder)
             {
-                var walkOrder = new List<int>();
-                var contig = WalkPath(unitigList, adjacencyList, index, visited, walkOrder);
-                contigList.Add(contig);
+                var sb = new StringBuilder(unitigList[startVertex]);
+                walkOrder.Add(startVertex);
+                unitigVisited[startVertex >> 1] = true;
+                var cur = startVertex;
+                while (true)
+                {
+                    var next = merge[cur];
+                    if (next < 0 || unitigVisited[next >> 1])
+                    {
+                        break;
+                    }
+                    var seq = unitigList[next];
+                    if (seq.Length < overlap || sb.Length < overlap)
+                    {
+                        break;
+                    }
+                    // 構築方法より k-1 のオーバーラップは保証されているが、
+                    // 万一崩れていた場合に誤った配列を作らないよう検証する。
+                    if (!TryMatchOverlap(sb, seq, overlap))
+                    {
+                        break;
+                    }
+                    _ = sb.Append(seq[overlap..]);
+                    unitigVisited[next >> 1] = true;
+                    walkOrder.Add(next);
+                    cur = next;
+                }
+                return sb.ToString();
+            }
+
+            // 結合グラフ上で「入ってくる結合を持たない」頂点が経路の始点。
+            // v への結合が存在することは、逆鎖対称性より merge[v^1] != -1 と同値。
+            for (var v = 2; v < graph.VertexCount; v++)
+            {
+                if (merge[v ^ 1] != -1 || unitigVisited[v >> 1])
+                {
+                    continue;
+                }
+                List<int> walkOrder = [];
+                contigList.Add(Walk(v, walkOrder));
                 walkOrders.Add(walkOrder);
             }
-            for (var i = 2; i < adjacencyList.Count; i += 2)
+
+            // 始点を持たない=循環している経路を拾う(環状ゲノム/プラスミド等)。
+            for (var v = 2; v < graph.VertexCount; v += 2)
             {
-                if (!visited[i] && !visited[i + 1])
+                if (unitigVisited[v >> 1])
                 {
-                    contigList.Add(unitigList[i]);
-                    walkOrders.Add([i]);
+                    continue;
                 }
+                List<int> walkOrder = [];
+                contigList.Add(Walk(v, walkOrder));
+                walkOrders.Add(walkOrder);
             }
-            HashSet<string> set = [];
+
             using var writer = new FastaWriter(contigPath);
             var ID = 1;
             var genomeSize = 0L;
@@ -794,80 +841,56 @@ namespace Tsumiki.Core
             {
                 var contig = contigList[c];
                 var walkOrder = walkOrders[c];
-                if (set.Add(contig))
+                var revContig = Util.ReverseComprement(contig);
+                var isReverseComplemented = string.CompareOrdinal(contig, revContig) > 0;
+                writer.Write($"NODE{ID}", isReverseComplemented ? revContig : contig);
+
+                // walkOrder に含まれる各頂点(unitig の向き付きインデックス)を
+                // unitigPlacements に記録する。walkOrder は「実際に配列へ
+                // 連結された順」なので、そのままこの contig 内での並び順になる。
+                // isReverseComplemented な場合、contigs.fasta 上の配列は
+                // walk 順と逆向きになっているため、位置(先頭/末尾)の解釈は
+                // Scaffolder 側で isContigReverseComplemented を見て反転させる。
+                for (var w = 0; w < walkOrder.Count; w++)
                 {
-                    var revContig = Util.ReverseComprement(contig);
-                    if (contig != revContig)
-                    {
-                        if (!set.Add(revContig))
-                        {
-                            continue;
-                        }
-                    }
-                    var isReverseComplemented = contig.CompareTo(revContig) > 0;
-                    if (isReverseComplemented)
-                    {
-                        writer.Write($"NODE{ID}", revContig);
-                    }
-                    else
-                    {
-                        writer.Write($"NODE{ID}", contig);
-                    }
-
-                    // walkOrder に含まれる各頂点(unitig の向き付きインデックス)を
-                    // unitigPlacements に記録する。walkOrder は「実際に配列へ
-                    // 連結された順」なので、そのままこの contig 内での並び順になる。
-                    // isReverseComplemented な場合、contigs.fasta 上の配列は
-                    // walk 順と逆向きになっているため、位置(先頭/末尾)の解釈も
-                    // 反転させる必要がある。ここでは「walk 順そのまま」の
-                    // WalkOrderIndex を記録し、IsAtContigStart/End の判定はそのまま
-                    // walk 順ベースで行い、Scaffolder 側で
-                    // isContigReverseComplemented を見て解釈を反転させる。
-                    for (var w = 0; w < walkOrder.Count; w++)
-                    {
-                        var vertexIndex = walkOrder[w];
-                        var unitigId = vertexIndex >> 1;
-                        var isReverseVertex = (vertexIndex & 1) == 1;
-                        this.unitigPlacements[unitigId] = new UnitigPlacement(
-                            contigId: ID,
-                            isContigReverseComplemented: isReverseComplemented,
-                            walkOrderIndex: w,
-                            walkOrderCount: walkOrder.Count,
-                            isUnitigReverseInWalk: isReverseVertex);
-                    }
-
-                    ID++;
-                    genomeSize += contig.Length;
+                    var vertexIndex = walkOrder[w];
+                    this.unitigPlacements[vertexIndex >> 1] = new UnitigPlacement(
+                        contigId: ID,
+                        isContigReverseComplemented: isReverseComplemented,
+                        walkOrderIndex: w,
+                        walkOrderCount: walkOrder.Count,
+                        isUnitigReverseInWalk: (vertexIndex & 1) == 1);
                 }
+
+                ID++;
+                genomeSize += contig.Length;
             }
             Console.WriteLine("Total Length of contigs : " + genomeSize);
         }
 
         /// <summary>
-        /// FixPath 後の adjacencyList を走査し、「頂点 v が唯一のエッジとして
-        /// 頂点 next を指している」= v から next への直接結合が確定した、
-        /// という関係を pairPath のキー形式(符号付き unitig ID のペア)に変換する。
-        /// 変換後、該当する pairPath エントリの「未読了長合計」から
+        /// 相互一意性の検査を通って実際に結合が確定した辺(merge[v] = next)を
+        /// 走査し、その関係を pairPath のキー形式(符号付き unitig ID のペア)に
+        /// 変換する。変換後、該当する pairPath エントリの「未読了長合計」から
         /// InsertSize = totalRemaining + (k-1) を計算し、InsertSizeSamples に積む。
         ///
-        /// adjacencyList の頂点インデックスは unitigId &lt;&lt; 1 (順鎖) /
+        /// merge の頂点インデックスは unitigId &lt;&lt; 1 (順鎖) /
         /// unitigId &lt;&lt; 1 | 1 (逆鎖) の形式。これを pairPath のキー形式
         /// (正の unitig ID = 順鎖, 負の unitig ID = 逆鎖)に変換する。
         /// </summary>
-        private void CollectInsertSizeSamplesFromResolvedEdges(List<List<(int, ulong)>> adjacencyList)
+        private void CollectInsertSizeSamplesFromMerges(int[] merge)
         {
             var kmerLength = ConfigurationManager.Arguments.Kmer;
             var overlap = kmerLength - 1;
             List<int> resolvedEdgeSamples = [];
 
-            for (var v = 2; v < adjacencyList.Count; v++)
+            for (var v = 2; v < merge.Length; v++)
             {
-                if (adjacencyList[v].Count != 1)
+                var next = merge[v];
+                if (next < 0)
                 {
                     continue;
                 }
-
-                var next = adjacencyList[v][0].Item1;
 
                 // 頂点インデックス -> 符号付き unitig ID。
                 var fromUnitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
@@ -910,61 +933,6 @@ namespace Tsumiki.Core
             return (Math.Abs(signedUnitigId) << 1) | (signedUnitigId > 0 ? 0 : 1);
         }
 
-        /// <summary>
-        /// kmerPath(疎な隣接情報)から、頂点インデックス空間(vertexCount 個、
-        /// unitigId &lt;&lt; 1 / unitigId &lt;&lt; 1 | 1)での隣接リストを構築する。
-        /// kmerPath.Count に比例する計算量で済む(全 unitig ペアを総当りしない)。
-        /// </summary>
-        internal static List<List<(int, ulong)>> BuildAdjacencyList(IReadOnlyDictionary<(int, int), ulong> kmerPath, int vertexCount)
-        {
-            List<List<(int, ulong)>> adjacencyList = [];
-            for (var i = 0; i < vertexCount; i++)
-            {
-                adjacencyList.Add([]);
-            }
-            foreach (var ((from, to), count) in kmerPath)
-            {
-                if (from == to)
-                {
-                    continue;
-                }
-                adjacencyList[VertexIndex(from)].Add((VertexIndex(to), count));
-            }
-            return adjacencyList;
-        }
-
-        private static void FixPath(List<List<(int, ulong)>> adjacencyList, int index, decimal uniteThreshold, ulong countThreshold)
-        {
-            var pathList = adjacencyList[index];
-            var sum = 0UL;
-            for (var j = pathList.Count - 1; j >= 0; j--)
-            {
-                if (pathList[j].Item2 < countThreshold)
-                {
-                    pathList.RemoveAt(j);
-                }
-                else
-                {
-                    sum += pathList[j].Item2;
-                }
-            }
-            (int, ulong)? path = null;
-            var max = 0UL;
-            foreach (var item in pathList)
-            {
-                if (max < item.Item2)
-                {
-                    max = item.Item2;
-                    path = item;
-                }
-            }
-            // uniteThreshold は「最多パスが全体の支持のうち何割を占めるか」の
-            // 比率(例: 0.8 = 80%)として設計されている。
-            // 以前は max(絶対リード数) と uniteThreshold(比率) をそのまま比較しており、
-            // 実質 max >= 1 とほぼ同義になってしまっていた(countThreshold を
-            // 通過した時点でほぼ常に真になる)。sum に対する比率で正しく判定する。
-            adjacencyList[index] = sum > 0 && path != null && (decimal)max / sum >= uniteThreshold ? [((int, ulong))path!] : [];
-        }
 
         private static string WalkPath(List<string> unitigList, List<List<(int, ulong)>> adjacencyList, int index, bool[] visited, List<int> walkOrder)
         {

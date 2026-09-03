@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
@@ -49,7 +49,16 @@ namespace Tsumiki.Utility
 
         private Dictionary<ulong, ulong>? _trustedKmersSmall;
 
+        // 33 <= k <= 64 用。150bp リードで k=31 のままだと 31bp 以上の反復配列が
+        // すべて潰れてしまい contig N50 が伸びないため、k を 63 前後まで上げられる
+        // ことが品質上きわめて重要になる。UInt128 は値型なので、KmerKey
+        // (ulong[] を毎回ヒープ確保する)と違い割り当てが一切発生せず、
+        // k<=32 の ulong 経路とほぼ同等の速度で動く。
+        private Dictionary<UInt128, ulong>? _trustedKmersMid;
+
         private static bool UseSmallPath => ConfigurationManager.Arguments.Kmer <= 32;
+
+        private static bool UseMidPath => ConfigurationManager.Arguments.Kmer is > 32 and <= 64;
 
         public TrustedKmerIndex(string tempDirectory)
         {
@@ -86,9 +95,15 @@ namespace Tsumiki.Utility
         /// </summary>
         public bool Contains(Span<byte> kmer)
         {
-            return UseSmallPath
-                ? this._trustedKmersSmall!.ContainsKey(CanonicalSmall(kmer))
-                : this._trustedKmers!.ContainsKey(new KmerKey(kmer).Canonical());
+            if (UseSmallPath)
+            {
+                return this._trustedKmersSmall!.ContainsKey(CanonicalSmall(kmer));
+            }
+            if (UseMidPath)
+            {
+                return this._trustedKmersMid!.ContainsKey(CanonicalMid(kmer));
+            }
+            return this._trustedKmers!.ContainsKey(new KmerKey(kmer).Canonical());
         }
 
         /// <summary>
@@ -100,6 +115,10 @@ namespace Tsumiki.Utility
             if (UseSmallPath)
             {
                 return this._trustedKmersSmall!.GetValueOrDefault(CanonicalSmall(kmer), 0UL);
+            }
+            if (UseMidPath)
+            {
+                return this._trustedKmersMid!.GetValueOrDefault(CanonicalMid(kmer), 0UL);
             }
             return this._trustedKmers!.GetValueOrDefault(new KmerKey(kmer).Canonical(), 0UL);
         }
@@ -156,6 +175,53 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
+        /// PackSmall の 128bit 版(k は 64 以下)。ビット配置の規約は PackSmall と
+        /// 同じで、kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る。
+        /// </summary>
+        private static UInt128 PackMid(ReadOnlySpan<byte> kmer)
+        {
+            UInt128 value = 0;
+            foreach (var b in kmer)
+            {
+                value = (value << 2) | (UInt128)(b - 1);
+            }
+            return value;
+        }
+
+        /// <summary>ReverseComplementSmall の 128bit 版。</summary>
+        private static UInt128 ReverseComplementMid(UInt128 packed, int length)
+        {
+            var temp = packed;
+            UInt128 result = 0;
+            for (var i = 0; i < length; i++)
+            {
+                var codon = temp & 3;
+                result = (result << 2) | (codon ^ 3);
+                temp >>= 2;
+            }
+            return result;
+        }
+
+        private static UInt128 CanonicalMid(ReadOnlySpan<byte> kmer)
+        {
+            var packed = PackMid(kmer);
+            var rev = ReverseComplementMid(packed, kmer.Length);
+            return packed < rev ? packed : rev;
+        }
+
+        /// <summary>PackMid の逆変換。</summary>
+        private static byte[] UnpackMid(UInt128 packed, int length)
+        {
+            var bytes = new byte[length];
+            for (var i = length - 1; i >= 0; i--)
+            {
+                bytes[i] = (byte)((ulong)(packed & 3) + 1);
+                packed >>= 2;
+            }
+            return bytes;
+        }
+
+        /// <summary>
         /// カットオフを通過した信頼できるk-merを(正規化された、いずれかの向きの)
         /// byte配列として1件ずつ列挙する。GraphSimplifier のtip clipping等、
         /// 集合全体を舐めて再判定する処理から使う。
@@ -168,6 +234,13 @@ namespace Tsumiki.Utility
                 foreach (var packed in this._trustedKmersSmall!.Keys)
                 {
                     yield return UnpackSmall(packed, kmerLength);
+                }
+            }
+            else if (UseMidPath)
+            {
+                foreach (var packed in this._trustedKmersMid!.Keys)
+                {
+                    yield return UnpackMid(packed, kmerLength);
                 }
             }
             else
@@ -188,6 +261,10 @@ namespace Tsumiki.Utility
             if (UseSmallPath)
             {
                 _ = this._trustedKmersSmall!.Remove(CanonicalSmall(kmer));
+            }
+            else if (UseMidPath)
+            {
+                _ = this._trustedKmersMid!.Remove(CanonicalMid(kmer));
             }
             else
             {
@@ -246,8 +323,10 @@ namespace Tsumiki.Utility
 
             var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
             var useSmallPath = UseSmallPath;
-            var trustedKmers = useSmallPath ? null : new Dictionary<KmerKey, ulong>();
+            var useMidPath = UseMidPath;
+            var trustedKmers = useSmallPath || useMidPath ? null : new Dictionary<KmerKey, ulong>();
             var trustedKmersSmall = useSmallPath ? new Dictionary<ulong, ulong>() : null;
+            var trustedKmersMid = useMidPath ? new Dictionary<UInt128, ulong>() : null;
             using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
             {
                 ulong addedKmer = 0;
@@ -282,6 +361,11 @@ namespace Tsumiki.Utility
                             var canonical = CanonicalSmall(kmer);
                             trustedKmersSmall![canonical] = trustedKmersSmall.GetValueOrDefault(canonical, 0UL) + count;
                         }
+                        else if (useMidPath)
+                        {
+                            var canonical = CanonicalMid(kmer);
+                            trustedKmersMid![canonical] = trustedKmersMid.GetValueOrDefault(canonical, 0UL) + count;
+                        }
                         else
                         {
                             var canonical = new KmerKey(kmer).Canonical();
@@ -306,6 +390,7 @@ namespace Tsumiki.Utility
             File.Delete(filePath);
             this._trustedKmers = trustedKmers;
             this._trustedKmersSmall = trustedKmersSmall;
+            this._trustedKmersMid = trustedKmersMid;
 
             Console.WriteLine("Search First k-mer");
             // 以前はここで一度カットオフ通過k-merをファイルへ書き出し、
