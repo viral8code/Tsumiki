@@ -16,6 +16,13 @@ namespace Tsumiki.Utility
         // 中身)と Dictionary のエントリ構造体を合わせて概ね 80B 前後。
         private const int EstimatedBytesPerEntry = 80;
 
+        // マージのループでは以前 GC.Collect() を明示的に呼んでいた。バッファが
+        // シャードあたり数百万件あった頃にメモリを抑えるための措置だったが、
+        // 予算制で上限が効くようになった今は、マージ1回ごとにフルGCで
+        // 全スレッドを止めるコストだけが残る(実行中のPCの体感にも響く)。
+        // マージ自体はストリーム処理でほとんど確保しないため、GCに任せてよい。
+
+
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する。
         private const int IoBufferSize = 1 << 20; // 1MB
@@ -172,7 +179,6 @@ namespace Tsumiki.Utility
             var index = this._fileCount + 1;
             while (mergedFileList.Count > 1)
             {
-                GC.Collect();
                 var file1 = mergedFileList[0];
                 var file2 = mergedFileList[1];
                 var mergedFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_merged_{index++}");
@@ -284,7 +290,6 @@ namespace Tsumiki.Utility
 
             while (mergedFileList.Count > 1)
             {
-                GC.Collect();
                 var file1 = mergedFileList[0];
                 var file2 = mergedFileList[1];
                 var mergedFileName = Path.Combine(tempDirectory, $"{prefix}_workermerge_{index++}");
