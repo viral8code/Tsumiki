@@ -24,11 +24,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-# (名前, シミュレータへの追加引数, アセンブラの -k)
+# (名前, シミュレータへの追加引数)
+# -k と -kc は敢えて渡さない。実際の利用者は指定しないので、自動選択された
+# パラメータのままで誤アセンブリが出ないことまで含めて検査する。
 CASES = [
-    ("反復なし", ["--repeat-count", "0"], 63),
-    ("2コピー反復150bp", ["--repeat-count", "2", "--repeat-length", "150"], 63),
-    ("3コピー反復150bp", ["--repeat-count", "3", "--repeat-length", "150"], 63),
+    ("反復なし", ["--repeat-count", "0"]),
+    ("2コピー反復150bp", ["--repeat-count", "2", "--repeat-length", "150"]),
+    ("3コピー反復150bp", ["--repeat-count", "3", "--repeat-length", "150"]),
 ]
 
 
@@ -60,7 +62,7 @@ def main():
     work.mkdir(parents=True)
 
     failures = []
-    for name, extra, kmer in CASES:
+    for name, extra in CASES:
         print("=" * 70)
         print(f"ケース: {name}")
         print("=" * 70)
@@ -78,11 +80,13 @@ def main():
              "--error-rate", str(args.error_rate),
              *extra])
 
-        run([args.exe,
-             "-1", str(reads_dir / "reads.1.fq"),
-             "-2", str(reads_dir / "reads.2.fq"),
-             "-k", str(kmer), "-kc", "3", "-th", "4",
-             "-t", "tmp"], cwd=str(asm_dir))
+        log = run([args.exe,
+                   "-1", str(reads_dir / "reads.1.fq"),
+                   "-2", str(reads_dir / "reads.2.fq"),
+                   "-th", "4", "-t", "tmp"], cwd=str(asm_dir))
+        for line in log.splitlines():
+            if "auto-selected" in line or "Estimated genome size" in line:
+                print(line)
 
         assembly = asm_dir / "scaffolds.fasta"
         if not assembly.exists():

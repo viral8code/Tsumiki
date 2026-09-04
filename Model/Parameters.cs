@@ -32,6 +32,12 @@ namespace Tsumiki.Model
             }
         }
 
+        /// <summary>
+        /// -k が明示的に指定されたかどうか。指定されていない場合に限り、
+        /// 実際のリード長から求めた k を自動採用する。
+        /// </summary>
+        public bool A_k長が明示指定されたか { get; private set; }
+
         private int _k長 = Consts.k長の既定値;
         public int A_k長
         {
@@ -43,8 +49,26 @@ namespace Tsumiki.Model
                     throw new ArgumentException("Please make the value of kmer a positive integer");
                 }
                 this._k長 = value;
+                this.A_k長が明示指定されたか = true;
             }
         }
+
+        /// <summary>
+        /// 推定結果から k 長を設定する。A_k長が明示指定されたか は立てないため、
+        /// 「ユーザーが明示指定した」扱いにはならない。
+        /// </summary>
+        public void Set_推定k長(int p_k長)
+        {
+            var l_明示指定済みか = this.A_k長が明示指定されたか;
+            this.A_k長 = p_k長;
+            this.A_k長が明示指定されたか = l_明示指定済みか;
+        }
+
+        /// <summary>
+        /// -kc が明示的に指定されたかどうか。指定されていない場合に限り、
+        /// k-mer スペクトルの谷から求めたカットオフを自動採用する。
+        /// </summary>
+        public bool A_kmerカットオフが明示指定されたか { get; private set; }
 
         private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
         public ulong A_kmerカットオフ
@@ -57,7 +81,19 @@ namespace Tsumiki.Model
                     throw new ArgumentException("Please make the value of kmer cut off a positive integer");
                 }
                 this._kmerカットオフ = value;
+                this.A_kmerカットオフが明示指定されたか = true;
             }
+        }
+
+        /// <summary>
+        /// 推定結果から k-mer カットオフを設定する。
+        /// A_kmerカットオフが明示指定されたか は立てない。
+        /// </summary>
+        public void Set_推定kmerカットオフ(ulong p_カットオフ)
+        {
+            var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
+            this.A_kmerカットオフ = p_カットオフ;
+            this.A_kmerカットオフが明示指定されたか = l_明示指定済みか;
         }
 
         /// <summary>

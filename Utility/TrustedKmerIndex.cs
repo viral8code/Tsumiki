@@ -53,6 +53,18 @@ namespace Tsumiki.Utility
         // ことが品質上きわめて重要になる。
         private Dictionary<UInt128, ulong>? _信頼kmer_中;
 
+        // 全シャードを1本にマージしたソート済みファイル。統合は高くつくため
+        // 一度だけ行い、ヒストグラムの集計とカットオフの適用で使い回す。
+        private string? _統合ファイルパス;
+
+        /// <summary>
+        /// 直近の V_カットオフ で集計した出現回数ヒストグラム。
+        /// カットオフ判定と同じループで作れるため追加のコストはかからない。
+        /// ゲノムサイズやカバレッジの推定に使う。
+        /// </summary>
+        public IReadOnlyDictionary<ulong, long> A_出現回数ヒストグラム { get; private set; }
+            = new Dictionary<ulong, long>();
+
         private static bool 小経路を使うか => ConfigurationManager.A_実行時引数.A_k長 <= 32;
 
         private static bool 中経路を使うか => ConfigurationManager.A_実行時引数.A_k長 is > 32 and <= 64;
@@ -406,10 +418,21 @@ namespace Tsumiki.Utility
             return l_開始kmer;
         }
 
-        public List<byte[]> V_カットオフ(ulong p_カットオフ)
+        /// <summary>
+        /// 各シャードの CountingDB をそれぞれ統合し、出来上がった複数の
+        /// ソート済みファイルをさらに1本にマージして、そのパスを返す。
+        ///
+        /// 統合結果は使い回す。-kc の自動決定はカットオフを掛ける前に
+        /// 出現回数ヒストグラムを一度読む必要があるが、そのために
+        /// マージをやり直すとディスク I/O が丸ごと二重になるため。
+        /// </summary>
+        private string Get_統合済みファイル()
         {
-            // 各シャードの CountingDB をそれぞれ統合し、
-            // 出来上がった複数のソート済みファイルをさらに1本にマージする。
+            if (this._統合ファイルパス != null)
+            {
+                return this._統合ファイルパス;
+            }
+
             var l_統合済みファイル = new List<string>();
             foreach (var l_カウンタ in this._カウンタ群!)
             {
@@ -418,7 +441,38 @@ namespace Tsumiki.Utility
             }
             this._カウンタ群 = null;
 
-            var l_ファイルパス = CountingDB.Get_統合ファイル_シャード間(this._一時ディレクトリ, l_統合済みファイル);
+            this._統合ファイルパス = CountingDB.Get_統合ファイル_シャード間(this._一時ディレクトリ, l_統合済みファイル);
+            return this._統合ファイルパス;
+        }
+
+        /// <summary>
+        /// 出現回数ヒストグラム(出現回数 -> その回数を持つユニークk-merの種類数)
+        /// だけを作る。-kc が未指定のときに、カットオフを決めるために先に呼ぶ。
+        ///
+        /// k-mer の中身は読み捨てるため、カットオフ本体のパスより軽い。
+        /// -kc が明示指定されている場合はこのパスを通らないので、
+        /// 従来どおり統合ファイルの読み取りは1回で済む。
+        /// </summary>
+        public Dictionary<ulong, long> Get_出現回数ヒストグラム()
+        {
+            var l_ファイルパス = this.Get_統合済みファイル();
+            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_読み捨てバッファ = new byte[l_パック長];
+
+            Dictionary<ulong, long> l_ヒストグラム = [];
+            using var l_読み込み = new BinaryReader(File.Open(l_ファイルパス, FileMode.Open, FileAccess.Read));
+            while (Util.Get_続きがあるか(l_読み込み))
+            {
+                _ = l_読み込み.Read(l_読み捨てバッファ, 0, l_パック長);
+                var l_出現回数 = l_読み込み.ReadUInt64();
+                l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
+            }
+            return l_ヒストグラム;
+        }
+
+        public List<byte[]> V_カットオフ(ulong p_カットオフ)
+        {
+            var l_ファイルパス = this.Get_統合済みファイル();
 
             var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
             var l_小経路 = 小経路を使うか;
@@ -472,19 +526,10 @@ namespace Tsumiki.Utility
                 }
                 Console.WriteLine("kmer count: " + l_総種類数);
                 Console.WriteLine("good kmer: " + l_採用数);
-                Console.WriteLine($"[Info] k-mer count histogram (count:#distinct kmers): {KmerHistogram.Get_要約(l_ヒストグラム)}");
-                var l_推奨カットオフ = KmerHistogram.Get_推奨カットオフ(l_ヒストグラム);
-                if (l_推奨カットオフ is { } l_推奨値)
-                {
-                    var l_注記 = l_推奨値 == p_カットオフ ? " (matches the cutoff currently in effect)" : $" (currently using -kc {p_カットオフ})";
-                    Console.WriteLine($"[Info] Suggested k-mer cutoff from histogram valley: {l_推奨値}{l_注記}");
-                }
-                else
-                {
-                    Console.WriteLine("[Info] Could not identify a clear histogram valley to suggest a k-mer cutoff (spectrum may not be bimodal at this coverage).");
-                }
+                this.A_出現回数ヒストグラム = l_ヒストグラム;
             }
             File.Delete(l_ファイルパス);
+            this._統合ファイルパス = null;
             this._信頼kmer_大 = l_信頼kmer_大;
             this._信頼kmer_小 = l_信頼kmer_小;
             this._信頼kmer_中 = l_信頼kmer_中;

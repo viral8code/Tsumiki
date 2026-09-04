@@ -43,7 +43,6 @@ namespace Tsumiki.Core
             string p_出力先1, string? p_出力先2)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            var l_カットオフ = ConfigurationManager.A_実行時引数.A_kmerカットオフ;
 
             var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, "error_correction");
             _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
@@ -56,7 +55,13 @@ namespace Tsumiki.Core
                 {
                     KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス);
                 }
-                _ = l_kmerインデックス.V_カットオフ(l_カットオフ);
+                // 訂正の判定はこのカットオフが全てなので、-kc が未指定なら
+                // ここでもスペクトルから決め直す。既定値(2)のままだと
+                // エラー由来の k-mer まで「信頼できる」と判定してしまい、
+                // 訂正が一件も起きない(実データで実際に発生していた)。
+                KmerCutoffSelector.V_解決_kmerカットオフ(
+                    ConfigurationManager.A_実行時引数, l_kmerインデックス);
+                _ = l_kmerインデックス.V_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
 
                 Console.WriteLine("[ErrorCorrection] Correcting reads...");
                 var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長);

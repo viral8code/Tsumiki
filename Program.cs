@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -46,9 +47,19 @@ namespace Tsumiki
                 Environment.Exit(0);
             }
 
-            Console.WriteLine(l_引数);
-
+            // データを見なければ決まらないパラメータは、パラメータ一覧を
+            // 表示する前に確定させる。表示された値と実際に使う値が食い違うと、
+            // 後からログを読んだときに何が起きたのか分からなくなる。
             PhredSniffer.V_解決_Phredオフセット(l_引数, l_引数.A_リード1のパス, l_引数.A_リード2のパス);
+
+            var l_リード長 = ReadLengthSniffer.Get_代表リード長(l_引数.A_リード1のパス, l_引数.A_リード2のパス);
+            if (l_リード長 is { } l_観測リード長)
+            {
+                Console.WriteLine($"[Info] Read length (median of sampled reads): {l_観測リード長} bp");
+            }
+            KmerLengthSelector.V_解決_k長(l_引数, l_リード長);
+
+            Console.WriteLine(l_引数);
 
             Logger.V_出力_タイムスタンプ();
 
@@ -127,7 +138,12 @@ namespace Tsumiki
             Logger.V_出力_タイムスタンプ();
 
             Console.WriteLine("Applying k-mer cutoff");
+            KmerCutoffSelector.V_解決_kmerカットオフ(l_引数, l_kmerインデックス);
             _ = l_kmerインデックス.V_カットオフ(l_引数.A_kmerカットオフ);
+
+            // カットオフ判定と同じループで集計されたヒストグラムから、
+            // 谷・単一コピーの山・ゲノムサイズ・カバレッジを報告する。
+            KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, l_引数.A_k長, l_リード長);
 
             Logger.V_出力_タイムスタンプ();
 

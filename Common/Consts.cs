@@ -55,8 +55,38 @@ namespace Tsumiki.Common
 
         public const string インサートサイズ未指定表示 = "unspecified";
 
+        /// <summary>
+        /// -k も、リード長の標本抽出も当てにできなかった場合の最後の拠り所。
+        /// 通常は実際のリード長から自動選択されるため、この値は使われない。
+        /// </summary>
         public const int k長の既定値 = 31;
 
+        /// <summary>
+        /// 自動選択する k 長の、リード長に対する比。
+        ///
+        /// 大きいほど反復配列を跨げるが、1リードから取れる k-mer の本数
+        /// (リード長 - k + 1)が減ってカバレッジが痩せる。0.6 だと
+        /// リードの4割強が k-mer として残り、実データ(150bp)で良好だった。
+        /// </summary>
+        public const double 自動k長のリード長比 = 0.6;
+
+        /// <summary>
+        /// 自動選択する k 長の上限。k が 64 を超えると 2bit パックが
+        /// UInt128 に収まらず高速経路から外れるため、そこで頭を抑える
+        /// (偶数を避けるので実際に選ばれる最大値は 63)。
+        /// </summary>
+        public const int 自動k長の上限 = 63;
+
+        /// <summary>
+        /// k 長の自動選択を行うために最低限必要なリード長。
+        /// これより短いリードでは k を十分に取れず、自動選択しても意味がない。
+        /// </summary>
+        public const int 自動k長に必要な最小リード長 = 32;
+
+        /// <summary>
+        /// -kc も、k-mer スペクトルの解析も当てにできなかった場合の最後の拠り所。
+        /// 通常は k-mer スペクトルから自動選択される。
+        /// </summary>
         public const int kmerカットオフの既定値 = 2;
 
         /// <summary>
@@ -86,8 +116,8 @@ namespace Tsumiki.Common
             # Arguments
             {引数キー.リード1のパス} [path] : forward fastq(.gz) path (required) (when using single reads, set the path using this argument)
             {引数キー.リード2のパス} [path] : backward fastq(.gz) path
-            {引数キー.k長} [integer] : length of k-mer (default : {k長の既定値})
-            {引数キー.kmerカットオフ} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : {kmerカットオフの既定値})
+            {引数キー.k長} [integer] : length of k-mer (default : auto-selected from the observed read length, capped at {自動k長の上限}; falls back to {k長の既定値})
+            {引数キー.kmerカットオフ} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : auto-selected from the k-mer count spectrum; falls back to {kmerカットオフの既定値})
             {引数キー.Phredオフセット} [integer] : base of phred score ({string.Join(" or ", 許容Phredオフセット)}) (default : {Phredオフセットの既定値})
             {引数キー.クオリティカットオフ} [integer] : threshold of base quality (use kmers with this value or higher) (default : {クオリティカットオフの既定値})
             {引数キー.メモリ予算} [decimal] : memory budget for k-mer counting (e.g. 2G, 512M; a bare number means MB). Raise it to reduce disk I/O, lower it to fit a smaller machine (default : {Util.Get_表示用メモリサイズ(メモリ予算の既定値)})
