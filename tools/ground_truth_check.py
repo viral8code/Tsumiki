@@ -33,7 +33,11 @@ CASES = [
 
 
 def run(cmd, cwd=None):
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    # Windows の日本語ロケールではコンソール出力が CP932 になりうる。
+    # UTF-8 決め打ちで読むとデコードに失敗して検査自体が落ちるため、
+    # 置換文字で読み飛ばす(検査に必要なのは終了コードと標準出力の要約だけ)。
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                            encoding='utf-8', errors='replace')
     if result.returncode != 0:
         print(result.stdout)
         print(result.stderr, file=sys.stderr)
@@ -88,7 +92,7 @@ def main():
             [sys.executable, str(HERE / "validate_assembly.py"),
              "--reference", str(reads_dir / "reference.fasta"),
              "--assembly", str(assembly)],
-            capture_output=True, text=True)
+            capture_output=True, text=True, encoding='utf-8', errors='replace')
         print(result.stdout)
         if result.returncode != 0:
             failures.append(name)
