@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -37,22 +37,22 @@ namespace Tsumiki.Tests.Utility
         public void GetCoverage_CountsEachAdditionExactlyOnce_RegardlessOfShardCount(int threadCount)
         {
             const int k = 21;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = threadCount };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = threadCount };
 
             using var index = new TrustedKmerIndex(this._tempDir);
 
             var seq = "ACGGTCATTGACCTAGGATCA"; // 21塩基
-            var kmer = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+            var kmer = seq.Select(Util.Get_塩基ID).ToArray();
 
             // ちょうど7回登録する(奇数にして「2倍になっていないか」を確実に見る)。
             for (var i = 0; i < 7; i++)
             {
-                index.Add(kmer.AsSpan(), workerIndex: i % threadCount);
+                index.V_登録(kmer.AsSpan(), p_ワーカー番号: i % threadCount);
             }
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.Equal(7UL, index.GetCoverage(kmer));
+            Assert.Equal(7UL, index.Get_カバレッジ(kmer));
         }
 
         /// <summary>
@@ -65,13 +65,13 @@ namespace Tsumiki.Tests.Utility
         public void GetCoverage_IsExactAcrossManyDistinctKmers(int threadCount)
         {
             const int k = 21;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = threadCount };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = threadCount };
 
             using var index = new TrustedKmerIndex(this._tempDir);
 
             var rng = new Random(1234);
             var sequence = string.Concat(Enumerable.Range(0, 500).Select(_ => "ACGT"[rng.Next(4)]));
-            var bytes = sequence.Select(Util.GetSimpleNucleotideID).ToArray();
+            var bytes = sequence.Select(Util.Get_塩基ID).ToArray();
 
             // 位置 i の k-mer を (i % 5) + 2 回登録する。
             var expected = new Dictionary<int, ulong>();
@@ -81,15 +81,15 @@ namespace Tsumiki.Tests.Utility
                 expected[i] = times;
                 for (ulong t = 0; t < times; t++)
                 {
-                    index.Add(bytes.AsSpan(i, k), workerIndex: (int)(t % (ulong)threadCount));
+                    index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: (int)(t % (ulong)threadCount));
                 }
             }
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
             foreach (var (position, times) in expected)
             {
-                Assert.Equal(times, index.GetCoverage(bytes.AsSpan(position, k)));
+                Assert.Equal(times, index.Get_カバレッジ(bytes.AsSpan(position, k)));
             }
         }
     }

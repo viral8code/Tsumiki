@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
@@ -8,86 +8,74 @@ namespace Tsumiki.Utility
     /// k-merの出現回数カウント(CountingDBによる厳密な外部マージソート)と、
     /// カットオフを通過した「信頼できるk-mer」の厳密な集合を保持するクラス。
     ///
-    /// 以前はカットオフ後の膜(membership)判定に多重ハッシュのビット配列
-    /// (Bloom filter)を使っていたが、複数ハッシュのうち1つ(shift=1)が
+    /// 以前はカットオフ後の所属判定に多重ハッシュのビット配列
+    /// (Bloom filter)を使っていたが、複数ハッシュのうち1つが
     /// 事実上塩基の並び順に依存しない合計値に退化しておりハッシュの
     /// 独立性が低いこと、そもそも近似判定である以上フォールスポジティブに
     /// よるグラフ構造の誤判定(誤った分岐点検出・誤った隣接判定)を
     /// 原理的に排除できないことが問題だった。
     ///
     /// 7Mbp程度のバクテリアゲノムであれば、カットオフを通過した信頼できる
-    /// k-merの総数は現実的にせいぜい数千万件程度に収まり、厳密な
-    /// HashSet&lt;KmerKey&gt; としてメモリに保持できる規模である。そのため
-    /// カットオフ後は厳密な集合に置き換え、近似判定を完全に排除した。
+    /// k-merの総数は現実的にせいぜい数千万件程度に収まり、厳密な集合として
+    /// メモリに保持できる規模である。そのためカットオフ後は厳密な集合に
+    /// 置き換え、近似判定を完全に排除した。
     /// </summary>
     internal class TrustedKmerIndex : IDisposable
     {
-        private readonly string _tempDirectory;
+        private readonly string _一時ディレクトリ;
 
-        // 並列読み込み用に、ワーカースレッドの数だけ CountingDB を用意する。
-        // 各スレッドは自分専用のインスタンスにのみ書き込むため、
-        // Add 呼び出し時のロックが不要になる。
-        private CountingDB[]? _counters;
+        // k-mer カウント用のシャード。k-mer 自身のハッシュで振り分けるため、
+        // ある k-mer は必ず1つのシャードにしか載らない。
+        private CountingDB[]? _カウンタ群;
 
         // シャードごとのロック。k-mer をワーカー単位ではなくハッシュ値で
         // 振り分けるようにしたため、複数スレッドが同じシャードへ書きうる。
-        private object[]? _counterLocks;
+        private object[]? _シャードロック;
 
-        // Cutoff() 実行後に確定する、カットオフを通過したk-merの厳密な集合
-        // (常に正規化(Canonical)された形で保持する)。値はそのk-merの
-        // 出現回数(カバレッジ)。GraphSimplifierの低カバレッジunitig除去
-        // (bubble/tip相当のアーティファクトを、厳密なトポロジー判定なしに
-        // カバレッジの相対的な低さで検出する)に使う。以降のグラフ探索
-        // (IsFirstKmer/CountInEdges/UnitigMakerの伸長判定)は、値を見ない
-        // 所属判定(ContainsKey相当)のみで行う。
+        // カットオフ実行後に確定する、カットオフを通過したk-merの厳密な集合
+        // (常に正規化された形で保持する)。値はそのk-merの出現回数
+        // (カバレッジ)。GraphSimplifier の低カバレッジ端の除去に使う。
+        // 以降のグラフ探索(開始点判定・次数計算・UnitigMakerの伸長判定)は、
+        // 値を見ない所属判定のみで行う。
         //
-        // k<=32(実用上ほぼ常にこちら。デフォルトk=31)の場合は、KmerKeyの
-        // ulong[]割り当てを経由せず、2bitパックしたulong1個で直接
-        // Dictionary<ulong,ulong>を引く高速経路(_trustedKmersSmall)を使う。
-        // ErrorCorrector は1リードあたり数百〜数千回 Contains を呼ぶため、
-        // KmerKey経由(構築のたびにulong[]・byte[]を複数回ヒープ確保する)の
-        // オーバーヘッドが無視できず、実データ規模で致命的に遅くなることが
-        // 実測で判明したため導入した。k>32の場合のみ、従来通り厳密だが
-        // 低速な Dictionary&lt;KmerKey,ulong&gt; にフォールバックする。
-        private Dictionary<KmerKey, ulong>? _trustedKmers;
+        // k<=32 の場合は 2bit パックした ulong 1個で直接引く高速経路、
+        // 33<=k<=64 の場合は UInt128 の高速経路を使う。どちらも値型なので
+        // KmerKey(ulong[] を毎回ヒープ確保する)と違い割り当てが発生しない。
+        // ErrorCorrector は1リードあたり数百〜数千回この判定を呼ぶため、
+        // ヒープ確保のオーバーヘッドが実データ規模で致命的に効く。
+        // k>64 の場合のみ、従来通り厳密だが低速な KmerKey 経路にフォールバックする。
+        private Dictionary<KmerKey, ulong>? _信頼kmer_大;
 
-        private Dictionary<ulong, ulong>? _trustedKmersSmall;
+        private Dictionary<ulong, ulong>? _信頼kmer_小;
 
         // 33 <= k <= 64 用。150bp リードで k=31 のままだと 31bp 以上の反復配列が
         // すべて潰れてしまい contig N50 が伸びないため、k を 63 前後まで上げられる
-        // ことが品質上きわめて重要になる。UInt128 は値型なので、KmerKey
-        // (ulong[] を毎回ヒープ確保する)と違い割り当てが一切発生せず、
-        // k<=32 の ulong 経路とほぼ同等の速度で動く。
-        private Dictionary<UInt128, ulong>? _trustedKmersMid;
+        // ことが品質上きわめて重要になる。
+        private Dictionary<UInt128, ulong>? _信頼kmer_中;
 
-        private static bool UseSmallPath => ConfigurationManager.Arguments.Kmer <= 32;
+        private static bool 小経路を使うか => ConfigurationManager.A_実行時引数.A_k長 <= 32;
 
-        private static bool UseMidPath => ConfigurationManager.Arguments.Kmer is > 32 and <= 64;
+        private static bool 中経路を使うか => ConfigurationManager.A_実行時引数.A_k長 is > 32 and <= 64;
 
-        public TrustedKmerIndex(string tempDirectory)
+        public TrustedKmerIndex(string p_一時ディレクトリ)
         {
-            this._tempDirectory = tempDirectory;
-            var workerCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
-            this._counters = new CountingDB[workerCount];
-            this._counterLocks = new object[workerCount];
-            for (var i = 0; i < workerCount; i++)
+            this._一時ディレクトリ = p_一時ディレクトリ;
+            var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+            this._カウンタ群 = new CountingDB[l_シャード数];
+            this._シャードロック = new object[l_シャード数];
+            for (var i = 0; i < l_シャード数; i++)
             {
-                this._counters[i] = new CountingDB(tempDirectory, workerCount);
-                this._counterLocks[i] = new object();
+                this._カウンタ群[i] = new CountingDB(p_一時ディレクトリ, l_シャード数);
+                this._シャードロック[i] = new object();
             }
         }
 
         /// <summary>
-        /// 指定したワーカー番号(0 始まり)専用の CountingDB に登録する。
-        /// 並列読み込み時、各スレッドは自分の workerIndex を固定して呼び出すことで
-        /// スレッドセーフに(ロックなしで)k-mer を登録できる。
-        /// </summary>
-        /// <summary>
         /// 曖昧塩基(N など、候補が複数ある位置)を含む k-mer を、
         /// ありうる塩基の組み合わせすべてに展開して登録する。
-        /// read[i] はその位置で取りうる塩基ID の一覧。
+        /// p_塩基候補列[i] はその位置で取りうる塩基ID の一覧。
         ///
-        /// 展開は塩基ID の空間で行い、1件ずつ通常の Add へ渡す。
+        /// 展開は塩基ID の空間で行い、1件ずつ通常の登録へ渡す。
         /// こうすることで正規化(順鎖・逆鎖の寄せ)とシャード振り分けが
         /// 通常経路とまったく同じ扱いになる。
         ///
@@ -96,34 +84,34 @@ namespace Tsumiki.Utility
         /// して格納しており、その後も書き換え続けるため既に登録済みのキーが
         /// 壊れる、という2つの問題があった。
         /// </summary>
-        public void Add(Span<byte[]> read, int workerIndex)
+        public void V_登録_曖昧塩基あり(Span<byte[]> p_塩基候補列, int p_ワーカー番号)
         {
-            if (this._counters is null)
+            if (this._カウンタ群 is null)
             {
                 return;
             }
-            var kmer = new byte[read.Length];
-            this.AddCombinations(read, 0, kmer, workerIndex);
+            var l_kmer = new byte[p_塩基候補列.Length];
+            this.V_登録_組み合わせ展開(p_塩基候補列, 0, l_kmer, p_ワーカー番号);
         }
 
-        private void AddCombinations(Span<byte[]> options, int position, byte[] kmer, int workerIndex)
+        private void V_登録_組み合わせ展開(Span<byte[]> p_塩基候補列, int p_位置, byte[] p_kmer, int p_ワーカー番号)
         {
-            if (position == options.Length)
+            if (p_位置 == p_塩基候補列.Length)
             {
-                this.Add(kmer.AsSpan(), workerIndex);
+                this.V_登録(p_kmer.AsSpan(), p_ワーカー番号);
                 return;
             }
-            foreach (var id in options[position])
+            foreach (var l_塩基ID in p_塩基候補列[p_位置])
             {
-                kmer[position] = id;
-                this.AddCombinations(options, position + 1, kmer, workerIndex);
+                p_kmer[p_位置] = l_塩基ID;
+                this.V_登録_組み合わせ展開(p_塩基候補列, p_位置 + 1, p_kmer, p_ワーカー番号);
             }
         }
 
         /// <summary>
         /// k-mer を1件カウントする。
         ///
-        /// 振り分けは workerIndex ではなく k-mer 自身のハッシュ値で行う。
+        /// 振り分けはワーカー番号ではなく k-mer 自身のハッシュ値で行う。
         /// ワーカーごとに別の辞書へ入れていた頃は、同じ k-mer が最大で
         /// スレッド数ぶんの辞書に重複して載り、メモリも書き出し量も
         /// そのぶん膨らんでいた(実データ 100x・16スレッドでピーク12.5GB)。
@@ -133,18 +121,18 @@ namespace Tsumiki.Utility
         /// 数える。以前は両向きを別キーとして数え、カットオフ時に合算していたため、
         /// エントリ数・書き出し量ともに2倍になっていた。
         /// </summary>
-        public void Add(Span<byte> read, int workerIndex)
+        public void V_登録(Span<byte> p_kmer, int p_ワーカー番号)
         {
-            if (this._counters is not { } counters)
+            if (this._カウンタ群 is not { } l_カウンタ群)
             {
                 return;
             }
 
-            var packed = PackCanonical(read);
-            var shard = (int)(Hash(packed) % (uint)counters.Length);
-            lock (this._counterLocks![shard])
+            var l_パック済み = Get_正規化パック(p_kmer);
+            var l_シャード = (int)(Get_ハッシュ(l_パック済み) % (uint)l_カウンタ群.Length);
+            lock (this._シャードロック![l_シャード])
             {
-                counters[shard].AddPacked(packed);
+                l_カウンタ群[l_シャード].V_登録_パック済み(l_パック済み);
             }
         }
 
@@ -155,33 +143,33 @@ namespace Tsumiki.Utility
         /// パック後のバイト列の辞書順は塩基列の辞書順と一致する(先頭塩基が
         /// 上位ビットに来るため)ので、外部マージソートの順序とも整合する。
         /// </summary>
-        private static byte[] PackCanonical(ReadOnlySpan<byte> kmer)
+        private static byte[] Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
-            var useForward = IsCanonicalForward(kmer);
-            var arr = new byte[(kmer.Length + 3) / 4];
-            for (var i = 0; i < kmer.Length; i++)
+            var l_順鎖を使うか = Get_順鎖が正規形か(p_kmer);
+            var l_パック済み = new byte[(p_kmer.Length + 3) / 4];
+            for (var i = 0; i < p_kmer.Length; i++)
             {
                 // 逆鎖側を採用する場合は、末尾から相補塩基を取り出す。
                 // 相補は A(1)<->T(4), C(2)<->G(3) なので 5 - x で得られる。
-                var id = useForward ? kmer[i] : (byte)(5 - kmer[kmer.Length - 1 - i]);
-                arr[i >> 2] |= (byte)((id - 1) << ((3 - (i & 3)) << 1));
+                var l_塩基ID = l_順鎖を使うか ? p_kmer[i] : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
+                l_パック済み[i >> 2] |= (byte)((l_塩基ID - 1) << ((3 - (i & 3)) << 1));
             }
-            return arr;
+            return l_パック済み;
         }
 
         /// <summary>
         /// 順鎖側がその逆相補以下(辞書順)かどうか。確保なしで判定する。
         /// </summary>
-        private static bool IsCanonicalForward(ReadOnlySpan<byte> kmer)
+        private static bool Get_順鎖が正規形か(ReadOnlySpan<byte> p_kmer)
         {
-            int i = 0, j = kmer.Length - 1;
+            int i = 0, j = p_kmer.Length - 1;
             while (i <= j)
             {
-                var forward = kmer[i];
-                var reverse = (byte)(5 - kmer[j]);
-                if (forward != reverse)
+                var l_順鎖 = p_kmer[i];
+                var l_逆鎖 = (byte)(5 - p_kmer[j]);
+                if (l_順鎖 != l_逆鎖)
                 {
-                    return forward < reverse;
+                    return l_順鎖 < l_逆鎖;
                 }
                 i++;
                 j--;
@@ -191,422 +179,418 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>パック済みキーの FNV-1a ハッシュ。シャードの振り分けに使う。</summary>
-        private static uint Hash(byte[] packed)
+        private static uint Get_ハッシュ(byte[] p_パック済みkmer)
         {
-            var hash = 2166136261u;
-            foreach (var b in packed)
+            var l_ハッシュ = 2166136261u;
+            foreach (var l_バイト in p_パック済みkmer)
             {
-                hash ^= b;
-                hash *= 16777619u;
+                l_ハッシュ ^= l_バイト;
+                l_ハッシュ *= 16777619u;
             }
-            return hash;
+            return l_ハッシュ;
         }
 
         /// <summary>
         /// kmer(順鎖・逆鎖いずれの向きでもよい)がカットオフを通過した
         /// 信頼できるk-mer集合に含まれるかどうかを厳密に判定する。
         /// </summary>
-        public bool Contains(Span<byte> kmer)
+        public bool Get_含まれるか(Span<byte> p_kmer)
         {
-            if (UseSmallPath)
+            if (小経路を使うか)
             {
-                return this._trustedKmersSmall!.ContainsKey(CanonicalSmall(kmer));
+                return this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer));
             }
-            if (UseMidPath)
+            if (中経路を使うか)
             {
-                return this._trustedKmersMid!.ContainsKey(CanonicalMid(kmer));
+                return this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer));
             }
-            return this._trustedKmers!.ContainsKey(new KmerKey(kmer).Canonical());
+            return this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
         /// kmerの出現回数(カバレッジ)を返す。信頼できるk-mer集合に
         /// 含まれない場合は0を返す。
         /// </summary>
-        public ulong GetCoverage(Span<byte> kmer)
+        public ulong Get_カバレッジ(Span<byte> p_kmer)
         {
-            if (UseSmallPath)
+            if (小経路を使うか)
             {
-                return this._trustedKmersSmall!.GetValueOrDefault(CanonicalSmall(kmer), 0UL);
+                return this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL);
             }
-            if (UseMidPath)
+            if (中経路を使うか)
             {
-                return this._trustedKmersMid!.GetValueOrDefault(CanonicalMid(kmer), 0UL);
+                return this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL);
             }
-            return this._trustedKmers!.GetValueOrDefault(new KmerKey(kmer).Canonical(), 0UL);
+            return this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
         }
 
         /// <summary>
         /// kmer(塩基ID 1-4、長さ32以下)を2bit/塩基でulong1個にパックする。
-        /// kmer[0]が最上位側、kmer[^1]が最下位側に来る(空きビットは下位側に残る)。
+        /// 先頭塩基が最上位側、末尾塩基が最下位側に来る(空きビットは下位側に残る)。
         /// </summary>
-        private static ulong PackSmall(ReadOnlySpan<byte> kmer)
+        private static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
         {
-            var value = 0UL;
-            foreach (var b in kmer)
+            var l_値 = 0UL;
+            foreach (var l_塩基ID in p_kmer)
             {
-                value = (value << 2) | ((ulong)b - 1);
+                l_値 = (l_値 << 2) | ((ulong)l_塩基ID - 1);
             }
-            return value;
+            return l_値;
         }
 
         /// <summary>
-        /// PackSmallでパックした値の逆相補を、ヒープ確保なしで直接計算する。
-        /// 2bitコドンごとに comp = codon ^ 0b11 (A&lt;-&gt;T, C&lt;-&gt;G)で複製し、
+        /// Get_パック_小 でパックした値の逆相補を、ヒープ確保なしで直接計算する。
+        /// 2bitコドンごとに相補を取り(A&lt;-&gt;T, C&lt;-&gt;G)、
         /// 下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる。
         /// </summary>
-        private static ulong ReverseComplementSmall(ulong packed, int length)
+        private static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
         {
-            var temp = packed;
-            var result = 0UL;
-            for (var i = 0; i < length; i++)
+            var l_残り = p_パック済み;
+            var l_結果 = 0UL;
+            for (var i = 0; i < p_長さ; i++)
             {
-                var codon = temp & 0x3UL;
-                result = (result << 2) | (codon ^ 0x3UL);
-                temp >>= 2;
+                var l_コドン = l_残り & 0x3UL;
+                l_結果 = (l_結果 << 2) | (l_コドン ^ 0x3UL);
+                l_残り >>= 2;
             }
-            return result;
+            return l_結果;
         }
 
-        private static ulong CanonicalSmall(ReadOnlySpan<byte> kmer)
+        private static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
         {
-            var packed = PackSmall(kmer);
-            var rev = ReverseComplementSmall(packed, kmer.Length);
-            return Math.Min(packed, rev);
+            var l_パック済み = Get_パック_小(p_kmer);
+            var l_逆相補 = Get_逆相補_小(l_パック済み, p_kmer.Length);
+            return Math.Min(l_パック済み, l_逆相補);
         }
 
-        /// <summary>PackSmallの逆変換。kmer[^1]が最下位ビット側にあるため、末尾から復元する。</summary>
-        private static byte[] UnpackSmall(ulong packed, int length)
+        /// <summary>Get_パック_小 の逆変換。末尾塩基が最下位ビット側にあるため、末尾から復元する。</summary>
+        private static byte[] Get_復元_小(ulong p_パック済み, int p_長さ)
         {
-            var bytes = new byte[length];
-            for (var i = length - 1; i >= 0; i--)
+            var l_塩基列 = new byte[p_長さ];
+            for (var i = p_長さ - 1; i >= 0; i--)
             {
-                bytes[i] = (byte)((packed & 0x3UL) + 1);
-                packed >>= 2;
+                l_塩基列[i] = (byte)((p_パック済み & 0x3UL) + 1);
+                p_パック済み >>= 2;
             }
-            return bytes;
+            return l_塩基列;
         }
 
         /// <summary>
-        /// PackSmall の 128bit 版(k は 64 以下)。ビット配置の規約は PackSmall と
-        /// 同じで、kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る。
+        /// Get_パック_小 の 128bit 版(k は 64 以下)。ビット配置の規約は同じで、
+        /// kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る。
         /// </summary>
-        private static UInt128 PackMid(ReadOnlySpan<byte> kmer)
+        private static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
         {
-            UInt128 value = 0;
-            foreach (var b in kmer)
+            UInt128 l_値 = 0;
+            foreach (var l_塩基ID in p_kmer)
             {
-                value = (value << 2) | (UInt128)(b - 1);
+                l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
             }
-            return value;
+            return l_値;
         }
 
-        /// <summary>ReverseComplementSmall の 128bit 版。</summary>
-        private static UInt128 ReverseComplementMid(UInt128 packed, int length)
+        /// <summary>Get_逆相補_小 の 128bit 版。</summary>
+        private static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
         {
-            var temp = packed;
-            UInt128 result = 0;
-            for (var i = 0; i < length; i++)
+            var l_残り = p_パック済み;
+            UInt128 l_結果 = 0;
+            for (var i = 0; i < p_長さ; i++)
             {
-                var codon = temp & 3;
-                result = (result << 2) | (codon ^ 3);
-                temp >>= 2;
+                var l_コドン = l_残り & 3;
+                l_結果 = (l_結果 << 2) | (l_コドン ^ 3);
+                l_残り >>= 2;
             }
-            return result;
+            return l_結果;
         }
 
-        private static UInt128 CanonicalMid(ReadOnlySpan<byte> kmer)
+        private static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
         {
-            var packed = PackMid(kmer);
-            var rev = ReverseComplementMid(packed, kmer.Length);
-            return packed < rev ? packed : rev;
+            var l_パック済み = Get_パック_中(p_kmer);
+            var l_逆相補 = Get_逆相補_中(l_パック済み, p_kmer.Length);
+            return l_パック済み < l_逆相補 ? l_パック済み : l_逆相補;
         }
 
-        /// <summary>PackMid の逆変換。</summary>
-        private static byte[] UnpackMid(UInt128 packed, int length)
+        /// <summary>Get_パック_中 の逆変換。</summary>
+        private static byte[] Get_復元_中(UInt128 p_パック済み, int p_長さ)
         {
-            var bytes = new byte[length];
-            for (var i = length - 1; i >= 0; i--)
+            var l_塩基列 = new byte[p_長さ];
+            for (var i = p_長さ - 1; i >= 0; i--)
             {
-                bytes[i] = (byte)((ulong)(packed & 3) + 1);
-                packed >>= 2;
+                l_塩基列[i] = (byte)((ulong)(p_パック済み & 3) + 1);
+                p_パック済み >>= 2;
             }
-            return bytes;
+            return l_塩基列;
         }
 
         /// <summary>
         /// カットオフを通過した信頼できるk-merを(正規化された、いずれかの向きの)
-        /// byte配列として1件ずつ列挙する。GraphSimplifier のtip clipping等、
+        /// byte配列として1件ずつ列挙する。GraphSimplifier の tip 除去等、
         /// 集合全体を舐めて再判定する処理から使う。
         /// </summary>
-        public IEnumerable<byte[]> EnumerateTrustedKmers()
+        public IEnumerable<byte[]> Get_信頼kmer一覧()
         {
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            if (UseSmallPath)
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            if (小経路を使うか)
             {
-                foreach (var packed in this._trustedKmersSmall!.Keys)
+                foreach (var l_パック済み in this._信頼kmer_小!.Keys)
                 {
-                    yield return UnpackSmall(packed, kmerLength);
+                    yield return Get_復元_小(l_パック済み, l_k長);
                 }
             }
-            else if (UseMidPath)
+            else if (中経路を使うか)
             {
-                foreach (var packed in this._trustedKmersMid!.Keys)
+                foreach (var l_パック済み in this._信頼kmer_中!.Keys)
                 {
-                    yield return UnpackMid(packed, kmerLength);
+                    yield return Get_復元_中(l_パック済み, l_k長);
                 }
             }
             else
             {
-                foreach (var key in this._trustedKmers!.Keys)
+                foreach (var l_キー in this._信頼kmer_大!.Keys)
                 {
-                    yield return key.ToBytes(kmerLength);
+                    yield return l_キー.Get_塩基列(l_k長);
                 }
             }
         }
 
         /// <summary>
         /// kmerを信頼できるk-mer集合から除去する(順鎖・逆鎖どちらの向きで
-        /// 渡してもよい)。GraphSimplifier がtipの構成k-merを取り除く際に使う。
+        /// 渡してもよい)。GraphSimplifier が tip の構成k-merを取り除く際に使う。
         /// </summary>
-        public void RemoveTrusted(ReadOnlySpan<byte> kmer)
+        public void V_除去(ReadOnlySpan<byte> p_kmer)
         {
-            if (UseSmallPath)
+            if (小経路を使うか)
             {
-                _ = this._trustedKmersSmall!.Remove(CanonicalSmall(kmer));
+                _ = this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer));
             }
-            else if (UseMidPath)
+            else if (中経路を使うか)
             {
-                _ = this._trustedKmersMid!.Remove(CanonicalMid(kmer));
+                _ = this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer));
             }
             else
             {
-                _ = this._trustedKmers!.Remove(new KmerKey(kmer).Canonical());
+                _ = this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
             }
         }
 
         /// <summary>
         /// 現在の信頼できるk-mer集合を1回走査し、unitigの開始点となる
-        /// 「入次数が1でない」k-merをすべて再検出する。ファイルの読み直しではなく
-        /// インメモリの集合をそのまま使うため、tip clippingで集合を縮小した後の
+        /// k-merをすべて再検出する。ファイルの読み直しではなく
+        /// インメモリの集合をそのまま使うため、tip 除去で集合を縮小した後の
         /// 再構築にも安価に使える。
         ///
-        /// EnumerateTrustedKmersは各座位ごとに正規化された(canonicalな)
-        /// 向きのk-merを1つだけ返すが、IsFirstKmerは向き依存(そのk-mer自身の
-        /// 入次数を見る)の判定である。ある座位が「順鎖では分岐点の直後」でも
-        /// 「逆鎖(=canonical側)では分岐点そのものではない」ことがありえるため、
-        /// canonical側だけを調べると本来開始点であるべき向きを見逃す
-        /// (小さなbubbleのテストケースで実際に見逃しを確認: 分岐解消後も
-        /// 低カバレッジ側の枝が除去されないままになっていた)。
-        /// そのため、各座位について両方の向き(kmerとその逆相補)を
-        /// 個別に判定する。
+        /// Get_信頼kmer一覧 は各座位ごとに正規化された向きのk-merを1つだけ返すが、
+        /// 開始点判定は向き依存(そのk-mer自身の入次数を見る)である。ある座位が
+        /// 「順鎖では分岐点の直後」でも「逆鎖(=正規形側)では分岐点そのものでは
+        /// ない」ことがありえるため、正規形側だけを調べると本来開始点であるべき
+        /// 向きを見逃す(小さなバブルのテストケースで実際に見逃しを確認:
+        /// 分岐解消後も低カバレッジ側の枝が除去されないままになっていた)。
+        /// そのため、各座位について両方の向きを個別に判定する。
         /// </summary>
-        public List<byte[]> FindFirstKmers()
+        public List<byte[]> Get_開始kmer一覧()
         {
-            List<byte[]> kmers = [];
-            foreach (var kmer in this.EnumerateTrustedKmers())
+            List<byte[]> l_開始kmer = [];
+            foreach (var l_kmer in this.Get_信頼kmer一覧())
             {
-                if (this.IsFirstKmer(kmer))
+                if (this.Get_開始kmerか(l_kmer))
                 {
-                    kmers.Add(kmer);
+                    l_開始kmer.Add(l_kmer);
                 }
 
-                var revComp = Util.ReverseComprement(kmer).ToArray();
-                if (this.IsFirstKmer(revComp))
+                var l_逆相補 = Util.V_逆相補(l_kmer).ToArray();
+                if (this.Get_開始kmerか(l_逆相補))
                 {
-                    kmers.Add(revComp);
+                    l_開始kmer.Add(l_逆相補);
                 }
             }
-            return kmers;
+            return l_開始kmer;
         }
 
-        public List<byte[]> Cutoff(ulong bounds)
+        public List<byte[]> V_カットオフ(ulong p_カットオフ)
         {
-            // 各ワーカーの CountingDB をそれぞれ MergeAll し、
+            // 各シャードの CountingDB をそれぞれ統合し、
             // 出来上がった複数のソート済みファイルをさらに1本にマージする。
-            var mergedFiles = new List<string>();
-            foreach (var counter in this._counters!)
+            var l_統合済みファイル = new List<string>();
+            foreach (var l_カウンタ in this._カウンタ群!)
             {
-                mergedFiles.Add(counter.MergeAll());
-                counter.Dispose();
+                l_統合済みファイル.Add(l_カウンタ.Get_統合ファイル());
+                l_カウンタ.Dispose();
             }
-            this._counters = null;
+            this._カウンタ群 = null;
 
-            var filePath = CountingDB.MergeExternalFiles(this._tempDirectory, mergedFiles);
+            var l_ファイルパス = CountingDB.Get_統合ファイル_シャード間(this._一時ディレクトリ, l_統合済みファイル);
 
-            var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            var useSmallPath = UseSmallPath;
-            var useMidPath = UseMidPath;
-            var trustedKmers = useSmallPath || useMidPath ? null : new Dictionary<KmerKey, ulong>();
-            var trustedKmersSmall = useSmallPath ? new Dictionary<ulong, ulong>() : null;
-            var trustedKmersMid = useMidPath ? new Dictionary<UInt128, ulong>() : null;
-            using (var reader = new BinaryReader(File.Open(filePath, FileMode.Open, FileAccess.Read)))
+            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_小経路 = 小経路を使うか;
+            var l_中経路 = 中経路を使うか;
+            var l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>();
+            var l_信頼kmer_小 = l_小経路 ? new Dictionary<ulong, ulong>() : null;
+            var l_信頼kmer_中 = l_中経路 ? new Dictionary<UInt128, ulong>() : null;
+            using (var l_読み込み = new BinaryReader(File.Open(l_ファイルパス, FileMode.Open, FileAccess.Read)))
             {
-                ulong addedKmer = 0;
-                ulong countKmer = 0;
-                // count(k-merの出現回数) -> その回数を持つユニークk-merの種類数。
+                ulong l_採用数 = 0;
+                ulong l_総種類数 = 0;
+                // 出現回数 -> その回数を持つユニークk-merの種類数。
                 // エラー由来の低頻度k-merと真のゲノム由来k-merを分ける「谷」を
                 // 推定するために、カットオフ判定と同じこのループで集計する
-                // (このファイルはこの後 File.Delete されるため、ここでしか見られない)。
-                Dictionary<ulong, long> countHistogram = [];
-                while (Util.HasNext(reader))
+                // (このファイルはこの後削除されるため、ここでしか見られない)。
+                Dictionary<ulong, long> l_ヒストグラム = [];
+                while (Util.Get_続きがあるか(l_読み込み))
                 {
-                    var read = reader.ReadBytes(length);
-                    var count = reader.ReadUInt64();
-                    countKmer += 1;
-                    countHistogram[count] = countHistogram.GetValueOrDefault(count, 0L) + 1;
-                    if (count >= bounds)
+                    var l_パック済み = l_読み込み.ReadBytes(l_パック長);
+                    var l_出現回数 = l_読み込み.ReadUInt64();
+                    l_総種類数 += 1;
+                    l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
+                    if (l_出現回数 >= p_カットオフ)
                     {
-                        addedKmer += 1;
-                        List<byte> bytes = [];
-                        foreach (var b in read)
+                        l_採用数 += 1;
+                        List<byte> l_塩基列 = [];
+                        foreach (var l_バイト in l_パック済み)
                         {
-                            bytes.AddRange(Util.ByteToNucleotideSequence(b));
+                            l_塩基列.AddRange(Util.V_変換_塩基列(l_バイト));
                         }
-                        var kmer = CollectionsMarshal.AsSpan(bytes)[..ConfigurationManager.Arguments.Kmer];
-                        // カウント段階(ProcessRead)では正規化前の順鎖/逆鎖を
-                        // 別々のキーとしてカウントしているため、同じ正規化k-merに
-                        // 対応する2エントリ(順鎖側・逆鎖側)が別々にここへ来うる。
-                        // 上書きではなく加算することで、両ストランド分の
-                        // カバレッジを正しく合算する。
-                        if (useSmallPath)
+                        var l_kmer = CollectionsMarshal.AsSpan(l_塩基列)[..ConfigurationManager.A_実行時引数.A_k長];
+                        // カウント段階で既に正規形へ寄せてあるため、同じ正規形が
+                        // 複数エントリとして現れることはない。それでも加算で受けて
+                        // おけば、将来カウント側の正規化をやめた場合でも壊れない。
+                        if (l_小経路)
                         {
-                            var canonical = CanonicalSmall(kmer);
-                            trustedKmersSmall![canonical] = trustedKmersSmall.GetValueOrDefault(canonical, 0UL) + count;
+                            var l_正規形 = Get_正規形_小(l_kmer);
+                            l_信頼kmer_小![l_正規形] = l_信頼kmer_小.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
-                        else if (useMidPath)
+                        else if (l_中経路)
                         {
-                            var canonical = CanonicalMid(kmer);
-                            trustedKmersMid![canonical] = trustedKmersMid.GetValueOrDefault(canonical, 0UL) + count;
+                            var l_正規形 = Get_正規形_中(l_kmer);
+                            l_信頼kmer_中![l_正規形] = l_信頼kmer_中.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
                         else
                         {
-                            var canonical = new KmerKey(kmer).Canonical();
-                            trustedKmers![canonical] = trustedKmers.GetValueOrDefault(canonical, 0UL) + count;
+                            var l_正規形 = new KmerKey(l_kmer).Get_正規形();
+                            l_信頼kmer_大![l_正規形] = l_信頼kmer_大.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
                     }
                 }
-                Console.WriteLine("kmer count: " + countKmer);
-                Console.WriteLine("good kmer: " + addedKmer);
-                Console.WriteLine($"[Info] k-mer count histogram (count:#distinct kmers): {KmerHistogram.FormatSummary(countHistogram)}");
-                var suggestedCutoff = KmerHistogram.SuggestCutoff(countHistogram);
-                if (suggestedCutoff is { } suggestion)
+                Console.WriteLine("kmer count: " + l_総種類数);
+                Console.WriteLine("good kmer: " + l_採用数);
+                Console.WriteLine($"[Info] k-mer count histogram (count:#distinct kmers): {KmerHistogram.Get_要約(l_ヒストグラム)}");
+                var l_推奨カットオフ = KmerHistogram.Get_推奨カットオフ(l_ヒストグラム);
+                if (l_推奨カットオフ is { } l_推奨値)
                 {
-                    var note = suggestion == bounds ? " (matches the cutoff currently in effect)" : $" (currently using -kc {bounds})";
-                    Console.WriteLine($"[Info] Suggested k-mer cutoff from histogram valley: {suggestion}{note}");
+                    var l_注記 = l_推奨値 == p_カットオフ ? " (matches the cutoff currently in effect)" : $" (currently using -kc {p_カットオフ})";
+                    Console.WriteLine($"[Info] Suggested k-mer cutoff from histogram valley: {l_推奨値}{l_注記}");
                 }
                 else
                 {
                     Console.WriteLine("[Info] Could not identify a clear histogram valley to suggest a k-mer cutoff (spectrum may not be bimodal at this coverage).");
                 }
             }
-            File.Delete(filePath);
-            this._trustedKmers = trustedKmers;
-            this._trustedKmersSmall = trustedKmersSmall;
-            this._trustedKmersMid = trustedKmersMid;
+            File.Delete(l_ファイルパス);
+            this._信頼kmer_大 = l_信頼kmer_大;
+            this._信頼kmer_小 = l_信頼kmer_小;
+            this._信頼kmer_中 = l_信頼kmer_中;
 
             Console.WriteLine("Search First k-mer");
             // 以前はここで一度カットオフ通過k-merをファイルへ書き出し、
-            // 読み直して各k-merのIsFirstKmerを判定していた。厳密な集合を
-            // インメモリで保持するようになった(Phase 1)ため、その集合を
-            // 直接走査すれば同じ結果が得られ、ディスクI/Oを1往復省略できる。
-            return this.FindFirstKmers();
+            // 読み直して開始点を判定していた。厳密な集合をインメモリで
+            // 保持するようになったため、その集合を直接走査すれば同じ結果が
+            // 得られ、ディスクI/Oを1往復省略できる。
+            return this.Get_開始kmer一覧();
         }
 
         /// <summary>
         /// 与えられた k-mer が unitig の開始点かどうかを判定する。
         ///
         /// 入次数が0または2個以上(=分岐点そのもの)であれば当然開始点になる。
-        /// 入次数がちょうど1の場合でも、その唯一の予測元(predecessor)自身が
-        /// 分岐点(出次数が1でない)であれば、UnitigMaker の前進walkは
-        /// predecessorの時点で停止してしまいこのk-merへは到達しない
-        /// (=このk-merは誰からも「walkで訪れてもらえない」)ため、
-        /// 新たなunitigの開始点として別途扱う必要がある。
+        /// 入次数がちょうど1の場合でも、その唯一の予測元自身が分岐点
+        /// (出次数が1でない)であれば、UnitigMaker の前進walkは予測元の時点で
+        /// 停止してしまいこのk-merへは到達しない(=このk-merは誰からも
+        /// 「walkで訪れてもらえない」)ため、新たなunitigの開始点として
+        /// 別途扱う必要がある。
         /// これを見落とすと、分岐点の直後から始まる配列がunitig化されず
         /// 丸ごと欠落する(小さなテストケースで実際に発生を確認した)。
         /// </summary>
-        public bool IsFirstKmer(Span<byte> kmer)
+        public bool Get_開始kmerか(Span<byte> p_kmer)
         {
-            var inDegree = this.CountInEdges(kmer, out var uniquePredecessor);
-            if (inDegree != 1)
+            var l_入次数 = this.Get_入次数(p_kmer, out var l_唯一の予測元);
+            if (l_入次数 != 1)
             {
                 return true;
             }
-            return this.CountOutEdges(uniquePredecessor!) != 1;
+            return this.Get_出次数(l_唯一の予測元!) != 1;
         }
 
         /// <summary>
         /// kmer への入次数(前方に接続しうる異なる1塩基拡張の数)を数える。
         ///
-        /// Core/UnitigMaker.cs の前進伸長規則は「kmerの先頭1文字を落とし、
-        /// 末尾に候補塩基cを付加する」(successor = kmer[1..] + c)。
-        /// この関係の逆(predecessor)を解くと、predecessor P は
+        /// UnitigMaker の前進伸長規則は「kmerの先頭1文字を落とし、
+        /// 末尾に候補塩基cを付加する」(後続 = kmer[1..] + c)。
+        /// この関係の逆(予測元)を解くと、予測元 P は
         /// 「P[1..] + (kmerの末尾文字) == kmer」を満たす必要があり、
         /// P[1..] = kmer[..^1](kmerの末尾を落としたもの)、
         /// P[0] = 任意の候補塩基c、すなわち P = c + kmer[..^1] となる。
         ///
-        /// 以前の実装は candidate = c + kmer[1..](kmerの"先頭"を落としたもの)
-        /// を試しており、c = kmer[0] のとき candidate が kmer 自身と一致して
+        /// 以前の実装は候補 = c + kmer[1..](kmerの"先頭"を落としたもの)
+        /// を試しており、c = kmer[0] のとき候補が kmer 自身と一致して
         /// しまう(=常に最低1回は自己ヒットする)退化バグがあった。これにより
-        /// 真の入次数0(=配列の先頭)が絶対に検出できず、IsFirstKmer が
-        /// 意図通りに開始点を拾えていなかった。
+        /// 真の入次数0(=配列の先頭)が絶対に検出できず、開始点判定が
+        /// 意図通りに機能していなかった。
         /// </summary>
-        public int CountInEdges(Span<byte> kmer)
+        public int Get_入次数(Span<byte> p_kmer)
         {
-            return this.CountInEdges(kmer, out _);
+            return this.Get_入次数(p_kmer, out _);
         }
 
         /// <summary>
-        /// CountInEdgesの本体。入次数がちょうど1だった場合、その唯一の
-        /// predecessor(kmer長のbyte配列)も同時に返す(IsFirstKmerが使う)。
+        /// 入次数計算の本体。入次数がちょうど1だった場合、その唯一の
+        /// 予測元(kmer長のbyte配列)も同時に返す(開始点判定が使う)。
         /// </summary>
-        private int CountInEdges(Span<byte> kmer, out byte[]? uniquePredecessor)
+        private int Get_入次数(Span<byte> p_kmer, out byte[]? p_唯一の予測元)
         {
-            var candidate = new byte[kmer.Length];
-            kmer[..^1].CopyTo(candidate.AsSpan(1));
-            var count = 0;
-            byte[]? match = null;
-            for (byte i = 1; i <= 4; i++)
+            var l_候補 = new byte[p_kmer.Length];
+            p_kmer[..^1].CopyTo(l_候補.AsSpan(1));
+            var l_件数 = 0;
+            byte[]? l_一致 = null;
+            for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
-                candidate[0] = i;
-                if (this.Contains(candidate))
+                l_候補[0] = i;
+                if (this.Get_含まれるか(l_候補))
                 {
-                    count++;
-                    match = count == 1 ? (byte[])candidate.Clone() : null;
+                    l_件数++;
+                    l_一致 = l_件数 == 1 ? (byte[])l_候補.Clone() : null;
                 }
             }
-            uniquePredecessor = count == 1 ? match : null;
-            return count;
+            p_唯一の予測元 = l_件数 == 1 ? l_一致 : null;
+            return l_件数;
         }
 
         /// <summary>
         /// kmer からの出次数(後方に接続しうる異なる1塩基拡張の数)を数える。
-        /// Core/UnitigMaker.cs の前進伸長規則(kmer[1..] + c)そのものを試す。
+        /// UnitigMaker の前進伸長規則(kmer[1..] + c)そのものを試す。
         /// GraphSimplifier がunitigの末尾端の次数(=tip判定)を見る際に使う。
         /// </summary>
-        public int CountOutEdges(Span<byte> kmer)
+        public int Get_出次数(Span<byte> p_kmer)
         {
-            var candidate = new byte[kmer.Length];
-            kmer[1..].CopyTo(candidate.AsSpan(0, kmer.Length - 1));
-            var count = 0;
-            for (byte i = 1; i <= 4; i++)
+            var l_候補 = new byte[p_kmer.Length];
+            p_kmer[1..].CopyTo(l_候補.AsSpan(0, p_kmer.Length - 1));
+            var l_件数 = 0;
+            for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
-                candidate[^1] = i;
-                if (this.Contains(candidate))
+                l_候補[^1] = i;
+                if (this.Get_含まれるか(l_候補))
                 {
-                    count++;
+                    l_件数++;
                 }
             }
-            return count;
+            return l_件数;
         }
 
         public void Dispose()
         {
-            if (this._counters != null)
+            if (this._カウンタ群 != null)
             {
-                foreach (var counter in this._counters)
+                foreach (var l_カウンタ in this._カウンタ群)
                 {
-                    counter.Dispose();
+                    l_カウンタ.Dispose();
                 }
             }
         }

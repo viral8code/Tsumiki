@@ -22,7 +22,7 @@ namespace Tsumiki.Tests.Core
             int kmerLength,
             params string[] unitigs)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = kmerLength, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             List<string> unitigList = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
 
@@ -30,13 +30,13 @@ namespace Tsumiki.Tests.Core
             foreach (var seq in unitigs)
             {
                 unitigList.Add(seq);
-                unitigList.Add(Util.ReverseComprement(seq));
+                unitigList.Add(Util.V_逆相補(seq));
 
                 for (var i = kmerLength; i <= seq.Length; i++)
                 {
                     var startPos = i - kmerLength;
                     var key = new KmerKey(seq.AsSpan(startPos, kmerLength));
-                    var revKey = key.ReverseComprement();
+                    var revKey = key.Get_逆相補();
                     var revStartPos = seq.Length - i;
                     Register(kmerDict, key, id, startPos);
                     Register(kmerDict, revKey, -id, revStartPos);
@@ -71,20 +71,20 @@ namespace Tsumiki.Tests.Core
             var b = shared + "GGATCCTTAGGCAAT";      // 先頭が shared
 
             var (unitigList, kmerDict) = Build(k, a, b);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var aForward = ContigMaker.VertexIndex(1);
-            var bForward = ContigMaker.VertexIndex(2);
+            var aForward = ContigMaker.Get_頂点番号(1);
+            var bForward = ContigMaker.Get_頂点番号(2);
 
-            Assert.Contains(bForward, graph.OutEdges[aForward]);
+            Assert.Contains(bForward, graph.A_出辺[aForward]);
 
             // 逆鎖対称性: A→B があるなら B' →A' も存在しなければならない。
             // これが崩れると順鎖側と逆鎖側で別々の経路が組まれ、同じ領域が
             // 2 通りに組み立てられてしまう。
-            Assert.Contains(aForward ^ 1, graph.OutEdges[bForward ^ 1]);
+            Assert.Contains(aForward ^ 1, graph.A_出辺[bForward ^ 1]);
 
             // 入次数は双子の出次数で表せる。
-            Assert.Equal(graph.OutEdges[bForward ^ 1].Count, graph.InDegree(bForward));
+            Assert.Equal(graph.A_出辺[bForward ^ 1].Count, graph.Get_入次数(bForward));
         }
 
         [Fact]
@@ -97,11 +97,11 @@ namespace Tsumiki.Tests.Core
             const string b = "TTGACCTGAATCCGGTTCA";
 
             var (unitigList, kmerDict) = Build(k, a, b);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            for (var v = 2; v < graph.VertexCount; v++)
+            for (var v = 2; v < graph.A_出辺.Count; v++)
             {
-                Assert.Empty(graph.OutEdges[v]);
+                Assert.Empty(graph.A_出辺[v]);
             }
         }
 
@@ -117,11 +117,11 @@ namespace Tsumiki.Tests.Core
             var b = "TT" + junction + "CCTTAGGCAAT";          // junction は B の位置 2 に現れる
 
             var (unitigList, kmerDict) = Build(k, a, b);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var aForward = ContigMaker.VertexIndex(1);
-            var bForward = ContigMaker.VertexIndex(2);
-            Assert.DoesNotContain(bForward, graph.OutEdges[aForward]);
+            var aForward = ContigMaker.Get_頂点番号(1);
+            var bForward = ContigMaker.Get_頂点番号(2);
+            Assert.DoesNotContain(bForward, graph.A_出辺[aForward]);
         }
 
         [Fact]
@@ -136,12 +136,12 @@ namespace Tsumiki.Tests.Core
             var c = shared + "TGATCCTTAGGCAAT"; // 分岐点の 1 塩基だけ B と異なる
 
             var (unitigList, kmerDict) = Build(k, a, b, c);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var aForward = ContigMaker.VertexIndex(1);
-            Assert.Equal(2, graph.OutEdges[aForward].Count);
-            Assert.Contains(ContigMaker.VertexIndex(2), graph.OutEdges[aForward]);
-            Assert.Contains(ContigMaker.VertexIndex(3), graph.OutEdges[aForward]);
+            var aForward = ContigMaker.Get_頂点番号(1);
+            Assert.Equal(2, graph.A_出辺[aForward].Count);
+            Assert.Contains(ContigMaker.Get_頂点番号(2), graph.A_出辺[aForward]);
+            Assert.Contains(ContigMaker.Get_頂点番号(3), graph.A_出辺[aForward]);
         }
 
         /// <summary>
@@ -164,16 +164,16 @@ namespace Tsumiki.Tests.Core
             const string w = "TGCACGTAAGGCTTACCA";
 
             var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var uV = ContigMaker.VertexIndex(1);
-            var b1V = ContigMaker.VertexIndex(2);
-            var b2V = ContigMaker.VertexIndex(3);
-            var wV = ContigMaker.VertexIndex(4);
+            var uV = ContigMaker.Get_頂点番号(1);
+            var b1V = ContigMaker.Get_頂点番号(2);
+            var b2V = ContigMaker.Get_頂点番号(3);
+            var wV = ContigMaker.Get_頂点番号(4);
 
             // 前提: バブル構造が実際に構築されている。
-            Assert.Equal(2, graph.OutEdges[uV].Count);
-            Assert.Equal(2, graph.InDegree(wV));
+            Assert.Equal(2, graph.A_出辺[uV].Count);
+            Assert.Equal(2, graph.Get_入次数(wV));
 
             // b1 側にだけリード支持を与える。
             Dictionary<(int, int), ulong> support = new()
@@ -182,18 +182,18 @@ namespace Tsumiki.Tests.Core
                 [(uV, b2V)] = 3,
             };
 
-            var popped = graph.PopSimpleBubbles(unitigList, support);
+            var popped = graph.V_除去_単純バブル(unitigList, support);
 
             Assert.Equal(1, popped);
-            Assert.Equal([b1V], graph.OutEdges[uV]);
-            Assert.Equal([wV], graph.OutEdges[b1V]);
-            Assert.Empty(graph.OutEdges[b2V]);
+            Assert.Equal([b1V], graph.A_出辺[uV]);
+            Assert.Equal([wV], graph.A_出辺[b1V]);
+            Assert.Empty(graph.A_出辺[b2V]);
 
             // 逆鎖側も対称に取り除かれていること(片側だけ消すと順鎖と逆鎖で
             // 別々の経路が組まれてしまう)。
-            Assert.Equal(1, graph.InDegree(wV));
-            Assert.DoesNotContain(b2V ^ 1, graph.OutEdges[wV ^ 1]);
-            Assert.DoesNotContain(uV ^ 1, graph.OutEdges[b2V ^ 1]);
+            Assert.Equal(1, graph.Get_入次数(wV));
+            Assert.DoesNotContain(b2V ^ 1, graph.A_出辺[wV ^ 1]);
+            Assert.DoesNotContain(uV ^ 1, graph.A_出辺[b2V ^ 1]);
         }
 
         /// <summary>
@@ -212,21 +212,21 @@ namespace Tsumiki.Tests.Core
             const string w = "TGCACGTAAGGCTTACCA";
 
             var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var uV = ContigMaker.VertexIndex(1);
-            Assert.Equal(2, graph.OutEdges[uV].Count);
+            var uV = ContigMaker.Get_頂点番号(1);
+            Assert.Equal(2, graph.A_出辺[uV].Count);
 
             Dictionary<(int, int), ulong> support = new()
             {
-                [(uV, ContigMaker.VertexIndex(2))] = 40,
-                [(uV, ContigMaker.VertexIndex(3))] = 3,
+                [(uV, ContigMaker.Get_頂点番号(2))] = 40,
+                [(uV, ContigMaker.Get_頂点番号(3))] = 3,
             };
 
-            var popped = graph.PopSimpleBubbles(unitigList, support);
+            var popped = graph.V_除去_単純バブル(unitigList, support);
 
             Assert.Equal(0, popped);
-            Assert.Equal(2, graph.OutEdges[uV].Count);
+            Assert.Equal(2, graph.A_出辺[uV].Count);
         }
 
         [Fact]
@@ -239,10 +239,10 @@ namespace Tsumiki.Tests.Core
             var a = repeatUnit + "GCTAAAGA" + repeatUnit[..(k - 1)];
 
             var (unitigList, kmerDict) = Build(k, a);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, k, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
 
-            var aForward = ContigMaker.VertexIndex(1);
-            Assert.DoesNotContain(aForward, graph.OutEdges[aForward]);
+            var aForward = ContigMaker.Get_頂点番号(1);
+            Assert.DoesNotContain(aForward, graph.A_出辺[aForward]);
         }
     }
 }

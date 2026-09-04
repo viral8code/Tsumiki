@@ -1,4 +1,4 @@
-﻿namespace Tsumiki.Utility
+namespace Tsumiki.Utility
 {
     internal class ByteArrayEqualityComparer : IEqualityComparer<byte[]>
     {
@@ -37,12 +37,12 @@
 
         public int GetHashCode(byte[] obj)
         {
-            var hash = 17;
-            foreach (var b in obj)
+            var l_ハッシュ = 17;
+            foreach (var l_バイト in obj)
             {
-                hash = (hash * 31) + b;
+                l_ハッシュ = (l_ハッシュ * 31) + l_バイト;
             }
-            return hash;
+            return l_ハッシュ;
         }
     }
 }

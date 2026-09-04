@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -41,7 +41,7 @@ namespace Tsumiki.Tests.Core
         public void Estimate_SeparatesSingleCopyFromTwoCopyAndFourCopySequences()
         {
             const int k = 21;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             // 単一コピー相当を2本(長さで基準値を支配させる)、
             // 2倍・4倍のカバレッジで登録する配列を1本ずつ用意する。
@@ -54,12 +54,12 @@ namespace Tsumiki.Tests.Core
 
             void Add(string seq, int depth)
             {
-                var bytes = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i + k <= bytes.Length; i++)
                 {
                     for (var rep = 0; rep < depth; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                     }
                 }
             }
@@ -69,7 +69,7 @@ namespace Tsumiki.Tests.Core
             Add(doubled, 40);
             Add(quadrupled, 80);
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
             Dictionary<int, string> unitigs = new()
             {
@@ -80,16 +80,16 @@ namespace Tsumiki.Tests.Core
             };
             var lengths = unitigs.ToDictionary(kv => kv.Key, kv => kv.Value.Length);
 
-            var coverage = CopyNumberEstimator.ComputeCoverage(index, unitigs, k);
-            var result = CopyNumberEstimator.Estimate(coverage, lengths);
+            var coverage = CopyNumberEstimator.Get_カバレッジ(index, unitigs, k);
+            var result = CopyNumberEstimator.Get_推定結果(coverage, lengths);
 
             // 基準値は長さ加重中央値なので、長い単一コピー配列の水準になるはず。
-            Assert.InRange(result.Baseline, 15, 25);
+            Assert.InRange(result.A_単一コピー基準値, 15, 25);
 
-            Assert.Equal(1, result.CopyNumber[1]);
-            Assert.Equal(1, result.CopyNumber[2]);
-            Assert.Equal(2, result.CopyNumber[3]);
-            Assert.Equal(4, result.CopyNumber[4]);
+            Assert.Equal(1, result.A_コピー数[1]);
+            Assert.Equal(1, result.A_コピー数[2]);
+            Assert.Equal(2, result.A_コピー数[3]);
+            Assert.Equal(4, result.A_コピー数[4]);
         }
 
         /// <summary>
@@ -101,7 +101,7 @@ namespace Tsumiki.Tests.Core
         public void Estimate_TreatsMildlyElevatedCoverageAsSingleCopy()
         {
             const int k = 21;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var baselineSeq = RandomSequence(400, seed: 5);
             var slightlyHigher = RandomSequence(120, seed: 6);
@@ -110,12 +110,12 @@ namespace Tsumiki.Tests.Core
 
             void Add(string seq, int depth)
             {
-                var bytes = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i + k <= bytes.Length; i++)
                 {
                     for (var rep = 0; rep < depth; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                     }
                 }
             }
@@ -123,15 +123,15 @@ namespace Tsumiki.Tests.Core
             Add(baselineSeq, 20);
             Add(slightlyHigher, 26); // 1.3倍
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
             Dictionary<int, string> unitigs = new() { [1] = baselineSeq, [2] = slightlyHigher };
             var lengths = unitigs.ToDictionary(kv => kv.Key, kv => kv.Value.Length);
 
-            var coverage = CopyNumberEstimator.ComputeCoverage(index, unitigs, k);
-            var result = CopyNumberEstimator.Estimate(coverage, lengths);
+            var coverage = CopyNumberEstimator.Get_カバレッジ(index, unitigs, k);
+            var result = CopyNumberEstimator.Get_推定結果(coverage, lengths);
 
-            Assert.Equal(1, result.CopyNumber[2]);
+            Assert.Equal(1, result.A_コピー数[2]);
         }
 
         /// <summary>
@@ -142,30 +142,30 @@ namespace Tsumiki.Tests.Core
         public void Estimate_UnitigShorterThanKmer_GetsCopyNumberOneRatherThanZero()
         {
             const int k = 21;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var normal = RandomSequence(300, seed: 8);
             var tooShort = RandomSequence(10, seed: 9);
 
             using var index = new TrustedKmerIndex(this._tempDir);
-            var bytes = normal.Select(Util.GetSimpleNucleotideID).ToArray();
+            var bytes = normal.Select(Util.Get_塩基ID).ToArray();
             for (var i = 0; i + k <= bytes.Length; i++)
             {
                 for (var rep = 0; rep < 20; rep++)
                 {
-                    index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                    index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
             Dictionary<int, string> unitigs = new() { [1] = normal, [2] = tooShort };
             var lengths = unitigs.ToDictionary(kv => kv.Key, kv => kv.Value.Length);
 
-            var coverage = CopyNumberEstimator.ComputeCoverage(index, unitigs, k);
-            var result = CopyNumberEstimator.Estimate(coverage, lengths);
+            var coverage = CopyNumberEstimator.Get_カバレッジ(index, unitigs, k);
+            var result = CopyNumberEstimator.Get_推定結果(coverage, lengths);
 
             Assert.Equal(0, coverage[2]);
-            Assert.Equal(1, result.CopyNumber[2]);
+            Assert.Equal(1, result.A_コピー数[2]);
         }
     }
 }

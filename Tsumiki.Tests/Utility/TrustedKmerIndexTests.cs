@@ -26,10 +26,10 @@ namespace Tsumiki.Tests.Utility
         {
             return [.. kmer.Select(c => c switch
             {
-                'A' => Consts.NucleotideID.A,
-                'C' => Consts.NucleotideID.C,
-                'G' => Consts.NucleotideID.G,
-                'T' => Consts.NucleotideID.T,
+                'A' => Consts.塩基ID.A,
+                'C' => Consts.塩基ID.C,
+                'G' => Consts.塩基ID.G,
+                'T' => Consts.塩基ID.T,
                 _ => throw new InvalidOperationException(),
             })];
         }
@@ -37,79 +37,79 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Contains_ReturnsTrueForInsertedKmer_InEitherOrientation_AndFalseForAbsentKmer()
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
             var inserted = ToBytes("ACGTACGT");
-            var revComp = ToBytes(Util.ReverseComprement("ACGTACGT"));
+            var revComp = ToBytes(Util.V_逆相補("ACGTACGT"));
             var neverInserted = ToBytes("TTTTTTTT");
 
             // カットオフ(2)を超えるよう複数回登録する。
             for (var i = 0; i < 5; i++)
             {
-                index.Add(inserted.AsSpan(), workerIndex: 0);
+                index.V_登録(inserted.AsSpan(), p_ワーカー番号: 0);
             }
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.True(index.Contains(inserted));
-            Assert.True(index.Contains(revComp)); // 正規化されるため逆鎖側からの問い合わせでもヒットする
-            Assert.False(index.Contains(neverInserted));
+            Assert.True(index.Get_含まれるか(inserted));
+            Assert.True(index.Get_含まれるか(revComp)); // 正規化されるため逆鎖側からの問い合わせでもヒットする
+            Assert.False(index.Get_含まれるか(neverInserted));
         }
 
         [Fact]
         public void Cutoff_ExcludesKmersBelowThreshold()
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
             var belowThreshold = ToBytes("GGGGCCCC");
 
-            index.Add(belowThreshold.AsSpan(), workerIndex: 0); // 1回だけ = カットオフ2未満
+            index.V_登録(belowThreshold.AsSpan(), p_ワーカー番号: 0); // 1回だけ = カットオフ2未満
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.False(index.Contains(belowThreshold));
+            Assert.False(index.Get_含まれるか(belowThreshold));
         }
 
         [Fact]
         public void GetCoverage_SumsForwardAndReverseStrandCounts()
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
             var forward = ToBytes("ACGTACGT");
-            var revComp = ToBytes(Util.ReverseComprement("ACGTACGT"));
+            var revComp = ToBytes(Util.V_逆相補("ACGTACGT"));
 
             // 順鎖を3回、逆鎖を2回登録する。カウント段階では別キー扱いだが、
             // カットオフ後の正規化されたエントリでは合算されているはず。
             for (var i = 0; i < 3; i++)
             {
-                index.Add(forward.AsSpan(), workerIndex: 0);
+                index.V_登録(forward.AsSpan(), p_ワーカー番号: 0);
             }
             for (var i = 0; i < 2; i++)
             {
-                index.Add(revComp.AsSpan(), workerIndex: 0);
+                index.V_登録(revComp.AsSpan(), p_ワーカー番号: 0);
             }
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.Equal(5UL, index.GetCoverage(forward));
-            Assert.Equal(5UL, index.GetCoverage(revComp)); // 正規化されるため同じ値
+            Assert.Equal(5UL, index.Get_カバレッジ(forward));
+            Assert.Equal(5UL, index.Get_カバレッジ(revComp)); // 正規化されるため同じ値
         }
 
         [Fact]
         public void GetCoverage_ReturnsZeroForAbsentKmer()
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = 8, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
-            index.Add(ToBytes("AAAAAAAA").AsSpan(), workerIndex: 0);
-            index.Add(ToBytes("AAAAAAAA").AsSpan(), workerIndex: 0);
+            index.V_登録(ToBytes("AAAAAAAA").AsSpan(), p_ワーカー番号: 0);
+            index.V_登録(ToBytes("AAAAAAAA").AsSpan(), p_ワーカー番号: 0);
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.Equal(0UL, index.GetCoverage(ToBytes("TTTTGGGG")));
+            Assert.Equal(0UL, index.Get_カバレッジ(ToBytes("TTTTGGGG")));
         }
 
         /// <summary>
@@ -128,33 +128,33 @@ namespace Tsumiki.Tests.Utility
         [InlineData(65)] // KmerKey フォールバック経路
         public void Contains_And_GetCoverage_WorkForKmerLongerThan32(int k)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
             // 逆相補と自己一致しないよう、非周期的な塩基列を決定的に生成する。
             var seq = string.Concat(Enumerable.Range(0, k).Select(i => "ACGGTCATTGAC"[(i * 7) % 12]));
             var inserted = ToBytes(seq);
-            var revComp = ToBytes(Util.ReverseComprement(seq));
+            var revComp = ToBytes(Util.V_逆相補(seq));
             var neverInserted = ToBytes(new string('T', k));
 
             for (var i = 0; i < 3; i++)
             {
-                index.Add(inserted.AsSpan(), workerIndex: 0);
+                index.V_登録(inserted.AsSpan(), p_ワーカー番号: 0);
             }
             for (var i = 0; i < 2; i++)
             {
-                index.Add(revComp.AsSpan(), workerIndex: 0);
+                index.V_登録(revComp.AsSpan(), p_ワーカー番号: 0);
             }
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            Assert.True(index.Contains(inserted));
-            Assert.True(index.Contains(revComp));
-            Assert.False(index.Contains(neverInserted));
+            Assert.True(index.Get_含まれるか(inserted));
+            Assert.True(index.Get_含まれるか(revComp));
+            Assert.False(index.Get_含まれるか(neverInserted));
 
             // 順鎖3回 + 逆鎖2回 が同一の正規化キーへ合算されているはず。
-            Assert.Equal(5UL, index.GetCoverage(inserted));
-            Assert.Equal(5UL, index.GetCoverage(revComp));
+            Assert.Equal(5UL, index.Get_カバレッジ(inserted));
+            Assert.Equal(5UL, index.Get_カバレッジ(revComp));
         }
 
         /// <summary>
@@ -172,16 +172,16 @@ namespace Tsumiki.Tests.Utility
 
             using var index = this.BuildLinearIndex(seq, k);
 
-            var kmers = index.EnumerateTrustedKmers().ToList();
+            var kmers = index.Get_信頼kmer一覧().ToList();
             Assert.NotEmpty(kmers);
             Assert.All(kmers, km => Assert.Equal(k, km.Length));
             // 復元した k-mer は必ず集合に含まれていなければならない。
-            Assert.All(kmers, km => Assert.True(index.Contains(km)));
+            Assert.All(kmers, km => Assert.True(index.Get_含まれるか(km)));
 
             var bytes = ToBytes(seq);
-            Assert.Equal(1, index.CountOutEdges(bytes.AsSpan(0, k)));
-            Assert.Equal(0, index.CountOutEdges(bytes.AsSpan(bytes.Length - k, k)));
-            Assert.Equal(0, index.CountInEdges(bytes.AsSpan(0, k)));
+            Assert.Equal(1, index.Get_出次数(bytes.AsSpan(0, k)));
+            Assert.Equal(0, index.Get_出次数(bytes.AsSpan(bytes.Length - k, k)));
+            Assert.Equal(0, index.Get_入次数(bytes.AsSpan(0, k)));
         }
 
         /// <summary>
@@ -190,17 +190,17 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         private TrustedKmerIndex BuildLinearIndex(string seq, int kmerLength)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = kmerLength, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             var index = new TrustedKmerIndex(this._tempDir);
             var bytes = ToBytes(seq);
             for (var i = 0; i + kmerLength <= bytes.Length; i++)
             {
                 for (var rep = 0; rep < 3; rep++)
                 {
-                    index.Add(bytes.AsSpan(i, kmerLength), workerIndex: 0);
+                    index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
         }
 
@@ -213,10 +213,10 @@ namespace Tsumiki.Tests.Utility
             var bytes = ToBytes(seq);
 
             // 途中のk-mer: ちょうど1通りだけ後続がある。
-            Assert.Equal(1, index.CountOutEdges(bytes.AsSpan(0, k)));
+            Assert.Equal(1, index.Get_出次数(bytes.AsSpan(0, k)));
 
             // 配列の末尾k-mer: これ以上後続がない(out-degree 0)。
-            Assert.Equal(0, index.CountOutEdges(bytes.AsSpan(bytes.Length - k, k)));
+            Assert.Equal(0, index.Get_出次数(bytes.AsSpan(bytes.Length - k, k)));
         }
 
         [Fact]
@@ -227,7 +227,7 @@ namespace Tsumiki.Tests.Utility
             using var index = this.BuildLinearIndex(seq, k);
             var bytes = ToBytes(seq);
 
-            Assert.Equal(0, index.CountInEdges(bytes.AsSpan(0, k)));
+            Assert.Equal(0, index.Get_入次数(bytes.AsSpan(0, k)));
         }
 
         [Fact]
@@ -237,14 +237,14 @@ namespace Tsumiki.Tests.Utility
             const int k = 8;
             using var index = this.BuildLinearIndex(seq, k);
             var kmer = ToBytes(seq[..k]);
-            var revComp = ToBytes(Util.ReverseComprement(seq[..k]));
+            var revComp = ToBytes(Util.V_逆相補(seq[..k]));
 
-            Assert.True(index.Contains(kmer));
+            Assert.True(index.Get_含まれるか(kmer));
 
-            index.RemoveTrusted(kmer);
+            index.V_除去(kmer);
 
-            Assert.False(index.Contains(kmer));
-            Assert.False(index.Contains(revComp));
+            Assert.False(index.Get_含まれるか(kmer));
+            Assert.False(index.Get_含まれるか(revComp));
         }
 
         [Fact]
@@ -257,7 +257,7 @@ namespace Tsumiki.Tests.Utility
             // 24bp・k=8 の非周期的な直鎖配列は 24-8+1=17 個のユニークk-mer位置を持ち、
             // 内部に重複(自己一致・逆相補との一致)がないよう検証済みの配列なので、
             // 正規化後もちょうど17件になるはず。
-            var count = index.EnumerateTrustedKmers().Count();
+            var count = index.Get_信頼kmer一覧().Count();
             Assert.Equal(17, count);
         }
 
@@ -271,12 +271,12 @@ namespace Tsumiki.Tests.Utility
             using var index = this.BuildLinearIndex(seq, k);
             var bytes = ToBytes(seq);
 
-            var firstKmers = index.FindFirstKmers();
+            var firstKmers = index.Get_開始kmer一覧();
 
             // 開始k-merとして、配列の先頭(またはその正規化された逆鎖)が
             // 含まれているはず。
             var startKmer = bytes.AsSpan(0, k).ToArray();
-            var startRevComp = ToBytes(Util.ReverseComprement(seq[..k]));
+            var startRevComp = ToBytes(Util.V_逆相補(seq[..k]));
             Assert.Contains(firstKmers, fk => fk.SequenceEqual(startKmer) || fk.SequenceEqual(startRevComp));
         }
     }

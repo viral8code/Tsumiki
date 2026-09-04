@@ -33,7 +33,7 @@ namespace Tsumiki.Tests.Core
         private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build(
             params string[] unitigs)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = K, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
             List<string> unitigList = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
 
@@ -41,13 +41,13 @@ namespace Tsumiki.Tests.Core
             foreach (var seq in unitigs)
             {
                 unitigList.Add(seq);
-                unitigList.Add(Util.ReverseComprement(seq));
+                unitigList.Add(Util.V_逆相補(seq));
                 for (var i = K; i <= seq.Length; i++)
                 {
                     var startPos = i - K;
                     var key = new KmerKey(seq.AsSpan(startPos, K));
                     Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.ReverseComprement(), -id, seq.Length - i);
+                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
                 }
                 id++;
             }
@@ -72,17 +72,17 @@ namespace Tsumiki.Tests.Core
         public void ResolveShortRepeats_UsesSpanningPairs_ToSplitTheRepeatIntoTwoCleanPaths()
         {
             var (unitigList, kmerDict) = Build(UnitigA, UnitigB, UnitigR, UnitigC, UnitigD);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var r = ContigMaker.VertexIndex(3);
-            var c = ContigMaker.VertexIndex(4);
-            var d = ContigMaker.VertexIndex(5);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var r = ContigMaker.Get_頂点番号(3);
+            var c = ContigMaker.Get_頂点番号(4);
+            var d = ContigMaker.Get_頂点番号(5);
 
             // 前提: R が入次数2・出次数2の反復として構築されている。
-            Assert.Equal(2, graph.OutEdges[r].Count);
-            Assert.Equal(2, graph.InDegree(r));
+            Assert.Equal(2, graph.A_出辺[r].Count);
+            Assert.Equal(2, graph.Get_入次数(r));
 
             // A-C と B-D を跨いだペアだけが観測された、という証拠を与える。
             Dictionary<(int, int), ulong> pairLink = new()
@@ -91,15 +91,15 @@ namespace Tsumiki.Tests.Core
                 [(b, d)] = 28,
             };
             Dictionary<(int, int), ulong> support = [];
-            var vertexCountBefore = graph.VertexCount;
+            var vertexCountBefore = graph.A_出辺.Count;
 
-            var resolved = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength: 500, uniteThreshold: 0.8m, countThreshold: 5);
+            var resolved = graph.V_解決_短い反復(
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(1, resolved);
 
             // 反復が複製され、頂点が2つ(順鎖・逆鎖)増えているはず。
-            Assert.Equal(vertexCountBefore + 2, graph.VertexCount);
+            Assert.Equal(vertexCountBefore + 2, graph.A_出辺.Count);
             Assert.Equal(UnitigR, unitigList[vertexCountBefore]);
 
             // どちらの経路も「反復のコピーを1つだけ通る一本道」になっていること。
@@ -115,8 +115,8 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private static void AssertUntangled(UnitigGraph graph, List<string> unitigList, int from, int to, int otherFrom, int otherTo)
         {
-            var viaFirst = Assert.Single(graph.OutEdges[from]);
-            var viaSecond = Assert.Single(graph.OutEdges[otherFrom]);
+            var viaFirst = Assert.Single(graph.A_出辺[from]);
+            var viaSecond = Assert.Single(graph.A_出辺[otherFrom]);
 
             // それぞれ別のコピーを通ること(同じ頂点を共有していたら解けていない)。
             Assert.NotEqual(viaFirst, viaSecond);
@@ -126,29 +126,29 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(UnitigR, unitigList[viaSecond]);
 
             // 各コピーは入次数1・出次数1の一本道。
-            Assert.Equal(1, graph.InDegree(viaFirst));
-            Assert.Equal(1, graph.InDegree(viaSecond));
-            Assert.Equal([to], graph.OutEdges[viaFirst]);
-            Assert.Equal([otherTo], graph.OutEdges[viaSecond]);
+            Assert.Equal(1, graph.Get_入次数(viaFirst));
+            Assert.Equal(1, graph.Get_入次数(viaSecond));
+            Assert.Equal([to], graph.A_出辺[viaFirst]);
+            Assert.Equal([otherTo], graph.A_出辺[viaSecond]);
 
             // 逆鎖側も対称であること(片側だけ付け替えるとグラフが壊れ、
             // 順鎖と逆鎖で別々の経路が組まれてしまう)。
-            Assert.Contains(viaFirst ^ 1, graph.OutEdges[to ^ 1]);
-            Assert.Contains(viaSecond ^ 1, graph.OutEdges[otherTo ^ 1]);
-            Assert.Contains(from ^ 1, graph.OutEdges[viaFirst ^ 1]);
-            Assert.Contains(otherFrom ^ 1, graph.OutEdges[viaSecond ^ 1]);
+            Assert.Contains(viaFirst ^ 1, graph.A_出辺[to ^ 1]);
+            Assert.Contains(viaSecond ^ 1, graph.A_出辺[otherTo ^ 1]);
+            Assert.Contains(from ^ 1, graph.A_出辺[viaFirst ^ 1]);
+            Assert.Contains(otherFrom ^ 1, graph.A_出辺[viaSecond ^ 1]);
         }
 
         [Fact]
         public void ResolveShortRepeats_HonoursTheCrossedPairing_WhenThatIsWhatThePairsShow()
         {
             var (unitigList, kmerDict) = Build(UnitigA, UnitigB, UnitigR, UnitigC, UnitigD);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var c = ContigMaker.VertexIndex(4);
-            var d = ContigMaker.VertexIndex(5);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var c = ContigMaker.Get_頂点番号(4);
+            var d = ContigMaker.Get_頂点番号(5);
 
             // 今度は A-D と B-C の組み合わせが支持されている。
             Dictionary<(int, int), ulong> pairLink = new()
@@ -158,8 +158,8 @@ namespace Tsumiki.Tests.Core
             };
             Dictionary<(int, int), ulong> support = [];
 
-            var resolved = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength: 500, uniteThreshold: 0.8m, countThreshold: 5);
+            var resolved = graph.V_解決_短い反復(
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(1, resolved);
             // 交差した対応付け: A は D へ、B は C へ繋がる。
@@ -174,13 +174,13 @@ namespace Tsumiki.Tests.Core
         public void ResolveShortRepeats_LeavesTheRepeatAlone_WhenPairsDoNotFavourEitherPairing()
         {
             var (unitigList, kmerDict) = Build(UnitigA, UnitigB, UnitigR, UnitigC, UnitigD);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var r = ContigMaker.VertexIndex(3);
-            var c = ContigMaker.VertexIndex(4);
-            var d = ContigMaker.VertexIndex(5);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var r = ContigMaker.Get_頂点番号(3);
+            var c = ContigMaker.Get_頂点番号(4);
+            var d = ContigMaker.Get_頂点番号(5);
 
             Dictionary<(int, int), ulong> pairLink = new()
             {
@@ -190,15 +190,15 @@ namespace Tsumiki.Tests.Core
                 [(b, c)] = 16,
             };
             Dictionary<(int, int), ulong> support = [];
-            var vertexCountBefore = graph.VertexCount;
+            var vertexCountBefore = graph.A_出辺.Count;
 
-            var resolved = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength: 500, uniteThreshold: 0.8m, countThreshold: 5);
+            var resolved = graph.V_解決_短い反復(
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(0, resolved);
-            Assert.Equal(vertexCountBefore, graph.VertexCount);
-            Assert.Equal(2, graph.OutEdges[r].Count);
-            Assert.Equal(2, graph.InDegree(r));
+            Assert.Equal(vertexCountBefore, graph.A_出辺.Count);
+            Assert.Equal(2, graph.A_出辺[r].Count);
+            Assert.Equal(2, graph.Get_入次数(r));
         }
 
         /// <summary>
@@ -209,12 +209,12 @@ namespace Tsumiki.Tests.Core
         public void ResolveShortRepeats_SkipsRepeatsLongerThanTheFragmentCanSpan()
         {
             var (unitigList, kmerDict) = Build(UnitigA, UnitigB, UnitigR, UnitigC, UnitigD);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var c = ContigMaker.VertexIndex(4);
-            var d = ContigMaker.VertexIndex(5);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var c = ContigMaker.Get_頂点番号(4);
+            var d = ContigMaker.Get_頂点番号(5);
 
             Dictionary<(int, int), ulong> pairLink = new()
             {
@@ -222,14 +222,14 @@ namespace Tsumiki.Tests.Core
                 [(b, d)] = 28,
             };
             Dictionary<(int, int), ulong> support = [];
-            var vertexCountBefore = graph.VertexCount;
+            var vertexCountBefore = graph.A_出辺.Count;
 
             // R は24bp なので、上限を10bp にすれば対象外になる。
-            var resolved = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength: 10, uniteThreshold: 0.8m, countThreshold: 5);
+            var resolved = graph.V_解決_短い反復(
+                unitigList, support, pairLink, p_反復長の上限: 10, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(0, resolved);
-            Assert.Equal(vertexCountBefore, graph.VertexCount);
+            Assert.Equal(vertexCountBefore, graph.A_出辺.Count);
         }
 
         /// <summary>
@@ -239,20 +239,20 @@ namespace Tsumiki.Tests.Core
         public void ResolveShortRepeats_SkipsWhenSpanningPairsAreTooFew()
         {
             var (unitigList, kmerDict) = Build(UnitigA, UnitigB, UnitigR, UnitigC, UnitigD);
-            var graph = UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
-            var a = ContigMaker.VertexIndex(1);
-            var c = ContigMaker.VertexIndex(4);
+            var a = ContigMaker.Get_頂点番号(1);
+            var c = ContigMaker.Get_頂点番号(4);
 
             Dictionary<(int, int), ulong> pairLink = new() { [(a, c)] = 2 };
             Dictionary<(int, int), ulong> support = [];
-            var vertexCountBefore = graph.VertexCount;
+            var vertexCountBefore = graph.A_出辺.Count;
 
-            var resolved = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength: 500, uniteThreshold: 0.8m, countThreshold: 10);
+            var resolved = graph.V_解決_短い反復(
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 10);
 
             Assert.Equal(0, resolved);
-            Assert.Equal(vertexCountBefore, graph.VertexCount);
+            Assert.Equal(vertexCountBefore, graph.A_出辺.Count);
         }
     }
 }

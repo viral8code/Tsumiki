@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Tests.Common
@@ -22,7 +22,7 @@ namespace Tsumiki.Tests.Common
         [InlineData("0.5G", 512L * 1024 * 1024)]
         public void ParseMemorySize_ReadsSuffixedSizes(string text, long expected)
         {
-            Assert.Equal(expected, Util.ParseMemorySize(text));
+            Assert.Equal(expected, Util.V_変換_メモリサイズ(text));
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Tsumiki.Tests.Common
         [InlineData("2048", 2048L * 1024 * 1024)]
         public void ParseMemorySize_BareNumberMeansMegabytes(string text, long expected)
         {
-            Assert.Equal(expected, Util.ParseMemorySize(text));
+            Assert.Equal(expected, Util.V_変換_メモリサイズ(text));
         }
 
         [Theory]
@@ -46,14 +46,14 @@ namespace Tsumiki.Tests.Common
         [InlineData("G")]
         public void ParseMemorySize_RejectsInvalidInput(string text)
         {
-            _ = Assert.Throws<ArgumentException>(() => Util.ParseMemorySize(text));
+            _ = Assert.Throws<ArgumentException>(() => Util.V_変換_メモリサイズ(text));
         }
 
         [Fact]
         public void Parameters_AcceptsSuffixedMemoryBudget()
         {
-            var param = new Parameters { MemoryBudget = "2G" };
-            Assert.Equal(2L * 1024 * 1024 * 1024, param.MemoryBudgetBytes);
+            var param = new Parameters { A_メモリ予算 = "2G" };
+            Assert.Equal(2L * 1024 * 1024 * 1024, param.A_メモリ予算バイト数);
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Tsumiki.Tests.Common
         [InlineData(1536L * 1024 * 1024, "1.5 GB")]
         public void FormatMemorySize_RoundTripsToAReadableForm(long bytes, string expected)
         {
-            Assert.Equal(expected, Util.FormatMemorySize(bytes));
+            Assert.Equal(expected, Util.Get_表示用メモリサイズ(bytes));
         }
     }
 }

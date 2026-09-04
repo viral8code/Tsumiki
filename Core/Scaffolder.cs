@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -6,430 +6,426 @@ using Tsumiki.Model;
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// ContigMaker.UniteContigs で確定した contigs.fasta を読み直し、
-    /// ペアエンド由来の隣接情報(ContigMaker.PairPath)を使って
-    /// contig 同士をさらに N 埋めで連結する(スキャフォールディング)。
+    /// ContigMaker で確定した contigs.fasta を読み直し、
+    /// ペアエンド由来の隣接情報を使って contig 同士をさらに N 埋めで連結する
+    /// (スキャフォールディング)。
     ///
-    /// 実行タイミング: UniteContigs 完了後、Program.cs から別処理として呼び出す。
+    /// 実行タイミング: contig 確定後、Program から別処理として呼び出す。
     /// 入力: 確定済み contigs.fasta ファイル(読み直す)。
     /// 出力: 新規ファイル scaffolds.fasta。contigs.fasta 自体は変更しない。
     /// </summary>
-    internal class Scaffolder(ContigMaker contigMaker, string contigFilePath)
+    internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス)
     {
+        /// <summary>
+        /// 同一unitig内標本を信頼してよいと判断する、
+        /// 「unitig長 / 推定フラグメント長」の下限比。
+        ///
+        /// 同一unitig内標本の唯一の弱点は、unitig がフラグメントより短いと
+        /// 両端が収まるペアしか観測できず短いフラグメントに偏ること。
+        /// unitig がフラグメント長よりこの倍率以上に長ければ、その打ち切りは
+        /// 事実上起きないため偏りは無視できる。
+        /// </summary>
+        private const int 偏りが無いとみなす長さ比 = 10;
 
         // contig ID(FastaWriter が振った 1 始まりの ID) -> 配列本体。
-        private readonly Dictionary<int, string> contigSequences = [];
+        private readonly Dictionary<int, string> _コンティグ配列 = [];
 
         // contig ID -> ID 文字列(先頭 ">" の次に書かれていた文字列。"NODE1" 等)。
         // 出力時に元の命名をある程度踏襲するために保持する。
-        private readonly Dictionary<int, string> contigNames = [];
+        private readonly Dictionary<int, string> _コンティグ名 = [];
 
         /// <summary>
         /// 自動推定された(あるいは CLI で明示指定された)インサートサイズ。
-        /// CLI 指定がある場合はそれを、ない場合は ContigMaker.InsertSizeSamples から
-        /// 推定した値を保持する。推定に失敗した場合は null のままとなり、
-        /// その場合 Run はスキャフォールディングを行わずに終了する。
+        /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは
+        /// 行われない。
         /// </summary>
-        public int? EffectiveInsertSize { get; private set; }
+        public int? A_有効インサートサイズ { get; private set; }
 
         /// <summary>
-        /// スキャフォールディングを実行し、scaffoldPath に結果を書き出す。
-        /// InsertSize が(指定・推定いずれの方法でも)確定できなかった場合は、
-        /// その旨をログに出力して何もせずに戻る(scaffoldPath は作成されない)。
+        /// スキャフォールディングを実行し、指定パスに結果を書き出す。
+        /// インサートサイズが(指定・推定いずれの方法でも)確定できなかった場合は、
+        /// その旨をログに出力して何もせずに戻る(ファイルは作成されない)。
         /// </summary>
-        public void Run(string scaffoldPath)
+        public void V_実行(string p_スキャフォールドパス)
         {
-            if (!this.TryResolveInsertSize(out var insertSize))
+            if (!this.Get_インサートサイズ(out var l_インサートサイズ))
             {
                 Console.WriteLine("[Info] Scaffolding skipped: insert size was not specified and could not be estimated from mapped pairs.");
                 return;
             }
-            this.EffectiveInsertSize = insertSize;
-            Console.WriteLine($"[Info] Scaffolding with insert size = {insertSize}");
+            this.A_有効インサートサイズ = l_インサートサイズ;
+            Console.WriteLine($"[Info] Scaffolding with insert size = {l_インサートサイズ}");
 
-            this.LoadContigs();
+            this.V_読込_コンティグ();
 
-            if (this.contigSequences.Count == 0)
+            if (this._コンティグ配列.Count == 0)
             {
                 Console.WriteLine("[Info] Scaffolding skipped: no contigs were found.");
                 return;
             }
 
-            var placements = contigMaker.UnitigPlacements;
-            var pairPath = contigMaker.PairPath;
+            var l_配置 = p_コンティグ構築.A_ユニティグ配置;
+            var l_ペア経路 = p_コンティグ構築.A_ペア経路;
 
             // contig 単位の頂点空間を作る。unitig 同様、各 contig を
             // 「順方向」「逆方向」の2頂点として扱う。
-            // vertexIndex = contigId << 1 (順方向) / contigId << 1 | 1 (逆方向)
-            var contigCount = this.contigSequences.Keys.Count == 0 ? 0 : this.contigSequences.Keys.Max();
-            var vertexCount = (contigCount + 1) << 1;
+            // 頂点番号 = コンティグID << 1 (順方向) / コンティグID << 1 | 1 (逆方向)
+            var l_コンティグ数 = this._コンティグ配列.Keys.Count == 0 ? 0 : this._コンティグ配列.Keys.Max();
+            var l_頂点数 = (l_コンティグ数 + 1) << 1;
 
-            // contig 単位の隣接候補: vertexIndex -> List<(vertexIndex, count, List<gapEstimates>)>
-            var adjacency = new List<(int To, ulong Count, List<int> GapSamples)>[vertexCount];
-            for (var i = 0; i < vertexCount; i++)
+            var l_隣接 = new List<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)>[l_頂点数];
+            for (var i = 0; i < l_頂点数; i++)
             {
-                adjacency[i] = [];
+                l_隣接[i] = [];
             }
 
-            // (fromVertex,toVertex) -> 集計済みのカウントとギャップ推定サンプル。
-            var edgeMap = new Dictionary<(int, int), (ulong Count, List<int> GapSamples)>();
+            var l_辺の集計 = new Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)>();
 
-            var skippedInteriorEdges = 0;
-            var skippedUnplacedEdges = 0;
+            var l_内部を指した数 = 0;
+            var l_未配置を指した数 = 0;
 
-            foreach (var (pathKey, gapSamples) in pairPath)
+            foreach (var (l_キー, l_標本) in l_ペア経路)
             {
-                var (fromUnitig, toUnitig) = pathKey;
+                var (l_始点ユニティグ, l_終点ユニティグ) = l_キー;
 
-                if (!TryResolveContigEndpoint(placements, fromUnitig, isOutgoing: true, out var fromVertex))
+                if (!Get_コンティグ末端頂点(l_配置, l_始点ユニティグ, p_出口側か: true, out var l_始点頂点))
                 {
-                    if (!placements.ContainsKey(Math.Abs(fromUnitig)))
+                    if (!l_配置.ContainsKey(Math.Abs(l_始点ユニティグ)))
                     {
-                        skippedUnplacedEdges++;
+                        l_未配置を指した数++;
                     }
                     else
                     {
-                        skippedInteriorEdges++;
+                        l_内部を指した数++;
                     }
                     continue;
                 }
 
-                if (!TryResolveContigEndpoint(placements, toUnitig, isOutgoing: false, out var toVertex))
+                if (!Get_コンティグ末端頂点(l_配置, l_終点ユニティグ, p_出口側か: false, out var l_終点頂点))
                 {
-                    if (!placements.ContainsKey(Math.Abs(toUnitig)))
+                    if (!l_配置.ContainsKey(Math.Abs(l_終点ユニティグ)))
                     {
-                        skippedUnplacedEdges++;
+                        l_未配置を指した数++;
                     }
                     else
                     {
-                        skippedInteriorEdges++;
+                        l_内部を指した数++;
                     }
                     continue;
                 }
 
                 // 自己ループ(同一 contig の同一末端同士)は無視する。
-                if (fromVertex >> 1 == toVertex >> 1)
+                if (l_始点頂点 >> 1 == l_終点頂点 >> 1)
                 {
                     continue;
                 }
 
-                var edgeKey = (fromVertex, toVertex);
-                if (edgeMap.TryGetValue(edgeKey, out var existing))
+                var l_辺キー = (l_始点頂点, l_終点頂点);
+                if (l_辺の集計.TryGetValue(l_辺キー, out var l_既存))
                 {
-                    existing.GapSamples.AddRange(gapSamples);
-                    edgeMap[edgeKey] = (existing.Count + (ulong)gapSamples.Count, existing.GapSamples);
+                    l_既存.A_既知長標本.AddRange(l_標本);
+                    l_辺の集計[l_辺キー] = (l_既存.A_支持数 + (ulong)l_標本.Count, l_既存.A_既知長標本);
                 }
                 else
                 {
-                    edgeMap[edgeKey] = ((ulong)gapSamples.Count, [.. gapSamples]);
+                    l_辺の集計[l_辺キー] = ((ulong)l_標本.Count, [.. l_標本]);
                 }
             }
 
-            if (skippedInteriorEdges > 0)
+            if (l_内部を指した数 > 0)
             {
-                Console.WriteLine($"[Info] {skippedInteriorEdges} pair-end candidate(s) pointed at unitigs interior to an already-joined contig and were skipped (endpoint already resolved by UniteContigs).");
+                Console.WriteLine($"[Info] {l_内部を指した数} pair-end candidate(s) pointed at unitigs interior to an already-joined contig and were skipped (endpoint already resolved by contig construction).");
             }
-            if (skippedUnplacedEdges > 0)
+            if (l_未配置を指した数 > 0)
             {
-                Console.WriteLine($"[Info] {skippedUnplacedEdges} pair-end candidate(s) referenced unitigs that were not placed into any contig (e.g. too short) and were skipped.");
+                Console.WriteLine($"[Info] {l_未配置を指した数} pair-end candidate(s) referenced unitigs that were not placed into any contig (e.g. too short) and were skipped.");
             }
 
             // 辺 v→w と、その逆鎖側の双子 w^1→v^1 は同一の物理的な隣接を表す。
             // ペアエンドの観測はどちらか一方の向きでしか記録されないため、
             // 対称化しないと「順鎖側では十分な支持があるのに逆鎖側では
             // 支持ゼロ」という状態になり、下の相互一意性の検査が常に落ちる。
-            // 双方に同じ支持(サンプルの和集合)を持たせる。
-            // 二重計上にはならない: ある観測は edgeMap 上のどちらか一方の
+            // 双方に同じ支持(標本の和集合)を持たせる。
+            // 二重計上にはならない: ある観測は集計上のどちらか一方の
             // キーにしか入っていないため、和を取ると各観測はちょうど1回ずつ数えられる。
-            Dictionary<(int, int), (ulong Count, List<int> GapSamples)> symmetric = [];
-            foreach (var ((from, to), (count, gapSamples)) in edgeMap)
+            Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_対称化 = [];
+            foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_辺の集計)
             {
-                foreach (var key in new[] { (from, to), (to ^ 1, from ^ 1) })
+                foreach (var l_キー in new[] { (l_始点, l_終点), (l_終点 ^ 1, l_始点 ^ 1) })
                 {
-                    if (symmetric.TryGetValue(key, out var acc))
+                    if (l_対称化.TryGetValue(l_キー, out var l_累積))
                     {
-                        acc.GapSamples.AddRange(gapSamples);
-                        symmetric[key] = (acc.Count + count, acc.GapSamples);
+                        l_累積.A_既知長標本.AddRange(l_標本);
+                        l_対称化[l_キー] = (l_累積.A_支持数 + l_支持数, l_累積.A_既知長標本);
                     }
                     else
                     {
-                        symmetric[key] = (count, [.. gapSamples]);
+                        l_対称化[l_キー] = (l_支持数, [.. l_標本]);
                     }
                 }
             }
 
-            foreach (var ((from, to), (count, gapSamples)) in symmetric)
+            foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_対称化)
             {
-                adjacency[from].Add((to, count, gapSamples));
+                l_隣接[l_始点].Add((l_終点, l_支持数, l_標本));
             }
 
-            var uniteThreshold = ConfigurationManager.Arguments.PairUniteThreshold;
-            var countThreshold = ConfigurationManager.Arguments.PairCountThreshold;
+            var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
+            var l_最小証拠数 = ConfigurationManager.A_実行時引数.A_ペア支持数閾値;
 
-            Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {edgeMap.Count}");
+            Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {l_辺の集計.Count}");
 
-            // 各頂点について、最多支持のエッジ1本だけを残す(FixPath と同じロジック)。
-            var resolvedEdge = new (int To, int GapLength)?[vertexCount];
-            for (var v = 2; v < vertexCount; v++)
+            // 各頂点について、最多支持の辺1本だけを残す。
+            var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
+            for (var v = 2; v < l_頂点数; v++)
             {
-                this.FixScaffoldEdge(adjacency, v, uniteThreshold, countThreshold, resolvedEdge);
+                this.V_確定_スキャフォールド辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
             }
 
-            var resolvedCount = 0;
-            for (var v = 2; v < vertexCount; v++)
+            var l_確定数 = 0;
+            for (var v = 2; v < l_頂点数; v++)
             {
-                if (resolvedEdge[v] != null)
+                if (l_確定辺[v] != null)
                 {
-                    resolvedCount++;
+                    l_確定数++;
                 }
             }
 
-            // 相互一意(mutual unique)な辺だけを採用する。v→w を繋いでよいのは
+            // 相互一意な辺だけを採用する。v→w を繋いでよいのは
             // 「v の唯一の行き先が w」であり、かつ「w の唯一の来訪元が v」で
-            // あるときに限る。後者は逆鎖対称性より resolvedEdge[w^1] が v^1 を
+            // あるときに限る。後者は逆鎖対称性より 確定辺[w^1] が v^1 を
             // 指すことと同値。これを課さないと、複数の contig が同じ次の contig を
             // 指した場合に先着1本だけが繋がれ、残りは黙って千切れる
             // (どれが正しいかの根拠がないまま1本を選ぶことになる)。
-            var candidateEdge = (( int To, int GapLength)?[])resolvedEdge.Clone();
-            var rejectedByReciprocity = 0;
-            for (var v = 2; v < vertexCount; v++)
+            var l_候補辺 = ((int A_行き先, int A_ギャップ長)?[])l_確定辺.Clone();
+            var l_相互一意で棄却した数 = 0;
+            for (var v = 2; v < l_頂点数; v++)
             {
-                if (candidateEdge[v] is not { } edge)
+                if (l_候補辺[v] is not { } l_辺)
                 {
                     continue;
                 }
-                var twin = edge.To ^ 1;
-                if (twin >= vertexCount || candidateEdge[twin] is not { } back || back.To != (v ^ 1))
+                var l_双子 = l_辺.A_行き先 ^ 1;
+                if (l_双子 >= l_頂点数 || l_候補辺[l_双子] is not { } l_戻りの辺 || l_戻りの辺.A_行き先 != (v ^ 1))
                 {
-                    resolvedEdge[v] = null;
-                    rejectedByReciprocity++;
+                    l_確定辺[v] = null;
+                    l_相互一意で棄却した数++;
                 }
             }
-            Console.WriteLine($"[Info] Scaffold edges resolved after thresholding: {resolvedCount}; {rejectedByReciprocity} rejected by the mutual-uniqueness check, {resolvedCount - rejectedByReciprocity} kept.");
+            Console.WriteLine($"[Info] Scaffold edges resolved after thresholding: {l_確定数}; {l_相互一意で棄却した数} rejected by the mutual-uniqueness check, {l_確定数 - l_相互一意で棄却した数} kept.");
 
             // 「入ってくる結合を持たない」頂点が経路の始点。v への結合が
-            // 存在することは、逆鎖対称性より resolvedEdge[v^1] != null と同値。
-            var startVertices = new List<int>();
-            for (var v = 2; v < vertexCount; v++)
+            // 存在することは、逆鎖対称性より 確定辺[v^1] != null と同値。
+            var l_始点群 = new List<int>();
+            for (var v = 2; v < l_頂点数; v++)
             {
-                if (this.contigSequences.ContainsKey(v >> 1) && (v ^ 1) < vertexCount && resolvedEdge[v ^ 1] == null)
+                if (this._コンティグ配列.ContainsKey(v >> 1) && (v ^ 1) < l_頂点数 && l_確定辺[v ^ 1] == null)
                 {
-                    startVertices.Add(v);
+                    l_始点群.Add(v);
                 }
             }
 
-            List<string> scaffoldList = [];
-            var visited = new bool[vertexCount];
-            foreach (var start in startVertices)
+            List<string> l_スキャフォールド群 = [];
+            var l_訪問済み = new bool[l_頂点数];
+            foreach (var l_始点 in l_始点群)
             {
-                // startVertices には同一 contig の fwd/rev 両方の頂点が
-                // 独立に含まれうる(両方とも enterCount==0 の場合)。
-                // 先に処理された方の WalkScaffold が MarkContigVisited で
-                // 両方向を visited にするため、後から来た方はここで
-                // スキップしないと、同じ contig を起点とする scaffold が
-                // 二重に生成されてしまう(contig 数の水増し・配列の重複の原因)。
-                if (visited[start])
+                // 始点群には同一 contig の順鎖/逆鎖の両方の頂点が独立に
+                // 含まれうる。先に処理された方の walk が両方向を訪問済みに
+                // するため、後から来た方はここでスキップしないと、同じ contig を
+                // 起点とするスキャフォールドが二重に生成されてしまう
+                // (contig 数の水増し・配列の重複の原因)。
+                if (l_訪問済み[l_始点])
                 {
                     continue;
                 }
-                var scaffold = this.WalkScaffold(resolvedEdge, start, visited);
-                if (scaffold != null)
+                var l_スキャフォールド = this.Get_スキャフォールド配列(l_確定辺, l_始点, l_訪問済み);
+                if (l_スキャフォールド != null)
                 {
-                    scaffoldList.Add(scaffold);
+                    l_スキャフォールド群.Add(l_スキャフォールド);
                 }
             }
 
             // まだ訪問されていない(=孤立した、あるいは循環に巻き込まれた)contig を
             // 単独スキャフォールドとして出力する。
-            for (var contigId = 1; contigId <= contigCount; contigId++)
+            for (var l_コンティグID = 1; l_コンティグID <= l_コンティグ数; l_コンティグID++)
             {
-                var fwd = contigId << 1;
-                var rev = (contigId << 1) | 1;
-                if (fwd < vertexCount && !visited[fwd] && !visited[rev] && this.contigSequences.TryGetValue(contigId, out var value))
+                var l_順鎖 = l_コンティグID << 1;
+                var l_逆鎖 = (l_コンティグID << 1) | 1;
+                if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖]
+                    && this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
                 {
-                    scaffoldList.Add(value);
-                    visited[fwd] = true;
-                    visited[rev] = true;
+                    l_スキャフォールド群.Add(l_配列);
+                    l_訪問済み[l_順鎖] = true;
+                    l_訪問済み[l_逆鎖] = true;
                 }
             }
 
-            using var writer = new FastaWriter(scaffoldPath);
-            var scaffoldId = 1;
-            long totalLength = 0;
-            foreach (var scaffold in scaffoldList)
+            using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
+            var l_スキャフォールドID = 1;
+            long l_総延長 = 0;
+            foreach (var l_スキャフォールド in l_スキャフォールド群)
             {
-                writer.Write($"SCAFFOLD{scaffoldId}", scaffold);
-                scaffoldId++;
-                totalLength += scaffold.Length;
+                l_書き込み.V_書き込み($"SCAFFOLD{l_スキャフォールドID}", l_スキャフォールド);
+                l_スキャフォールドID++;
+                l_総延長 += l_スキャフォールド.Length;
             }
 
-            Console.WriteLine($"[Info] Wrote {scaffoldList.Count} scaffold(s), total length {totalLength}, to {scaffoldPath}");
+            Console.WriteLine($"[Info] Wrote {l_スキャフォールド群.Count} scaffold(s), total length {l_総延長}, to {p_スキャフォールドパス}");
         }
 
         /// <summary>
-        /// 同一unitig内サンプルを信頼してよいと判断する、
-        /// 「unitig長 / 推定フラグメント長」の下限比。
+        /// インサートサイズを確定する。CLI で明示指定されていればそれを使う。
         ///
-        /// 同一unitig内サンプルの唯一の弱点は、unitig がフラグメントより短いと
-        /// 両端が収まるペアしか観測できず短いフラグメントに偏ること。
-        /// unitig がフラグメント長よりこの倍率以上に長ければ、その打ち切りは
-        /// 事実上起きないため偏りは無視できる。
-        /// </summary>
-        private const int UnbiasedSameUnitigLengthRatio = 10;
-
-        /// <summary>
-        /// InsertSize を確定する。CLI で明示指定されていればそれを使う。
+        /// 未指定の場合、2種類の標本群から選ぶ。
         ///
-        /// 未指定の場合、2種類のサンプル群から選ぶ。
-        ///
-        /// 同一unitig内サンプルは、unitig自体がフラグメント長より短いと
+        /// 同一unitig内標本は、unitig自体がフラグメント長より短いと
         /// 両端が収まるペアしか観測できず、より短いフラグメントに偏った標本に
         /// なる。ただしこの打ち切りは unitig が十分長ければ起きないため、
-        /// unitig の N50 が推定値の UnbiasedSameUnitigLengthRatio 倍以上ある
+        /// unitig の N50 が推定値の 偏りが無いとみなす長さ比 倍以上ある
         /// 場合は、桁違いに多い標本数(実データで76万件 対 600件)を活かして
         /// こちらを採用する。
         ///
-        /// resolved-edge由来は unitig 長に制約されない代わりに、
+        /// 確定辺由来は unitig 長に制約されない代わりに、
         /// 「結合が確定した辺」だけを対象とするため標本数が非常に少なく、
         /// 誤結合や誤マッピングの影響を受けやすい(実データで同一unitig側が
-        /// 中央値245・分布も素直だったのに対し、resolved-edge側は437と
+        /// 中央値245・分布も素直だったのに対し、確定辺側は437と
         /// 8割ほど上振れしていた)。
         /// </summary>
-        private bool TryResolveInsertSize(out int insertSize)
+        private bool Get_インサートサイズ(out int p_インサートサイズ)
         {
-            if (ConfigurationManager.Arguments.InsertSize is { } specified)
+            if (ConfigurationManager.A_実行時引数.A_インサートサイズ is { } l_指定値)
             {
-                insertSize = specified;
+                p_インサートサイズ = l_指定値;
                 return true;
             }
 
-            var sameUnitigSamples = contigMaker.SameUnitigInsertSizeSamples;
-            if (sameUnitigSamples.Count >= Consts.MinInsertSizeSampleCount)
+            var l_同一ユニティグ標本 = p_コンティグ構築.A_同一ユニティグ標本;
+            if (l_同一ユニティグ標本.Count >= Consts.インサートサイズ標本数の下限)
             {
-                var sameUnitigEstimate = Median(sameUnitigSamples);
-                var unitigN50 = UnitigN50(contigMaker.UnitigLengths);
-                if (sameUnitigEstimate > 0 && unitigN50 >= (long)sameUnitigEstimate * UnbiasedSameUnitigLengthRatio)
+                var l_推定値 = Get_中央値(l_同一ユニティグ標本);
+                var l_ユニティグN50 = Get_ユニティグN50(p_コンティグ構築.A_ユニティグ長);
+                if (l_推定値 > 0 && l_ユニティグN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
                 {
-                    insertSize = sameUnitigEstimate;
+                    p_インサートサイズ = l_推定値;
                     Console.WriteLine(
-                        $"[Info] Insert size auto-estimated as {insertSize} from {sameUnitigSamples.Count} same-unitig sampled pairs " +
-                        $"(median; unitig N50 {unitigN50} is >= {UnbiasedSameUnitigLengthRatio}x the estimate, so the short-fragment truncation bias does not apply).");
+                        $"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_同一ユニティグ標本.Count} same-unitig sampled pairs " +
+                        $"(median; unitig N50 {l_ユニティグN50} is >= {偏りが無いとみなす長さ比}x the estimate, so the short-fragment truncation bias does not apply).");
                     return true;
                 }
             }
 
-            var resolvedEdgeSamples = contigMaker.ResolvedEdgeInsertSizeSamples;
-            if (resolvedEdgeSamples.Count >= Consts.MinInsertSizeSampleCount)
+            var l_確定辺標本 = p_コンティグ構築.A_確定辺標本;
+            if (l_確定辺標本.Count >= Consts.インサートサイズ標本数の下限)
             {
-                insertSize = Median(resolvedEdgeSamples);
-                Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {resolvedEdgeSamples.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples because the unitigs are not long enough for same-unitig samples to be unbiased).");
+                p_インサートサイズ = Get_中央値(l_確定辺標本);
+                Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_確定辺標本.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples because the unitigs are not long enough for same-unitig samples to be unbiased).");
                 return true;
             }
 
-            var allSamples = contigMaker.InsertSizeSamples;
-            if (allSamples.Count < Consts.MinInsertSizeSampleCount)
+            var l_全標本 = p_コンティグ構築.A_インサートサイズ標本;
+            if (l_全標本.Count < Consts.インサートサイズ標本数の下限)
             {
-                Console.WriteLine($"[Info] Insert size auto-estimation requires at least {Consts.MinInsertSizeSampleCount} samples; only {resolvedEdgeSamples.Count} resolved-edge and {allSamples.Count} total samples were collected.");
-                insertSize = 0;
+                Console.WriteLine($"[Info] Insert size auto-estimation requires at least {Consts.インサートサイズ標本数の下限} samples; only {l_確定辺標本.Count} resolved-edge and {l_全標本.Count} total samples were collected.");
+                p_インサートサイズ = 0;
                 return false;
             }
 
-            insertSize = Median(allSamples);
-            Console.WriteLine($"[Info] Insert size auto-estimated as {insertSize} from {allSamples.Count} sampled pairs (median; resolved-edge samples were too few ({resolvedEdgeSamples.Count}), fell back to the full pool which may be biased short).");
+            p_インサートサイズ = Get_中央値(l_全標本);
+            Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_全標本.Count} sampled pairs (median; resolved-edge samples were too few ({l_確定辺標本.Count}), fell back to the full pool which may be biased short).");
             return true;
         }
 
         /// <summary>
         /// unitig の N50(長い順に並べて累積長が全長の半分に達した時点の長さ)。
-        /// 「同一unitig内サンプルが打ち切りバイアスを受けていないか」の判断に使う。
+        /// 「同一unitig内標本が打ち切りバイアスを受けていないか」の判断に使う。
         /// 平均ではなく N50 を使うのは、短い断片が本数として多くても
         /// 実際にペアが観測される場所はゲノムの大部分を占める長い unitig に
         /// 偏るため、そちらの長さ水準を見るべきだから。
         /// </summary>
-        private static long UnitigN50(IReadOnlyDictionary<int, int> unitigLengths)
+        private static long Get_ユニティグN50(IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
-            if (unitigLengths.Count == 0)
+            if (p_ユニティグ長.Count == 0)
             {
                 return 0;
             }
-            var lengths = unitigLengths.Values.OrderByDescending(x => x).ToList();
-            var half = lengths.Sum(x => (long)x) / 2.0;
-            long cumulative = 0;
-            foreach (var length in lengths)
+            var l_長さ一覧 = p_ユニティグ長.Values.OrderByDescending(x => x).ToList();
+            var l_半分 = l_長さ一覧.Sum(x => (long)x) / 2.0;
+            long l_累積 = 0;
+            foreach (var l_長さ in l_長さ一覧)
             {
-                cumulative += length;
-                if (cumulative >= half)
+                l_累積 += l_長さ;
+                if (l_累積 >= l_半分)
                 {
-                    return length;
+                    return l_長さ;
                 }
             }
-            return lengths[^1];
+            return l_長さ一覧[^1];
         }
 
-        private static int Median(List<int> values)
+        private static int Get_中央値(List<int> p_値一覧)
         {
-            var sorted = values.OrderBy(x => x).ToList();
-            var mid = sorted.Count / 2;
-            return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+            var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
+            var l_中央 = l_整列済み.Count / 2;
+            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2 : l_整列済み[l_中央];
         }
 
-        private void LoadContigs()
+        private void V_読込_コンティグ()
         {
-            using var reader = new FastaReader(contigFilePath);
-            var id = 1;
-            while (reader.HasNext())
+            using var l_読み込み = new FastaReader(p_コンティグファイルパス);
+            var l_ID = 1;
+            while (l_読み込み.Get_続きがあるか())
             {
-                var seq = reader.NextSequence();
-                this.contigNames[id] = seq.ID.TrimStart('>');
-                this.contigSequences[id] = seq.Seq;
-                id++;
+                var l_配列エントリ = l_読み込み.Get_次の配列();
+                this._コンティグ名[l_ID] = l_配列エントリ.A_ID.TrimStart('>');
+                this._コンティグ配列[l_ID] = l_配列エントリ.A_配列;
+                l_ID++;
             }
         }
 
         /// <summary>
-        /// pairPath のキーに現れる unitig ID(符号付き)を、それが実際に
+        /// ペア経路のキーに現れる unitig ID(符号付き)を、それが実際に
         /// contig の末端(スキャフォールディング候補として使える位置)に
         /// 配置されているかどうか判定し、配置されていれば対応する
-        /// contig 頂点(vertexIndex = contigId &lt;&lt; 1 | reverseFlag)を返す。
+        /// contig 頂点を返す。
         ///
-        /// isOutgoing = true の場合(from 側、つまり読み進める方向の始点):
+        /// p_出口側か = true の場合(始点側、つまり読み進める方向の起点):
         ///   unitig がその向きで見て contig の「出口側」の末端、すなわち
-        ///   - 向きが順鎖(id&gt;0)かつ contig 内で末尾(IsAtContigEnd)、または
-        ///   - 向きが逆鎖(id&lt;0)かつ contig 内で先頭(IsAtContigStart)
+        ///   - 向きが順鎖かつ contig 内で末尾、または
+        ///   - 向きが逆鎖かつ contig 内で先頭
         ///   である場合のみ有効な候補とみなす。
-        /// isOutgoing = false の場合(to 側、読み進めた先の入口):
-        ///   - 向きが順鎖(id&gt;0)かつ contig 内で先頭(IsAtContigStart)、または
-        ///   - 向きが逆鎖(id&lt;0)かつ contig 内で末尾(IsAtContigEnd)
+        /// p_出口側か = false の場合(終点側、読み進めた先の入口):
+        ///   - 向きが順鎖かつ contig 内で先頭、または
+        ///   - 向きが逆鎖かつ contig 内で末尾
         ///   である場合のみ有効。
         ///
-        /// contig の最終配列が正規化のため逆相補化されている場合
-        /// (IsContigReverseComplemented)、walk 順ベースの先頭/末尾の意味が
-        /// 反転するため、その分も考慮して vertex の reverseFlag を決める。
+        /// contig の最終配列が正規化のため逆相補化されている場合、
+        /// walk 順ベースの先頭/末尾の意味が反転するため、その分も考慮して
+        /// 頂点の向きを決める。
         /// </summary>
-        private static bool TryResolveContigEndpoint(
-            IReadOnlyDictionary<int, UnitigPlacement> placements,
-            int signedUnitigId,
-            bool isOutgoing,
-            out int vertexIndex)
+        private static bool Get_コンティグ末端頂点(
+            IReadOnlyDictionary<int, ユニティグ配置> p_配置,
+            int p_符号付きユニティグID,
+            bool p_出口側か,
+            out int p_頂点番号)
         {
-            vertexIndex = 0;
-            var unitigId = Math.Abs(signedUnitigId);
-            var isForwardUnitig = signedUnitigId > 0;
+            p_頂点番号 = 0;
+            var l_ユニティグID = Math.Abs(p_符号付きユニティグID);
+            var l_順鎖か = p_符号付きユニティグID > 0;
 
-            if (!placements.TryGetValue(unitigId, out var placement))
+            if (!p_配置.TryGetValue(l_ユニティグID, out var l_配置情報))
             {
                 return false;
             }
 
-            // unitig 自身が walk 中に逆鎖として使われていた場合、pairPath 上の
-            // 向き(isForwardUnitig)は「unitig 単体の元の向き」を基準にしているため、
-            // walk 内での実効的な向きに変換する(XOR)。
-            var effectiveForward = isForwardUnitig != placement.IsUnitigReverseInWalk;
+            // unitig 自身が walk 中に逆鎖として使われていた場合、ペア経路上の
+            // 向きは「unitig 単体の元の向き」を基準にしているため、
+            // walk 内での実効的な向きに変換する。
+            var l_実効的に順鎖か = l_順鎖か != l_配置情報.A_walk中で逆鎖か;
 
-            var isAtRelevantEnd = isOutgoing
-                ? effectiveForward ? placement.IsAtContigEnd : placement.IsAtContigStart
-                : effectiveForward ? placement.IsAtContigStart : placement.IsAtContigEnd;
-            if (!isAtRelevantEnd)
+            var l_該当する端にあるか = p_出口側か
+                ? l_実効的に順鎖か ? l_配置情報.A_コンティグ末尾か : l_配置情報.A_コンティグ先頭か
+                : l_実効的に順鎖か ? l_配置情報.A_コンティグ先頭か : l_配置情報.A_コンティグ末尾か;
+            if (!l_該当する端にあるか)
             {
                 return false;
             }
@@ -438,120 +434,119 @@ namespace Tsumiki.Core
             // 「walk 順で見た先頭/末尾」と「実際の contigs.fasta 上の先頭/末尾」が
             // 入れ替わる。スキャフォールディングは contigs.fasta 上の配列
             // (=実際に出力された向き)を基準に扱うため、ここで反転させる。
-            var isForwardInFinalSequence = placement.IsContigReverseComplemented ? !effectiveForward : effectiveForward;
+            var l_最終配列で順鎖か = l_配置情報.A_コンティグが逆相補か ? !l_実効的に順鎖か : l_実効的に順鎖か;
 
-            vertexIndex = (placement.ContigId << 1) | (isForwardInFinalSequence ? 0 : 1);
+            p_頂点番号 = (l_配置情報.A_コンティグID << 1) | (l_最終配列で順鎖か ? 0 : 1);
             return true;
         }
 
-        private void FixScaffoldEdge(
-            List<(int To, ulong Count, List<int> GapSamples)>[] adjacency,
-            int vertex,
-            decimal uniteThreshold,
-            ulong countThreshold,
-            (int To, int GapLength)?[] resolvedEdge)
+        private void V_確定_スキャフォールド辺(
+            List<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)>[] p_隣接,
+            int p_頂点,
+            decimal p_優勢閾値,
+            ulong p_最小証拠数,
+            (int A_行き先, int A_ギャップ長)?[] p_確定辺)
         {
-            var candidates = adjacency[vertex];
-            var filtered = candidates.Where(c => c.Count >= countThreshold).ToList();
-            if (filtered.Count == 0)
+            var l_候補 = p_隣接[p_頂点].Where(x => x.A_支持数 >= p_最小証拠数).ToList();
+            if (l_候補.Count == 0)
             {
-                resolvedEdge[vertex] = null;
+                p_確定辺[p_頂点] = null;
                 return;
             }
 
-            var sum = filtered.Aggregate(0UL, (acc, c) => acc + c.Count);
-            var (To, Count, GapSamples) = filtered.OrderByDescending(c => c.Count).First();
+            var l_合計 = l_候補.Aggregate(0UL, (l_累積, x) => l_累積 + x.A_支持数);
+            var l_最良 = l_候補.OrderByDescending(x => x.A_支持数).First();
 
-            if (sum == 0 || (decimal)Count / sum < uniteThreshold)
+            if (l_合計 == 0 || (decimal)l_最良.A_支持数 / l_合計 < p_優勢閾値)
             {
-                resolvedEdge[vertex] = null;
+                p_確定辺[p_頂点] = null;
                 return;
             }
 
-            var gapLength = this.EstimateGapLength(GapSamples);
-            resolvedEdge[vertex] = (To, gapLength);
+            p_確定辺[p_頂点] = (l_最良.A_行き先, this.Get_推定ギャップ長(l_最良.A_既知長標本));
         }
 
         /// <summary>
-        /// あるエッジについて観測された「既に見えている長さ」のサンプル群から
-        /// 実際に挿入する N の数を決める。ContigMaker が記録する各サンプルは
+        /// ある辺について観測された「既に見えている長さ」の標本群から
+        /// 実際に挿入する N の数を決める。ContigMaker が記録する各標本は
         /// 「read1長 + contig1末端までの残り + contig2先頭からの残り + read2長」
-        /// であり、フラグメント長 = サンプル + ギャップ長 という関係が成り立つ。
-        /// したがってギャップ長 = InsertSize - サンプル として個々の候補を計算し、
+        /// であり、フラグメント長 = 標本 + ギャップ長 という関係が成り立つ。
+        /// したがってギャップ長 = インサートサイズ - 標本 として個々の候補を計算し、
         /// その中央値を採用する。
-        /// 中央値が Consts.MinimumGapLength を下回る場合はその最小値に丸める
-        /// (負の推定値や 0 になった場合でも、隣接している事実自体は
-        /// 相応の証拠があるため、少なくとも1つの N でギャップを明示する)。
+        /// 中央値が下限を下回る場合はその最小値に丸める(負の推定値や 0 に
+        /// なった場合でも、隣接している事実自体は相応の証拠があるため、
+        /// 少なくとも1つの N でギャップを明示する)。
         /// </summary>
-        private int EstimateGapLength(List<int> spannedLengthSamples)
+        private int Get_推定ギャップ長(List<int> p_既知長標本)
         {
-            var insertSize = this.EffectiveInsertSize ?? 0;
-            if (spannedLengthSamples.Count == 0)
+            var l_インサートサイズ = this.A_有効インサートサイズ ?? 0;
+            if (p_既知長標本.Count == 0)
             {
-                return Consts.MinimumGapLength;
+                return Consts.ギャップ長の下限;
             }
 
-            var gapEstimates = spannedLengthSamples
-                .Select(spanned => insertSize - spanned)
+            var l_ギャップ候補 = p_既知長標本
+                .Select(x => l_インサートサイズ - x)
                 .OrderBy(x => x)
                 .ToList();
 
-            var mid = gapEstimates.Count / 2;
-            var median = gapEstimates.Count % 2 == 0
-                ? (gapEstimates[mid - 1] + gapEstimates[mid]) / 2
-                : gapEstimates[mid];
+            var l_中央 = l_ギャップ候補.Count / 2;
+            var l_中央値 = l_ギャップ候補.Count % 2 == 0
+                ? (l_ギャップ候補[l_中央 - 1] + l_ギャップ候補[l_中央]) / 2
+                : l_ギャップ候補[l_中央];
 
-            return Math.Max(Consts.MinimumGapLength, median);
+            return Math.Max(Consts.ギャップ長の下限, l_中央値);
         }
 
-        private string? WalkScaffold((int To, int GapLength)?[] resolvedEdge, int start, bool[] visited)
+        private string? Get_スキャフォールド配列(
+            (int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み)
         {
-            var contigId = start >> 1;
-            var isReverse = (start & 1) == 1;
-            if (!this.contigSequences.TryGetValue(contigId, out var seq))
+            var l_コンティグID = p_始点 >> 1;
+            var l_逆鎖か = (p_始点 & 1) == 1;
+            if (!this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
             {
                 return null;
             }
 
-            var sb = new StringBuilder(isReverse ? Util.ReverseComprement(seq) : seq);
-            var current = start;
+            var l_出力 = new StringBuilder(l_逆鎖か ? Util.V_逆相補(l_配列) : l_配列);
+            var l_現在 = p_始点;
             // 頂点を「消費」した(=いずれかの向きでスキャフォールドに組み込んだ)際は、
-            // その contig の両方の向きの頂点(fwd/rev)を visited にする。
-            // 片方の頂点だけを visited にすると、同じ contig の反対向きの頂点が
+            // その contig の両方の向きの頂点を訪問済みにする。
+            // 片方の頂点だけを訪問済みにすると、同じ contig の反対向きの頂点が
             // 別の開始点や「未訪問の孤立 contig」判定で再度使われてしまう
             // (同じ contig が2回出力される)おそれがあるため。
-            MarkContigVisited(visited, current);
-            while (resolvedEdge[current] is { } edge && !visited[edge.To])
+            V_記録_訪問済み(p_訪問済み, l_現在);
+            while (p_確定辺[l_現在] is { } l_辺 && !p_訪問済み[l_辺.A_行き先])
             {
-                var nextContigId = edge.To >> 1;
-                var nextIsReverse = (edge.To & 1) == 1;
-                if (!this.contigSequences.TryGetValue(nextContigId, out var nextSeq))
+                var l_次のコンティグID = l_辺.A_行き先 >> 1;
+                var l_次が逆鎖か = (l_辺.A_行き先 & 1) == 1;
+                if (!this._コンティグ配列.TryGetValue(l_次のコンティグID, out var l_次の配列))
                 {
                     break;
                 }
 
-                _ = sb.Append('N', edge.GapLength);
-                _ = sb.Append(nextIsReverse ? Util.ReverseComprement(nextSeq) : nextSeq);
+                _ = l_出力.Append('N', l_辺.A_ギャップ長);
+                _ = l_出力.Append(l_次が逆鎖か ? Util.V_逆相補(l_次の配列) : l_次の配列);
 
-                current = edge.To;
-                MarkContigVisited(visited, current);
+                l_現在 = l_辺.A_行き先;
+                V_記録_訪問済み(p_訪問済み, l_現在);
             }
 
-            return sb.ToString();
+            return l_出力.ToString();
         }
 
         /// <summary>
-        /// vertexIndex が指す contig の両方の向きの頂点を visited にする。
+        /// 頂点番号が指す contig の両方の向きの頂点を訪問済みにする。
         /// </summary>
-        private static void MarkContigVisited(bool[] visited, int vertexIndex)
+        private static void V_記録_訪問済み(bool[] p_訪問済み, int p_頂点番号)
         {
-            var contigId = vertexIndex >> 1;
-            var fwd = contigId << 1;
-            var rev = fwd | 1;
-            if (rev < visited.Length)
+            var l_コンティグID = p_頂点番号 >> 1;
+            var l_順鎖 = l_コンティグID << 1;
+            var l_逆鎖 = l_順鎖 | 1;
+            if (l_逆鎖 < p_訪問済み.Length)
             {
-                visited[fwd] = true;
-                visited[rev] = true;
+                p_訪問済み[l_順鎖] = true;
+                p_訪問済み[l_逆鎖] = true;
             }
         }
     }

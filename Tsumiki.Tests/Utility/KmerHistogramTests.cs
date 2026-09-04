@@ -1,4 +1,4 @@
-using Tsumiki.Utility;
+﻿using Tsumiki.Utility;
 
 namespace Tsumiki.Tests.Utility
 {
@@ -7,7 +7,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void SuggestCutoff_EmptyHistogram_ReturnsNull()
         {
-            Assert.Null(KmerHistogram.SuggestCutoff(new Dictionary<ulong, long>()));
+            Assert.Null(KmerHistogram.Get_推奨カットオフ(new Dictionary<ulong, long>()));
         }
 
         [Fact]
@@ -25,7 +25,7 @@ namespace Tsumiki.Tests.Utility
                 [31] = 19_000,
             };
 
-            var suggestion = KmerHistogram.SuggestCutoff(histogram);
+            var suggestion = KmerHistogram.Get_推奨カットオフ(histogram);
 
             Assert.Equal(3UL, suggestion);
         }
@@ -41,7 +41,7 @@ namespace Tsumiki.Tests.Utility
                 [4] = 1,
             };
 
-            Assert.Null(KmerHistogram.SuggestCutoff(histogram));
+            Assert.Null(KmerHistogram.Get_推奨カットオフ(histogram));
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace Tsumiki.Tests.Utility
                 [2] = 500,
             };
 
-            Assert.Equal(1UL, KmerHistogram.SuggestCutoff(histogram));
+            Assert.Equal(1UL, KmerHistogram.Get_推奨カットオフ(histogram));
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace Tsumiki.Tests.Utility
                 [3] = 5,
             };
 
-            var summary = KmerHistogram.FormatSummary(histogram, maxCount: 10);
+            var summary = KmerHistogram.Get_要約(histogram, p_表示上限: 10);
 
             Assert.Equal("1:10, 2:0, 3:5", summary);
         }
@@ -81,7 +81,7 @@ namespace Tsumiki.Tests.Utility
                 [4] = 1,
             };
 
-            var summary = KmerHistogram.FormatSummary(histogram, maxCount: 2);
+            var summary = KmerHistogram.Get_要約(histogram, p_表示上限: 2);
 
             Assert.Equal("1:10, 2:5", summary);
         }

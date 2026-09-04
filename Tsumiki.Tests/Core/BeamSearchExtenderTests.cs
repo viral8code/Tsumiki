@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 
@@ -28,7 +28,7 @@ namespace Tsumiki.Tests.Core
 
         private static (List<string> UnitigList, UnitigGraph Graph) Build()
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = K, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
             List<string> unitigList = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
 
@@ -36,17 +36,17 @@ namespace Tsumiki.Tests.Core
             foreach (var seq in new[] { UnitigA, UnitigB, UnitigC, UnitigD, UnitigE })
             {
                 unitigList.Add(seq);
-                unitigList.Add(Util.ReverseComprement(seq));
+                unitigList.Add(Util.V_逆相補(seq));
                 for (var i = K; i <= seq.Length; i++)
                 {
                     var startPos = i - K;
                     var key = new KmerKey(seq.AsSpan(startPos, K));
                     Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.ReverseComprement(), -id, seq.Length - i);
+                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
                 }
                 id++;
             }
-            return (unitigList, UnitigGraph.Build(unitigList, kmerDict, K, AmbiguousKmer));
+            return (unitigList, UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer));
         }
 
         private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
@@ -65,7 +65,7 @@ namespace Tsumiki.Tests.Core
 
         private static int[] NoMerges(UnitigGraph graph)
         {
-            var merge = new int[graph.VertexCount];
+            var merge = new int[graph.A_出辺.Count];
             Array.Fill(merge, -1);
             return merge;
         }
@@ -74,21 +74,21 @@ namespace Tsumiki.Tests.Core
         public void Extend_ResolvesABranch_WhenTheEvidenceOnlyAppearsOneStepLater()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var d = ContigMaker.VertexIndex(4);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var d = ContigMaker.Get_頂点番号(4);
 
             // 前提: A は B と C の両方へ伸びられる(1歩だけでは決められない)。
-            Assert.Equal(2, graph.OutEdges[a].Count);
+            Assert.Equal(2, graph.A_出辺[a].Count);
 
             // 証拠は A の直後(B/C)ではなく、その次の D に現れる。
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
-            var committed = BeamSearchExtender.Extend(
+            var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.True(committed > 0, "lookahead should have resolved at least one junction");
             Assert.Equal(b, merge[a]);
@@ -105,17 +105,17 @@ namespace Tsumiki.Tests.Core
         public void Extend_DoesNothing_WhenBothBranchesAreEquallySupported()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
-            var d = ContigMaker.VertexIndex(4);
-            var e = ContigMaker.VertexIndex(5);
+            var a = ContigMaker.Get_頂点番号(1);
+            var d = ContigMaker.Get_頂点番号(4);
+            var e = ContigMaker.Get_頂点番号(5);
 
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 20, [(a, e)] = 19 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
-            _ = BeamSearchExtender.Extend(
+            _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -127,15 +127,15 @@ namespace Tsumiki.Tests.Core
         public void Extend_DoesNothing_WhenThereIsNoPairEvidenceAtAll()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
+            var a = ContigMaker.Get_頂点番号(1);
 
             Dictionary<(int, int), ulong> pairLink = [];
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
-            _ = BeamSearchExtender.Extend(
+            _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -147,16 +147,16 @@ namespace Tsumiki.Tests.Core
         public void Extend_DoesNothing_WhenEvidenceIsBelowTheMinimum()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
-            var d = ContigMaker.VertexIndex(4);
+            var a = ContigMaker.Get_頂点番号(1);
+            var d = ContigMaker.Get_頂点番号(4);
 
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 2 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
-            _ = BeamSearchExtender.Extend(
+            _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 10);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 10);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -178,8 +178,8 @@ namespace Tsumiki.Tests.Core
         public void Extend_DoesNothing_WhenStandingOnARepeatWithNoSingleCopyAnchor()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
-            var d = ContigMaker.VertexIndex(4);
+            var a = ContigMaker.Get_頂点番号(1);
+            var d = ContigMaker.Get_頂点番号(4);
 
             // A 自身が2コピーの反復。足場に使える単一コピーの unitig が無い。
             Dictionary<int, int> copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
@@ -187,9 +187,9 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
 
             var merge = NoMerges(graph);
-            var committed = BeamSearchExtender.Extend(
+            var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(0, committed);
             Assert.Equal(-1, merge[a]);
@@ -203,20 +203,20 @@ namespace Tsumiki.Tests.Core
         public void Extend_DoesNotStealATargetThatAlreadyHasAnIncomingMerge()
         {
             var (unitigList, graph) = Build();
-            var a = ContigMaker.VertexIndex(1);
-            var b = ContigMaker.VertexIndex(2);
-            var d = ContigMaker.VertexIndex(4);
+            var a = ContigMaker.Get_頂点番号(1);
+            var b = ContigMaker.Get_頂点番号(2);
+            var d = ContigMaker.Get_頂点番号(4);
 
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
             // B には既に(別の経路からの)結合が入っていることにする。
-            merge[b ^ 1] = ContigMaker.VertexIndex(5) ^ 1;
+            merge[b ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
 
-            _ = BeamSearchExtender.Extend(
+            _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                insertSize: 400, dominanceThreshold: 0.8m, minimumEvidence: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }

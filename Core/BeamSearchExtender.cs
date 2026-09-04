@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+using Tsumiki.Model;
 
 namespace Tsumiki.Core
 {
@@ -35,54 +35,45 @@ namespace Tsumiki.Core
         /// 探索が広がるうえ、遠いほどペアエンドの証拠は届かなくなる。
         /// インサートサイズの数倍あれば、跨げる範囲は使い切れる。
         /// </summary>
-        private const int LookaheadMultiplier = 4;
+        private const int 先読み倍率 = 4;
 
         /// <summary>1つの分岐あたりに保持する部分経路の数。</summary>
-        private const int DefaultBeamWidth = 8;
+        private const int ビーム幅 = 8;
 
         /// <summary>先読みの1経路あたりの最大ステップ数(暴走防止)。</summary>
-        private const int MaxStepsPerPath = 40;
-
-        private sealed class State
-        {
-            public required int Current { get; init; }
-            public required int FirstStep { get; init; }
-            public required long Score { get; init; }
-            public required int Length { get; init; }
-            public required Dictionary<int, int> Used { get; init; }
-        }
+        private const int 経路あたりの最大ステップ数 = 40;
 
         /// <summary>
-        /// merge が未確定(-1)の頂点について、先読みで続きを決められるものを決める。
-        /// merge を直接書き換える。戻り値は新たに確定した結合の数(有向、双子ぶんを含む)。
+        /// 結合が未確定(-1)の頂点について、先読みで続きを決められるものを決める。
+        /// 結合の配列を直接書き換える。戻り値は新たに確定した結合の数
+        /// (有向、双子ぶんを含む)。
         /// </summary>
-        public static int Extend(
-            UnitigGraph graph,
-            List<string> unitigList,
-            int[] merge,
-            IReadOnlyDictionary<(int, int), ulong> pairLink,
-            IReadOnlyDictionary<int, int> copyNumber,
-            int insertSize,
-            decimal dominanceThreshold,
-            ulong minimumEvidence)
+        public static int V_延長_先読み(
+            UnitigGraph p_グラフ,
+            List<string> p_ユニティグ配列,
+            int[] p_結合,
+            IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
+            IReadOnlyDictionary<int, int> p_コピー数,
+            int p_インサートサイズ,
+            decimal p_優勢閾値,
+            ulong p_最小証拠数)
         {
-            var lookaheadBases = Math.Max(insertSize, 1) * LookaheadMultiplier;
-            var committed = 0;
+            var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * 先読み倍率;
+            var l_確定数 = 0;
 
-            for (var v = 2; v < graph.VertexCount; v++)
+            for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
-                if (merge[v] != -1)
+                if (p_結合[v] != -1)
                 {
                     continue;
                 }
-                var candidates = graph.OutEdges[v];
-                if (candidates.Count == 0)
+                if (p_グラフ.A_出辺[v].Count == 0)
                 {
                     continue;
                 }
 
-                var anchors = CollectAnchors(v, unitigList, merge, insertSize, copyNumber);
-                if (anchors.Count == 0)
+                var l_足場 = Get_足場(v, p_ユニティグ配列, p_結合, p_インサートサイズ, p_コピー数);
+                if (l_足場.Count == 0)
                 {
                     // 単一コピーの足場が1つも取れない = いま反復配列の上にいて、
                     // どのコピーにいるのか分からない。この状態で進む方向を選ぶ
@@ -90,17 +81,17 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                var best = SearchBestFirstStep(
-                    graph, unitigList, v, anchors, pairLink, copyNumber,
-                    lookaheadBases, dominanceThreshold, minimumEvidence);
-                if (best is not { } chosen)
+                var l_最良 = Get_最良の1歩(
+                    p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数,
+                    l_先読み塩基数, p_優勢閾値, p_最小証拠数);
+                if (l_最良 is not { } l_選択)
                 {
                     continue;
                 }
 
                 // 相互一意性は保ったままにする。行き先に既に別の結合が
                 // 入っている場合は、そちらを壊してまで繋がない。
-                if (merge[chosen ^ 1] != -1 || merge[chosen] == (v ^ 1))
+                if (p_結合[l_選択 ^ 1] != -1 || p_結合[l_選択] == (v ^ 1))
                 {
                     continue;
                 }
@@ -109,24 +100,24 @@ namespace Tsumiki.Core
                 // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
                 // R を1回しか使えない walk でこれを連鎖させると中間の B が
                 // 飛ばされる(詳細は ContigMaker 側の同名の判定を参照)。
-                if (!CanChainThrough(graph, copyNumber, v) || !CanChainThrough(graph, copyNumber, chosen ^ 1))
+                if (!Get_通り抜けてよいか(p_グラフ, p_コピー数, v) || !Get_通り抜けてよいか(p_グラフ, p_コピー数, l_選択 ^ 1))
                 {
                     continue;
                 }
 
-                merge[v] = chosen;
-                merge[chosen ^ 1] = v ^ 1;
-                committed += 2;
+                p_結合[v] = l_選択;
+                p_結合[l_選択 ^ 1] = v ^ 1;
+                l_確定数 += 2;
             }
 
-            return committed;
+            return l_確定数;
         }
 
         /// <summary>
-        /// v から遡って、いま組み上がっている contig の末尾インサートサイズぶんに
+        /// 頂点から遡って、いま組み上がっている contig の末尾インサートサイズぶんに
         /// あたる頂点のうち、<b>単一コピーのものだけ</b>を集める。
         /// ここに載ったリードの相方が、続きの証拠になる。
-        /// 直前の頂点は、逆鎖対称性より merge[v^1] の双子で辿れる。
+        /// 直前の頂点は、逆鎖対称性より 結合[v^1] の双子で辿れる。
         ///
         /// 多コピーの unitig を足場から外すのが要点。反復配列の内部から読まれた
         /// リードは、どのコピー由来か区別できない(それが反復が解けない理由そのもの)。
@@ -141,150 +132,153 @@ namespace Tsumiki.Core
         /// 通過はするが足場には数えない、という扱いにする(多コピー領域の
         /// 向こう側にある単一コピー領域は、証拠として有効なため)。
         /// </summary>
-        private static List<int> CollectAnchors(
-            int v, List<string> unitigList, int[] merge, int insertSize, IReadOnlyDictionary<int, int> copyNumber)
+        private static List<int> Get_足場(
+            int p_頂点, List<string> p_ユニティグ配列, int[] p_結合,
+            int p_インサートサイズ, IReadOnlyDictionary<int, int> p_コピー数)
         {
-            List<int> anchors = [];
-            List<int> walked = [v];
-            if (copyNumber.GetValueOrDefault(v >> 1, 1) <= 1)
+            List<int> l_足場 = [];
+            List<int> l_通過済み = [p_頂点];
+            if (p_コピー数.GetValueOrDefault(p_頂点 >> 1, 1) <= 1)
             {
-                anchors.Add(v);
+                l_足場.Add(p_頂点);
             }
 
-            var accumulated = unitigList[v].Length;
-            var current = v;
-            while (accumulated < insertSize)
+            var l_累積長 = p_ユニティグ配列[p_頂点].Length;
+            var l_現在 = p_頂点;
+            while (l_累積長 < p_インサートサイズ)
             {
-                var twinMerge = merge[current ^ 1];
-                if (twinMerge == -1)
+                var l_双子の結合 = p_結合[l_現在 ^ 1];
+                if (l_双子の結合 == -1)
                 {
                     break;
                 }
-                var predecessor = twinMerge ^ 1;
-                if (predecessor == current || walked.Contains(predecessor))
+                var l_直前 = l_双子の結合 ^ 1;
+                if (l_直前 == l_現在 || l_通過済み.Contains(l_直前))
                 {
                     break;
                 }
-                walked.Add(predecessor);
-                if (copyNumber.GetValueOrDefault(predecessor >> 1, 1) <= 1)
+                l_通過済み.Add(l_直前);
+                if (p_コピー数.GetValueOrDefault(l_直前 >> 1, 1) <= 1)
                 {
-                    anchors.Add(predecessor);
+                    l_足場.Add(l_直前);
                 }
-                accumulated += unitigList[predecessor].Length;
-                current = predecessor;
+                l_累積長 += p_ユニティグ配列[l_直前].Length;
+                l_現在 = l_直前;
             }
-            return anchors;
+            return l_足場;
         }
 
         /// <summary>
-        /// v からの各候補について先読みし、最初の1歩として最も支持される頂点を返す。
+        /// 分岐元からの各候補について先読みし、最初の1歩として最も支持される頂点を返す。
         /// 決めきれない場合は null。
         /// </summary>
-        private static int? SearchBestFirstStep(
-            UnitigGraph graph,
-            List<string> unitigList,
-            int v,
-            List<int> anchors,
-            IReadOnlyDictionary<(int, int), ulong> pairLink,
-            IReadOnlyDictionary<int, int> copyNumber,
-            int lookaheadBases,
-            decimal dominanceThreshold,
-            ulong minimumEvidence)
+        private static int? Get_最良の1歩(
+            UnitigGraph p_グラフ,
+            List<string> p_ユニティグ配列,
+            int p_分岐元,
+            List<int> p_足場,
+            IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
+            IReadOnlyDictionary<int, int> p_コピー数,
+            int p_先読み塩基数,
+            decimal p_優勢閾値,
+            ulong p_最小証拠数)
         {
-            List<State> beam = [];
-            foreach (var w in graph.OutEdges[v])
+            List<先読み探索状態> l_ビーム = [];
+            foreach (var l_候補 in p_グラフ.A_出辺[p_分岐元])
             {
-                var budget = copyNumber.GetValueOrDefault(w >> 1, 1);
-                if (budget <= 0)
+                var l_予算 = p_コピー数.GetValueOrDefault(l_候補 >> 1, 1);
+                if (l_予算 <= 0)
                 {
                     continue;
                 }
-                beam.Add(new State
+                l_ビーム.Add(new 先読み探索状態
                 {
-                    Current = w,
-                    FirstStep = w,
-                    Score = ScoreOf(anchors, w, pairLink),
-                    Length = unitigList[w].Length,
-                    Used = new Dictionary<int, int> { [w >> 1] = 1 },
+                    A_現在の頂点 = l_候補,
+                    A_最初の1歩 = l_候補,
+                    A_スコア = Get_スコア(p_足場, l_候補, p_ペア連結),
+                    A_進んだ長さ = p_ユニティグ配列[l_候補].Length,
+                    A_使用回数 = new Dictionary<int, int> { [l_候補 >> 1] = 1 },
                 });
             }
-            if (beam.Count == 0)
+            if (l_ビーム.Count == 0)
             {
                 return null;
             }
 
             // 最初の1歩ごとの最良スコアを追跡する。
-            Dictionary<int, long> bestByFirstStep = [];
-            foreach (var state in beam)
+            Dictionary<int, long> l_1歩ごとの最良 = [];
+            foreach (var l_状態 in l_ビーム)
             {
-                bestByFirstStep[state.FirstStep] = Math.Max(bestByFirstStep.GetValueOrDefault(state.FirstStep), state.Score);
+                l_1歩ごとの最良[l_状態.A_最初の1歩] =
+                    Math.Max(l_1歩ごとの最良.GetValueOrDefault(l_状態.A_最初の1歩), l_状態.A_スコア);
             }
 
-            for (var step = 0; step < MaxStepsPerPath && beam.Count > 0; step++)
+            for (var l_ステップ = 0; l_ステップ < 経路あたりの最大ステップ数 && l_ビーム.Count > 0; l_ステップ++)
             {
-                List<State> next = [];
-                foreach (var state in beam)
+                List<先読み探索状態> l_次のビーム = [];
+                foreach (var l_状態 in l_ビーム)
                 {
-                    if (state.Length >= lookaheadBases)
+                    if (l_状態.A_進んだ長さ >= p_先読み塩基数)
                     {
                         continue;
                     }
-                    foreach (var w in graph.OutEdges[state.Current])
+                    foreach (var l_候補 in p_グラフ.A_出辺[l_状態.A_現在の頂点])
                     {
-                        var unitigId = w >> 1;
-                        var budget = copyNumber.GetValueOrDefault(unitigId, 1);
-                        if (state.Used.GetValueOrDefault(unitigId) >= budget)
+                        var l_ユニティグID = l_候補 >> 1;
+                        var l_予算 = p_コピー数.GetValueOrDefault(l_ユニティグID, 1);
+                        if (l_状態.A_使用回数.GetValueOrDefault(l_ユニティグID) >= l_予算)
                         {
                             // 予算切れ。反復を何度も通って架空の経路を作らないようにする。
                             continue;
                         }
-                        var used = new Dictionary<int, int>(state.Used);
-                        used[unitigId] = used.GetValueOrDefault(unitigId) + 1;
-                        next.Add(new State
+                        var l_使用回数 = new Dictionary<int, int>(l_状態.A_使用回数);
+                        l_使用回数[l_ユニティグID] = l_使用回数.GetValueOrDefault(l_ユニティグID) + 1;
+                        l_次のビーム.Add(new 先読み探索状態
                         {
-                            Current = w,
-                            FirstStep = state.FirstStep,
-                            Score = state.Score + ScoreOf(anchors, w, pairLink),
-                            Length = state.Length + unitigList[w].Length,
-                            Used = used,
+                            A_現在の頂点 = l_候補,
+                            A_最初の1歩 = l_状態.A_最初の1歩,
+                            A_スコア = l_状態.A_スコア + Get_スコア(p_足場, l_候補, p_ペア連結),
+                            A_進んだ長さ = l_状態.A_進んだ長さ + p_ユニティグ配列[l_候補].Length,
+                            A_使用回数 = l_使用回数,
                         });
                     }
                 }
 
-                if (next.Count == 0)
+                if (l_次のビーム.Count == 0)
                 {
                     break;
                 }
 
-                next.Sort((x, y) => y.Score.CompareTo(x.Score));
-                if (next.Count > DefaultBeamWidth)
+                l_次のビーム.Sort((x, y) => y.A_スコア.CompareTo(x.A_スコア));
+                if (l_次のビーム.Count > ビーム幅)
                 {
-                    next = next[..DefaultBeamWidth];
+                    l_次のビーム = l_次のビーム[..ビーム幅];
                 }
-                beam = next;
+                l_ビーム = l_次のビーム;
 
-                foreach (var state in beam)
+                foreach (var l_状態 in l_ビーム)
                 {
-                    bestByFirstStep[state.FirstStep] = Math.Max(bestByFirstStep.GetValueOrDefault(state.FirstStep), state.Score);
+                    l_1歩ごとの最良[l_状態.A_最初の1歩] =
+                        Math.Max(l_1歩ごとの最良.GetValueOrDefault(l_状態.A_最初の1歩), l_状態.A_スコア);
                 }
             }
 
-            var ranked = bestByFirstStep.OrderByDescending(kv => kv.Value).ToList();
-            var top = ranked[0];
-            if ((ulong)Math.Max(0, top.Value) < minimumEvidence)
+            var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value).ToList();
+            var l_首位 = l_順位[0];
+            if ((ulong)Math.Max(0, l_首位.Value) < p_最小証拠数)
             {
                 // どの枝にもペアエンドの支持が無い。根拠が無いので繋がない。
                 return null;
             }
 
-            var total = ranked.Sum(kv => Math.Max(0, kv.Value));
-            if (total <= 0 || (decimal)top.Value / total < dominanceThreshold)
+            var l_合計 = l_順位.Sum(x => Math.Max(0, x.Value));
+            if (l_合計 <= 0 || (decimal)l_首位.Value / l_合計 < p_優勢閾値)
             {
                 // 上位が割れている。僅差で選ぶくらいなら繋がないほうがよい。
                 return null;
             }
 
-            return top.Key;
+            return l_首位.Key;
         }
 
         /// <summary>
@@ -292,23 +286,25 @@ namespace Tsumiki.Core
         /// 入次数・出次数がどちらも1になっている場合(=どのコピーにいるかが
         /// 確定している場合)にだけ通り抜けてよい。
         /// </summary>
-        private static bool CanChainThrough(UnitigGraph graph, IReadOnlyDictionary<int, int> copyNumber, int vertex)
+        private static bool Get_通り抜けてよいか(
+            UnitigGraph p_グラフ, IReadOnlyDictionary<int, int> p_コピー数, int p_頂点)
         {
-            if (copyNumber.GetValueOrDefault(vertex >> 1, 1) <= 1)
+            if (p_コピー数.GetValueOrDefault(p_頂点 >> 1, 1) <= 1)
             {
                 return true;
             }
-            return graph.OutEdges[vertex].Count == 1 && graph.InDegree(vertex) == 1;
+            return p_グラフ.A_出辺[p_頂点].Count == 1 && p_グラフ.Get_入次数(p_頂点) == 1;
         }
 
-        private static long ScoreOf(List<int> anchors, int candidate, IReadOnlyDictionary<(int, int), ulong> pairLink)
+        private static long Get_スコア(
+            List<int> p_足場, int p_候補, IReadOnlyDictionary<(int, int), ulong> p_ペア連結)
         {
-            long score = 0;
-            foreach (var anchor in anchors)
+            long l_スコア = 0;
+            foreach (var l_足場頂点 in p_足場)
             {
-                score += (long)pairLink.GetValueOrDefault((anchor, candidate));
+                l_スコア += (long)p_ペア連結.GetValueOrDefault((l_足場頂点, p_候補));
             }
-            return score;
+            return l_スコア;
         }
     }
 }

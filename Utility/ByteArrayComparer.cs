@@ -1,4 +1,4 @@
-﻿namespace Tsumiki.Utility
+namespace Tsumiki.Utility
 {
     internal class ByteArrayComparer : IComparer<byte[]>
     {
@@ -19,8 +19,8 @@
                 return 1;
             }
 
-            var len = Math.Min(x.Length, y.Length);
-            for (var i = 0; i < len; i++)
+            var l_比較長 = Math.Min(x.Length, y.Length);
+            for (var i = 0; i < l_比較長; i++)
             {
                 if (x[i] != y[i])
                 {

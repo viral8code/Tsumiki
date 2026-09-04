@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -25,7 +25,7 @@ namespace Tsumiki.Tests.Core
 
         private static byte[] ToBytes(string seq)
         {
-            return [.. seq.Select(Util.GetSimpleNucleotideID)];
+            return [.. seq.Select(Util.Get_塩基ID)];
         }
 
         /// <summary>
@@ -37,7 +37,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private TrustedKmerIndex BuildIndexWithTip(string mainSeq, int kmerLength, int branchPoint, int tipLength)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = kmerLength, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             var index = new TrustedKmerIndex(this._tempDir);
 
             void AddAllKmers(byte[] bytes)
@@ -46,7 +46,7 @@ namespace Tsumiki.Tests.Core
                 {
                     for (var rep = 0; rep < 3; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, kmerLength), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
                     }
                 }
             }
@@ -63,7 +63,7 @@ namespace Tsumiki.Tests.Core
             var tipSeq = overlap + altChar + string.Concat(Enumerable.Range(0, tipLength).Select(i => "ACGT"[i % 4]));
             AddAllKmers(ToBytes(tipSeq));
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
         }
 
@@ -78,7 +78,7 @@ namespace Tsumiki.Tests.Core
 
             using var index = this.BuildIndexWithTip(mainSeq, k, branchPoint, tipExtra);
 
-            var simplifiedFirstKmers = GraphSimplifier.ClipTips(index, k, tipLengthThreshold: k * 2);
+            var simplifiedFirstKmers = GraphSimplifier.V_除去_tip(index, k, p_tip長閾値: k * 2);
 
             // tip除去後は、分岐点だった箇所の次数が解消され、
             // 主経路が1本のunitigとして(理想的には)再構築されるはず。
@@ -87,14 +87,14 @@ namespace Tsumiki.Tests.Core
             var unitigs = new List<string>();
             foreach (var kmer in simplifiedFirstKmers)
             {
-                var u = unitigMaker.MakeUnitig(kmer);
-                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
+                var u = unitigMaker.Get_ユニティグ(kmer);
+                if (seen.Contains(u.A_配列) || seen.Contains(Util.V_逆相補(u.A_配列)))
                 {
                     continue;
                 }
-                _ = seen.Add(u.Sequence);
-                _ = seen.Add(Util.ReverseComprement(u.Sequence));
-                unitigs.Add(u.Sequence);
+                _ = seen.Add(u.A_配列);
+                _ = seen.Add(Util.V_逆相補(u.A_配列));
+                unitigs.Add(u.A_配列);
             }
 
             // tip自体はもう存在しないはずなので、tip由来の短い配列を含む
@@ -109,23 +109,23 @@ namespace Tsumiki.Tests.Core
         {
             const string seq = "GCTAAAGACAATTACATAACATAC"; // 24bp、非周期的
             const int k = 8;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             using var index = new TrustedKmerIndex(this._tempDir);
             var bytes = ToBytes(seq);
             for (var i = 0; i + k <= bytes.Length; i++)
             {
                 for (var rep = 0; rep < 3; rep++)
                 {
-                    index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                    index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            var before = index.EnumerateTrustedKmers().Count();
+            var before = index.Get_信頼kmer一覧().Count();
 
-            var firstKmers = GraphSimplifier.ClipTips(index, k, tipLengthThreshold: k * 2);
+            var firstKmers = GraphSimplifier.V_除去_tip(index, k, p_tip長閾値: k * 2);
 
-            var after = index.EnumerateTrustedKmers().Count();
+            var after = index.Get_信頼kmer一覧().Count();
 
             // 分岐のない直鎖配列にはtipが存在しないため、何も除去されないはず。
             Assert.Equal(before, after);
@@ -144,7 +144,7 @@ namespace Tsumiki.Tests.Core
             const string seqLowCoverage = commonBefore + "C" + sharedAfter; // 分岐点でC(エラー相当)
             const int k = 8;
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             using var index = new TrustedKmerIndex(this._tempDir);
 
             void AddAllKmers(string seq, int repetitions)
@@ -154,7 +154,7 @@ namespace Tsumiki.Tests.Core
                 {
                     for (var rep = 0; rep < repetitions; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                     }
                 }
             }
@@ -165,23 +165,23 @@ namespace Tsumiki.Tests.Core
             AddAllKmers(seqHighCoverage, repetitions: 20);
             AddAllKmers(seqLowCoverage, repetitions: 3);
 
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
-            var simplifiedFirstKmers = GraphSimplifier.ClipTips(index, k, tipLengthThreshold: k * 2);
+            var simplifiedFirstKmers = GraphSimplifier.V_除去_tip(index, k, p_tip長閾値: k * 2);
 
             var unitigMaker = new UnitigMaker(index);
             HashSet<string> seen = [];
             var unitigs = new List<string>();
             foreach (var kmer in simplifiedFirstKmers)
             {
-                var u = unitigMaker.MakeUnitig(kmer);
-                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
+                var u = unitigMaker.Get_ユニティグ(kmer);
+                if (seen.Contains(u.A_配列) || seen.Contains(Util.V_逆相補(u.A_配列)))
                 {
                     continue;
                 }
-                _ = seen.Add(u.Sequence);
-                _ = seen.Add(Util.ReverseComprement(u.Sequence));
-                unitigs.Add(u.Sequence);
+                _ = seen.Add(u.A_配列);
+                _ = seen.Add(Util.V_逆相補(u.A_配列));
+                unitigs.Add(u.A_配列);
             }
 
             // 低カバレッジ経路の分岐点を含む短い断片は残っていないはず
@@ -192,7 +192,7 @@ namespace Tsumiki.Tests.Core
             // 高カバレッジ経路(commonBefore + "A" + sharedAfter の全体、または
             // その逆相補)を含む、ほぼ全長のunitigが存在するはず。
             var fullHigh = seqHighCoverage;
-            var fullHighRevComp = Util.ReverseComprement(fullHigh);
+            var fullHighRevComp = Util.V_逆相補(fullHigh);
             Assert.Contains(unitigs, u => u == fullHigh || u == fullHighRevComp || u.Contains(fullHigh) || u.Contains(fullHighRevComp));
         }
 
@@ -213,7 +213,7 @@ namespace Tsumiki.Tests.Core
             const string shared = "AATCCTGCGCTAGGGGTTGCAGCGACCAGA";
             const int k = 8;
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             using var index = new TrustedKmerIndex(this._tempDir);
 
             void AddAllKmers(string seq)
@@ -223,7 +223,7 @@ namespace Tsumiki.Tests.Core
                 {
                     for (var rep = 0; rep < 10; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, k), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
                     }
                 }
             }
@@ -231,27 +231,27 @@ namespace Tsumiki.Tests.Core
             AddAllKmers(prefixA + shared);
             AddAllKmers(prefixB + shared);
 
-            var firstKmers = index.Cutoff(bounds: 2);
+            var firstKmers = index.V_カットオフ(p_カットオフ: 2);
 
             var unitigMaker = new UnitigMaker(index);
             HashSet<string> seen = [];
             var unitigs = new List<string>();
             foreach (var kmer in firstKmers)
             {
-                var u = unitigMaker.MakeUnitig(kmer);
-                if (seen.Contains(u.Sequence) || seen.Contains(Util.ReverseComprement(u.Sequence)))
+                var u = unitigMaker.Get_ユニティグ(kmer);
+                if (seen.Contains(u.A_配列) || seen.Contains(Util.V_逆相補(u.A_配列)))
                 {
                     continue;
                 }
-                _ = seen.Add(u.Sequence);
-                _ = seen.Add(Util.ReverseComprement(u.Sequence));
-                unitigs.Add(u.Sequence);
+                _ = seen.Add(u.A_配列);
+                _ = seen.Add(Util.V_逆相補(u.A_配列));
+                unitigs.Add(u.A_配列);
             }
 
             // 共有配列の先頭k-mer(またはその逆相補)が、全unitigを通じて
             // 延べ1回しか現れないこと(=重複出力されていないこと)を確認する。
             var sharedKmer = shared[..k];
-            var sharedKmerRc = Util.ReverseComprement(sharedKmer);
+            var sharedKmerRc = Util.V_逆相補(sharedKmer);
             var occurrences = unitigs.Sum(u => CountOccurrences(u, sharedKmer) + CountOccurrences(u, sharedKmerRc));
             Assert.Equal(1, occurrences);
         }

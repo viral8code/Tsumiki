@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -50,7 +50,7 @@ namespace Tsumiki.Tests.Core
         public void UniteContigs_ClosedCircle_IsMarkedCircular_AndHasExactCircumferenceLength()
         {
             const int k = 8;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{UnitigA}\n>2\n{UnitigB}\n>3\n{UnitigC}\n");
@@ -60,38 +60,38 @@ namespace Tsumiki.Tests.Core
 
             // リードを与えなくても、環状の3本は各頂点の出次数がちょうど1なので
             // 相互一意性を満たし、そのまま1周に結合されるはず。
-            contigMaker.UniteContigs(contigPath, uniteThreshold: 0.8m, countThreshold: 1);
+            contigMaker.V_結合_コンティグ(contigPath, p_優勢閾値: 0.8m, p_最小証拠数: 1);
 
-            List<(string Id, string Seq)> contigs = [];
+            List<(string A_ID, string A_配列)> contigs = [];
             using (var reader = new FastaReader(contigPath))
             {
-                while (reader.HasNext())
+                while (reader.Get_続きがあるか())
                 {
-                    var seq = reader.NextSequence();
-                    contigs.Add((seq.ID.TrimStart('>'), seq.Seq));
+                    var seq = reader.Get_次の配列();
+                    contigs.Add((seq.A_ID.TrimStart('>'), seq.A_配列));
                 }
             }
 
             var contig = Assert.Single(contigs);
-            Assert.Contains("circular", contig.Id);
+            Assert.Contains("circular", contig.A_ID);
 
             // 重なりを二重に数えず、円周ちょうどの長さになっていること。
-            Assert.Equal(Circle.Length, contig.Seq.Length);
+            Assert.Equal(Circle.Length, contig.A_配列.Length);
 
             // 配列としても、環状配列のいずれかの回転(またはその逆相補)に
             // 一致していなければならない。
             var doubled = Circle + Circle;
-            var doubledRevComp = Util.ReverseComprement(Circle) + Util.ReverseComprement(Circle);
+            var doubledRevComp = Util.V_逆相補(Circle) + Util.V_逆相補(Circle);
             Assert.True(
-                doubled.Contains(contig.Seq) || doubledRevComp.Contains(contig.Seq),
-                $"assembled circle did not match any rotation of the true circle: {contig.Seq}");
+                doubled.Contains(contig.A_配列) || doubledRevComp.Contains(contig.A_配列),
+                $"assembled circle did not match any rotation of the true circle: {contig.A_配列}");
         }
 
         [Fact]
         public void UniteContigs_LinearPath_IsNotMarkedCircular()
         {
             const int k = 8;
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             // 環を閉じる最後の unitig を外し、A -> B の線状経路だけにする。
             var unitigsPath = Path.Combine(this._tempDir, "unitigs_linear.fasta");
@@ -99,22 +99,22 @@ namespace Tsumiki.Tests.Core
 
             var contigPath = Path.Combine(this._tempDir, "contigs_linear.fasta");
             var contigMaker = new ContigMaker(unitigsPath);
-            contigMaker.UniteContigs(contigPath, uniteThreshold: 0.8m, countThreshold: 1);
+            contigMaker.V_結合_コンティグ(contigPath, p_優勢閾値: 0.8m, p_最小証拠数: 1);
 
-            List<(string Id, string Seq)> contigs = [];
+            List<(string A_ID, string A_配列)> contigs = [];
             using (var reader = new FastaReader(contigPath))
             {
-                while (reader.HasNext())
+                while (reader.Get_続きがあるか())
                 {
-                    var seq = reader.NextSequence();
-                    contigs.Add((seq.ID.TrimStart('>'), seq.Seq));
+                    var seq = reader.Get_次の配列();
+                    contigs.Add((seq.A_ID.TrimStart('>'), seq.A_配列));
                 }
             }
 
             var contig = Assert.Single(contigs);
-            Assert.DoesNotContain("circular", contig.Id);
+            Assert.DoesNotContain("circular", contig.A_ID);
             // A(38bp) + B の重なりを除いた分(38 - 7 = 31bp)= 69bp。
-            Assert.Equal(UnitigA.Length + UnitigB.Length - (k - 1), contig.Seq.Length);
+            Assert.Equal(UnitigA.Length + UnitigB.Length - (k - 1), contig.A_配列.Length);
         }
     }
 }

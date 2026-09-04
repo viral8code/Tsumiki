@@ -1,5 +1,6 @@
 using Tsumiki.Common;
 using Tsumiki.IO;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core
@@ -11,171 +12,154 @@ namespace Tsumiki.Core
     ///
     /// 見るのは次の2つのずれ:
     ///
-    /// 1. 取りこぼし(missing): 信頼できる k-mer 集合には存在するのに、
+    /// 1. 取りこぼし: 信頼できる k-mer 集合には存在するのに、
     ///    アセンブリのどこにも現れない k-mer。グラフ簡略化で削りすぎたか、
     ///    分岐が解けずに経路から漏れた領域を意味する。
     ///
-    /// 2. 出しすぎ(over-represented): カバレッジから推定されるコピー数よりも
-    ///    多くアセンブリ中に現れる k-mer。反復配列の複製(repeat resolution)が
-    ///    行き過ぎた場合や、同じ領域を2通りに組み立ててしまった場合に出る。
+    /// 2. 出しすぎ: カバレッジから推定されるコピー数よりも
+    ///    多くアセンブリ中に現れる k-mer。反復配列の複製が行き過ぎた場合や、
+    ///    同じ領域を2通りに組み立ててしまった場合に出る。
     ///    総延長が実際のゲノムサイズより大きくなる原因は、ほぼこれ。
     ///
     /// どちらも「多少はある」のが普通で、ゼロにはならない(エラー由来の
-    /// k-mer が信頼集合に残っていれば missing 側に出る)。絶対値ではなく、
+    /// k-mer が信頼集合に残っていれば取りこぼし側に出る)。絶対値ではなく、
     /// 変更の前後でこの割合がどう動いたかを見るための指標として使う。
     /// </summary>
     internal static class AssemblyValidator
     {
-        internal readonly record struct Result(
-            long TrustedKmers,
-            long AssemblyKmerInstances,
-            long DistinctKmersInAssembly,
-            long MissingKmers,
-            long OverRepresentedKmers,
-            long ExcessInstances)
-        {
-            /// <summary>信頼できる k-mer のうち、アセンブリに現れなかった割合。</summary>
-            public double MissingPercent => this.TrustedKmers == 0 ? 0 : 100.0 * this.MissingKmers / this.TrustedKmers;
-
-            /// <summary>
-            /// アセンブリ中の k-mer 延べ数のうち、コピー数の推定を超えて
-            /// 余分に現れている分の割合。総延長の水増し量にほぼ対応する。
-            /// </summary>
-            public double ExcessPercent => this.AssemblyKmerInstances == 0 ? 0 : 100.0 * this.ExcessInstances / this.AssemblyKmerInstances;
-        }
-
         /// <summary>
-        /// fastaPath のアセンブリを、index が保持する信頼できる k-mer 集合と
-        /// 突き合わせる。expectedCopies は「その k-mer が何回現れてよいか」を
-        /// カバレッジから見積もるための単一コピー基準値。
+        /// FASTA のアセンブリを、k-mer インデックスが保持する信頼できる k-mer 集合と
+        /// 突き合わせる。p_単一コピー基準値 は「その k-mer が何回現れてよいか」を
+        /// カバレッジから見積もるために使う。
         /// </summary>
-        public static Result Validate(string fastaPath, TrustedKmerIndex index, int kmerLength, double singleCopyBaseline)
+        public static 整合性検査結果 Get_検査結果(
+            string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
         {
             // アセンブリ中に各 k-mer が何回現れるかを数える。
-            // 正規化(canonical)して数えるため、逆相補は同じものとして扱う。
+            // 正規化して数えるため、逆相補は同じものとして扱う。
             //
             // キーは 2bit パックした UInt128(k<=64)。文字列をキーにすると
             // k=63・6.5Mbp のアセンブリで 1GB を超え、同時に生きている
             // k-mer インデックスと合わせてメモリが厳しくなる。
             // k>64 は現状の高速経路の対象外なので、その場合は検査を諦める。
-            if (kmerLength > 64)
+            if (p_k長 > 64)
             {
-                Console.WriteLine($"[Check] {Path.GetFileName(fastaPath)}: skipped (self-check currently supports k <= 64 only).");
+                Console.WriteLine($"[Check] {Path.GetFileName(p_FASTAパス)}: skipped (self-check currently supports k <= 64 only).");
                 return default;
             }
 
-            Dictionary<UInt128, int> observed = [];
-            long instances = 0;
+            Dictionary<UInt128, int> l_観測 = [];
+            long l_延べ数 = 0;
 
-            using (var reader = new FastaReader(fastaPath))
+            using (var l_読み込み = new FastaReader(p_FASTAパス))
             {
-                while (reader.HasNext())
+                while (l_読み込み.Get_続きがあるか())
                 {
-                    var seq = reader.NextSequence().Seq;
-                    for (var i = 0; i + kmerLength <= seq.Length; i++)
+                    var l_配列 = l_読み込み.Get_次の配列().A_配列;
+                    for (var i = 0; i + p_k長 <= l_配列.Length; i++)
                     {
-                        if (!TryCanonicalPack(seq, i, kmerLength, out var canonical))
+                        if (!Get_正規化パック(l_配列, i, p_k長, out var l_正規形))
                         {
                             continue;
                         }
-                        observed[canonical] = observed.GetValueOrDefault(canonical) + 1;
-                        instances++;
+                        l_観測[l_正規形] = l_観測.GetValueOrDefault(l_正規形) + 1;
+                        l_延べ数++;
                     }
                 }
             }
 
-            long trusted = 0;
-            long missing = 0;
-            long overRepresented = 0;
-            long excessInstances = 0;
+            long l_信頼kmer数 = 0;
+            long l_取りこぼし数 = 0;
+            long l_出しすぎ種類数 = 0;
+            long l_余分な延べ数 = 0;
 
-            foreach (var kmerBytes in index.EnumerateTrustedKmers())
+            foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {
-                trusted++;
-                var canonical = CanonicalPack(kmerBytes);
+                l_信頼kmer数++;
+                var l_正規形 = Get_正規化パック(l_kmer);
 
-                var seen = observed.GetValueOrDefault(canonical);
-                if (seen == 0)
+                var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
+                if (l_出現数 == 0)
                 {
-                    missing++;
+                    l_取りこぼし数++;
                     continue;
                 }
 
                 // カバレッジから期待されるコピー数。基準値が取れていない場合は
                 // 判定を諦める(1コピー扱いにすると全部を過剰と誤判定してしまう)。
-                if (singleCopyBaseline <= 0)
+                if (p_単一コピー基準値 <= 0)
                 {
                     continue;
                 }
-                var coverage = index.GetCoverage(kmerBytes);
-                var expected = Math.Max(1, (int)Math.Round(coverage / singleCopyBaseline));
+                var l_カバレッジ = p_kmerインデックス.Get_カバレッジ(l_kmer);
+                var l_期待コピー数 = Math.Max(1, (int)Math.Round(l_カバレッジ / p_単一コピー基準値));
 
-                if (seen > expected)
+                if (l_出現数 > l_期待コピー数)
                 {
-                    overRepresented++;
-                    excessInstances += seen - expected;
+                    l_出しすぎ種類数++;
+                    l_余分な延べ数 += l_出現数 - l_期待コピー数;
                 }
             }
 
-            return new Result(trusted, instances, observed.Count, missing, overRepresented, excessInstances);
+            return new 整合性検査結果(l_信頼kmer数, l_延べ数, l_観測.Count, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
 
         /// <summary>
-        /// 配列 seq の位置 start から kmerLength 塩基を 2bit パックし、
+        /// 配列の位置 p_開始位置 から p_k長 塩基を 2bit パックし、
         /// 逆相補と比べて小さいほう(正規化された形)を返す。
         /// 曖昧塩基(N など)を含む場合は false を返す。
         /// </summary>
-        private static bool TryCanonicalPack(string seq, int start, int kmerLength, out UInt128 canonical)
+        private static bool Get_正規化パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_正規形)
         {
-            UInt128 forward = 0;
-            for (var i = 0; i < kmerLength; i++)
+            UInt128 l_順鎖 = 0;
+            for (var i = 0; i < p_k長; i++)
             {
-                var id = Util.GetSimpleNucleotideID(seq[start + i]);
-                if (id is < Consts.NucleotideID.A or > Consts.NucleotideID.T)
+                var l_塩基ID = Util.Get_塩基ID(p_配列[p_開始位置 + i]);
+                if (l_塩基ID is < Consts.塩基ID.A or > Consts.塩基ID.T)
                 {
-                    canonical = 0;
+                    p_正規形 = 0;
                     return false;
                 }
-                forward = (forward << 2) | (UInt128)(id - 1);
+                l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
             }
-            canonical = Smaller(forward, kmerLength);
+            p_正規形 = Get_小さいほう(l_順鎖, p_k長);
             return true;
         }
 
-        private static UInt128 CanonicalPack(ReadOnlySpan<byte> kmer)
+        private static UInt128 Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
-            UInt128 forward = 0;
-            foreach (var b in kmer)
+            UInt128 l_順鎖 = 0;
+            foreach (var l_塩基ID in p_kmer)
             {
-                forward = (forward << 2) | (UInt128)(b - 1);
+                l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
             }
-            return Smaller(forward, kmer.Length);
+            return Get_小さいほう(l_順鎖, p_kmer.Length);
         }
 
-        /// <summary>packed とその逆相補のうち小さいほうを返す。</summary>
-        private static UInt128 Smaller(UInt128 packed, int length)
+        /// <summary>パック済みの値とその逆相補のうち小さいほうを返す。</summary>
+        private static UInt128 Get_小さいほう(UInt128 p_パック済み, int p_長さ)
         {
-            var temp = packed;
-            UInt128 reverse = 0;
-            for (var i = 0; i < length; i++)
+            var l_残り = p_パック済み;
+            UInt128 l_逆相補 = 0;
+            for (var i = 0; i < p_長さ; i++)
             {
-                var codon = temp & 3;
-                reverse = (reverse << 2) | (codon ^ 3);
-                temp >>= 2;
+                var l_コドン = l_残り & 3;
+                l_逆相補 = (l_逆相補 << 2) | (l_コドン ^ 3);
+                l_残り >>= 2;
             }
-            return packed < reverse ? packed : reverse;
+            return p_パック済み < l_逆相補 ? p_パック済み : l_逆相補;
         }
 
-        public static void Report(string label, Result result)
+        public static void V_出力_検査結果(string p_ラベル, 整合性検査結果 p_結果)
         {
             Console.WriteLine(
-                $"[Check] {label}: {result.TrustedKmers:N0} trusted k-mer(s); " +
-                $"{result.MissingKmers:N0} ({result.MissingPercent:0.00}%) do not appear in the assembly at all " +
+                $"[Check] {p_ラベル}: {p_結果.A_信頼kmer数:N0} trusted k-mer(s); " +
+                $"{p_結果.A_取りこぼし数:N0} ({p_結果.A_取りこぼし率:0.00}%) do not appear in the assembly at all " +
                 "(sequence that was trimmed away or never reached by any path).");
             Console.WriteLine(
-                $"[Check] {label}: {result.AssemblyKmerInstances:N0} k-mer instance(s) in the assembly; " +
-                $"{result.ExcessInstances:N0} ({result.ExcessPercent:0.00}%) are more copies than the coverage supports " +
-                $"across {result.OverRepresentedKmers:N0} distinct k-mer(s) -- this is the part of the total length that is inflated.");
+                $"[Check] {p_ラベル}: {p_結果.A_アセンブリ内の延べ数:N0} k-mer instance(s) in the assembly; " +
+                $"{p_結果.A_余分な延べ数:N0} ({p_結果.A_出しすぎ率:0.00}%) are more copies than the coverage supports " +
+                $"across {p_結果.A_出しすぎkmer種類数:N0} distinct k-mer(s) -- this is the part of the total length that is inflated.");
         }
     }
 }

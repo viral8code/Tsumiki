@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -27,18 +27,18 @@ namespace Tsumiki.Tests.Core
         {
             return [.. seq.Select(c => c switch
             {
-                'A' => Consts.NucleotideID.A,
-                'C' => Consts.NucleotideID.C,
-                'G' => Consts.NucleotideID.G,
-                'T' => Consts.NucleotideID.T,
-                'N' => Consts.InvalidBase,
+                'A' => Consts.塩基ID.A,
+                'C' => Consts.塩基ID.C,
+                'G' => Consts.塩基ID.G,
+                'T' => Consts.塩基ID.T,
+                'N' => Consts.無効な塩基,
                 _ => throw new InvalidOperationException(),
             })];
         }
 
         private static string ToSeq(byte[] bytes)
         {
-            return string.Join(string.Empty, bytes.Select(Util.ByteToBaseString));
+            return string.Join(string.Empty, bytes.Select(Util.V_変換_塩基文字));
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private TrustedKmerIndex BuildTrustedIndex(string trueSeq, int kmerLength, int threadCount = 1)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = kmerLength, ThreadCount = threadCount };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = threadCount };
             var index = new TrustedKmerIndex(this._tempDir);
             var bytes = ToBytes(trueSeq);
             for (var i = 0; i + kmerLength <= bytes.Length; i++)
@@ -55,10 +55,10 @@ namespace Tsumiki.Tests.Core
                 // カットオフ(2)を超えるよう複数回登録する。
                 for (var rep = 0; rep < 3; rep++)
                 {
-                    index.Add(bytes.AsSpan(i, kmerLength), workerIndex: 0);
+                    index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
         }
 
@@ -73,10 +73,10 @@ namespace Tsumiki.Tests.Core
             mutated[20] = mutated[20] == 'A' ? 'C' : 'A'; // 真の配列と異なる塩基に置換
             var mutatedBytes = ToBytes(new string(mutated));
 
-            var result = ErrorCorrector.CorrectRead(mutatedBytes, index, k);
+            var result = ErrorCorrector.Get_訂正結果(mutatedBytes, index, k);
 
-            Assert.Equal(trueSeq, ToSeq(result.Read));
-            Assert.Equal(1, result.CorrectionCount);
+            Assert.Equal(trueSeq, ToSeq(result.A_塩基列));
+            Assert.Equal(1, result.A_訂正数);
         }
 
         [Fact]
@@ -86,10 +86,10 @@ namespace Tsumiki.Tests.Core
             const int k = 15;
             using var index = this.BuildTrustedIndex(trueSeq, k);
 
-            var result = ErrorCorrector.CorrectRead(ToBytes(trueSeq), index, k);
+            var result = ErrorCorrector.Get_訂正結果(ToBytes(trueSeq), index, k);
 
-            Assert.Equal(trueSeq, ToSeq(result.Read));
-            Assert.Equal(0, result.CorrectionCount);
+            Assert.Equal(trueSeq, ToSeq(result.A_塩基列));
+            Assert.Equal(0, result.A_訂正数);
         }
 
         [Fact]
@@ -104,10 +104,10 @@ namespace Tsumiki.Tests.Core
             mutated[55] = mutated[55] == 'A' ? 'G' : 'A';
             var mutatedBytes = ToBytes(new string(mutated));
 
-            var result = ErrorCorrector.CorrectRead(mutatedBytes, index, k);
+            var result = ErrorCorrector.Get_訂正結果(mutatedBytes, index, k);
 
-            Assert.Equal(trueSeq, ToSeq(result.Read));
-            Assert.Equal(2, result.CorrectionCount);
+            Assert.Equal(trueSeq, ToSeq(result.A_塩基列));
+            Assert.Equal(2, result.A_訂正数);
         }
 
         [Fact]
@@ -118,10 +118,10 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildTrustedIndex(trueSeq, k);
 
             var shortRead = ToBytes("ACGT");
-            var result = ErrorCorrector.CorrectRead(shortRead, index, k);
+            var result = ErrorCorrector.Get_訂正結果(shortRead, index, k);
 
-            Assert.Equal("ACGT", ToSeq(result.Read));
-            Assert.Equal(0, result.CorrectionCount);
+            Assert.Equal("ACGT", ToSeq(result.A_塩基列));
+            Assert.Equal(0, result.A_訂正数);
         }
 
         [Fact]
@@ -135,9 +135,9 @@ namespace Tsumiki.Tests.Core
             withN[20] = 'N';
             var bytesWithN = ToBytes(new string(withN));
 
-            var result = ErrorCorrector.CorrectRead(bytesWithN, index, k);
+            var result = ErrorCorrector.Get_訂正結果(bytesWithN, index, k);
 
-            Assert.Equal(Consts.InvalidBase, result.Read[20]);
+            Assert.Equal(Consts.無効な塩基, result.A_塩基列[20]);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace Tsumiki.Tests.Core
             var mutatedBytes = ToBytes(new string(mutated));
             var original = (byte[])mutatedBytes.Clone();
 
-            _ = ErrorCorrector.CorrectRead(mutatedBytes, index, k);
+            _ = ErrorCorrector.Get_訂正結果(mutatedBytes, index, k);
 
             Assert.Equal(original, mutatedBytes);
         }

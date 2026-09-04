@@ -1,4 +1,4 @@
-using Tsumiki.IO;
+﻿using Tsumiki.IO;
 
 namespace Tsumiki.Tests.IO
 {
@@ -7,12 +7,12 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void Sample_ComputesMinMaxAsciiAcrossAllLines()
         {
-            var sample = PhredSniffer.Sample(["hhhh", "IIhh", "!!!!"]);
+            var sample = PhredSniffer.Get_標本(["hhhh", "IIhh", "!!!!"]);
 
-            Assert.Equal('!', (char)sample.MinAscii);
-            Assert.Equal('h', (char)sample.MaxAscii);
-            Assert.Equal(3, sample.SampledReads);
-            Assert.Equal(12, sample.SampledChars);
+            Assert.Equal('!', (char)sample.A_最小ASCII);
+            Assert.Equal('h', (char)sample.A_最大ASCII);
+            Assert.Equal(3, sample.A_標本リード数);
+            Assert.Equal(12, sample.A_標本文字数);
         }
 
         [Fact]
@@ -20,25 +20,25 @@ namespace Tsumiki.Tests.IO
         {
             var lines = Enumerable.Repeat("hhhh", 100);
 
-            var sample = PhredSniffer.Sample(lines, maxReadsToSample: 5);
+            var sample = PhredSniffer.Get_標本(lines, p_標本上限: 5);
 
-            Assert.Equal(5, sample.SampledReads);
+            Assert.Equal(5, sample.A_標本リード数);
         }
 
         [Fact]
         public void IsUniform_TrueWhenEveryCharIsIdentical()
         {
-            var sample = PhredSniffer.Sample(["hhhh", "hhhhhh"]);
+            var sample = PhredSniffer.Get_標本(["hhhh", "hhhhhh"]);
 
-            Assert.True(sample.IsUniform);
+            Assert.True(sample.A_一様か);
         }
 
         [Fact]
         public void IsUniform_FalseWhenQualityVaries()
         {
-            var sample = PhredSniffer.Sample(["hhIh", "hhhh"]);
+            var sample = PhredSniffer.Get_標本(["hhIh", "hhhh"]);
 
-            Assert.False(sample.IsUniform);
+            Assert.False(sample.A_一様か);
         }
 
         [Fact]
@@ -46,9 +46,9 @@ namespace Tsumiki.Tests.IO
         {
             // 典型的なPhred33品質文字('#'=Q2 〜 'J'=Q41相当)を模した、
             // ばらつきのあるサンプル。
-            var sample = PhredSniffer.Sample(["#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"]);
+            var sample = PhredSniffer.Get_標本(["#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"]);
 
-            var warning = PhredSniffer.BuildWarning(sample, phredOffsetInEffect: 33);
+            var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 33);
 
             Assert.Null(warning);
         }
@@ -57,9 +57,9 @@ namespace Tsumiki.Tests.IO
         public void BuildWarning_Phred33WithAsciiImplausiblyHigh_WarnsToTryPhred64()
         {
             // 'h' = ASCII 104。Phred33なら Q=71 となり非現実的。
-            var sample = PhredSniffer.Sample(["hhhh"]);
+            var sample = PhredSniffer.Get_標本(["hhhh"]);
 
-            var warning = PhredSniffer.BuildWarning(sample, phredOffsetInEffect: 33);
+            var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 33);
 
             Assert.NotNull(warning);
             Assert.Contains("Phred64", warning);
@@ -70,9 +70,9 @@ namespace Tsumiki.Tests.IO
         {
             // 'h' = ASCII 104。Phred64なら Q=40 で妥当な範囲だが、
             // 全く同一の値しか出ていない点は別途警告する。
-            var sample = PhredSniffer.Sample(["hhhh", "hhhh", "hhhh"]);
+            var sample = PhredSniffer.Get_標本(["hhhh", "hhhh", "hhhh"]);
 
-            var warning = PhredSniffer.BuildWarning(sample, phredOffsetInEffect: 64);
+            var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 64);
 
             Assert.NotNull(warning);
             Assert.Contains("uniform", warning);
@@ -83,9 +83,9 @@ namespace Tsumiki.Tests.IO
         public void BuildWarning_NegativeQ_WarnsRegardlessOfUniformity()
         {
             // '!' = ASCII 33。Phred64なら Q=-31 となり明らかに不正。
-            var sample = PhredSniffer.Sample(["!!!!"]);
+            var sample = PhredSniffer.Get_標本(["!!!!"]);
 
-            var warning = PhredSniffer.BuildWarning(sample, phredOffsetInEffect: 64);
+            var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 64);
 
             Assert.NotNull(warning);
             Assert.Contains("Phred33", warning);
@@ -94,9 +94,9 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void BuildWarning_EmptySample_ReturnsNull()
         {
-            var sample = PhredSniffer.Sample([]);
+            var sample = PhredSniffer.Get_標本([]);
 
-            Assert.Null(PhredSniffer.BuildWarning(sample, 33));
+            Assert.Null(PhredSniffer.Get_警告文(sample, 33));
         }
 
         /// <summary>
@@ -109,9 +109,9 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void InferOffset_RealWorldPhred64Range_InfersPhred64()
         {
-            var sample = PhredSniffer.Sample([new string((char)64, 4) + new string((char)104, 4)]);
+            var sample = PhredSniffer.Get_標本([new string((char)64, 4) + new string((char)104, 4)]);
 
-            Assert.Equal(64, PhredSniffer.InferOffset(sample));
+            Assert.Equal(64, PhredSniffer.Get_推定オフセット(sample));
         }
 
         [Fact]
@@ -119,9 +119,9 @@ namespace Tsumiki.Tests.IO
         {
             // '!'(ASCII 33, Q0)から 'I'(ASCII 73, Q40)までの一般的な Phred33 範囲。
             // Phred64 と解釈すると Q が負になるため、33 side のみが妥当。
-            var sample = PhredSniffer.Sample(["!!!!IIII"]);
+            var sample = PhredSniffer.Get_標本(["!!!!IIII"]);
 
-            Assert.Equal(33, PhredSniffer.InferOffset(sample));
+            Assert.Equal(33, PhredSniffer.Get_推定オフセット(sample));
         }
 
         [Fact]
@@ -129,15 +129,15 @@ namespace Tsumiki.Tests.IO
         {
             // ASCII 66-70 は Phred33 なら Q[33,37]、Phred64 なら Q[2,6]。
             // どちらの解釈でも現実的な範囲に収まるため判別できない。
-            var sample = PhredSniffer.Sample(["BCDEF"]);
+            var sample = PhredSniffer.Get_標本(["BCDEF"]);
 
-            Assert.Null(PhredSniffer.InferOffset(sample));
+            Assert.Null(PhredSniffer.Get_推定オフセット(sample));
         }
 
         [Fact]
         public void InferOffset_EmptySample_ReturnsNull()
         {
-            Assert.Null(PhredSniffer.InferOffset(PhredSniffer.Sample([])));
+            Assert.Null(PhredSniffer.Get_推定オフセット(PhredSniffer.Get_標本([])));
         }
     }
 }

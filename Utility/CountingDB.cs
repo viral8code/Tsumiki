@@ -1,5 +1,4 @@
-﻿using Tsumiki.Common;
-using static Tsumiki.Common.Consts;
+using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
@@ -10,99 +9,91 @@ namespace Tsumiki.Utility
         // 以前はこの値を「1シャードあたり」の基準として使っていたため、
         // -th 16 で実行すると 16 倍に膨らみ、実データ(100x)で
         // ピーク 12.5GB を消費してノートPCでは実行が困難だった。
-        // 全シャードで分け合う総量として扱い、既定値も実測に基づいて下げる。
+        // 全シャードで分け合う総量として扱う。
         //
         // 1エントリあたりの実消費は、キーの byte[](オブジェクトヘッダ24B +
         // 中身)と Dictionary のエントリ構造体を合わせて概ね 80B 前後。
-        private const int EstimatedBytesPerEntry = 80;
-
-        // マージのループでは以前 GC.Collect() を明示的に呼んでいた。バッファが
-        // シャードあたり数百万件あった頃にメモリを抑えるための措置だったが、
-        // 予算制で上限が効くようになった今は、マージ1回ごとにフルGCで
-        // 全スレッドを止めるコストだけが残る(実行中のPCの体感にも響く)。
-        // マージ自体はストリーム処理でほとんど確保しないため、GCに任せてよい。
-
+        private const int エントリあたりの推定バイト数 = 80;
 
         // FileStream に渡すバッファサイズ。8バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する。
-        private const int IoBufferSize = 1 << 20; // 1MB
+        private const int IOバッファサイズ = 1 << 20; // 1MB
 
-        private readonly ByteArrayComparer _comparator;
+        private readonly ByteArrayComparer _比較器;
 
-        private readonly ByteArrayEqualityComparer _equalityComparator;
+        private readonly ByteArrayEqualityComparer _等価比較器;
 
-        private readonly string TempDirectory;
+        private readonly string _一時ディレクトリ;
 
-        private readonly string filePrefix;
+        private readonly string _ファイル接頭辞;
 
-        private readonly int _length;
+        private readonly int _パック長;
 
-        private readonly int _flushThreshold;
+        private readonly int _フラッシュ閾値;
 
-        private int _fileCount;
+        private int _ファイル連番;
 
-        private Dictionary<byte[], ulong> _buffer;
+        private Dictionary<byte[], ulong> _バッファ;
 
-        private readonly List<string> _flushedFiles = [];
+        private readonly List<string> _フラッシュ済みファイル = [];
 
         /// <summary>
-        /// shardCount には、同時に生きている CountingDB の総数を渡す。
+        /// p_シャード数 には、同時に生きている CountingDB の総数を渡す。
         /// メモリ予算を等分するために使う。
         /// </summary>
-        public CountingDB(string tempDirectory, int shardCount = 1)
+        public CountingDB(string p_一時ディレクトリ, int p_シャード数 = 1)
         {
-            this.filePrefix = Guid.NewGuid().ToString("N");
-            this._comparator = new();
-            this._equalityComparator = new();
-            this.TempDirectory = tempDirectory;
-            this._length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            // 総予算をシャード数で分け合う。shardCount は呼び出し側が渡す。
-            var totalBudgetBytes = ConfigurationManager.Arguments.MemoryBudgetBytes;
-            var perShardBytes = totalBudgetBytes / Math.Max(1, shardCount);
-            this._flushThreshold = (int)Math.Max(1024, Math.Min(int.MaxValue, perShardBytes / EstimatedBytesPerEntry));
-            this._buffer = new Dictionary<byte[], ulong>(this._flushThreshold, this._equalityComparator);
-            this._fileCount = 0;
+            this._ファイル接頭辞 = Guid.NewGuid().ToString("N");
+            this._比較器 = new();
+            this._等価比較器 = new();
+            this._一時ディレクトリ = p_一時ディレクトリ;
+            this._パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
+            var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
+            this._フラッシュ閾値 = (int)Math.Max(1024, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
+            this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
+            this._ファイル連番 = 0;
         }
 
-        private static FileStream CreateWriteStream(string fileName)
+        private static FileStream Get_書き込みストリーム(string p_ファイル名)
         {
             return new FileStream(
-                fileName,
+                p_ファイル名,
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
-                IoBufferSize,
+                IOバッファサイズ,
                 FileOptions.SequentialScan);
         }
 
-        private static FileStream CreateReadStream(string fileName)
+        private static FileStream Get_読み込みストリーム(string p_ファイル名)
         {
             return new FileStream(
-                fileName,
+                p_ファイル名,
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read,
-                IoBufferSize,
+                IOバッファサイズ,
                 FileOptions.SequentialScan);
         }
 
-        public void Add(Span<byte> key)
+        public void V_登録(Span<byte> p_kmer)
         {
-            var arr = new byte[(key.Length + 3) / 4];
-            var idx = 0;
-            for (var i = 0; i < key.Length; i += 4)
+            var l_パック済み = new byte[(p_kmer.Length + 3) / 4];
+            var l_書き込み位置 = 0;
+            for (var i = 0; i < p_kmer.Length; i += 4)
             {
-                var b = 0;
+                var l_バイト = 0;
                 for (var j = 0; j < 4; j++)
                 {
-                    var id = i + j < key.Length ? key[i + j] : NucleotideID.A;
-                    b <<= 2;
-                    b |= id - 1;
+                    var l_塩基ID = i + j < p_kmer.Length ? p_kmer[i + j] : Consts.塩基ID.A;
+                    l_バイト <<= 2;
+                    l_バイト |= l_塩基ID - 1;
                 }
-                arr[idx++] = (byte)b;
+                l_パック済み[l_書き込み位置++] = (byte)l_バイト;
             }
 
-            this.Add(arr);
+            this.V_登録_パック済み(l_パック済み);
         }
 
         /// <summary>
@@ -111,18 +102,18 @@ namespace Tsumiki.Utility
         /// 再出現をディスク書き込みに変換しないようにする。
         /// 閾値に達したら整列済みの状態でディスクへフラッシュする。
         /// </summary>
-        public void AddPacked(byte[] values)
+        public void V_登録_パック済み(byte[] p_パック済みkmer)
         {
-            if (this._buffer.TryGetValue(values, out var count))
+            if (this._バッファ.TryGetValue(p_パック済みkmer, out var l_出現回数))
             {
-                this._buffer[values] = count + 1;
+                this._バッファ[p_パック済みkmer] = l_出現回数 + 1;
             }
             else
             {
-                this._buffer[values] = 1;
-                if (this._buffer.Count >= this._flushThreshold)
+                this._バッファ[p_パック済みkmer] = 1;
+                if (this._バッファ.Count >= this._フラッシュ閾値)
                 {
-                    this.Flush();
+                    this.V_フラッシュ();
                 }
             }
         }
@@ -130,224 +121,188 @@ namespace Tsumiki.Utility
         /// <summary>
         /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す。
         /// フラッシュ後のファイルは常にソート済み・集約済みであるため、
-        /// MergeAll 側では再集計(Dictionary への読み直し)が不要になる。
+        /// 統合側では再集計(Dictionary への読み直し)が不要になる。
         /// </summary>
-        private void Flush()
+        private void V_フラッシュ()
         {
-            if (this._buffer.Count == 0)
+            if (this._バッファ.Count == 0)
             {
                 return;
             }
 
-            this._fileCount += 1;
-            var fileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_{this._fileCount}");
+            this._ファイル連番 += 1;
+            var l_ファイル名 = Path.Combine(this._一時ディレクトリ, $"{this._ファイル接頭辞}_{this._ファイル連番}");
 
-            var arr = this._buffer.ToArray();
-            Array.Sort(arr, (item1, item2) => this._comparator.Compare(item1.Key, item2.Key));
+            var l_エントリ = this._バッファ.ToArray();
+            Array.Sort(l_エントリ, (x, y) => this._比較器.Compare(x.Key, y.Key));
 
-            using (var writer = new BinaryWriter(CreateWriteStream(fileName)))
+            using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
             {
-                foreach (var kv in arr)
+                foreach (var l_項目 in l_エントリ)
                 {
-                    writer.Write(kv.Key);
-                    writer.Write(kv.Value);
+                    l_書き込み.Write(l_項目.Key);
+                    l_書き込み.Write(l_項目.Value);
                 }
             }
 
-            this._flushedFiles.Add(fileName);
-            this._buffer = new Dictionary<byte[], ulong>(this._flushThreshold, this._equalityComparator);
+            this._フラッシュ済みファイル.Add(l_ファイル名);
+            this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
         }
 
-        public string MergeAll()
+        /// <summary>
+        /// ソート済み・集約済みの2ファイルを1本にマージする。
+        /// 同じキーが両方に現れた場合はカウントを合算する。
+        ///
+        /// MergeAll とシャード間統合で同一の処理を二重に持っていたため、
+        /// 片方だけ直して不整合を招かないよう1箇所にまとめてある
+        /// (実際、初回読み取りの EOF 判定漏れは両方に同じ形で存在していた)。
+        /// </summary>
+        private static void V_マージ_2ファイル(
+            string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器)
         {
-            // メモリ上に残っている未フラッシュ分を書き出す。
-            this.Flush();
-
-            var Length = this._length;
-            var mergedFileList = new List<string>(this._flushedFiles);
-
-            if (mergedFileList.Count == 0)
+            using (var l_読み込み1 = new BinaryReader(Get_読み込みストリーム(p_ファイル1)))
             {
-                // 登録された k-mer が一件もない場合でも、空ファイルを返す。
-                var emptyFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_empty");
-                using (CreateWriteStream(emptyFileName))
+                using var l_読み込み2 = new BinaryReader(Get_読み込みストリーム(p_ファイル2));
+                using var l_書き込み = new BinaryWriter(Get_書き込みストリーム(p_出力先));
+
+                // BinaryReader.ReadBytes は EOF でも null ではなく長さ0の配列を
+                // 返すため、初回読み取りを保護しないと空ファイルを
+                // 「まだ中身がある」と誤認し、続く ReadUInt64 で破綻する。
+                // k-mer をハッシュでシャードへ振り分けるようにして以降、
+                // 空のシャードが普通に発生するようになったため必須。
+                var l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                var l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+
+                while (l_キー1 != null && l_キー2 != null)
                 {
+                    var l_比較結果 = p_比較器.Compare(l_キー1, l_キー2);
+                    if (l_比較結果 == 0)
+                    {
+                        l_書き込み.Write(l_キー1);
+                        l_書き込み.Write(l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64());
+                        l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                        l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                    }
+                    else if (l_比較結果 < 0)
+                    {
+                        l_書き込み.Write(l_キー1);
+                        l_書き込み.Write(l_読み込み1.ReadUInt64());
+                        l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                    }
+                    else
+                    {
+                        l_書き込み.Write(l_キー2);
+                        l_書き込み.Write(l_読み込み2.ReadUInt64());
+                        l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                    }
                 }
-                return emptyFileName;
+
+                while (l_キー1 != null)
+                {
+                    l_書き込み.Write(l_キー1);
+                    l_書き込み.Write(l_読み込み1.ReadUInt64());
+                    l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                }
+
+                while (l_キー2 != null)
+                {
+                    l_書き込み.Write(l_キー2);
+                    l_書き込み.Write(l_読み込み2.ReadUInt64());
+                    l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                }
             }
 
-            var index = this._fileCount + 1;
-            while (mergedFileList.Count > 1)
+            File.Delete(p_ファイル1);
+            File.Delete(p_ファイル2);
+        }
+
+        /// <summary>
+        /// 空のソート済みファイルを作って、そのパスを返す。
+        /// 登録が1件も無かったシャードでも、統合処理に渡せる形を保つために使う。
+        /// </summary>
+        private static string Get_空ファイル(string p_一時ディレクトリ, string p_接頭辞)
+        {
+            var l_ファイル名 = Path.Combine(p_一時ディレクトリ, $"{p_接頭辞}_empty");
+            using (Get_書き込みストリーム(l_ファイル名))
             {
-                var file1 = mergedFileList[0];
-                var file2 = mergedFileList[1];
-                var mergedFileName = Path.Combine(this.TempDirectory, $"{this.filePrefix}_merged_{index++}");
-                mergedFileList.RemoveRange(0, 2);
-                using (var reader1 = new BinaryReader(CreateReadStream(file1)))
-                {
-                    using var reader2 = new BinaryReader(CreateReadStream(file2));
-                    using var writer = new BinaryWriter(CreateWriteStream(mergedFileName));
-                    // BinaryReader.ReadBytes は EOF でも null ではなく長さ0の配列を
-                    // 返すため、初回読み取りを保護しないと空ファイルを
-                    // 「まだ中身がある」と誤認し、続く ReadUInt64 で破綻する。
-                    // k-mer をハッシュでシャードへ振り分けるようにして以降、
-                    // 空のシャードが普通に発生するようになったため必須。
-                    var read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
-                    var read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
-                    while (read1 != null && read2 != null)
-                    {
-                        var result = this._comparator.Compare(read1, read2);
-                        if (result == 0)
-                        {
-                            var sum = reader1.ReadUInt64() + reader2.ReadUInt64();
-                            writer.Write(read1);
-                            writer.Write(sum);
-                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
-                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
-                        }
-                        else if (result < 0)
-                        {
-                            var sum = reader1.ReadUInt64();
-                            writer.Write(read1);
-                            writer.Write(sum);
-                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
-                        }
-                        else
-                        {
-                            var sum = reader2.ReadUInt64();
-                            writer.Write(read2);
-                            writer.Write(sum);
-                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
-                        }
-                    }
-                    while (read1 != null)
-                    {
-                        var sum = reader1.ReadUInt64();
-                        writer.Write(read1);
-                        writer.Write(sum);
-                        read1 = Util.HasNext(reader1) ? reader1.ReadBytes(Length) : null;
-                    }
-                    while (read2 != null)
-                    {
-                        var sum = reader2.ReadUInt64();
-                        writer.Write(read2);
-                        writer.Write(sum);
-                        read2 = Util.HasNext(reader2) ? reader2.ReadBytes(Length) : null;
-                    }
-                }
-                File.Delete(file1);
-                File.Delete(file2);
-                mergedFileList.Add(mergedFileName);
+            }
+            return l_ファイル名;
+        }
+
+        /// <summary>
+        /// このシャードのフラッシュ済みファイルをすべて1本にマージし、そのパスを返す。
+        /// </summary>
+        public string Get_統合ファイル()
+        {
+            // メモリ上に残っている未フラッシュ分を書き出す。
+            this.V_フラッシュ();
+
+            var l_対象ファイル = new List<string>(this._フラッシュ済みファイル);
+
+            if (l_対象ファイル.Count == 0)
+            {
+                return Get_空ファイル(this._一時ディレクトリ, this._ファイル接頭辞);
+            }
+
+            var l_連番 = this._ファイル連番 + 1;
+            while (l_対象ファイル.Count > 1)
+            {
+                var l_出力先 = Path.Combine(this._一時ディレクトリ, $"{this._ファイル接頭辞}_merged_{l_連番++}");
+                V_マージ_2ファイル(l_対象ファイル[0], l_対象ファイル[1], l_出力先, this._パック長, this._比較器);
+                l_対象ファイル.RemoveRange(0, 2);
+                l_対象ファイル.Add(l_出力先);
             }
 
             // フラッシュ済みファイルが1件のみだった場合、マージが一度も走らず
-            // その元ファイル(_flushedFiles に登録済み)がそのまま返される。
+            // その元ファイル(_フラッシュ済みファイル に登録済み)がそのまま返される。
             // 登録したままだと、この直後に Dispose() が呼ばれた際
-            // _flushedFiles を掃除する処理で削除されてしまい、
+            // _フラッシュ済みファイル を掃除する処理で削除されてしまい、
             // 呼び出し元に返したパスが消える(FileNotFoundException の原因)。
             // 呼び出し元へ所有権を渡すため、返す前に登録を外しておく。
-            var finalFile = mergedFileList[0];
-            _ = this._flushedFiles.Remove(finalFile);
-            return finalFile;
+            var l_最終ファイル = l_対象ファイル[0];
+            _ = this._フラッシュ済みファイル.Remove(l_最終ファイル);
+            return l_最終ファイル;
         }
 
         public void Dispose()
         {
-            // 未フラッシュのデータは MergeAll 側で処理される想定だが、
-            // MergeAll を呼ばずに破棄された場合に備えて残存ファイルを掃除する。
-            foreach (var file in this._flushedFiles)
+            // 未フラッシュのデータは統合側で処理される想定だが、
+            // 統合を呼ばずに破棄された場合に備えて残存ファイルを掃除する。
+            foreach (var l_ファイル in this._フラッシュ済みファイル)
             {
-                if (File.Exists(file))
+                if (File.Exists(l_ファイル))
                 {
-                    File.Delete(file);
+                    File.Delete(l_ファイル);
                 }
             }
         }
 
         /// <summary>
-        /// 複数の CountingDB インスタンス(スレッドごとに用意したもの)が
-        /// それぞれ MergeAll() で出力したソート済み・集約済みファイルを
-        /// さらにペアワイズマージして1つに統合する。
-        /// 並列読み込み(スレッドごとに独立した CountingDB を使う設計)で、
-        /// 最後にワーカーごとの結果を1本化するために使用する。
+        /// 各シャードの CountingDB が Get_統合ファイル() で出力した
+        /// ソート済み・集約済みファイルを、さらにペアワイズマージして1本に統合する。
         /// </summary>
-        public static string MergeExternalFiles(string tempDirectory, List<string> filePaths)
+        public static string Get_統合ファイル_シャード間(string p_一時ディレクトリ, List<string> p_ファイル一覧)
         {
-            var comparator = new ByteArrayComparer();
-            var length = (ConfigurationManager.Arguments.Kmer + 3) / 4;
-            var mergedFileList = new List<string>(filePaths);
-            var prefix = Guid.NewGuid().ToString("N");
-            var index = 1;
+            var l_比較器 = new ByteArrayComparer();
+            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_対象ファイル = new List<string>(p_ファイル一覧);
+            var l_接頭辞 = Guid.NewGuid().ToString("N");
+            var l_連番 = 1;
 
-            if (mergedFileList.Count == 0)
+            if (l_対象ファイル.Count == 0)
             {
-                var emptyFileName = Path.Combine(tempDirectory, $"{prefix}_empty");
-                using (CreateWriteStream(emptyFileName))
-                {
-                }
-                return emptyFileName;
+                return Get_空ファイル(p_一時ディレクトリ, l_接頭辞);
             }
 
-            while (mergedFileList.Count > 1)
+            while (l_対象ファイル.Count > 1)
             {
-                var file1 = mergedFileList[0];
-                var file2 = mergedFileList[1];
-                var mergedFileName = Path.Combine(tempDirectory, $"{prefix}_workermerge_{index++}");
-                mergedFileList.RemoveRange(0, 2);
-                using (var reader1 = new BinaryReader(CreateReadStream(file1)))
-                {
-                    using var reader2 = new BinaryReader(CreateReadStream(file2));
-                    using var writer = new BinaryWriter(CreateWriteStream(mergedFileName));
-                    // 上と同じ理由で、初回読み取りを HasNext で保護する。
-                    var read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
-                    var read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
-                    while (read1 != null && read2 != null)
-                    {
-                        var result = comparator.Compare(read1, read2);
-                        if (result == 0)
-                        {
-                            var sum = reader1.ReadUInt64() + reader2.ReadUInt64();
-                            writer.Write(read1);
-                            writer.Write(sum);
-                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
-                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
-                        }
-                        else if (result < 0)
-                        {
-                            var sum = reader1.ReadUInt64();
-                            writer.Write(read1);
-                            writer.Write(sum);
-                            read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
-                        }
-                        else
-                        {
-                            var sum = reader2.ReadUInt64();
-                            writer.Write(read2);
-                            writer.Write(sum);
-                            read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
-                        }
-                    }
-                    while (read1 != null)
-                    {
-                        var sum = reader1.ReadUInt64();
-                        writer.Write(read1);
-                        writer.Write(sum);
-                        read1 = Util.HasNext(reader1) ? reader1.ReadBytes(length) : null;
-                    }
-                    while (read2 != null)
-                    {
-                        var sum = reader2.ReadUInt64();
-                        writer.Write(read2);
-                        writer.Write(sum);
-                        read2 = Util.HasNext(reader2) ? reader2.ReadBytes(length) : null;
-                    }
-                }
-                File.Delete(file1);
-                File.Delete(file2);
-                mergedFileList.Add(mergedFileName);
+                var l_出力先 = Path.Combine(p_一時ディレクトリ, $"{l_接頭辞}_workermerge_{l_連番++}");
+                V_マージ_2ファイル(l_対象ファイル[0], l_対象ファイル[1], l_出力先, l_パック長, l_比較器);
+                l_対象ファイル.RemoveRange(0, 2);
+                l_対象ファイル.Add(l_出力先);
             }
 
-            return mergedFileList[0];
+            return l_対象ファイル[0];
         }
     }
 }

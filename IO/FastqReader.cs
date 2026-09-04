@@ -6,97 +6,98 @@ namespace Tsumiki.IO
 {
     internal class FastqReader : IDisposable
     {
-        public string FilePath { get; private set; }
+        public string A_ファイルパス { get; private set; }
 
-        private readonly StreamReader reader;
+        private readonly StreamReader _読み込み;
 
-        private const int BufferedSize = 1 << 25;
+        private const int バッファサイズ = 1 << 25;
 
-        public FastqReader(string path)
+        public FastqReader(string p_パス)
         {
-            this.FilePath = path;
-            var inputFileStream = new FileStream(path, FileMode.Open, FileAccess.Read);
-            if (Path.GetExtension(path)?.ToLower() == ".gz")
+            this.A_ファイルパス = p_パス;
+            var l_入力ストリーム = new FileStream(p_パス, FileMode.Open, FileAccess.Read);
+            if (Path.GetExtension(p_パス)?.ToLower() == ".gz")
             {
-                var decompressionStream = new GZipStream(inputFileStream, CompressionMode.Decompress);
-                this.reader = new(decompressionStream, bufferSize: BufferedSize);
+                var l_展開ストリーム = new GZipStream(l_入力ストリーム, CompressionMode.Decompress);
+                this._読み込み = new(l_展開ストリーム, bufferSize: バッファサイズ);
             }
             else
             {
-                this.reader = new(inputFileStream, bufferSize: BufferedSize);
+                this._読み込み = new(l_入力ストリーム, bufferSize: バッファサイズ);
             }
         }
 
-        public bool HasNext()
+        public bool Get_続きがあるか()
         {
-            return !this.reader.EndOfStream;
+            return !this._読み込み.EndOfStream;
         }
 
-        private string NextData()
+        private string Get_次の行()
         {
-            var dataLine = this.reader.ReadLine();
-            while (string.IsNullOrWhiteSpace(dataLine))
+            var l_行 = this._読み込み.ReadLine();
+            while (string.IsNullOrWhiteSpace(l_行))
             {
-                dataLine = this.reader.ReadLine();
+                l_行 = this._読み込み.ReadLine();
             }
-            return dataLine;
+            return l_行;
         }
 
-        public ReadData NextRead()
+        public リードデータ Get_次のリード()
         {
             try
             {
-                var id = this.NextData();
-                var read = this.NextData();
-                _ = this.NextData();
-                var quality = this.NextData();
+                var l_ID = this.Get_次の行();
+                var l_配列 = this.Get_次の行();
+                _ = this.Get_次の行();
+                var l_クオリティ = this.Get_次の行();
 
-                return new ReadData()
+                return new リードデータ()
                 {
-                    ID = id,
-                    Read = Util.ToByteList(read),
-                    RowRead = read,
-                    Quality = quality,
+                    A_ID = l_ID,
+                    A_塩基候補列 = Util.V_変換_塩基候補列(l_配列),
+                    A_生リード = l_配列,
+                    A_クオリティ = l_クオリティ,
                 };
             }
             catch (Exception ex)
             {
-                Logger.PrintWarning(Logger.GetMethodName(), ex);
+                Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
                 throw;
             }
         }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版。Read(List&lt;byte[]&gt;)の代わりに
-        /// SimpleRead(byte[])のみを構築する。KmerCounting.LoadReadFile から使用する。
+        /// 曖昧塩基を無視する経路向けの軽量版。A_塩基候補列(List&lt;byte[]&gt;)の
+        /// 代わりに A_塩基列(byte[])のみを構築する。
+        /// KmerCounting.V_読込_リードファイル から使用する。
         /// </summary>
-        public ReadData NextReadSimple()
+        public リードデータ Get_次のリード_軽量()
         {
             try
             {
-                var id = this.NextData();
-                var read = this.NextData();
-                _ = this.NextData();
-                var quality = this.NextData();
+                var l_ID = this.Get_次の行();
+                var l_配列 = this.Get_次の行();
+                _ = this.Get_次の行();
+                var l_クオリティ = this.Get_次の行();
 
-                return new ReadData()
+                return new リードデータ()
                 {
-                    ID = id,
-                    SimpleRead = Util.ToSimpleByteArray(read),
-                    RowRead = read,
-                    Quality = quality,
+                    A_ID = l_ID,
+                    A_塩基列 = Util.V_変換_塩基列(l_配列),
+                    A_生リード = l_配列,
+                    A_クオリティ = l_クオリティ,
                 };
             }
             catch (Exception ex)
             {
-                Logger.PrintWarning(Logger.GetMethodName(), ex);
+                Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
                 throw;
             }
         }
 
         public void Dispose()
         {
-            this.reader.Dispose();
+            this._読み込み.Dispose();
         }
     }
 }

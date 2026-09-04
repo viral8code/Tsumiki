@@ -1,19 +1,19 @@
-﻿namespace Tsumiki.IO
+namespace Tsumiki.IO
 {
-    internal class FastaWriter(string fileName) : IDisposable
+    internal class FastaWriter(string p_ファイル名) : IDisposable
     {
-        private readonly StreamWriter _writer = new(fileName);
+        private readonly StreamWriter _書き込み = new(p_ファイル名);
 
-        public void Write(object seqID, string sequence)
+        public void V_書き込み(object p_配列ID, string p_配列)
         {
-            this._writer.Write(">");
-            this._writer.WriteLine(seqID);
-            this._writer.WriteLine(sequence);
+            this._書き込み.Write(">");
+            this._書き込み.WriteLine(p_配列ID);
+            this._書き込み.WriteLine(p_配列);
         }
 
         public void Dispose()
         {
-            this._writer?.Dispose();
+            this._書き込み?.Dispose();
         }
     }
 }

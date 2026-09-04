@@ -1,214 +1,213 @@
 using System.Text;
-using static Tsumiki.Common.Consts;
 
 namespace Tsumiki.Common
 {
     internal class Util
     {
-        public static Span<byte> ReverseComprement(Span<byte> genome)
+        public static Span<byte> V_逆相補(Span<byte> p_塩基列)
         {
-            var buffer = new byte[genome.Length];
-            for (var i = 0; i < genome.Length; i++)
+            var l_結果 = new byte[p_塩基列.Length];
+            for (var i = 0; i < p_塩基列.Length; i++)
             {
-                buffer[genome.Length - 1 - i] = genome[i] switch
+                l_結果[p_塩基列.Length - 1 - i] = p_塩基列[i] switch
                 {
-                    NucleotideID.A => NucleotideID.T,
-                    NucleotideID.C => NucleotideID.G,
-                    NucleotideID.G => NucleotideID.C,
-                    NucleotideID.T => NucleotideID.A,
-                    _ => genome[i]
+                    Consts.塩基ID.A => Consts.塩基ID.T,
+                    Consts.塩基ID.C => Consts.塩基ID.G,
+                    Consts.塩基ID.G => Consts.塩基ID.C,
+                    Consts.塩基ID.T => Consts.塩基ID.A,
+                    _ => p_塩基列[i]
                 };
             }
-            return buffer.AsSpan();
+            return l_結果.AsSpan();
         }
 
-        public static string ReverseComprement(string genome)
+        public static string V_逆相補(string p_配列)
         {
-            StringBuilder sb = new();
-            for (var i = 0; i < genome.Length; i++)
+            StringBuilder l_結果 = new();
+            for (var i = 0; i < p_配列.Length; i++)
             {
-                _ = sb.Append(genome[i] switch
+                _ = l_結果.Append(p_配列[i] switch
                 {
                     'A' => 'T',
                     'C' => 'G',
                     'G' => 'C',
                     'T' => 'A',
-                    _ => throw new ArgumentException($"{genome[i]} is not the expected value for a base")
+                    _ => throw new ArgumentException($"{p_配列[i]} is not the expected value for a base")
                 });
             }
-            return string.Join(string.Empty, sb.ToString().Reverse());
+            return string.Join(string.Empty, l_結果.ToString().Reverse());
         }
 
         /// <summary>
         /// FASTQ の生リードなど、N を含む曖昧塩基が混入しうる文字列向けの逆相補。
         /// A/C/G/T 以外の文字はそのまま(位置だけ反転して)出力し、例外を投げない。
         /// unitig/contig 配列(カットオフを通過した A/C/G/T のみの配列)には
-        /// このメソッドを使わないこと。そちらは ReverseComprement(string) の方を使い、
+        /// このメソッドを使わないこと。そちらは V_逆相補(string) の方を使い、
         /// 想定外の文字が混入していた場合は例外で早期検知する。
         /// </summary>
-        public static string ReverseComprementAllowAmbiguous(string genome)
+        public static string V_逆相補_曖昧塩基あり(string p_配列)
         {
-            StringBuilder sb = new();
-            for (var i = 0; i < genome.Length; i++)
+            StringBuilder l_結果 = new();
+            for (var i = 0; i < p_配列.Length; i++)
             {
-                _ = sb.Append(genome[i] switch
+                _ = l_結果.Append(p_配列[i] switch
                 {
                     'A' => 'T',
                     'C' => 'G',
                     'G' => 'C',
                     'T' => 'A',
-                    var c => c,
+                    var l_文字 => l_文字,
                 });
             }
-            return string.Join(string.Empty, sb.ToString().Reverse());
+            return string.Join(string.Empty, l_結果.ToString().Reverse());
         }
 
-        public static Span<byte[]> ReverseComprement(Span<byte[]> genome)
+        public static Span<byte[]> V_逆相補(Span<byte[]> p_塩基候補列)
         {
-            var buffer = new byte[genome.Length][];
-            for (var i = 0; i < genome.Length; i++)
+            var l_結果 = new byte[p_塩基候補列.Length][];
+            for (var i = 0; i < p_塩基候補列.Length; i++)
             {
-                var arr = genome[genome.Length - 1 - i];
-                var newArr = new byte[arr.Length];
-                for (var j = 0; j < arr.Length; j++)
+                var l_候補 = p_塩基候補列[p_塩基候補列.Length - 1 - i];
+                var l_変換後 = new byte[l_候補.Length];
+                for (var j = 0; j < l_候補.Length; j++)
                 {
-                    newArr[j] = arr[j] switch
+                    l_変換後[j] = l_候補[j] switch
                     {
-                        NucleotideID.A => NucleotideID.T,
-                        NucleotideID.C => NucleotideID.G,
-                        NucleotideID.G => NucleotideID.C,
-                        NucleotideID.T => NucleotideID.A,
-                        _ => arr[j]
+                        Consts.塩基ID.A => Consts.塩基ID.T,
+                        Consts.塩基ID.C => Consts.塩基ID.G,
+                        Consts.塩基ID.G => Consts.塩基ID.C,
+                        Consts.塩基ID.T => Consts.塩基ID.A,
+                        _ => l_候補[j]
                     };
                 }
-                buffer[i] = newArr;
+                l_結果[i] = l_変換後;
             }
-            return buffer.AsSpan();
+            return l_結果.AsSpan();
         }
 
-        public static List<int> GetNucleotideIDs(char baseChar)
+        public static List<int> Get_塩基ID候補(char p_塩基文字)
         {
-            return baseChar switch
+            return p_塩基文字 switch
             {
-                'A' => [NucleotideID.A],
-                'M' => [NucleotideID.A, NucleotideID.C],
-                'V' => [NucleotideID.A, NucleotideID.C, NucleotideID.G],
-                'N' => [NucleotideID.A, NucleotideID.C, NucleotideID.G, NucleotideID.T],
-                'H' => [NucleotideID.A, NucleotideID.C, NucleotideID.T],
-                'R' => [NucleotideID.A, NucleotideID.G],
-                'D' => [NucleotideID.A, NucleotideID.G, NucleotideID.T],
-                'W' => [NucleotideID.A, NucleotideID.T],
-                'C' => [NucleotideID.C],
-                'S' => [NucleotideID.C, NucleotideID.G],
-                'B' => [NucleotideID.C, NucleotideID.G, NucleotideID.T],
-                'Y' => [NucleotideID.C, NucleotideID.T],
-                'G' => [NucleotideID.G],
-                'K' => [NucleotideID.G, NucleotideID.T],
-                'T' => [NucleotideID.T],
-                _ => throw new ArgumentException($"{baseChar} is not nucleotide base code")
+                'A' => [Consts.塩基ID.A],
+                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
+                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
+                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
+                'C' => [Consts.塩基ID.C],
+                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
+                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
+                'G' => [Consts.塩基ID.G],
+                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
+                'T' => [Consts.塩基ID.T],
+                _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code")
             };
         }
 
         /// <summary>
         /// 単一の塩基文字を ID に変換する軽量版。
-        /// A/C/G/T はそのまま NucleotideID を返し、それ以外(曖昧塩基)は
-        /// 一律 Consts.InvalidBase を返す。曖昧塩基を無視する経路
-        /// (KmerCounting.LoadReadFile 等)専用で、
-        /// GetNucleotideIDs のような List 確保を伴わないため高速。
+        /// A/C/G/T はそのまま塩基IDを返し、それ以外(曖昧塩基)は
+        /// 一律 Consts.無効な塩基 を返す。曖昧塩基を無視する経路
+        /// (KmerCounting.V_読込_リードファイル 等)専用で、
+        /// Get_塩基ID候補 のような List 確保を伴わないため高速。
         /// </summary>
-        public static byte GetSimpleNucleotideID(char baseChar)
+        public static byte Get_塩基ID(char p_塩基文字)
         {
-            return baseChar switch
+            return p_塩基文字 switch
             {
-                'A' => NucleotideID.A,
-                'C' => NucleotideID.C,
-                'G' => NucleotideID.G,
-                'T' => NucleotideID.T,
-                _ => InvalidBase,
+                'A' => Consts.塩基ID.A,
+                'C' => Consts.塩基ID.C,
+                'G' => Consts.塩基ID.G,
+                'T' => Consts.塩基ID.T,
+                _ => Consts.無効な塩基,
             };
         }
 
-        public static byte[] ByteToNucleotideSequence(byte read)
+        public static byte[] V_変換_塩基列(byte p_パック済みバイト)
         {
-            return [.. new[] { (read >>> 6) & 3, (read >>> 4) & 3, (read >>> 2) & 3, read & 3 }
+            return [.. new[] { (p_パック済みバイト >>> 6) & 3, (p_パック済みバイト >>> 4) & 3, (p_パック済みバイト >>> 2) & 3, p_パック済みバイト & 3 }
                 .Select(x => (x + 1) switch
                 {
-                    NucleotideID.A => NucleotideID.A,
-                    NucleotideID.C => NucleotideID.C,
-                    NucleotideID.G => NucleotideID.G,
-                    NucleotideID.T => NucleotideID.T,
+                    Consts.塩基ID.A => Consts.塩基ID.A,
+                    Consts.塩基ID.C => Consts.塩基ID.C,
+                    Consts.塩基ID.G => Consts.塩基ID.G,
+                    Consts.塩基ID.T => Consts.塩基ID.T,
                     _ => throw new ArgumentException($"{x + 1} is not the expected value for a base")
                 })];
         }
 
-        public static string ByteToBaseString(byte read)
+        public static string V_変換_塩基文字(byte p_塩基ID)
         {
-            return read switch
+            return p_塩基ID switch
             {
-                NucleotideID.A => "A",
-                NucleotideID.C => "C",
-                NucleotideID.G => "G",
-                NucleotideID.T => "T",
+                Consts.塩基ID.A => "A",
+                Consts.塩基ID.C => "C",
+                Consts.塩基ID.G => "G",
+                Consts.塩基ID.T => "T",
                 _ => "N",
             };
         }
 
-        public static List<byte[]> ToByteList(string read)
+        public static List<byte[]> V_変換_塩基候補列(string p_リード)
         {
-            return [.. read.Select<char, byte[]>(c => c switch
+            return [.. p_リード.Select<char, byte[]>(x => x switch
             {
-                'A' => [NucleotideID.A],
-                'M' => [NucleotideID.A, NucleotideID.C],
-                'V' => [NucleotideID.A, NucleotideID.C, NucleotideID.G],
-                'N' => [NucleotideID.A, NucleotideID.C, NucleotideID.G, NucleotideID.T],
-                'H' => [NucleotideID.A, NucleotideID.C, NucleotideID.T],
-                'R' => [NucleotideID.A, NucleotideID.G],
-                'D' => [NucleotideID.A, NucleotideID.G, NucleotideID.T],
-                'W' => [NucleotideID.A, NucleotideID.T],
-                'C' => [NucleotideID.C],
-                'S' => [NucleotideID.C, NucleotideID.G],
-                'B' => [NucleotideID.C, NucleotideID.G, NucleotideID.T],
-                'Y' => [NucleotideID.C, NucleotideID.T],
-                'G' => [NucleotideID.G],
-                'K' => [NucleotideID.G, NucleotideID.T],
-                'T' => [NucleotideID.T],
-                _ => throw new ArgumentException($"{c} is not nucleotide base code")
+                'A' => [Consts.塩基ID.A],
+                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
+                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
+                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
+                'C' => [Consts.塩基ID.C],
+                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
+                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
+                'G' => [Consts.塩基ID.G],
+                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
+                'T' => [Consts.塩基ID.T],
+                _ => throw new ArgumentException($"{x} is not nucleotide base code")
             })];
         }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版。read の各文字を1バイトIDに変換する。
-        /// A/C/G/T 以外は Consts.InvalidBase になる。ToByteList と異なり
+        /// 曖昧塩基を無視する経路向けの軽量版。リードの各文字を1バイトIDに変換する。
+        /// A/C/G/T 以外は Consts.無効な塩基 になる。V_変換_塩基候補列 と異なり
         /// LINQ・per-char の byte[] アロケーションを行わないため大幅に高速。
         /// </summary>
-        public static byte[] ToSimpleByteArray(string read)
+        public static byte[] V_変換_塩基列(string p_リード)
         {
-            var result = new byte[read.Length];
-            for (var i = 0; i < read.Length; i++)
+            var l_結果 = new byte[p_リード.Length];
+            for (var i = 0; i < p_リード.Length; i++)
             {
-                result[i] = GetSimpleNucleotideID(read[i]);
+                l_結果[i] = Get_塩基ID(p_リード[i]);
             }
-            return result;
+            return l_結果;
         }
 
-        public static ulong Pow(ulong value, long exp)
+        public static ulong V_累乗(ulong p_底, long p_指数)
         {
-            var ans = 1UL;
-            while (exp > 0)
+            var l_結果 = 1UL;
+            while (p_指数 > 0)
             {
-                if ((exp & 1) > 0)
+                if ((p_指数 & 1) > 0)
                 {
-                    ans *= value;
+                    l_結果 *= p_底;
                 }
-                value *= value;
-                exp >>= 1;
+                p_底 *= p_底;
+                p_指数 >>= 1;
             }
-            return ans;
+            return l_結果;
         }
 
-        public static bool HasNext(BinaryReader stream)
+        public static bool Get_続きがあるか(BinaryReader p_ストリーム)
         {
-            return stream.BaseStream.Position < stream.BaseStream.Length;
+            return p_ストリーム.BaseStream.Position < p_ストリーム.BaseStream.Length;
         }
 
         /// <summary>
@@ -218,72 +217,71 @@ namespace Tsumiki.Common
         /// 1000 ではなく 1024 刻みのほうが直感に合う。
         /// 接尾辞が無い場合は MB とみなす(-mem を数値だけで指定したときの単位)。
         /// </summary>
-        public static long ParseMemorySize(string text)
+        public static long V_変換_メモリサイズ(string p_表記)
         {
-            if (string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(p_表記))
             {
                 throw new ArgumentException("Memory size must not be empty (e.g. 2G, 512M, 1024)");
             }
 
-            var trimmed = text.Trim();
+            var l_本体 = p_表記.Trim();
             // "2GB" のように B が付いていても受け付ける。
-            if (trimmed.Length >= 2 && (trimmed[^1] is 'B' or 'b') && !char.IsDigit(trimmed[^2]))
+            if (l_本体.Length >= 2 && (l_本体[^1] is 'B' or 'b') && !char.IsDigit(l_本体[^2]))
             {
-                trimmed = trimmed[..^1];
+                l_本体 = l_本体[..^1];
             }
 
-            var multiplier = 1024L * 1024L; // 接尾辞なしは MB
-            var lastChar = trimmed[^1];
-            switch (lastChar)
+            var l_倍率 = 1024L * 1024L; // 接尾辞なしは MB
+            switch (l_本体[^1])
             {
                 case 'K' or 'k':
-                    multiplier = 1024L;
-                    trimmed = trimmed[..^1];
+                    l_倍率 = 1024L;
+                    l_本体 = l_本体[..^1];
                     break;
                 case 'M' or 'm':
-                    multiplier = 1024L * 1024L;
-                    trimmed = trimmed[..^1];
+                    l_倍率 = 1024L * 1024L;
+                    l_本体 = l_本体[..^1];
                     break;
                 case 'G' or 'g':
-                    multiplier = 1024L * 1024L * 1024L;
-                    trimmed = trimmed[..^1];
+                    l_倍率 = 1024L * 1024L * 1024L;
+                    l_本体 = l_本体[..^1];
                     break;
                 case 'T' or 't':
-                    multiplier = 1024L * 1024L * 1024L * 1024L;
-                    trimmed = trimmed[..^1];
+                    l_倍率 = 1024L * 1024L * 1024L * 1024L;
+                    l_本体 = l_本体[..^1];
                     break;
                 default:
                     break;
             }
 
-            if (!double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var value) || value <= 0)
+            if (!double.TryParse(l_本体, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var l_数値) || l_数値 <= 0)
             {
-                throw new ArgumentException($"Could not read '{text}' as a memory size (e.g. 2G, 512M, 1024)");
+                throw new ArgumentException($"Could not read '{p_表記}' as a memory size (e.g. 2G, 512M, 1024)");
             }
 
-            var bytes = (long)(value * multiplier);
-            if (bytes <= 0)
+            var l_バイト数 = (long)(l_数値 * l_倍率);
+            if (l_バイト数 <= 0)
             {
-                throw new ArgumentException($"Memory size '{text}' is too small");
+                throw new ArgumentException($"Memory size '{p_表記}' is too small");
             }
-            return bytes;
+            return l_バイト数;
         }
 
         /// <summary>
-        /// バイト数を "2 G" のような読みやすい形に戻す(パラメータ表示用)。
+        /// バイト数を "2 GB" のような読みやすい形に戻す(パラメータ表示用)。
         /// </summary>
-        public static string FormatMemorySize(long bytes)
+        public static string Get_表示用メモリサイズ(long p_バイト数)
         {
-            string[] units = ["", "K", "M", "G", "T"];
-            double size = bytes;
-            var unitIndex = 0;
-            while (size >= 1024 && unitIndex < units.Length - 1)
+            string[] l_単位 = ["", "K", "M", "G", "T"];
+            double l_サイズ = p_バイト数;
+            var l_単位位置 = 0;
+            while (l_サイズ >= 1024 && l_単位位置 < l_単位.Length - 1)
             {
-                size /= 1024;
-                unitIndex++;
+                l_サイズ /= 1024;
+                l_単位位置++;
             }
-            return $"{size:0.#} {units[unitIndex]}B";
+            return $"{l_サイズ:0.#} {l_単位[l_単位位置]}B";
         }
 
         /// <summary>
@@ -296,27 +294,27 @@ namespace Tsumiki.Common
         /// 上記どちらの記法にも当てはまらない場合は ID をそのまま返す
         /// (この場合、呼び出し側で「ペアかどうか」の確証が得られないことに注意)。
         /// </summary>
-        public static string GetPairedReadBaseId(string id)
+        public static string Get_ペア共通ID(string p_ID)
         {
             // Casava 1.8+ 形式: 空白区切りの後半が "1:..." または "2:..." で始まる。
-            var spaceIndex = id.IndexOf(' ');
-            if (spaceIndex >= 0 && spaceIndex + 1 < id.Length)
+            var l_空白位置 = p_ID.IndexOf(' ');
+            if (l_空白位置 >= 0 && l_空白位置 + 1 < p_ID.Length)
             {
-                var suffix = id[(spaceIndex + 1)..];
-                if (suffix.Length > 1 && suffix[1] == ':' && (suffix[0] == '1' || suffix[0] == '2'))
+                var l_後半 = p_ID[(l_空白位置 + 1)..];
+                if (l_後半.Length > 1 && l_後半[1] == ':' && (l_後半[0] == '1' || l_後半[0] == '2'))
                 {
-                    return id[..spaceIndex];
+                    return p_ID[..l_空白位置];
                 }
             }
 
             // 旧来の "/1", "/2" 形式。
-            if (id.Length > 2 && id[^2] == '/' && (id[^1] == '1' || id[^1] == '2'))
+            if (p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2'))
             {
-                return id[..^2];
+                return p_ID[..^2];
             }
 
             // "/A", "/B" のような表記に対応する亜種も一応見ておく。
-            return id.Length > 2 && id[^2] == '/' && (id[^1] == 'A' || id[^1] == 'B') ? id[..^2] : id;
+            return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
         }
     }
 }

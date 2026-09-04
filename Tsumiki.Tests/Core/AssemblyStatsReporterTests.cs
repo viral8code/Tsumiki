@@ -1,4 +1,4 @@
-using Tsumiki.Core;
+﻿using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
 {
@@ -7,26 +7,26 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Compute_EmptyInput_ReturnsAllZeros()
         {
-            var stats = AssemblyStatsReporter.Compute([]);
+            var stats = AssemblyStatsReporter.Get_統計([]);
 
-            Assert.Equal(0, stats.SequenceCount);
-            Assert.Equal(0, stats.TotalLength);
-            Assert.Equal(0, stats.N50);
-            Assert.Equal(0, stats.L50);
-            Assert.Equal(0, stats.GcPercent);
+            Assert.Equal(0, stats.A_配列数);
+            Assert.Equal(0, stats.A_総延長);
+            Assert.Equal(0, stats.A_N50);
+            Assert.Equal(0, stats.A_L50);
+            Assert.Equal(0, stats.A_GC率);
         }
 
         [Fact]
         public void Compute_SingleSequence_N50EqualsItsLength()
         {
-            var stats = AssemblyStatsReporter.Compute(["ACGTACGTAC"]);
+            var stats = AssemblyStatsReporter.Get_統計(["ACGTACGTAC"]);
 
-            Assert.Equal(1, stats.SequenceCount);
-            Assert.Equal(10, stats.TotalLength);
-            Assert.Equal(10, stats.N50);
-            Assert.Equal(1, stats.L50);
-            Assert.Equal(10, stats.MaxLength);
-            Assert.Equal(10, stats.MinLength);
+            Assert.Equal(1, stats.A_配列数);
+            Assert.Equal(10, stats.A_総延長);
+            Assert.Equal(10, stats.A_N50);
+            Assert.Equal(1, stats.A_L50);
+            Assert.Equal(10, stats.A_最大長);
+            Assert.Equal(10, stats.A_最小長);
         }
 
         [Fact]
@@ -48,23 +48,23 @@ namespace Tsumiki.Tests.Core
                 new string('A', 10),
             ];
 
-            var stats = AssemblyStatsReporter.Compute(sequences);
+            var stats = AssemblyStatsReporter.Get_統計(sequences);
 
-            Assert.Equal(10, stats.SequenceCount);
-            Assert.Equal(550, stats.TotalLength);
-            Assert.Equal(70, stats.N50);
-            Assert.Equal(4, stats.L50);
-            Assert.Equal(100, stats.MaxLength);
-            Assert.Equal(10, stats.MinLength);
+            Assert.Equal(10, stats.A_配列数);
+            Assert.Equal(550, stats.A_総延長);
+            Assert.Equal(70, stats.A_N50);
+            Assert.Equal(4, stats.A_L50);
+            Assert.Equal(100, stats.A_最大長);
+            Assert.Equal(10, stats.A_最小長);
         }
 
         [Fact]
         public void Compute_GcPercent_IgnoresNRunsAndIsCaseInsensitive()
         {
             // G/C: 4, A/T: 4, N: 2 -> GC% は N を除いた8塩基中4塩基 = 50%。
-            var stats = AssemblyStatsReporter.Compute(["ggccaattNN"]);
+            var stats = AssemblyStatsReporter.Get_統計(["ggccaattNN"]);
 
-            Assert.Equal(50.0, stats.GcPercent, precision: 6);
+            Assert.Equal(50.0, stats.A_GC率, precision: 6);
         }
 
         [Fact]
@@ -75,10 +75,10 @@ namespace Tsumiki.Tests.Core
             {
                 File.WriteAllText(path, ">seq1\nACGTACGTAC\n>seq2\nACGT\n");
 
-                var stats = AssemblyStatsReporter.ComputeFromFasta(path);
+                var stats = AssemblyStatsReporter.Get_統計_FASTA(path);
 
-                Assert.Equal(2, stats.SequenceCount);
-                Assert.Equal(14, stats.TotalLength);
+                Assert.Equal(2, stats.A_配列数);
+                Assert.Equal(14, stats.A_総延長);
             }
             finally
             {

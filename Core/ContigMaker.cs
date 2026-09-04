@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
@@ -8,856 +8,788 @@ namespace Tsumiki.Core
 {
     internal class ContigMaker
     {
-        // 同一 k-mer が複数の unitig にまたがって出現した(=リピート配列等に
-        // 由来する曖昧な k-mer である)ことを示すセンチネル値。
+        // 同一 k-mer が複数の unitig にまたがって出現した(=反復配列等に
+        // 由来する曖昧な k-mer である)ことを示す番兵値。
         // unitig ID は 1 始まりの正数、逆鎖側はその負数を使うため int.MinValue と衝突しない。
-        private const int AmbiguousKmer = int.MinValue;
+        private const int 曖昧kmerの番兵 = int.MinValue;
 
         // 値は (符号付きunitig ID, そのunitig内でのk-mer開始位置(0始まり、
-        // 符号が示す向きの座標系))。位置情報は FindDominantUnitig が
+        // 符号が示す向きの座標系))。位置情報は代表ユニティグの判定が
         // 「read内での最後のヒット位置」ではなく「unitig内での最後のヒット
         // 位置」を正しく求めるために必要(ギャップ長・インサートサイズ推定に使う)。
-        private readonly Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict;
+        private readonly Dictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> _kmer辞書;
 
         // unitig ID(1始まり) -> unitig の塩基長。ギャップ長推定で
         // 「unitig の末尾からリードのヒット位置までの残り長」を求めるのに使う。
-        private readonly Dictionary<int, int> unitigLengths;
+        private readonly Dictionary<int, int> _ユニティグ長;
 
-        private readonly string unitigFilePath;
+        private readonly string _ユニティグファイルパス;
 
         // 単一リード内で直接検出された隣接(=k-1塩基のオーバーラップで
-        // 実際に結合できる可能性が高いエッジ)。UniteContigs はこちらのみを使う。
-        private readonly Dictionary<(int, int), ulong> kmerPath;
+        // 実際に結合できる可能性が高い辺)。
+        private readonly Dictionary<(int, int), ulong> _リード隣接;
 
         // ペアエンド情報(read1/read2 がそれぞれ別 unitig にマップされたこと)由来の
-        // 隣接候補。キーは kmerPath と同じ (from, to) 形式(符号がunitigの向きを表す)。
-        // 値は「観測されたペアの一覧」で、count(サポート数)に加えて各観測ごとの
-        // ギャップ長推定値を保持し、Scaffolder 側で代表値(中央値)を計算できるようにする。
-        private readonly Dictionary<(int, int), List<int>> pairPath;
+        // 隣接候補。キーは リード隣接 と同じ (始点, 終点) 形式(符号がunitigの向きを表す)。
+        // 値は「観測されたペアの一覧」で、各観測ごとの既知長を保持し、
+        // Scaffolder 側で代表値(中央値)を計算できるようにする。
+        private readonly Dictionary<(int, int), List<int>> _ペア経路;
 
-        public ContigMaker(string unitigFilePath)
+        // unitig ID(1始まり) -> その unitig が最終的にどの contig の
+        // どの位置に配置されたか。contig 結合の実行後、Scaffolder から参照される。
+        private readonly Dictionary<int, ユニティグ配置> _ユニティグ配置 = [];
+
+        public ContigMaker(string p_ユニティグファイルパス)
         {
-            this.unitigFilePath = unitigFilePath;
-            this.kmerDict = [];
-            this.unitigLengths = [];
-            this.kmerPath = [];
-            this.pairPath = [];
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            using FastaReader reader = new(unitigFilePath);
-            var id = 1;
-            var skippedShortUnitigs = 0;
-            var ambiguousCount = 0;
-            while (reader.HasNext())
+            this._ユニティグファイルパス = p_ユニティグファイルパス;
+            this._kmer辞書 = [];
+            this._ユニティグ長 = [];
+            this._リード隣接 = [];
+            this._ペア経路 = [];
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            using FastaReader l_読み込み = new(p_ユニティグファイルパス);
+            var l_ID = 1;
+            var l_短すぎるユニティグ数 = 0;
+            var l_曖昧数 = 0;
+            while (l_読み込み.Get_続きがあるか())
             {
-                var unitig = reader.NextSequence();
-                this.unitigLengths[id] = unitig.Seq.Length;
-                if (unitig.Seq.Length < kmerLength)
+                var l_ユニティグ = l_読み込み.Get_次の配列();
+                this._ユニティグ長[l_ID] = l_ユニティグ.A_配列.Length;
+                if (l_ユニティグ.A_配列.Length < l_k長)
                 {
                     // k-mer 長より短い unitig は本来 k-mer を1つも持てないため、
-                    // kmerDict に登録できずリードマッピングの対象から漏れる。
-                    // (unitig 自体は MaximumUnitigCount との兼ね合いで一定数生じうる。)
+                    // 辞書に登録できずリードマッピングの対象から漏れる。
                     // 完全な解決にはより短い k-mer での再マッピング等が必要だが、
-                    // ここでは少なくとも「登録が1件もされないまま黙って id が進む」
+                    // ここでは少なくとも「登録が1件もされないまま黙って ID が進む」
                     // 状態を可視化するためカウントしておく。
-                    skippedShortUnitigs++;
-                    id++;
+                    l_短すぎるユニティグ数++;
+                    l_ID++;
                     continue;
                 }
-                for (var i = kmerLength; i <= unitig.Seq.Length; i++)
+                for (var i = l_k長; i <= l_ユニティグ.A_配列.Length; i++)
                 {
-                    var startPos = i - kmerLength;
-                    var key = new KmerKey(unitig.Seq.AsSpan(startPos, kmerLength));
-                    var revKey = key.ReverseComprement();
-                    // revKey は unitig 全体を逆相補した(=逆鎖の向きで読んだ)場合の
-                    // 配列に対応する。区間 [startPos, startPos+kmerLength) を
-                    // 長さ L の配列の逆側に写すと [L-i, L-startPos) になるため、
+                    var l_開始位置 = i - l_k長;
+                    var l_キー = new KmerKey(l_ユニティグ.A_配列.AsSpan(l_開始位置, l_k長));
+                    var l_逆鎖キー = l_キー.Get_逆相補();
+                    // 逆鎖キーは unitig 全体を逆相補した(=逆鎖の向きで読んだ)場合の
+                    // 配列に対応する。区間 [開始位置, 開始位置+k長) を
+                    // 長さ L の配列の逆側に写すと [L-i, L-開始位置) になるため、
                     // 逆鎖側での開始位置は L-i。
-                    var revStartPos = unitig.Seq.Length - i;
-                    ambiguousCount += RegisterKmer(this.kmerDict, key, id, startPos);
-                    ambiguousCount += RegisterKmer(this.kmerDict, revKey, -id, revStartPos);
+                    var l_逆鎖開始位置 = l_ユニティグ.A_配列.Length - i;
+                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー, l_ID, l_開始位置);
+                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_逆鎖キー, -l_ID, l_逆鎖開始位置);
                 }
-                id++;
+                l_ID++;
             }
-            if (skippedShortUnitigs > 0)
+            if (l_短すぎるユニティグ数 > 0)
             {
-                Console.WriteLine($"[Warning] {skippedShortUnitigs} unitig(s) shorter than k-mer length were skipped in mapping.");
+                Console.WriteLine($"[Warning] {l_短すぎるユニティグ数} unitig(s) shorter than k-mer length were skipped in mapping.");
             }
-            if (ambiguousCount > 0)
+            if (l_曖昧数 > 0)
             {
-                Console.WriteLine($"[Warning] {ambiguousCount} k-mer registration(s) were ambiguous (shared by multiple unitigs) and will be ignored during mapping.");
+                Console.WriteLine($"[Warning] {l_曖昧数} k-mer registration(s) were ambiguous (shared by multiple unitigs) and will be ignored during mapping.");
             }
         }
 
         /// <summary>
-        /// kmerDict へ1件登録する。既に別の unitig ID が登録されていた場合、
+        /// k-mer辞書へ1件登録する。既に別の unitig ID が登録されていた場合、
         /// そのままでは後勝ちで上書きされてしまい、実際には異なる unitig 由来の
         /// リードが同じ ID にマップされたかのように誤って隣接関係を作ってしまう。
-        /// これを防ぐため、衝突した k-mer は AmbiguousKmer としてマークし、
+        /// これを防ぐため、衝突した k-mer は曖昧としてマークし、
         /// マッピング時にはヒットとして扱わないようにする。
         /// 戻り値: 新たに曖昧マークを付けた場合は 1、そうでなければ 0。
         /// </summary>
-        private static int RegisterKmer(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
+        private static int V_登録_kmer(
+            Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
-            if (dict.TryGetValue(key, out var existing))
+            if (p_辞書.TryGetValue(p_キー, out var l_既存))
             {
-                if (existing.Item1 == AmbiguousKmer || existing.Item1 == id)
+                if (l_既存.Item1 == 曖昧kmerの番兵 || l_既存.Item1 == p_ID)
                 {
                     return 0;
                 }
-                dict[key] = (AmbiguousKmer, 0);
+                p_辞書[p_キー] = (曖昧kmerの番兵, 0);
                 return 1;
             }
-            dict[key] = (id, position);
+            p_辞書[p_キー] = (p_ID, p_位置);
             return 0;
         }
 
-        public void MappingRead(string readPath)
+        public void V_マッピング_リード(string p_リードパス)
         {
-            var threadCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            // kmerDict は構築後に変更されない読み取り専用データなので、
+            // k-mer辞書 は構築後に変更されない読み取り専用データなので、
             // 複数スレッドから安全に参照できる。
-            // kmerPath への書き込みはスレッドごとにローカルな辞書に集計し、
-            // 最後にメインの kmerPath へマージすることでロックを避ける。
-            var localPaths = new Dictionary<(int, int), ulong>[threadCount];
-            for (var i = 0; i < threadCount; i++)
+            // 隣接への書き込みはスレッドごとにローカルな辞書に集計し、
+            // 最後にマージすることでロックを避ける。
+            var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
+            for (var i = 0; i < l_スレッド数; i++)
             {
-                localPaths[i] = [];
+                l_ローカル隣接[i] = [];
             }
 
-            using (var queue = new BlockingCollection<string>(boundedCapacity: threadCount * 256))
+            using (var l_キュー = new BlockingCollection<string>(boundedCapacity: l_スレッド数 * 256))
             {
-                var workers = new Task[threadCount];
-                for (var w = 0; w < threadCount; w++)
+                var l_ワーカー = new Task[l_スレッド数];
+                for (var w = 0; w < l_スレッド数; w++)
                 {
-                    var workerIndex = w;
-                    workers[w] = Task.Run(() =>
+                    var l_ワーカー番号 = w;
+                    l_ワーカー[w] = Task.Run(() =>
                     {
-                        var local = localPaths[workerIndex];
-                        foreach (var read in queue.GetConsumingEnumerable())
+                        var l_ローカル = l_ローカル隣接[l_ワーカー番号];
+                        foreach (var l_リード in l_キュー.GetConsumingEnumerable())
                         {
-                            this.MapSingleRead(read, local);
+                            this.V_マッピング_1リード(l_リード, l_ローカル);
                         }
                     });
                 }
 
-                using (var reader = new FastqReader(readPath))
+                using (var l_読み込み = new FastqReader(p_リードパス))
                 {
-                    while (reader.HasNext())
+                    while (l_読み込み.Get_続きがあるか())
                     {
-                        var read = reader.NextRead().RowRead;
-                        queue.Add(read);
+                        l_キュー.Add(l_読み込み.Get_次のリード().A_生リード);
                     }
                 }
-                queue.CompleteAdding();
+                l_キュー.CompleteAdding();
 
-                Task.WaitAll(workers);
+                Task.WaitAll(l_ワーカー);
             }
 
-            // 各ワーカーのローカル集計結果をメインの kmerPath へマージする。
-            foreach (var local in localPaths)
+            foreach (var l_ローカル in l_ローカル隣接)
             {
-                foreach (var (pathKey, value) in local)
+                foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    this.kmerPath[pathKey] = this.kmerPath.TryGetValue(pathKey, out var existing) ? existing + value : value;
+                    this._リード隣接[l_キー] =
+                        this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
                 }
             }
         }
 
         /// <summary>
         /// ペアエンドリードの情報を使って unitig 間の隣接関係を検出する。
-        /// 単一リード内で複数 unitig をまたぐ場合(MappingRead と同様)に加え、
+        /// 単一リード内で複数 unitig をまたぐ場合に加え、
         /// read1 と read2 がそれぞれ別々の unitig に(単独で)マップされた場合も、
-        /// 「インサートサイズ程度の距離で隣接している」という情報として pairPath に
-        /// 追加登録する。これにより、unitig 長がリード長よりずっと長く
-        /// 単一リードでは境界をまたげないケースでも隣接関係を検出できる。
+        /// 「インサートサイズ程度の距離で隣接している」という情報として記録する。
+        /// これにより、unitig 長がリード長よりずっと長く単一リードでは境界を
+        /// またげないケースでも隣接関係を検出できる。
         ///
         /// read1/read2 が本当にペアであることを、リード ID の対応(/1,/2 や
-        /// Casava 1.8+ の "1:.../2:..." 記法)で検証する。対応が取れない場合は
-        /// 警告を出し、そのペアはペアエンド由来の隣接検出をスキップする
+        /// Casava 1.8+ の記法)で検証する。対応が取れない場合は警告を出し、
+        /// そのペアはペアエンド由来の隣接検出をスキップする
         /// (単一リード内の隣接検出は通常どおり行う)。
         /// </summary>
-        public void MappingPairedReads(string readPath1, string readPath2)
+        public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス)
         {
-            var threadCount = Math.Max(1, ConfigurationManager.Arguments.ThreadCount);
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            var localPaths = new Dictionary<(int, int), ulong>[threadCount];
-            // localPairPaths: (from,to) -> このワーカーで観測した各ペアの
-            // 「未読了長の合計(read1側残り長 + read2側残り長)」のリスト。
-            // Scaffolder はこれと InsertSize から
-            // gap = InsertSize - (read1側残り長 + read2側残り長) を計算する。
-            var localPairPaths = new Dictionary<(int, int), List<int>>[threadCount];
+            var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
+            // ローカルペア経路: (始点,終点) -> このワーカーで観測した各ペアの
+            // 「既に見えている長さ」のリスト。
+            var l_ローカルペア経路 = new Dictionary<(int, int), List<int>>[l_スレッド数];
             // インサートサイズ自動推定用: 両リードが同一unitigに単独マップされた
-            // ペアについて、そのunitig内での距離をサンプリングする。
+            // ペアについて、そのunitig内での距離を標本抽出する。
             // ライブラリの向きの組み合わせ(FR/RF/FF/RR)を決め打ちできないため、
             // 「符号が一致するヒット」と「符号が不一致のヒット」を別々に集計し、
-            // 全体マージ後にサンプル数が多い方を採用する。
-            var localSameOrientationSampleLists = new List<int>[threadCount];
-            var localOppositeOrientationSampleLists = new List<int>[threadCount];
-            for (var i = 0; i < threadCount; i++)
+            // 全体マージ後に標本数が多い方を採用する。
+            var l_ローカル同一向き標本 = new List<int>[l_スレッド数];
+            var l_ローカル逆向き標本 = new List<int>[l_スレッド数];
+            for (var i = 0; i < l_スレッド数; i++)
             {
-                localPaths[i] = [];
-                localPairPaths[i] = [];
-                localSameOrientationSampleLists[i] = [];
-                localOppositeOrientationSampleLists[i] = [];
+                l_ローカル隣接[i] = [];
+                l_ローカルペア経路[i] = [];
+                l_ローカル同一向き標本[i] = [];
+                l_ローカル逆向き標本[i] = [];
             }
 
-            using (var queue = new BlockingCollection<(string Read1, string Read2)>(boundedCapacity: threadCount * 256))
+            using (var l_キュー = new BlockingCollection<(string A_リード1, string A_リード2)>(boundedCapacity: l_スレッド数 * 256))
             {
-                var workers = new Task[threadCount];
-                for (var w = 0; w < threadCount; w++)
+                var l_ワーカー = new Task[l_スレッド数];
+                for (var w = 0; w < l_スレッド数; w++)
                 {
-                    var workerIndex = w;
-                    workers[w] = Task.Run(() =>
+                    var l_ワーカー番号 = w;
+                    l_ワーカー[w] = Task.Run(() =>
                     {
-                        var local = localPaths[workerIndex];
-                        var localPair = localPairPaths[workerIndex];
-                        var localSameOrientationSamples = localSameOrientationSampleLists[workerIndex];
-                        var localOppositeOrientationSamples = localOppositeOrientationSampleLists[workerIndex];
-                        foreach (var (read1, read2) in queue.GetConsumingEnumerable())
+                        var l_ローカル = l_ローカル隣接[l_ワーカー番号];
+                        var l_ローカルペア = l_ローカルペア経路[l_ワーカー番号];
+                        var l_同一向き = l_ローカル同一向き標本[l_ワーカー番号];
+                        var l_逆向き = l_ローカル逆向き標本[l_ワーカー番号];
+                        foreach (var (l_リード1, l_リード2) in l_キュー.GetConsumingEnumerable())
                         {
-                            // 単一リード内の隣接検出は従来どおり両方に対して行う。
-                            // (直接オーバーラップで結合できる可能性が高いエッジ。)
-                            this.MapSingleRead(read1, local);
-                            this.MapSingleRead(read2, local);
+                            // 単一リード内の隣接検出は両方に対して行う。
+                            // (直接オーバーラップで結合できる可能性が高い辺。)
+                            this.V_マッピング_1リード(l_リード1, l_ローカル);
+                            this.V_マッピング_1リード(l_リード2, l_ローカル);
 
                             // ペアエンド情報による隣接検出: それぞれのリードが
                             // 単独でどの unitig にマップされるかを求め、
                             // 異なる unitig であれば「インサートサイズ程度の
                             // 距離で隣接している」という弱い証拠として記録する。
                             // こちらは直接のオーバーラップを保証しないため、
-                            // kmerPath とは別の localPair に集計する。
-                            var hit1 = this.FindDominantUnitig(read1);
-                            var hit2 = this.FindDominantUnitig(read2);
+                            // リード隣接とは別に集計する。
+                            var l_ヒット1 = this.Get_代表ユニティグ(l_リード1);
+                            var l_ヒット2 = this.Get_代表ユニティグ(l_リード2);
 
-                            if (hit1.UnitigId != 0 && hit2.UnitigId != 0 && Math.Abs(hit1.UnitigId) == Math.Abs(hit2.UnitigId))
+                            if (l_ヒット1.A_ユニティグID != 0 && l_ヒット2.A_ユニティグID != 0
+                                && Math.Abs(l_ヒット1.A_ユニティグID) == Math.Abs(l_ヒット2.A_ユニティグID))
                             {
-                                // 両リードが同一unitigにマップされた場合、
-                                // インサートサイズの実測サンプルとして使える。
-                                //
-                                // hit1/hit2 の LastMatchEndOffset は、それぞれの
-                                // ヒット自身の符号が示す向きの座標系(順鎖なら
-                                // unitig先頭起点、逆鎖ならunitigを逆相補した
-                                // 向きの起点)で測られている。符号が一致しない
-                                // (=一方は順鎖、他方は逆鎖でヒットした)場合、
-                                // 座標系が異なる2つの値をそのまま引き算しても
-                                // 意味のある距離にはならない。ToForwardFrame で
-                                // 両方を共通の(順鎖)座標系に変換してから
-                                // 差を取る(順鎖同士・逆鎖同士の場合はこの変換は
-                                // 距離を変えないため、常にこの経路で問題ない)。
-                                //
-                                // ペアエンドライブラリの向きの組み合わせ(FR/RF/FF/RR)は
-                                // シーケンサ・ライブラリ調製方法に依存し、コード側で
-                                // 一方を「正しい配置」と決め打ちすることはできない。
-                                // そのため、符号が一致(同じ向き同士でヒット)する
-                                // ケースと不一致(互いに逆向きでヒット)するケースの
-                                // 両方についてサンプルを集めておき、実際にどちらが
-                                // 多数派かを全ワーカー分集計してから判断する
-                                // (このメソッドの最後で多数派側だけを採用する)。
-                                // ToForwardFrame は「そのヒットの向きで見た既知長」を
-                                // 順鎖座標へ写した値、すなわち順鎖から見たリードの
-                                // 「内側の端」の座標になる。したがって2つの差は
-                                // フラグメント長ではなく、2リードに挟まれた内側の
-                                // 未読区間(inner distance)の長さである。
-                                //
-                                // 実データ(150bpリード・IS350ライブラリ)で
-                                // この差の中央値が58になり、リード長150bpより
-                                // 短いという物理的にありえない推定値になっていた。
-                                // 内側距離 d と真のフラグメント長 F の関係は
-                                // FR配置で F = d + len(read1) + len(read2) であり、
-                                // 58 + 150 + 150 = 358 でライブラリ名(IS350)と一致する。
-                                // ここで両リード長を足し戻し、以降の推定値が
-                                // 一貫して「フラグメント長」の単位になるようにする。
-                                if ((hit1.UnitigId > 0) == (hit2.UnitigId > 0))
-                                {
-                                    // 同じ向き同士(FF/RR相当)。両リードの内側の端は
-                                    // どちらも同じ側を向いているため、差は
-                                    // 「開始位置の差」に相当する。下流側リード1本分を
-                                    // 足すとフラグメント長になる。
-                                    var offsetDistance = Math.Abs(ToForwardFrame(hit1) - ToForwardFrame(hit2));
-                                    var fragment = offsetDistance + Math.Max(read1.Length, read2.Length);
-                                    if (fragment > 0)
-                                    {
-                                        localSameOrientationSamples.Add(fragment);
-                                    }
-                                }
-                                else
-                                {
-                                    // 互いに逆向き(FR相当、Illuminaペアエンドの通常配置)。
-                                    // 順鎖側ヒットのリードがフラグメントの左端、
-                                    // 逆鎖側ヒットのリードが右端を占める。
-                                    var hit1IsForward = hit1.UnitigId > 0;
-                                    var forwardEnd = ToForwardFrame(hit1IsForward ? hit1 : hit2);
-                                    var reverseStart = ToForwardFrame(hit1IsForward ? hit2 : hit1);
-                                    var forwardReadLength = hit1IsForward ? read1.Length : read2.Length;
-                                    var reverseReadLength = hit1IsForward ? read2.Length : read1.Length;
-
-                                    // フラグメントの左端 = 順鎖リードの開始位置、
-                                    // 右端 = 逆鎖リードの終了位置。
-                                    var fragment = (reverseStart + reverseReadLength) - (forwardEnd - forwardReadLength);
-                                    if (fragment > 0)
-                                    {
-                                        localOppositeOrientationSamples.Add(fragment);
-                                    }
-                                }
+                                V_収集_同一ユニティグ標本(l_ヒット1, l_ヒット2, l_リード1, l_リード2, l_同一向き, l_逆向き);
                             }
-                            else if (hit1.UnitigId != 0 && hit2.UnitigId != 0 && hit1.UnitigId != hit2.UnitigId)
+                            else if (l_ヒット1.A_ユニティグID != 0 && l_ヒット2.A_ユニティグID != 0
+                                && l_ヒット1.A_ユニティグID != l_ヒット2.A_ユニティグID)
                             {
-                                // read2 はリード分子の逆鎖側から読まれるため、
-                                // read1 の向きに揃えるには read2 の逆相補鎖が
-                                // 実際に「read1 の下流」に来る、という関係になる。
-                                // read2 自体でヒットした unitig ID の符号を反転させ、
-                                // read1 の向きに揃えたうえでペアを記録する。
-                                var pathKey = (hit1.UnitigId, -hit2.UnitigId);
-
-                                // ギャップ長推定に使う「未読了長」を計算する。
-                                // unitig1 は hit1.UnitigId の符号の向きで見て、
-                                // 読み取り済み末端(LastMatchEndOffset)から
-                                // unitig の終端までの残り長(RemainingLength)が
-                                // ギャップ側に残る未知区間の長さになる。
-                                // unitig2 は pathKey.Item2(=-hit2.UnitigId)の
-                                // 向きで見る必要があるが、hit2 は hit2.UnitigId の
-                                // 向きで計算されているため、符号を反転させた
-                                // 座標系に変換(=前後を入れ替える)する必要がある。
-                                var remaining1 = hit1.RemainingLength;
-                                var remaining2 = FlipOffsetToRemaining(hit2);
-
-                                // 記録するのは「フラグメントのうち、2つのunitigの
-                                // 内側に既に見えている分の長さ」:
-                                //   read1の長さ + unitig1末端までの残り
-                                //   + unitig2先頭からの残り + read2の長さ
-                                // 未知区間(ギャップ)長を G とすると
-                                //   フラグメント長 = この値 + G
-                                // という関係が常に成り立つ(直接k-1で結合された
-                                // 場合は G = -(k-1))。
-                                //
-                                // 以前は read1/read2 の長さを含めない
-                                // remaining1 + remaining2 だけを記録していたため、
-                                // ここから逆算されるインサートサイズもギャップ長も
-                                // 両リード長ぶん(実データで300bp)ずれていた。
-                                var pairLocal = localPair;
-                                var spannedLength = remaining1 + remaining2 + read1.Length + read2.Length;
-                                if (pairLocal.TryGetValue(pathKey, out var list))
-                                {
-                                    list.Add(spannedLength);
-                                }
-                                else
-                                {
-                                    pairLocal[pathKey] = [spannedLength];
-                                }
+                                V_収集_ペア経路(l_ヒット1, l_ヒット2, l_リード1, l_リード2, l_ローカルペア);
                             }
                         }
                     });
                 }
 
-                using (var reader1 = new FastqReader(readPath1))
-                using (var reader2 = new FastqReader(readPath2))
+                using (var l_読み込み1 = new FastqReader(p_リード1のパス))
+                using (var l_読み込み2 = new FastqReader(p_リード2のパス))
                 {
-                    var mismatchWarned = false;
-                    while (reader1.HasNext() && reader2.HasNext())
+                    var l_不一致を警告済みか = false;
+                    while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
                     {
-                        var data1 = reader1.NextRead();
-                        var data2 = reader2.NextRead();
+                        var l_データ1 = l_読み込み1.Get_次のリード();
+                        var l_データ2 = l_読み込み2.Get_次のリード();
 
-                        var base1 = Util.GetPairedReadBaseId(data1.ID);
-                        var base2 = Util.GetPairedReadBaseId(data2.ID);
-                        if (base1 != base2)
+                        var l_共通ID1 = Util.Get_ペア共通ID(l_データ1.A_ID);
+                        var l_共通ID2 = Util.Get_ペア共通ID(l_データ2.A_ID);
+                        if (l_共通ID1 != l_共通ID2)
                         {
-                            if (!mismatchWarned)
+                            if (!l_不一致を警告済みか)
                             {
-                                Console.WriteLine($"[Warning] Paired read IDs do not match at this position (\"{data1.ID}\" vs \"{data2.ID}\"). " +
+                                Console.WriteLine($"[Warning] Paired read IDs do not match at this position (\"{l_データ1.A_ID}\" vs \"{l_データ2.A_ID}\"). " +
                                     "Paired-end adjacency detection may be unreliable for reads after this point; " +
                                     "single-read adjacency detection is unaffected.");
-                                mismatchWarned = true;
+                                l_不一致を警告済みか = true;
                             }
                             // ペアが崩れている場合でも、単一リードとしての処理は続行する。
                             // (お互いを誤ってペアとして扱わないよう、キューには
                             //  「ペアなし」を示す空文字を積む。)
-                            queue.Add((data1.RowRead, string.Empty));
-                            queue.Add((data2.RowRead, string.Empty));
+                            l_キュー.Add((l_データ1.A_生リード, string.Empty));
+                            l_キュー.Add((l_データ2.A_生リード, string.Empty));
                             continue;
                         }
 
-                        queue.Add((data1.RowRead, data2.RowRead));
+                        l_キュー.Add((l_データ1.A_生リード, l_データ2.A_生リード));
                     }
 
                     // 片方のファイルだけ残っている場合は単一リードとして処理する。
-                    while (reader1.HasNext())
+                    while (l_読み込み1.Get_続きがあるか())
                     {
-                        queue.Add((reader1.NextRead().RowRead, string.Empty));
+                        l_キュー.Add((l_読み込み1.Get_次のリード().A_生リード, string.Empty));
                     }
-                    while (reader2.HasNext())
+                    while (l_読み込み2.Get_続きがあるか())
                     {
-                        queue.Add((reader2.NextRead().RowRead, string.Empty));
+                        l_キュー.Add((l_読み込み2.Get_次のリード().A_生リード, string.Empty));
                     }
                 }
-                queue.CompleteAdding();
+                l_キュー.CompleteAdding();
 
-                Task.WaitAll(workers);
+                Task.WaitAll(l_ワーカー);
             }
 
-            foreach (var local in localPaths)
+            foreach (var l_ローカル in l_ローカル隣接)
             {
-                foreach (var (pathKey, value) in local)
+                foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    this.kmerPath[pathKey] = this.kmerPath.TryGetValue(pathKey, out var existing) ? existing + value : value;
+                    this._リード隣接[l_キー] =
+                        this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
                 }
             }
 
-            foreach (var localPair in localPairPaths)
+            foreach (var l_ローカルペア in l_ローカルペア経路)
             {
-                foreach (var (pathKey, values) in localPair)
+                foreach (var (l_キー, l_値群) in l_ローカルペア)
                 {
-                    if (this.pairPath.TryGetValue(pathKey, out var list))
+                    if (this._ペア経路.TryGetValue(l_キー, out var l_一覧))
                     {
-                        list.AddRange(values);
+                        l_一覧.AddRange(l_値群);
                     }
                     else
                     {
-                        this.pairPath[pathKey] = [.. values];
+                        this._ペア経路[l_キー] = [.. l_値群];
                     }
                 }
             }
 
-            // 「符号一致」「符号不一致」それぞれの総サンプル数を集計し、
-            // 多数派の側だけを実際のライブラリ配置として InsertSizeSamples に採用する。
+            // 「符号一致」「符号不一致」それぞれの総標本数を集計し、
+            // 多数派の側だけを実際のライブラリ配置として採用する。
             // 少数派側は測定ノイズ・誤マッピング・稀な異常配置とみなして捨てる。
-            var sameOrientationTotal = localSameOrientationSampleLists.Sum(l => l.Count);
-            var oppositeOrientationTotal = localOppositeOrientationSampleLists.Sum(l => l.Count);
+            var l_同一向き合計 = l_ローカル同一向き標本.Sum(x => x.Count);
+            var l_逆向き合計 = l_ローカル逆向き標本.Sum(x => x.Count);
 
-            IEnumerable<List<int>> chosenLists;
-            string chosenLabel;
-            if (sameOrientationTotal == 0 && oppositeOrientationTotal == 0)
+            IEnumerable<List<int>> l_採用する標本群;
+            string l_採用ラベル;
+            if (l_同一向き合計 == 0 && l_逆向き合計 == 0)
             {
-                chosenLists = [];
-                chosenLabel = "none";
+                l_採用する標本群 = [];
+                l_採用ラベル = "none";
             }
-            else if (sameOrientationTotal >= oppositeOrientationTotal)
+            else if (l_同一向き合計 >= l_逆向き合計)
             {
-                chosenLists = localSameOrientationSampleLists;
-                chosenLabel = "same-orientation";
+                l_採用する標本群 = l_ローカル同一向き標本;
+                l_採用ラベル = "same-orientation";
             }
             else
             {
-                chosenLists = localOppositeOrientationSampleLists;
-                chosenLabel = "opposite-orientation";
+                l_採用する標本群 = l_ローカル逆向き標本;
+                l_採用ラベル = "opposite-orientation";
             }
 
-            var sameUnitigSamples = new List<int>();
-            foreach (var samples in chosenLists)
+            var l_同一ユニティグ標本 = new List<int>();
+            foreach (var l_標本 in l_採用する標本群)
             {
-                sameUnitigSamples.AddRange(samples);
+                l_同一ユニティグ標本.AddRange(l_標本);
             }
-            this.InsertSizeSamples.AddRange(sameUnitigSamples);
-            this.SameUnitigInsertSizeSamples.AddRange(sameUnitigSamples);
+            this.A_インサートサイズ標本.AddRange(l_同一ユニティグ標本);
+            this.A_同一ユニティグ標本.AddRange(l_同一ユニティグ標本);
 
-            var pairSupportCount = this.pairPath.Values.Sum(v => v.Count);
-            Console.WriteLine($"[Info] Paired-end adjacency candidates detected: {this.pairPath.Count} edges ({pairSupportCount} supporting pairs total).");
-            Console.WriteLine($"[Info] Same-unitig pair orientation counts: same-orientation={sameOrientationTotal}, opposite-orientation={oppositeOrientationTotal}. Using '{chosenLabel}' as the library's observed orientation for InsertSize estimation ({sameUnitigSamples.Count} samples).");
-            if (sameUnitigSamples.Count > 0)
+            var l_ペア支持数 = this._ペア経路.Values.Sum(x => x.Count);
+            Console.WriteLine($"[Info] Paired-end adjacency candidates detected: {this._ペア経路.Count} edges ({l_ペア支持数} supporting pairs total).");
+            Console.WriteLine($"[Info] Same-unitig pair orientation counts: same-orientation={l_同一向き合計}, opposite-orientation={l_逆向き合計}. Using '{l_採用ラベル}' as the library's observed orientation for InsertSize estimation ({l_同一ユニティグ標本.Count} samples).");
+            if (l_同一ユニティグ標本.Count > 0)
             {
-                // 同一unitig内サンプルは、unitig自体がフラグメント長より短い場合
+                // 同一unitig内標本は、unitig自体がフラグメント長より短い場合
                 // 両端が同じunitig内に収まるペアしか観測できず、より短い
                 // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
-                // resolved-edge由来の中央値(下のCollectInsertSizeSamplesFromMerges
-                // が出力)と比較することで、このバイアスの有無を確認できる。
-                Console.WriteLine($"[Info] Same-unitig fragment-length distribution: {FormatDistribution(sameUnitigSamples)}.");
-                Console.WriteLine($"[Info] Same-unitig fragment-length median: {Median(sameUnitigSamples)} (from {sameUnitigSamples.Count} samples; read lengths added back to the inner distance, so this is a true fragment length. May still be biased short if unitigs are shorter than the true insert size).");
+                Console.WriteLine($"[Info] Same-unitig fragment-length distribution: {Get_分布要約(l_同一ユニティグ標本)}.");
+                Console.WriteLine($"[Info] Same-unitig fragment-length median: {Get_中央値(l_同一ユニティグ標本)} (from {l_同一ユニティグ標本.Count} samples; read lengths added back to the inner distance, so this is a true fragment length. May still be biased short if unitigs are shorter than the true insert size).");
             }
         }
 
-        private static int Median(List<int> values)
-        {
-            var sorted = values.OrderBy(x => x).ToList();
-            var mid = sorted.Count / 2;
-            return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-        }
-
         /// <summary>
-        /// フラグメント長分布の分位点を要約する。中央値だけでは
-        /// 「このライブラリがどれだけの長さのギャップを跨げるか」が分からない。
-        /// リード長の2倍を超える分だけがスキャフォールディングで橋渡しできる
-        /// 未知区間の長さなので、分布の裾(特に上側)が実際の橋渡し能力を決める。
-        /// </summary>
-        private static string FormatDistribution(List<int> values)
-        {
-            var sorted = values.OrderBy(x => x).ToList();
-            int At(double q) => sorted[Math.Clamp((int)(q * (sorted.Count - 1)), 0, sorted.Count - 1)];
-            return $"p1={At(0.01)}, p10={At(0.10)}, p25={At(0.25)}, p50={At(0.50)}, " +
-                $"p75={At(0.75)}, p90={At(0.90)}, p99={At(0.99)}, max={sorted[^1]}";
-        }
-
-        /// <summary>
-        /// hit(ある unitig ID の符号が示す向きで計算された LastMatchEndOffset)を、
-        /// その unitig を「逆向き」に見た座標系での RemainingLength に変換する。
-        /// 元の向きでの RemainingLength(終端までの残り長)が、逆向きで見たときの
-        /// 「先頭からの既知長」に相当するため、逆向きでの RemainingLength は
-        /// 元の向きでの LastMatchEndOffset(先頭からの既知長)がそのまま使える。
+        /// 両リードが同一 unitig にマップされたペアから、フラグメント長の標本を取る。
         ///
-        /// つまり: 向きを反転すると「先頭からの距離」と「末尾からの距離」が
-        /// 入れ替わるので、反転後の RemainingLength = 元の LastMatchEndOffset。
+        /// 順鎖座標への変換が返すのは「そのヒットの向きで見た既知長」を順鎖座標へ
+        /// 写した値、すなわち順鎖から見たリードの「内側の端」の座標になる。
+        /// したがって2つの差はフラグメント長ではなく、2リードに挟まれた内側の
+        /// 未読区間(inner distance)の長さである。
+        ///
+        /// 実データ(150bpリード・IS350ライブラリ)でこの差の中央値が58になり、
+        /// リード長150bpより短いという物理的にありえない推定値になっていた。
+        /// 内側距離 d と真のフラグメント長 F の関係は FR配置で
+        /// F = d + len(read1) + len(read2) であり、58 + 150 + 150 = 358 で
+        /// ライブラリ名(IS350)と一致する。ここで両リード長を足し戻し、
+        /// 以降の推定値が一貫して「フラグメント長」の単位になるようにする。
         /// </summary>
-        private static int FlipOffsetToRemaining(DominantUnitigHit hit)
+        private static void V_収集_同一ユニティグ標本(
+            代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2,
+            string p_リード1, string p_リード2,
+            List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
-            return Math.Max(0, hit.LastMatchEndOffset);
+            if ((p_ヒット1.A_ユニティグID > 0) == (p_ヒット2.A_ユニティグID > 0))
+            {
+                // 同じ向き同士(FF/RR相当)。両リードの内側の端はどちらも
+                // 同じ側を向いているため、差は「開始位置の差」に相当する。
+                // 下流側リード1本分を足すとフラグメント長になる。
+                var l_内側距離 = Math.Abs(Get_順鎖座標(p_ヒット1) - Get_順鎖座標(p_ヒット2));
+                var l_フラグメント長 = l_内側距離 + Math.Max(p_リード1.Length, p_リード2.Length);
+                if (l_フラグメント長 > 0)
+                {
+                    p_同一向き標本.Add(l_フラグメント長);
+                }
+            }
+            else
+            {
+                // 互いに逆向き(FR相当、Illuminaペアエンドの通常配置)。
+                // 順鎖側ヒットのリードがフラグメントの左端、
+                // 逆鎖側ヒットのリードが右端を占める。
+                var l_ヒット1が順鎖か = p_ヒット1.A_ユニティグID > 0;
+                var l_順鎖側の端 = Get_順鎖座標(l_ヒット1が順鎖か ? p_ヒット1 : p_ヒット2);
+                var l_逆鎖側の端 = Get_順鎖座標(l_ヒット1が順鎖か ? p_ヒット2 : p_ヒット1);
+                var l_順鎖側リード長 = l_ヒット1が順鎖か ? p_リード1.Length : p_リード2.Length;
+                var l_逆鎖側リード長 = l_ヒット1が順鎖か ? p_リード2.Length : p_リード1.Length;
+
+                // フラグメントの左端 = 順鎖リードの開始位置、
+                // 右端 = 逆鎖リードの終了位置。
+                var l_フラグメント長 = (l_逆鎖側の端 + l_逆鎖側リード長) - (l_順鎖側の端 - l_順鎖側リード長);
+                if (l_フラグメント長 > 0)
+                {
+                    p_逆向き標本.Add(l_フラグメント長);
+                }
+            }
         }
 
         /// <summary>
-        /// hit の LastMatchEndOffset(hit自身の符号が示す向きの座標系での値)を、
-        /// 常に unitig の「順鎖」座標系での位置に変換する。順鎖ヒットは
-        /// そのまま、逆鎖ヒットは UnitigLength - LastMatchEndOffset に変換する
-        /// (順鎖・逆鎖どちらも同じ変換を経由するため、同じ符号同士を比較する
-        /// 場合でも距離は変わらず、異符号同士の比較でも正しく意味を持つ)。
-        /// 同一unitig上の2ヒット間の距離(インサートサイズ推定)を求める際、
-        /// 座標系を揃えるために使う。
+        /// 両リードが別々の unitig にマップされたペアを、隣接候補として記録する。
+        ///
+        /// read2 はリード分子の逆鎖側から読まれるため、read1 の向きに揃えるには
+        /// read2 の逆相補鎖が実際に「read1 の下流」に来る、という関係になる。
+        /// read2 側でヒットした unitig ID の符号を反転させ、read1 の向きに
+        /// 揃えたうえでペアを記録する。
+        ///
+        /// 記録するのは「フラグメントのうち、2つのunitigの内側に既に見えている分の長さ」:
+        ///   read1の長さ + unitig1末端までの残り + unitig2先頭からの残り + read2の長さ
+        /// 未知区間(ギャップ)長を G とすると
+        ///   フラグメント長 = この値 + G
+        /// という関係が常に成り立つ(直接k-1で結合された場合は G = -(k-1))。
+        ///
+        /// 以前は read1/read2 の長さを含めない残り長だけを記録していたため、
+        /// ここから逆算されるインサートサイズもギャップ長も
+        /// 両リード長ぶん(実データで300bp)ずれていた。
         /// </summary>
-        private static int ToForwardFrame(DominantUnitigHit hit)
+        private static void V_収集_ペア経路(
+            代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2,
+            string p_リード1, string p_リード2,
+            Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
-            return hit.UnitigId > 0 ? hit.LastMatchEndOffset : hit.UnitigLength - hit.LastMatchEndOffset;
+            var l_キー = (p_ヒット1.A_ユニティグID, -p_ヒット2.A_ユニティグID);
+
+            var l_残り1 = p_ヒット1.A_末尾までの残り長;
+            var l_残り2 = Get_反転後の残り長(p_ヒット2);
+            var l_既知長 = l_残り1 + l_残り2 + p_リード1.Length + p_リード2.Length;
+
+            if (p_ローカルペア経路.TryGetValue(l_キー, out var l_一覧))
+            {
+                l_一覧.Add(l_既知長);
+            }
+            else
+            {
+                p_ローカルペア経路[l_キー] = [l_既知長];
+            }
         }
 
         /// <summary>
-        /// InsertSize 自動推定用にサンプリングされた距離のリスト
-        /// (SameUnitigInsertSizeSamples と ResolvedEdgeInsertSizeSamples の結合)。
-        /// 後方互換のため残しているが、Scaffolder はサンプリング元による
-        /// バイアスの違いを考慮するため個別のリストを優先的に参照する。
+        /// ヒット(ある unitig ID の符号が示す向きで計算された最終一致終端位置)を、
+        /// その unitig を「逆向き」に見た座標系での残り長に変換する。
+        /// 元の向きでの残り長(終端までの残り)が、逆向きで見たときの
+        /// 「先頭からの既知長」に相当するため、逆向きでの残り長は
+        /// 元の向きでの最終一致終端位置(先頭からの既知長)がそのまま使える。
         /// </summary>
-        public List<int> InsertSizeSamples { get; } = [];
+        private static int Get_反転後の残り長(代表ユニティグヒット p_ヒット)
+        {
+            return Math.Max(0, p_ヒット.A_最終一致終端位置);
+        }
 
         /// <summary>
-        /// 単一unitig内で両リードがヒットしたペアからのサンプル。
+        /// ヒットの最終一致終端位置(ヒット自身の符号が示す向きの座標系での値)を、
+        /// 常に unitig の「順鎖」座標系での位置に変換する。順鎖ヒットはそのまま、
+        /// 逆鎖ヒットは ユニティグ長 - 最終一致終端位置 に変換する。
+        /// 同一unitig上の2ヒット間の距離を求める際、座標系を揃えるために使う。
+        /// </summary>
+        private static int Get_順鎖座標(代表ユニティグヒット p_ヒット)
+        {
+            return p_ヒット.A_ユニティグID > 0
+                ? p_ヒット.A_最終一致終端位置
+                : p_ヒット.A_ユニティグ長 - p_ヒット.A_最終一致終端位置;
+        }
+
+        /// <summary>
+        /// インサートサイズ自動推定用に標本抽出された距離の一覧
+        /// (同一ユニティグ標本と確定辺標本の結合)。
+        /// 後方互換のため残しているが、Scaffolder は標本の出所による
+        /// バイアスの違いを考慮するため個別の一覧を優先的に参照する。
+        /// </summary>
+        public List<int> A_インサートサイズ標本 { get; } = [];
+
+        /// <summary>
+        /// 単一unitig内で両リードがヒットしたペアからの標本。
         /// unitig自体がフラグメント長より短い場合、両端が収まるペアしか
-        /// 観測できないため、より短いフラグメントに偏りやすい
-        /// (unitigが短いほど顕著)。
+        /// 観測できないため、より短いフラグメントに偏りやすい。
         /// </summary>
-        public List<int> SameUnitigInsertSizeSamples { get; } = [];
+        public List<int> A_同一ユニティグ標本 { get; } = [];
 
         /// <summary>
-        /// unitig同士がk-1オーバーラップで直接結合されたペアからのサンプル。
-        /// SameUnitigInsertSizeSamples のような長さバイアスを受けない。
+        /// unitig同士がk-1オーバーラップで直接結合されたペアからの標本。
+        /// 同一ユニティグ標本のような長さバイアスを受けない。
         /// </summary>
-        public List<int> ResolvedEdgeInsertSizeSamples { get; } = [];
+        public List<int> A_確定辺標本 { get; } = [];
 
         /// <summary>
-        /// ペアエンド由来の隣接候補。キーは (from, to) の unitig ID(符号は向き)、
-        /// 値は各観測ペアのギャップ長推定用「未読了長の合計」のリスト。
-        /// Scaffolder から参照される。
+        /// ペアエンド由来の隣接候補。キーは (始点, 終点) の unitig ID(符号は向き)、
+        /// 値は各観測ペアの既知長の一覧。Scaffolder から参照される。
         /// </summary>
-        public IReadOnlyDictionary<(int, int), List<int>> PairPath => this.pairPath;
+        public IReadOnlyDictionary<(int, int), List<int>> A_ペア経路 => this._ペア経路;
 
         /// <summary>
         /// unitig ID(1始まり、符号なし)からその塩基長を引く。Scaffolder が
         /// contig 側の末端 unitig の長さを参照する際に使う。
         /// </summary>
-        public IReadOnlyDictionary<int, int> UnitigLengths => this.unitigLengths;
+        public IReadOnlyDictionary<int, int> A_ユニティグ長 => this._ユニティグ長;
+
+        public IReadOnlyDictionary<int, ユニティグ配置> A_ユニティグ配置 => this._ユニティグ配置;
 
         /// <summary>
         /// 1本のリードが「代表として」どの unitig にマップされるかを判定する。
         /// リード中で最も安定して(連続して)ヒットし続けた unitig ID に加え、
         /// スキャフォールディングのギャップ長推定に使うための最終ヒット位置も返す。
-        /// どの unitig にもヒットしなかった場合は DominantUnitigHit.None を返す。
+        /// どの unitig にもヒットしなかった場合はヒットなしを返す。
         /// ペアエンドの隣接検出でのみ使用する軽量な単方向スキャン。
         /// </summary>
-        internal DominantUnitigHit FindDominantUnitig(string read)
+        internal 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
         {
-            if (string.IsNullOrEmpty(read))
+            if (string.IsNullOrEmpty(p_リード))
             {
-                return DominantUnitigHit.None;
+                return 代表ユニティグヒット.A_ヒットなし;
             }
 
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            if (read.Length < kmerLength)
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            if (p_リード.Length < l_k長)
             {
-                return DominantUnitigHit.None;
+                return 代表ユニティグヒット.A_ヒットなし;
             }
 
-            var counts = new Dictionary<int, int>();
-            // 各候補 id ごとに、その id として最後にヒットしたk-merの
-            // 「unitig内での」終端位置(exclusive, 0-based, idの符号が示す
-            // 向きの座標系)を記録する。kmerDict が (unitigId, unitig内開始位置)
-            // を保持するようになったため、read内での相対位置ではなく
-            // kmerDict から得た本物のunitig内位置を使う
+            var l_得票 = new Dictionary<int, int>();
+            // 各候補 ID ごとに、その ID として最後にヒットしたk-merの
+            // 「unitig内での」終端位置を記録する。k-mer辞書 が
+            // (unitigID, unitig内開始位置) を保持するようになったため、
+            // read内での相対位置ではなく辞書から得た本物のunitig内位置を使う
             // (以前はread内終端位置をそのままunitig内終端位置として誤用しており、
             //  unitigがread長より十分短い場合はたまたま近い値になり問題が
             //  表面化しにくかったが、unitigが長くなると全く違う値になっていた)。
-            var lastUnitigEndOffset = new Dictionary<int, int>();
-            var badBase = 0;
-            for (var i = 0; i < kmerLength; i++)
+            var l_最終終端位置 = new Dictionary<int, int>();
+            var l_曖昧塩基数 = 0;
+            for (var i = 0; i < l_k長; i++)
             {
-                if (Util.GetNucleotideIDs(read[i]).Count > 1)
+                if (Util.Get_塩基ID候補(p_リード[i]).Count > 1)
                 {
-                    badBase++;
+                    l_曖昧塩基数++;
                 }
             }
-            for (var i = kmerLength; i <= read.Length; i++)
+            for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.GetNucleotideIDs(read[i - kmerLength]).Count > 1)
+                if (Util.Get_塩基ID候補(p_リード[i - l_k長]).Count > 1)
                 {
-                    badBase--;
+                    l_曖昧塩基数--;
                 }
-                if (badBase == 0)
+                if (l_曖昧塩基数 == 0)
                 {
-                    var key = new KmerKey(read.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(key, out var entry) && entry.UnitigId != AmbiguousKmer)
+                    var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
+                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_ユニティグID != 曖昧kmerの番兵)
                     {
-                        var id = entry.UnitigId;
-                        counts[id] = counts.GetValueOrDefault(id) + 1;
-                        lastUnitigEndOffset[id] = entry.Position + kmerLength;
+                        var l_ID = l_項目.A_ユニティグID;
+                        l_得票[l_ID] = l_得票.GetValueOrDefault(l_ID) + 1;
+                        l_最終終端位置[l_ID] = l_項目.A_開始位置 + l_k長;
                     }
                 }
             }
 
-            if (counts.Count == 0)
+            if (l_得票.Count == 0)
             {
-                return DominantUnitigHit.None;
+                return 代表ユニティグヒット.A_ヒットなし;
             }
 
-            var best = 0;
-            var bestCount = 0;
-            foreach (var (id, count) in counts)
+            var l_最良 = 0;
+            var l_最多得票 = 0;
+            foreach (var (l_ID, l_票数) in l_得票)
             {
-                if (count > bestCount)
+                if (l_票数 > l_最多得票)
                 {
-                    best = id;
-                    bestCount = count;
+                    l_最良 = l_ID;
+                    l_最多得票 = l_票数;
                 }
             }
 
-            var unitigId = Math.Abs(best);
-            var unitigLength = this.unitigLengths.GetValueOrDefault(unitigId, 0);
-            var lastMatchEndOffset = lastUnitigEndOffset[best];
-
-            return new DominantUnitigHit(best, bestCount, lastMatchEndOffset, unitigLength);
+            var l_ユニティグ長 = this._ユニティグ長.GetValueOrDefault(Math.Abs(l_最良), 0);
+            return new 代表ユニティグヒット(l_最良, l_最多得票, l_最終終端位置[l_最良], l_ユニティグ長);
         }
 
         /// <summary>
         /// 1リード分の k-mer マッピングを行い、隣接関係を(スレッドローカルな)
-        /// localPath に集計する。並列化前の MappingRead の本体ロジックをそのまま
-        /// 1リード単位の処理として切り出したもの。
+        /// 辞書に集計する。
         /// </summary>
-        private void MapSingleRead(string read, Dictionary<(int, int), ulong> localPath)
+        private void V_マッピング_1リード(string p_リード, Dictionary<(int, int), ulong> p_ローカル隣接)
         {
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             // FASTQ の生リードには N 等の曖昧塩基が混入しうるため、
-            // A/C/G/T のみを前提とする ReverseComprement(string) ではなく
-            // 曖昧塩基を許容する版を使う。曖昧塩基を含む区間の k-mer は
-            // 後段の badBase/revBadBase によるスキップで除外される。
-            var revRead = Util.ReverseComprementAllowAmbiguous(read);
-            var bef = 0;
-            var revBef = 0;
-            var badBase = 0;
-            var revBadBase = 0;
-            for (var i = 0; i < kmerLength; i++)
+            // A/C/G/T のみを前提とする厳密版ではなく曖昧塩基を許容する版を使う。
+            // 曖昧塩基を含む区間の k-mer は後段のカウントによるスキップで除外される。
+            var l_逆鎖リード = Util.V_逆相補_曖昧塩基あり(p_リード);
+            var l_直前 = 0;
+            var l_逆鎖の直前 = 0;
+            var l_曖昧塩基数 = 0;
+            var l_逆鎖の曖昧塩基数 = 0;
+            for (var i = 0; i < l_k長; i++)
             {
-                if (Util.GetNucleotideIDs(read[i]).Count > 1)
+                if (Util.Get_塩基ID候補(p_リード[i]).Count > 1)
                 {
-                    badBase++;
+                    l_曖昧塩基数++;
                 }
-                if (Util.GetNucleotideIDs(revRead[i]).Count > 1)
+                if (Util.Get_塩基ID候補(l_逆鎖リード[i]).Count > 1)
                 {
-                    revBadBase++;
+                    l_逆鎖の曖昧塩基数++;
                 }
             }
-            for (var i = kmerLength; i <= read.Length; i++)
+            for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.GetNucleotideIDs(read[i - kmerLength]).Count > 1)
+                if (Util.Get_塩基ID候補(p_リード[i - l_k長]).Count > 1)
                 {
-                    badBase--;
+                    l_曖昧塩基数--;
                 }
-                if (badBase == 0)
+                if (l_曖昧塩基数 == 0)
                 {
-                    var key = new KmerKey(read.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(key, out var entry) && entry.UnitigId != AmbiguousKmer)
+                    var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
+                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_ユニティグID != 曖昧kmerの番兵)
                     {
-                        var id = entry.UnitigId;
-                        if (bef == 0)
+                        var l_ID = l_項目.A_ユニティグID;
+                        if (l_直前 == 0)
                         {
-                            bef = id;
+                            l_直前 = l_ID;
                         }
-                        else if (bef != id)
+                        else if (l_直前 != l_ID)
                         {
-                            var pathKey = (bef, id);
-                            localPath[pathKey] = localPath.TryGetValue(pathKey, out var count) ? count + 1 : 1;
+                            var l_経路キー = (l_直前, l_ID);
+                            p_ローカル隣接[l_経路キー] =
+                                p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
                             // 直前にヒットした unitig を更新する。これを怠ると、
                             // リード内で3つ以上の unitig にまたがった場合でも
                             // 常に「最初にヒットした unitig」との組しか記録されず、
                             // 実際の隣接関係(直前→直後)を反映できない。
-                            bef = id;
+                            l_直前 = l_ID;
                         }
                     }
                 }
-                if (Util.GetNucleotideIDs(revRead[i - kmerLength]).Count > 1)
+                if (Util.Get_塩基ID候補(l_逆鎖リード[i - l_k長]).Count > 1)
                 {
-                    revBadBase--;
+                    l_逆鎖の曖昧塩基数--;
                 }
-                if (revBadBase == 0)
+                if (l_逆鎖の曖昧塩基数 == 0)
                 {
-                    var revKey = new KmerKey(revRead.AsSpan(i - kmerLength, kmerLength));
-                    if (this.kmerDict.TryGetValue(revKey, out var revEntry) && revEntry.UnitigId != AmbiguousKmer)
+                    var l_逆鎖キー = new KmerKey(l_逆鎖リード.AsSpan(i - l_k長, l_k長));
+                    if (this._kmer辞書.TryGetValue(l_逆鎖キー, out var l_逆鎖項目) && l_逆鎖項目.A_ユニティグID != 曖昧kmerの番兵)
                     {
-                        var revId = revEntry.UnitigId;
-                        if (revBef == 0)
+                        var l_逆鎖ID = l_逆鎖項目.A_ユニティグID;
+                        if (l_逆鎖の直前 == 0)
                         {
-                            revBef = revId;
+                            l_逆鎖の直前 = l_逆鎖ID;
                         }
-                        else if (revBef != revId)
+                        else if (l_逆鎖の直前 != l_逆鎖ID)
                         {
-                            var pathKey = (revBef, revId);
-                            localPath[pathKey] = localPath.TryGetValue(pathKey, out var count) ? count + 1 : 1;
-                            // bef 側と同様、直前にヒットした unitig を更新する。
-                            revBef = revId;
+                            var l_経路キー = (l_逆鎖の直前, l_逆鎖ID);
+                            p_ローカル隣接[l_経路キー] =
+                                p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
+                            l_逆鎖の直前 = l_逆鎖ID;
                         }
                     }
                 }
             }
         }
 
-        // unitig ID(1始まり) -> その unitig が最終的にどの contig の
-        // どの位置に配置されたか。UniteContigs 実行後、Scaffolder から参照される。
-        private readonly Dictionary<int, UnitigPlacement> unitigPlacements = [];
-
-        public IReadOnlyDictionary<int, UnitigPlacement> UnitigPlacements => this.unitigPlacements;
-
-        /// <param name="copyNumber">
+        /// <param name="p_コピー数">
         /// unitig ID -> 推定コピー数。先読み探索で「この unitig を何回まで通ってよいか」の
         /// 予算に使う。渡さない場合はすべて1コピーとして扱い、先読み探索も控えめになる。
         /// </param>
-        public void UniteContigs(
-            string contigPath,
-            decimal uniteThreshold,
-            ulong countThreshold,
-            IReadOnlyDictionary<int, int>? copyNumber = null)
+        public void V_結合_コンティグ(
+            string p_コンティグパス,
+            decimal p_優勢閾値,
+            ulong p_最小証拠数,
+            IReadOnlyDictionary<int, int>? p_コピー数 = null)
         {
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            var overlap = kmerLength - 1;
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            var l_重なり長 = l_k長 - 1;
 
-            List<string> unitigList = [string.Empty, string.Empty];
-            using (FastaReader reader = new(this.unitigFilePath))
+            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
+            using (FastaReader l_読み込み = new(this._ユニティグファイルパス))
             {
-                while (reader.HasNext())
+                while (l_読み込み.Get_続きがあるか())
                 {
-                    var unitig = reader.NextSequence().Seq;
-                    unitigList.Add(unitig);
-                    unitigList.Add(Util.ReverseComprement(unitig));
+                    var l_ユニティグ = l_読み込み.Get_次の配列().A_配列;
+                    l_ユニティグ配列.Add(l_ユニティグ);
+                    l_ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ));
                 }
             }
 
             // 隣接は de Bruijn グラフから厳密に導く(UnitigGraph の説明を参照)。
-            // リードマッピング由来の kmerPath は「辺を作る」ためではなく、
+            // リードマッピング由来の隣接情報は「辺を作る」ためではなく、
             // 分岐点でどの辺を選ぶかの「重み」としてのみ使う。
-            var graph = UnitigGraph.Build(unitigList, this.kmerDict, kmerLength, AmbiguousKmer);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
 
-            var edgeCount = 0;
-            var branchingVertices = 0;
-            for (var v = 2; v < graph.VertexCount; v++)
+            var l_辺数 = 0;
+            var l_分岐頂点数 = 0;
+            for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
             {
-                edgeCount += graph.OutEdges[v].Count;
-                if (graph.OutEdges[v].Count > 1)
+                l_辺数 += l_グラフ.A_出辺[v].Count;
+                if (l_グラフ.A_出辺[v].Count > 1)
                 {
-                    branchingVertices++;
+                    l_分岐頂点数++;
                 }
             }
-            Console.WriteLine($"[Debug] Exact de Bruijn unitig graph: {edgeCount} directed edge(s), {branchingVertices} branching vertex(es) out of {graph.VertexCount - 2}.");
-            
+            Console.WriteLine($"[Debug] Exact de Bruijn unitig graph: {l_辺数} directed edge(s), {l_分岐頂点数} branching vertex(es) out of {l_グラフ.A_出辺.Count - 2}.");
 
             // リード由来の支持数を逆鎖対称に集計する。辺 v→w と w^1→v^1 は
             // 同一の物理的な隣接を表すため、重みも同一でなければ順鎖側と
             // 逆鎖側で異なる経路が選ばれ、同じ領域が 2 通りに組み立てられてしまう。
-            Dictionary<(int, int), ulong> support = [];
-            foreach (var ((from, to), count) in this.kmerPath)
+            Dictionary<(int, int), ulong> l_支持 = [];
+            foreach (var ((l_始点, l_終点), l_件数) in this._リード隣接)
             {
-                if (from == to)
+                if (l_始点 == l_終点)
                 {
                     continue;
                 }
-                var v = VertexIndex(from);
-                var w = VertexIndex(to);
-                support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
-                support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
+                var v = Get_頂点番号(l_始点);
+                var w = Get_頂点番号(l_終点);
+                l_支持[(v, w)] = l_支持.GetValueOrDefault((v, w)) + l_件数;
+                l_支持[(w ^ 1, v ^ 1)] = l_支持.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
             }
 
             // ペアエンド由来の支持も同じ重みに足し込む。1本のリード(150bp)では
             // それより長い反復配列を跨げず、分岐でどちらへ進むべきか決められないが、
             // フラグメント(実データで約350bp)なら跨げる場合がある。
-            // pairPath のキーは (read1のヒット, read2のヒットの符号反転) なので、
-            // 既に「read1 の向きに揃えた from -> to」の形になっている。
             //
-            // ここで参照されるのは、あくまで de Bruijn グラフ上に実在する辺
-            // (v の OutEdges に含まれる w)についての値だけである。フラグメント長
-            // ぶん離れているだけで隣接していない unitig 対も pairPath には入るが、
-            // それらは辺が無いため選択に影響しない。
-            var pairSupportAdded = 0;
-            foreach (var ((from, to), samples) in this.pairPath)
+            // ここで参照されるのは、あくまで de Bruijn グラフ上に実在する辺に
+            // ついての値だけである。フラグメント長ぶん離れているだけで隣接して
+            // いない unitig 対もペア経路には入るが、それらは辺が無いため
+            // 選択に影響しない。
+            Dictionary<(int, int), ulong> l_ペア連結 = [];
+            var l_ペア支持を足した数 = 0;
+            foreach (var ((l_始点, l_終点), l_標本) in this._ペア経路)
             {
-                if (from == to)
+                if (l_始点 == l_終点)
                 {
                     continue;
                 }
-                var v = VertexIndex(from);
-                var w = VertexIndex(to);
-                var count = (ulong)samples.Count;
-                support[(v, w)] = support.GetValueOrDefault((v, w)) + count;
-                support[(w ^ 1, v ^ 1)] = support.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
-                pairSupportAdded++;
+                var v = Get_頂点番号(l_始点);
+                var w = Get_頂点番号(l_終点);
+                var l_件数 = (ulong)l_標本.Count;
+                l_支持[(v, w)] = l_支持.GetValueOrDefault((v, w)) + l_件数;
+                l_支持[(w ^ 1, v ^ 1)] = l_支持.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
+                l_ペア連結[(v, w)] = l_ペア連結.GetValueOrDefault((v, w)) + l_件数;
+                l_ペア連結[(w ^ 1, v ^ 1)] = l_ペア連結.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
+                l_ペア支持を足した数++;
             }
-            Console.WriteLine($"[Debug] Branch-selection weights: {this.kmerPath.Count} single-read adjacency pair(s) + {pairSupportAdded} paired-end pair(s).");
+            Console.WriteLine($"[Debug] Branch-selection weights: {this._リード隣接.Count} single-read adjacency pair(s) + {l_ペア支持を足した数} paired-end pair(s).");
 
             // 単純バブルを潰してから辺を選ぶ。相互一意性を課す以上、
             // 再合流点の入次数が2以上のまま残っているとその経路全体が
             // 結合されなくなるため、先に枝を1本に絞っておく必要がある。
-            var poppedBubbles = graph.PopSimpleBubbles(unitigList, support);
-            if (poppedBubbles > 0)
+            var l_除去バブル数 = l_グラフ.V_除去_単純バブル(l_ユニティグ配列, l_支持);
+            if (l_除去バブル数 > 0)
             {
-                Console.WriteLine($"[Debug] Popped {poppedBubbles} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");
-            }
-
-            // 短い反復配列を、それを丸ごと跨いだフラグメントの証拠で解きほぐす。
-            // 反復内部から読まれたリードはどちらのコピー由来か区別できないため、
-            // 分岐でのリード支持は原理的に5割前後にしかならず解けない。跨いだ
-            // ペアだけが手がかりになる(詳細は UnitigGraph.ResolveShortRepeats)。
-            Dictionary<(int, int), ulong> pairLink = [];
-            foreach (var ((from, to), samples) in this.pairPath)
-            {
-                if (from == to)
-                {
-                    continue;
-                }
-                var v = VertexIndex(from);
-                var w = VertexIndex(to);
-                var count = (ulong)samples.Count;
-                pairLink[(v, w)] = pairLink.GetValueOrDefault((v, w)) + count;
-                pairLink[(w ^ 1, v ^ 1)] = pairLink.GetValueOrDefault((w ^ 1, v ^ 1)) + count;
+                Console.WriteLine($"[Debug] Popped {l_除去バブル数} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");
             }
 
             // 跨げる見込みのある長さの上限。フラグメント長の実測中央値を使う
             // (これより長い反復は、そもそも両端を別々の unitig に載せた
             //  ペアが存在しえない)。標本が無い場合は控えめな既定値。
-            var maxRepeatLength = this.SameUnitigInsertSizeSamples.Count > 0
-                ? Median(this.SameUnitigInsertSizeSamples)
-                : kmerLength * 4;
-            var resolvedRepeats = graph.ResolveShortRepeats(
-                unitigList, support, pairLink, maxRepeatLength, uniteThreshold, countThreshold);
+            var l_反復長の上限 = this.A_同一ユニティグ標本.Count > 0
+                ? Get_中央値(this.A_同一ユニティグ標本)
+                : l_k長 * 4;
+            var l_解決した反復数 = l_グラフ.V_解決_短い反復(
+                l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数);
             Console.WriteLine(
-                $"[Debug] Repeat resolution: {resolvedRepeats} short repeat(s) (<= {maxRepeatLength}bp) were duplicated " +
+                $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {l_反復長の上限}bp) were duplicated " +
                 "and untangled using read pairs that span them.");
 
             // 各頂点について「出て行く先」を高々 1 つに絞る。
-            var chosen = new int[graph.VertexCount];
-            Array.Fill(chosen, -1);
-            var unambiguous = 0;
-            var resolvedByReads = 0;
-            var ambiguousRepeatBranches = 0;
-            for (var v = 2; v < graph.VertexCount; v++)
+            var l_選択 = new int[l_グラフ.A_出辺.Count];
+            Array.Fill(l_選択, -1);
+            var l_一意な頂点数 = 0;
+            var l_支持で解決した数 = 0;
+            var l_反復由来で未解決の数 = 0;
+            for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
             {
-                var outs = graph.OutEdges[v];
-                if (outs.Count == 0)
+                var l_出辺 = l_グラフ.A_出辺[v];
+                if (l_出辺.Count == 0)
                 {
                     continue;
                 }
-                if (outs.Count == 1)
+                if (l_出辺.Count == 1)
                 {
-                    chosen[v] = outs[0];
-                    unambiguous++;
+                    l_選択[v] = l_出辺[0];
+                    l_一意な頂点数++;
                     continue;
                 }
 
@@ -871,248 +803,165 @@ namespace Tsumiki.Core
                 // A-R-C という「中間を飛ばして端同士を繋いだ」contig を出力していた
                 // (真値照合で発覚)。正しい続きは、反復の外側にある単一コピー領域
                 // からのペアエンドでしか決められない。
-                if (copyNumber is not null && copyNumber.GetValueOrDefault(v >> 1, 1) > 1)
+                if (p_コピー数 is not null && p_コピー数.GetValueOrDefault(v >> 1, 1) > 1)
                 {
-                    ambiguousRepeatBranches++;
+                    l_反復由来で未解決の数++;
                     continue;
                 }
 
-                var sum = 0UL;
-                var best = -1;
-                var bestCount = 0UL;
-                foreach (var w in outs)
+                var l_合計 = 0UL;
+                var l_最良 = -1;
+                var l_最良の支持 = 0UL;
+                foreach (var w in l_出辺)
                 {
-                    var c = support.GetValueOrDefault((v, w));
-                    sum += c;
-                    if (c > bestCount)
+                    var l_件数 = l_支持.GetValueOrDefault((v, w));
+                    l_合計 += l_件数;
+                    if (l_件数 > l_最良の支持)
                     {
-                        bestCount = c;
-                        best = w;
+                        l_最良の支持 = l_件数;
+                        l_最良 = w;
                     }
                 }
-                if (best >= 0 && bestCount >= countThreshold && sum > 0 && (decimal)bestCount / sum >= uniteThreshold)
+                if (l_最良 >= 0 && l_最良の支持 >= p_最小証拠数 && l_合計 > 0
+                    && (decimal)l_最良の支持 / l_合計 >= p_優勢閾値)
                 {
-                    chosen[v] = best;
-                    resolvedByReads++;
+                    l_選択[v] = l_最良;
+                    l_支持で解決した数++;
                 }
             }
 
-            // 相互一意(mutual unique)な辺だけを実際の結合として採用する。
+            // 相互一意な辺だけを実際の結合として採用する。
             // v→w を結合してよいのは「v の唯一の行き先が w」であり、かつ
             // 「w の唯一の来訪元が v」であるときに限る。後者は逆鎖対称性より
-            // chosen[w^1] == v^1 と同値。この条件を欠くと、複数の異なる
+            // 選択[w^1] == v^1 と同値。この条件を欠くと、複数の異なる
             // unitig が同じ次の unitig を指し(実データで 1550 頂点)、
             // 先着 1 本だけが結合されて残りが千切れる形になっていた。
-            // 多コピーの unitig を「通り抜ける」ことは許さない。
-            //
-            // 反復配列 R がゲノム中に2回現れ A-R-B-R-C という並びだった場合、
-            // A→R と R→C はどちらも個別には本物の隣接である(前者は1つ目の
-            // コピー、後者は2つ目のコピー)。しかし walk は各 unitig を1回しか
-            // 使えないため、この2つを R 経由で連鎖させると A-R-C という
-            // 「中間の B を飛ばして端同士を繋いだ」配列ができてしまう。
-            // 合成ゲノムの真値照合で実際にこれが起きていた。
-            //
-            // 通り抜けてよいのは、反復解決(ResolveShortRepeats)によって
-            // 解きほぐされ、入次数・出次数がどちらも1になった場合だけ。
-            // その状態なら「どのコピーにいるか」が確定している。
-            bool CanChainThrough(int vertex)
+            var l_結合 = new int[l_グラフ.A_出辺.Count];
+            Array.Fill(l_結合, -1);
+            var l_結合数 = 0;
+            var l_反復通り抜けで棄却した数 = 0;
+            for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
             {
-                if ((copyNumber?.GetValueOrDefault(vertex >> 1, 1) ?? 1) <= 1)
-                {
-                    return true;
-                }
-                return graph.OutEdges[vertex].Count == 1 && graph.InDegree(vertex) == 1;
-            }
-
-            var merge = new int[graph.VertexCount];
-            Array.Fill(merge, -1);
-            var mergeCount = 0;
-            var blockedByRepeat = 0;
-            for (var v = 2; v < graph.VertexCount; v++)
-            {
-                var w = chosen[v];
-                if (w < 0 || chosen[w ^ 1] != (v ^ 1))
+                var w = l_選択[v];
+                if (w < 0 || l_選択[w ^ 1] != (v ^ 1))
                 {
                     continue;
                 }
-                // 結合は逆鎖側と対で成立する。片側だけ許すと merge の対称性が
-                // 崩れ、walk の始点判定(merge[v^1] == -1)が壊れるため、
+                // 結合は逆鎖側と対で成立する。片側だけ許すと結合の対称性が
+                // 崩れ、walk の始点判定が壊れるため、
                 // どちらかが通り抜け不可なら対ごと採用しない。
-                if (!CanChainThrough(v) || !CanChainThrough(w ^ 1))
+                if (!Get_通り抜けてよいか(l_グラフ, p_コピー数, v) || !Get_通り抜けてよいか(l_グラフ, p_コピー数, w ^ 1))
                 {
-                    blockedByRepeat++;
+                    l_反復通り抜けで棄却した数++;
                     continue;
                 }
-                merge[v] = w;
-                mergeCount++;
+                l_結合[v] = w;
+                l_結合数++;
             }
-            if (blockedByRepeat > 0)
+            if (l_反復通り抜けで棄却した数 > 0)
             {
                 Console.WriteLine(
-                    $"[Debug] {blockedByRepeat / 2} join(s) were refused because they would chain through a multi-copy " +
+                    $"[Debug] {l_反復通り抜けで棄却した数 / 2} join(s) were refused because they would chain through a multi-copy " +
                     "repeat that has not been untangled (doing so skips whatever lies between the repeat's copies).");
             }
-            Console.WriteLine($"[Debug] Edge selection: {unambiguous} vertex(es) had a single out-edge, {resolvedByReads} branch(es) resolved by read support, " +
-                $"{ambiguousRepeatBranches} branch(es) left unresolved because they leave a multi-copy repeat (reads inside a repeat cannot tell the copies apart); {mergeCount} directed merge(s) survived the mutual-uniqueness check ({mergeCount / 2} undirected join(s)).");
+            Console.WriteLine($"[Debug] Edge selection: {l_一意な頂点数} vertex(es) had a single out-edge, {l_支持で解決した数} branch(es) resolved by read support, " +
+                $"{l_反復由来で未解決の数} branch(es) left unresolved because they leave a multi-copy repeat (reads inside a repeat cannot tell the copies apart); {l_結合数} directed merge(s) survived the mutual-uniqueness check ({l_結合数 / 2} undirected join(s)).");
 
             // 1歩だけを見る相互一意性の判定では決めきれなかった分岐を、
             // 数kb先まで複数経路を並行して伸ばして(ビームサーチ)解けるだけ解く。
             // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
             // ペアエンドの証拠と整合する、という状況を拾える。
-            var extended = BeamSearchExtender.Extend(
-                graph,
-                unitigList,
-                merge,
-                pairLink,
-                copyNumber ?? new Dictionary<int, int>(),
-                insertSize: maxRepeatLength,
-                dominanceThreshold: uniteThreshold,
-                minimumEvidence: countThreshold);
-            if (extended > 0)
+            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(
+                l_グラフ,
+                l_ユニティグ配列,
+                l_結合,
+                l_ペア連結,
+                p_コピー数 ?? new Dictionary<int, int>(),
+                p_インサートサイズ: l_反復長の上限,
+                p_優勢閾値: p_優勢閾値,
+                p_最小証拠数: p_最小証拠数);
+            if (l_先読みで解決した数 > 0)
             {
                 Console.WriteLine(
-                    $"[Debug] Beam-search lookahead resolved {extended / 2} further junction(s) that the " +
+                    $"[Debug] Beam-search lookahead resolved {l_先読みで解決した数 / 2} further junction(s) that the " +
                     "single-step mutual-uniqueness rule could not decide.");
             }
 
-            this.CollectInsertSizeSamplesFromMerges(merge);
+            this.V_収集_確定辺標本(l_結合);
 
             // 双子(v と v^1)は同一 unitig の裏表なので、unitig 単位で訪問済みを
             // 管理する。これを頂点単位でやっていたため、順鎖側の walk と逆鎖側の
             // walk が同じ unitig を別々に出力し、contig 総長が unitig 総長の
             // ちょうど 2 倍に膨れていた。
-            var unitigCount = (unitigList.Count - 2) / 2;
-            var unitigVisited = new bool[unitigCount + 1];
+            var l_ユニティグ数 = (l_ユニティグ配列.Count - 2) / 2;
+            var l_訪問済み = new bool[l_ユニティグ数 + 1];
 
-            List<string> contigList = [];
-            List<List<int>> walkOrders = [];
-            List<bool> circularFlags = [];
-
-            (string Sequence, bool IsCircular) Walk(int startVertex, List<int> walkOrder)
-            {
-                var sb = new StringBuilder(unitigList[startVertex]);
-                walkOrder.Add(startVertex);
-                unitigVisited[startVertex >> 1] = true;
-                var cur = startVertex;
-                var isCircular = false;
-                while (true)
-                {
-                    var next = merge[cur];
-                    if (next < 0)
-                    {
-                        break;
-                    }
-                    if (unitigVisited[next >> 1])
-                    {
-                        // 始点へ戻ってきた = 経路が閉じている。細菌の染色体と
-                        // プラスミドは環状なので、これは「その複製単位を
-                        // 完全に1周組み上げられた」ことを意味する。
-                        isCircular = next == startVertex;
-                        break;
-                    }
-                    var seq = unitigList[next];
-                    if (seq.Length < overlap || sb.Length < overlap)
-                    {
-                        break;
-                    }
-                    // 構築方法より k-1 のオーバーラップは保証されているが、
-                    // 万一崩れていた場合に誤った配列を作らないよう検証する。
-                    if (!TryMatchOverlap(sb, seq, overlap))
-                    {
-                        break;
-                    }
-                    _ = sb.Append(seq[overlap..]);
-                    unitigVisited[next >> 1] = true;
-                    walkOrder.Add(next);
-                    cur = next;
-                }
-
-                // 環状の場合、末尾 unitig は「始点 unitig と重なる k-1 塩基」を
-                // 自分の末尾に含んでいる。その k-1 塩基は配列の先頭にも現れて
-                // いるので、そのまま出すと円周が k-1 塩基ぶん長くなってしまう。
-                // 線状 contig の連結では次の unitig 側から重なりを取り除いて
-                // いるが、環状の場合は「次」が既に出力済みの始点なので、
-                // ここで末尾から取り除く。
-                if (isCircular && sb.Length > overlap)
-                {
-                    _ = sb.Remove(sb.Length - overlap, overlap);
-                }
-
-                return (sb.ToString(), isCircular);
-            }
-
-            void RunWalk(int startVertex)
-            {
-                List<int> walkOrder = [];
-                var (sequence, isCircular) = Walk(startVertex, walkOrder);
-                contigList.Add(sequence);
-                walkOrders.Add(walkOrder);
-                circularFlags.Add(isCircular);
-            }
+            List<string> l_コンティグ群 = [];
+            List<List<int>> l_walk順群 = [];
+            List<bool> l_環状フラグ群 = [];
 
             // 結合グラフ上で「入ってくる結合を持たない」頂点が経路の始点。
-            // v への結合が存在することは、逆鎖対称性より merge[v^1] != -1 と同値。
-            for (var v = 2; v < graph.VertexCount; v++)
+            // v への結合が存在することは、逆鎖対称性より 結合[v^1] != -1 と同値。
+            for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
             {
-                if (merge[v ^ 1] != -1 || unitigVisited[v >> 1])
+                if (l_結合[v ^ 1] != -1 || l_訪問済み[v >> 1])
                 {
                     continue;
                 }
-                RunWalk(v);
+                V_実行_walk(l_ユニティグ配列, l_結合, l_訪問済み, l_重なり長, v, l_コンティグ群, l_walk順群, l_環状フラグ群);
             }
 
             // 始点を持たない=循環している経路を拾う(環状ゲノム/プラスミド等)。
-            for (var v = 2; v < graph.VertexCount; v += 2)
+            for (var v = 2; v < l_グラフ.A_出辺.Count; v += 2)
             {
-                if (unitigVisited[v >> 1])
+                if (l_訪問済み[v >> 1])
                 {
                     continue;
                 }
-                RunWalk(v);
+                V_実行_walk(l_ユニティグ配列, l_結合, l_訪問済み, l_重なり長, v, l_コンティグ群, l_walk順群, l_環状フラグ群);
             }
 
-            using var writer = new FastaWriter(contigPath);
-            var ID = 1;
-            var genomeSize = 0L;
-            for (var c = 0; c < contigList.Count; c++)
+            using var l_書き込み = new FastaWriter(p_コンティグパス);
+            var l_ID = 1;
+            var l_総延長 = 0L;
+            for (var c = 0; c < l_コンティグ群.Count; c++)
             {
-                var contig = contigList[c];
-                var walkOrder = walkOrders[c];
-                var revContig = Util.ReverseComprement(contig);
-                var isReverseComplemented = string.CompareOrdinal(contig, revContig) > 0;
+                var l_コンティグ = l_コンティグ群[c];
+                var l_walk順 = l_walk順群[c];
+                var l_逆相補 = Util.V_逆相補(l_コンティグ);
+                var l_逆相補を採用するか = string.CompareOrdinal(l_コンティグ, l_逆相補) > 0;
                 // 環状に閉じた contig は、その複製単位(染色体・プラスミド)を
                 // 完全に組み上げられたことを意味するため、名前に明示する。
-                var name = circularFlags[c] ? $"NODE{ID}_circular" : $"NODE{ID}";
-                writer.Write(name, isReverseComplemented ? revContig : contig);
+                var l_名前 = l_環状フラグ群[c] ? $"NODE{l_ID}_circular" : $"NODE{l_ID}";
+                l_書き込み.V_書き込み(l_名前, l_逆相補を採用するか ? l_逆相補 : l_コンティグ);
 
-                // walkOrder に含まれる各頂点(unitig の向き付きインデックス)を
-                // unitigPlacements に記録する。walkOrder は「実際に配列へ
-                // 連結された順」なので、そのままこの contig 内での並び順になる。
-                // isReverseComplemented な場合、contigs.fasta 上の配列は
+                // walk順に含まれる各頂点(unitig の向き付き番号)を配置として記録する。
+                // walk順は「実際に配列へ連結された順」なので、そのままこの contig 内での
+                // 並び順になる。逆相補を採用した場合、contigs.fasta 上の配列は
                 // walk 順と逆向きになっているため、位置(先頭/末尾)の解釈は
-                // Scaffolder 側で isContigReverseComplemented を見て反転させる。
-                for (var w = 0; w < walkOrder.Count; w++)
+                // Scaffolder 側で反転させる。
+                for (var w = 0; w < l_walk順.Count; w++)
                 {
-                    var vertexIndex = walkOrder[w];
-                    this.unitigPlacements[vertexIndex >> 1] = new UnitigPlacement(
-                        contigId: ID,
-                        isContigReverseComplemented: isReverseComplemented,
-                        walkOrderIndex: w,
-                        walkOrderCount: walkOrder.Count,
-                        isUnitigReverseInWalk: (vertexIndex & 1) == 1);
+                    var l_頂点番号 = l_walk順[w];
+                    this._ユニティグ配置[l_頂点番号 >> 1] = new ユニティグ配置(
+                        p_コンティグID: l_ID,
+                        p_コンティグが逆相補か: l_逆相補を採用するか,
+                        p_walk順の位置: w,
+                        p_walk順の総数: l_walk順.Count,
+                        p_walk中で逆鎖か: (l_頂点番号 & 1) == 1);
                 }
 
-                ID++;
-                genomeSize += contig.Length;
+                l_ID++;
+                l_総延長 += l_コンティグ.Length;
             }
-            Console.WriteLine("Total Length of contigs : " + genomeSize);
+            Console.WriteLine("Total Length of contigs : " + l_総延長);
 
-            var circularContigs = Enumerable.Range(0, contigList.Count).Where(i => circularFlags[i]).ToList();
-            if (circularContigs.Count > 0)
+            var l_環状コンティグ = Enumerable.Range(0, l_コンティグ群.Count).Where(x => l_環状フラグ群[x]).ToList();
+            if (l_環状コンティグ.Count > 0)
             {
-                var lengths = string.Join(", ", circularContigs.Select(i => $"{contigList[i].Length}bp"));
+                var l_長さ一覧 = string.Join(", ", l_環状コンティグ.Select(x => $"{l_コンティグ群[x].Length}bp"));
                 Console.WriteLine(
-                    $"[Info] {circularContigs.Count} contig(s) closed into a circle ({lengths}). " +
+                    $"[Info] {l_環状コンティグ.Count} contig(s) closed into a circle ({l_長さ一覧}). " +
                     "A closed circle means that replicon (chromosome or plasmid) was assembled end to end.");
             }
             else
@@ -1122,150 +971,207 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 相互一意性の検査を通って実際に結合が確定した辺(merge[v] = next)を
-        /// 走査し、その関係を pairPath のキー形式(符号付き unitig ID のペア)に
-        /// 変換する。変換後、該当する pairPath エントリの「未読了長合計」から
-        /// InsertSize = totalRemaining + (k-1) を計算し、InsertSizeSamples に積む。
+        /// その頂点を「通り抜けて」よいか。
         ///
-        /// merge の頂点インデックスは unitigId &lt;&lt; 1 (順鎖) /
-        /// unitigId &lt;&lt; 1 | 1 (逆鎖) の形式。これを pairPath のキー形式
-        /// (正の unitig ID = 順鎖, 負の unitig ID = 逆鎖)に変換する。
+        /// 反復配列 R がゲノム中に2回現れ A-R-B-R-C という並びだった場合、
+        /// A→R と R→C はどちらも個別には本物の隣接である(前者は1つ目の
+        /// コピー、後者は2つ目のコピー)。しかし walk は各 unitig を1回しか
+        /// 使えないため、この2つを R 経由で連鎖させると A-R-C という
+        /// 「中間の B を飛ばして端同士を繋いだ」配列ができてしまう。
+        /// 合成ゲノムの真値照合で実際にこれが起きていた。
+        ///
+        /// 通り抜けてよいのは、反復解決によって解きほぐされ、入次数・出次数が
+        /// どちらも1になった場合だけ。その状態なら「どのコピーにいるか」が確定している。
         /// </summary>
-        private void CollectInsertSizeSamplesFromMerges(int[] merge)
+        private static bool Get_通り抜けてよいか(
+            UnitigGraph p_グラフ, IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点)
         {
-            var kmerLength = ConfigurationManager.Arguments.Kmer;
-            var overlap = kmerLength - 1;
-            List<int> resolvedEdgeSamples = [];
-
-            for (var v = 2; v < merge.Length; v++)
+            if ((p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1)
             {
-                var next = merge[v];
-                if (next < 0)
-                {
-                    continue;
-                }
-
-                // 頂点インデックス -> 符号付き unitig ID。
-                var fromUnitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
-                var toUnitig = (next >> 1) * ((next & 1) == 0 ? 1 : -1);
-
-                if (!this.pairPath.TryGetValue((fromUnitig, toUnitig), out var spannedLengthSamples))
-                {
-                    continue;
-                }
-
-                foreach (var spannedLength in spannedLengthSamples)
-                {
-                    // 直接結合されたエッジでは2つのunitigがk-1塩基重なるので、
-                    // 未知区間の長さは G = -(k-1)。よって
-                    // フラグメント長 = spannedLength - (k-1)。
-                    // (以前は符号を逆にした + (k-1) を使っており、
-                    //  リード長ぶんのずれと合わせて推定値が大きく外れていた。)
-                    var insertSize = spannedLength - overlap;
-                    if (insertSize > 0)
-                    {
-                        resolvedEdgeSamples.Add(insertSize);
-                    }
-                }
+                return true;
             }
-
-            this.InsertSizeSamples.AddRange(resolvedEdgeSamples);
-            this.ResolvedEdgeInsertSizeSamples.AddRange(resolvedEdgeSamples);
-
-            Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {resolvedEdgeSamples.Count}.");
-            if (resolvedEdgeSamples.Count > 0)
-            {
-                // このプールは「unitig同士がk-1オーバーラップで直接結合された」
-                // ペアのみを対象とするため、same-unitigサンプルのような
-                // 「フラグメントが1つのunitigに収まる必要がある」制約が
-                // なく、短いunitigによる短フラグメントへの偏りを受けにくい。
-                Console.WriteLine($"[Info] Resolved-edge sample median: {Median(resolvedEdgeSamples)} (from {resolvedEdgeSamples.Count} samples; not subject to the same-unitig length bias).");
-            }
+            return p_グラフ.A_出辺[p_頂点].Count == 1 && p_グラフ.Get_入次数(p_頂点) == 1;
         }
 
         /// <summary>
-        /// 符号付き unitig ID(正=順鎖、負=逆鎖)を adjacencyList の頂点インデックスに変換する。
+        /// 始点から結合を辿って1本の contig を組み立て、結果を各一覧へ追加する。
         /// </summary>
-        internal static int VertexIndex(int signedUnitigId)
+        private static void V_実行_walk(
+            List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点,
+            List<string> p_コンティグ群, List<List<int>> p_walk順群, List<bool> p_環状フラグ群)
         {
-            return (Math.Abs(signedUnitigId) << 1) | (signedUnitigId > 0 ? 0 : 1);
+            List<int> l_walk順 = [];
+            var (l_配列, l_環状か) = Get_walk結果(p_ユニティグ配列, p_結合, p_訪問済み, p_重なり長, p_始点, l_walk順);
+            p_コンティグ群.Add(l_配列);
+            p_walk順群.Add(l_walk順);
+            p_環状フラグ群.Add(l_環状か);
         }
 
-
-        private static string WalkPath(List<string> unitigList, List<List<(int, ulong)>> adjacencyList, int index, bool[] visited, List<int> walkOrder)
+        /// <summary>
+        /// 始点から結合を辿って配列を組み立てる。経路が始点へ戻ってきた場合は
+        /// 環状として報告する。
+        /// </summary>
+        private static (string A_配列, bool A_環状か) Get_walk結果(
+            List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点,
+            List<int> p_walk順)
         {
-            // de Bruijn グラフ上の unitig 同士は理論上ちょうど k-1 塩基だけ
-            // オーバーラップするはずである。以前の実装は
-            // Math.Min(sb.Length, unitig.Length) から降順に試し、
-            // 最初に一致した長さ(理論値より短い偶然の一致でも)で結合していたため、
-            // 誤結合のリスクがあった。k-1 を最優先で試し、
-            // それで一致しない場合のみ他の長さへフォールバックする。
-            var expectedOverlap = ConfigurationManager.Arguments.Kmer - 1;
-
-            var sb = new StringBuilder(unitigList[index]);
-            walkOrder.Add(index);
-            while (adjacencyList[index].Count > 0 && !visited[index])
+            var l_出力 = new StringBuilder(p_ユニティグ配列[p_始点]);
+            p_walk順.Add(p_始点);
+            p_訪問済み[p_始点 >> 1] = true;
+            var l_現在 = p_始点;
+            var l_環状か = false;
+            while (true)
             {
-                visited[index] = true;
-                var next = adjacencyList[index][0].Item1;
-                var unitig = unitigList[next];
-                var flag = false;
-                var maxLen = Math.Min(sb.Length, unitig.Length);
-
-                // まず理論値(k-1)ちょうどのオーバーラップを試す。
-                if (expectedOverlap > 0 && expectedOverlap <= maxLen &&
-                    TryMatchOverlap(sb, unitig, expectedOverlap))
-                {
-                    _ = sb.Append(unitig[expectedOverlap..]);
-                    flag = true;
-                }
-                else
-                {
-                    // 理論値で一致しなかった場合のフォールバックとして、
-                    // 長い方から順に一致するオーバーラップを探す
-                    // (元の実装と同じ挙動)。
-                    for (var i = maxLen; i > 0; i--)
-                    {
-                        if (i == expectedOverlap)
-                        {
-                            // 上で既に試して失敗しているのでスキップ。
-                            continue;
-                        }
-                        if (TryMatchOverlap(sb, unitig, i))
-                        {
-                            _ = sb.Append(unitig[i..]);
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!flag)
+                var l_次 = p_結合[l_現在];
+                if (l_次 < 0)
                 {
                     break;
                 }
-                index = next;
-                walkOrder.Add(index);
+                if (p_訪問済み[l_次 >> 1])
+                {
+                    // 始点へ戻ってきた = 経路が閉じている。細菌の染色体と
+                    // プラスミドは環状なので、これは「その複製単位を
+                    // 完全に1周組み上げられた」ことを意味する。
+                    l_環状か = l_次 == p_始点;
+                    break;
+                }
+                var l_配列 = p_ユニティグ配列[l_次];
+                if (l_配列.Length < p_重なり長 || l_出力.Length < p_重なり長)
+                {
+                    break;
+                }
+                // 構築方法より k-1 のオーバーラップは保証されているが、
+                // 万一崩れていた場合に誤った配列を作らないよう検証する。
+                if (!Get_重なりが一致するか(l_出力, l_配列, p_重なり長))
+                {
+                    break;
+                }
+                _ = l_出力.Append(l_配列[p_重なり長..]);
+                p_訪問済み[l_次 >> 1] = true;
+                p_walk順.Add(l_次);
+                l_現在 = l_次;
             }
-            visited[index] = true;
-            return sb.ToString();
+
+            // 環状の場合、末尾 unitig は「始点 unitig と重なる k-1 塩基」を
+            // 自分の末尾に含んでいる。その k-1 塩基は配列の先頭にも現れて
+            // いるので、そのまま出すと円周が k-1 塩基ぶん長くなってしまう。
+            // 線状 contig の連結では次の unitig 側から重なりを取り除いて
+            // いるが、環状の場合は「次」が既に出力済みの始点なので、
+            // ここで末尾から取り除く。
+            if (l_環状か && l_出力.Length > p_重なり長)
+            {
+                _ = l_出力.Remove(l_出力.Length - p_重なり長, p_重なり長);
+            }
+
+            return (l_出力.ToString(), l_環状か);
         }
 
         /// <summary>
-        /// sb の末尾 overlapLength 文字と unitig の先頭 overlapLength 文字が
+        /// 相互一意性の検査を通って実際に結合が確定した辺を走査し、
+        /// その関係をペア経路のキー形式(符号付き unitig ID のペア)に変換する。
+        /// 変換後、該当するペア経路エントリの「既知長」から
+        /// フラグメント長 = 既知長 - (k-1) を計算して標本に積む。
+        /// </summary>
+        private void V_収集_確定辺標本(int[] p_結合)
+        {
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
+            List<int> l_確定辺標本 = [];
+
+            for (var v = 2; v < p_結合.Length; v++)
+            {
+                var l_次 = p_結合[v];
+                if (l_次 < 0)
+                {
+                    continue;
+                }
+
+                // 頂点番号 -> 符号付き unitig ID。
+                var l_始点ユニティグ = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
+                var l_終点ユニティグ = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
+
+                if (!this._ペア経路.TryGetValue((l_始点ユニティグ, l_終点ユニティグ), out var l_既知長標本))
+                {
+                    continue;
+                }
+
+                foreach (var l_既知長 in l_既知長標本)
+                {
+                    // 直接結合された辺では2つのunitigがk-1塩基重なるので、
+                    // 未知区間の長さは G = -(k-1)。よって
+                    // フラグメント長 = 既知長 - (k-1)。
+                    var l_フラグメント長 = l_既知長 - l_重なり長;
+                    if (l_フラグメント長 > 0)
+                    {
+                        l_確定辺標本.Add(l_フラグメント長);
+                    }
+                }
+            }
+
+            this.A_インサートサイズ標本.AddRange(l_確定辺標本);
+            this.A_確定辺標本.AddRange(l_確定辺標本);
+
+            Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {l_確定辺標本.Count}.");
+            if (l_確定辺標本.Count > 0)
+            {
+                // このプールは「unitig同士がk-1オーバーラップで直接結合された」
+                // ペアのみを対象とするため、同一unitig標本のような
+                // 「フラグメントが1つのunitigに収まる必要がある」制約が
+                // なく、短いunitigによる短フラグメントへの偏りを受けにくい。
+                Console.WriteLine($"[Info] Resolved-edge sample median: {Get_中央値(l_確定辺標本)} (from {l_確定辺標本.Count} samples; not subject to the same-unitig length bias).");
+            }
+        }
+
+        /// <summary>
+        /// 符号付き unitig ID(正=順鎖、負=逆鎖)をグラフの頂点番号に変換する。
+        /// </summary>
+        internal static int Get_頂点番号(int p_符号付きユニティグID)
+        {
+            return (Math.Abs(p_符号付きユニティグID) << 1) | (p_符号付きユニティグID > 0 ? 0 : 1);
+        }
+
+        /// <summary>
+        /// 出力の末尾 p_重なり長 文字と unitig の先頭 p_重なり長 文字が
         /// 一致するかどうかを判定する。
         /// </summary>
-        private static bool TryMatchOverlap(StringBuilder sb, string unitig, int overlapLength)
+        private static bool Get_重なりが一致するか(StringBuilder p_出力, string p_ユニティグ, int p_重なり長)
         {
-            var offset = sb.Length - overlapLength;
-            for (var j = 0; j < overlapLength; j++)
+            var l_開始位置 = p_出力.Length - p_重なり長;
+            for (var j = 0; j < p_重なり長; j++)
             {
-                if (sb[offset + j] != unitig[j])
+                if (p_出力[l_開始位置 + j] != p_ユニティグ[j])
                 {
                     return false;
                 }
             }
             return true;
+        }
+
+        private static int Get_中央値(List<int> p_値一覧)
+        {
+            var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
+            var l_中央 = l_整列済み.Count / 2;
+            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2 : l_整列済み[l_中央];
+        }
+
+        /// <summary>整列済みの一覧から分位点の値を取り出す。</summary>
+        private static int Get_分位点(List<int> p_整列済み, double p_分位)
+        {
+            return p_整列済み[Math.Clamp((int)(p_分位 * (p_整列済み.Count - 1)), 0, p_整列済み.Count - 1)];
+        }
+
+        /// <summary>
+        /// フラグメント長分布の分位点を要約する。中央値だけでは
+        /// 「このライブラリがどれだけの長さのギャップを跨げるか」が分からない。
+        /// リード長の2倍を超える分だけがスキャフォールディングで橋渡しできる
+        /// 未知区間の長さなので、分布の裾(特に上側)が実際の橋渡し能力を決める。
+        /// </summary>
+        private static string Get_分布要約(List<int> p_値一覧)
+        {
+            var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
+            return $"p1={Get_分位点(l_整列済み, 0.01)}, p10={Get_分位点(l_整列済み, 0.10)}, " +
+                $"p25={Get_分位点(l_整列済み, 0.25)}, p50={Get_分位点(l_整列済み, 0.50)}, " +
+                $"p75={Get_分位点(l_整列済み, 0.75)}, p90={Get_分位点(l_整列済み, 0.90)}, " +
+                $"p99={Get_分位点(l_整列済み, 0.99)}, max={l_整列済み[^1]}";
         }
     }
 }

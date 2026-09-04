@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -40,20 +40,20 @@ namespace Tsumiki.Tests.Core
 
         private TrustedKmerIndex BuildIndex(int kmerLength, params string[] sequences)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = kmerLength, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             var index = new TrustedKmerIndex(this._tempDir);
             foreach (var seq in sequences)
             {
-                var bytes = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i + kmerLength <= bytes.Length; i++)
                 {
                     for (var rep = 0; rep < 3; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, kmerLength), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
                     }
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
         }
 
@@ -62,7 +62,7 @@ namespace Tsumiki.Tests.Core
             var path = Path.Combine(this._tempDir, name);
             using (var writer = new FastaWriter(path))
             {
-                writer.Write("SCAFFOLD1", sequence);
+                writer.V_書き込み("SCAFFOLD1", sequence);
             }
             return path;
         }
@@ -70,8 +70,8 @@ namespace Tsumiki.Tests.Core
         private static string ReadSingleSequence(string path)
         {
             using var reader = new FastaReader(path);
-            Assert.True(reader.HasNext());
-            return reader.NextSequence().Seq;
+            Assert.True(reader.Get_続きがあるか());
+            return reader.Get_次の配列().A_配列;
         }
 
         [Fact]
@@ -89,11 +89,11 @@ namespace Tsumiki.Tests.Core
             var withGap = truth[..gapStart] + new string('N', gapLength) + truth[(gapStart + gapLength)..];
             var path = this.WriteScaffold("scaffolds.fasta", withGap);
 
-            var stats = GapFiller.Run(path, index, k);
+            var stats = GapFiller.V_充填_ギャップ(path, index, k);
 
-            Assert.Equal(1, stats.TotalGaps);
-            Assert.Equal(1, stats.FilledGaps);
-            Assert.Equal(gapLength, stats.FilledBases);
+            Assert.Equal(1, stats.A_総ギャップ数);
+            Assert.Equal(1, stats.A_埋めたギャップ数);
+            Assert.Equal(gapLength, stats.A_埋めた塩基数);
 
             // 埋めた結果は元の配列そのものに戻っていなければならない。
             Assert.Equal(truth, ReadSingleSequence(path));
@@ -115,9 +115,9 @@ namespace Tsumiki.Tests.Core
             var withGap = truth[..gapStart] + new string('N', 30) + truth[(gapStart + actualMissing)..];
             var path = this.WriteScaffold("scaffolds_off.fasta", withGap);
 
-            var stats = GapFiller.Run(path, index, k);
+            var stats = GapFiller.V_充填_ギャップ(path, index, k);
 
-            Assert.Equal(1, stats.FilledGaps);
+            Assert.Equal(1, stats.A_埋めたギャップ数);
             Assert.Equal(truth, ReadSingleSequence(path));
         }
 
@@ -140,11 +140,11 @@ namespace Tsumiki.Tests.Core
             var withGap = prefix + new string('N', 40) + suffix;
             var path = this.WriteScaffold("scaffolds_ambiguous.fasta", withGap);
 
-            var stats = GapFiller.Run(path, index, k);
+            var stats = GapFiller.V_充填_ギャップ(path, index, k);
 
-            Assert.Equal(1, stats.TotalGaps);
-            Assert.Equal(0, stats.FilledGaps);
-            Assert.Equal(1, stats.AmbiguousGaps);
+            Assert.Equal(1, stats.A_総ギャップ数);
+            Assert.Equal(0, stats.A_埋めたギャップ数);
+            Assert.Equal(1, stats.A_一意に定まらなかった数);
             // N はそのまま残っていること。
             Assert.Contains('N', ReadSingleSequence(path));
         }
@@ -166,11 +166,11 @@ namespace Tsumiki.Tests.Core
             var withGap = left + new string('N', 40) + right;
             var path = this.WriteScaffold("scaffolds_unreachable.fasta", withGap);
 
-            var stats = GapFiller.Run(path, index, k);
+            var stats = GapFiller.V_充填_ギャップ(path, index, k);
 
-            Assert.Equal(1, stats.TotalGaps);
-            Assert.Equal(0, stats.FilledGaps);
-            Assert.Equal(1, stats.UnreachableGaps);
+            Assert.Equal(1, stats.A_総ギャップ数);
+            Assert.Equal(0, stats.A_埋めたギャップ数);
+            Assert.Equal(1, stats.A_到達できなかった数);
             Assert.Contains('N', ReadSingleSequence(path));
         }
 
@@ -182,9 +182,9 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(k, truth);
 
             var path = this.WriteScaffold("scaffolds_nogap.fasta", truth);
-            var stats = GapFiller.Run(path, index, k);
+            var stats = GapFiller.V_充填_ギャップ(path, index, k);
 
-            Assert.Equal(0, stats.TotalGaps);
+            Assert.Equal(0, stats.A_総ギャップ数);
             Assert.Equal(truth, ReadSingleSequence(path));
         }
     }

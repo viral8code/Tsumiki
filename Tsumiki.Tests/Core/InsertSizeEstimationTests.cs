@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.Model;
 
@@ -44,7 +44,7 @@ namespace Tsumiki.Tests.Core
             return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
         }
 
-        private static void WriteFastq(string path, IEnumerable<(string Id, string Seq)> reads)
+        private static void WriteFastq(string path, IEnumerable<(string A_ID, string A_配列)> reads)
         {
             using var writer = new StreamWriter(path);
             foreach (var (id, seq) in reads)
@@ -65,7 +65,7 @@ namespace Tsumiki.Tests.Core
             const int fragmentStart = 100;
             const int trueFragmentLength = 350;
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var unitigSeq = RandomSequence(unitigLength, seed: 12345);
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
@@ -74,7 +74,7 @@ namespace Tsumiki.Tests.Core
             // FR配置: read1 はフラグメント左端から順鎖方向、
             // read2 はフラグメント右端から逆鎖方向に読まれる。
             var read1 = unitigSeq.Substring(fragmentStart, readLength);
-            var read2 = Util.ReverseComprement(
+            var read2 = Util.V_逆相補(
                 unitigSeq.Substring(fragmentStart + trueFragmentLength - readLength, readLength));
 
             var path1 = Path.Combine(this._tempDir, "r1.fq");
@@ -85,13 +85,13 @@ namespace Tsumiki.Tests.Core
             WriteFastq(path2, pairs.Select(i => ($"pair{i}/2", read2)));
 
             var contigMaker = new ContigMaker(unitigsPath);
-            contigMaker.MappingPairedReads(path1, path2);
+            contigMaker.V_マッピング_ペアリード(path1, path2);
 
-            Assert.NotEmpty(contigMaker.SameUnitigInsertSizeSamples);
+            Assert.NotEmpty(contigMaker.A_同一ユニティグ標本);
             // 内側距離(= 350 - 50 - 50 = 250)ではなく、フラグメント長 350 が
             // 得られなければならない。
             Assert.All(
-                contigMaker.SameUnitigInsertSizeSamples,
+                contigMaker.A_同一ユニティグ標本,
                 sample => Assert.Equal(trueFragmentLength, sample));
         }
 
@@ -110,14 +110,14 @@ namespace Tsumiki.Tests.Core
             const int readLength = 50;
             const int fragmentStart = 120;
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = k, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var unitigSeq = RandomSequence(unitigLength, seed: 777);
             var unitigsPath = Path.Combine(this._tempDir, $"unitigs_{trueFragmentLength}.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
             var read1 = unitigSeq.Substring(fragmentStart, readLength);
-            var read2 = Util.ReverseComprement(
+            var read2 = Util.V_逆相補(
                 unitigSeq.Substring(fragmentStart + trueFragmentLength - readLength, readLength));
 
             var path1 = Path.Combine(this._tempDir, $"r1_{trueFragmentLength}.fq");
@@ -126,11 +126,11 @@ namespace Tsumiki.Tests.Core
             WriteFastq(path2, [("pair/2", read2)]);
 
             var contigMaker = new ContigMaker(unitigsPath);
-            contigMaker.MappingPairedReads(path1, path2);
+            contigMaker.V_マッピング_ペアリード(path1, path2);
 
-            Assert.NotEmpty(contigMaker.SameUnitigInsertSizeSamples);
+            Assert.NotEmpty(contigMaker.A_同一ユニティグ標本);
             Assert.All(
-                contigMaker.SameUnitigInsertSizeSamples,
+                contigMaker.A_同一ユニティグ標本,
                 sample => Assert.Equal(trueFragmentLength, sample));
         }
     }

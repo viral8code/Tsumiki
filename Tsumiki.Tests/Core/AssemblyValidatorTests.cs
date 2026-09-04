@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -43,20 +43,20 @@ namespace Tsumiki.Tests.Core
 
         private TrustedKmerIndex BuildIndex(int depth, params string[] sequences)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = K, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
             var index = new TrustedKmerIndex(this._tempDir);
             foreach (var seq in sequences)
             {
-                var bytes = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i + K <= bytes.Length; i++)
                 {
                     for (var rep = 0; rep < depth; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, K), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, K), p_ワーカー番号: 0);
                     }
                 }
             }
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
         }
 
@@ -67,7 +67,7 @@ namespace Tsumiki.Tests.Core
             var id = 1;
             foreach (var seq in sequences)
             {
-                writer.Write($"NODE{id++}", seq);
+                writer.V_書き込み($"NODE{id++}", seq);
             }
             return path;
         }
@@ -79,10 +79,10 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(depth: 20, truth);
 
             var path = this.WriteFasta("perfect.fasta", truth);
-            var result = AssemblyValidator.Validate(path, index, K, singleCopyBaseline: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
 
-            Assert.Equal(0, result.MissingKmers);
-            Assert.Equal(0, result.ExcessInstances);
+            Assert.Equal(0, result.A_取りこぼし数);
+            Assert.Equal(0, result.A_余分な延べ数);
         }
 
         [Fact]
@@ -93,12 +93,12 @@ namespace Tsumiki.Tests.Core
 
             // 後半を落としたアセンブリ。
             var path = this.WriteFasta("truncated.fasta", truth[..300]);
-            var result = AssemblyValidator.Validate(path, index, K, singleCopyBaseline: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
 
-            Assert.True(result.MissingKmers > 0, "truncated assembly should report missing k-mers");
+            Assert.True(result.A_取りこぼし数 > 0, "truncated assembly should report missing k-mers");
             // 600bp の k-mer は 580 個、そのうち前半 300bp に含まれるのは 280 個。
-            Assert.Equal(580 - 280, result.MissingKmers);
-            Assert.InRange(result.MissingPercent, 45, 55);
+            Assert.Equal(580 - 280, result.A_取りこぼし数);
+            Assert.InRange(result.A_取りこぼし率, 45, 55);
         }
 
         /// <summary>
@@ -113,13 +113,13 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(depth: 20, truth);
 
             var path = this.WriteFasta("duplicated.fasta", truth, truth);
-            var result = AssemblyValidator.Validate(path, index, K, singleCopyBaseline: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
 
-            Assert.Equal(0, result.MissingKmers);
+            Assert.Equal(0, result.A_取りこぼし数);
             // 各 k-mer が期待の2倍出ているので、延べ数の半分が余分。
-            Assert.Equal(580, result.OverRepresentedKmers);
-            Assert.Equal(580, result.ExcessInstances);
-            Assert.InRange(result.ExcessPercent, 45, 55);
+            Assert.Equal(580, result.A_出しすぎkmer種類数);
+            Assert.Equal(580, result.A_余分な延べ数);
+            Assert.InRange(result.A_出しすぎ率, 45, 55);
         }
 
         /// <summary>
@@ -132,11 +132,11 @@ namespace Tsumiki.Tests.Core
             var truth = RandomSequence(600, seed: 104);
             using var index = this.BuildIndex(depth: 20, truth);
 
-            var path = this.WriteFasta("revcomp.fasta", Util.ReverseComprement(truth));
-            var result = AssemblyValidator.Validate(path, index, K, singleCopyBaseline: 20);
+            var path = this.WriteFasta("revcomp.fasta", Util.V_逆相補(truth));
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
 
-            Assert.Equal(0, result.MissingKmers);
-            Assert.Equal(0, result.ExcessInstances);
+            Assert.Equal(0, result.A_取りこぼし数);
+            Assert.Equal(0, result.A_余分な延べ数);
         }
 
         /// <summary>
@@ -149,30 +149,30 @@ namespace Tsumiki.Tests.Core
             var single = RandomSequence(600, seed: 105);
             var repeat = RandomSequence(200, seed: 106);
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = K, ThreadCount = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
             using var index = new TrustedKmerIndex(this._tempDir);
 
             void Add(string seq, int depth)
             {
-                var bytes = seq.Select(Util.GetSimpleNucleotideID).ToArray();
+                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i + K <= bytes.Length; i++)
                 {
                     for (var rep = 0; rep < depth; rep++)
                     {
-                        index.Add(bytes.AsSpan(i, K), workerIndex: 0);
+                        index.V_登録(bytes.AsSpan(i, K), p_ワーカー番号: 0);
                     }
                 }
             }
 
             Add(single, 20);
             Add(repeat, 40); // 2コピー相当のカバレッジ
-            _ = index.Cutoff(bounds: 2);
+            _ = index.V_カットオフ(p_カットオフ: 2);
 
             var path = this.WriteFasta("repeat_twice.fasta", single, repeat, repeat);
-            var result = AssemblyValidator.Validate(path, index, K, singleCopyBaseline: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
 
-            Assert.Equal(0, result.MissingKmers);
-            Assert.Equal(0, result.ExcessInstances);
+            Assert.Equal(0, result.A_取りこぼし数);
+            Assert.Equal(0, result.A_余分な延べ数);
         }
     }
 }

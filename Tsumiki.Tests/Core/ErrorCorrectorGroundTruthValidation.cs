@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -7,7 +7,7 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// tools/simulate_reads.py が出力した合成データ(正解のerrors.tsv付き)に対して
-    /// ErrorCorrector.CorrectReadFiles を実際に走らせ、注入したエラーのうち
+    /// ErrorCorrector.V_訂正_リードファイル を実際に走らせ、注入したエラーのうち
     /// 何割を正しく真の塩基へ戻せたか(recall)、逆に正しかった塩基を
     /// 誤って書き換えてしまった割合(誤訂正率)を測定する検証用テスト。
     /// 合成データが存在しない場合はスキップする(通常のCI/dotnet testの対象外、
@@ -33,7 +33,7 @@ namespace Tsumiki.Tests.Core
                 return; // 合成データ未生成。tools/simulate_reads.py --out-dir /tmp/tsumiki_synth で生成してから実行する。
             }
 
-            ConfigurationManager.Arguments = new Parameters { Kmer = 31, KmerCutoff = 2, ThreadCount = 8 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 31, A_kmerカットオフ = 2, A_スレッド数 = 8 };
 
             var outDir = Path.Combine(Path.GetTempPath(), "tsumiki_ec_validation_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(outDir);
@@ -42,7 +42,7 @@ namespace Tsumiki.Tests.Core
 
             try
             {
-                ErrorCorrector.CorrectReadFiles(read1Path, read2Path, outDir, corrected1, corrected2);
+                ErrorCorrector.V_訂正_リードファイル(read1Path, read2Path, outDir, corrected1, corrected2);
 
                 // read_id -> mate -> position -> true_base (注入されたエラーの正解)
                 var trueErrors = new Dictionary<(string ReadId, int Mate, int Position), char>();
@@ -97,10 +97,10 @@ namespace Tsumiki.Tests.Core
         private static Dictionary<(string, int), string> LoadReadsById(string path, int mate)
         {
             var result = new Dictionary<(string, int), string>();
-            using var reader = new FastaReaderLikeFastq(path);
-            while (reader.HasNext())
+            using var reader = new 簡易FASTQ読み込み(path);
+            while (reader.Get_続きがあるか())
             {
-                var (rawId, seq) = reader.Next();
+                var (rawId, seq) = reader.Get_次のリード();
                 var id = rawId.TrimStart('@').Split('/')[0];
                 result[(id, mate)] = seq;
             }
@@ -113,10 +113,10 @@ namespace Tsumiki.Tests.Core
             Dictionary<(string ReadId, int Mate, int Position), char> trueErrors,
             ref int fixedCount, ref int stillWrongCount, ref int newlyWrongCount, ref int totalChangedPositions)
         {
-            using var reader = new FastaReaderLikeFastq(correctedPath);
-            while (reader.HasNext())
+            using var reader = new 簡易FASTQ読み込み(correctedPath);
+            while (reader.Get_続きがあるか())
             {
-                var (rawId, correctedSeq) = reader.Next();
+                var (rawId, correctedSeq) = reader.Get_次のリード();
                 var readId = rawId.TrimStart('@').Split('/')[0];
                 if (!originalReads.TryGetValue((readId, mate), out var originalSeq))
                 {
@@ -154,13 +154,13 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>FASTQを「id, 配列」の2行単位として読むだけの軽量リーダー(品質行は無視)。</summary>
-        private sealed class FastaReaderLikeFastq(string path) : IDisposable
+        private sealed class 簡易FASTQ読み込み(string p_パス) : IDisposable
         {
-            private readonly StreamReader _reader = new(path);
+            private readonly StreamReader _reader = new(p_パス);
 
-            public bool HasNext() => !this._reader.EndOfStream;
+            public bool Get_続きがあるか() => !this._reader.EndOfStream;
 
-            public (string Id, string Seq) Next()
+            public (string A_ID, string A_配列) Get_次のリード()
             {
                 var id = this._reader.ReadLine()!;
                 var seq = this._reader.ReadLine()!;

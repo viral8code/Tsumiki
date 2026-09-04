@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Tests.Model
@@ -7,7 +7,7 @@ namespace Tsumiki.Tests.Model
     {
         private static void SetKmerLength(int k)
         {
-            ConfigurationManager.Arguments = new Parameters { Kmer = k };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k };
         }
 
         [Theory]
@@ -24,10 +24,10 @@ namespace Tsumiki.Tests.Model
             {
                 byteKmer[i] = bases[i] switch
                 {
-                    'A' => Consts.NucleotideID.A,
-                    'C' => Consts.NucleotideID.C,
-                    'G' => Consts.NucleotideID.G,
-                    'T' => Consts.NucleotideID.T,
+                    'A' => Consts.塩基ID.A,
+                    'C' => Consts.塩基ID.C,
+                    'G' => Consts.塩基ID.G,
+                    'T' => Consts.塩基ID.T,
                     _ => throw new InvalidOperationException(),
                 };
             }
@@ -49,10 +49,10 @@ namespace Tsumiki.Tests.Model
             SetKmerLength(k);
             var forward = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..k];
 
-            var expected = new KmerKey(Util.ReverseComprement(forward).AsSpan());
-            var actual = new KmerKey(forward.AsSpan()).ReverseComprement();
+            var expected = new KmerKey(Util.V_逆相補(forward).AsSpan());
+            var actual = new KmerKey(forward.AsSpan()).Get_逆相補();
 
-            Assert.True(expected.Equals(actual), $"expected Data=[{string.Join(",", expected.Data)}] actual Data=[{string.Join(",", actual.Data)}]");
+            Assert.True(expected.Equals(actual), $"expected Data=[{string.Join(",", expected.A_パック済みデータ)}] actual Data=[{string.Join(",", actual.A_パック済みデータ)}]");
         }
 
         [Theory]
@@ -63,12 +63,12 @@ namespace Tsumiki.Tests.Model
         {
             SetKmerLength(k);
             var forward = "ACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAA"[..k];
-            var reverse = Util.ReverseComprement(forward);
+            var reverse = Util.V_逆相補(forward);
 
             var forwardKey = new KmerKey(forward.AsSpan());
             var reverseKey = new KmerKey(reverse.AsSpan());
 
-            Assert.True(forwardKey.Canonical().Equals(reverseKey.Canonical()));
+            Assert.True(forwardKey.Get_正規形().Equals(reverseKey.Get_正規形()));
         }
 
         [Fact]
@@ -77,17 +77,17 @@ namespace Tsumiki.Tests.Model
             SetKmerLength(31);
             var key = new KmerKey("ACGTGGCCTTAAACGTGGCCTTAAACGTG".PadRight(31, 'A').AsSpan());
 
-            var canonical = key.Canonical();
+            var canonical = key.Get_正規形();
 
-            Assert.True(canonical.Equals(canonical.Canonical()));
+            Assert.True(canonical.Equals(canonical.Get_正規形()));
         }
 
         [Fact]
         public void Canonical_DifferentKmers_RemainDistinct()
         {
             SetKmerLength(4);
-            var a = new KmerKey("ACGT".AsSpan()).Canonical();
-            var b = new KmerKey("TTTT".AsSpan()).Canonical();
+            var a = new KmerKey("ACGT".AsSpan()).Get_正規形();
+            var b = new KmerKey("TTTT".AsSpan()).Get_正規形();
 
             Assert.False(a.Equals(b));
         }
