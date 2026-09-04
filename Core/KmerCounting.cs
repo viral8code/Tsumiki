@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -53,6 +54,51 @@ namespace Tsumiki.Core
             Console.WriteLine($"Loaded {l_総リード数} reads from {Path.GetFileName(p_ファイルパス)}");
         }
 
+        /// <summary>
+        /// 曖昧塩基を許容する経路。現状シングルスレッドのまま(ワーカー番号固定)で、
+        /// 呼ばれる頻度が低い想定のため並列化の優先度を下げている。
+        ///
+        /// KmerCounting 側と同様、以前はここでもリードを逆相補にしてもう一度
+        /// すべての k-mer を登録していた。登録側が正規化するようになった今は
+        /// 完全に冗長で、すべてのカウントをちょうど2倍にしてしまうため削除した。
+        /// </summary>
+        public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
+        {
+            ulong l_件数 = 0;
+            ulong l_ログ回数 = 0;
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
+            var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
+
+            using var l_読み込み = new FastqReader(p_ファイルパス);
+            while (l_読み込み.Get_続きがあるか())
+            {
+                var l_リード = l_読み込み.Get_次のリード();
+                if (l_リード.A_塩基候補列!.Count < l_k長)
+                {
+                    continue;
+                }
+                var l_塩基候補 = CollectionsMarshal.AsSpan(l_リード.A_塩基候補列);
+                for (var i = 0; i < l_リード.A_クオリティ.Length; i++)
+                {
+                    if (l_リード.A_クオリティ[i] - l_Phredオフセット - l_クオリティカットオフ < 0)
+                    {
+                        l_塩基候補[i] = [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T];
+                    }
+                }
+                p_kmerインデックス.V_登録_曖昧塩基あり(l_塩基候補[..l_k長], 0);
+                for (var i = l_k長; i < l_リード.A_塩基候補列.Count; i++)
+                {
+                    p_kmerインデックス.V_登録_曖昧塩基あり(l_塩基候補.Slice(i - l_k長 + 1, l_k長), 0);
+                }
+                if (++l_件数 == Consts.進捗ログ間隔)
+                {
+                    Console.WriteLine((++l_ログ回数 * Consts.進捗ログ間隔) + " reads Loaded");
+                    l_件数 = 0;
+                }
+            }
+            Console.WriteLine($"Loaded {(l_ログ回数 * Consts.進捗ログ間隔) + l_件数} reads from {Path.GetFileName(p_ファイルパス)}");
+        }
         /// <summary>
         /// FASTQ を順に読み進めてリードを返す。ReadPipeline へ渡す供給元として使う。
         /// </summary>
