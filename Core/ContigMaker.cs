@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
 using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
+using Tsumiki.Utility;
 
 namespace Tsumiki.Core
 {
@@ -129,33 +129,11 @@ namespace Tsumiki.Core
                 l_ローカル隣接[i] = [];
             }
 
-            using (var l_キュー = new BlockingCollection<string>(boundedCapacity: l_スレッド数 * 256))
-            {
-                var l_ワーカー = new Task[l_スレッド数];
-                for (var w = 0; w < l_スレッド数; w++)
-                {
-                    var l_ワーカー番号 = w;
-                    l_ワーカー[w] = Task.Run(() =>
-                    {
-                        var l_ローカル = l_ローカル隣接[l_ワーカー番号];
-                        foreach (var l_リード in l_キュー.GetConsumingEnumerable())
-                        {
-                            this.V_マッピング_1リード(l_リード, l_ローカル);
-                        }
-                    });
-                }
-
-                using (var l_読み込み = new FastqReader(p_リードパス))
-                {
-                    while (l_読み込み.Get_続きがあるか())
-                    {
-                        l_キュー.Add(l_読み込み.Get_次のリード().A_生リード);
-                    }
-                }
-                l_キュー.CompleteAdding();
-
-                Task.WaitAll(l_ワーカー);
-            }
+            ReadPipeline.V_実行(
+                l_スレッド数,
+                l_スレッド数 * 256,
+                Get_生リード列(p_リードパス),
+                (l_リード, l_ワーカー番号) => this.V_マッピング_1リード(l_リード, l_ローカル隣接[l_ワーカー番号]));
 
             foreach (var l_ローカル in l_ローカル隣接)
             {
@@ -203,93 +181,17 @@ namespace Tsumiki.Core
                 l_ローカル逆向き標本[i] = [];
             }
 
-            using (var l_キュー = new BlockingCollection<(string A_リード1, string A_リード2)>(boundedCapacity: l_スレッド数 * 256))
-            {
-                var l_ワーカー = new Task[l_スレッド数];
-                for (var w = 0; w < l_スレッド数; w++)
-                {
-                    var l_ワーカー番号 = w;
-                    l_ワーカー[w] = Task.Run(() =>
-                    {
-                        var l_ローカル = l_ローカル隣接[l_ワーカー番号];
-                        var l_ローカルペア = l_ローカルペア経路[l_ワーカー番号];
-                        var l_同一向き = l_ローカル同一向き標本[l_ワーカー番号];
-                        var l_逆向き = l_ローカル逆向き標本[l_ワーカー番号];
-                        foreach (var (l_リード1, l_リード2) in l_キュー.GetConsumingEnumerable())
-                        {
-                            // 単一リード内の隣接検出は両方に対して行う。
-                            // (直接オーバーラップで結合できる可能性が高い辺。)
-                            this.V_マッピング_1リード(l_リード1, l_ローカル);
-                            this.V_マッピング_1リード(l_リード2, l_ローカル);
-
-                            // ペアエンド情報による隣接検出: それぞれのリードが
-                            // 単独でどの unitig にマップされるかを求め、
-                            // 異なる unitig であれば「インサートサイズ程度の
-                            // 距離で隣接している」という弱い証拠として記録する。
-                            // こちらは直接のオーバーラップを保証しないため、
-                            // リード隣接とは別に集計する。
-                            var l_ヒット1 = this.Get_代表ユニティグ(l_リード1);
-                            var l_ヒット2 = this.Get_代表ユニティグ(l_リード2);
-
-                            if (l_ヒット1.A_ユニティグID != 0 && l_ヒット2.A_ユニティグID != 0
-                                && Math.Abs(l_ヒット1.A_ユニティグID) == Math.Abs(l_ヒット2.A_ユニティグID))
-                            {
-                                V_収集_同一ユニティグ標本(l_ヒット1, l_ヒット2, l_リード1, l_リード2, l_同一向き, l_逆向き);
-                            }
-                            else if (l_ヒット1.A_ユニティグID != 0 && l_ヒット2.A_ユニティグID != 0
-                                && l_ヒット1.A_ユニティグID != l_ヒット2.A_ユニティグID)
-                            {
-                                V_収集_ペア経路(l_ヒット1, l_ヒット2, l_リード1, l_リード2, l_ローカルペア);
-                            }
-                        }
-                    });
-                }
-
-                using (var l_読み込み1 = new FastqReader(p_リード1のパス))
-                using (var l_読み込み2 = new FastqReader(p_リード2のパス))
-                {
-                    var l_不一致を警告済みか = false;
-                    while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
-                    {
-                        var l_データ1 = l_読み込み1.Get_次のリード();
-                        var l_データ2 = l_読み込み2.Get_次のリード();
-
-                        var l_共通ID1 = Util.Get_ペア共通ID(l_データ1.A_ID);
-                        var l_共通ID2 = Util.Get_ペア共通ID(l_データ2.A_ID);
-                        if (l_共通ID1 != l_共通ID2)
-                        {
-                            if (!l_不一致を警告済みか)
-                            {
-                                Console.WriteLine($"[Warning] Paired read IDs do not match at this position (\"{l_データ1.A_ID}\" vs \"{l_データ2.A_ID}\"). " +
-                                    "Paired-end adjacency detection may be unreliable for reads after this point; " +
-                                    "single-read adjacency detection is unaffected.");
-                                l_不一致を警告済みか = true;
-                            }
-                            // ペアが崩れている場合でも、単一リードとしての処理は続行する。
-                            // (お互いを誤ってペアとして扱わないよう、キューには
-                            //  「ペアなし」を示す空文字を積む。)
-                            l_キュー.Add((l_データ1.A_生リード, string.Empty));
-                            l_キュー.Add((l_データ2.A_生リード, string.Empty));
-                            continue;
-                        }
-
-                        l_キュー.Add((l_データ1.A_生リード, l_データ2.A_生リード));
-                    }
-
-                    // 片方のファイルだけ残っている場合は単一リードとして処理する。
-                    while (l_読み込み1.Get_続きがあるか())
-                    {
-                        l_キュー.Add((l_読み込み1.Get_次のリード().A_生リード, string.Empty));
-                    }
-                    while (l_読み込み2.Get_続きがあるか())
-                    {
-                        l_キュー.Add((l_読み込み2.Get_次のリード().A_生リード, string.Empty));
-                    }
-                }
-                l_キュー.CompleteAdding();
-
-                Task.WaitAll(l_ワーカー);
-            }
+            ReadPipeline.V_実行(
+                l_スレッド数,
+                l_スレッド数 * 256,
+                Get_ペアリード列(p_リード1のパス, p_リード2のパス),
+                (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(
+                    l_ペア.A_リード1,
+                    l_ペア.A_リード2,
+                    l_ローカル隣接[l_ワーカー番号],
+                    l_ローカルペア経路[l_ワーカー番号],
+                    l_ローカル同一向き標本[l_ワーカー番号],
+                    l_ローカル逆向き標本[l_ワーカー番号]));
 
             foreach (var l_ローカル in l_ローカル隣接)
             {
@@ -591,9 +493,119 @@ namespace Tsumiki.Core
         /// 1リード分の k-mer マッピングを行い、隣接関係を(スレッドローカルな)
         /// 辞書に集計する。
         /// </summary>
+        /// <summary>
+        /// read1/read2 を同時に読み進めて、対応するペアを返す。
+        /// ReadPipeline へ渡す供給元として使う。
+        ///
+        /// リード ID の対応が取れないペアや、片方のファイルにだけ残っている
+        /// リードは、A_リード2 を空文字にした「ペアなし」として返す。
+        /// こうしておけば、単一リード内の隣接検出だけは通常どおり行われる。
+        /// </summary>
+        private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(
+            string p_リード1のパス, string p_リード2のパス)
+        {
+            using var l_読み込み1 = new FastqReader(p_リード1のパス);
+            using var l_読み込み2 = new FastqReader(p_リード2のパス);
+
+            var l_不一致を警告済みか = false;
+            while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+            {
+                var l_データ1 = l_読み込み1.Get_次のリード();
+                var l_データ2 = l_読み込み2.Get_次のリード();
+
+                if (Util.Get_ペア共通ID(l_データ1.A_ID) != Util.Get_ペア共通ID(l_データ2.A_ID))
+                {
+                    if (!l_不一致を警告済みか)
+                    {
+                        Console.WriteLine($"[Warning] Paired read IDs do not match at this position (\"{l_データ1.A_ID}\" vs \"{l_データ2.A_ID}\"). " +
+                            "Paired-end adjacency detection may be unreliable for reads after this point; " +
+                            "single-read adjacency detection is unaffected.");
+                        l_不一致を警告済みか = true;
+                    }
+                    // お互いを誤ってペアとして扱わないよう、別々に流す。
+                    yield return (l_データ1.A_生リード!, string.Empty);
+                    yield return (l_データ2.A_生リード!, string.Empty);
+                    continue;
+                }
+
+                yield return (l_データ1.A_生リード!, l_データ2.A_生リード!);
+            }
+
+            // 片方のファイルだけ残っている場合は単一リードとして処理する。
+            while (l_読み込み1.Get_続きがあるか())
+            {
+                yield return (l_読み込み1.Get_次のリード().A_生リード!, string.Empty);
+            }
+            while (l_読み込み2.Get_続きがあるか())
+            {
+                yield return (l_読み込み2.Get_次のリード().A_生リード!, string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// ペア1組を処理する。単一リード内の隣接検出は両方に対して行い
+        /// (直接オーバーラップで結合できる可能性が高い辺)、それとは別に
+        /// 「read1 と read2 がそれぞれ別 unitig に単独でマップされた」という
+        /// 弱い証拠を集計する。後者は直接のオーバーラップを保証しないため、
+        /// リード隣接とは分けて持つ。
+        /// </summary>
+        private void V_処理_1ペア(
+            string p_リード1,
+            string p_リード2,
+            Dictionary<(int, int), ulong> p_ローカル隣接,
+            Dictionary<(int, int), List<int>> p_ローカルペア経路,
+            List<int> p_同一向き標本,
+            List<int> p_逆向き標本)
+        {
+            this.V_マッピング_1リード(p_リード1, p_ローカル隣接);
+            this.V_マッピング_1リード(p_リード2, p_ローカル隣接);
+
+            var l_ヒット1 = this.Get_代表ユニティグ(p_リード1);
+            var l_ヒット2 = this.Get_代表ユニティグ(p_リード2);
+
+            if (l_ヒット1.A_ユニティグID == 0 || l_ヒット2.A_ユニティグID == 0)
+            {
+                return;
+            }
+
+            if (Math.Abs(l_ヒット1.A_ユニティグID) == Math.Abs(l_ヒット2.A_ユニティグID))
+            {
+                V_収集_同一ユニティグ標本(
+                    l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_同一向き標本, p_逆向き標本);
+            }
+            else
+            {
+                V_収集_ペア経路(l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_ローカルペア経路);
+            }
+        }
+
+        /// <summary>
+        /// FASTQ を順に読み進めて生リード文字列だけを返す。
+        /// ReadPipeline へ渡す供給元として使う。
+        /// </summary>
+        private static IEnumerable<string> Get_生リード列(string p_リードパス)
+        {
+            using var l_読み込み = new FastqReader(p_リードパス);
+            while (l_読み込み.Get_続きがあるか())
+            {
+                yield return l_読み込み.Get_次のリード().A_生リード!;
+            }
+        }
+
         private void V_マッピング_1リード(string p_リード, Dictionary<(int, int), ulong> p_ローカル隣接)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+
+            // k 未満のリードからは k-mer を1つも取れない。この判定が無いと
+            // 下の初期化ループが p_リード[i] を i = k-1 まで舐めて範囲外になる。
+            // 一律の長さのリードでは踏まないが、トリミング済みのデータでは
+            // リード長がばらつくため普通に起きる(GAGE-B のトリミング済み
+            // MiSeq リードでは 8% 以上が k=63 未満で、最短は 19bp だった)。
+            if (p_リード.Length < l_k長)
+            {
+                return;
+            }
+
             // FASTQ の生リードには N 等の曖昧塩基が混入しうるため、
             // A/C/G/T のみを前提とする厳密版ではなく曖昧塩基を許容する版を使う。
             // 曖昧塩基を含む区間の k-mer は後段のカウントによるスキップで除外される。

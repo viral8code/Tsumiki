@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -25,50 +24,45 @@ namespace Tsumiki.Core
             ulong l_ログ回数 = 0;
             var l_カウンタロック = new object();
 
-            using var l_キュー = new BlockingCollection<リードデータ>(boundedCapacity: l_スレッド数 * 64);
-
-            var l_ワーカー = new Task[l_スレッド数];
-            for (var w = 0; w < l_スレッド数; w++)
-            {
-                var l_ワーカー番号 = w;
-                l_ワーカー[w] = Task.Run(() =>
+            ReadPipeline.V_実行(
+                l_スレッド数,
+                l_スレッド数 * 64,
+                Get_リード列(p_ファイルパス),
+                (l_リード, l_ワーカー番号) =>
                 {
-                    foreach (var l_リード in l_キュー.GetConsumingEnumerable())
-                    {
-                        V_登録_1リード(l_リード, p_kmerインデックス, l_ワーカー番号);
+                    V_登録_1リード(l_リード, p_kmerインデックス, l_ワーカー番号);
 
-                        var l_ログ出力するか = false;
-                        ulong l_ログ値 = 0;
-                        lock (l_カウンタロック)
+                    var l_ログ出力するか = false;
+                    ulong l_ログ値 = 0;
+                    lock (l_カウンタロック)
+                    {
+                        l_総リード数++;
+                        if (l_総リード数 % Consts.進捗ログ間隔 == 0)
                         {
-                            l_総リード数++;
-                            if (l_総リード数 % Consts.進捗ログ間隔 == 0)
-                            {
-                                l_ログ回数++;
-                                l_ログ出力するか = true;
-                                l_ログ値 = l_ログ回数 * Consts.進捗ログ間隔;
-                            }
-                        }
-                        if (l_ログ出力するか)
-                        {
-                            Console.WriteLine(l_ログ値 + " reads Loaded");
+                            l_ログ回数++;
+                            l_ログ出力するか = true;
+                            l_ログ値 = l_ログ回数 * Consts.進捗ログ間隔;
                         }
                     }
+                    if (l_ログ出力するか)
+                    {
+                        Console.WriteLine(l_ログ値 + " reads Loaded");
+                    }
                 });
-            }
-
-            using (var l_読み込み = new FastqReader(p_ファイルパス))
-            {
-                while (l_読み込み.Get_続きがあるか())
-                {
-                    l_キュー.Add(l_読み込み.Get_次のリード_軽量());
-                }
-            }
-            l_キュー.CompleteAdding();
-
-            Task.WaitAll(l_ワーカー);
 
             Console.WriteLine($"Loaded {l_総リード数} reads from {Path.GetFileName(p_ファイルパス)}");
+        }
+
+        /// <summary>
+        /// FASTQ を順に読み進めてリードを返す。ReadPipeline へ渡す供給元として使う。
+        /// </summary>
+        private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
+        {
+            using var l_読み込み = new FastqReader(p_ファイルパス);
+            while (l_読み込み.Get_続きがあるか())
+            {
+                yield return l_読み込み.Get_次のリード_軽量();
+            }
         }
 
         /// <summary>
