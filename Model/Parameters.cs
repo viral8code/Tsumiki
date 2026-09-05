@@ -161,6 +161,13 @@ namespace Tsumiki.Model
 
         public bool A_エラー訂正するか { get; set; } = false;
 
+        /// <summary>
+        /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか。
+        /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、
+        /// 精度を求めるなら試すしかない。実行時間と引き換えになるので既定は false。
+        /// </summary>
+        public bool A_マルチkか { get; set; } = false;
+
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         private int _スレッド数 = Environment.ProcessorCount;
@@ -221,6 +228,7 @@ namespace Tsumiki.Model
                 insert size: {this.A_インサートサイズ?.ToString() ?? Consts.インサートサイズ未指定表示}
                 allow ambiguous bases : {this.A_曖昧塩基を許容するか}
                 error correction : {this.A_エラー訂正するか}
+                multi-k : {this.A_マルチkか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}
                 pair unite threshold : {this.A_ペア結合閾値}

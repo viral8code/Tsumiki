@@ -7,29 +7,19 @@ namespace Tsumiki.Core
 {
     /// <summary>
     /// 指定した k 長で、k-mer カウントからスキャフォールドまでを一通り実行する。
-    ///
-    /// もともと Program に直書きされていた処理を切り出したもの。切り出した理由は
-    /// multi-k のためで、k を変えて何度も同じ手順を回す必要がある。
-    /// k ごとに一時ディレクトリと出力ファイル名を分けられるよう、呼び出し側から
-    /// 接頭辞を渡せるようにしてある。
     /// </summary>
     internal static class AssemblyPipeline
     {
         /// <summary>
         /// p_k長 でアセンブリを実行し、生成物のパスを返す。
-        /// unitig 数が上限を超えた場合(ゲノムが複雑すぎる、あるいは
-        /// パラメータが不適切)は null を返す。
-        ///
-        /// p_出力接頭辞 は出力ファイル名の先頭に付く。単一 k の実行では
-        /// 空文字を渡し、従来どおり unitigs.fasta / contigs.fasta /
-        /// scaffolds.fasta という名前で出力する。
+        /// unitig 数が上限を超えた場合は null。
+        /// p_出力接頭辞 は出力ファイル名の先頭に付く(単一 k では空文字)。
         /// </summary>
         public static アセンブリ実行結果? Get_実行結果(
             Parameters p_引数, int p_k長, string p_一時ディレクトリ, string p_出力接頭辞, int? p_リード長)
         {
-            // 以降の全処理は ConfigurationManager 経由で k 長を参照するため、
-            // ここで差し替える。明示指定の印は立てない(自動選択の結果として
-            // 入った値である、という状態を保つ)。
+            // 以降の全処理は ConfigurationManager 経由で k 長を参照する。
+            // 明示指定の印は立てない(自動選択された値のままとして扱う)。
             if (p_引数.A_k長 != p_k長)
             {
                 p_引数.Set_推定k長(p_k長);
@@ -54,16 +44,13 @@ namespace Tsumiki.Core
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
             _ = l_kmerインデックス.V_カットオフ(p_引数.A_kmerカットオフ);
 
-            // カットオフ判定と同じループで集計されたヒストグラムから、
-            // 谷・単一コピーの山・ゲノムサイズ・カバレッジを報告する。
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
 
             Logger.V_出力_タイムスタンプ();
 
             Console.WriteLine("Clipping short tips");
-            // tip 除去は k-mer 集合を縮小するので、開始点はその後の状態で
-            // 数え直す必要がある。除去側が最終状態で計算したものを返してくるため、
-            // ここで取り直さずそのまま使う。
+            // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
+            // 数え直す必要がある。除去側が最終状態のものを返す。
             var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長);
 
             Logger.V_出力_タイムスタンプ();
@@ -74,10 +61,8 @@ namespace Tsumiki.Core
 
             AssemblyStatsReporter.V_出力_統計("unitigs", l_ユニティグパス);
 
-            // 各 unitig のカバレッジからコピー数を推定する。反復配列かどうかを
-            // グラフの形ではなく量的な根拠で判定でき、後段の経路探索では
-            // 「この unitig は何回まで使ってよいか」という予算になる。
-            // k-mer インデックスがまだ生きているこの時点でしか計算できない。
+            // 反復配列かどうかをグラフの形ではなく量的な根拠で判定するための
+            // コピー数推定。k-mer インデックスが生きている今しか計算できない。
             var l_ユニティグ長 = l_ユニティグ配列.ToDictionary(x => x.Key, x => x.Value.Length);
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_ユニティグ配列, p_k長);
             var l_コピー数推定 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_ユニティグ長);
@@ -118,9 +103,8 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
-            // スキャフォールディングはペアエンド情報を前提とするため、
-            // read2 が指定されている(=ペアエンドで実行された)場合のみ行う。
-            // インサートサイズが推定できずスキャフォールドが作られないこともある。
+            // スキャフォールディングはペアエンド情報を前提とする。
+            // インサートサイズが推定できず作られないこともある。
             var l_スキャフォールドを作ったか = false;
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
@@ -145,10 +129,8 @@ namespace Tsumiki.Core
 
             AssemblyStatsReporter.V_出力_統計("scaffolds", l_スキャフォールドパス);
 
-            // スキャフォールドの N を、グラフ上で両端を繋ぐ経路を探して
-            // 実配列に置き換える。contig が途切れたのは配列が無いからではなく
-            // 分岐で決められなかったからであることが多く、その場合
-            // ギャップを埋める配列はグラフ上に実在する。
+            // contig が途切れる原因は配列の不在より分岐の未解決が多く、
+            // その場合ギャップを埋める配列はグラフ上に実在する。
             Console.WriteLine("Filling scaffold gaps");
             var l_ギャップ統計 = GapFiller.V_充填_ギャップ(l_スキャフォールドパス, l_kmerインデックス, p_k長);
             GapFiller.V_出力_充填統計(l_ギャップ統計);
@@ -157,8 +139,6 @@ namespace Tsumiki.Core
                 AssemblyStatsReporter.V_出力_統計("scaffolds (gaps filled)", l_スキャフォールドパス);
             }
 
-            // 出来上がったアセンブリが、観測された k-mer とその出現回数に
-            // 対して辻褄が合っているかを自己検査する(リファレンス不要)。
             AssemblyValidator.V_出力_検査結果(
                 "scaffolds",
                 AssemblyValidator.Get_検査結果(
@@ -203,7 +183,7 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// unitig を構築して FASTA へ書き出し、ID -> 配列 の対応を返す。
-        /// 同じ配列を順鎖・逆鎖の両方で出してしまわないよう既出集合で弾く。
+        /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く。
         /// </summary>
         private static Dictionary<int, string> Get_ユニティグ(
             TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, string p_出力パス, out bool p_上限に達したか)

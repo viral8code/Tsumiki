@@ -14,9 +14,8 @@ namespace Tsumiki.Core
     internal static class KmerCounting
     {
         /// <summary>
-        /// FASTQ を1本のスレッドで順に読み進めつつ(ディスクI/Oはシーケンシャルなまま)、
-        /// 読み取ったリードを BlockingCollection 経由でワーカースレッド群に配る
-        /// プロデューサー/コンシューマ方式。
+        /// FASTQ を1本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する。
+        /// 読み取りを1本に保つのはディスクI/Oをシーケンシャルなままにするため。
         /// </summary>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
@@ -55,12 +54,7 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 曖昧塩基を許容する経路。現状シングルスレッドのまま(ワーカー番号固定)で、
-        /// 呼ばれる頻度が低い想定のため並列化の優先度を下げている。
-        ///
-        /// KmerCounting 側と同様、以前はここでもリードを逆相補にしてもう一度
-        /// すべての k-mer を登録していた。登録側が正規化するようになった今は
-        /// 完全に冗長で、すべてのカウントをちょうど2倍にしてしまうため削除した。
+        /// 曖昧塩基を許容する経路。呼ばれる頻度が低い想定のため未並列。
         /// </summary>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
@@ -99,9 +93,7 @@ namespace Tsumiki.Core
             }
             Console.WriteLine($"Loaded {(l_ログ回数 * Consts.進捗ログ間隔) + l_件数} reads from {Path.GetFileName(p_ファイルパス)}");
         }
-        /// <summary>
-        /// FASTQ を順に読み進めてリードを返す。ReadPipeline へ渡す供給元として使う。
-        /// </summary>
+        /// <summary>FASTQ を順に読み進めてリードを返す。</summary>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
@@ -112,18 +104,9 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 1リード分の k-mer 抽出・品質フィルタリング・登録を行う。
-        ///
-        /// かつてはこの後、リードを逆相補にしてもう一度すべての k-mer を
-        /// 登録していた。カウント段階で正規化していなかったため、どちらの
-        /// 向きから問い合わせても当たるようにするには両向きを入れる必要が
-        /// あったからである。
-        ///
-        /// 現在は TrustedKmerIndex.V_登録 が順鎖・逆鎖のうち辞書順で小さいほう
-        /// (正規化形)に寄せてから数えるため、この2周目は完全に冗長であり、
-        /// すべてのカウントをちょうど2倍にしてしまう(実データのヒストグラムが
-        /// 偶数のカウントしか持たない、という形で表面化した)。
-        /// 削除したことで、登録回数・メモリ・ディスク書き込みがいずれも半減する。
+        /// 1リード分の k-mer 抽出・品質フィルタリング・登録。
+        /// 逆相補側を別途登録してはいけない。TrustedKmerIndex.V_登録 が
+        /// 正規形へ寄せて数えるため、二重計上になる。
         /// </summary>
         private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス, int p_ワーカー番号)
         {

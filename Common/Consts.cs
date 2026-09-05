@@ -51,6 +51,8 @@ namespace Tsumiki.Common
             public const string エラー訂正 = "-ec";
 
             public const string メモリ予算 = "-mem";
+
+            public const string マルチk = "-mk";
         }
 
         public const string インサートサイズ未指定表示 = "unspecified";
@@ -82,6 +84,12 @@ namespace Tsumiki.Common
         /// これより短いリードでは k を十分に取れず、自動選択しても意味がない。
         /// </summary>
         public const int 自動k長に必要な最小リード長 = 32;
+
+        /// <summary>
+        /// -mk で試す k の個数。増やすほど実行時間が線形に伸びる。
+        /// ヘルプに実行時間の目安として出るため、ここに置いている。
+        /// </summary>
+        public const int マルチkで試す個数 = 3;
 
         /// <summary>
         /// -kc も、k-mer スペクトルの解析も当てにできなかった場合の最後の拠り所。
@@ -126,6 +134,7 @@ namespace Tsumiki.Common
             {引数キー.スレッド数} [integer] : number of worker threads used for loading reads (default : number of logical processors)
             {引数キー.ペア結合閾値} [decimal] : minimum ratio of the best-supported pair-end scaffold edge among all candidates for a node (default : {ペア結合閾値の既定値})
             {引数キー.ペア支持数閾値} [integer] : minimum read-pair support required for a pair-end scaffold edge (default : {ペア支持数閾値の既定値})
+            {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try (costs roughly {マルチkで試す個数 + 1}x the runtime) (default : false)
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {引数キー.ヘルプ} : output this text (default : false)
 

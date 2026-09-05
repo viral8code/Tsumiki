@@ -98,8 +98,10 @@ namespace Tsumiki
                 Logger.V_出力_タイムスタンプ();
             }
 
-            var l_結果 = AssemblyPipeline.Get_実行結果(
-                l_引数, l_引数.A_k長, l_一時ディレクトリ, p_出力接頭辞: string.Empty, l_リード長);
+            var l_結果 = l_引数.A_マルチkか
+                ? MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長)
+                : AssemblyPipeline.Get_実行結果(
+                    l_引数, l_引数.A_k長, l_一時ディレクトリ, p_出力接頭辞: string.Empty, l_リード長);
 
             if (l_結果 is null)
             {

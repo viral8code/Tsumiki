@@ -494,12 +494,9 @@ namespace Tsumiki.Core
         /// 辞書に集計する。
         /// </summary>
         /// <summary>
-        /// read1/read2 を同時に読み進めて、対応するペアを返す。
-        /// ReadPipeline へ渡す供給元として使う。
-        ///
-        /// リード ID の対応が取れないペアや、片方のファイルにだけ残っている
-        /// リードは、A_リード2 を空文字にした「ペアなし」として返す。
-        /// こうしておけば、単一リード内の隣接検出だけは通常どおり行われる。
+        /// read1/read2 を同時に読み進めて対応するペアを返す。
+        /// ID の対応が取れないものと片側だけ残ったものは A_リード2 を空文字にし、
+        /// 単一リード内の隣接検出だけは通常どおり行えるようにする。
         /// </summary>
         private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(
             string p_リード1のパス, string p_リード2のパス)
@@ -543,11 +540,8 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// ペア1組を処理する。単一リード内の隣接検出は両方に対して行い
-        /// (直接オーバーラップで結合できる可能性が高い辺)、それとは別に
-        /// 「read1 と read2 がそれぞれ別 unitig に単独でマップされた」という
-        /// 弱い証拠を集計する。後者は直接のオーバーラップを保証しないため、
-        /// リード隣接とは分けて持つ。
+        /// ペア1組を処理する。ペアエンド由来の隣接は直接のオーバーラップを
+        /// 保証しない弱い証拠なので、リード隣接とは分けて集計する。
         /// </summary>
         private void V_処理_1ペア(
             string p_リード1,
@@ -579,10 +573,7 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>
-        /// FASTQ を順に読み進めて生リード文字列だけを返す。
-        /// ReadPipeline へ渡す供給元として使う。
-        /// </summary>
+        /// <summary>FASTQ を順に読み進めて生リード文字列だけを返す。</summary>
         private static IEnumerable<string> Get_生リード列(string p_リードパス)
         {
             using var l_読み込み = new FastqReader(p_リードパス);
@@ -596,11 +587,8 @@ namespace Tsumiki.Core
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            // k 未満のリードからは k-mer を1つも取れない。この判定が無いと
+            // k 未満のリードからは k-mer を取れない。この判定が無いと
             // 下の初期化ループが p_リード[i] を i = k-1 まで舐めて範囲外になる。
-            // 一律の長さのリードでは踏まないが、トリミング済みのデータでは
-            // リード長がばらつくため普通に起きる(GAGE-B のトリミング済み
-            // MiSeq リードでは 8% 以上が k=63 未満で、最短は 19bp だった)。
             if (p_リード.Length < l_k長)
             {
                 return;

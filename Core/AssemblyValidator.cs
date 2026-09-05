@@ -58,7 +58,7 @@ namespace Tsumiki.Core
                     var l_配列 = l_読み込み.Get_次の配列().A_配列;
                     for (var i = 0; i + p_k長 <= l_配列.Length; i++)
                     {
-                        if (!Get_正規化パック(l_配列, i, p_k長, out var l_正規形))
+                        if (!KmerPacking.Get_正規化パック(l_配列, i, p_k長, out var l_正規形))
                         {
                             continue;
                         }
@@ -76,7 +76,7 @@ namespace Tsumiki.Core
             foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {
                 l_信頼kmer数++;
-                var l_正規形 = Get_正規化パック(l_kmer);
+                var l_正規形 = KmerPacking.Get_正規化パック(l_kmer);
 
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
                 if (l_出現数 == 0)
@@ -102,52 +102,6 @@ namespace Tsumiki.Core
             }
 
             return new 整合性検査結果(l_信頼kmer数, l_延べ数, l_観測.Count, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
-        }
-
-        /// <summary>
-        /// 配列の位置 p_開始位置 から p_k長 塩基を 2bit パックし、
-        /// 逆相補と比べて小さいほう(正規化された形)を返す。
-        /// 曖昧塩基(N など)を含む場合は false を返す。
-        /// </summary>
-        private static bool Get_正規化パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_正規形)
-        {
-            UInt128 l_順鎖 = 0;
-            for (var i = 0; i < p_k長; i++)
-            {
-                var l_塩基ID = Util.Get_塩基ID(p_配列[p_開始位置 + i]);
-                if (l_塩基ID is < Consts.塩基ID.A or > Consts.塩基ID.T)
-                {
-                    p_正規形 = 0;
-                    return false;
-                }
-                l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
-            }
-            p_正規形 = Get_小さいほう(l_順鎖, p_k長);
-            return true;
-        }
-
-        private static UInt128 Get_正規化パック(ReadOnlySpan<byte> p_kmer)
-        {
-            UInt128 l_順鎖 = 0;
-            foreach (var l_塩基ID in p_kmer)
-            {
-                l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
-            }
-            return Get_小さいほう(l_順鎖, p_kmer.Length);
-        }
-
-        /// <summary>パック済みの値とその逆相補のうち小さいほうを返す。</summary>
-        private static UInt128 Get_小さいほう(UInt128 p_パック済み, int p_長さ)
-        {
-            var l_残り = p_パック済み;
-            UInt128 l_逆相補 = 0;
-            for (var i = 0; i < p_長さ; i++)
-            {
-                var l_コドン = l_残り & 3;
-                l_逆相補 = (l_逆相補 << 2) | (l_コドン ^ 3);
-                l_残り >>= 2;
-            }
-            return p_パック済み < l_逆相補 ? p_パック済み : l_逆相補;
         }
 
         public static void V_出力_検査結果(string p_ラベル, 整合性検査結果 p_結果)

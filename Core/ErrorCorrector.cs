@@ -55,10 +55,8 @@ namespace Tsumiki.Core
                 {
                     KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス);
                 }
-                // 訂正の判定はこのカットオフが全てなので、-kc が未指定なら
-                // ここでもスペクトルから決め直す。既定値(2)のままだと
-                // エラー由来の k-mer まで「信頼できる」と判定してしまい、
-                // 訂正が一件も起きない(実データで実際に発生していた)。
+                // 訂正の判定はこのカットオフが全て。既定値のままだと
+                // エラー由来の k-mer まで信頼扱いになり、訂正が起きない。
                 KmerCutoffSelector.V_解決_kmerカットオフ(
                     ConfigurationManager.A_実行時引数, l_kmerインデックス);
                 _ = l_kmerインデックス.V_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
