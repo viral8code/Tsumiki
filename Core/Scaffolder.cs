@@ -412,23 +412,38 @@ namespace Tsumiki.Core
             ulong p_最小証拠数,
             (int A_行き先, int A_ギャップ長)?[] p_確定辺)
         {
-            var l_候補 = p_隣接[p_頂点].Where(x => x.A_支持数 >= p_最小証拠数).ToList();
-            if (l_候補.Count == 0)
+            var l_最良 = Get_優勢な候補(p_隣接[p_頂点], p_優勢閾値, p_最小証拠数);
+            if (l_最良 is not { } l_辺)
             {
                 p_確定辺[p_頂点] = null;
                 return;
+            }
+
+            p_確定辺[p_頂点] = (l_辺.A_行き先, this.Get_推定ギャップ長(l_辺.A_既知長標本));
+        }
+
+        /// <summary>
+        /// 支持数が最小証拠数を満たし、その中で優勢比を超える辺を返す。
+        /// </summary>
+        internal static (int A_行き先, ulong A_支持数, List<int> A_既知長標本)? Get_優勢な候補(
+            IReadOnlyList<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)> p_候補,
+            decimal p_優勢閾値,
+            ulong p_最小証拠数)
+        {
+            var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
+            if (l_候補.Count == 0)
+            {
+                return null;
             }
 
             var l_合計 = l_候補.Aggregate(0UL, (l_累積, x) => l_累積 + x.A_支持数);
             var l_最良 = l_候補.OrderByDescending(x => x.A_支持数).First();
-
             if (l_合計 == 0 || (decimal)l_最良.A_支持数 / l_合計 < p_優勢閾値)
             {
-                p_確定辺[p_頂点] = null;
-                return;
+                return null;
             }
 
-            p_確定辺[p_頂点] = (l_最良.A_行き先, this.Get_推定ギャップ長(l_最良.A_既知長標本));
+            return l_最良;
         }
 
         /// <summary>
