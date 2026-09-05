@@ -26,8 +26,18 @@ namespace Tsumiki.Core
             Console.WriteLine($"[Multi-k] Trying k = {string.Join(", ", l_k候補)}");
 
             var l_実行結果一覧 = new List<アセンブリ実行結果>();
+            アセンブリ実行結果? l_直前 = null;
+
             foreach (var l_k長 in l_k候補)
             {
+                if (Get_薄すぎるか(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
+                {
+                    Console.WriteLine(
+                        $"[Multi-k] Skipping k={l_k長}: predicted k-mer coverage {l_予測:F1}x is below " +
+                        $"{Consts.マルチkの最小kmerカバレッジ:F1}x, so this k cannot produce a usable graph.");
+                    continue;
+                }
+
                 Console.WriteLine();
                 Console.WriteLine($"[Multi-k] ===== Assembling with k={l_k長} =====");
                 var l_結果 = AssemblyPipeline.Get_実行結果(
@@ -38,6 +48,7 @@ namespace Tsumiki.Core
                     continue;
                 }
                 l_実行結果一覧.Add(l_結果);
+                l_直前 = l_結果;
             }
 
             if (l_実行結果一覧.Count == 0)
@@ -65,8 +76,114 @@ namespace Tsumiki.Core
             AssemblySelector.V_出力_候補一覧(l_候補, l_最良.A_実行結果);
             Console.WriteLine($"[Multi-k] Selected k={l_最良.A_実行結果.A_k長}.");
 
-            V_複製_採用した結果(l_最良.A_実行結果);
-            return l_最良.A_実行結果;
+            var l_採用 = (p_引数.A_マージするか
+                    ? Get_統合結果(p_引数, l_最良, l_候補, l_k候補[0], p_一時ディレクトリ, p_リード長)
+                    : null)
+                ?? l_最良.A_実行結果;
+            V_複製_採用した結果(l_採用);
+            return l_採用;
+        }
+
+        /// <summary>
+        /// 骨格に他の k の配列を統合し、良くなっていれば統合結果を返す。
+        /// 良くならなければ null を返して骨格をそのまま使う。
+        ///
+        /// 統合は誤った連結を持ち込みうるので、必ず同じ物差しで測り直して
+        /// 骨格に勝ったときだけ採る。勝敗の判定は候補選びと同じ規則に任せる。
+        /// </summary>
+        private static アセンブリ実行結果? Get_統合結果(
+            Parameters p_引数,
+            (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良,
+            List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
+            int p_アンカーk長,
+            string p_一時ディレクトリ,
+            int? p_リード長)
+        {
+            Console.WriteLine();
+            Console.WriteLine("[Merge] Merging the other k values into the selected assembly");
+
+            var l_統合パス = "merged_" + Consts.スキャフォールドファイル名;
+            var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
+            if (!AssemblyMerger.V_統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
+            {
+                return null;
+            }
+
+            var l_統合結果 = p_最良.A_実行結果 with
+            {
+                A_コンティグパス = l_統合パス,
+                A_スキャフォールドパス = l_統合パス,
+            };
+
+            var l_統合の評価 = Get_統合の評価(
+                p_引数, l_統合結果, p_アンカーk長, p_一時ディレクトリ, p_リード長);
+            if (l_統合の評価 is null)
+            {
+                Console.WriteLine("[Merge] Could not evaluate the merged assembly; keeping the selected one.");
+                return null;
+            }
+
+            Console.WriteLine($"[Merge]   before: {p_最良.A_評価}");
+            Console.WriteLine($"[Merge]   merged: {l_統合の評価}");
+
+            var l_勝者 = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
+            if (l_勝者.A_実行結果.A_最終パス != l_統合パス)
+            {
+                Console.WriteLine("[Merge] The merged assembly did not beat the selected one; keeping the selected one.");
+                return null;
+            }
+
+            Console.WriteLine("[Merge] Using the merged assembly.");
+            return l_統合結果;
+        }
+
+        /// <summary>
+        /// 統合結果を、候補と同じアンカー k-mer 集合で測り直す。
+        /// アンカーは選択時に作ったものと同じ条件で作り直す。
+        /// </summary>
+        private static アセンブリ評価? Get_統合の評価(
+            Parameters p_引数,
+            アセンブリ実行結果 p_統合結果,
+            int p_アンカーk長,
+            string p_一時ディレクトリ,
+            int? p_リード長)
+        {
+            var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{p_アンカーk長}_merge");
+            _ = Directory.CreateDirectory(l_作業ディレクトリ);
+
+            p_引数.Set_推定k長(p_アンカーk長);
+            using var l_アンカー = new TrustedKmerIndex(l_作業ディレクトリ);
+            ConfigurationManager.A_kmerインデックス = l_アンカー;
+
+            V_読込_リード(p_引数, l_アンカー);
+            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
+            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
+
+            var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
+            return l_解析 is null
+                ? null
+                : AssemblyScorer.Get_評価(
+                    p_統合結果.A_最終パス, l_アンカー, p_アンカーk長,
+                    l_解析.A_ピーク出現回数, l_解析.A_推定ゲノムサイズ);
+        }
+
+        /// <summary>
+        /// この k ではカバレッジが薄すぎて試すだけ無駄か。
+        /// 判断できる材料が無い(まだ1つも走っていない、リード長が不明、
+        /// -k で明示指定された)場合は捨てない。
+        /// </summary>
+        private static bool Get_薄すぎるか(
+            アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
+        {
+            p_予測 = 0;
+            if (p_直前 is null || p_リード長 is not { } l_リード長 || p_引数.A_k長一覧.Count > 0)
+            {
+                return false;
+            }
+
+            p_予測 = Get_予測kmerカバレッジ(
+                p_直前.A_単一コピー基準値, p_直前.A_k長, p_k長, l_リード長);
+            return p_予測 < Consts.マルチkの最小kmerカバレッジ;
         }
 
         /// <summary>
@@ -171,32 +288,54 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 試す k の一覧。上限はリード長から決まる推奨値、下限はその半分。
-        /// 最適な k はこの範囲の両端どちらにも来るため、片側に寄せない。
+        /// 試す k の一覧。-k にカンマ区切りで指定されていればそれをそのまま使う。
+        ///
+        /// 自動の場合は 21 からリード長の <see cref="Consts.マルチk上限のリード長比"/> 倍までを
+        /// 等比で刻む。等比にするのは、k を 21 から 42 に上げたときと 110 から 131 に
+        /// 上げたときでは、跨げるようになる反復配列の範囲が桁で違うため。
+        /// 上限をリード長近くまで取るのは、カバレッジが十分あれば
+        /// リード長に近い k のほうが良い場合があるため。
         /// </summary>
         public static List<int> Get_k候補一覧(Parameters p_引数, int? p_リード長)
         {
-            // 明示指定された -k は「これ以上上げるな」という指示として扱う。
-            var l_上限 = p_引数.A_k長が明示指定されたか
-                ? p_引数.A_k長
-                : (p_リード長 is { } l_リード長 ? KmerLengthSelector.Get_推奨k長(l_リード長) : null)
-                    ?? Consts.k長の既定値;
-
-            var l_下限 = Math.Max(試すk長の下限, Get_奇数(l_上限 / 2));
-            if (l_下限 >= l_上限)
+            if (p_引数.A_k長一覧.Count > 0)
             {
-                return [l_上限];
+                return [.. p_引数.A_k長一覧];
             }
 
+            if (p_リード長 is not { } l_リード長)
+            {
+                return [p_引数.A_k長];
+            }
+
+            var l_上限 = Get_奇数((int)(l_リード長 * Consts.マルチk上限のリード長比));
+            var l_下限 = Consts.マルチkの下限;
+            if (l_下限 >= l_上限)
+            {
+                return [Get_奇数(Math.Min(l_上限, l_リード長 - 1))];
+            }
+
+            var l_比 = Math.Pow((double)l_上限 / l_下限, 1.0 / (Consts.マルチkで試す個数 - 1));
             var l_候補 = new SortedSet<int>();
             for (var i = 0; i < Consts.マルチkで試す個数; i++)
             {
-                var l_値 = Consts.マルチkで試す個数 == 1
-                    ? l_上限
-                    : l_下限 + (int)Math.Round((double)(l_上限 - l_下限) * i / (Consts.マルチkで試す個数 - 1));
-                _ = l_候補.Add(Get_奇数(l_値));
+                _ = l_候補.Add(Get_奇数((int)Math.Round(l_下限 * Math.Pow(l_比, i))));
             }
             return [.. l_候補];
+        }
+
+        /// <summary>
+        /// 直前の k での単一コピーカバレッジから、次の k でのカバレッジを予測する。
+        /// 1リードから取れる k-mer は リード長 - k + 1 本なので、その比で縮む。
+        /// </summary>
+        public static double Get_予測kmerカバレッジ(
+            double p_直前の基準値, int p_直前のk長, int p_次のk長, int p_リード長)
+        {
+            var l_直前の本数 = p_リード長 - p_直前のk長 + 1;
+            var l_次の本数 = p_リード長 - p_次のk長 + 1;
+            return l_直前の本数 <= 0 || l_次の本数 <= 0
+                ? 0
+                : p_直前の基準値 * l_次の本数 / l_直前の本数;
         }
 
         /// <summary>

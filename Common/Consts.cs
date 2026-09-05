@@ -53,6 +53,8 @@ namespace Tsumiki.Common
             public const string メモリ予算 = "-mem";
 
             public const string マルチk = "-mk";
+
+            public const string マージ = "-mg";
         }
 
         public const string インサートサイズ未指定表示 = "unspecified";
@@ -86,7 +88,26 @@ namespace Tsumiki.Common
         /// -mk で試す k の個数。増やすほど実行時間が線形に伸びる。
         /// ヘルプに実行時間の目安として出るため、ここに置いている。
         /// </summary>
-        public const int マルチkで試す個数 = 3;
+        public const int マルチkで試す個数 = 6;
+
+        /// <summary>
+        /// 自動で試す k の上限(リード長に対する比)。
+        /// 単一 k の自動選択より大きく取る。カバレッジが十分あれば
+        /// リード長に近い k のほうが良いことがあり、その領域は
+        /// 実際に試さないと分からない。
+        /// </summary>
+        public const double マルチk上限のリード長比 = 0.9;
+
+        /// <summary>自動で試す k の下限。</summary>
+        public const int マルチkの下限 = 21;
+
+        /// <summary>
+        /// 試す価値があるとみなす k-mer カバレッジの下限。
+        /// k を上げると1リードから取れる k-mer が減るため、カバレッジの薄い
+        /// データで高い k を試しても時間を捨てるだけになる。最初の k の結果から
+        /// 各 k のカバレッジを予測し、これを下回るものは実行前に捨てる。
+        /// </summary>
+        public const double マルチkの最小kmerカバレッジ = 10.0;
 
         /// <summary>
         /// -kc も、k-mer スペクトルの解析も当てにできなかった場合の最後の拠り所。
@@ -118,7 +139,7 @@ namespace Tsumiki.Common
             # Arguments
             {引数キー.リード1のパス} [path] : forward fastq(.gz) path (required) (when using single reads, set the path using this argument)
             {引数キー.リード2のパス} [path] : backward fastq(.gz) path
-            {引数キー.k長} [integer] : length of k-mer (default : auto-selected from the observed read length, capped at {自動k長の上限}; falls back to {k長の既定値})
+            {引数キー.k長} [integer[,integer...]] : length of k-mer. A comma-separated list (e.g. 31,63,95) assembles at each and keeps the best, as with {引数キー.マルチk} (default : auto-selected from the observed read length, capped at {自動k長の上限}; falls back to {k長の既定値})
             {引数キー.kmerカットオフ} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : auto-selected from the k-mer count spectrum; falls back to {kmerカットオフの既定値})
             {引数キー.Phredオフセット} [integer] : base of phred score ({string.Join(" or ", 許容Phredオフセット)}) (default : {Phredオフセットの既定値})
             {引数キー.クオリティカットオフ} [integer] : threshold of base quality (use kmers with this value or higher) (default : {クオリティカットオフの既定値})
@@ -128,7 +149,8 @@ namespace Tsumiki.Common
             {引数キー.スレッド数} [integer] : number of worker threads used for loading reads (default : number of logical processors)
             {引数キー.ペア結合閾値} [decimal] : minimum ratio of the best-supported pair-end scaffold edge among all candidates for a node (default : {ペア結合閾値の既定値})
             {引数キー.ペア支持数閾値} [integer] : minimum read-pair support required for a pair-end scaffold edge (default : {ペア支持数閾値の既定値})
-            {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try (costs roughly {マルチkで試す個数 + 1}x the runtime) (default : false)
+            {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try. Without {引数キー.k長} the values are spread over 21 .. {マルチk上限のリード長比:0.##} x read length; those whose predicted k-mer coverage would fall below {マルチkの最小kmerカバレッジ:0.#} are skipped (costs up to {マルチkで試す個数 + 1}x the runtime) (default : false)
+            {引数キー.マージ} : with {引数キー.マルチk}, splice sequence from the other k values into the selected assembly where they span a junction it left open. Off by default: on GAGE-B R. sphaeroides this raised NGA50 by 14% but nearly doubled the misassemblies, because assemblies of the same reads make correlated errors at the same repeats (default : false)
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {引数キー.ヘルプ} : output this text (default : false)
 

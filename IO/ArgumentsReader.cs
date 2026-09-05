@@ -25,7 +25,9 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.引数キー.k長:
-                            l_引数.A_k長 = int.Parse(p_引数列[l_位置++]);
+                            l_引数.Set_k長一覧(
+                                p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries
+                                    | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;
 
                         case Consts.引数キー.kmerカットオフ:
@@ -78,6 +80,10 @@ namespace Tsumiki.IO
 
                         case Consts.引数キー.マルチk:
                             l_引数.A_マルチkか = true;
+                            break;
+
+                        case Consts.引数キー.マージ:
+                            l_引数.A_マージするか = true;
                             break;
 
                         default:

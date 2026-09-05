@@ -22,7 +22,7 @@ namespace Tsumiki.Core
         /// 突き合わせる。p_単一コピー基準値 は「その k-mer が何回現れてよいか」を
         /// カバレッジから見積もるために使う。
         /// </summary>
-        public static 整合性検査結果 Get_検査結果(
+        public static 整合性検査結果? Get_検査結果(
             string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
         {
             // 逆相補は同一視して数える。キーは 2bit パックした UInt128 で、
@@ -30,8 +30,7 @@ namespace Tsumiki.Core
             // k-mer インデックスと合わせてメモリが厳しくなる。
             if (p_k長 > 64)
             {
-                Console.WriteLine($"[Check] {Path.GetFileName(p_FASTAパス)}: skipped (self-check currently supports k <= 64 only).");
-                return default;
+                return null;
             }
 
             Dictionary<UInt128, int> l_観測 = [];
@@ -90,8 +89,13 @@ namespace Tsumiki.Core
             return new 整合性検査結果(l_信頼kmer数, l_延べ数, l_観測.Count, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
 
-        public static void V_出力_検査結果(string p_ラベル, 整合性検査結果 p_結果)
+        public static void V_出力_検査結果(string p_ラベル, 整合性検査結果? p_検査結果)
         {
+            if (p_検査結果 is not { } p_結果)
+            {
+                Console.WriteLine($"[Check] {p_ラベル}: skipped (the self-check supports k <= 64 only).");
+                return;
+            }
             Console.WriteLine(
                 $"[Check] {p_ラベル}: {p_結果.A_信頼kmer数:N0} trusted k-mer(s); " +
                 $"{p_結果.A_取りこぼし数:N0} ({p_結果.A_取りこぼし率:0.00}%) do not appear in the assembly at all " +

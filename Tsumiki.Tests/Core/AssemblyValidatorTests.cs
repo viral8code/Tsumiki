@@ -79,7 +79,7 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(depth: 20, truth);
 
             var path = this.WriteFasta("perfect.fasta", truth);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.Equal(0, result.A_取りこぼし数);
             Assert.Equal(0, result.A_余分な延べ数);
@@ -93,7 +93,7 @@ namespace Tsumiki.Tests.Core
 
             // 後半を落としたアセンブリ。
             var path = this.WriteFasta("truncated.fasta", truth[..300]);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.True(result.A_取りこぼし数 > 0, "truncated assembly should report missing k-mers");
             // 600bp の k-mer は 580 個、そのうち前半 300bp に含まれるのは 280 個。
@@ -113,7 +113,7 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(depth: 20, truth);
 
             var path = this.WriteFasta("duplicated.fasta", truth, truth);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.Equal(0, result.A_取りこぼし数);
             // 各 k-mer が期待の2倍出ているので、延べ数の半分が余分。
@@ -133,7 +133,7 @@ namespace Tsumiki.Tests.Core
             using var index = this.BuildIndex(depth: 20, truth);
 
             var path = this.WriteFasta("revcomp.fasta", Util.V_逆相補(truth));
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.Equal(0, result.A_取りこぼし数);
             Assert.Equal(0, result.A_余分な延べ数);
@@ -169,7 +169,7 @@ namespace Tsumiki.Tests.Core
             _ = index.V_カットオフ(p_カットオフ: 2);
 
             var path = this.WriteFasta("repeat_twice.fasta", single, repeat, repeat);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20);
+            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.Equal(0, result.A_取りこぼし数);
             Assert.Equal(0, result.A_余分な延べ数);

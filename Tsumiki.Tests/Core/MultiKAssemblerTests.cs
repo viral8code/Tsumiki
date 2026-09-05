@@ -20,10 +20,12 @@ namespace Tsumiki.Tests.Core
         {
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: 150);
 
-            // 実測で最適だった 63(Achromobacter)と 31 付近(R. sphaeroides)の
-            // 両方が射程に入っていること。
-            Assert.Equal(Consts.自動k長の上限, l_候補[^1]);
+            // 実測で最適だった 63 と 31 付近の両方が射程に入っていること。
             Assert.True(l_候補[0] <= 33, $"lower end was {l_候補[0]}, too high to reach the repeat-rich optimum");
+            Assert.Contains(l_候補, l_k => l_k is >= 55 and <= 71);
+            // リード長に近い k まで届いていること。カバレッジが十分あれば
+            // そちらのほうが良い場合があり、試さないと分からない。
+            Assert.True(l_候補[^1] >= 120, $"upper end was {l_候補[^1]}, too low to reach the high-k regime");
             Assert.Equal(Consts.マルチkで試す個数, l_候補.Count);
         }
 
@@ -71,18 +73,59 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// -k が明示指定されている場合は、その値を超えて試さないこと。
-        /// 「これ以上は上げるな」という利用者の判断を multi-k が覆してはいけない。
+        /// -k に一覧が指定された場合は、それをそのまま使うこと。
+        /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない。
         /// </summary>
         [Fact]
-        public void CandidateList_WhenKmerLengthWasGivenExplicitly_NeverExceedsIt()
+        public void CandidateList_WhenKmerLengthListWasGiven_UsesItVerbatim()
         {
-            var l_引数 = new Parameters { A_k長 = 41 };
+            var l_引数 = new Parameters();
+            l_引数.Set_k長一覧([95, 31, 63]);
 
             var l_候補 = MultiKAssembler.Get_k候補一覧(l_引数, p_リード長: 250);
 
-            Assert.All(l_候補, l_k => Assert.True(l_k <= 41, $"k={l_k} exceeded the explicit -k 41"));
-            Assert.Equal(41, l_候補[^1]);
+            Assert.Equal([31, 63, 95], l_候補);
+        }
+
+        /// <summary>
+        /// -k を1つだけ指定した場合は、その1つだけを候補にすること。
+        /// </summary>
+        [Fact]
+        public void CandidateList_WhenASingleKmerLengthWasGiven_UsesOnlyThatOne()
+        {
+            var l_引数 = new Parameters();
+            l_引数.Set_k長一覧([41]);
+
+            Assert.Equal([41], MultiKAssembler.Get_k候補一覧(l_引数, p_リード長: 250));
+        }
+
+        /// <summary>
+        /// 予測 k-mer カバレッジは、1リードから取れる k-mer の本数の比で縮むこと。
+        /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる。
+        /// </summary>
+        [Fact]
+        public void PredictedCoverage_ShrinksWithTheNumberOfKmersPerRead()
+        {
+            // リード長150、k=31 で 25x。k=135 なら 1リードあたり 120 本から
+            // 16 本へ減るので、25 * 16 / 120 = 3.33x。
+            var l_予測 = MultiKAssembler.Get_予測kmerカバレッジ(
+                p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 135, p_リード長: 150);
+
+            Assert.Equal(25.0 * 16 / 120, l_予測, 3);
+            Assert.True(l_予測 < Consts.マルチkの最小kmerカバレッジ);
+        }
+
+        /// <summary>
+        /// k がリード長を超えると k-mer が1本も取れないので 0 になること。
+        /// k = リード長 のときは1本だけ取れるので 0 にはならない。
+        /// </summary>
+        [Fact]
+        public void PredictedCoverage_WhenKmerLengthExceedsTheReadLength_IsZero()
+        {
+            Assert.Equal(0, MultiKAssembler.Get_予測kmerカバレッジ(
+                p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 151, p_リード長: 150));
+            Assert.True(MultiKAssembler.Get_予測kmerカバレッジ(
+                p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 150, p_リード長: 150) > 0);
         }
 
         /// <summary>

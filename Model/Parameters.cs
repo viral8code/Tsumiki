@@ -53,6 +53,32 @@ namespace Tsumiki.Model
             }
         }
 
+        private List<int> _k長一覧 = [];
+
+        /// <summary>
+        /// -k にカンマ区切りで指定された k の一覧(昇順・重複なし)。未指定なら空。
+        /// 2個以上あれば multi-k として扱う。
+        /// </summary>
+        public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
+
+        public void Set_k長一覧(IEnumerable<int> p_k長一覧)
+        {
+            var l_一覧 = p_k長一覧.Distinct().OrderBy(x => x).ToList();
+            if (l_一覧.Count == 0)
+            {
+                throw new ArgumentException("Please set at least one kmer length");
+            }
+            foreach (var l_k長 in l_一覧)
+            {
+                if (l_k長 <= 0)
+                {
+                    throw new ArgumentException("Please make the value of kmer a positive integer");
+                }
+            }
+            this._k長一覧 = l_一覧;
+            this.A_k長 = l_一覧[^1];
+        }
+
         /// <summary>
         /// 推定結果から k 長を設定する。A_k長が明示指定されたか は立てないため、
         /// 「ユーザーが明示指定した」扱いにはならない。
@@ -168,6 +194,13 @@ namespace Tsumiki.Model
         /// </summary>
         public bool A_マルチkか { get; set; } = false;
 
+        /// <summary>
+        /// multi-k の結果を統合するか。既定は false。
+        /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
+        /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
+        /// </summary>
+        public bool A_マージするか { get; set; } = false;
+
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         private int _スレッド数 = Environment.ProcessorCount;
@@ -220,7 +253,7 @@ namespace Tsumiki.Model
 
                 read1: {this.A_リード1のパス}
                 read2: {this.A_リード2のパス}
-                kmer: {this.A_k長}
+                kmer: {(this.A_k長一覧.Count > 1 ? string.Join(", ", this.A_k長一覧) : this.A_k長.ToString())}
                 kmer cutoff: {this.A_kmerカットオフ}
                 phred: {this.A_Phredオフセット}
                 quality cutoff: {this.A_クオリティカットオフ}
@@ -229,6 +262,7 @@ namespace Tsumiki.Model
                 allow ambiguous bases : {this.A_曖昧塩基を許容するか}
                 error correction : {this.A_エラー訂正するか}
                 multi-k : {this.A_マルチkか}
+                merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}
                 pair unite threshold : {this.A_ペア結合閾値}
