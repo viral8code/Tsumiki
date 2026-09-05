@@ -43,6 +43,10 @@ namespace Tsumiki.Utility
         // 一度だけ行い、ヒストグラムの集計とカットオフの適用で使い回す。
         private string? _統合ファイルパス;
 
+        // 最終マージの書き出し中に集計したヒストグラム。シャードが1つで
+        // マージが走らなかった場合は null になり、そのときだけ読み直す。
+        private Dictionary<ulong, long>? _統合時のヒストグラム;
+
         /// <summary>
         /// 直近の V_カットオフ で集計した出現回数ヒストグラム。
         /// カットオフ判定と同じループで作れるため追加のコストはかからない。
@@ -392,21 +396,35 @@ namespace Tsumiki.Utility
         /// </summary>
         public List<byte[]> Get_開始kmer一覧()
         {
-            List<byte[]> l_開始kmer = [];
-            foreach (var l_kmer in this.Get_信頼kmer一覧())
-            {
-                if (this.Get_開始kmerか(l_kmer))
-                {
-                    l_開始kmer.Add(l_kmer);
-                }
+            // 判定は1件あたり最大8回のハッシュ引きを要し、それを全 k-mer の
+            // 両向きについて行う。tip 除去は反復のたびにこれを呼ぶため、
+            // 単一スレッドだと実行時間の大半をここが占める。
+            // 判定は読み取りのみなので並列に行える。
+            //
+            // AsOrdered で走査順を保つ。unitig 構築の結果は開始点の順序に
+            // 依存するため、順序が変わると出力が実行ごとに変わる。
+            return [.. this.Get_信頼kmer一覧()
+                .AsParallel()
+                .AsOrdered()
+                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
+                .SelectMany(this.Get_開始kmer候補)];
+        }
 
-                var l_逆相補 = Util.V_逆相補(l_kmer).ToArray();
-                if (this.Get_開始kmerか(l_逆相補))
-                {
-                    l_開始kmer.Add(l_逆相補);
-                }
+        /// <summary>
+        /// その座位が開始点になる向きを列挙する(0〜2件)。
+        /// 開始点判定は向き依存なので、両方の向きを個別に見る必要がある。
+        /// </summary>
+        private IEnumerable<byte[]> Get_開始kmer候補(byte[] p_kmer)
+        {
+            if (this.Get_開始kmerか(p_kmer))
+            {
+                yield return p_kmer;
             }
-            return l_開始kmer;
+            var l_逆相補 = Util.V_逆相補(p_kmer).ToArray();
+            if (this.Get_開始kmerか(l_逆相補))
+            {
+                yield return l_逆相補;
+            }
         }
 
         /// <summary>
@@ -429,7 +447,10 @@ namespace Tsumiki.Utility
             }
             this._カウンタ群 = null;
 
-            this._統合ファイルパス = CountingDB.Get_統合ファイル_シャード間(this._一時ディレクトリ, l_統合済みファイル);
+            var (l_パス, l_ヒストグラム) =
+                CountingDB.Get_統合結果_シャード間(this._一時ディレクトリ, l_統合済みファイル);
+            this._統合ファイルパス = l_パス;
+            this._統合時のヒストグラム = l_ヒストグラム;
             return this._統合ファイルパス;
         }
 
@@ -440,6 +461,11 @@ namespace Tsumiki.Utility
         public Dictionary<ulong, long> Get_出現回数ヒストグラム()
         {
             var l_ファイルパス = this.Get_統合済みファイル();
+            if (this._統合時のヒストグラム is { } l_集計済み)
+            {
+                return l_集計済み;
+            }
+
             var l_パック長 = (this._k長 + 3) / 4;
             var l_読み捨てバッファ = new byte[l_パック長];
 

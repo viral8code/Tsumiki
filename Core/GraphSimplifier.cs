@@ -190,7 +190,11 @@ namespace Tsumiki.Core
                 return 0;
             }
 
+            // 全 unitig の全 k-mer を引くため、反復のたびに数百万回の
+            // ハッシュ引きになる。読み取りのみなので並列に行う。
             var l_組 = p_ユニティグ群
+                .AsParallel()
+                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
                 .Select(x => (A_長さ: (long)x.Length, A_カバレッジ: Get_平均カバレッジ(p_kmerインデックス, Get_塩基列(x), p_k長)))
                 .OrderBy(x => x.A_カバレッジ)
                 .ToList();

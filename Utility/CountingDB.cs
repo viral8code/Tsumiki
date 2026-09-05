@@ -151,7 +151,8 @@ namespace Tsumiki.Utility
         /// 片方だけ直したときに静かに食い違う)。
         /// </summary>
         private static void V_マージ_2ファイル(
-            string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器)
+            string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器,
+            Dictionary<ulong, long>? p_ヒストグラム = null)
         {
             using (var l_読み込み1 = new BinaryReader(Get_読み込みストリーム(p_ファイル1)))
             {
@@ -172,20 +173,21 @@ namespace Tsumiki.Utility
                     if (l_比較結果 == 0)
                     {
                         l_書き込み.Write(l_キー1);
-                        l_書き込み.Write(l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64());
+                        V_書き込み_出現回数(
+                            l_書き込み, l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64(), p_ヒストグラム);
                         l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                         l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                     else if (l_比較結果 < 0)
                     {
                         l_書き込み.Write(l_キー1);
-                        l_書き込み.Write(l_読み込み1.ReadUInt64());
+                        V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
                         l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                     }
                     else
                     {
                         l_書き込み.Write(l_キー2);
-                        l_書き込み.Write(l_読み込み2.ReadUInt64());
+                        V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
                         l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                 }
@@ -193,20 +195,35 @@ namespace Tsumiki.Utility
                 while (l_キー1 != null)
                 {
                     l_書き込み.Write(l_キー1);
-                    l_書き込み.Write(l_読み込み1.ReadUInt64());
+                    V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
                     l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                 }
 
                 while (l_キー2 != null)
                 {
                     l_書き込み.Write(l_キー2);
-                    l_書き込み.Write(l_読み込み2.ReadUInt64());
+                    V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
                     l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                 }
             }
 
             File.Delete(p_ファイル1);
             File.Delete(p_ファイル2);
+        }
+
+        /// <summary>
+        /// 出現回数を書き出し、ヒストグラムが渡されていれば同時に集計する。
+        /// 最終マージの書き出しで集計しておけば、-kc の自動決定のために
+        /// 統合ファイルをもう一度読む必要がなくなる。
+        /// </summary>
+        private static void V_書き込み_出現回数(
+            BinaryWriter p_書き込み, ulong p_出現回数, Dictionary<ulong, long>? p_ヒストグラム)
+        {
+            p_書き込み.Write(p_出現回数);
+            if (p_ヒストグラム is not null)
+            {
+                p_ヒストグラム[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1;
+            }
         }
 
         /// <summary>
@@ -274,7 +291,8 @@ namespace Tsumiki.Utility
         /// 各シャードの CountingDB が Get_統合ファイル() で出力した
         /// ソート済み・集約済みファイルを、さらにペアワイズマージして1本に統合する。
         /// </summary>
-        public static string Get_統合ファイル_シャード間(string p_一時ディレクトリ, List<string> p_ファイル一覧)
+        public static (string A_ファイルパス, Dictionary<ulong, long>? A_ヒストグラム)
+            Get_統合結果_シャード間(string p_一時ディレクトリ, List<string> p_ファイル一覧)
         {
             var l_比較器 = new ByteArrayComparer();
             var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
@@ -284,18 +302,28 @@ namespace Tsumiki.Utility
 
             if (l_対象ファイル.Count == 0)
             {
-                return Get_空ファイル(p_一時ディレクトリ, l_接頭辞);
+                return (Get_空ファイル(p_一時ディレクトリ, l_接頭辞), []);
             }
 
+            // 最後のマージで書き出される値だけが最終的な出現回数になる。
+            // そこで集計しておけば、統合ファイルを読み直さずに済む。
+            Dictionary<ulong, long>? l_ヒストグラム = null;
             while (l_対象ファイル.Count > 1)
             {
+                var l_最後のマージか = l_対象ファイル.Count == 2;
+                if (l_最後のマージか)
+                {
+                    l_ヒストグラム = [];
+                }
                 var l_出力先 = Path.Combine(p_一時ディレクトリ, $"{l_接頭辞}_workermerge_{l_連番++}");
-                V_マージ_2ファイル(l_対象ファイル[0], l_対象ファイル[1], l_出力先, l_パック長, l_比較器);
+                V_マージ_2ファイル(
+                    l_対象ファイル[0], l_対象ファイル[1], l_出力先, l_パック長, l_比較器, l_ヒストグラム);
                 l_対象ファイル.RemoveRange(0, 2);
                 l_対象ファイル.Add(l_出力先);
             }
 
-            return l_対象ファイル[0];
+            // マージが一度も走らなかった場合(シャードが1つ)は集計できていない。
+            return (l_対象ファイル[0], l_ヒストグラム);
         }
     }
 }
