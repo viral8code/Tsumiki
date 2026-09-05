@@ -35,6 +35,11 @@ import sys
 
 COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
 
+# ヒアドキュメント越しに書き込むとエスケープが二重に解釈されるため、
+# 制御文字はリテラルではなく定数で持つ。
+TAB = chr(9)
+NEWLINE = chr(10)
+
 # アンカーに使う k-mer 長。短すぎると偶然一致が増え、長すぎると SNP に当たって
 # アンカーが取れなくなる。31 なら 4^31 通りあり細菌ゲノムで偶然一致はまず起きず、
 # かつ SNP 密度が 1/1000 程度なら 3% 程度のアンカーしか失わない。
@@ -156,6 +161,8 @@ def main():
     parser.add_argument("--tolerance", type=int, default=1000,
                         help="共線性のずれをこの範囲まで許す(indel を誤アセンブリと呼ばないため)")
     parser.add_argument("--label", default="")
+    parser.add_argument("--breakpoints", default=None,
+                        help="誤アセンブリの位置を TSV で書き出す先(contig名, contig上の位置)")
     args = parser.parse_args()
 
     ref_names, ref_seqs = load_fasta(args.reference)
@@ -167,11 +174,12 @@ def main():
 
     covered = [bytearray(len(s)) for s in ref_seqs]
     block_lengths = []
-    breakpoints = 0
+    breakpoint_count = 0
     unaligned = 0
     contigs_with_breakpoints = 0
 
-    for _, seq in kept:
+    breakpoints = []
+    for name, seq in kept:
         anchors = []
         for pos, key, forward in iter_canonical_kmers(seq, ANCHOR_K):
             hit = index.get(key)
@@ -189,8 +197,11 @@ def main():
             continue
 
         if len(blocks) > 1:
-            breakpoints += len(blocks) - 1
+            breakpoint_count += len(blocks) - 1
             contigs_with_breakpoints += 1
+            # 切れ目は、直前ブロックの末尾と次ブロックの先頭の中間に置く。
+            for 前, 後 in zip(blocks, blocks[1:]):
+                breakpoints.append((name, (前[-1][0] + 後[0][0]) // 2))
 
         for block in blocks:
             block_lengths.append(block[-1][0] - block[0][0] + ANCHOR_K)
@@ -211,13 +222,20 @@ def main():
     print(f"{label}assembly: {args.assembly}")
     print(f"{label}  contigs (>= {args.min_contig} bp) : {len(kept)}, total {asm_total:,} bp")
     print(f"{label}  N50 (raw)          : {n50([len(s) for _, s in kept], asm_total):,}")
-    print(f"{label}  misassemblies      : {breakpoints} breakpoint(s) in {contigs_with_breakpoints} contig(s)")
+    print(f"{label}  misassemblies      : {breakpoint_count} breakpoint(s) in {contigs_with_breakpoints} contig(s)")
     print(f"{label}  NGA50 (corrected)  : {n50(block_lengths, ref_total):,}")
     print(f"{label}  aligned blocks     : {len(block_lengths)}, total {aligned_total:,} bp")
     print(f"{label}  genome fraction    : {covered_bp / ref_total * 100:.2f}% ({covered_bp:,} / {ref_total:,} bp)")
     if covered_bp:
         print(f"{label}  duplication ratio  : {aligned_total / covered_bp:.3f}")
     print(f"{label}  contigs with no anchor : {unaligned}")
+
+    if args.breakpoints:
+        with open(args.breakpoints, "w") as f:
+            f.write("contig" + TAB + "position" + NEWLINE)
+            for name, pos in breakpoints:
+                f.write(f"{name}{TAB}{pos}{NEWLINE}")
+        print(f"{label}  breakpoints written to : {args.breakpoints}")
     return 0
 
 
