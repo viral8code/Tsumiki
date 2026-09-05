@@ -63,7 +63,7 @@ namespace Tsumiki.Core
             Console.WriteLine("Clipping short tips");
             // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
             // 数え直す必要がある。除去側が最終状態のものを返す。
-            var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長);
+            var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長);
 
             Logger.V_出力_タイムスタンプ();
 

@@ -31,12 +31,16 @@ namespace Tsumiki.Core
         public static List<byte[]> V_除去_tip(
             TrustedKmerIndex p_kmerインデックス,
             int p_k長,
+            int? p_リード長 = null,
             int? p_tip長閾値 = null,
             int p_最大反復数 = 30,
             double p_低カバレッジ比 = 0.2,
             double p_tipカバレッジ比 = Consts.tipとみなすカバレッジ比)
         {
-            var l_tip長閾値 = p_tip長閾値 ?? (10 * p_k長);
+            // k がリード長の半分を超えると、k を基準にした閾値は実配列まで
+            // 巻き込むほど長くなるため min(k, リード長/2) を基準に取る。
+            var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(p_k長, l_リード長 / 2) : p_k長;
+            var l_tip長閾値 = p_tip長閾値 ?? Math.Max(10 * l_基準長, p_リード長 ?? 0);
             var l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
 
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
