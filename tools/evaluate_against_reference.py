@@ -32,6 +32,7 @@ SNP・indel・株差が必ずあるため、その判定では全ての contig �
 
 import argparse
 import sys
+from collections import Counter
 
 COMPLEMENT = str.maketrans("ACGTN", "TGCAN")
 
@@ -201,7 +202,8 @@ def main():
             contigs_with_breakpoints += 1
             # 切れ目は、直前ブロックの末尾と次ブロックの先頭の中間に置く。
             for 前, 後 in zip(blocks, blocks[1:]):
-                breakpoints.append((name, (前[-1][0] + 後[0][0]) // 2))
+                breakpoints.append((name, (前[-1][0] + 後[0][0]) // 2,
+                                    ref_names[前[0][1]], ref_names[後[0][1]]))
 
         for block in blocks:
             block_lengths.append(block[-1][0] - block[0][0] + ANCHOR_K)
@@ -230,11 +232,27 @@ def main():
         print(f"{label}  duplication ratio  : {aligned_total / covered_bp:.3f}")
     print(f"{label}  contigs with no anchor : {unaligned}")
 
+    # 誤アセンブリがどのリファレンス配列に関わっているかの内訳。
+    # 複数レプリコンを持つゲノムでは、レプリコン間の混同かどうかで
+    # 原因の見当が変わる。
+    if breakpoints:
+        l_同一 = Counter(前 for _, _, 前, 後 in breakpoints if 前 == 後)
+        l_跨ぎ = Counter((前, 後) for _, _, 前, 後 in breakpoints if 前 != 後)
+        print(f"{label}  misassemblies within one reference sequence:")
+        for 名, n in l_同一.most_common():
+            print(f"{label}      {n:3d}  {名}")
+        if l_跨ぎ:
+            print(f"{label}  misassemblies joining different reference sequences:")
+            for (前, 後), n in l_跨ぎ.most_common():
+                print(f"{label}      {n:3d}  {前} -> {後}")
+        else:
+            print(f"{label}  misassemblies joining different reference sequences: none")
+
     if args.breakpoints:
         with open(args.breakpoints, "w") as f:
-            f.write("contig" + TAB + "position" + NEWLINE)
-            for name, pos in breakpoints:
-                f.write(f"{name}{TAB}{pos}{NEWLINE}")
+            f.write(TAB.join(["contig", "position", "ref_before", "ref_after"]) + NEWLINE)
+            for name, pos, 前, 後 in breakpoints:
+                f.write(TAB.join([name, str(pos), 前, 後]) + NEWLINE)
         print(f"{label}  breakpoints written to : {args.breakpoints}")
     return 0
 

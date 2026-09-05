@@ -147,6 +147,22 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// 塩基IDを1文字へ変換する。文字列を返す版は連結のたびに確保が起きるため、
+        /// 塩基列をまとめて文字列にする場面ではこちらを使う。
+        /// </summary>
+        public static char Get_塩基文字(byte p_塩基ID)
+        {
+            return p_塩基ID switch
+            {
+                Consts.塩基ID.A => 'A',
+                Consts.塩基ID.C => 'C',
+                Consts.塩基ID.G => 'G',
+                Consts.塩基ID.T => 'T',
+                _ => 'N',
+            };
+        }
+
         public static List<byte[]> V_変換_塩基候補列(string p_リード)
         {
             return [.. p_リード.Select<char, byte[]>(x => x switch

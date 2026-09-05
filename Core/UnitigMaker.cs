@@ -52,15 +52,46 @@ namespace Tsumiki.Core
                 0,
                 p_開始kmer.Count,
                 new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 },
-                () => new UnitigMaker(p_kmerインデックス),
-                (i, _, l_構築) =>
+                () => new 走査状態(p_kmerインデックス),
+                (i, _, l_状態) =>
                 {
-                    l_結果[i] = l_構築.Get_ユニティグ(p_開始kmer[i]).A_配列;
-                    return l_構築;
+                    l_結果[i] = l_状態.Get_配列(p_開始kmer[i]);
+                    return l_状態;
                 },
                 _ => { });
 
             return l_結果;
+        }
+
+        /// <summary>
+        /// ワーカーごとに持つ走査用の状態。k &lt;= 64 なら転がし更新の実装を使い、
+        /// それを超える場合だけ従来の実装へ落ちる。
+        /// </summary>
+        private sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)
+        {
+            private readonly UnitigWalk? _転がし =
+                UnitigWalk.Get_扱えるか(ConfigurationManager.A_実行時引数.A_k長)
+                    ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長)
+                    : null;
+            private readonly UnitigMaker _従来 = new(p_kmerインデックス);
+            private readonly HashSet<UInt128> _訪問済み = [];
+
+            public string Get_配列(byte[] p_開始kmer)
+            {
+                if (this._転がし is not { } l_転がし)
+                {
+                    return this._従来.Get_ユニティグ(p_開始kmer).A_配列;
+                }
+                var l_塩基列 = l_転がし.Get_塩基列(p_開始kmer, this._訪問済み);
+                return string.Create(l_塩基列.Count, l_塩基列,
+                    static (l_文字, l_元) =>
+                    {
+                        for (var i = 0; i < l_元.Count; i++)
+                        {
+                            l_文字[i] = Util.Get_塩基文字(l_元[i]);
+                        }
+                    });
+            }
         }
 
         public ユニティグ Get_ユニティグ(Span<byte> p_開始kmer)
