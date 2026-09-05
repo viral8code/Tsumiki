@@ -33,41 +33,48 @@ namespace Tsumiki.Core
             int p_k長,
             int? p_tip長閾値 = null,
             int p_最大反復数 = 30,
-            double p_低カバレッジ比 = 0.2)
+            double p_低カバレッジ比 = 0.2,
+            double p_tipカバレッジ比 = Consts.tipとみなすカバレッジ比)
         {
             var l_tip長閾値 = p_tip長閾値 ?? (10 * p_k長);
             var l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
 
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
             {
-                var l_ユニティグ群 = Get_ユニティグ群(p_kmerインデックス, l_開始kmer);
-                var l_基準値 = Get_長さ加重中央カバレッジ(p_kmerインデックス, l_ユニティグ群, p_k長);
+                var l_ユニティグ群 = Get_ユニティグ情報(p_kmerインデックス, Get_ユニティグ群(p_kmerインデックス, l_開始kmer), p_k長);
+                var l_基準値 = Get_長さ加重中央カバレッジ(l_ユニティグ群);
                 var l_低カバレッジ閾値 = l_基準値 * p_低カバレッジ比;
 
                 var l_除去tip数 = 0;
                 var l_剥がしたkmer数 = 0;
                 var l_トリミングしたunitig数 = 0;
-                foreach (var l_ユニティグ in l_ユニティグ群)
+                foreach (var (l_塩基列, l_平均カバレッジ) in l_ユニティグ群)
                 {
-                    var l_塩基列 = Get_塩基列(l_ユニティグ);
                     if (l_塩基列.Length < p_k長)
                     {
                         continue;
                     }
 
-                    if (l_ユニティグ.Length < l_tip長閾値)
+                    if (l_塩基列.Length < l_tip長閾値)
                     {
                         var l_先頭次数 = p_kmerインデックス.Get_入次数(l_塩基列.AsSpan(0, p_k長));
                         var l_末尾次数 = p_kmerインデックス.Get_出次数(l_塩基列.AsSpan(l_塩基列.Length - p_k長, p_k長));
 
-                        // 片方の端が行き止まり(そちら向きに続きがない)であれば tip とみなし、
-                        // どこにも合流しないため丸ごと除去してよい。
+                        // 片方の端が行き止まり(そちら向きに続きがない)であれば tip の候補。
                         // 両端とも行き止まりの場合(=孤立した短い断片)も対象に含む。
+                        //
+                        // ただし行き止まりであること自体は誤りの証拠にならない。実ゲノムでも
+                        // カバレッジが切れた箇所では両端が行き止まりになる。エラー由来の枝は
+                        // カバレッジがカットオフ付近に留まるので、基準値と比べて明らかに
+                        // 低いものだけを除去する。これを見ないと実配列まで消してゲノム被覆率を落とす。
                         if (l_先頭次数 == 0 || l_末尾次数 == 0)
                         {
-                            V_除去_ユニティグ全体(p_kmerインデックス, l_塩基列, p_k長);
-                            l_除去tip数++;
-                            continue;
+                            if (l_基準値 <= 0 || l_平均カバレッジ < l_基準値 * p_tipカバレッジ比)
+                            {
+                                V_除去_ユニティグ全体(p_kmerインデックス, l_塩基列, p_k長);
+                                l_除去tip数++;
+                                continue;
+                            }
                         }
                     }
 
@@ -84,7 +91,7 @@ namespace Tsumiki.Core
                     }
                 }
 
-                Console.WriteLine($"[GraphSimplifier] Iteration {l_反復}: examined {l_ユニティグ群.Count} unitig(s) " +
+                Console.WriteLine($"[GraphSimplifier] Iteration {l_反復}: examined {l_ユニティグ群.Length} unitig(s) " +
                     $"(tip threshold < {l_tip長閾値}bp, coverage baseline {l_基準値:0.#}), " +
                     $"removed {l_除去tip数} tip(s), trimmed {l_剥がしたkmer数} low-coverage k-mer(s) from {l_トリミングしたunitig数} unitig edge(s).");
 
@@ -177,26 +184,38 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// 各 unitig の塩基列と平均カバレッジ。基準値の算出と tip 判定の
+        /// 両方が同じ値を使うため、まとめて1回だけ求める。
+        ///
+        /// 全 unitig の全 k-mer を引くので反復のたびに数百万回のハッシュ引きになる。
+        /// 読み取りのみなので並列に行う。
+        /// </summary>
+        private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_ユニティグ情報(
+            TrustedKmerIndex p_kmerインデックス, List<string> p_ユニティグ群, int p_k長)
+        {
+            return [.. p_ユニティグ群
+                .AsParallel()
+                .AsOrdered()
+                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
+                .Select(x =>
+                {
+                    var l_塩基列 = Get_塩基列(x);
+                    return (l_塩基列, Get_平均カバレッジ(p_kmerインデックス, l_塩基列, p_k長));
+                })];
+        }
+
+        /// <summary>
         /// 全unitigの平均カバレッジの長さ加重中央値。多数を占めうる短い
         /// 断片(エラー由来のtip/バブル候補そのもの)に引きずられず、
         /// ゲノムの大部分を占める正しい主経路のカバレッジ水準を推定するため、
         /// 単純平均・単純中央値ではなく塩基数で重み付けした中央値を使う。
         /// </summary>
         private static double Get_長さ加重中央カバレッジ(
-            TrustedKmerIndex p_kmerインデックス, List<string> p_ユニティグ群, int p_k長)
+            (byte[] A_塩基列, double A_平均カバレッジ)[] p_ユニティグ群)
         {
-            if (p_ユニティグ群.Count == 0)
-            {
-                return 0;
-            }
-
-            // 全 unitig の全 k-mer を引くため、反復のたびに数百万回の
-            // ハッシュ引きになる。読み取りのみなので並列に行う。
             var l_組 = p_ユニティグ群
-                .AsParallel()
-                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                .Select(x => (A_長さ: (long)x.Length, A_カバレッジ: Get_平均カバレッジ(p_kmerインデックス, Get_塩基列(x), p_k長)))
-                .OrderBy(x => x.A_カバレッジ)
+                .Select(x => (A_長さ: (long)x.A_塩基列.Length, x.A_平均カバレッジ))
+                .OrderBy(x => x.A_平均カバレッジ)
                 .ToList();
             var l_総延長 = l_組.Sum(x => x.A_長さ);
             if (l_総延長 == 0)
@@ -214,7 +233,7 @@ namespace Tsumiki.Core
                     return l_カバレッジ;
                 }
             }
-            return l_組[^1].A_カバレッジ;
+            return l_組[^1].A_平均カバレッジ;
         }
 
         private static byte[] Get_塩基列(string p_配列)

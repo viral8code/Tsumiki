@@ -93,6 +93,12 @@ namespace Tsumiki.Common
         public const int マルチkで試す個数 = 6;
 
         /// <summary>
+        /// 行き止まりの短い unitig を tip(エラー由来)とみなすカバレッジの上限。
+        /// グラフ全体のカバレッジ基準値に対する比。
+        /// </summary>
+        public const double tipとみなすカバレッジ比 = 0.5;
+
+        /// <summary>
         /// 自動で試す k の上限(リード長に対する比)。
         /// 単一 k の自動選択より大きく取る。カバレッジが十分あれば
         /// リード長に近い k のほうが良いことがあり、その領域は

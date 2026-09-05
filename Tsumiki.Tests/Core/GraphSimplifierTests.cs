@@ -35,23 +35,25 @@ namespace Tsumiki.Tests.Core
         /// 「本来の続き」をコピーした上で、最後の1塩基だけ変えることで
         /// 主経路とk-1塩基だけ重なる分岐を作る単純な構成にする。
         /// </summary>
-        private TrustedKmerIndex BuildIndexWithTip(string mainSeq, int kmerLength, int branchPoint, int tipLength)
+        private TrustedKmerIndex BuildIndexWithTip(
+            string mainSeq, int kmerLength, int branchPoint, int tipLength,
+            int mainRepetitions = 10, int tipRepetitions = 2)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             var index = new TrustedKmerIndex(this._tempDir);
 
-            void AddAllKmers(byte[] bytes)
+            void AddAllKmers(byte[] bytes, int repetitions)
             {
                 for (var i = 0; i + kmerLength <= bytes.Length; i++)
                 {
-                    for (var rep = 0; rep < 3; rep++)
+                    for (var rep = 0; rep < repetitions; rep++)
                     {
                         index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
                     }
                 }
             }
 
-            AddAllKmers(ToBytes(mainSeq));
+            AddAllKmers(ToBytes(mainSeq), mainRepetitions);
 
             // 分岐点の直前 kmerLength-1 文字を土台に、最後だけ主経路と異なる
             // 1塩基を続けて tip を伸ばす(主経路と k-2 塩基だけ重なる短い枝)。
@@ -61,7 +63,7 @@ namespace Tsumiki.Tests.Core
             // overlap(主経路とk-1塩基共有)+ altChar(主経路とは異なる1塩基)+
             // 適当なユニークな続きで、主経路から分岐する短いtipを作る。
             var tipSeq = overlap + altChar + string.Concat(Enumerable.Range(0, tipLength).Select(i => "ACGT"[i % 4]));
-            AddAllKmers(ToBytes(tipSeq));
+            AddAllKmers(ToBytes(tipSeq), tipRepetitions);
 
             _ = index.V_カットオフ(p_カットオフ: 2);
             return index;
@@ -102,6 +104,28 @@ namespace Tsumiki.Tests.Core
             // (ほぼ)1本のunitigが存在することを確認する。
             var longest = unitigs.OrderByDescending(u => u.Length).First();
             Assert.True(longest.Length >= mainSeq.Length - k, $"expected a near-full-length main unitig, longest was {longest.Length}bp among [{string.Join(",", unitigs.Select(u => u.Length))}]");
+        }
+
+        /// <summary>
+        /// 行き止まりでも、カバレッジが主経路並みなら除去しないこと。
+        /// カバレッジの切れ目で孤立した実配列がこの形になるため、
+        /// 行き止まりというだけで消すとゲノム被覆率を落とす。
+        /// </summary>
+        [Fact]
+        public void ClipTips_KeepsAShortDeadEndBranchWithMainPathCoverage()
+        {
+            const string mainSeq = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
+            const int k = 8;
+            const int branchPoint = 20;
+            const int tipExtra = 4;
+
+            using var index = this.BuildIndexWithTip(
+                mainSeq, k, branchPoint, tipExtra, mainRepetitions: 10, tipRepetitions: 10);
+
+            var before = index.Get_信頼kmer一覧().Count();
+            _ = GraphSimplifier.V_除去_tip(index, k, p_tip長閾値: k * 2);
+
+            Assert.Equal(before, index.Get_信頼kmer一覧().Count());
         }
 
         [Fact]
