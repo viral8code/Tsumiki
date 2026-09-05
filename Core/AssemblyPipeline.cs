@@ -16,7 +16,9 @@ namespace Tsumiki.Core
         /// p_出力接頭辞 は出力ファイル名の先頭に付く(単一 k では空文字)。
         /// </summary>
         public static アセンブリ実行結果? Get_実行結果(
-            Parameters p_引数, int p_k長, string p_一時ディレクトリ, string p_出力接頭辞, int? p_リード長)
+            Parameters p_引数, int p_k長, string p_一時ディレクトリ, string p_出力接頭辞, int? p_リード長,
+            IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null,
+            List<引き継ぎ配列>? p_次への引き継ぎ = null)
         {
             // 以降の全処理は ConfigurationManager 経由で k 長を参照する。
             // 明示指定の印は立てない(自動選択された値のままとして扱う)。
@@ -45,6 +47,16 @@ namespace Tsumiki.Core
             _ = l_kmerインデックス.V_カットオフ(p_引数.A_kmerカットオフ);
 
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
+
+            // 引き継ぎはカットオフの後に行う。カウントとカットオフを通常どおり
+            // 済ませてから足すことで、スペクトルが実データのまま保たれ、
+            // ゲノムサイズとカバレッジの推定が歪まない。
+            if (p_引き継ぎ is { Count: > 0 })
+            {
+                var l_追加数 = KmerCarryOver.V_引き継ぎ(p_引き継ぎ, l_kmerインデックス, p_k長, p_リード長);
+                Console.WriteLine(
+                    $"[Carry-over] Added {l_追加数:N0} k-mer(s) from the previous k that this k did not observe.");
+            }
 
             Logger.V_出力_タイムスタンプ();
 
@@ -122,6 +134,7 @@ namespace Tsumiki.Core
                         l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値));
                 Logger.V_出力_タイムスタンプ();
 
+                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長);
                 return new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
@@ -146,9 +159,27 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
+            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長);
             return new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
+        }
+
+        /// <summary>
+        /// 次の k へ渡す配列とカバレッジを用意する。
+        /// k-mer インデックスが破棄される前でなければ作れない。
+        /// </summary>
+        private static void V_用意_次への引き継ぎ(
+            List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
+            TrustedKmerIndex p_kmerインデックス, int p_k長)
+        {
+            if (p_次への引き継ぎ is null)
+            {
+                return;
+            }
+            p_次への引き継ぎ.Clear();
+            p_次への引き継ぎ.AddRange(
+                KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
         }
 
         private static void V_読込_リード(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
@@ -188,24 +219,24 @@ namespace Tsumiki.Core
         private static Dictionary<int, string> Get_ユニティグ(
             TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, string p_出力パス, out bool p_上限に達したか)
         {
-            var l_ユニティグ構築 = new UnitigMaker(p_kmerインデックス);
+            var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
+
             HashSet<string> l_既出 = [];
             Dictionary<int, string> l_ユニティグ配列 = [];
             var l_ID = 1;
 
             using (var l_書き込み = new FastaWriter(p_出力パス))
             {
-                foreach (var l_kmer in p_開始kmer)
+                foreach (var l_配列 in l_walk結果)
                 {
-                    var l_ユニティグ = l_ユニティグ構築.Get_ユニティグ(l_kmer);
-                    if (l_既出.Contains(l_ユニティグ.A_配列) || l_既出.Contains(Util.V_逆相補(l_ユニティグ.A_配列)))
+                    if (l_既出.Contains(l_配列) || l_既出.Contains(Util.V_逆相補(l_配列)))
                     {
                         continue;
                     }
-                    _ = l_既出.Add(l_ユニティグ.A_配列);
-                    _ = l_既出.Add(Util.V_逆相補(l_ユニティグ.A_配列));
-                    l_ユニティグ配列[l_ID] = l_ユニティグ.A_配列;
-                    l_書き込み.V_書き込み(l_ID++, l_ユニティグ.A_配列);
+                    _ = l_既出.Add(l_配列);
+                    _ = l_既出.Add(Util.V_逆相補(l_配列));
+                    l_ユニティグ配列[l_ID] = l_配列;
+                    l_書き込み.V_書き込み(l_ID++, l_配列);
                     if (l_ID > Consts.ユニティグ数の上限)
                     {
                         break;

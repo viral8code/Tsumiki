@@ -36,12 +36,11 @@ namespace Tsumiki.Core
             double p_低カバレッジ比 = 0.2)
         {
             var l_tip長閾値 = p_tip長閾値 ?? (10 * p_k長);
-            var l_ユニティグ構築 = new UnitigMaker(p_kmerインデックス);
             var l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
 
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
             {
-                var l_ユニティグ群 = Get_ユニティグ群(l_ユニティグ構築, l_開始kmer);
+                var l_ユニティグ群 = Get_ユニティグ群(p_kmerインデックス, l_開始kmer);
                 var l_基準値 = Get_長さ加重中央カバレッジ(p_kmerインデックス, l_ユニティグ群, p_k長);
                 var l_低カバレッジ閾値 = l_基準値 * p_低カバレッジ比;
 
@@ -101,20 +100,22 @@ namespace Tsumiki.Core
             return l_開始kmer;
         }
 
-        private static List<string> Get_ユニティグ群(UnitigMaker p_ユニティグ構築, List<byte[]> p_開始kmer)
+        private static List<string> Get_ユニティグ群(
+            TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
         {
+            var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
+
             List<string> l_ユニティグ群 = [];
             HashSet<string> l_既出 = [];
-            foreach (var l_kmer in p_開始kmer)
+            foreach (var l_配列 in l_walk結果)
             {
-                var l_ユニティグ = p_ユニティグ構築.Get_ユニティグ(l_kmer);
-                if (l_既出.Contains(l_ユニティグ.A_配列) || l_既出.Contains(Util.V_逆相補(l_ユニティグ.A_配列)))
+                if (l_既出.Contains(l_配列) || l_既出.Contains(Util.V_逆相補(l_配列)))
                 {
                     continue;
                 }
-                _ = l_既出.Add(l_ユニティグ.A_配列);
-                _ = l_既出.Add(Util.V_逆相補(l_ユニティグ.A_配列));
-                l_ユニティグ群.Add(l_ユニティグ.A_配列);
+                _ = l_既出.Add(l_配列);
+                _ = l_既出.Add(Util.V_逆相補(l_配列));
+                l_ユニティグ群.Add(l_配列);
             }
             return l_ユニティグ群;
         }

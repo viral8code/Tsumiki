@@ -195,6 +195,12 @@ namespace Tsumiki.Model
         public bool A_マルチkか { get; set; } = false;
 
         /// <summary>
+        /// multi-k で、前段の k の配列を次の k へ引き継ぐか。
+        /// 引き継ぐのは配列だけで、繋ぐという決定は引き継がない。
+        /// </summary>
+        public bool A_引き継ぐか { get; set; } = true;
+
+        /// <summary>
         /// multi-k の結果を統合するか。既定は false。
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
@@ -262,6 +268,7 @@ namespace Tsumiki.Model
                 allow ambiguous bases : {this.A_曖昧塩基を許容するか}
                 error correction : {this.A_エラー訂正するか}
                 multi-k : {this.A_マルチkか}
+                carry sequence between k : {this.A_引き継ぐか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}

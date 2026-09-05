@@ -32,6 +32,37 @@ namespace Tsumiki.Core
             return l_値;
         }
 
+        /// <summary>
+        /// 各開始 k-mer からの walk を並列に実行し、開始 k-mer と同じ順で結果を返す。
+        ///
+        /// walk はカットオフ後の読み取り専用な k-mer 集合しか触らないので互いに独立。
+        /// UnitigMaker 自身は呼び出しごとにクリアする訪問済み集合を持つため、
+        /// ワーカーごとに1つ用意する。
+        ///
+        /// 重複排除は呼び出し側が元の順序で行う。どちらの向きが先に登録されるかで
+        /// 採用される表現が変わるため、ここで並列に潰すと結果が実行ごとに変わる。
+        /// </summary>
+        public static string[] Get_walk結果(
+            TrustedKmerIndex p_kmerインデックス, IReadOnlyList<byte[]> p_開始kmer)
+        {
+            var l_結果 = new string[p_開始kmer.Count];
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+
+            _ = Parallel.For(
+                0,
+                p_開始kmer.Count,
+                new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 },
+                () => new UnitigMaker(p_kmerインデックス),
+                (i, _, l_構築) =>
+                {
+                    l_結果[i] = l_構築.Get_ユニティグ(p_開始kmer[i]).A_配列;
+                    return l_構築;
+                },
+                _ => { });
+
+            return l_結果;
+        }
+
         public ユニティグ Get_ユニティグ(Span<byte> p_開始kmer)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;

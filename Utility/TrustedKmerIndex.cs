@@ -51,12 +51,18 @@ namespace Tsumiki.Utility
         public IReadOnlyDictionary<ulong, long> A_出現回数ヒストグラム { get; private set; }
             = new Dictionary<ulong, long>();
 
-        private static bool 小経路を使うか => ConfigurationManager.A_実行時引数.A_k長 <= 32;
+        // k 長は構築時に固定する。グローバルから毎回読むと、別の k を使う処理が
+        // 走った後にこのインデックスへ問い合わせたとき、内部表現と食い違う経路を
+        // 選んで破綻する(multi-k のように k が切り替わる場面で実際に起きる)。
+        private readonly int _k長;
 
-        private static bool 中経路を使うか => ConfigurationManager.A_実行時引数.A_k長 is > 32 and <= 64;
+        private bool 小経路を使うか => this._k長 <= 32;
+
+        private bool 中経路を使うか => this._k長 is > 32 and <= 64;
 
         public TrustedKmerIndex(string p_一時ディレクトリ)
         {
+            this._k長 = ConfigurationManager.A_実行時引数.A_k長;
             this._一時ディレクトリ = p_一時ディレクトリ;
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
@@ -312,7 +318,7 @@ namespace Tsumiki.Utility
         /// </summary>
         public IEnumerable<byte[]> Get_信頼kmer一覧()
         {
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            var l_k長 = this._k長;
             if (小経路を使うか)
             {
                 foreach (var l_パック済み in this._信頼kmer_小!.Keys)
@@ -354,6 +360,27 @@ namespace Tsumiki.Utility
             {
                 _ = this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
             }
+        }
+
+        /// <summary>
+        /// カットオフ後の信頼できる k-mer 集合へ1件足す。既にある場合は何もしない。
+        /// 前段の k のアセンブリから配列を引き継ぐときに使う。
+        /// 戻り値は実際に足したかどうか。
+        ///
+        /// カバレッジは呼び出し側が与える。ここを名目値で埋めると、
+        /// コピー数推定と低カバレッジ端のトリミングが揃って壊れる。
+        /// </summary>
+        public bool V_追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
+        {
+            if (小経路を使うか)
+            {
+                return this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ);
+            }
+            if (中経路を使うか)
+            {
+                return this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ);
+            }
+            return this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
         }
 
         /// <summary>
@@ -413,7 +440,7 @@ namespace Tsumiki.Utility
         public Dictionary<ulong, long> Get_出現回数ヒストグラム()
         {
             var l_ファイルパス = this.Get_統合済みファイル();
-            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_パック長 = (this._k長 + 3) / 4;
             var l_読み捨てバッファ = new byte[l_パック長];
 
             Dictionary<ulong, long> l_ヒストグラム = [];
@@ -431,7 +458,7 @@ namespace Tsumiki.Utility
         {
             var l_ファイルパス = this.Get_統合済みファイル();
 
-            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            var l_パック長 = (this._k長 + 3) / 4;
             var l_小経路 = 小経路を使うか;
             var l_中経路 = 中経路を使うか;
             var l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>();
@@ -460,7 +487,7 @@ namespace Tsumiki.Utility
                         {
                             l_塩基列.AddRange(Util.V_変換_塩基列(l_バイト));
                         }
-                        var l_kmer = CollectionsMarshal.AsSpan(l_塩基列)[..ConfigurationManager.A_実行時引数.A_k長];
+                        var l_kmer = CollectionsMarshal.AsSpan(l_塩基列)[..this._k長];
                         // カウント段階で既に正規形へ寄せてあるため、同じ正規形が
                         // 複数エントリとして現れることはない。それでも加算で受けて
                         // おけば、将来カウント側の正規化をやめた場合でも壊れない。

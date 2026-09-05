@@ -28,6 +28,11 @@ namespace Tsumiki.Core
             var l_実行結果一覧 = new List<アセンブリ実行結果>();
             アセンブリ実行結果? l_直前 = null;
 
+            // 前段の配列を次の k へ渡す。k を上げるとカバレッジが痩せて
+            // グラフが千切れるが、前段は既にその領域を通っている。
+            List<引き継ぎ配列> l_引き継ぎ = [];
+            List<引き継ぎ配列> l_次への引き継ぎ = [];
+
             foreach (var l_k長 in l_k候補)
             {
                 if (Get_薄すぎるか(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
@@ -41,7 +46,9 @@ namespace Tsumiki.Core
                 Console.WriteLine();
                 Console.WriteLine($"[Multi-k] ===== Assembling with k={l_k長} =====");
                 var l_結果 = AssemblyPipeline.Get_実行結果(
-                    p_引数, l_k長, p_一時ディレクトリ, $"k{l_k長}_", p_リード長);
+                    p_引数, l_k長, p_一時ディレクトリ, $"k{l_k長}_", p_リード長,
+                    p_引数.A_引き継ぐか ? l_引き継ぎ : null,
+                    p_引数.A_引き継ぐか ? l_次への引き継ぎ : null);
                 if (l_結果 is null)
                 {
                     Console.WriteLine($"[Multi-k] k={l_k長} produced no assembly; skipping it.");
@@ -49,6 +56,7 @@ namespace Tsumiki.Core
                 }
                 l_実行結果一覧.Add(l_結果);
                 l_直前 = l_結果;
+                l_引き継ぎ = [.. l_次への引き継ぎ];
             }
 
             if (l_実行結果一覧.Count == 0)
