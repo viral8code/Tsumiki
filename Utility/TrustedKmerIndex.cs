@@ -204,8 +204,7 @@ namespace Tsumiki.Utility
         /// 正規形にパック済みの値で所属を判定する(k &lt;= 32)。
         ///
         /// walk は1塩基ずつ進むためパック値を転がして更新できる。
-        /// 毎回 Span から詰め直すと1歩あたり O(k) の処理が9回ほど走り、
-        /// そこが unitig 構築の主なコストになる。
+        /// Span を受ける版だと呼ぶたびに O(k) の詰め直しが要る。
         /// </summary>
         public bool Get_含まれるか_小(ulong p_正規形) => this._信頼kmer_小!.ContainsKey(p_正規形);
 

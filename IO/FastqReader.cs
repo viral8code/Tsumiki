@@ -37,9 +37,30 @@ namespace Tsumiki.IO
             var l_行 = this._読み込み.ReadLine();
             while (string.IsNullOrWhiteSpace(l_行))
             {
+                // ReadLine は EOF でも null を返す。空行の読み飛ばしと区別しないと
+                // 途中で切れたファイルで無限に回り続ける。
+                if (l_行 is null && this._読み込み.EndOfStream)
+                {
+                    throw new InvalidDataException(
+                        $"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
+                }
                 l_行 = this._読み込み.ReadLine();
             }
             return l_行;
+        }
+
+        /// <summary>
+        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
+        /// 品質判定が配列の範囲外を触って落ちる。どのリードが不正かを言って止める。
+        /// </summary>
+        private void V_検査(string p_ID, string p_配列, string p_クオリティ)
+        {
+            if (p_配列.Length != p_クオリティ.Length)
+            {
+                throw new InvalidDataException(
+                    $"{this.A_ファイルパス}: リード {p_ID} の塩基列({p_配列.Length}文字)と" +
+                    $"クオリティ({p_クオリティ.Length}文字)の長さが一致しない。");
+            }
         }
 
         public リードデータ Get_次のリード()
@@ -50,6 +71,7 @@ namespace Tsumiki.IO
                 var l_配列 = this.Get_次の行();
                 _ = this.Get_次の行();
                 var l_クオリティ = this.Get_次の行();
+                this.V_検査(l_ID, l_配列, l_クオリティ);
 
                 return new リードデータ()
                 {
@@ -79,6 +101,7 @@ namespace Tsumiki.IO
                 var l_配列 = this.Get_次の行();
                 _ = this.Get_次の行();
                 var l_クオリティ = this.Get_次の行();
+                this.V_検査(l_ID, l_配列, l_クオリティ);
 
                 return new リードデータ()
                 {
