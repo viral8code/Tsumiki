@@ -121,7 +121,7 @@ namespace Tsumiki.Core
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 Console.WriteLine("Scaffolding contigs");
-                var l_スキャフォールド構築 = new Scaffolder(l_コンティグ構築, l_コンティグパス);
+                var l_スキャフォールド構築 = new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長);
                 l_スキャフォールド構築.V_実行(l_スキャフォールドパス);
                 l_スキャフォールドを作ったか = File.Exists(l_スキャフォールドパス);
             }

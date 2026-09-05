@@ -141,6 +141,21 @@ namespace Tsumiki.Common
 
         public const ulong ペア支持数閾値の既定値 = 10;
 
+        /// <summary>フラグメント長の経験分布を刻むビン幅。</summary>
+        public const int フラグメント長のビン幅 = 5;
+
+        /// <summary>
+        /// 同一のギャップ長から出たとみなす既知長のばらつき幅の下限。
+        /// ライブラリが極端に狭いときに窓が潰れないようにする。
+        /// </summary>
+        public const int 既知長のばらつき幅の下限 = 25;
+
+        /// <summary>
+        /// スキャフォールド辺を認めるのに必要な、距離が揃っているペアの本数。
+        /// 反復解決が使う -pc とは数える対象が違うので別に持つ。
+        /// </summary>
+        public const ulong スキャフォールド支持数の下限 = 3;
+
         public static readonly string ヘルプテキスト = $"""
             {概要テキスト}
 
@@ -156,7 +171,7 @@ namespace Tsumiki.Common
             {引数キー.一時ディレクトリ} [path] : temp directory (default : {一時ディレクトリの既定値})
             {引数キー.スレッド数} [integer] : number of worker threads used for loading reads (default : number of logical processors)
             {引数キー.ペア結合閾値} [decimal] : minimum ratio of the best-supported pair-end scaffold edge among all candidates for a node (default : {ペア結合閾値の既定値})
-            {引数キー.ペア支持数閾値} [integer] : minimum read-pair support required for a pair-end scaffold edge (default : {ペア支持数閾値の既定値})
+            {引数キー.ペア支持数閾値} [integer] : minimum read-pair support required to resolve a short repeat during contig construction (default : {ペア支持数閾値の既定値})
             {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try. Without {引数キー.k長} the values are spread over 21 .. {マルチk上限のリード長比:0.##} x read length; those whose predicted k-mer coverage would fall below {マルチkの最小kmerカバレッジ:0.#} are skipped (costs up to {マルチkで試す個数 + 1}x the runtime) (default : false)
             {引数キー.マージ} : with {引数キー.マルチk}, splice sequence from the other k values into the selected assembly where they span a junction it left open. Off by default: on GAGE-B R. sphaeroides this raised NGA50 by 14% but nearly doubled the misassemblies, because assemblies of the same reads make correlated errors at the same repeats (default : false)
             {引数キー.引き継ぎなし} : with {引数キー.マルチk}, do not carry sequence from one k to the next. Carrying is on by default: a larger k loses k-mers to thin coverage, and the previous k already walked that region (default : carry)

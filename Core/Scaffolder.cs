@@ -9,7 +9,7 @@ namespace Tsumiki.Core
     /// 確定した contig を読み直し、ペアエンド由来の隣接で N 埋め連結する。
     /// 出力は新規ファイルで、contigs.fasta 自体は変更しない。
     /// </summary>
-    internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス)
+    internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
     {
         /// <summary>
         /// 同一 unitig 内標本を信頼してよい「unitig長 / 推定フラグメント長」の下限比。
@@ -64,7 +64,7 @@ namespace Tsumiki.Core
             var l_コンティグ数 = this._コンティグ配列.Keys.Count == 0 ? 0 : this._コンティグ配列.Keys.Max();
             var l_頂点数 = (l_コンティグ数 + 1) << 1;
 
-            var l_隣接 = new List<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)>[l_頂点数];
+            var l_隣接 = new List<スキャフォールド候補>[l_頂点数];
             for (var i = 0; i < l_頂点数; i++)
             {
                 l_隣接[i] = [];
@@ -153,21 +153,34 @@ namespace Tsumiki.Core
                 }
             }
 
-            foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_対称化)
+            var l_モデル = new PairedDistanceModel(p_コンティグ構築.A_同一ユニティグ標本, p_リード長 ?? l_インサートサイズ);
+            var l_密度 = this.Get_フラグメント密度(l_モデル);
+
+            foreach (var ((l_始点, l_終点), (_, l_標本)) in l_対称化)
             {
-                l_隣接[l_始点].Add((l_終点, l_支持数, l_標本));
+                var (l_一貫した本数, l_ギャップ長) = l_モデル.Get_一貫した支持(l_標本);
+
+                // 期待は接合点から1フラグメント長ぶんの窓しか効かないので、
+                // 重なっている(ギャップが負)場合は接している場合と同じとみなす。
+                var l_期待 = l_密度 * l_モデル.Get_期待位置数(
+                    this.Get_コンティグ長(l_始点), this.Get_コンティグ長(l_終点), Math.Max(0, l_ギャップ長));
+
+                l_隣接[l_始点].Add(new スキャフォールド候補(
+                    l_終点, (ulong)l_一貫した本数, l_ギャップ長,
+                    l_期待 > 0 ? l_一貫した本数 / l_期待 : 0));
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
-            var l_最小証拠数 = ConfigurationManager.A_実行時引数.A_ペア支持数閾値;
+            var l_最小証拠数 = Consts.スキャフォールド支持数の下限;
 
-            Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {l_辺の集計.Count}");
+            Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {l_辺の集計.Count}"
+                + (l_モデル.A_使えるか ? $"; fragment-start density {l_密度:0.###}/bp" : "; ideal-count model unavailable"));
 
             // 各頂点について、最多支持の辺1本だけを残す。
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
             for (var v = 2; v < l_頂点数; v++)
             {
-                this.V_確定_スキャフォールド辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
+                V_確定_スキャフォールド辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
             }
 
             var l_確定数 = 0;
@@ -405,8 +418,8 @@ namespace Tsumiki.Core
             return true;
         }
 
-        private void V_確定_スキャフォールド辺(
-            List<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)>[] p_隣接,
+        private static void V_確定_スキャフォールド辺(
+            List<スキャフォールド候補>[] p_隣接,
             int p_頂点,
             decimal p_優勢閾値,
             ulong p_最小証拠数,
@@ -419,14 +432,18 @@ namespace Tsumiki.Core
                 return;
             }
 
-            p_確定辺[p_頂点] = (l_辺.A_行き先, this.Get_推定ギャップ長(l_辺.A_既知長標本));
+            p_確定辺[p_頂点] = (l_辺.A_行き先, Math.Max(Consts.ギャップ長の下限, l_辺.A_ギャップ長));
         }
 
         /// <summary>
-        /// 支持数が最小証拠数を満たし、その中で優勢比を超える辺を返す。
+        /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す。
+        ///
+        /// 期待本数と比べるのは、辺が長く距離が近いほど多く観測されるという
+        /// 幾何的な偏りを外すため。観測本数だけを固定の下限と比べると、
+        /// 期待が数本の場所と数百本の場所を同じ物差しで測ることになる。
         /// </summary>
-        internal static (int A_行き先, ulong A_支持数, List<int> A_既知長標本)? Get_優勢な候補(
-            IReadOnlyList<(int A_行き先, ulong A_支持数, List<int> A_既知長標本)> p_候補,
+        internal static スキャフォールド候補? Get_優勢な候補(
+            IReadOnlyList<スキャフォールド候補> p_候補,
             decimal p_優勢閾値,
             ulong p_最小証拠数)
         {
@@ -436,14 +453,39 @@ namespace Tsumiki.Core
                 return null;
             }
 
-            var l_合計 = l_候補.Aggregate(0UL, (l_累積, x) => l_累積 + x.A_支持数);
-            var l_最良 = l_候補.OrderByDescending(x => x.A_支持数).First();
-            if (l_合計 == 0 || (decimal)l_最良.A_支持数 / l_合計 < p_優勢閾値)
+            var l_合計 = l_候補.Sum(x => x.A_期待に対する比);
+            var l_最良 = l_候補.OrderByDescending(x => x.A_期待に対する比).First();
+            if (l_合計 <= 0 || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値)
             {
                 return null;
             }
 
             return l_最良;
+        }
+
+        private long Get_コンティグ長(int p_頂点)
+        {
+            return this._コンティグ配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;
+        }
+
+        /// <summary>
+        /// フラグメント開始位置の密度。同一 unitig 内で観測された本数を、
+        /// 同じモデルが予測する位置数で割って較正する。
+        /// 期待本数の絶対値を合わせるにはこの密度が要る。
+        /// </summary>
+        private double Get_フラグメント密度(PairedDistanceModel p_モデル)
+        {
+            if (!p_モデル.A_使えるか)
+            {
+                return 0;
+            }
+
+            double l_期待位置数 = 0;
+            foreach (var l_長さ in p_コンティグ構築.A_ユニティグ長.Values)
+            {
+                l_期待位置数 += p_モデル.Get_期待位置数_単一(l_長さ);
+            }
+            return l_期待位置数 > 0 ? p_コンティグ構築.A_同一ユニティグ標本.Count / l_期待位置数 : 0;
         }
 
         /// <summary>
