@@ -141,6 +141,28 @@ def split_into_blocks(anchors, tolerance):
     return blocks
 
 
+def classify(seq, 前, 後, tolerance):
+    """切れ目が本当の誤結合か、スキャフォールドのギャップ長のずれかを分ける。
+
+    共線性の判定は contig 上の距離を使うが、スキャフォールドが挟んだ N の
+    本数はギャップ長の推定値でしかない。推定が外れただけの切れ目を
+    誤結合と同じに数えると、連結を増やすほど不利に見えてしまう。
+    """
+    a, b = 前[-1], 後[0]
+    if a[1] != b[1] or a[3] != b[3]:
+        return "chimera"
+
+    n_count = seq.count("N", a[0], b[0])
+    if n_count == 0:
+        return "chimera"
+
+    contig_step = (b[0] - a[0]) - n_count
+    ref_step = (b[2] - a[2]) if b[3] else (a[2] - b[2])
+    if ref_step > 0 and abs(ref_step - contig_step) <= tolerance:
+        return "gap"
+    return "chimera"
+
+
 def n50(lengths, total):
     """長さの列に対する N50。total を分母に使うと NGA50 になる。"""
     running = 0
@@ -203,7 +225,8 @@ def main():
             # 切れ目は、直前ブロックの末尾と次ブロックの先頭の中間に置く。
             for 前, 後 in zip(blocks, blocks[1:]):
                 breakpoints.append((name, (前[-1][0] + 後[0][0]) // 2,
-                                    ref_names[前[0][1]], ref_names[後[0][1]]))
+                                    ref_names[前[0][1]], ref_names[後[0][1]],
+                                    classify(seq, 前, 後, args.tolerance)))
 
         for block in blocks:
             block_lengths.append(block[-1][0] - block[0][0] + ANCHOR_K)
@@ -236,8 +259,11 @@ def main():
     # 複数レプリコンを持つゲノムでは、レプリコン間の混同かどうかで
     # 原因の見当が変わる。
     if breakpoints:
-        l_同一 = Counter(前 for _, _, 前, 後 in breakpoints if 前 == 後)
-        l_跨ぎ = Counter((前, 後) for _, _, 前, 後 in breakpoints if 前 != 後)
+        l_ギャップ = sum(1 for b in breakpoints if b[4] == "gap")
+        print(f"{label}  of which gap-size only  : {l_ギャップ}")
+        print(f"{label}  genuine misjoins        : {len(breakpoints) - l_ギャップ}")
+        l_同一 = Counter(前 for _, _, 前, 後, _t in breakpoints if 前 == 後)
+        l_跨ぎ = Counter((前, 後) for _, _, 前, 後, _t in breakpoints if 前 != 後)
         print(f"{label}  misassemblies within one reference sequence:")
         for 名, n in l_同一.most_common():
             print(f"{label}      {n:3d}  {名}")
@@ -250,9 +276,9 @@ def main():
 
     if args.breakpoints:
         with open(args.breakpoints, "w") as f:
-            f.write(TAB.join(["contig", "position", "ref_before", "ref_after"]) + NEWLINE)
-            for name, pos, 前, 後 in breakpoints:
-                f.write(TAB.join([name, str(pos), 前, 後]) + NEWLINE)
+            f.write(TAB.join(["contig", "position", "ref_before", "ref_after", "kind"]) + NEWLINE)
+            for name, pos, 前, 後, kind in breakpoints:
+                f.write(TAB.join([name, str(pos), 前, 後, kind]) + NEWLINE)
         print(f"{label}  breakpoints written to : {args.breakpoints}")
     return 0
 
