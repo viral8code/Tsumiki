@@ -745,11 +745,14 @@ namespace Tsumiki.Core
             // 単純バブルを潰してから辺を選ぶ。相互一意性を課す以上、
             // 再合流点の入次数が2以上のまま残っているとその経路全体が
             // 結合されなくなるため、先に枝を1本に絞っておく必要がある。
-            var l_除去バブル数 = l_グラフ.V_除去_単純バブル(l_ユニティグ配列, l_支持, l_k長, p_バブル敗者への引き継ぎ先);
-            if (l_除去バブル数 > 0)
-            {
-                Console.WriteLine($"[Debug] Popped {l_除去バブル数} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");
-            }
+            //
+            // バブル除去と反復解決は1回ずつでは互いを取りこぼす。バブルを
+            // 潰すと隣接構造が変わって新たな反復(入次数2・出次数2)が
+            // 露出することがあり、逆に反復を解きほぐすと新たに単純化できる
+            // バブルが現れることがある。どちらも変化が無くなるまで
+            // (MEGAHIT の cleaning_rounds に倣い既定5ラウンドを上限に)
+            // 交互に繰り返す。
+            const int ラウンド数上限 = 5;
 
             // 跨げる見込みのある長さの上限。フラグメント長の実測中央値を使う
             // (これより長い反復は、そもそも両端を別々の unitig に載せた
@@ -757,10 +760,33 @@ namespace Tsumiki.Core
             var l_反復長の上限 = this.A_同一ユニティグ標本.Count > 0
                 ? Get_中央値(this.A_同一ユニティグ標本)
                 : l_k長 * 4;
-            var l_解決した反復数 = l_グラフ.V_解決_短い反復(
-                l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
+
+            var l_除去バブル数 = 0;
+            var l_解決した反復数 = 0;
+            for (var l_ラウンド = 1; l_ラウンド <= ラウンド数上限; l_ラウンド++)
+            {
+                var l_今回のバブル数 = l_グラフ.V_除去_単純バブル(l_ユニティグ配列, l_支持, l_k長, p_バブル敗者への引き継ぎ先);
+                var l_今回の反復数 = l_グラフ.V_解決_短い反復(
+                    l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
+                l_除去バブル数 += l_今回のバブル数;
+                l_解決した反復数 += l_今回の反復数;
+
+                if (l_今回のバブル数 == 0 && l_今回の反復数 == 0)
+                {
+                    Console.WriteLine($"[Debug] Simplification converged after {l_ラウンド} round(s).");
+                    break;
+                }
+                if (l_ラウンド == ラウンド数上限)
+                {
+                    Console.WriteLine($"[Debug] Simplification stopped at the round limit ({ラウンド数上限}) without fully converging.");
+                }
+            }
+            if (l_除去バブル数 > 0)
+            {
+                Console.WriteLine($"[Debug] Popped {l_除去バブル数} simple bubble branch(es) total (kept as standalone contigs; only their graph edges were removed).");
+            }
             Console.WriteLine(
-                $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {l_反復長の上限}bp) were duplicated " +
+                $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {l_反復長の上限}bp) total were duplicated " +
                 "and untangled using read pairs that span them.");
 
             // 支持を生カウントではなく期待本数との比で測るための較正器。
