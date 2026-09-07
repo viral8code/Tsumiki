@@ -39,6 +39,64 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
+        /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する
+        /// (Booth のアルゴリズム、O(n))。
+        ///
+        /// 環状に閉じた contig は開始位置が任意(walk がどこから始まったかの
+        /// 産物でしかない)。決定的な基準を置かないと、同じ環状配列でも
+        /// 実行のたびに(あるいは同じ実行内でも walk の起点が変われば)
+        /// 別の文字列として出力され、下流の比較や再現性を損なう。
+        /// </summary>
+        public static string Get_最小回転(string p_配列)
+        {
+            if (p_配列.Length <= 1)
+            {
+                return p_配列;
+            }
+            var l_開始位置 = Get_最小回転の開始位置(p_配列);
+            return l_開始位置 == 0 ? p_配列 : p_配列[l_開始位置..] + p_配列[..l_開始位置];
+        }
+
+        /// <summary>
+        /// Booth のアルゴリズム。p_配列 を2つ繋げた仮想文字列の上で
+        /// KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める。
+        /// </summary>
+        private static int Get_最小回転の開始位置(string p_配列)
+        {
+            var l_長さ = p_配列.Length;
+            var l_二重化 = p_配列 + p_配列;
+            var l_失敗関数 = new int[l_二重化.Length];
+            Array.Fill(l_失敗関数, -1);
+            var k = 0;
+            for (var j = 1; j < l_二重化.Length; j++)
+            {
+                var l_文字 = l_二重化[j];
+                var i = l_失敗関数[j - k - 1];
+                while (i != -1 && l_文字 != l_二重化[k + i + 1])
+                {
+                    if (l_文字 < l_二重化[k + i + 1])
+                    {
+                        k = j - i - 1;
+                    }
+                    i = l_失敗関数[i];
+                }
+                if (l_文字 != l_二重化[k + i + 1])
+                {
+                    if (l_文字 < l_二重化[k])
+                    {
+                        k = j;
+                    }
+                    l_失敗関数[j - k] = -1;
+                }
+                else
+                {
+                    l_失敗関数[j - k] = i + 1;
+                }
+            }
+            return k % l_長さ;
+        }
+
+        /// <summary>
         /// 曖昧塩基が混入しうる文字列向けの逆相補。A/C/G/T 以外は位置だけ反転して通す。
         /// unitig/contig には使わないこと。そちらは V_逆相補(string) を使い、
         /// 想定外の文字を例外で早期検知する。

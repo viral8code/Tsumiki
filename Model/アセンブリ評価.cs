@@ -11,7 +11,9 @@ namespace Tsumiki.Model
         long A_過剰延べ数,
         long A_総延長,
         int A_本数,
-        long A_NG50)
+        long A_NG50,
+        int A_環状本数 = 0,
+        double A_環状化率 = 0)
     {
         /// <summary>
         /// 出すべき k-mer のうち実際に出せた割合。
@@ -31,7 +33,8 @@ namespace Tsumiki.Model
 
         public override string ToString()
         {
-            return $"NG50={this.A_NG50:N0}, completeness={this.A_完全性 * 100:F2}%, " +
+            return $"circular={this.A_環状本数} ({this.A_環状化率 * 100:F1}% of genome), " +
+                $"NG50={this.A_NG50:N0}, completeness={this.A_完全性 * 100:F2}%, " +
                 $"accuracy={this.A_正確性 * 100:F2}% " +
                 $"({this.A_本数} seq(s), {this.A_総延長:N0} bp)";
         }

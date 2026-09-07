@@ -34,7 +34,9 @@ namespace Tsumiki.Core
                 return null;
             }
 
-            var l_観測 = Get_出現回数(p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長);
+            var l_観測 = Get_出現回数(
+                p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長,
+                out var l_環状本数, out var l_環状延長);
 
             long l_期待延べ数 = 0;
             long l_欠損延べ数 = 0;
@@ -66,25 +68,40 @@ namespace Tsumiki.Core
                 A_過剰延べ数: l_過剰延べ数,
                 A_総延長: l_統計対象.Sum(),
                 A_本数: l_統計対象.Count,
-                A_NG50: Get_NG50(l_統計対象, p_推定ゲノムサイズ, l_総延長));
+                A_NG50: Get_NG50(l_統計対象, p_推定ゲノムサイズ, l_総延長),
+                A_環状本数: l_環状本数,
+                A_環状化率: p_推定ゲノムサイズ > 0 ? (double)l_環状延長 / p_推定ゲノムサイズ : 0);
         }
 
         /// <summary>
         /// アセンブリ中に各アンカー k-mer が何回現れるかを数える。逆相補は同一視する。
+        /// 併せて、環状に閉じた配列(ContigMaker が名前に "circular" を付けたもの)の
+        /// 本数と総延長も集計する。閉じた複製単位は完全長を目指す評価の核心なので、
+        /// 長さの足切り(連続性統計の最小長)は掛けない。
         /// </summary>
         private static Dictionary<UInt128, int> Get_出現回数(
-            string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長)
+            string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長,
+            out int p_環状本数, out long p_環状延長)
         {
             Dictionary<UInt128, int> l_観測 = [];
             p_長さ一覧 = [];
             p_総延長 = 0;
+            p_環状本数 = 0;
+            p_環状延長 = 0;
 
             using var l_読み込み = new FastaReader(p_FASTAパス);
             while (l_読み込み.Get_続きがあるか())
             {
-                var l_配列 = l_読み込み.Get_次の配列().A_配列;
+                var l_エントリ = l_読み込み.Get_次の配列();
+                var l_配列 = l_エントリ.A_配列;
                 p_長さ一覧.Add(l_配列.Length);
                 p_総延長 += l_配列.Length;
+
+                if (l_エントリ.A_ID.Contains("circular"))
+                {
+                    p_環状本数++;
+                    p_環状延長 += l_配列.Length;
+                }
 
                 for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
                 {

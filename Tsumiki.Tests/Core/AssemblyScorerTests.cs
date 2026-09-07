@@ -76,6 +76,17 @@ namespace Tsumiki.Tests.Core
             return path;
         }
 
+        private string WriteFastaWithNames(string name, params (string A_名前, string A_配列)[] entries)
+        {
+            var path = Path.Combine(this._tempDir, name);
+            using var writer = new FastaWriter(path);
+            foreach (var (l_名前, l_配列) in entries)
+            {
+                writer.V_書き込み(l_名前, l_配列);
+            }
+            return path;
+        }
+
         [Fact]
         public void Score_PerfectAssembly_HasFullCompletenessAndAccuracy()
         {
@@ -231,6 +242,61 @@ namespace Tsumiki.Tests.Core
             Assert.NotNull(評価);
             Assert.Equal(0, 評価.A_NG50);
             Assert.InRange(評価.A_完全性, 0.35, 0.45);
+        }
+
+        /// <summary>
+        /// 提案H: 環状に閉じた complicon(ContigMaker が名前に"circular"を
+        /// 付けたもの)は本数・総延長に数えること。
+        /// </summary>
+        [Fact]
+        public void Score_CircularContig_IsCountedInCircularStats()
+        {
+            var truth = RandomSequence(20_000, seed: 601);
+            using var index = this.BuildIndex(truth);
+
+            var path = this.WriteFastaWithNames("circular.fasta", ("NODE1_circular", truth));
+            var 評価 = AssemblyScorer.Get_評価(path, index, K, 深さ, truth.Length);
+
+            Assert.NotNull(評価);
+            Assert.Equal(1, 評価.A_環状本数);
+            Assert.Equal(1.0, 評価.A_環状化率, 6);
+        }
+
+        [Fact]
+        public void Score_LinearContig_IsNotCountedAsCircular()
+        {
+            var truth = RandomSequence(20_000, seed: 602);
+            using var index = this.BuildIndex(truth);
+
+            var path = this.WriteFastaWithNames("linear.fasta", ("NODE1", truth));
+            var 評価 = AssemblyScorer.Get_評価(path, index, K, 深さ, truth.Length);
+
+            Assert.NotNull(評価);
+            Assert.Equal(0, 評価.A_環状本数);
+            Assert.Equal(0.0, 評価.A_環状化率);
+        }
+
+        /// <summary>
+        /// 500bp(連続性統計の最小長)未満の短い環状プラスミドも、
+        /// 環状化率にはちゃんと反映されること。閉じた複製単位はどれだけ
+        /// 短くても「完全長を組み上げられた」ことの核心であり、
+        /// 連続性統計向けの足切りを適用してはいけない。
+        /// </summary>
+        [Fact]
+        public void Score_ShortCircularPlasmid_CountsTowardCircularFractionDespiteContiguityFloor()
+        {
+            var chromosome = RandomSequence(20_000, seed: 603);
+            var plasmid = RandomSequence(200, seed: 604);
+            using var index = this.BuildIndex(chromosome, plasmid);
+
+            var genomeSize = chromosome.Length + plasmid.Length;
+            var path = this.WriteFastaWithNames(
+                "with_plasmid.fasta", ("NODE1_circular", chromosome), ("NODE2_circular", plasmid));
+            var 評価 = AssemblyScorer.Get_評価(path, index, K, 深さ, genomeSize);
+
+            Assert.NotNull(評価);
+            Assert.Equal(2, 評価.A_環状本数);
+            Assert.InRange(評価.A_環状化率, 0.99, 1.0);
         }
     }
 }

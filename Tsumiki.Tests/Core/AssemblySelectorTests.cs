@@ -16,7 +16,8 @@ namespace Tsumiki.Tests.Core
     public class AssemblySelectorTests
     {
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
-            int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0)
+            int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0,
+            int p_環状本数 = 0, double p_環状化率 = 0)
         {
             // 期待延べ数を固定し、そこから逆算して欠損・過剰を決める。
             const long l_期待延べ数 = 1_000_000;
@@ -29,7 +30,9 @@ namespace Tsumiki.Tests.Core
                 A_過剰延べ数: (long)(l_期待延べ数 * (1 - p_正確性)),
                 A_総延長: 5_000_000,
                 A_本数: 100,
-                A_NG50: p_NG50);
+                A_NG50: p_NG50,
+                A_環状本数: p_環状本数,
+                A_環状化率: p_環状化率);
             return (l_実行結果, l_評価);
         }
 
@@ -143,6 +146,59 @@ namespace Tsumiki.Tests.Core
 
             Assert.NotNull(選択);
             Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+        }
+
+        /// <summary>
+        /// 提案H: 完全性・正確性が同程度でも、より多くの複製単位を
+        /// 環状に閉じられた候補を、NG50 より優先して選ぶこと。
+        /// 「4.5Mbが1本に閉じプラスミドを取りこぼした」候補より
+        /// 「染色体は2本に割れたがプラスミドも含め2本閉じた」候補を選ぶ、
+        /// という目標関数そのものの検証。
+        /// </summary>
+        [Fact]
+        public void Select_MoreClosedReplicons_IsPreferredOverHigherNG50()
+        {
+            var 選択 = AssemblySelector.Get_最良([
+                // NG50 は高いが、環状に閉じた複製単位は無い。
+                Get_候補(63, 200_000, 0.97, p_環状本数: 0, p_環状化率: 0.0),
+                // NG50 は低いが、2本(染色体+プラスミド)が環状に閉じている。
+                Get_候補(31, 50_000, 0.97, p_環状本数: 2, p_環状化率: 0.98),
+            ]);
+
+            Assert.NotNull(選択);
+            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+        }
+
+        /// <summary>
+        /// 環状本数が同じなら、閉じた総塩基がゲノム推定サイズに占める割合
+        /// (環状化率)で比べる。
+        /// </summary>
+        [Fact]
+        public void Select_SameClosedReplicronCount_PicksTheHigherClosedFraction()
+        {
+            var 選択 = AssemblySelector.Get_最良([
+                Get_候補(31, 200_000, 0.97, p_環状本数: 1, p_環状化率: 0.30),
+                Get_候補(63, 50_000, 0.97, p_環状本数: 1, p_環状化率: 0.95),
+            ]);
+
+            Assert.NotNull(選択);
+            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
+        }
+
+        /// <summary>
+        /// 環状化の状況が全く同じ(両方0)なら、これまでどおり NG50 で決める
+        /// (既存の挙動を壊していないことの確認)。
+        /// </summary>
+        [Fact]
+        public void Select_NoCandidateIsCircular_FallsBackToNG50()
+        {
+            var 選択 = AssemblySelector.Get_最良([
+                Get_候補(31, 50_000, 0.97),
+                Get_候補(63, 90_000, 0.97),
+            ]);
+
+            Assert.NotNull(選択);
+            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
         }
     }
 }

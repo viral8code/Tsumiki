@@ -8,6 +8,13 @@ namespace Tsumiki.Core
     /// 連続性・完全性・正確性を掛け合わせた単一のスコアでは選べない。
     /// 連続性の利得が完全性の損失を上回りうるため、配列を大きく落とした
     /// 誤アセンブリのほうが高い点になる。順序を明示した二段階にしてある。
+    ///
+    /// 完全長細菌ゲノムを目標にする場合、NG50 だけを見る比較は
+    /// 「4.5Mbの染色体が2本に割れ5kbのプラスミドが完全に閉じたアセンブリ」と
+    /// 「4.5Mbが1本に閉じプラスミドを取りこぼしたアセンブリ」を正しく
+    /// 順序づけられない。完全性・正確性で足切りしたあとの候補群を、
+    /// 「閉じた複製単位の本数 → その総塩基がゲノム推定サイズに占める割合 →
+    /// 誤アセンブリの少なさ(正確性) → NG50」の順で比べる。
     /// </summary>
     internal static class AssemblySelector
     {
@@ -49,7 +56,10 @@ namespace Tsumiki.Core
             }
 
             return l_残った候補
-                .OrderByDescending(x => x.A_評価.A_NG50)
+                .OrderByDescending(x => x.A_評価.A_環状本数)
+                .ThenByDescending(x => x.A_評価.A_環状化率)
+                .ThenByDescending(x => x.A_評価.A_正確性)
+                .ThenByDescending(x => x.A_評価.A_NG50)
                 .ThenByDescending(x => x.A_評価.A_完全性)
                 .First();
         }

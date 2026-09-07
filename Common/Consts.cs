@@ -65,7 +65,33 @@ namespace Tsumiki.Common
             public const string 反復r_mer検証 = "-rv";
 
             public const string 局所アセンブリ = "-la";
+
+            public const string 積極性モード = "-mode";
         }
+
+        /// <summary>
+        /// -mode が束ねる値。利用者が本当に決めたいのは「完全性と正確性の
+        /// どちらに倒すか」の1軸であり、-pu(優勢閾値)と-pc(支持数閾値)を
+        /// 個別の数値として露出するより、Unicycler の
+        /// --mode {conservative, normal, bold} のようなプリセットのほうが
+        /// 意図を素直に表せる。normal は既定値そのもの。
+        /// </summary>
+        public static class 積極性モード名
+        {
+            public const string 保守的 = "conservative";
+
+            public const string 標準 = "normal";
+
+            public const string 積極的 = "bold";
+        }
+
+        public const decimal 保守的モードのペア結合閾値 = 0.9m;
+
+        public const ulong 保守的モードのペア支持数閾値 = 15;
+
+        public const decimal 積極的モードのペア結合閾値 = 0.65m;
+
+        public const ulong 積極的モードのペア支持数閾値 = 5;
 
         public const string インサートサイズ未指定表示 = "unspecified";
 
@@ -211,6 +237,7 @@ namespace Tsumiki.Common
             {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
             {引数キー.反復r_mer検証} : before duplicating a short repeat to untangle it, verify each candidate path with an r-mer (k + {rMer長のk超過分の既定値}bp -- longer than this k's own k-1 overlap, since a shorter or equal-length window can't tell the repeat's shared boundary from either neighbor's own sequence) set built from the raw reads -- require at least {r_mer接合点支持の閾値の既定値} r-mers that actually cross the head/repeat and repeat/tail junctions, otherwise refuse the duplication. Note this cannot tell a repeat's two genuinely real pairings apart (both are real graph edges either way); it only catches a pairing that isn't backed by any raw-read evidence at all (an ABySS RResolver-style veto, narrower in practice than that framing suggests). Skipped for k values where k + {rMer長のk超過分の既定値} would exceed 32bp. Costs one extra full read scan per k (default : false)
             {引数キー.局所アセンブリ} : for scaffold gaps that GapFiller could not close, collect only the raw reads that actually map near the gap's two edges and re-assemble that small pool on its own (a k-mer trusted with even a single local occurrence, unlike the genome-wide cutoff). A safer alternative to {引数キー.マージ}: that one splices in another k's already-decided sequence and can carry over the same misassembly at the same repeat, while this one only ever introduces reads GapFiller had not looked at in isolation (default : false)
+            {引数キー.積極性モード} [{積極性モード名.保守的}|{積極性モード名.標準}|{積極性モード名.積極的}] : bundles {引数キー.ペア結合閾値} and {引数キー.ペア支持数閾値} into one dial for how far to lean into "more complete but riskier" vs "safer but more fragmented" (a lower threshold joins more branches on weaker evidence). {積極性モード名.標準} is the plain default ({ペア結合閾値の既定値}, {ペア支持数閾値の既定値}); {積極性モード名.保守的} raises both ({保守的モードのペア結合閾値}, {保守的モードのペア支持数閾値}); {積極性モード名.積極的} lowers both ({積極的モードのペア結合閾値}, {積極的モードのペア支持数閾値}). Set {引数キー.ペア結合閾値}/{引数キー.ペア支持数閾値} afterward on the command line to override either one individually (default : {積極性モード名.標準})
             {引数キー.ヘルプ} : output this text (default : false)
 
             """;

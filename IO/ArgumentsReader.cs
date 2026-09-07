@@ -106,6 +106,10 @@ namespace Tsumiki.IO
                             l_引数.A_局所アセンブリするか = true;
                             break;
 
+                        case Consts.引数キー.積極性モード:
+                            V_適用_積極性モード(l_引数, p_引数列[l_位置++]);
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;
@@ -139,6 +143,37 @@ namespace Tsumiki.IO
             }
 
             return l_引数;
+        }
+
+        /// <summary>
+        /// -pu(優勢閾値)と-pc(支持数閾値)を、完全性/正確性のどちらに倒すかの
+        /// 1軸で束ねて適用する。個別に -pu/-pc を後ろに書けばそちらで上書きできる
+        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)。
+        /// </summary>
+        private static void V_適用_積極性モード(Parameters p_引数, string p_モード名)
+        {
+            switch (p_モード名)
+            {
+                case Consts.積極性モード名.保守的:
+                    p_引数.A_ペア結合閾値 = Consts.保守的モードのペア結合閾値;
+                    p_引数.A_ペア支持数閾値 = Consts.保守的モードのペア支持数閾値;
+                    break;
+
+                case Consts.積極性モード名.標準:
+                    p_引数.A_ペア結合閾値 = Consts.ペア結合閾値の既定値;
+                    p_引数.A_ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
+                    break;
+
+                case Consts.積極性モード名.積極的:
+                    p_引数.A_ペア結合閾値 = Consts.積極的モードのペア結合閾値;
+                    p_引数.A_ペア支持数閾値 = Consts.積極的モードのペア支持数閾値;
+                    break;
+
+                default:
+                    throw new ArgumentException(
+                        $"Unknown mode \"{p_モード名}\": expected one of " +
+                        $"{Consts.積極性モード名.保守的}, {Consts.積極性モード名.標準}, {Consts.積極性モード名.積極的}");
+            }
         }
     }
 }
