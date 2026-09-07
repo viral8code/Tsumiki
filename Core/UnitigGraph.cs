@@ -1,3 +1,4 @@
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
@@ -224,22 +225,37 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 単純バブル(u から分かれた枝が1本の unitig を経て同じ w へ再合流する構造)を
-        /// 検出し、リード支持が最も高い枝以外の辺を取り除く。
+        /// 単純バブル(u から分かれた枝が、途中に本物の分岐の無い1本の経路
+        /// (1つ以上の unitig の連なり)を経て同じ w へ再合流する構造)を検出し、
+        /// リード支持が最も高い経路以外の辺を取り除く(SPAdes の
+        /// AlternativesAnalyzer・MEGAHIT の ComplexBubbleRemover に相当)。
         ///
         /// 相互一意を結合の条件にしているため、バブルがあると再合流点の入次数が
         /// 2以上のままになり、その経路全体が結合されなくなる。半数体である
         /// 細菌ゲノムにバブルは本来存在しない(エラーか株レベルの変異)。
         ///
-        /// 敗者の配列自体は削除しない。誤りだった場合の損害が大きく、辺だけ外せば
-        /// 単独 contig として出力されるので内容は失われない。
-        /// 長さが大きく異なる枝はバブルではなく本物の分岐の可能性が高いため除く。
+        /// 経路は固定の長さ比ではなく delta = max(p_長さ帯の下限,
+        /// p_長さ帯の割合 * 最短経路長) の帯で比較する。中間に unitig を複数
+        /// 挟む経路や、長さがぴったり揃わない経路も対象になる。長さが揃っていても
+        /// 配列が大きく異なる経路(たまたま長さが一致した別の反復など)は、
+        /// 編集距離ベースの類似度(p_類似度の下限)で弾く。
+        ///
+        /// 敗者の経路自体は削除しない。誤りだった場合の損害が大きく、辺だけ外せば
+        /// 単独 contig として出力されるので内容は失われない。p_敗者への引き継ぎ先 を
+        /// 渡すと、敗者の配列(MEGAHIT の careful_bubble)をそこへ集める。
+        /// 「この k では敗者と判断したが、それは決定であって事実ではない。
+        /// 次の k は自分の証拠で判断し直せる」という KmerCarryOver と同じ思想。
         /// </summary>
-        /// <returns>取り除いた枝の数。</returns>
+        /// <returns>取り除いた経路の数。</returns>
         public int V_除去_単純バブル(
             List<string> p_ユニティグ配列,
             IReadOnlyDictionary<(int, int), ulong> p_支持,
-            double p_長さ比の上限 = 1.5)
+            int p_k長,
+            List<string>? p_敗者への引き継ぎ先 = null,
+            double p_長さ帯の割合 = 0.1,
+            int p_長さ帯の下限 = 3,
+            double p_類似度の下限 = 0.7,
+            int p_経路長の上限 = 2000)
         {
             var l_除去数 = 0;
 
@@ -251,64 +267,161 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                // 「1本の unitig を経て同じ頂点へ再合流する」枝を、
+                // 「途中に本物の分岐の無い経路を経て同じ頂点へ再合流する」枝を、
                 // その再合流先ごとにまとめる。
-                Dictionary<int, List<int>> l_再合流先ごと = [];
-                foreach (var l_枝 in l_出辺)
+                Dictionary<int, List<List<int>>> l_再合流先ごと = [];
+                foreach (var l_開始 in l_出辺)
                 {
-                    // 枝は分岐元からのみ入られ、1箇所へのみ出て行く単純な中継でなければならない。
-                    if (this.A_出辺[l_枝].Count != 1 || this.Get_入次数(l_枝) != 1)
+                    if (this.Get_単純経路(l_開始, p_ユニティグ配列, p_k長, p_経路長の上限) is not { } l_結果)
                     {
                         continue;
                     }
-                    var l_再合流先 = this.A_出辺[l_枝][0];
-                    if (l_再合流先 == l_分岐元 || (l_再合流先 >> 1) == (l_枝 >> 1))
+                    var (l_経路, l_再合流先) = l_結果;
+                    if (l_再合流先 == l_分岐元 || (l_再合流先 >> 1) == (l_経路[0] >> 1))
                     {
                         continue;
                     }
-                    if (!l_再合流先ごと.TryGetValue(l_再合流先, out var l_枝一覧))
+                    if (!l_再合流先ごと.TryGetValue(l_再合流先, out var l_経路一覧))
                     {
-                        l_枝一覧 = [];
-                        l_再合流先ごと[l_再合流先] = l_枝一覧;
+                        l_経路一覧 = [];
+                        l_再合流先ごと[l_再合流先] = l_経路一覧;
                     }
-                    l_枝一覧.Add(l_枝);
+                    l_経路一覧.Add(l_経路);
                 }
 
-                foreach (var (l_再合流先, l_枝群) in l_再合流先ごと)
+                foreach (var (l_再合流先, l_経路群) in l_再合流先ごと)
                 {
-                    if (l_枝群.Count < 2)
+                    if (l_経路群.Count < 2)
                     {
                         continue;
                     }
 
-                    var l_最短 = l_枝群.Min(x => p_ユニティグ配列[x].Length);
-                    var l_最長 = l_枝群.Max(x => p_ユニティグ配列[x].Length);
-                    if (l_最短 <= 0 || (double)l_最長 / l_最短 > p_長さ比の上限)
+                    var l_配列群 = l_経路群.Select(x => Get_経路配列(p_ユニティグ配列, x, p_k長)).ToList();
+
+                    var l_基準長 = l_配列群.Min(x => x.Length);
+                    var l_delta = Math.Max(p_長さ帯の下限, p_長さ帯の割合 * l_基準長);
+                    if (l_配列群.Any(x => Math.Abs(x.Length - l_基準長) > l_delta))
                     {
                         // 長さが揃っていない = 同じ領域の別表現ではなく
                         // 本物の分岐の可能性が高い。触らない。
                         continue;
                     }
 
-                    var l_勝者 = l_枝群
-                        .OrderByDescending(x => p_支持.GetValueOrDefault((l_分岐元, x)))
-                        .ThenByDescending(x => p_ユニティグ配列[x].Length)
+                    var l_基準配列 = l_配列群[0];
+                    if (l_配列群.Skip(1).Any(x => Get_類似度(l_基準配列, x) < p_類似度の下限))
+                    {
+                        // 長さは近いが配列がまるで違う。同じ領域の別表現とは言えない。
+                        continue;
+                    }
+
+                    var l_勝者index = Enumerable.Range(0, l_経路群.Count)
+                        .OrderByDescending(i => p_支持.GetValueOrDefault((l_分岐元, l_経路群[i][0])))
+                        .ThenByDescending(i => l_配列群[i].Length)
                         .First();
 
-                    foreach (var l_敗者 in l_枝群)
+                    for (var i = 0; i < l_経路群.Count; i++)
                     {
-                        if (l_敗者 == l_勝者)
+                        if (i == l_勝者index)
                         {
                             continue;
                         }
-                        this.V_除去_辺の対(l_分岐元, l_敗者);
-                        this.V_除去_辺の対(l_敗者, l_再合流先);
+                        var l_敗者経路 = l_経路群[i];
+                        this.V_除去_辺の対(l_分岐元, l_敗者経路[0]);
+                        for (var j = 0; j + 1 < l_敗者経路.Count; j++)
+                        {
+                            this.V_除去_辺の対(l_敗者経路[j], l_敗者経路[j + 1]);
+                        }
+                        this.V_除去_辺の対(l_敗者経路[^1], l_再合流先);
                         l_除去数++;
+                        p_敗者への引き継ぎ先?.Add(l_配列群[i]);
                     }
                 }
             }
 
             return l_除去数;
+        }
+
+        /// <summary>
+        /// p_開始 から、途中に本物の分岐が無い限り辿れるだけ辿った経路と、
+        /// その先の再合流先(=最初に他からも入ってくる頂点)を返す。
+        /// 判定できない(開始点が既に他からも入られている、途中で行き止まる/
+        /// さらに分岐する、循環する、長さの上限を超える)場合は null。
+        /// </summary>
+        private (List<int> A_経路, int A_再合流先)? Get_単純経路(
+            int p_開始, List<string> p_ユニティグ配列, int p_k長, int p_長さ上限)
+        {
+            List<int> l_経路 = [];
+            HashSet<int> l_訪問済み = [];
+            var l_現在 = p_開始;
+            var l_累積長 = 0;
+            var l_重なり長 = p_k長 - 1;
+
+            while (true)
+            {
+                if (this.Get_入次数(l_現在) != 1 || !l_訪問済み.Add(l_現在))
+                {
+                    // 開始点以外から見て他からも入ってくる(=本物の再合流点)、
+                    // あるいは循環に突入した。前者かつ経路が空でなければ、
+                    // この頂点そのものが再合流先。
+                    return l_経路.Count > 0 ? (l_経路, l_現在) : null;
+                }
+
+                var l_この頂点の長さ = p_ユニティグ配列[l_現在].Length;
+                l_累積長 += l_経路.Count == 0 ? l_この頂点の長さ : Math.Max(0, l_この頂点の長さ - l_重なり長);
+                if (l_累積長 > p_長さ上限)
+                {
+                    return null;
+                }
+
+                l_経路.Add(l_現在);
+
+                var l_出辺 = this.A_出辺[l_現在];
+                if (l_出辺.Count != 1)
+                {
+                    // 行き止まり、または途中でさらに分岐している。単純な経路ではない。
+                    return null;
+                }
+                l_現在 = l_出辺[0];
+            }
+        }
+
+        private static string Get_経路配列(List<string> p_ユニティグ配列, List<int> p_経路, int p_k長)
+        {
+            var l_重なり長 = p_k長 - 1;
+            var l_出力 = new StringBuilder(p_ユニティグ配列[p_経路[0]]);
+            for (var i = 1; i < p_経路.Count; i++)
+            {
+                var l_配列 = p_ユニティグ配列[p_経路[i]];
+                _ = l_出力.Append(l_配列.Length > l_重なり長 ? l_配列[l_重なり長..] : string.Empty);
+            }
+            return l_出力.ToString();
+        }
+
+        private static double Get_類似度(string p_a, string p_b)
+        {
+            var l_最大長 = Math.Max(p_a.Length, p_b.Length);
+            return l_最大長 == 0 ? 1.0 : 1.0 - ((double)Get_編集距離(p_a, p_b) / l_最大長);
+        }
+
+        private static int Get_編集距離(string p_a, string p_b)
+        {
+            var l_前行 = new int[p_b.Length + 1];
+            var l_今行 = new int[p_b.Length + 1];
+            for (var j = 0; j <= p_b.Length; j++)
+            {
+                l_前行[j] = j;
+            }
+            for (var i = 1; i <= p_a.Length; i++)
+            {
+                l_今行[0] = i;
+                for (var j = 1; j <= p_b.Length; j++)
+                {
+                    var l_コスト = p_a[i - 1] == p_b[j - 1] ? 0 : 1;
+                    l_今行[j] = Math.Min(Math.Min(l_今行[j - 1] + 1, l_前行[j] + 1), l_前行[j - 1] + l_コスト);
+                }
+                (l_前行, l_今行) = (l_今行, l_前行);
+            }
+            return l_前行[p_b.Length];
         }
     }
 }

@@ -182,7 +182,7 @@ namespace Tsumiki.Tests.Core
                 [(uV, b2V)] = 3,
             };
 
-            var popped = graph.V_除去_単純バブル(unitigList, support);
+            var popped = graph.V_除去_単純バブル(unitigList, support, k);
 
             Assert.Equal(1, popped);
             Assert.Equal([b1V], graph.A_出辺[uV]);
@@ -223,7 +223,146 @@ namespace Tsumiki.Tests.Core
                 [(uV, ContigMaker.Get_頂点番号(3))] = 3,
             };
 
-            var popped = graph.V_除去_単純バブル(unitigList, support);
+            var popped = graph.V_除去_単純バブル(unitigList, support, k);
+
+            Assert.Equal(0, popped);
+            Assert.Equal(2, graph.A_出辺[uV].Count);
+        }
+
+        private static string RandomSequence(int length, int seed)
+        {
+            var rng = new Random(seed);
+            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+        }
+
+
+        /// <summary>
+        /// バブルの枝が単一 unitig とは限らない。分岐の無い(排他的な)2本の
+        /// unitig をまたぐ枝同士でも、1本の経路として検出・比較できること。
+        /// </summary>
+        [Fact]
+        public void PopSimpleBubbles_TreatsAChainOfTwoUnitigsAsOneBranch()
+        {
+            const int k = 8;
+            const string uTail = "TTACGCA"; // u の末尾7塩基(既存テストと共通)
+            const string wHead = "TGCACGT"; // w の先頭7塩基(既存テストと共通)
+            const string u = "GCTAAAGACAATTACGCA";
+            const string w = "TGCACGTAAGGCTTACCA";
+
+            // 枝1・枝2は完全に無関係な乱数配列にする(配列類似度の検証(第2段階)は
+            // 別のテストで確かめるため、ここでは第2段階を無効にして多段構造の
+            // 検出・長さ帯の比較そのものだけを確かめる)。
+            var joint1 = RandomSequence(7, seed: 501);
+            var joint2 = RandomSequence(7, seed: 502);
+            var middleA1 = RandomSequence(10, seed: 511);
+            var middleA2 = RandomSequence(10, seed: 521);
+            var middleB1 = RandomSequence(10, seed: 512);
+            var middleB2 = RandomSequence(10, seed: 522);
+
+            var b1a = uTail + middleA1 + joint1;
+            var b1b = joint1 + middleB1 + wHead;
+            var b2a = uTail + middleA2 + joint2;
+            var b2b = joint2 + middleB2 + wHead;
+
+            var (unitigList, kmerDict) = Build(k, u, b1a, b1b, b2a, b2b, w);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
+
+            var uV = ContigMaker.Get_頂点番号(1);
+            var b1aV = ContigMaker.Get_頂点番号(2);
+            var b1bV = ContigMaker.Get_頂点番号(3);
+            var b2aV = ContigMaker.Get_頂点番号(4);
+            var b2bV = ContigMaker.Get_頂点番号(5);
+            var wV = ContigMaker.Get_頂点番号(6);
+
+            // 前提: それぞれの枝が2 unitigの分岐無しの鎖になっている。
+            Assert.Equal(2, graph.A_出辺[uV].Count);
+            Assert.Equal([b1bV], graph.A_出辺[b1aV]);
+            Assert.Equal([b2bV], graph.A_出辺[b2aV]);
+            Assert.Equal(2, graph.Get_入次数(wV));
+
+            // 枝1にだけリード支持を与える。
+            Dictionary<(int, int), ulong> support = new()
+            {
+                [(uV, b1aV)] = 40,
+                [(uV, b2aV)] = 3,
+            };
+
+            // 配列類似度の検証(第2段階)は別のテストで確かめる。
+            // ここでは多段構造の検出・長さ帯の比較だけを見たいので無効にする。
+            var popped = graph.V_除去_単純バブル(unitigList, support, k, p_類似度の下限: 0.0);
+
+            Assert.Equal(1, popped);
+            // 枝1(2 unitig とも)は生き残り、枝2(2 unitig とも)は取り除かれる。
+            Assert.Equal([b1aV], graph.A_出辺[uV]);
+            Assert.Equal([wV], graph.A_出辺[b1bV]);
+            Assert.Empty(graph.A_出辺[b2aV]);
+            Assert.Empty(graph.A_出辺[b2bV]);
+            Assert.Equal(1, graph.Get_入次数(wV));
+        }
+
+        /// <summary>
+        /// careful_bubble: 除去された側の経路の配列を、引き継ぎ先へ集められること。
+        /// 「この k では敗者と判断したが、次の k は自分の証拠で判断し直せる」ため、
+        /// 配列自体は捨てない。
+        /// </summary>
+        [Fact]
+        public void PopSimpleBubbles_CollectsTheLosingSequence_WhenCarryOverTargetIsGiven()
+        {
+            const int k = 8;
+            const string u = "GCTAAAGACAATTACGCA";
+            const string b1 = "TTACGCAAGGATCCTGCACGT";
+            const string b2 = "TTACGCACTTAGCATGCACGT";
+            const string w = "TGCACGTAAGGCTTACCA";
+
+            var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
+
+            var uV = ContigMaker.Get_頂点番号(1);
+            var b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> support = new()
+            {
+                [(uV, ContigMaker.Get_頂点番号(2))] = 40,
+                [(uV, b2V)] = 3,
+            };
+
+            List<string> carryOver = [];
+            var popped = graph.V_除去_単純バブル(unitigList, support, k, carryOver);
+
+            Assert.Equal(1, popped);
+            Assert.Equal([b2], carryOver);
+        }
+
+        /// <summary>
+        /// 長さが揃っていても配列がまるで違う(たまたま長さが一致しただけの
+        /// 別の反復など)場合は、同じ領域の別表現とは言えないため触らない。
+        /// </summary>
+        [Fact]
+        public void PopSimpleBubbles_LeavesBranchesOfMatchingLengthButUnrelatedSequenceAlone()
+        {
+            const int k = 8;
+            const string uTail = "TTACGCA";
+            const string wHead = "TGCACGT";
+            const string u = "GCTAAAGACAATTACGCA";
+            const string w = "TGCACGTAAGGCTTACCA";
+
+            // 長さは完全に一致するが、中身は無関係な乱数配列。
+            var b1 = uTail + RandomSequence(20, seed: 601) + wHead;
+            var b2 = uTail + RandomSequence(20, seed: 602) + wHead;
+
+            var (unitigList, kmerDict) = Build(k, u, b1, b2, w);
+            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, k, AmbiguousKmer);
+
+            var uV = ContigMaker.Get_頂点番号(1);
+            Assert.Equal(2, graph.A_出辺[uV].Count);
+
+            Dictionary<(int, int), ulong> support = new()
+            {
+                [(uV, ContigMaker.Get_頂点番号(2))] = 40,
+                [(uV, ContigMaker.Get_頂点番号(3))] = 3,
+            };
+
+            var popped = graph.V_除去_単純バブル(unitigList, support, k);
 
             Assert.Equal(0, popped);
             Assert.Equal(2, graph.A_出辺[uV].Count);

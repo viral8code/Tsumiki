@@ -646,11 +646,16 @@ namespace Tsumiki.Core
         /// unitig ID -> 推定コピー数。先読み探索で「この unitig を何回まで通ってよいか」の
         /// 予算に使う。渡さない場合はすべて1コピーとして扱い、先読み探索も控えめになる。
         /// </param>
+        /// <param name="p_バブル敗者への引き継ぎ先">
+        /// 渡すと、バブル除去で外れた側の経路の配列(careful_bubble)をここへ集める。
+        /// 呼び出し側がマルチkの次のkへの引き継ぎに足すことを想定している。
+        /// </param>
         public void V_結合_コンティグ(
             string p_コンティグパス,
             decimal p_優勢閾値,
             ulong p_最小証拠数,
-            IReadOnlyDictionary<int, int>? p_コピー数 = null)
+            IReadOnlyDictionary<int, int>? p_コピー数 = null,
+            List<string>? p_バブル敗者への引き継ぎ先 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
@@ -724,7 +729,7 @@ namespace Tsumiki.Core
             // 単純バブルを潰してから辺を選ぶ。相互一意性を課す以上、
             // 再合流点の入次数が2以上のまま残っているとその経路全体が
             // 結合されなくなるため、先に枝を1本に絞っておく必要がある。
-            var l_除去バブル数 = l_グラフ.V_除去_単純バブル(l_ユニティグ配列, l_支持);
+            var l_除去バブル数 = l_グラフ.V_除去_単純バブル(l_ユニティグ配列, l_支持, l_k長, p_バブル敗者への引き継ぎ先);
             if (l_除去バブル数 > 0)
             {
                 Console.WriteLine($"[Debug] Popped {l_除去バブル数} simple bubble branch(es) (kept as standalone contigs; only their graph edges were removed).");

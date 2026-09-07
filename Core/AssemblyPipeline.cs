@@ -113,8 +113,13 @@ namespace Tsumiki.Core
             Logger.V_出力_タイムスタンプ();
 
             Console.WriteLine("unite unitigs");
+            // careful_bubble: バブル除去で外れた側の配列も、この k では
+            // 敗者と判断しただけであって存在しないわけではない。捨てずに
+            // 次の k への引き継ぎ候補として集めておく。
+            List<string> l_バブル敗者 = [];
             l_コンティグ構築.V_結合_コンティグ(
-                l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数);
+                l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数,
+                l_バブル敗者);
             Console.WriteLine("Maked contigs");
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 
@@ -139,7 +144,7 @@ namespace Tsumiki.Core
                         l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値));
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数);
+                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
                 return new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
@@ -164,7 +169,7 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数);
+            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
             return new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
@@ -177,10 +182,14 @@ namespace Tsumiki.Core
         /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして
         /// 作った合成リード(SuperRead)も足す。元のリードの2〜4倍の長さを持つため、
         /// マルチ k の上限(リード長で頭打ちになる)を実効的に外せる。
+        ///
+        /// バブル除去で外れた側の配列(careful_bubble)も足す。この k での
+        /// 敗者判定は次の k を拘束しない。
         /// </summary>
         private static void V_用意_次への引き継ぎ(
             List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
-            TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数)
+            TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数,
+            IReadOnlyList<string> p_バブル敗者)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -190,6 +199,15 @@ namespace Tsumiki.Core
             p_次への引き継ぎ.AddRange(
                 KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
 
+            foreach (var l_配列 in p_バブル敗者)
+            {
+                if (l_配列.Length < p_k長)
+                {
+                    continue;
+                }
+                p_次への引き継ぎ.Add(Get_引き継ぎ配列(l_配列, p_kmerインデックス, p_k長));
+            }
+
             if (p_引数.A_SuperReadを作るか && !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 var l_合成リード = SuperReadJoiner.Get_合成リード(
@@ -197,6 +215,18 @@ namespace Tsumiki.Core
                 SuperReadJoiner.V_出力_統計(l_統計);
                 p_次への引き継ぎ.AddRange(l_合成リード);
             }
+        }
+
+        /// <summary>配列を、位置ごとのカバレッジ付きの引き継ぎ配列にする。</summary>
+        private static 引き継ぎ配列 Get_引き継ぎ配列(string p_配列, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        {
+            var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
+            var l_カバレッジ = new int[p_配列.Length - p_k長 + 1];
+            for (var i = 0; i < l_カバレッジ.Length; i++)
+            {
+                l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
+            }
+            return new 引き継ぎ配列(p_配列, l_カバレッジ, p_k長);
         }
 
         private static void V_読込_リード(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
