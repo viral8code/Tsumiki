@@ -70,7 +70,38 @@ namespace Tsumiki.Core
                 return l_実行結果一覧[0];
             }
 
-            var l_候補 = Get_評価済み候補(p_引数, l_実行結果一覧, l_k候補[0], p_一時ディレクトリ, p_リード長);
+            // アンカーの k-mer カウントは、候補の評価と(-mg指定時の)統合評価の
+            // 両方が同じ条件(同じ k・同じカットオフ)で必要とする。生リードの
+            // 走査とカウントはコストが高いため、1つのインデックスを両方で
+            // 使い回す(以前は統合評価のたびに同じ内容をもう一度数え直していた)。
+            var l_アンカーk長 = l_k候補[0];
+            var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
+            _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
+
+            Console.WriteLine();
+            Console.WriteLine($"[Multi-k] Building the common anchor k-mer set (k={l_アンカーk長}) for comparison");
+            p_引数.Set_推定k長(l_アンカーk長);
+            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
+            ConfigurationManager.A_kmerインデックス = l_アンカー;
+
+            V_読込_リード(p_引数, l_アンカー);
+            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
+            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
+            KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
+
+            // 山の位置が単一コピーのカバレッジ、面積÷山がゲノムサイズになる。
+            // 前者はコピー数の換算に、後者は NG50 の分母に使う。
+            var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
+            if (l_解析 is null)
+            {
+                Console.WriteLine("[Multi-k] The anchor k-mer spectrum is not bimodal; candidates cannot be compared.");
+                Console.WriteLine("[Multi-k] Could not evaluate the candidates; falling back to the largest k.");
+                var l_代替 = l_実行結果一覧[^1];
+                V_複製_採用した結果(l_代替);
+                return l_代替;
+            }
+
+            var l_候補 = Get_評価済み候補(l_実行結果一覧, l_アンカー, l_アンカーk長, l_解析);
             if (l_候補.Count == 0)
             {
                 // 評価できない以上、根拠のある選択はできない。
@@ -85,7 +116,7 @@ namespace Tsumiki.Core
             Console.WriteLine($"[Multi-k] Selected k={l_最良.A_実行結果.A_k長}.");
 
             var l_採用 = (p_引数.A_マージするか
-                    ? Get_統合結果(p_引数, l_最良, l_候補, l_k候補[0], p_一時ディレクトリ, p_リード長)
+                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析)
                     : null)
                 ?? l_最良.A_実行結果;
             V_複製_採用した結果(l_採用);
@@ -100,12 +131,11 @@ namespace Tsumiki.Core
         /// 骨格に勝ったときだけ採る。勝敗の判定は候補選びと同じ規則に任せる。
         /// </summary>
         private static アセンブリ実行結果? Get_統合結果(
-            Parameters p_引数,
             (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良,
             List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
+            TrustedKmerIndex p_アンカー,
             int p_アンカーk長,
-            string p_一時ディレクトリ,
-            int? p_リード長)
+            スペクトル解析結果 p_解析)
         {
             Console.WriteLine();
             Console.WriteLine("[Merge] Merging the other k values into the selected assembly");
@@ -123,8 +153,14 @@ namespace Tsumiki.Core
                 A_スキャフォールドパス = l_統合パス,
             };
 
-            var l_統合の評価 = Get_統合の評価(
-                p_引数, l_統合結果, p_アンカーk長, p_一時ディレクトリ, p_リード長);
+            // 統合評価は候補評価と全く同じアンカー k-mer 集合(同じ k・同じ
+            // カットオフで数え終えた既存のインデックス)を使い回す。以前は
+            // ここで生リードの走査・カウント・カットオフをもう一度
+            // やり直しており、同一の結果を得るためだけに重複したコストを
+            // 払っていた。
+            var l_統合の評価 = AssemblyScorer.Get_評価(
+                l_統合結果.A_最終パス, p_アンカー, p_アンカーk長,
+                p_解析.A_ピーク出現回数, p_解析.A_推定ゲノムサイズ);
             if (l_統合の評価 is null)
             {
                 Console.WriteLine("[Merge] Could not evaluate the merged assembly; keeping the selected one.");
@@ -143,36 +179,6 @@ namespace Tsumiki.Core
 
             Console.WriteLine("[Merge] Using the merged assembly.");
             return l_統合結果;
-        }
-
-        /// <summary>
-        /// 統合結果を、候補と同じアンカー k-mer 集合で測り直す。
-        /// アンカーは選択時に作ったものと同じ条件で作り直す。
-        /// </summary>
-        private static アセンブリ評価? Get_統合の評価(
-            Parameters p_引数,
-            アセンブリ実行結果 p_統合結果,
-            int p_アンカーk長,
-            string p_一時ディレクトリ,
-            int? p_リード長)
-        {
-            var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{p_アンカーk長}_merge");
-            _ = Directory.CreateDirectory(l_作業ディレクトリ);
-
-            p_引数.Set_推定k長(p_アンカーk長);
-            using var l_アンカー = new TrustedKmerIndex(l_作業ディレクトリ);
-            ConfigurationManager.A_kmerインデックス = l_アンカー;
-
-            V_読込_リード(p_引数, l_アンカー);
-            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
-            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
-
-            var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
-            return l_解析 is null
-                ? null
-                : AssemblyScorer.Get_評価(
-                    p_統合結果.A_最終パス, l_アンカー, p_アンカーk長,
-                    l_解析.A_ピーク出現回数, l_解析.A_推定ゲノムサイズ);
         }
 
         /// <summary>
@@ -198,47 +204,21 @@ namespace Tsumiki.Core
         /// 全候補を、共通のアンカー k-mer 集合に対して評価する。
         ///
         /// k が違えば k-mer 集合の大きさも意味も変わるため、各アセンブリを
-        /// 自身の k で測ったのでは比較にならない。カウントのパスが1回増えるが、
-        /// 共通の物差しが無ければ比較そのものが成立しない。
+        /// 自身の k で測ったのでは比較にならない。アンカーは呼び出し側が
+        /// 既に構築済みのものを渡す(-mg指定時の統合評価とも共有するため)。
         /// </summary>
         private static List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> Get_評価済み候補(
-            Parameters p_引数,
             List<アセンブリ実行結果> p_実行結果一覧,
+            TrustedKmerIndex p_アンカー,
             int p_アンカーk長,
-            string p_一時ディレクトリ,
-            int? p_リード長)
+            スペクトル解析結果 p_解析)
         {
-            Console.WriteLine();
-            Console.WriteLine($"[Multi-k] Building the common anchor k-mer set (k={p_アンカーk長}) for comparison");
-
-            var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{p_アンカーk長}");
-            _ = Directory.CreateDirectory(l_作業ディレクトリ);
-
-            p_引数.Set_推定k長(p_アンカーk長);
-            using var l_アンカー = new TrustedKmerIndex(l_作業ディレクトリ);
-            ConfigurationManager.A_kmerインデックス = l_アンカー;
-
-            V_読込_リード(p_引数, l_アンカー);
-
-            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
-            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
-            KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, p_アンカーk長, p_リード長);
-
-            // 山の位置が単一コピーのカバレッジ、面積÷山がゲノムサイズになる。
-            // 前者はコピー数の換算に、後者は NG50 の分母に使う。
-            var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
-            if (l_解析 is null)
-            {
-                Console.WriteLine("[Multi-k] The anchor k-mer spectrum is not bimodal; candidates cannot be compared.");
-                return [];
-            }
-
             var l_候補 = new List<(アセンブリ実行結果, アセンブリ評価)>();
             foreach (var l_実行結果 in p_実行結果一覧)
             {
                 var l_評価 = AssemblyScorer.Get_評価(
-                    l_実行結果.A_最終パス, l_アンカー, p_アンカーk長,
-                    l_解析.A_ピーク出現回数, l_解析.A_推定ゲノムサイズ);
+                    l_実行結果.A_最終パス, p_アンカー, p_アンカーk長,
+                    p_解析.A_ピーク出現回数, p_解析.A_推定ゲノムサイズ);
                 if (l_評価 is not null)
                 {
                     l_候補.Add((l_実行結果, l_評価));
