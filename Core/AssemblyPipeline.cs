@@ -117,9 +117,31 @@ namespace Tsumiki.Core
             // 敗者と判断しただけであって存在しないわけではない。捨てずに
             // 次の k への引き継ぎ候補として集めておく。
             List<string> l_バブル敗者 = [];
+
+            // 短い反復解決の拒否権(-rv)。生リードを1回走査し、集計された
+            // ペア支持だけでは決めきれない「本当にその接合点を跨いだリードが
+            // あるか」を確かめる。r はこの k の k-1 重なりより確実に長く
+            // 取らないと共有区間の内側に収まってしまい判定にならないため、
+            // k + 余剰分で決める(32塩基を超えるkでは意味を持てないため見送る)。
+            RepeatRMerVerifier? l_r_mer検証器 = null;
+            if (p_引数.A_反復をrMerで検証するか)
+            {
+                var l_r長 = p_k長 + Consts.rMer長のk超過分の既定値;
+                if (l_r長 <= 32)
+                {
+                    l_r_mer検証器 = RepeatRMerVerifier.V_構築(
+                        [p_引数.A_リード1のパス, p_引数.A_リード2のパス], l_r長);
+                }
+                else
+                {
+                    Console.WriteLine(
+                        $"[Info] Repeat r-mer verification skipped for k={p_k長}: r-mer length would be {l_r長}bp, exceeding the 32bp packing limit.");
+                }
+            }
+
             l_コンティグ構築.V_結合_コンティグ(
                 l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数,
-                l_バブル敗者, p_リード長);
+                l_バブル敗者, p_リード長, l_r_mer検証器);
             Console.WriteLine("Maked contigs");
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 

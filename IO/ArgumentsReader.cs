@@ -98,6 +98,10 @@ namespace Tsumiki.IO
                             l_引数.A_SuperReadを作るか = true;
                             break;
 
+                        case Consts.引数キー.反復r_mer検証:
+                            l_引数.A_反復をrMerで検証するか = true;
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;

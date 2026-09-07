@@ -61,6 +61,8 @@ namespace Tsumiki.Common
             public const string 引き継ぎなし = "-nc";
 
             public const string SuperRead = "-sr";
+
+            public const string 反復r_mer検証 = "-rv";
         }
 
         public const string インサートサイズ未指定表示 = "unspecified";
@@ -160,6 +162,29 @@ namespace Tsumiki.Common
         /// </summary>
         public const ulong スキャフォールド支持数の下限 = 3;
 
+        /// <summary>
+        /// 短い反復解決の拒否権(-rv)で使う r-mer 長を、そのkでのアセンブリの
+        /// k 長にこれだけ足して決める(r = k + この値)。
+        ///
+        /// head と repeat、repeat と tail は de Bruijn グラフの辺である以上、
+        /// 必ず k-1 塩基を共有しており、その共有区間は repeat 自身の配列にも
+        /// そのまま現れる。r <= k だと、接合点を跨ぐと判定した窓もこの共有区間の
+        /// 内側に収まってしまい、head だけ・repeat だけを読んだリードでも
+        /// 真になる(=対応付けの正しさを何も検定できない)。r を k より
+        /// 確実に長く取ることで、共有区間の外側まで踏み込んだリードでなければ
+        /// 真になり得ない窓だけを見られるようにする。
+        /// ulong に 2bit パックする都合上 r は 32 が上限で、k + この値が
+        /// それを超えるkでは検証自体をスキップする(高い k では反復自体が
+        /// 少なく、他の判定で十分間に合っていることが多い)。
+        /// </summary>
+        public const int rMer長のk超過分の既定値 = 10;
+
+        /// <summary>
+        /// 短い反復解決の拒否権で、経路の接合点が「実際にリードに読まれている」と
+        /// 認めるのに必要な、接合点を跨ぐ r-mer の最小本数。
+        /// </summary>
+        public const int r_mer接合点支持の閾値の既定値 = 4;
+
         public static readonly string ヘルプテキスト = $"""
             {概要テキスト}
 
@@ -182,6 +207,7 @@ namespace Tsumiki.Common
             {引数キー.SuperRead} : with {引数キー.マルチk} and paired-end reads, bridge each pair through this k's trusted k-mer graph into one synthetic long read wherever the path between them is unique, and carry those alongside the usual sequence (default : false)
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
+            {引数キー.反復r_mer検証} : before duplicating a short repeat to untangle it, verify each candidate path with an r-mer (k + {rMer長のk超過分の既定値}bp -- longer than this k's own k-1 overlap, since a shorter or equal-length window can't tell the repeat's shared boundary from either neighbor's own sequence) set built from the raw reads -- require at least {r_mer接合点支持の閾値の既定値} r-mers that actually cross the head/repeat and repeat/tail junctions, otherwise refuse the duplication. Note this cannot tell a repeat's two genuinely real pairings apart (both are real graph edges either way); it only catches a pairing that isn't backed by any raw-read evidence at all (an ABySS RResolver-style veto, narrower in practice than that framing suggests). Skipped for k values where k + {rMer長のk超過分の既定値} would exceed 32bp. Costs one extra full read scan per k (default : false)
             {引数キー.ヘルプ} : output this text (default : false)
 
             """;

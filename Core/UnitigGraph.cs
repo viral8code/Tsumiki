@@ -1,6 +1,7 @@
 using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Model;
+using Tsumiki.Utility;
 
 namespace Tsumiki.Core
 {
@@ -139,6 +140,22 @@ namespace Tsumiki.Core
         /// 一本道になり既存の walk がそのまま伸ばせる。R の配列が2回出力されるのは
         /// 実際に2回現れることの反映であって水増しではない。
         /// </summary>
+        /// <param name="p_r_mer検証器">
+        /// 渡すと、対応付けが確定したあとに複製を確定する前段として、
+        /// 提案された2本の経路(勝ったペアリングそれぞれ)を r-mer で検証する
+        /// (ABySS RResolver型の拒否権)。どちらか一方でも接合点を跨ぐ r-mer の
+        /// 支持が足りなければ複製を見送る。
+        ///
+        /// 注意: head-repeat・repeat-tail はどちらの対応付けでも de Bruijn
+        /// グラフ上の本物の辺なので、正しい対応付けのリードだけからも
+        /// 個々の接合点の存在は独立に確認できてしまう。したがってこの検証は
+        /// 「対応付けA」と「対応付けB」のどちらが正しいかを区別する力は
+        /// 本質的に持たない(反復が反復である以上、局所的な文脈だけでは
+        /// 区別できないため)。実際に効くのは、ペア支持が示す対応付けについて
+        /// 個々の接合点すら生リードに一切裏付けられない(=そもそもその
+        /// unitig 同士が隣接している根拠が生データに無い)場合であり、
+        /// この限定的だが無視できない安全網として使う。
+        /// </param>
         /// <returns>解きほぐした反復の数。</returns>
         public int V_解決_短い反復(
             List<string> p_ユニティグ配列,
@@ -146,9 +163,11 @@ namespace Tsumiki.Core
             IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
             int p_反復長の上限,
             decimal p_優勢閾値,
-            ulong p_最小証拠数)
+            ulong p_最小証拠数,
+            RepeatRMerVerifier? p_r_mer検証器 = null)
         {
             var l_解決数 = 0;
+            var l_r_mer検証で棄却した数 = 0;
             // 複製で頂点が増えるが、増えた分(複製そのもの)は対象にしない。
             var l_元の頂点数 = this.A_出辺.Count;
 
@@ -197,6 +216,27 @@ namespace Tsumiki.Core
 
                 // 勝った対応付けのうち片方を元の反復頂点に残し、もう片方を複製へ移す。
                 var (l_移す入辺, l_移す出辺) = l_平行 >= l_交差 ? (l_入2, l_出2) : (l_入2, l_出1);
+                var l_残る出辺 = l_平行 >= l_交差 ? l_出1 : l_出2;
+
+                if (p_r_mer検証器 is not null)
+                {
+                    // 集計されたペア支持は「跨いだリードが実在するか」を直接
+                    // 確かめていない。r-mer で両方の経路を独立に検証し、
+                    // どちらか一方でも接合点の支持が足りなければ、この対応付け
+                    // 自体を疑って複製しない(誤った複製は取りこぼしではなく
+                    // 実在しない配列を作る偽陽性になるため、疑わしきは見送る)。
+                    var l_残る側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(
+                        p_ユニティグ配列[l_入1], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_残る出辺],
+                        Consts.r_mer接合点支持の閾値の既定値);
+                    var l_移す側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(
+                        p_ユニティグ配列[l_移す入辺], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_移す出辺],
+                        Consts.r_mer接合点支持の閾値の既定値);
+                    if (!l_残る側で支持あるか || !l_移す側で支持あるか)
+                    {
+                        l_r_mer検証で棄却した数++;
+                        continue;
+                    }
+                }
 
                 var l_複製 = p_ユニティグ配列.Count; // 常に偶数 = 順鎖側の頂点
                 p_ユニティグ配列.Add(p_ユニティグ配列[l_反復頂点]);
@@ -219,6 +259,13 @@ namespace Tsumiki.Core
                 p_支持[(l_移す出辺 ^ 1, l_複製 ^ 1)] = l_出辺の支持;
 
                 l_解決数++;
+            }
+
+            if (p_r_mer検証器 is not null && l_r_mer検証で棄却した数 > 0)
+            {
+                Console.WriteLine(
+                    $"[Debug] r-mer verification vetoed {l_r_mer検証で棄却した数} repeat duplication(s) whose winning " +
+                    "pairing was not confirmed by reads actually crossing the junction (pair-count evidence alone would have duplicated them).");
             }
 
             return l_解決数;

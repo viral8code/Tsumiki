@@ -655,13 +655,18 @@ namespace Tsumiki.Core
         /// 較正器の構築に使う。渡さない(あるいは同一ユニティグ標本が無い)場合は
         /// 較正器が使えないものとして扱われ、従来どおりの生カウント方式になる。
         /// </param>
+        /// <param name="p_r_mer検証器">
+        /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権
+        /// (ABySS RResolver型)を課す。詳細は UnitigGraph.V_解決_短い反復 を参照。
+        /// </param>
         public void V_結合_コンティグ(
             string p_コンティグパス,
             decimal p_優勢閾値,
             ulong p_最小証拠数,
             IReadOnlyDictionary<int, int>? p_コピー数 = null,
             List<string>? p_バブル敗者への引き継ぎ先 = null,
-            int? p_リード長 = null)
+            int? p_リード長 = null,
+            RepeatRMerVerifier? p_r_mer検証器 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
@@ -748,7 +753,7 @@ namespace Tsumiki.Core
                 ? Get_中央値(this.A_同一ユニティグ標本)
                 : l_k長 * 4;
             var l_解決した反復数 = l_グラフ.V_解決_短い反復(
-                l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数);
+                l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
             Console.WriteLine(
                 $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {l_反復長の上限}bp) were duplicated " +
                 "and untangled using read pairs that span them.");

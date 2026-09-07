@@ -213,6 +213,13 @@ namespace Tsumiki.Model
         public bool A_SuperReadを作るか { get; set; } = false;
 
         /// <summary>
+        /// 短い反復の解決(V_解決_短い反復)で、対応付けを確定させる前に
+        /// r-mer(アセンブリの k とは独立の短い長さ)による接合点の検証を
+        /// 課すか。生リードの追加走査が1回k毎に要る(既定は false)。
+        /// </summary>
+        public bool A_反復をrMerで検証するか { get; set; } = false;
+
+        /// <summary>
         /// multi-k の結果を統合するか。既定は false。
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
@@ -283,6 +290,7 @@ namespace Tsumiki.Model
                 multi-k : {this.A_マルチkか}
                 carry sequence between k : {this.A_引き継ぐか}
                 build SuperReads : {this.A_SuperReadを作るか}
+                verify repeat resolution with r-mers : {this.A_反復をrMerで検証するか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}
