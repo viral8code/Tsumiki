@@ -26,13 +26,6 @@ namespace Tsumiki.Core
         private const int 長さの余裕幅 = 30;
 
         /// <summary>
-        /// 1つのギャップあたりに展開してよい探索状態の上限。
-        /// 分岐の多い領域では経路数が指数的に増えるため、上限を超えたら
-        /// 「解けなかった」として諦める(時間をかけても曖昧なままのことが多い)。
-        /// </summary>
-        private const int ギャップあたりの状態数上限 = 200_000;
-
-        /// <summary>
         /// これより長いギャップは探索空間が広すぎるうえ、推定長の誤差も大きく
         /// 一意に定まる見込みが薄いため対象外とする。
         /// </summary>
@@ -169,98 +162,9 @@ namespace Tsumiki.Core
             var l_最小長 = Math.Max(0, p_ギャップ長 - 長さの余裕幅);
             var l_最大長 = p_ギャップ長 + 長さの余裕幅;
 
-            // 幅優先で1塩基ずつ伸ばす。
-            //
-            // 各状態が「これまでに継ぎ足した塩基列」そのものを持つと、
-            // 状態数の上限 × 経路長ぶんのメモリと文字列コピーが発生する。
-            // 代わりに親へのインデックスと追加した1塩基だけを持ち、
-            // 解が見つかったときに親を辿って復元する。1状態あたり定数サイズで済む。
-            var l_節点 = new List<(int A_親, byte A_塩基)>(1024) { (-1, 0) };
-            var l_kmer群 = new List<byte[]>(1024) { l_左のkmer };
-            var l_深さ群 = new List<int>(1024) { 0 };
-
-            var l_見つかった経路 = new List<string>();
-            var l_キュー = new Queue<int>();
-            l_キュー.Enqueue(0);
-
-            var l_作業バッファ = new byte[p_k長];
-
-            while (l_キュー.Count > 0)
-            {
-                var l_現在 = l_キュー.Dequeue();
-                var l_現在のkmer = l_kmer群[l_現在];
-                var l_継ぎ足した数 = l_深さ群[l_現在];
-
-                // 継ぎ足した数は「左の足場 k-mer の後ろに継ぎ足した塩基数」。目標 k-mer に
-                // 到達した時点では、その末尾 k長 塩基が目標 k-mer 自身に
-                // あたる(それは元の配列に既にある)ので、ギャップを実際に埋める
-                // 長さは 継ぎ足した数 - k長 になる。
-                // 打ち切りもこの「埋める長さ」で判断しないと、正解の経路を
-                // 目標到達の直前で切ってしまう。
-                var l_埋める長さ = l_継ぎ足した数 - p_k長;
-                if (l_埋める長さ > l_最大長)
-                {
-                    continue;
-                }
-
-                if (l_埋める長さ >= l_最小長 && l_現在のkmer.AsSpan().SequenceEqual(l_目標kmer))
-                {
-                    l_見つかった経路.Add(Get_復元経路(l_節点, l_現在, l_埋める長さ));
-                    if (l_見つかった経路.Count > 1)
-                    {
-                        // 2本見つかった時点で一意には定まらない。
-                        p_判定 = ギャップ充填判定.一意でない;
-                        return null;
-                    }
-                    continue;
-                }
-
-                if (l_節点.Count > ギャップあたりの状態数上限)
-                {
-                    p_判定 = ギャップ充填判定.一意でない;
-                    return null;
-                }
-
-                for (byte l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)
-                {
-                    Array.Copy(l_現在のkmer, 1, l_作業バッファ, 0, p_k長 - 1);
-                    l_作業バッファ[p_k長 - 1] = l_塩基;
-                    if (!p_kmerインデックス.Get_含まれるか(l_作業バッファ))
-                    {
-                        continue;
-                    }
-                    l_節点.Add((l_現在, l_塩基));
-                    l_kmer群.Add((byte[])l_作業バッファ.Clone());
-                    l_深さ群.Add(l_継ぎ足した数 + 1);
-                    l_キュー.Enqueue(l_節点.Count - 1);
-                }
-            }
-
-            if (l_見つかった経路.Count == 1)
-            {
-                p_判定 = ギャップ充填判定.充填済み;
-                return l_見つかった経路[0];
-            }
-
-            p_判定 = l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能;
-            return null;
-        }
-
-        /// <summary>
-        /// 親を辿って、継ぎ足した塩基列のうち先頭 p_埋める長さ 塩基を復元する。
-        /// 末尾側(目標 k-mer と重なる分)は捨てる。
-        /// </summary>
-        private static string Get_復元経路(List<(int A_親, byte A_塩基)> p_節点, int p_末端, int p_埋める長さ)
-        {
-            List<byte> l_逆順 = [];
-            var l_位置 = p_末端;
-            while (l_位置 > 0)
-            {
-                l_逆順.Add(p_節点[l_位置].A_塩基);
-                l_位置 = p_節点[l_位置].A_親;
-            }
-            l_逆順.Reverse();
-            return string.Concat(l_逆順.Take(p_埋める長さ).Select(Util.V_変換_塩基文字));
+            (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
+                l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);
+            return l_経路;
         }
 
         public static void V_出力_充填統計(ギャップ充填統計 p_統計)

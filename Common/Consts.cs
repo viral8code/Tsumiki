@@ -59,6 +59,8 @@ namespace Tsumiki.Common
             public const string マージ = "-mg";
 
             public const string 引き継ぎなし = "-nc";
+
+            public const string SuperRead = "-sr";
         }
 
         public const string インサートサイズ未指定表示 = "unspecified";
@@ -177,6 +179,7 @@ namespace Tsumiki.Common
             {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try. Without {引数キー.k長} the values are spread over 21 .. {マルチk上限のリード長比:0.##} x read length; those whose predicted k-mer coverage would fall below {マルチkの最小kmerカバレッジ:0.#} are skipped (costs up to {マルチkで試す個数 + 1}x the runtime) (default : false)
             {引数キー.マージ} : with {引数キー.マルチk}, splice sequence from the other k values into the selected assembly where they span a junction it left open. Off by default: on GAGE-B R. sphaeroides this raised NGA50 by 14% but nearly doubled the misassemblies, because assemblies of the same reads make correlated errors at the same repeats (default : false)
             {引数キー.引き継ぎなし} : with {引数キー.マルチk}, do not carry sequence from one k to the next. Carrying is on by default: a larger k loses k-mers to thin coverage, and the previous k already walked that region (default : carry)
+            {引数キー.SuperRead} : with {引数キー.マルチk} and paired-end reads, bridge each pair through this k's trusted k-mer graph into one synthetic long read wherever the path between them is unique, and carry those alongside the usual sequence (default : false)
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
             {引数キー.ヘルプ} : output this text (default : false)

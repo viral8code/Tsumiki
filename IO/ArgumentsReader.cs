@@ -94,6 +94,10 @@ namespace Tsumiki.IO
                             l_引数.A_引き継ぐか = false;
                             break;
 
+                        case Consts.引数キー.SuperRead:
+                            l_引数.A_SuperReadを作るか = true;
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;

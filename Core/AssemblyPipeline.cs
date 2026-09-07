@@ -139,7 +139,7 @@ namespace Tsumiki.Core
                         l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値));
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長);
+                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数);
                 return new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
@@ -164,7 +164,7 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長);
+            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数);
             return new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
@@ -173,10 +173,14 @@ namespace Tsumiki.Core
         /// <summary>
         /// 次の k へ渡す配列とカバレッジを用意する。
         /// k-mer インデックスが破棄される前でなければ作れない。
+        ///
+        /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして
+        /// 作った合成リード(SuperRead)も足す。元のリードの2〜4倍の長さを持つため、
+        /// マルチ k の上限(リード長で頭打ちになる)を実効的に外せる。
         /// </summary>
         private static void V_用意_次への引き継ぎ(
             List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
-            TrustedKmerIndex p_kmerインデックス, int p_k長)
+            TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -185,6 +189,14 @@ namespace Tsumiki.Core
             p_次への引き継ぎ.Clear();
             p_次への引き継ぎ.AddRange(
                 KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
+
+            if (p_引数.A_SuperReadを作るか && !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            {
+                var l_合成リード = SuperReadJoiner.Get_合成リード(
+                    p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
+                SuperReadJoiner.V_出力_統計(l_統計);
+                p_次への引き継ぎ.AddRange(l_合成リード);
+            }
         }
 
         private static void V_読込_リード(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)

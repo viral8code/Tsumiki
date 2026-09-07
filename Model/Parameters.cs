@@ -207,6 +207,12 @@ namespace Tsumiki.Model
         public bool A_引き継ぐか { get; set; } = true;
 
         /// <summary>
+        /// multi-k で、各 k の信頼できる k-mer 集合の中でペアを橋渡しして
+        /// 合成リード(SuperRead)を作り、次の k への引き継ぎに加えるか。
+        /// </summary>
+        public bool A_SuperReadを作るか { get; set; } = false;
+
+        /// <summary>
         /// multi-k の結果を統合するか。既定は false。
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
@@ -276,6 +282,7 @@ namespace Tsumiki.Model
                 preprocess (adapter trim + pair correction) : {this.A_前処理するか}
                 multi-k : {this.A_マルチkか}
                 carry sequence between k : {this.A_引き継ぐか}
+                build SuperReads : {this.A_SuperReadを作るか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}
