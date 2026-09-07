@@ -102,6 +102,10 @@ namespace Tsumiki.IO
                             l_引数.A_反復をrMerで検証するか = true;
                             break;
 
+                        case Consts.引数キー.局所アセンブリ:
+                            l_引数.A_局所アセンブリするか = true;
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;

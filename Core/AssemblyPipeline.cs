@@ -184,6 +184,19 @@ namespace Tsumiki.Core
                 AssemblyStatsReporter.V_出力_統計("scaffolds (gaps filled)", l_スキャフォールドパス);
             }
 
+            // GapFiller が埋めきれなかった残りを、その両端に実際にマップされた
+            // 局所リードだけの使い捨てミニアセンブリで埋める(-la、-mgの安全な代替)。
+            if (p_引数.A_局所アセンブリするか)
+            {
+                var l_局所統計 = LocalAssembler.V_充填_ギャップ(
+                    l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長, l_作業ディレクトリ);
+                LocalAssembler.V_出力_統計(l_局所統計);
+                if (l_局所統計.A_埋めたギャップ数 > 0)
+                {
+                    AssemblyStatsReporter.V_出力_統計("scaffolds (local assembly)", l_スキャフォールドパス);
+                }
+            }
+
             AssemblyValidator.V_出力_検査結果(
                 "scaffolds",
                 AssemblyValidator.Get_検査結果(

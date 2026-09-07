@@ -63,6 +63,8 @@ namespace Tsumiki.Common
             public const string SuperRead = "-sr";
 
             public const string 反復r_mer検証 = "-rv";
+
+            public const string 局所アセンブリ = "-la";
         }
 
         public const string インサートサイズ未指定表示 = "unspecified";
@@ -208,6 +210,7 @@ namespace Tsumiki.Common
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
             {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
             {引数キー.反復r_mer検証} : before duplicating a short repeat to untangle it, verify each candidate path with an r-mer (k + {rMer長のk超過分の既定値}bp -- longer than this k's own k-1 overlap, since a shorter or equal-length window can't tell the repeat's shared boundary from either neighbor's own sequence) set built from the raw reads -- require at least {r_mer接合点支持の閾値の既定値} r-mers that actually cross the head/repeat and repeat/tail junctions, otherwise refuse the duplication. Note this cannot tell a repeat's two genuinely real pairings apart (both are real graph edges either way); it only catches a pairing that isn't backed by any raw-read evidence at all (an ABySS RResolver-style veto, narrower in practice than that framing suggests). Skipped for k values where k + {rMer長のk超過分の既定値} would exceed 32bp. Costs one extra full read scan per k (default : false)
+            {引数キー.局所アセンブリ} : for scaffold gaps that GapFiller could not close, collect only the raw reads that actually map near the gap's two edges and re-assemble that small pool on its own (a k-mer trusted with even a single local occurrence, unlike the genome-wide cutoff). A safer alternative to {引数キー.マージ}: that one splices in another k's already-decided sequence and can carry over the same misassembly at the same repeat, while this one only ever introduces reads GapFiller had not looked at in isolation (default : false)
             {引数キー.ヘルプ} : output this text (default : false)
 
             """;

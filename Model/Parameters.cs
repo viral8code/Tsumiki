@@ -220,6 +220,13 @@ namespace Tsumiki.Model
         public bool A_反復をrMerで検証するか { get; set; } = false;
 
         /// <summary>
+        /// GapFiller が埋められなかったスキャフォールドのギャップを、
+        /// その両端に実際にマップされた局所リードだけを使う局所アセンブリ
+        /// (LocalAssembler)で埋めるか。AssemblyMerger(-mg)の安全な代替。
+        /// </summary>
+        public bool A_局所アセンブリするか { get; set; } = false;
+
+        /// <summary>
         /// multi-k の結果を統合するか。既定は false。
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
@@ -291,6 +298,7 @@ namespace Tsumiki.Model
                 carry sequence between k : {this.A_引き継ぐか}
                 build SuperReads : {this.A_SuperReadを作るか}
                 verify repeat resolution with r-mers : {this.A_反復をrMerで検証するか}
+                local assembly for remaining gaps : {this.A_局所アセンブリするか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}
