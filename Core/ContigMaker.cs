@@ -659,6 +659,10 @@ namespace Tsumiki.Core
         /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権
         /// (ABySS RResolver型)を課す。詳細は UnitigGraph.V_解決_短い反復 を参照。
         /// </param>
+        /// <param name="p_GFAパス">
+        /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを
+        /// GFA1 形式でこのパスへ書き出す(Bandage 等のビューア向け)。
+        /// </param>
         public void V_結合_コンティグ(
             string p_コンティグパス,
             decimal p_優勢閾値,
@@ -666,7 +670,8 @@ namespace Tsumiki.Core
             IReadOnlyDictionary<int, int>? p_コピー数 = null,
             List<string>? p_バブル敗者への引き継ぎ先 = null,
             int? p_リード長 = null,
-            RepeatRMerVerifier? p_r_mer検証器 = null)
+            RepeatRMerVerifier? p_r_mer検証器 = null,
+            string? p_GFAパス = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
@@ -880,6 +885,12 @@ namespace Tsumiki.Core
                 Console.WriteLine(
                     $"[Debug] Beam-search lookahead resolved {l_先読みで解決した数 / 2} further junction(s) that the " +
                     "single-step mutual-uniqueness rule could not decide.");
+            }
+
+            if (p_GFAパス is not null)
+            {
+                GfaWriter.V_出力(p_GFAパス, l_ユニティグ配列, l_グラフ, l_k長, p_コピー数);
+                Console.WriteLine($"[Info] Wrote unitig graph to {p_GFAパス} (GFA1).");
             }
 
             this.V_収集_確定辺標本(l_結合);

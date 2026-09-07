@@ -227,6 +227,13 @@ namespace Tsumiki.Model
         public bool A_局所アセンブリするか { get; set; } = false;
 
         /// <summary>
+        /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか。
+        /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等の
+        /// ビューアで直接確認できるようにする。
+        /// </summary>
+        public bool A_GFAを出力するか { get; set; } = false;
+
+        /// <summary>
         /// multi-k の結果を統合するか。既定は false。
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる。
@@ -299,6 +306,7 @@ namespace Tsumiki.Model
                 build SuperReads : {this.A_SuperReadを作るか}
                 verify repeat resolution with r-mers : {this.A_反復をrMerで検証するか}
                 local assembly for remaining gaps : {this.A_局所アセンブリするか}
+                write GFA of the unitig graph : {this.A_GFAを出力するか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
                 thread count : {this.A_スレッド数}

@@ -110,6 +110,10 @@ namespace Tsumiki.IO
                             V_適用_積極性モード(l_引数, p_引数列[l_位置++]);
                             break;
 
+                        case Consts.引数キー.GFA出力:
+                            l_引数.A_GFAを出力するか = true;
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;
