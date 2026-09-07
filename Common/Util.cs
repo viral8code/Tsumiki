@@ -83,6 +83,20 @@ namespace Tsumiki.Common
             return l_結果.AsSpan();
         }
 
+        /// <summary>
+        /// 塩基文字が曖昧(A/C/G/T のいずれでもない IUPAC コード)かどうか。
+        /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける。
+        /// </summary>
+        public static bool Get_曖昧塩基か(char p_塩基文字)
+        {
+            return p_塩基文字 switch
+            {
+                'A' or 'C' or 'G' or 'T' => false,
+                'M' or 'V' or 'N' or 'H' or 'R' or 'D' or 'W' or 'S' or 'B' or 'Y' or 'K' => true,
+                _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code"),
+            };
+        }
+
         public static List<int> Get_塩基ID候補(char p_塩基文字)
         {
             return p_塩基文字 switch

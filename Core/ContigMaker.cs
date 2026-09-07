@@ -400,14 +400,14 @@ namespace Tsumiki.Core
             var l_曖昧塩基数 = 0;
             for (var i = 0; i < l_k長; i++)
             {
-                if (Util.Get_塩基ID候補(p_リード[i]).Count > 1)
+                if (Util.Get_曖昧塩基か(p_リード[i]))
                 {
                     l_曖昧塩基数++;
                 }
             }
             for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.Get_塩基ID候補(p_リード[i - l_k長]).Count > 1)
+                if (Util.Get_曖昧塩基か(p_リード[i - l_k長]))
                 {
                     l_曖昧塩基数--;
                 }
@@ -554,18 +554,18 @@ namespace Tsumiki.Core
             var l_逆鎖の曖昧塩基数 = 0;
             for (var i = 0; i < l_k長; i++)
             {
-                if (Util.Get_塩基ID候補(p_リード[i]).Count > 1)
+                if (Util.Get_曖昧塩基か(p_リード[i]))
                 {
                     l_曖昧塩基数++;
                 }
-                if (Util.Get_塩基ID候補(l_逆鎖リード[i]).Count > 1)
+                if (Util.Get_曖昧塩基か(l_逆鎖リード[i]))
                 {
                     l_逆鎖の曖昧塩基数++;
                 }
             }
             for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.Get_塩基ID候補(p_リード[i - l_k長]).Count > 1)
+                if (Util.Get_曖昧塩基か(p_リード[i - l_k長]))
                 {
                     l_曖昧塩基数--;
                 }
@@ -592,7 +592,7 @@ namespace Tsumiki.Core
                         }
                     }
                 }
-                if (Util.Get_塩基ID候補(l_逆鎖リード[i - l_k長]).Count > 1)
+                if (Util.Get_曖昧塩基か(l_逆鎖リード[i - l_k長]))
                 {
                     l_逆鎖の曖昧塩基数--;
                 }

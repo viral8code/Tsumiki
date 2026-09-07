@@ -121,7 +121,7 @@ namespace Tsumiki.Core
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
 
             var l_低品質数 = 0;
-            var l_クオリティ = p_リード.A_クオリティ.ToCharArray().AsSpan();
+            var l_クオリティ = p_リード.A_クオリティ.AsSpan();
             var l_塩基 = l_塩基列.AsSpan();
 
             for (var i = 0; i < l_k長; i++)

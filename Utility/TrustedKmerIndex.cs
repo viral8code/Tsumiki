@@ -232,7 +232,7 @@ namespace Tsumiki.Utility
         /// kmer(塩基ID 1-4、長さ32以下)を2bit/塩基でulong1個にパックする。
         /// 先頭塩基が最上位側、末尾塩基が最下位側に来る(空きビットは下位側に残る)。
         /// </summary>
-        private static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
+        internal static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_値 = 0UL;
             foreach (var l_塩基ID in p_kmer)
@@ -267,6 +267,44 @@ namespace Tsumiki.Utility
             return Math.Min(l_パック済み, l_逆相補);
         }
 
+        /// <summary>
+        /// ファイル上のパック済みバイト列を、そのままパック値として読み替える(k &lt;= 32)。
+        /// 並びの規約が同じなので、塩基列へ展開して詰め直す必要はない。
+        /// </summary>
+        internal static ulong Get_読み替え_小(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
+        {
+            var l_値 = 0UL;
+            foreach (var l_バイト in p_パック済み)
+            {
+                l_値 = (l_値 << 8) | l_バイト;
+            }
+            return l_値 >> p_余りビット;
+        }
+
+        /// <summary>Get_読み替え_小 の 128bit 版(33 &lt;= k &lt;= 64)。</summary>
+        internal static UInt128 Get_読み替え_中(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
+        {
+            UInt128 l_値 = 0;
+            foreach (var l_バイト in p_パック済み)
+            {
+                l_値 = (l_値 << 8) | l_バイト;
+            }
+            return l_値 >> p_余りビット;
+        }
+
+        /// <summary>パック済みバイト列から塩基ID列を復元する(k &gt; 64 の経路用)。</summary>
+        private static byte[] Get_復元_塩基列(ReadOnlySpan<byte> p_パック済み, int p_k長)
+        {
+            var l_塩基列 = new byte[p_k長];
+            for (var i = 0; i < p_k長; i++)
+            {
+                var l_バイト = p_パック済み[i / 4];
+                var l_ずらし = 6 - (2 * (i % 4));
+                l_塩基列[i] = (byte)(((l_バイト >> l_ずらし) & 3) + 1);
+            }
+            return l_塩基列;
+        }
+
         /// <summary>Get_パック_小 の逆変換。末尾塩基が最下位ビット側にあるため、末尾から復元する。</summary>
         private static byte[] Get_復元_小(ulong p_パック済み, int p_長さ)
         {
@@ -283,7 +321,7 @@ namespace Tsumiki.Utility
         /// Get_パック_小 の 128bit 版(k は 64 以下)。ビット配置の規約は同じで、
         /// kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る。
         /// </summary>
-        private static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
+        internal static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
             foreach (var l_塩基ID in p_kmer)
@@ -498,10 +536,9 @@ namespace Tsumiki.Utility
             var l_パック長 = (this._k長 + 3) / 4;
             var l_小経路 = 小経路を使うか;
             var l_中経路 = 中経路を使うか;
-            var l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>();
-            var l_信頼kmer_小 = l_小経路 ? new Dictionary<ulong, ulong>() : null;
-            var l_信頼kmer_中 = l_中経路 ? new Dictionary<UInt128, ulong>() : null;
-            using (var l_読み込み = new BinaryReader(File.Open(l_ファイルパス, FileMode.Open, FileAccess.Read)))
+            Dictionary<KmerKey, ulong>? l_信頼kmer_大;
+            Dictionary<ulong, ulong>? l_信頼kmer_小;
+            Dictionary<UInt128, ulong>? l_信頼kmer_中;
             {
                 ulong l_採用数 = 0;
                 ulong l_総種類数 = 0;
@@ -510,41 +547,80 @@ namespace Tsumiki.Utility
                 // 推定するために、カットオフ判定と同じこのループで集計する
                 // (このファイルはこの後削除されるため、ここでしか見られない)。
                 Dictionary<ulong, long> l_ヒストグラム = [];
-                while (Util.Get_続きがあるか(l_読み込み))
+
+                var l_エントリ長 = l_パック長 + sizeof(ulong);
+                var l_総エントリ数 = new FileInfo(l_ファイルパス).Length / l_エントリ長;
+
+                // 数千万件を入れるので、伸ばしながらのリハッシュを避けて先に確保する。
+                var l_見込み = (int)Math.Min(int.MaxValue / 2, Math.Max(1024, l_総エントリ数 / 4));
+                l_信頼kmer_小 = l_小経路 ? new Dictionary<ulong, ulong>(l_見込み) : null;
+                l_信頼kmer_中 = l_中経路 ? new Dictionary<UInt128, ulong>(l_見込み) : null;
+                l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>(l_見込み);
+
+                // ファイル上の並びは 2bit/塩基・先頭塩基が最上位で、パック値の規約と
+                // 同じ。塩基列へ展開してから詰め直す必要はなく、余りビット分の
+                // シフトだけで正規形の計算へ渡せる。
+                var l_余りビット = (8 * l_パック長) - (2 * this._k長);
+
+                using var l_流れ = new FileStream(
+                    l_ファイルパス, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan);
+                var l_バッファ = new byte[l_エントリ長 * 4096];
+                var l_残り = 0;
+                while (true)
                 {
-                    var l_パック済み = l_読み込み.ReadBytes(l_パック長);
-                    var l_出現回数 = l_読み込み.ReadUInt64();
-                    l_総種類数 += 1;
-                    l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
-                    if (l_出現回数 >= p_カットオフ)
+                    var l_読んだ = l_流れ.Read(l_バッファ, l_残り, l_バッファ.Length - l_残り);
+                    var l_有効 = l_残り + l_読んだ;
+                    var l_位置 = 0;
+                    while (l_位置 + l_エントリ長 <= l_有効)
                     {
-                        l_採用数 += 1;
-                        List<byte> l_塩基列 = [];
-                        foreach (var l_バイト in l_パック済み)
+                        var l_パック済み = l_バッファ.AsSpan(l_位置, l_パック長);
+                        var l_出現回数 = BitConverter.ToUInt64(l_バッファ, l_位置 + l_パック長);
+                        l_位置 += l_エントリ長;
+
+                        l_総種類数 += 1;
+                        l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
+                        if (l_出現回数 < p_カットオフ)
                         {
-                            l_塩基列.AddRange(Util.V_変換_塩基列(l_バイト));
+                            continue;
                         }
-                        var l_kmer = CollectionsMarshal.AsSpan(l_塩基列)[..this._k長];
+
+                        l_採用数 += 1;
                         // カウント段階で既に正規形へ寄せてあるため、同じ正規形が
                         // 複数エントリとして現れることはない。それでも加算で受けて
                         // おけば、将来カウント側の正規化をやめた場合でも壊れない。
                         if (l_小経路)
                         {
-                            var l_正規形 = Get_正規形_小(l_kmer);
+                            var l_値 = Get_読み替え_小(l_パック済み, l_余りビット);
+                            var l_逆 = Get_逆相補_小(l_値, this._k長);
+                            var l_正規形 = Math.Min(l_値, l_逆);
                             l_信頼kmer_小![l_正規形] = l_信頼kmer_小.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
                         else if (l_中経路)
                         {
-                            var l_正規形 = Get_正規形_中(l_kmer);
+                            var l_値 = Get_読み替え_中(l_パック済み, l_余りビット);
+                            var l_逆 = Get_逆相補_中(l_値, this._k長);
+                            var l_正規形 = l_値 < l_逆 ? l_値 : l_逆;
                             l_信頼kmer_中![l_正規形] = l_信頼kmer_中.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
                         else
                         {
-                            var l_正規形 = new KmerKey(l_kmer).Get_正規形();
+                            var l_正規形 = new KmerKey(Get_復元_塩基列(l_パック済み, this._k長)).Get_正規形();
                             l_信頼kmer_大![l_正規形] = l_信頼kmer_大.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
                         }
                     }
+
+                    if (l_読んだ == 0)
+                    {
+                        break;
+                    }
+
+                    l_残り = l_有効 - l_位置;
+                    if (l_残り > 0)
+                    {
+                        Array.Copy(l_バッファ, l_位置, l_バッファ, 0, l_残り);
+                    }
                 }
+
                 Console.WriteLine("kmer count: " + l_総種類数);
                 Console.WriteLine("good kmer: " + l_採用数);
                 this.A_出現回数ヒストグラム = l_ヒストグラム;
