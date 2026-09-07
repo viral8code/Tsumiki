@@ -110,6 +110,30 @@ namespace Tsumiki.Core
             return 0;
         }
 
+        /// <summary>
+        /// unitig 間の隣接を de Bruijn グラフから厳密に構築する。
+        /// V_結合_コンティグ を呼ぶ前(コピー数推定の接続伝播など)でも独立に
+        /// 呼べるよう公開している。呼ぶたびに FASTA を読み直して新しい
+        /// グラフを作る(unitig 数の規模では軽量なので使い捨てで構わない)。
+        /// </summary>
+        public UnitigGraph Get_グラフ()
+        {
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+
+            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
+            using (FastaReader l_読み込み = new(this._ユニティグファイルパス))
+            {
+                while (l_読み込み.Get_続きがあるか())
+                {
+                    var l_ユニティグ = l_読み込み.Get_次の配列().A_配列;
+                    l_ユニティグ配列.Add(l_ユニティグ);
+                    l_ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ));
+                }
+            }
+
+            return UnitigGraph.Get_グラフ(l_ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+        }
+
         public void V_マッピング_リード(string p_リードパス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);

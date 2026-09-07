@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.Core;
+using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -170,6 +171,136 @@ namespace Tsumiki.Tests.Core
             var result = CopyNumberEstimator.Get_推定結果(coverage, lengths);
 
             Assert.Equal(0, coverage[2]);
+            Assert.Equal(1, result.A_コピー数[2]);
+        }
+
+        /// <summary>
+        /// プラスミドのように染色体とは異なるカバレッジ水準を持つ領域は、
+        /// 大域基準値との比だけで見ると多コピーの反復に見える。しかし
+        /// その単一コピー領域同士は分岐の無い(排他的な)鎖で繋がっているため、
+        /// 接続構造を使えば「大域とは水準が違うだけの単一コピー」だと分かる。
+        /// unicycler の copy depth propagation が解決する問題そのもの。
+        /// </summary>
+        [Fact]
+        public void Estimate_WithGraph_RecognisesAHighCoveragePlasmidBackboneAsSingleCopy()
+        {
+            const int k = 21;
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
+            ConfigurationManager.A_スペクトルモデル = null;
+
+            // 染色体相当(長さで大域基準値=60を支配する)。
+            var chromosome = RandomSequence(400, seed: 10);
+
+            // プラスミド相当。1本の配列を k-1(=20) ずつ重ねて3本に切り出し、
+            // 分岐の無い鎖 plasmid1 -> plasmid2 -> plasmid3 を作る。
+            var plasmidFull = RandomSequence(90, seed: 20);
+            var plasmid1 = plasmidFull[..40];
+            var plasmid2 = plasmidFull[20..60];
+            var plasmid3 = plasmidFull[40..90];
+
+            var fastaPath = Path.Combine(this._tempDir, "unitigs.fasta");
+            using (var writer = new FastaWriter(fastaPath))
+            {
+                writer.V_書き込み(1, chromosome);
+                writer.V_書き込み(2, plasmid1);
+                writer.V_書き込み(3, plasmid2);
+                writer.V_書き込み(4, plasmid3);
+            }
+
+            var contigMaker = new ContigMaker(fastaPath);
+            var graph = contigMaker.Get_グラフ();
+
+            Dictionary<int, double> coverage = new()
+            {
+                [1] = 60.0,
+                [2] = 300.0, // 大域基準値(60)との比は5倍 -> 単独では多コピー判定
+                [3] = 300.0,
+                [4] = 300.0,
+            };
+            Dictionary<int, int> lengths = new()
+            {
+                [1] = chromosome.Length,
+                [2] = plasmid1.Length,
+                [3] = plasmid2.Length,
+                [4] = plasmid3.Length,
+            };
+
+            var withoutGraph = CopyNumberEstimator.Get_推定結果(coverage, lengths);
+            Assert.Equal(5, withoutGraph.A_コピー数[2]);
+            Assert.Equal(5, withoutGraph.A_コピー数[3]);
+            Assert.Equal(5, withoutGraph.A_コピー数[4]);
+
+            var withGraph = CopyNumberEstimator.Get_推定結果(coverage, lengths, graph);
+            Assert.Equal(1, withGraph.A_コピー数[2]);
+            Assert.Equal(1, withGraph.A_コピー数[3]);
+            Assert.Equal(1, withGraph.A_コピー数[4]);
+            // 染色体側は元々単一コピー判定であり、接続補正の対象にもならない。
+            Assert.Equal(1, withGraph.A_コピー数[1]);
+        }
+
+        /// <summary>
+        /// 排他的に繋がる相手がいない(孤立した)高カバレッジ unitig は、
+        /// 比較材料が無いため接続補正の対象にせず、大域基準値との比のまま残す。
+        /// </summary>
+        [Fact]
+        public void Estimate_WithGraph_LeavesAnIsolatedHighCoverageUnitigUnchanged()
+        {
+            const int k = 21;
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
+            ConfigurationManager.A_スペクトルモデル = null;
+
+            var chromosome = RandomSequence(400, seed: 11);
+            var isolatedRepeat = RandomSequence(50, seed: 21); // 他のどれとも重ならない
+
+            var fastaPath = Path.Combine(this._tempDir, "unitigs.fasta");
+            using (var writer = new FastaWriter(fastaPath))
+            {
+                writer.V_書き込み(1, chromosome);
+                writer.V_書き込み(2, isolatedRepeat);
+            }
+
+            var contigMaker = new ContigMaker(fastaPath);
+            var graph = contigMaker.Get_グラフ();
+
+            Dictionary<int, double> coverage = new() { [1] = 60.0, [2] = 300.0 };
+            Dictionary<int, int> lengths = new() { [1] = chromosome.Length, [2] = isolatedRepeat.Length };
+
+            var result = CopyNumberEstimator.Get_推定結果(coverage, lengths, graph);
+
+            Assert.Equal(5, result.A_コピー数[2]);
+        }
+
+        /// <summary>
+        /// 小さなプラスミドが分岐無しの1本の unitig にきれいに閉じた、
+        /// もっとも典型的なケース。染色体側の成分とは一切繋がりが無い、
+        /// 十分な長さを持つ「島」なので、大域基準値との比が高くても
+        /// 単一コピーとみなしてよい(高コピープラスミド自身の水準で1コピー)。
+        /// </summary>
+        [Fact]
+        public void Estimate_WithGraph_RecognisesAnIsolatedLongUnitigAsItsOwnSingleCopyReplicon()
+        {
+            const int k = 21;
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
+            ConfigurationManager.A_スペクトルモデル = null;
+
+            var chromosome = RandomSequence(400, seed: 12);
+            var plasmid = RandomSequence(600, seed: 22); // 染色体とは無関係、500bp超
+
+            var fastaPath = Path.Combine(this._tempDir, "unitigs.fasta");
+            using (var writer = new FastaWriter(fastaPath))
+            {
+                writer.V_書き込み(1, chromosome);
+                writer.V_書き込み(2, plasmid);
+            }
+
+            var contigMaker = new ContigMaker(fastaPath);
+            var graph = contigMaker.Get_グラフ();
+
+            Dictionary<int, double> coverage = new() { [1] = 60.0, [2] = 300.0 };
+            Dictionary<int, int> lengths = new() { [1] = chromosome.Length, [2] = plasmid.Length };
+
+            var result = CopyNumberEstimator.Get_推定結果(coverage, lengths, graph);
+
             Assert.Equal(1, result.A_コピー数[2]);
         }
     }

@@ -73,15 +73,6 @@ namespace Tsumiki.Core
 
             AssemblyStatsReporter.V_出力_統計("unitigs", l_ユニティグパス);
 
-            // 反復配列かどうかをグラフの形ではなく量的な根拠で判定するための
-            // コピー数推定。k-mer インデックスが生きている今しか計算できない。
-            var l_ユニティグ長 = l_ユニティグ配列.ToDictionary(x => x.Key, x => x.Value.Length);
-            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_ユニティグ配列, p_k長);
-            var l_コピー数推定 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_ユニティグ長);
-            CopyNumberEstimator.V_出力_推定結果(l_コピー数推定, l_ユニティグ長);
-
-            Logger.V_出力_タイムスタンプ();
-
             if (l_上限に達したか)
             {
                 Console.WriteLine($"[Warning] The graph is too complex to assemble at k={p_k長} " +
@@ -91,6 +82,20 @@ namespace Tsumiki.Core
 
             Console.WriteLine("Map reads to unitigs");
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
+
+            // 反復配列かどうかをグラフの形ではなく量的な根拠で判定するための
+            // コピー数推定。k-mer インデックスが生きている今しか計算できない。
+            // 接続構造(排他的な鎖)による補正のため、ContigMaker が厳密な
+            // de Bruijn グラフから構築した隣接情報も使う(コピー数推定専用に
+            // 作る使い捨てのグラフで、V_結合_コンティグ が後で作るものとは別)。
+            var l_ユニティグ長 = l_ユニティグ配列.ToDictionary(x => x.Key, x => x.Value.Length);
+            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_ユニティグ配列, p_k長);
+            var l_グラフ = l_コンティグ構築.Get_グラフ();
+            var l_コピー数推定 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_ユニティグ長, l_グラフ);
+            CopyNumberEstimator.V_出力_推定結果(l_コピー数推定, l_ユニティグ長);
+
+            Logger.V_出力_タイムスタンプ();
+
             if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 Console.WriteLine(p_引数.A_リード1のパス);
