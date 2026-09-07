@@ -39,6 +39,10 @@ namespace Tsumiki.Core
         /// 結合の配列を直接書き換える。戻り値は新たに確定した結合の数
         /// (有向、双子ぶんを含む)。
         /// </summary>
+        /// <param name="p_較正器">
+        /// 支持を生カウントではなく期待本数との比で測るための較正器。
+        /// 渡さない(あるいは使えない)場合は生カウントのままスコアリングする。
+        /// </param>
         public static int V_延長_先読み(
             UnitigGraph p_グラフ,
             List<string> p_ユニティグ配列,
@@ -47,7 +51,8 @@ namespace Tsumiki.Core
             IReadOnlyDictionary<int, int> p_コピー数,
             int p_インサートサイズ,
             decimal p_優勢閾値,
-            ulong p_最小証拠数)
+            ulong p_最小証拠数,
+            証拠較正器? p_較正器 = null)
         {
             var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * 先読み倍率;
             var l_確定数 = 0;
@@ -74,7 +79,7 @@ namespace Tsumiki.Core
 
                 var l_最良 = Get_最良の1歩(
                     p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数,
-                    l_先読み塩基数, p_優勢閾値, p_最小証拠数);
+                    l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
                 if (l_最良 is not { } l_選択)
                 {
                     continue;
@@ -165,7 +170,8 @@ namespace Tsumiki.Core
             IReadOnlyDictionary<int, int> p_コピー数,
             int p_先読み塩基数,
             decimal p_優勢閾値,
-            ulong p_最小証拠数)
+            ulong p_最小証拠数,
+            証拠較正器? p_較正器)
         {
             List<先読み探索状態> l_ビーム = [];
             foreach (var l_候補 in p_グラフ.A_出辺[p_分岐元])
@@ -175,11 +181,13 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+                var (l_生, l_正規化) = Get_スコア(p_足場, l_候補, p_ユニティグ配列, p_ペア連結, p_較正器);
                 l_ビーム.Add(new 先読み探索状態
                 {
                     A_現在の頂点 = l_候補,
                     A_最初の1歩 = l_候補,
-                    A_スコア = Get_スコア(p_足場, l_候補, p_ペア連結),
+                    A_スコア = l_正規化,
+                    A_生スコア = l_生,
                     A_進んだ長さ = p_ユニティグ配列[l_候補].Length,
                     A_使用回数 = new Dictionary<int, int> { [l_候補 >> 1] = 1 },
                 });
@@ -189,12 +197,11 @@ namespace Tsumiki.Core
                 return null;
             }
 
-            // 最初の1歩ごとの最良スコアを追跡する。
-            Dictionary<int, long> l_1歩ごとの最良 = [];
+            // 最初の1歩ごとの最良スコア(正規化値と、それに対応する生カウント)を追跡する。
+            Dictionary<int, (double A_正規化, long A_生)> l_1歩ごとの最良 = [];
             foreach (var l_状態 in l_ビーム)
             {
-                l_1歩ごとの最良[l_状態.A_最初の1歩] =
-                    Math.Max(l_1歩ごとの最良.GetValueOrDefault(l_状態.A_最初の1歩), l_状態.A_スコア);
+                V_更新_1歩ごとの最良(l_1歩ごとの最良, l_状態);
             }
 
             for (var l_ステップ = 0; l_ステップ < 経路あたりの最大ステップ数 && l_ビーム.Count > 0; l_ステップ++)
@@ -217,11 +224,13 @@ namespace Tsumiki.Core
                         }
                         var l_使用回数 = new Dictionary<int, int>(l_状態.A_使用回数);
                         l_使用回数[l_ユニティグID] = l_使用回数.GetValueOrDefault(l_ユニティグID) + 1;
+                        var (l_生, l_正規化) = Get_スコア(p_足場, l_候補, p_ユニティグ配列, p_ペア連結, p_較正器);
                         l_次のビーム.Add(new 先読み探索状態
                         {
                             A_現在の頂点 = l_候補,
                             A_最初の1歩 = l_状態.A_最初の1歩,
-                            A_スコア = l_状態.A_スコア + Get_スコア(p_足場, l_候補, p_ペア連結),
+                            A_スコア = l_状態.A_スコア + l_正規化,
+                            A_生スコア = l_状態.A_生スコア + l_生,
                             A_進んだ長さ = l_状態.A_進んだ長さ + p_ユニティグ配列[l_候補].Length,
                             A_使用回数 = l_使用回数,
                         });
@@ -242,27 +251,40 @@ namespace Tsumiki.Core
 
                 foreach (var l_状態 in l_ビーム)
                 {
-                    l_1歩ごとの最良[l_状態.A_最初の1歩] =
-                        Math.Max(l_1歩ごとの最良.GetValueOrDefault(l_状態.A_最初の1歩), l_状態.A_スコア);
+                    V_更新_1歩ごとの最良(l_1歩ごとの最良, l_状態);
                 }
             }
 
-            var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value).ToList();
+            var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
             var l_首位 = l_順位[0];
-            if ((ulong)Math.Max(0, l_首位.Value) < p_最小証拠数)
+            if ((ulong)Math.Max(0, l_首位.Value.A_生) < p_最小証拠数)
             {
                 // どの枝にもペアエンドの支持が無い。根拠が無いので繋がない。
                 return null;
             }
 
-            var l_合計 = l_順位.Sum(x => Math.Max(0, x.Value));
-            if (l_合計 <= 0 || (decimal)l_首位.Value / l_合計 < p_優勢閾値)
+            var l_合計 = l_順位.Sum(x => Math.Max(0, x.Value.A_正規化));
+            if (l_合計 <= 0 || (decimal)(l_首位.Value.A_正規化 / l_合計) < p_優勢閾値)
             {
                 // 上位が割れている。僅差で選ぶくらいなら繋がないほうがよい。
                 return null;
             }
 
             return l_首位.Key;
+        }
+
+        /// <summary>
+        /// 最初の1歩ごとの最良スコアを更新する。正規化スコアが同点になりうる
+        /// (較正器が無い場合は生カウントと一致する)ため、比較は正規化スコアで
+        /// 行い、対応する生カウントも一緒に持ち替える。
+        /// </summary>
+        private static void V_更新_1歩ごとの最良(
+            Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
+        {
+            if (!p_1歩ごとの最良.TryGetValue(p_状態.A_最初の1歩, out var l_既存) || p_状態.A_スコア > l_既存.A_正規化)
+            {
+                p_1歩ごとの最良[p_状態.A_最初の1歩] = (p_状態.A_スコア, p_状態.A_生スコア);
+            }
         }
 
         /// <summary>
@@ -280,15 +302,27 @@ namespace Tsumiki.Core
             return p_グラフ.A_出辺[p_頂点].Count == 1 && p_グラフ.Get_入次数(p_頂点) == 1;
         }
 
-        private static long Get_スコア(
-            List<int> p_足場, int p_候補, IReadOnlyDictionary<(int, int), ulong> p_ペア連結)
+        /// <summary>
+        /// 足場群から候補頂点への支持を集計する。生カウントの合計(足切り判定用)と、
+        /// 較正器が使える場合は期待本数との比の合計(ランキング・優勢判定用、
+        /// 較正器が使えない場合は生カウントと同じ値)を両方返す。
+        /// </summary>
+        private static (long A_生, double A_正規化) Get_スコア(
+            List<int> p_足場, int p_候補, List<string> p_ユニティグ配列,
+            IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器)
         {
-            long l_スコア = 0;
+            long l_生スコア = 0;
+            double l_正規化スコア = 0;
+            var l_候補長 = p_ユニティグ配列[p_候補].Length;
             foreach (var l_足場頂点 in p_足場)
             {
-                l_スコア += (long)p_ペア連結.GetValueOrDefault((l_足場頂点, p_候補));
+                var l_件数 = p_ペア連結.GetValueOrDefault((l_足場頂点, p_候補));
+                l_生スコア += (long)l_件数;
+                l_正規化スコア += p_較正器 is { A_使えるか: true } l_較正器
+                    ? l_較正器.Get_正規化済み支持(l_件数, p_ユニティグ配列[l_足場頂点].Length, l_候補長, p_ギャップ長: 0)
+                    : l_件数;
             }
-            return l_スコア;
+            return (l_生スコア, l_正規化スコア);
         }
     }
 }

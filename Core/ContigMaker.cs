@@ -650,12 +650,18 @@ namespace Tsumiki.Core
         /// 渡すと、バブル除去で外れた側の経路の配列(careful_bubble)をここへ集める。
         /// 呼び出し側がマルチkの次のkへの引き継ぎに足すことを想定している。
         /// </param>
+        /// <param name="p_リード長">
+        /// 分岐選択・先読みスコアを生カウントではなく期待本数との比で測るための
+        /// 較正器の構築に使う。渡さない(あるいは同一ユニティグ標本が無い)場合は
+        /// 較正器が使えないものとして扱われ、従来どおりの生カウント方式になる。
+        /// </param>
         public void V_結合_コンティグ(
             string p_コンティグパス,
             decimal p_優勢閾値,
             ulong p_最小証拠数,
             IReadOnlyDictionary<int, int>? p_コピー数 = null,
-            List<string>? p_バブル敗者への引き継ぎ先 = null)
+            List<string>? p_バブル敗者への引き継ぎ先 = null,
+            int? p_リード長 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
@@ -747,6 +753,13 @@ namespace Tsumiki.Core
                 $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {l_反復長の上限}bp) were duplicated " +
                 "and untangled using read pairs that span them.");
 
+            // 支持を生カウントではなく期待本数との比で測るための較正器。
+            // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
+            // (較正器が使えない場合は生カウントへフォールバックし、
+            // 挙動は従来と完全に一致する)。
+            var l_較正器 = 証拠較正器.Get_較正器(
+                this.A_同一ユニティグ標本, p_リード長, this._ユニティグ長.Values.Select(x => (long)x));
+
             // 各頂点について「出て行く先」を高々 1 つに絞る。
             var l_選択 = new int[l_グラフ.A_出辺.Count];
             Array.Fill(l_選択, -1);
@@ -777,21 +790,31 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                var l_合計 = 0UL;
+                var l_始点長 = this._ユニティグ長.GetValueOrDefault(v >> 1, 0);
                 var l_最良 = -1;
-                var l_最良の支持 = 0UL;
+                var l_最良の生本数 = 0UL;
+                var l_最良の正規化 = double.NegativeInfinity;
+                var l_正規化合計 = 0.0;
                 foreach (var w in l_出辺)
                 {
                     var l_件数 = l_支持.GetValueOrDefault((v, w));
-                    l_合計 += l_件数;
-                    if (l_件数 > l_最良の支持)
+                    var l_終点長 = this._ユニティグ長.GetValueOrDefault(w >> 1, 0);
+                    // 較正器が使えない場合は生カウントをそのまま正規化値として扱う。
+                    // これにより以下の判定式は較正器が無かった従来のロジックと
+                    // 完全に同じ結果になる。
+                    var l_正規化 = l_較正器.A_使えるか
+                        ? l_較正器.Get_正規化済み支持(l_件数, l_始点長, l_終点長, p_ギャップ長: 0)
+                        : l_件数;
+                    l_正規化合計 += l_正規化;
+                    if (l_正規化 > l_最良の正規化)
                     {
-                        l_最良の支持 = l_件数;
+                        l_最良の正規化 = l_正規化;
+                        l_最良の生本数 = l_件数;
                         l_最良 = w;
                     }
                 }
-                if (l_最良 >= 0 && l_最良の支持 >= p_最小証拠数 && l_合計 > 0
-                    && (decimal)l_最良の支持 / l_合計 >= p_優勢閾値)
+                if (l_最良 >= 0 && l_最良の生本数 >= p_最小証拠数 && l_正規化合計 > 0
+                    && (decimal)(l_最良の正規化 / l_正規化合計) >= p_優勢閾値)
                 {
                     l_選択[v] = l_最良;
                     l_支持で解決した数++;
@@ -845,7 +868,8 @@ namespace Tsumiki.Core
                 p_コピー数 ?? new Dictionary<int, int>(),
                 p_インサートサイズ: l_反復長の上限,
                 p_優勢閾値: p_優勢閾値,
-                p_最小証拠数: p_最小証拠数);
+                p_最小証拠数: p_最小証拠数,
+                p_較正器: l_較正器);
             if (l_先読みで解決した数 > 0)
             {
                 Console.WriteLine(

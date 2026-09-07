@@ -119,7 +119,7 @@ namespace Tsumiki.Core
             List<string> l_バブル敗者 = [];
             l_コンティグ構築.V_結合_コンティグ(
                 l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数,
-                l_バブル敗者);
+                l_バブル敗者, p_リード長);
             Console.WriteLine("Maked contigs");
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 

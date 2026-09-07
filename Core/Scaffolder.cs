@@ -154,7 +154,9 @@ namespace Tsumiki.Core
             }
 
             var l_モデル = new PairedDistanceModel(p_コンティグ構築.A_同一ユニティグ標本, p_リード長 ?? l_インサートサイズ);
-            var l_密度 = this.Get_フラグメント密度(l_モデル);
+            var l_較正器 = 証拠較正器.Get_較正器(
+                p_コンティグ構築.A_同一ユニティグ標本, p_リード長 ?? l_インサートサイズ,
+                p_コンティグ構築.A_ユニティグ長.Values.Select(x => (long)x));
 
             foreach (var ((l_始点, l_終点), (_, l_標本)) in l_対称化)
             {
@@ -162,19 +164,17 @@ namespace Tsumiki.Core
 
                 // 期待は接合点から1フラグメント長ぶんの窓しか効かないので、
                 // 重なっている(ギャップが負)場合は接している場合と同じとみなす。
-                var l_期待 = l_密度 * l_モデル.Get_期待位置数(
-                    this.Get_コンティグ長(l_始点), this.Get_コンティグ長(l_終点), Math.Max(0, l_ギャップ長));
+                var l_期待に対する比 = l_較正器.Get_正規化済み支持(
+                    (ulong)l_一貫した本数, this.Get_コンティグ長(l_始点), this.Get_コンティグ長(l_終点), Math.Max(0, l_ギャップ長));
 
-                l_隣接[l_始点].Add(new スキャフォールド候補(
-                    l_終点, (ulong)l_一貫した本数, l_ギャップ長,
-                    l_期待 > 0 ? l_一貫した本数 / l_期待 : 0));
+                l_隣接[l_始点].Add(new スキャフォールド候補(l_終点, (ulong)l_一貫した本数, l_ギャップ長, l_期待に対する比));
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
             var l_最小証拠数 = Consts.スキャフォールド支持数の下限;
 
             Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {l_辺の集計.Count}"
-                + (l_モデル.A_使えるか ? $"; fragment-start density {l_密度:0.###}/bp" : "; ideal-count model unavailable"));
+                + (l_較正器.A_使えるか ? "; ideal-count model available" : "; ideal-count model unavailable"));
 
             // 各頂点について、最多支持の辺1本だけを残す。
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
@@ -466,26 +466,6 @@ namespace Tsumiki.Core
         private long Get_コンティグ長(int p_頂点)
         {
             return this._コンティグ配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;
-        }
-
-        /// <summary>
-        /// フラグメント開始位置の密度。同一 unitig 内で観測された本数を、
-        /// 同じモデルが予測する位置数で割って較正する。
-        /// 期待本数の絶対値を合わせるにはこの密度が要る。
-        /// </summary>
-        private double Get_フラグメント密度(PairedDistanceModel p_モデル)
-        {
-            if (!p_モデル.A_使えるか)
-            {
-                return 0;
-            }
-
-            double l_期待位置数 = 0;
-            foreach (var l_長さ in p_コンティグ構築.A_ユニティグ長.Values)
-            {
-                l_期待位置数 += p_モデル.Get_期待位置数_単一(l_長さ);
-            }
-            return l_期待位置数 > 0 ? p_コンティグ構築.A_同一ユニティグ標本.Count / l_期待位置数 : 0;
         }
 
         /// <summary>
