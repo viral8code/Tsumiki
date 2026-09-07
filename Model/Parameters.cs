@@ -188,6 +188,12 @@ namespace Tsumiki.Model
         public bool A_エラー訂正するか { get; set; } = false;
 
         /// <summary>
+        /// ペアエンドのオーバーラップ解析(アダプタ除去 + 相互訂正)を
+        /// エラー訂正・アセンブリの前に行うか。
+        /// </summary>
+        public bool A_前処理するか { get; set; } = false;
+
+        /// <summary>
         /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか。
         /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、
         /// 精度を求めるなら試すしかない。実行時間と引き換えになるので既定は false。
@@ -267,6 +273,7 @@ namespace Tsumiki.Model
                 insert size: {this.A_インサートサイズ?.ToString() ?? Consts.インサートサイズ未指定表示}
                 allow ambiguous bases : {this.A_曖昧塩基を許容するか}
                 error correction : {this.A_エラー訂正するか}
+                preprocess (adapter trim + pair correction) : {this.A_前処理するか}
                 multi-k : {this.A_マルチkか}
                 carry sequence between k : {this.A_引き継ぐか}
                 merge multi-k results : {this.A_マージするか}

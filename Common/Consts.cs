@@ -50,6 +50,8 @@ namespace Tsumiki.Common
 
             public const string エラー訂正 = "-ec";
 
+            public const string 前処理 = "-pp";
+
             public const string メモリ予算 = "-mem";
 
             public const string マルチk = "-mk";
@@ -176,6 +178,7 @@ namespace Tsumiki.Common
             {引数キー.マージ} : with {引数キー.マルチk}, splice sequence from the other k values into the selected assembly where they span a junction it left open. Off by default: on GAGE-B R. sphaeroides this raised NGA50 by 14% but nearly doubled the misassemblies, because assemblies of the same reads make correlated errors at the same repeats (default : false)
             {引数キー.引き継ぎなし} : with {引数キー.マルチk}, do not carry sequence from one k to the next. Carrying is on by default: a larger k loses k-mers to thin coverage, and the previous k already walked that region (default : carry)
             {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
+            {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
             {引数キー.ヘルプ} : output this text (default : false)
 
             """;

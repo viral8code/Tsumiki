@@ -78,6 +78,10 @@ namespace Tsumiki.IO
                             l_引数.A_エラー訂正するか = true;
                             break;
 
+                        case Consts.引数キー.前処理:
+                            l_引数.A_前処理するか = true;
+                            break;
+
                         case Consts.引数キー.マルチk:
                             l_引数.A_マルチkか = true;
                             break;

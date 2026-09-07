@@ -72,6 +72,32 @@ namespace Tsumiki
 
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
 
+            if (l_引数.A_前処理するか)
+            {
+                if (string.IsNullOrWhiteSpace(l_引数.A_リード2のパス))
+                {
+                    Console.WriteLine("[Warning] -pp requires paired-end reads (read2 is not set). Skipping preprocessing.");
+                }
+                else
+                {
+                    Console.WriteLine("Preprocessing reads (adapter trim + pair correction)");
+
+                    var l_前処理済み1 = Path.Combine(l_一時ディレクトリ, "preprocessed.1.fq");
+                    var l_前処理済み2 = Path.Combine(l_一時ディレクトリ, "preprocessed.2.fq");
+
+                    var l_前処理統計 = Preprocessor.V_前処理_リードファイル(
+                        l_引数.A_リード1のパス, l_引数.A_リード2のパス, l_前処理済み1, l_前処理済み2);
+                    Preprocessor.V_出力_前処理統計(l_前処理統計);
+
+                    // 以降の全処理(エラー訂正・k-merカウント・グラフ構築)は
+                    // 前処理済みファイルを見るようにする。
+                    l_引数.A_リード1のパス = l_前処理済み1;
+                    l_引数.A_リード2のパス = l_前処理済み2;
+
+                    Logger.V_出力_タイムスタンプ();
+                }
+            }
+
             if (l_引数.A_エラー訂正するか)
             {
                 Console.WriteLine("Correcting reads before assembly");
