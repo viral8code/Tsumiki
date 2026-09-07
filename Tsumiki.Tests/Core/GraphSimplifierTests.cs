@@ -13,6 +13,11 @@ namespace Tsumiki.Tests.Core
         {
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_graph_simplifier_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
+
+            // これらのテストは比率ベースのtip判定を検証する。他のテストが残した
+            // 混合モデルの適合結果が「無条件に信頼する下限」として漏れ込み、
+            // 判定を横取りしないようにする。
+            ConfigurationManager.A_スペクトルモデル = null;
         }
 
         public void Dispose()

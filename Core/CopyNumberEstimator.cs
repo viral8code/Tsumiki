@@ -73,7 +73,15 @@ namespace Tsumiki.Core
             IReadOnlyDictionary<int, double> p_カバレッジ,
             IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
-            var l_基準値 = Get_長さ加重中央値(p_カバレッジ, p_ユニティグ長);
+            // k-mer スペクトルの2成分混合モデルが適合できていれば、その単一コピー平均を
+            // 基準値に使う。カットオフと同じモデルから導くことで、unitig の長さ加重
+            // 中央値という別のヒューリスティックとの食い違いを無くす
+            // (KmerCutoffSelector.V_解決_kmerカットオフ 参照)。適合に失敗している場合は
+            // 従来どおり unitig カバレッジの長さ加重中央値にフォールバックする。
+            var l_モデル基準値 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均;
+            var l_基準値 = l_モデル基準値 is { } l_値 && l_値 > 0
+                ? l_値
+                : Get_長さ加重中央値(p_カバレッジ, p_ユニティグ長);
 
             Dictionary<int, int> l_コピー数 = [];
             foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)

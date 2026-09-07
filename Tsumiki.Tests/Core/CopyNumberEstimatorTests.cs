@@ -21,6 +21,11 @@ namespace Tsumiki.Tests.Core
         {
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_copynumber_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
+
+            // これらのテストは長さ加重中央値のフォールバック経路を検証する。
+            // 他のテスト(KmerCutoffSelectorTests 等)が残した混合モデルの
+            // 適合結果が ConfigurationManager 経由で漏れ込まないようにする。
+            ConfigurationManager.A_スペクトルモデル = null;
         }
 
         public void Dispose()
