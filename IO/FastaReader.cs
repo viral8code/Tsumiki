@@ -1,45 +1,21 @@
-using System.IO.Compression;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
 {
-    internal class FastaReader : IDisposable
+    internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
-        public string A_ファイルパス { get; private set; }
-
-        private readonly StreamReader _読み込み;
-
-        private const int バッファサイズ = 1 << 25;
-
-        public FastaReader(string p_パス)
+        /// <summary>FASTA を1回で全件読み込む。ID の先頭 '>' は取り除く。</summary>
+        public static List<(string A_ID, string A_配列)> Get_全エントリ(string p_パス)
         {
-            this.A_ファイルパス = p_パス;
-            var l_入力ストリーム = new FileStream(p_パス, FileMode.Open, FileAccess.Read);
-            if (Path.GetExtension(p_パス)?.ToLower() == ".gz")
+            List<(string, string)> l_結果 = [];
+            using var l_読み込み = new FastaReader(p_パス);
+            while (l_読み込み.Get_続きがあるか())
             {
-                var l_展開ストリーム = new GZipStream(l_入力ストリーム, CompressionMode.Decompress);
-                this._読み込み = new(l_展開ストリーム, bufferSize: バッファサイズ);
+                var l_エントリ = l_読み込み.Get_次の配列();
+                l_結果.Add((l_エントリ.A_ID.TrimStart('>'), l_エントリ.A_配列));
             }
-            else
-            {
-                this._読み込み = new(l_入力ストリーム, bufferSize: バッファサイズ);
-            }
-        }
-
-        public bool Get_続きがあるか()
-        {
-            return !this._読み込み.EndOfStream;
-        }
-
-        private string Get_次の行()
-        {
-            var l_行 = this._読み込み.ReadLine();
-            while (string.IsNullOrWhiteSpace(l_行))
-            {
-                l_行 = this._読み込み.ReadLine();
-            }
-            return l_行;
+            return l_結果;
         }
 
         public 配列エントリ Get_次の配列()
@@ -56,11 +32,6 @@ namespace Tsumiki.IO
                 Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
                 throw;
             }
-        }
-
-        public void Dispose()
-        {
-            this._読み込み.Dispose();
         }
     }
 }

@@ -84,7 +84,7 @@ namespace Tsumiki.Core
             using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_アンカー;
 
-            V_読込_リード(p_引数, l_アンカー);
+            KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
             _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
             KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
@@ -225,32 +225,6 @@ namespace Tsumiki.Core
                 }
             }
             return l_候補;
-        }
-
-        private static void V_読込_リード(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
-        {
-            if (p_引数.A_曖昧塩基を許容するか)
-            {
-                KmerCounting.V_読込_リードファイル_曖昧塩基あり(p_引数.A_リード1のパス, p_kmerインデックス);
-            }
-            else
-            {
-                KmerCounting.V_読込_リードファイル(p_引数.A_リード1のパス, p_kmerインデックス);
-            }
-
-            if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
-            {
-                return;
-            }
-
-            if (p_引数.A_曖昧塩基を許容するか)
-            {
-                KmerCounting.V_読込_リードファイル_曖昧塩基あり(p_引数.A_リード2のパス, p_kmerインデックス);
-            }
-            else
-            {
-                KmerCounting.V_読込_リードファイル(p_引数.A_リード2のパス, p_kmerインデックス);
-            }
         }
 
         /// <summary>

@@ -214,7 +214,7 @@ namespace Tsumiki.Core
                 .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
                 .Select(x =>
                 {
-                    var l_塩基列 = Get_塩基列(x);
+                    var l_塩基列 = Util.V_変換_塩基列(x);
                     return (l_塩基列, Get_平均カバレッジ(p_kmerインデックス, l_塩基列, p_k長));
                 })];
         }
@@ -228,37 +228,8 @@ namespace Tsumiki.Core
         private static double Get_長さ加重中央カバレッジ(
             (byte[] A_塩基列, double A_平均カバレッジ)[] p_ユニティグ群)
         {
-            var l_組 = p_ユニティグ群
-                .Select(x => (A_長さ: (long)x.A_塩基列.Length, x.A_平均カバレッジ))
-                .OrderBy(x => x.A_平均カバレッジ)
-                .ToList();
-            var l_総延長 = l_組.Sum(x => x.A_長さ);
-            if (l_総延長 == 0)
-            {
-                return 0;
-            }
-
-            var l_半分 = l_総延長 / 2.0;
-            long l_累積 = 0;
-            foreach (var (l_長さ, l_カバレッジ) in l_組)
-            {
-                l_累積 += l_長さ;
-                if (l_累積 >= l_半分)
-                {
-                    return l_カバレッジ;
-                }
-            }
-            return l_組[^1].A_平均カバレッジ;
-        }
-
-        private static byte[] Get_塩基列(string p_配列)
-        {
-            var l_塩基列 = new byte[p_配列.Length];
-            for (var i = 0; i < p_配列.Length; i++)
-            {
-                l_塩基列[i] = Util.Get_塩基ID(p_配列[i]);
-            }
-            return l_塩基列;
+            return StatsUtil.Get_長さ加重中央値(
+                p_ユニティグ群.Select(x => ((long)x.A_塩基列.Length, x.A_平均カバレッジ)));
         }
 
         private static void V_除去_ユニティグ全体(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)

@@ -293,7 +293,7 @@ namespace Tsumiki.Core
             var l_同一ユニティグ標本 = p_コンティグ構築.A_同一ユニティグ標本;
             if (l_同一ユニティグ標本.Count >= Consts.インサートサイズ標本数の下限)
             {
-                var l_推定値 = Get_中央値(l_同一ユニティグ標本);
+                var l_推定値 = StatsUtil.Get_中央値(l_同一ユニティグ標本);
                 var l_ユニティグN50 = Get_ユニティグN50(p_コンティグ構築.A_ユニティグ長);
                 if (l_推定値 > 0 && l_ユニティグN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
                 {
@@ -308,7 +308,7 @@ namespace Tsumiki.Core
             var l_確定辺標本 = p_コンティグ構築.A_確定辺標本;
             if (l_確定辺標本.Count >= Consts.インサートサイズ標本数の下限)
             {
-                p_インサートサイズ = Get_中央値(l_確定辺標本);
+                p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
                 Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_確定辺標本.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples because the unitigs are not long enough for same-unitig samples to be unbiased).");
                 return true;
             }
@@ -321,7 +321,7 @@ namespace Tsumiki.Core
                 return false;
             }
 
-            p_インサートサイズ = Get_中央値(l_全標本);
+            p_インサートサイズ = StatsUtil.Get_中央値(l_全標本);
             Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_全標本.Count} sampled pairs (median; resolved-edge samples were too few ({l_確定辺標本.Count}), fell back to the full pool which may be biased short).");
             return true;
         }
@@ -333,29 +333,7 @@ namespace Tsumiki.Core
         /// </summary>
         private static long Get_ユニティグN50(IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
-            if (p_ユニティグ長.Count == 0)
-            {
-                return 0;
-            }
-            var l_長さ一覧 = p_ユニティグ長.Values.OrderByDescending(x => x).ToList();
-            var l_半分 = l_長さ一覧.Sum(x => (long)x) / 2.0;
-            long l_累積 = 0;
-            foreach (var l_長さ in l_長さ一覧)
-            {
-                l_累積 += l_長さ;
-                if (l_累積 >= l_半分)
-                {
-                    return l_長さ;
-                }
-            }
-            return l_長さ一覧[^1];
-        }
-
-        private static int Get_中央値(List<int> p_値一覧)
-        {
-            var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
-            var l_中央 = l_整列済み.Count / 2;
-            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2 : l_整列済み[l_中央];
+            return StatsUtil.Get_N50([.. p_ユニティグ長.Values.Select(x => (long)x)]).A_N50;
         }
 
         private void V_読込_コンティグ()
@@ -483,17 +461,8 @@ namespace Tsumiki.Core
                 return Consts.ギャップ長の下限;
             }
 
-            var l_ギャップ候補 = p_既知長標本
-                .Select(x => l_インサートサイズ - x)
-                .OrderBy(x => x)
-                .ToList();
-
-            var l_中央 = l_ギャップ候補.Count / 2;
-            var l_中央値 = l_ギャップ候補.Count % 2 == 0
-                ? (l_ギャップ候補[l_中央 - 1] + l_ギャップ候補[l_中央]) / 2
-                : l_ギャップ候補[l_中央];
-
-            return Math.Max(Consts.ギャップ長の下限, l_中央値);
+            var l_ギャップ候補 = p_既知長標本.Select(x => l_インサートサイズ - x).ToList();
+            return Math.Max(Consts.ギャップ長の下限, StatsUtil.Get_中央値(l_ギャップ候補));
         }
 
         private string? Get_スキャフォールド配列(

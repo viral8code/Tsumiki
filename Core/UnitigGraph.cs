@@ -34,6 +34,23 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// その頂点を通り抜けてよいか。
+        ///
+        /// A-R-B-R-C(R は2コピーの反復)で A→R と R→C はどちらも本物の隣接だが、
+        /// walk は各 unitig を1回しか使えないため、連鎖させると中間の B を
+        /// 飛ばした A-R-C ができてしまう。通り抜けてよいのは反復が解きほぐされ
+        /// 入次数・出次数がどちらも1になった、どのコピーにいるか確定した状態だけ。
+        /// </summary>
+        public bool Get_通り抜けてよいか(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点)
+        {
+            if ((p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1)
+            {
+                return true;
+            }
+            return this.A_出辺[p_頂点].Count == 1 && this.Get_入次数(p_頂点) == 1;
+        }
+
+        /// <summary>
         /// 隣接グラフを構築する。
         ///
         /// 行き先が「先頭 k-mer である(開始位置==0)」ことを要求するのが要点で、

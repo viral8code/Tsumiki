@@ -217,31 +217,46 @@ namespace Tsumiki.Common
 
         public static readonly string ヘルプテキスト = $"""
             {概要テキスト}
+            Usage: tsumiki {引数キー.リード1のパス} <path> [{引数キー.リード2のパス} <path>] [options]
 
-            # Arguments
-            {引数キー.リード1のパス} [path] : forward fastq(.gz) path (required) (when using single reads, set the path using this argument)
-            {引数キー.リード2のパス} [path] : backward fastq(.gz) path
-            {引数キー.k長} [integer[,integer...]] : length of k-mer. A comma-separated list (e.g. 31,63,95) assembles at each and keeps the best, as with {引数キー.マルチk} (default : auto-selected from the observed read length, capped at {自動k長の上限}; falls back to {k長の既定値})
-            {引数キー.kmerカットオフ} [integer] : threshold of k-mer count (use kmers with this value or higher) (default : auto-selected from the k-mer count spectrum; falls back to {kmerカットオフの既定値})
-            {引数キー.Phredオフセット} [integer] : base of phred score ({string.Join(" or ", 許容Phredオフセット)}) (default : {Phredオフセットの既定値})
-            {引数キー.クオリティカットオフ} [integer] : threshold of base quality (use kmers with this value or higher) (default : {クオリティカットオフの既定値})
-            {引数キー.メモリ予算} [decimal] : memory budget for k-mer counting (e.g. 2G, 512M; a bare number means MB). Raise it to reduce disk I/O, lower it to fit a smaller machine (default : {Util.Get_表示用メモリサイズ(メモリ予算の既定値)})
-            {引数キー.インサートサイズ} : excepted insert size of pair-end reads (default : {インサートサイズ未指定表示}, auto-estimated from mapped pairs when possible)
-            {引数キー.一時ディレクトリ} [path] : temp directory (default : {一時ディレクトリの既定値})
-            {引数キー.スレッド数} [integer] : number of worker threads used for loading reads (default : number of logical processors)
-            {引数キー.ペア結合閾値} [decimal] : minimum ratio of the best-supported pair-end scaffold edge among all candidates for a node (default : {ペア結合閾値の既定値})
-            {引数キー.ペア支持数閾値} [integer] : minimum read-pair support required to resolve a short repeat during contig construction (default : {ペア支持数閾値の既定値})
-            {引数キー.マルチk} : assemble at several k and keep the best one, judged without a reference. The best k depends on how repetitive the genome is, which cannot be known from the reads alone, so the only way to find it is to try. Without {引数キー.k長} the values are spread over 21 .. {マルチk上限のリード長比:0.##} x read length; those whose predicted k-mer coverage would fall below {マルチkの最小kmerカバレッジ:0.#} are skipped (costs up to {マルチkで試す個数 + 1}x the runtime) (default : false)
-            {引数キー.マージ} : with {引数キー.マルチk}, splice sequence from the other k values into the selected assembly where they span a junction it left open. Off by default: on GAGE-B R. sphaeroides this raised NGA50 by 14% but nearly doubled the misassemblies, because assemblies of the same reads make correlated errors at the same repeats (default : false)
-            {引数キー.引き継ぎなし} : with {引数キー.マルチk}, do not carry sequence from one k to the next. Carrying is on by default: a larger k loses k-mers to thin coverage, and the previous k already walked that region (default : carry)
-            {引数キー.SuperRead} : with {引数キー.マルチk} and paired-end reads, bridge each pair through this k's trusted k-mer graph into one synthetic long read wherever the path between them is unique, and carry those alongside the usual sequence (default : false)
-            {引数キー.エラー訂正} : run k-mer-spectrum-based read error correction before assembly (default : false)
-            {引数キー.前処理} : with paired-end reads, overlap R1 against RC(R2) before everything else -- trim adapter read-through to the overlapping fragment length, and where one mate is high-quality and the other is low-quality at a mismatching position, overwrite the low-quality base with the high-quality one (default : false)
-            {引数キー.反復r_mer検証} : before duplicating a short repeat to untangle it, verify each candidate path with an r-mer (k + {rMer長のk超過分の既定値}bp -- longer than this k's own k-1 overlap, since a shorter or equal-length window can't tell the repeat's shared boundary from either neighbor's own sequence) set built from the raw reads -- require at least {r_mer接合点支持の閾値の既定値} r-mers that actually cross the head/repeat and repeat/tail junctions, otherwise refuse the duplication. Note this cannot tell a repeat's two genuinely real pairings apart (both are real graph edges either way); it only catches a pairing that isn't backed by any raw-read evidence at all (an ABySS RResolver-style veto, narrower in practice than that framing suggests). Skipped for k values where k + {rMer長のk超過分の既定値} would exceed 32bp. Costs one extra full read scan per k (default : false)
-            {引数キー.局所アセンブリ} : for scaffold gaps that GapFiller could not close, collect only the raw reads that actually map near the gap's two edges and re-assemble that small pool on its own (a k-mer trusted with even a single local occurrence, unlike the genome-wide cutoff). A safer alternative to {引数キー.マージ}: that one splices in another k's already-decided sequence and can carry over the same misassembly at the same repeat, while this one only ever introduces reads GapFiller had not looked at in isolation (default : false)
-            {引数キー.積極性モード} [{積極性モード名.保守的}|{積極性モード名.標準}|{積極性モード名.積極的}] : bundles {引数キー.ペア結合閾値} and {引数キー.ペア支持数閾値} into one dial for how far to lean into "more complete but riskier" vs "safer but more fragmented" (a lower threshold joins more branches on weaker evidence). {積極性モード名.標準} is the plain default ({ペア結合閾値の既定値}, {ペア支持数閾値の既定値}); {積極性モード名.保守的} raises both ({保守的モードのペア結合閾値}, {保守的モードのペア支持数閾値}); {積極性モード名.積極的} lowers both ({積極的モードのペア結合閾値}, {積極的モードのペア支持数閾値}). Set {引数キー.ペア結合閾値}/{引数キー.ペア支持数閾値} afterward on the command line to override either one individually (default : {積極性モード名.標準})
-            {引数キー.GFA出力} : also write {GFAファイル名}, the unitig graph (after bubble popping and repeat resolution) in GFA1 format for viewers like Bandage -- a branch left unresolved shows up directly as a junction in the graph instead of only as a line in the log (default : false)
-            {引数キー.ヘルプ} : output this text (default : false)
+            # Input
+            {$"{引数キー.リード1のパス} <path>",-20}forward fastq(.gz) path (required; also use this for single-end reads)
+            {$"{引数キー.リード2のパス} <path>",-20}reverse fastq(.gz) path
+            {$"{引数キー.曖昧塩基を許容}",-20}allow ambiguous bases (e.g. N) in reads (default: false)
+
+            # k-mer / quality
+            {$"{引数キー.k長} <int[,int...]>",-20}k-mer length; a comma-separated list (e.g. 31,63,95) tries each and keeps the best, like {引数キー.マルチk} (default: auto from read length, capped at {自動k長の上限})
+            {$"{引数キー.kmerカットオフ} <int>",-20}minimum k-mer count to trust (default: auto from the k-mer spectrum)
+            {$"{引数キー.Phredオフセット} <int>",-20}phred score base ({string.Join(" or ", 許容Phredオフセット)}) (default: {Phredオフセットの既定値})
+            {$"{引数キー.クオリティカットオフ} <int>",-20}minimum base quality to trust (default: {クオリティカットオフの既定値})
+            {$"{引数キー.メモリ予算} <size>",-20}memory budget for k-mer counting, e.g. 2G, 512M (default: {Util.Get_表示用メモリサイズ(メモリ予算の既定値)})
+
+            # Paired-end / scaffolding
+            {$"{引数キー.インサートサイズ} <int>",-20}expected insert size (default: auto-estimated from mapped pairs)
+            {$"{引数キー.ペア結合閾値} <decimal>",-20}minimum dominance ratio to accept a scaffold edge (default: {ペア結合閾値の既定値})
+            {$"{引数キー.ペア支持数閾値} <int>",-20}minimum read-pair support to resolve a short repeat (default: {ペア支持数閾値の既定値})
+            {引数キー.積極性モード} <{積極性モード名.保守的}|{積極性モード名.標準}|{積極性モード名.積極的}>
+            {"",20}preset for {引数キー.ペア結合閾値}/{引数キー.ペア支持数閾値}: trades completeness for safety (default: {積極性モード名.標準})
+
+            # Preprocessing
+            {$"{引数キー.前処理}",-20}trim adapter read-through and cross-correct low-quality bases via mate overlap (default: false)
+            {$"{引数キー.エラー訂正}",-20}correct reads from the k-mer spectrum before assembly (default: false)
+
+            # Multi-k assembly
+            {$"{引数キー.マルチk}",-20}assemble at several k values and keep the best (default: false; up to {マルチkで試す個数 + 1}x runtime)
+            {$"{引数キー.引き継ぎなし}",-20}don't carry sequence from one k to the next (default: carry)
+            {$"{引数キー.SuperRead}",-20}with paired-end reads, bridge pairs into synthetic long reads and carry those too (default: false)
+            {$"{引数キー.マージ}",-20}splice sequence from other k values into junctions the best k left open (default: false; can raise misassemblies)
+
+            # Repeat resolution safeguards
+            {$"{引数キー.反復r_mer検証}",-20}require raw-read r-mer support before duplicating a short repeat (default: false)
+            {$"{引数キー.局所アセンブリ}",-20}re-assemble unclosed scaffold gaps from reads mapped near their edges; safer than {引数キー.マージ} (default: false)
+
+            # Output / misc
+            {$"{引数キー.GFA出力}",-20}also write {GFAファイル名} (the unitig graph, GFA1) for viewers like Bandage (default: false)
+            {$"{引数キー.一時ディレクトリ} <path>",-20}temp directory (default: {一時ディレクトリの既定値})
+            {$"{引数キー.スレッド数} <int>",-20}worker threads for read loading (default: number of logical processors)
+            {$"{引数キー.ヘルプ}",-20}show this text
 
             """;
 
@@ -282,5 +297,20 @@ namespace Tsumiki.Common
         /// ギャップ長が推定上0以下になった場合に最低限挿入するNの数。
         /// </summary>
         public const int ギャップ長の下限 = 1;
+
+        /// <summary>
+        /// ギャップ充填(GapFiller・LocalAssembler共通)で、推定ギャップ長に
+        /// 対して許容する誤差(塩基)。インサートサイズ推定のばらつきが
+        /// そのままギャップ長推定のばらつきになるため、ぴったりの長さだけを
+        /// 探すと現実にはまず当たらない。
+        /// </summary>
+        public const int ギャップ充填の長さの余裕幅 = 30;
+
+        /// <summary>
+        /// ギャップ充填(GapFiller・LocalAssembler共通)の対象とするギャップ長の
+        /// 上限。これより長いギャップは探索空間が広すぎるうえ、推定長の誤差も
+        /// 大きく一意に定まる見込みが薄いため対象外とする。
+        /// </summary>
+        public const int ギャップ充填のギャップ長上限 = 500;
     }
 }

@@ -1,3 +1,4 @@
+using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 
@@ -41,32 +42,15 @@ namespace Tsumiki.Core
                 return new アセンブリ統計(0, 0, 0, 0, 0, 0, 0);
             }
 
-            l_長さ一覧.Sort();
-            l_長さ一覧.Reverse();
-
-            var l_半分 = l_総延長 / 2.0;
-            long l_累積 = 0;
-            var l_N50 = l_長さ一覧[^1];
-            var l_L50 = l_長さ一覧.Count;
-            for (var i = 0; i < l_長さ一覧.Count; i++)
-            {
-                l_累積 += l_長さ一覧[i];
-                if (l_累積 >= l_半分)
-                {
-                    l_N50 = l_長さ一覧[i];
-                    l_L50 = i + 1;
-                    break;
-                }
-            }
-
+            var (l_N50, l_L50) = StatsUtil.Get_N50([.. l_長さ一覧.Select(x => (long)x)]);
             var l_GC率 = l_塩基数 == 0 ? 0.0 : (100.0 * l_GC数 / l_塩基数);
 
             return new アセンブリ統計(
                 p_配列数: l_長さ一覧.Count,
                 p_総延長: l_総延長,
-                p_最大長: l_長さ一覧[0],
-                p_最小長: l_長さ一覧[^1],
-                p_N50: l_N50,
+                p_最大長: l_長さ一覧.Max(),
+                p_最小長: l_長さ一覧.Min(),
+                p_N50: (int)l_N50,
                 p_L50: l_L50,
                 p_GC率: l_GC率);
         }

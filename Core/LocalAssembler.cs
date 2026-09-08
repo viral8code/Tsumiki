@@ -28,12 +28,6 @@ namespace Tsumiki.Core
         /// <summary>ギャップの両端からアンカーとして使う長さ。</summary>
         private const int アンカー長 = 300;
 
-        /// <summary>GapFiller と同じ基準。これより長いギャップは対象外。</summary>
-        private const int ギャップ長の上限 = 500;
-
-        /// <summary>推定ギャップ長に対して許容する誤差(塩基)。</summary>
-        private const int 長さの余裕幅 = 30;
-
         /// <summary>
         /// 1ギャップに集める局所リードの上限。アンカーが反復配列と重なると
         /// 際限なくリードが集まりうるため、暴走を防ぐ。
@@ -50,15 +44,7 @@ namespace Tsumiki.Core
             int p_k長,
             string p_作業ディレクトリ)
         {
-            List<(string A_ID, string A_配列)> l_スキャフォールド群 = [];
-            using (var l_読み込み = new FastaReader(p_スキャフォールドパス))
-            {
-                while (l_読み込み.Get_続きがあるか())
-                {
-                    var l_項目 = l_読み込み.Get_次の配列();
-                    l_スキャフォールド群.Add((l_項目.A_ID.TrimStart('>'), l_項目.A_配列));
-                }
-            }
+            var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
 
             var l_ギャップ一覧 = Get_対象ギャップ一覧(l_スキャフォールド群, p_k長);
             if (l_ギャップ一覧.Count == 0)
@@ -130,7 +116,7 @@ namespace Tsumiki.Core
                     }
                     var l_長さ = i - l_開始;
                     // 両端に最低 k 長ぶんの足場が要る(左右のアンカーk-merを取るため)。
-                    if (l_長さ <= ギャップ長の上限 && l_開始 >= p_k長 && i + p_k長 <= l_配列.Length)
+                    if (l_長さ <= Consts.ギャップ充填のギャップ長上限 && l_開始 >= p_k長 && i + p_k長 <= l_配列.Length)
                     {
                         var l_左長 = Math.Min(アンカー長, l_開始);
                         var l_右長 = Math.Min(アンカー長, l_配列.Length - i);
@@ -292,8 +278,8 @@ namespace Tsumiki.Core
                     return null;
                 }
 
-                var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - 長さの余裕幅);
-                var l_最大長 = p_ギャップ.A_長さ + 長さの余裕幅;
+                var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - Consts.ギャップ充填の長さの余裕幅);
+                var l_最大長 = p_ギャップ.A_長さ + Consts.ギャップ充填の長さの余裕幅;
                 (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
                     l_左のkmer, l_目標kmer, l_最小長, l_最大長, l_索引, p_k長);
                 return l_経路;

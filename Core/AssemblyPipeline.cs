@@ -39,7 +39,7 @@ namespace Tsumiki.Core
             using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_kmerインデックス;
 
-            V_読込_リード(p_引数, l_kmerインデックス);
+            KmerCounting.V_読込_リードペア(p_引数, l_kmerインデックス, p_進行状況を出力するか: true);
 
             Logger.V_出力_タイムスタンプ();
 
@@ -263,36 +263,6 @@ namespace Tsumiki.Core
                 l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
             }
             return new 引き継ぎ配列(p_配列, l_カバレッジ, p_k長);
-        }
-
-        private static void V_読込_リード(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
-        {
-            var l_ペアエンドか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-            Console.WriteLine(l_ペアエンドか ? "Loading File1" : "Loading File");
-
-            if (p_引数.A_曖昧塩基を許容するか)
-            {
-                KmerCounting.V_読込_リードファイル_曖昧塩基あり(p_引数.A_リード1のパス, p_kmerインデックス);
-            }
-            else
-            {
-                KmerCounting.V_読込_リードファイル(p_引数.A_リード1のパス, p_kmerインデックス);
-            }
-
-            if (!l_ペアエンドか)
-            {
-                return;
-            }
-
-            Console.WriteLine("Loading File2");
-            if (p_引数.A_曖昧塩基を許容するか)
-            {
-                KmerCounting.V_読込_リードファイル_曖昧塩基あり(p_引数.A_リード2のパス, p_kmerインデックス);
-            }
-            else
-            {
-                KmerCounting.V_読込_リードファイル(p_引数.A_リード2のパス, p_kmerインデックス);
-            }
         }
 
         /// <summary>

@@ -1,50 +1,25 @@
-using System.IO.Compression;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
 {
-    internal class FastqReader : IDisposable
+    internal class FastqReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
-        public string A_ファイルパス { get; private set; }
-
-        private readonly StreamReader _読み込み;
-
-        private const int バッファサイズ = 1 << 25;
-
-        public FastqReader(string p_パス)
+        /// <summary>
+        /// FASTQ は4行1組の固定構造なので、空行に見えても実は EOF という
+        /// ケースを区別しないと4行の途中で切れたファイルで無限に回り続ける。
+        /// </summary>
+        protected override string Get_次の行()
         {
-            this.A_ファイルパス = p_パス;
-            var l_入力ストリーム = new FileStream(p_パス, FileMode.Open, FileAccess.Read);
-            if (Path.GetExtension(p_パス)?.ToLower() == ".gz")
-            {
-                var l_展開ストリーム = new GZipStream(l_入力ストリーム, CompressionMode.Decompress);
-                this._読み込み = new(l_展開ストリーム, bufferSize: バッファサイズ);
-            }
-            else
-            {
-                this._読み込み = new(l_入力ストリーム, bufferSize: バッファサイズ);
-            }
-        }
-
-        public bool Get_続きがあるか()
-        {
-            return !this._読み込み.EndOfStream;
-        }
-
-        private string Get_次の行()
-        {
-            var l_行 = this._読み込み.ReadLine();
+            var l_行 = this.Get_次の行_生();
             while (string.IsNullOrWhiteSpace(l_行))
             {
-                // ReadLine は EOF でも null を返す。空行の読み飛ばしと区別しないと
-                // 途中で切れたファイルで無限に回り続ける。
-                if (l_行 is null && this._読み込み.EndOfStream)
+                if (l_行 is null && !this.Get_続きがあるか())
                 {
                     throw new InvalidDataException(
                         $"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
                 }
-                l_行 = this._読み込み.ReadLine();
+                l_行 = this.Get_次の行_生();
             }
             return l_行;
         }
@@ -63,16 +38,21 @@ namespace Tsumiki.IO
             }
         }
 
+        private (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
+        {
+            var l_ID = this.Get_次の行();
+            var l_配列 = this.Get_次の行();
+            _ = this.Get_次の行();
+            var l_クオリティ = this.Get_次の行();
+            this.V_検査(l_ID, l_配列, l_クオリティ);
+            return (l_ID, l_配列, l_クオリティ);
+        }
+
         public リードデータ Get_次のリード()
         {
             try
             {
-                var l_ID = this.Get_次の行();
-                var l_配列 = this.Get_次の行();
-                _ = this.Get_次の行();
-                var l_クオリティ = this.Get_次の行();
-                this.V_検査(l_ID, l_配列, l_クオリティ);
-
+                var (l_ID, l_配列, l_クオリティ) = this.Get_次のレコード();
                 return new リードデータ()
                 {
                     A_ID = l_ID,
@@ -97,12 +77,7 @@ namespace Tsumiki.IO
         {
             try
             {
-                var l_ID = this.Get_次の行();
-                var l_配列 = this.Get_次の行();
-                _ = this.Get_次の行();
-                var l_クオリティ = this.Get_次の行();
-                this.V_検査(l_ID, l_配列, l_クオリティ);
-
+                var (l_ID, l_配列, l_クオリティ) = this.Get_次のレコード();
                 return new リードデータ()
                 {
                     A_ID = l_ID,
@@ -116,11 +91,6 @@ namespace Tsumiki.IO
                 Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
                 throw;
             }
-        }
-
-        public void Dispose()
-        {
-            this._読み込み.Dispose();
         }
     }
 }

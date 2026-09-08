@@ -96,7 +96,7 @@ namespace Tsumiki.Core
                 // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
                 // R を1回しか使えない walk でこれを連鎖させると中間の B が
                 // 飛ばされる(詳細は ContigMaker 側の同名の判定を参照)。
-                if (!Get_通り抜けてよいか(p_グラフ, p_コピー数, v) || !Get_通り抜けてよいか(p_グラフ, p_コピー数, l_選択 ^ 1))
+                if (!p_グラフ.Get_通り抜けてよいか(p_コピー数, v) || !p_グラフ.Get_通り抜けてよいか(p_コピー数, l_選択 ^ 1))
                 {
                     continue;
                 }
@@ -285,21 +285,6 @@ namespace Tsumiki.Core
             {
                 p_1歩ごとの最良[p_状態.A_最初の1歩] = (p_状態.A_スコア, p_状態.A_生スコア);
             }
-        }
-
-        /// <summary>
-        /// その頂点を「通り抜けて」よいか。多コピーの反復は、解きほぐされて
-        /// 入次数・出次数がどちらも1になっている場合(=どのコピーにいるかが
-        /// 確定している場合)にだけ通り抜けてよい。
-        /// </summary>
-        private static bool Get_通り抜けてよいか(
-            UnitigGraph p_グラフ, IReadOnlyDictionary<int, int> p_コピー数, int p_頂点)
-        {
-            if (p_コピー数.GetValueOrDefault(p_頂点 >> 1, 1) <= 1)
-            {
-                return true;
-            }
-            return p_グラフ.A_出辺[p_頂点].Count == 1 && p_グラフ.Get_入次数(p_頂点) == 1;
         }
 
         /// <summary>

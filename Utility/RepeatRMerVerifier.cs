@@ -155,21 +155,17 @@ namespace Tsumiki.Utility
         /// 配列とその逆相補のうち、2bitパック値が小さいほうを返す
         /// (順鎖/逆鎖どちらから読んでも同一のキーに正規化するため)。
         /// KmerKey は現在の実行時引数のk長を前提にするため r-mer(k とは
-        /// 別の長さ)には使えず、ここで独立に実装する。
+        /// 別の長さ)には使えず、KmerPacking の長さ非依存な API を使う。
+        /// r 長(最大32)は UInt128 の正規化パック値がそのまま ulong に収まる。
         /// </summary>
         private static ulong Get_正準値(ReadOnlySpan<char> p_配列)
         {
-            var l_順鎖 = 0UL;
+            Span<byte> l_塩基ID列 = stackalloc byte[p_配列.Length];
             for (var i = 0; i < p_配列.Length; i++)
             {
-                l_順鎖 = (l_順鎖 << 2) | ((ulong)Util.Get_塩基ID(p_配列[i]) - 1);
+                l_塩基ID列[i] = Util.Get_塩基ID(p_配列[i]);
             }
-            var l_逆鎖 = 0UL;
-            for (var i = p_配列.Length - 1; i >= 0; i--)
-            {
-                l_逆鎖 = (l_逆鎖 << 2) | (3UL - ((ulong)Util.Get_塩基ID(p_配列[i]) - 1));
-            }
-            return Math.Min(l_順鎖, l_逆鎖);
+            return (ulong)KmerPacking.Get_正規化パック(l_塩基ID列);
         }
     }
 }

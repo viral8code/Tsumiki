@@ -19,33 +19,12 @@ namespace Tsumiki.Core
     internal static class GapFiller
     {
         /// <summary>
-        /// 推定ギャップ長に対して許容する誤差(塩基)。インサートサイズ推定の
-        /// ばらつきがそのままギャップ長推定のばらつきになるため、
-        /// ぴったりの長さだけを探すと現実にはまず当たらない。
-        /// </summary>
-        private const int 長さの余裕幅 = 30;
-
-        /// <summary>
-        /// これより長いギャップは探索空間が広すぎるうえ、推定長の誤差も大きく
-        /// 一意に定まる見込みが薄いため対象外とする。
-        /// </summary>
-        private const int ギャップ長の上限 = 500;
-
-        /// <summary>
         /// スキャフォールドを読み込み、埋められるギャップを埋めて同じパスへ書き戻す。
         /// </summary>
         public static ギャップ充填統計 V_充填_ギャップ(
             string p_スキャフォールドパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
-            List<(string A_ID, string A_配列)> l_スキャフォールド群 = [];
-            using (var l_読み込み = new FastaReader(p_スキャフォールドパス))
-            {
-                while (l_読み込み.Get_続きがあるか())
-                {
-                    var l_配列エントリ = l_読み込み.Get_次の配列();
-                    l_スキャフォールド群.Add((l_配列エントリ.A_ID.TrimStart('>'), l_配列エントリ.A_配列));
-                }
-            }
+            var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
 
             var l_総ギャップ数 = 0;
             var l_埋めたギャップ数 = 0;
@@ -126,7 +105,7 @@ namespace Tsumiki.Core
         {
             p_判定 = ギャップ充填判定.到達不能;
 
-            if (p_ギャップ長 > ギャップ長の上限 || p_左側の出力.Length < p_k長)
+            if (p_ギャップ長 > Consts.ギャップ充填のギャップ長上限 || p_左側の出力.Length < p_k長)
             {
                 return null;
             }
@@ -159,8 +138,8 @@ namespace Tsumiki.Core
                 return null;
             }
 
-            var l_最小長 = Math.Max(0, p_ギャップ長 - 長さの余裕幅);
-            var l_最大長 = p_ギャップ長 + 長さの余裕幅;
+            var l_最小長 = Math.Max(0, p_ギャップ長 - Consts.ギャップ充填の長さの余裕幅);
+            var l_最大長 = p_ギャップ長 + Consts.ギャップ充填の長さの余裕幅;
 
             (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
                 l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);

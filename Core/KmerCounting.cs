@@ -54,6 +54,46 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// リード1(・指定があればリード2)を、-ab の有無に応じた経路で
+        /// TrustedKmerIndex へ読み込む。AssemblyPipeline と MultiKAssembler の
+        /// どちらも(単一k・複数kの違いだけで)同じ読み込み手順を必要とするため
+        /// ここにまとめる。
+        /// </summary>
+        public static void V_読込_リードペア(
+            Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
+        {
+            var l_ペアエンドか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
+            if (p_進行状況を出力するか)
+            {
+                Console.WriteLine(l_ペアエンドか ? "Loading File1" : "Loading File");
+            }
+            V_読込_1ファイル(p_引数.A_リード1のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
+
+            if (!l_ペアエンドか)
+            {
+                return;
+            }
+
+            if (p_進行状況を出力するか)
+            {
+                Console.WriteLine("Loading File2");
+            }
+            V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
+        }
+
+        private static void V_読込_1ファイル(string p_パス, bool p_曖昧塩基を許容するか, TrustedKmerIndex p_kmerインデックス)
+        {
+            if (p_曖昧塩基を許容するか)
+            {
+                V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス);
+            }
+            else
+            {
+                V_読込_リードファイル(p_パス, p_kmerインデックス);
+            }
+        }
+
+        /// <summary>
         /// 曖昧塩基を許容する経路。呼ばれる頻度が低い想定のため未並列。
         /// </summary>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)

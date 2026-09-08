@@ -59,11 +59,7 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                var l_塩基列 = new byte[l_配列.Length];
-                for (var i = 0; i < l_配列.Length; i++)
-                {
-                    l_塩基列[i] = Util.Get_塩基ID(l_配列[i]);
-                }
+                var l_塩基列 = Util.V_変換_塩基列(l_配列);
 
                 ulong l_合計 = 0;
                 var l_件数 = 0;
@@ -172,14 +168,13 @@ namespace Tsumiki.Core
                 var l_島内カバレッジ = l_島
                     .Select(id => p_カバレッジ.GetValueOrDefault(id, 0.0))
                     .Where(x => x > 0)
-                    .Order()
                     .ToList();
                 if (l_島内カバレッジ.Count == 0)
                 {
                     continue;
                 }
 
-                var l_局所基準値 = Get_中央値(l_島内カバレッジ);
+                var l_局所基準値 = StatsUtil.Get_中央値(l_島内カバレッジ);
                 if (l_局所基準値 <= 0)
                 {
                     continue;
@@ -287,14 +282,13 @@ namespace Tsumiki.Core
                 var l_成分内カバレッジ = l_成分
                     .Select(x => p_カバレッジ.GetValueOrDefault(x, 0.0))
                     .Where(x => x > 0)
-                    .Order()
                     .ToList();
                 if (l_成分内カバレッジ.Count < 2)
                 {
                     continue;
                 }
 
-                var l_局所基準値 = Get_中央値(l_成分内カバレッジ);
+                var l_局所基準値 = StatsUtil.Get_中央値(l_成分内カバレッジ);
                 if (l_局所基準値 <= 0)
                 {
                     continue;
@@ -347,14 +341,6 @@ namespace Tsumiki.Core
             return l_結果;
         }
 
-        private static double Get_中央値(List<double> p_昇順の値)
-        {
-            var l_件数 = p_昇順の値.Count;
-            return l_件数 % 2 == 1
-                ? p_昇順の値[l_件数 / 2]
-                : (p_昇順の値[(l_件数 / 2) - 1] + p_昇順の値[l_件数 / 2]) / 2.0;
-        }
-
         /// <summary>
         /// 長さで重み付けしたカバレッジの中央値。ゲノムの大部分を占める
         /// 単一コピー領域の水準を推定するために使う。
@@ -365,31 +351,8 @@ namespace Tsumiki.Core
         {
             var l_組 = p_カバレッジ
                 .Where(x => p_ユニティグ長.ContainsKey(x.Key) && x.Value > 0)
-                .Select(x => (A_長さ: (long)p_ユニティグ長[x.Key], A_カバレッジ: x.Value))
-                .OrderBy(x => x.A_カバレッジ)
-                .ToList();
-            if (l_組.Count == 0)
-            {
-                return 0;
-            }
-
-            var l_総延長 = l_組.Sum(x => x.A_長さ);
-            if (l_総延長 == 0)
-            {
-                return 0;
-            }
-
-            var l_半分 = l_総延長 / 2.0;
-            long l_累積 = 0;
-            foreach (var (l_長さ, l_カバレッジ値) in l_組)
-            {
-                l_累積 += l_長さ;
-                if (l_累積 >= l_半分)
-                {
-                    return l_カバレッジ値;
-                }
-            }
-            return l_組[^1].A_カバレッジ;
+                .Select(x => ((long)p_ユニティグ長[x.Key], x.Value));
+            return StatsUtil.Get_長さ加重中央値(l_組);
         }
 
         /// <summary>
