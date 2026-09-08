@@ -470,6 +470,10 @@ namespace Tsumiki.Common
                 "[Info] Recovered {0} branchless closed loop(s) that the start-point rule cannot reach",
             [メッセージID.孤立した環状の複製単位] =
                 "[Info] {0} replicon(s) form a closed circle on their own and were joined end to start",
+            [メッセージID.ヘルプ_ログ水準] =
+                "how much to print to the console (default: {0}); {1} in the temp directory always keeps everything",
+            [メッセージID.ログの保存先] =
+                "[Info] Full log kept at {0}",
         };
 
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
@@ -902,6 +906,10 @@ namespace Tsumiki.Common
                 "[Info] 開始点の条件では拾えない、分岐のない閉路を {0} 個回収",
             [メッセージID.孤立した環状の複製単位] =
                 "[Info] それ自体で環をなす複製単位 {0} 個を、末尾から先頭へ閉じて結合",
+            [メッセージID.ヘルプ_ログ水準] =
+                "画面へ出す量 (既定: {0})。一時ディレクトリの {1} には常に全量を残す",
+            [メッセージID.ログの保存先] =
+                "[Info] 全量のログを {0} に保存",
         };
 
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
@@ -1334,6 +1342,10 @@ namespace Tsumiki.Common
                 "[Info] 已找回起点条件无法覆盖的无分支闭环 {0} 个",
             [メッセージID.孤立した環状の複製単位] =
                 "[Info] 自身即构成闭环的复制单元 {0} 个，已从末端连接到起点",
+            [メッセージID.ヘルプ_ログ水準] =
+                "输出到控制台的信息量（默认：{0}）；临时目录中的 {1} 始终保留全部内容",
+            [メッセージID.ログの保存先] =
+                "[Info] 完整日志保存于 {0}",
         };
     }
 }

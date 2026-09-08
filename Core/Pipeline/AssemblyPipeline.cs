@@ -69,7 +69,6 @@ namespace Tsumiki.Core
             {
                 Logger.V_出力(メッセージID.救済kmerの開始);
                 _ = MercyKmerRescuer.Get_救済数(p_引数, l_kmerインデックス, p_k長);
-                Logger.V_出力_タイムスタンプ();
             }
 
             // 引き継ぎはカットオフの後に行う。カウントとカットオフを通常どおり

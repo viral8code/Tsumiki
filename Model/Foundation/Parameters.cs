@@ -189,6 +189,23 @@ namespace Tsumiki.Model
         /// <summary>進行状況メッセージの言語。</summary>
         public 言語 A_言語 { get; set; } = 言語.日本語;
 
+        /// <summary>
+        /// 画面へ出す量。ファイルへの記録はこれに関わらず全量を残すので、
+        /// 静かにしても後から原因を追う手掛かりは失われない。
+        /// </summary>
+        public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
+
+        /// <summary>-log に書く綴り。表示は CLI で指定する形に合わせる。</summary>
+        private static string Get_ログ水準名(ログ水準 p_水準)
+        {
+            return p_水準 switch
+            {
+                ログ水準.最小 => Consts.ログ水準名.最小,
+                ログ水準.詳細 => Consts.ログ水準名.詳細,
+                _ => Consts.ログ水準名.標準,
+            };
+        }
+
         /// <summary>-lang に書く綴り。表示は CLI で指定する形に合わせる。</summary>
         private static string Get_言語名(言語 p_言語)
         {
@@ -364,6 +381,7 @@ namespace Tsumiki.Model
                 delete temp directory when finished : {this.A_一時ディレクトリを削除するか}
                 thread count : {this.A_スレッド数}
                 message language : {Get_言語名(this.A_言語)}
+                console log level : {Get_ログ水準名(this.A_ログ水準)}
                 pair unite threshold : {this.A_ペア結合閾値}
                 pair count threshold : {this.A_ペア支持数閾値}
 

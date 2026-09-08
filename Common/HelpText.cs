@@ -101,6 +101,10 @@ namespace Tsumiki.Common
                 l_文,
                 $"{Consts.引数キー.言語} <{Consts.言語名.日本語}|{Consts.言語名.英語}|{Consts.言語名.中国語}>",
                 メッセージID.ヘルプ_言語, Consts.言語名.日本語);
+            V_追加_行(
+                l_文,
+                $"{Consts.引数キー.ログ水準} <{Consts.ログ水準名.最小}|{Consts.ログ水準名.標準}|{Consts.ログ水準名.詳細}>",
+                メッセージID.ヘルプ_ログ水準, Consts.ログ水準名.標準, Consts.ログファイル名);
             V_追加_行(l_文, Consts.引数キー.バージョン, メッセージID.ヘルプ_バージョン);
             V_追加_行(l_文, Consts.引数キー.ヘルプ, メッセージID.ヘルプ_ヘルプ);
 

@@ -142,6 +142,10 @@ namespace Tsumiki.IO
                             l_引数.A_再開するか = true;
                             break;
 
+                        case Consts.引数キー.ログ水準:
+                            l_引数.A_ログ水準 = Get_ログ水準(p_引数列[l_位置++]);
+                            break;
+
                         default:
                             Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
                             break;
@@ -188,6 +192,20 @@ namespace Tsumiki.IO
                 _ => throw new ArgumentException(
                     $"Unknown language \"{p_言語名}\": expected one of " +
                     $"{Consts.言語名.日本語}, {Consts.言語名.英語}, {Consts.言語名.中国語}"),
+            };
+        }
+
+        /// <summary>-log に渡された水準名を解釈する。</summary>
+        private static ログ水準 Get_ログ水準(string p_水準名)
+        {
+            return p_水準名 switch
+            {
+                Consts.ログ水準名.最小 => ログ水準.最小,
+                Consts.ログ水準名.標準 => ログ水準.標準,
+                Consts.ログ水準名.詳細 => ログ水準.詳細,
+                _ => throw new ArgumentException(
+                    $"Unknown log level \"{p_水準名}\": expected one of " +
+                    $"{Consts.ログ水準名.最小}, {Consts.ログ水準名.標準}, {Consts.ログ水準名.詳細}"),
             };
         }
 

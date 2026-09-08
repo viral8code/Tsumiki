@@ -5,48 +5,158 @@ namespace Tsumiki.Common
 {
     internal class Logger
     {
+        private static readonly object _錠 = new();
+
+        /// <summary>画面へ出す量。ファイルへの記録はこれに関わらず全量を残す。</summary>
+        public static ログ水準 A_水準 { get; set; } = ログ水準.標準;
+
+        private static StreamWriter? _ファイル;
+
+        /// <summary>
+        /// 一時ディレクトリを作る前に出た行の控え。
+        /// Phred の推定やパラメータ一覧はディレクトリの用意より前に出るため、
+        /// そのままでは記録から漏れる。
+        /// </summary>
+        private static readonly List<string> _書き出し待ち = [];
+
+        /// <summary>
+        /// 控えの上限。通常は一時ディレクトリを作るまでの数十行しか溜まらないが、
+        /// ファイルを開かないまま使われ続けても際限なく積まないようにする。
+        /// </summary>
+        private const int 控えの上限 = 10_000;
+
         public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = "")
         {
             return p_メソッド名;
         }
 
+        /// <summary>
+        /// 以降の出力をファイルにも残す。既にあれば追記する
+        /// (再開したときに前回までの経過が消えないようにする)。
+        /// </summary>
+        public static void V_開始_ファイル出力(string p_一時ディレクトリ)
+        {
+            lock (_錠)
+            {
+                if (_ファイル is not null)
+                {
+                    return;
+                }
+                _ファイル = new StreamWriter(
+                    Path.Combine(p_一時ディレクトリ, Consts.ログファイル名), append: true)
+                {
+                    // 長時間走るので、途中で落ちても直前までが残るようにする。
+                    AutoFlush = true,
+                };
+                foreach (var l_行 in _書き出し待ち)
+                {
+                    _ファイル.WriteLine(l_行);
+                }
+                _書き出し待ち.Clear();
+            }
+        }
+
         /// <summary>標準出力へ1行出す。文言は言語ごとのカタログから引く。</summary>
         public static void V_出力(メッセージID p_ID, params object?[] p_引数)
         {
-            Console.WriteLine(Messages.Get_文言(p_ID, p_引数));
+            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: false);
         }
 
         /// <summary>標準エラーへ1行出す。</summary>
         public static void V_出力_標準エラー(メッセージID p_ID, params object?[] p_引数)
         {
-            Console.Error.WriteLine(Messages.Get_文言(p_ID, p_引数));
+            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: true);
+        }
+
+        /// <summary>
+        /// カタログを通さない文字列をそのまま出す。
+        /// パラメータ一覧のように、訳す対象ではないが記録には残したいもの向け。
+        /// </summary>
+        public static void V_出力_そのまま(string p_文)
+        {
+            V_書き出し(p_文, p_標準エラーか: false);
         }
 
         public static void V_出力_警告(string p_メソッド名, Exception p_例外)
         {
-            Logger.V_出力_標準エラー(メッセージID.例外を無視_見出し);
-            Logger.V_出力_標準エラー(メッセージID.例外を無視_メソッド, p_メソッド名);
+            V_出力_標準エラー(メッセージID.例外を無視_見出し);
+            V_出力_標準エラー(メッセージID.例外を無視_メソッド, p_メソッド名);
 
             // 例外の内容そのものは訳す対象ではない。
-            Console.Error.WriteLine(p_例外.ToString());
+            V_書き出し(p_例外.ToString(), p_標準エラーか: true);
         }
 
         public static void V_出力_エラー(string p_メソッド名, Exception p_例外)
         {
-            Logger.V_出力_標準エラー(メッセージID.停止_見出し);
-            Logger.V_出力_標準エラー(メッセージID.停止_メソッド, p_メソッド名);
-            Console.Error.WriteLine(p_例外.ToString());
+            V_出力_標準エラー(メッセージID.停止_見出し);
+            V_出力_標準エラー(メッセージID.停止_メソッド, p_メソッド名);
+            V_書き出し(p_例外.ToString(), p_標準エラーか: true);
         }
 
         public static void V_出力_タイムスタンプ()
         {
-            Logger.V_出力(メッセージID.タイムスタンプ, DateTime.Now);
+            V_出力(メッセージID.タイムスタンプ, DateTime.Now);
         }
 
         /// <summary>区切りの空行。文言を持たないのでカタログには載せない。</summary>
         public static void V_出力_空行()
         {
-            Console.WriteLine();
+            V_書き出し(string.Empty, p_標準エラーか: false);
+        }
+
+        /// <summary>
+        /// 1行を、必要ならば画面へ出し、常にファイルへ残す。
+        /// 標準エラーへ出すもの(警告・エラー)は水準によらず必ず画面にも出す。
+        /// </summary>
+        private static void V_書き出し(string p_行, bool p_標準エラーか)
+        {
+            lock (_錠)
+            {
+                if (_ファイル is { } l_ファイル)
+                {
+                    l_ファイル.WriteLine(p_行);
+                }
+                else if (_書き出し待ち.Count < 控えの上限)
+                {
+                    _書き出し待ち.Add(p_行);
+                }
+
+                if (p_標準エラーか)
+                {
+                    Console.Error.WriteLine(p_行);
+                    return;
+                }
+                if (Get_水準(p_行) <= A_水準)
+                {
+                    Console.WriteLine(p_行);
+                }
+            }
+        }
+
+        /// <summary>
+        /// その行を出すのに必要な水準。行頭の目印で決まる。
+        /// 目印を持たない行(進行状況の見出しなど)は標準扱いとする。
+        /// </summary>
+        private static ログ水準 Get_水準(string p_行)
+        {
+            if (p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal))
+            {
+                return ログ水準.詳細;
+            }
+            return p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal)
+                || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal)
+                ? ログ水準.最小
+                : ログ水準.標準;
+        }
+
+        /// <summary>記録を閉じる。ここまでに書いたものは失われない。</summary>
+        public static void V_終了_ファイル出力()
+        {
+            lock (_錠)
+            {
+                _ファイル?.Dispose();
+                _ファイル = null;
+            }
         }
     }
 }

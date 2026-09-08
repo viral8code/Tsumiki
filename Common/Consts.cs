@@ -75,6 +75,8 @@ namespace Tsumiki.Common
             public const string 救済kmer = "-my";
 
             public const string 再開 = "-rs";
+
+            public const string ログ水準 = "-log";
         }
 
         /// <summary>
@@ -92,6 +94,33 @@ namespace Tsumiki.Common
             public const string 日本語 = "ja";
 
             public const string 中国語 = "zh";
+        }
+
+        /// <summary>-log に指定できる水準名。</summary>
+        public static class ログ水準名
+        {
+            public const string 最小 = "quiet";
+
+            public const string 標準 = "normal";
+
+            public const string 詳細 = "verbose";
+        }
+
+        /// <summary>
+        /// 文言の先頭に付ける目印。行の種類を表すと同時に、
+        /// どの水準で画面に出すかの判定にも使う(<see cref="Logger"/>)。
+        /// 言語によらず同じ綴りにすること。
+        /// </summary>
+        public static class ログ目印
+        {
+            /// <summary>内部の判断過程。既定では画面に出さない。</summary>
+            public const string 詳細 = "[Debug]";
+
+            /// <summary>完全長の判定。静かにしていても出す。</summary>
+            public const string 完全性 = "[Complete]";
+
+            /// <summary>レポートの出力先。静かにしていても出す。</summary>
+            public const string レポート = "[Report]";
         }
 
         public static class 積極性モード名
@@ -267,6 +296,12 @@ namespace Tsumiki.Common
 
         /// <summary>ポリッシュ結果の一時的な置き場。最後に最終成果物へ被せる。</summary>
         public const string ポリッシュ済みファイル名 = "polished.fasta";
+
+        /// <summary>
+        /// 実行中に出した内容を全量残すファイル。画面をどれだけ静かにしても、
+        /// また一時ディレクトリを消す指定があっても、これだけは残す。
+        /// </summary>
+        public const string ログファイル名 = "Tsumiki.log";
 
         /// <summary>
         /// 塩基の内部表現。A/C/G/T は塩基記号そのものなので英字のまま残す

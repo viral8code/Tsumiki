@@ -30,12 +30,38 @@ namespace Tsumiki
                 {
                     if (l_引数.A_一時ディレクトリを削除するか)
                     {
-                        Directory.Delete(l_一時ディレクトリ, true);
+                        V_削除_ログ以外(l_一時ディレクトリ);
                     }
                     else
                     {
                         Logger.V_出力(メッセージID.一時ディレクトリを残した, l_引数.A_一時ディレクトリ, Consts.引数キー.一時ディレクトリ削除);
                     }
+                    Logger.V_出力(
+                        メッセージID.ログの保存先,
+                        Path.Combine(l_引数.A_一時ディレクトリ, Consts.ログファイル名));
+                }
+                Logger.V_終了_ファイル出力();
+            }
+        }
+
+        /// <summary>
+        /// 一時ディレクトリの中身を消す。ログだけは残す。
+        ///
+        /// 中身を消したいのは成果物や中間ファイルであって、何が起きたかの
+        /// 記録ではない。消す指定をした実行こそ、後から結果を確かめる手段が
+        /// ログしか残らない。
+        /// </summary>
+        private static void V_削除_ログ以外(string p_一時ディレクトリ)
+        {
+            foreach (var l_ディレクトリ in Directory.EnumerateDirectories(p_一時ディレクトリ))
+            {
+                Directory.Delete(l_ディレクトリ, recursive: true);
+            }
+            foreach (var l_ファイル in Directory.EnumerateFiles(p_一時ディレクトリ))
+            {
+                if (Path.GetFileName(l_ファイル) != Consts.ログファイル名)
+                {
+                    File.Delete(l_ファイル);
                 }
             }
         }
@@ -54,6 +80,7 @@ namespace Tsumiki
             var l_引数 = ArgumentsReader.Get_実行時引数(p_引数列);
             ConfigurationManager.A_実行時引数 = l_引数;
             Messages.A_言語 = l_引数.A_言語;
+            Logger.A_水準 = l_引数.A_ログ水準;
 
             if (l_引数.A_バージョンモードか)
             {
@@ -79,7 +106,7 @@ namespace Tsumiki
             }
             KmerLengthSelector.V_解決_k長(l_引数, l_リード長);
 
-            Console.WriteLine(l_引数);
+            Logger.V_出力_そのまま(l_引数.ToString());
 
             Logger.V_出力_タイムスタンプ();
 
@@ -99,6 +126,10 @@ namespace Tsumiki
             }
 
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
+
+            // ここまでに出た行(Phred の推定・パラメータ一覧など)も
+            // 控えから書き出される。
+            Logger.V_開始_ファイル出力(l_一時ディレクトリ);
 
             if (l_引数.A_前処理するか)
             {
