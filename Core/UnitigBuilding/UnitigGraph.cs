@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -22,9 +22,17 @@ namespace Tsumiki.Core
         /// <summary>頂点ごとの出辺(行き先の頂点インデックス)。</summary>
         public List<List<int>> A_出辺 { get; }
 
-        private UnitigGraph(List<List<int>> p_出辺)
+        /// <summary>
+        /// 末尾を1塩基伸ばすと自分の先頭 k-mer に戻る頂点。
+        /// 辺としては持てない(辿ると伸び続ける)が、分岐を持たない環状の
+        /// 複製単位はこの形でしか現れないため、事実だけは残しておく。
+        /// </summary>
+        public HashSet<int> A_自己ループ { get; }
+
+        private UnitigGraph(List<List<int>> p_出辺, HashSet<int> p_自己ループ)
         {
             this.A_出辺 = p_出辺;
+            this.A_自己ループ = p_自己ループ;
         }
 
         /// <summary>頂点の入次数。辺の逆鎖対称性より、v の入次数は v^1 の出次数に等しい。</summary>
@@ -64,6 +72,7 @@ namespace Tsumiki.Core
             int p_曖昧kmerの番兵)
         {
             List<List<int>> l_出辺 = [];
+            HashSet<int> l_自己ループ = [];
             for (var i = 0; i < p_ユニティグ配列.Count; i++)
             {
                 l_出辺.Add([]);
@@ -117,13 +126,15 @@ namespace Tsumiki.Core
                     if (l_行き先 == l_頂点)
                     {
                         // 自己ループは辿ると無限に伸びるため辺として持たない。
+                        // ただし環状に閉じている根拠そのものなので、事実は残す。
+                        _ = l_自己ループ.Add(l_頂点);
                         continue;
                     }
                     l_出辺[l_頂点].Add(l_行き先);
                 }
             }
 
-            return new UnitigGraph(l_出辺);
+            return new UnitigGraph(l_出辺, l_自己ループ);
         }
 
         /// <summary>

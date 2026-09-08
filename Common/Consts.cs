@@ -240,6 +240,14 @@ namespace Tsumiki.Common
 
         public const string GFAファイル名 = "assembly.gfa";
 
+        /// <summary>
+        /// 環状に閉じた複製単位であることを示す、配列 ID 中の目印。
+        /// 名前を付ける側(ContigMaker/Scaffolder)と、それを根拠に数える側
+        /// (AssemblyScorer/CircularClosureVerifier/CompletenessValidator)が
+        /// 別々に文字列を持つと、片方だけ変えたときに黙って0件になる。
+        /// </summary>
+        public const string 環状の目印 = "circular";
+
         public const string レポートファイル名 = "assembly.report.json";
 
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";

@@ -466,6 +466,10 @@ namespace Tsumiki.Common
                 "reuse the per-k results left in the temp directory and continue (default: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} and {1} are always written alongside the assembly.",
+            [メッセージID.分岐のない閉路] =
+                "[Info] Recovered {0} branchless closed loop(s) that the start-point rule cannot reach",
+            [メッセージID.孤立した環状の複製単位] =
+                "[Info] {0} replicon(s) form a closed circle on their own and were joined end to start",
         };
 
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
@@ -894,6 +898,10 @@ namespace Tsumiki.Common
                 "一時ディレクトリに残った k ごとの結果を再利用して続きから実行する (既定: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} と {1} は常にアセンブリと同じ場所へ書き出す",
+            [メッセージID.分岐のない閉路] =
+                "[Info] 開始点の条件では拾えない、分岐のない閉路を {0} 個回収",
+            [メッセージID.孤立した環状の複製単位] =
+                "[Info] それ自体で環をなす複製単位 {0} 個を、末尾から先頭へ閉じて結合",
         };
 
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
@@ -1322,6 +1330,10 @@ namespace Tsumiki.Common
                 "复用临时目录中各 k 的结果并继续执行（默认：false）",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} 与 {1} 始终与组装结果写在同一位置",
+            [メッセージID.分岐のない閉路] =
+                "[Info] 已找回起点条件无法覆盖的无分支闭环 {0} 个",
+            [メッセージID.孤立した環状の複製単位] =
+                "[Info] 自身即构成闭环的复制单元 {0} 个，已从末端连接到起点",
         };
     }
 }

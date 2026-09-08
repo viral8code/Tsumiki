@@ -93,7 +93,7 @@ namespace Tsumiki.Core
 
             Logger.V_出力(メッセージID.ユニティグ構築開始);
             var l_ユニティグ配列 = Get_ユニティグ(
-                l_kmerインデックス, l_開始kmer, l_ユニティグパス, out var l_上限に達したか);
+                l_kmerインデックス, l_開始kmer, p_k長, l_ユニティグパス, out var l_上限に達したか);
 
             AssemblyStatsReporter.V_出力_統計("unitigs", l_ユニティグパス);
 
@@ -343,9 +343,21 @@ namespace Tsumiki.Core
         /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く。
         /// </summary>
         private static Dictionary<int, string> Get_ユニティグ(
-            TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, string p_出力パス, out bool p_上限に達したか)
+            TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長,
+            string p_出力パス, out bool p_上限に達したか)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
+
+            // 分岐を1つも持たない閉路は開始点の条件を満たす k-mer を持たず、
+            // ここまでの走査から丸ごと漏れる。覆い残しを拾って足す。
+            var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(
+                p_kmerインデックス, l_walk結果, p_k長);
+            if (l_閉路の開始kmer.Count > 0)
+            {
+                Logger.V_出力(メッセージID.分岐のない閉路, l_閉路の開始kmer.Count);
+                l_walk結果 =
+                    [.. l_walk結果, .. UnitigMaker.Get_walk結果(p_kmerインデックス, l_閉路の開始kmer)];
+            }
 
             HashSet<string> l_既出 = [];
             Dictionary<int, string> l_ユニティグ配列 = [];

@@ -233,7 +233,7 @@ namespace Tsumiki.Core
             using var l_読み込み = new FastaReader(p_FASTAパス);
             while (l_読み込み.Get_続きがあるか())
             {
-                if (l_読み込み.Get_次の配列().A_ID.Contains("circular", StringComparison.OrdinalIgnoreCase))
+                if (l_読み込み.Get_次の配列().A_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase))
                 {
                     l_数++;
                 }

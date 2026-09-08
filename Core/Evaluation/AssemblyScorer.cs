@@ -1,3 +1,4 @@
+using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -75,7 +76,7 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// アセンブリ中に各アンカー k-mer が何回現れるかを数える。逆相補は同一視する。
-        /// 併せて、環状に閉じた配列(ContigMaker が名前に "circular" を付けたもの)の
+        /// 併せて、環状に閉じた配列(名前に環状の目印が付いたもの)の
         /// 本数と総延長も集計する。閉じた複製単位は完全長を目指す評価の核心なので、
         /// 長さの足切り(連続性統計の最小長)は掛けない。
         /// </summary>
@@ -97,7 +98,7 @@ namespace Tsumiki.Core
                 p_長さ一覧.Add(l_配列.Length);
                 p_総延長 += l_配列.Length;
 
-                if (l_エントリ.A_ID.Contains("circular"))
+                if (l_エントリ.A_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase))
                 {
                     p_環状本数++;
                     p_環状延長 += l_配列.Length;

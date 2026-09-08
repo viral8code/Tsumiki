@@ -34,9 +34,6 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 閉じ目に必要なリード数 = 5;
 
-        /// <summary>環状として出力された配列であることを示す ID 中の目印。</summary>
-        private const string 環状の目印 = "circular";
-
         /// <summary>
         /// p_FASTAパス の環状配列それぞれについて、閉じ目を跨ぐリードを数える。
         /// 環状の配列が1本も無ければ空を返す。
@@ -50,7 +47,7 @@ namespace Tsumiki.Core
             Dictionary<UInt128, int> l_接合窓 = [];
             foreach (var (l_ID, l_配列) in l_エントリ群)
             {
-                if (!l_ID.Contains(環状の目印, StringComparison.OrdinalIgnoreCase)
+                if (!l_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase)
                     || l_配列.Length < 接合窓長)
                 {
                     continue;

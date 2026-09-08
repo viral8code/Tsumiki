@@ -233,7 +233,11 @@ namespace Tsumiki.Core
                 }
             }
 
-            List<string> l_スキャフォールド群 = [];
+            // 配列と、それが環状に閉じた複製単位そのものかどうか。
+            // 単独の contig がそのまま1本のスキャフォールドになった場合だけ
+            // 環状を引き継ぐ。他の contig を継ぎ足した時点で、それはもう
+            // 閉じた環ではない。
+            List<(string A_配列, bool A_環状か)> l_スキャフォールド群 = [];
             var l_訪問済み = new bool[l_頂点数];
             foreach (var l_始点 in l_始点群)
             {
@@ -246,10 +250,13 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                var l_スキャフォールド = this.Get_スキャフォールド配列(l_確定辺, l_始点, l_訪問済み);
+                var l_スキャフォールド = this.Get_スキャフォールド配列(
+                    l_確定辺, l_始点, l_訪問済み, out var l_連結数);
                 if (l_スキャフォールド != null)
                 {
-                    l_スキャフォールド群.Add(l_スキャフォールド);
+                    l_スキャフォールド群.Add((
+                        l_スキャフォールド,
+                        l_連結数 == 1 && this.Get_環状か(l_始点 >> 1)));
                 }
             }
 
@@ -262,7 +269,7 @@ namespace Tsumiki.Core
                 if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖]
                     && this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
                 {
-                    l_スキャフォールド群.Add(l_配列);
+                    l_スキャフォールド群.Add((l_配列, this.Get_環状か(l_コンティグID)));
                     l_訪問済み[l_順鎖] = true;
                     l_訪問済み[l_逆鎖] = true;
                 }
@@ -271,11 +278,14 @@ namespace Tsumiki.Core
             using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
             var l_スキャフォールドID = 1;
             long l_総延長 = 0;
-            foreach (var l_スキャフォールド in l_スキャフォールド群)
+            foreach (var (l_配列, l_環状か) in l_スキャフォールド群)
             {
-                l_書き込み.V_書き込み($"SCAFFOLD{l_スキャフォールドID}", l_スキャフォールド);
+                var l_名前 = l_環状か
+                    ? $"SCAFFOLD{l_スキャフォールドID}_{Consts.環状の目印}"
+                    : $"SCAFFOLD{l_スキャフォールドID}";
+                l_書き込み.V_書き込み(l_名前, l_配列);
                 l_スキャフォールドID++;
-                l_総延長 += l_スキャフォールド.Length;
+                l_総延長 += l_配列.Length;
             }
 
             Logger.V_出力(メッセージID.スキャフォールド出力完了, l_スキャフォールド群.Count, l_総延長, p_スキャフォールドパス);
@@ -470,15 +480,22 @@ namespace Tsumiki.Core
             return Math.Max(Consts.ギャップ長の下限, StatsUtil.Get_中央値(l_ギャップ候補));
         }
 
+        /// <summary>
+        /// contig を1本のスキャフォールドへ連ねる。p_連結したコンティグ数 は
+        /// 実際に繋いだ本数で、1 なら元の contig がそのまま出ていることを意味する。
+        /// </summary>
         private string? Get_スキャフォールド配列(
-            (int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み)
+            (int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み,
+            out int p_連結したコンティグ数)
         {
+            p_連結したコンティグ数 = 0;
             var l_コンティグID = p_始点 >> 1;
             var l_逆鎖か = (p_始点 & 1) == 1;
             if (!this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
             {
                 return null;
             }
+            p_連結したコンティグ数 = 1;
 
             var l_出力 = new StringBuilder(l_逆鎖か ? Util.V_逆相補(l_配列) : l_配列);
             var l_現在 = p_始点;
@@ -501,10 +518,18 @@ namespace Tsumiki.Core
                 _ = l_出力.Append(l_次が逆鎖か ? Util.V_逆相補(l_次の配列) : l_次の配列);
 
                 l_現在 = l_辺.A_行き先;
+                p_連結したコンティグ数++;
                 V_記録_訪問済み(p_訪問済み, l_現在);
             }
 
             return l_出力.ToString();
+        }
+
+        /// <summary>その contig が環状に閉じたものとして作られたか。</summary>
+        private bool Get_環状か(int p_コンティグID)
+        {
+            return this._コンティグ名.TryGetValue(p_コンティグID, out var l_名前)
+                && l_名前.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
