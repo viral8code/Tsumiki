@@ -121,15 +121,35 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 完全性の差がちょうど許容差の内側なら足切りされないこと
-        /// (境界の振る舞いを固定しておく)。
+        /// 完全性には2つの段階がある。足切り(許容差)を通っても、同点とみなす幅を
+        /// 超えて劣っていれば、連続性を見るより前に負ける。
+        ///
+        /// 足切りだけを唯一の関門にすると、「足切りぎりぎりまで配列を落として
+        /// 連続性を買う」取引が常に通ってしまう。7Mbp級では 1 ポイントが
+        /// 70kbp に相当し、それは連続性と引き換えにしてよい量ではない。
         /// </summary>
         [Fact]
-        public void Select_CompletenessGapJustInsideTheTolerance_KeepsTheCandidate()
+        public void Select_CompletenessGapBeyondTheTieWidth_LosesBeforeContiguity()
         {
             var 選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 10_000, 0.99),
-                Get_候補(63, 90_000, 0.99 - AssemblySelector.完全性の許容差 + 0.001),
+                Get_候補(63, 90_000, 0.99 - AssemblySelector.同点とみなす差 - 0.001),
+            ]);
+
+            Assert.NotNull(選択);
+            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+        }
+
+        /// <summary>
+        /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める。
+        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界。
+        /// </summary>
+        [Fact]
+        public void Select_CompletenessGapWithinTheTieWidth_FallsThroughToContiguity()
+        {
+            var 選択 = AssemblySelector.Get_最良([
+                Get_候補(31, 10_000, 0.99),
+                Get_候補(63, 90_000, 0.99 - AssemblySelector.同点とみなす差 + 0.001),
             ]);
 
             Assert.NotNull(選択);

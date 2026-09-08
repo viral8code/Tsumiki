@@ -1,0 +1,119 @@
+using Tsumiki.Core;
+using Tsumiki.Model;
+
+namespace Tsumiki.Tests.Core
+{
+    /// <summary>
+    /// 完全性と正確性が k に対して逆向きに動く場面での選択を固定する。
+    ///
+    /// k を上げるとグラフが解けて完全性が上がり、反復を正しく複製したぶん
+    /// 「出しすぎ」が増えて正確性が下がる。この2つを生の値で順に見ると、
+    /// 先に見たほうの端の k が機械的に選ばれるだけで比較にならない。
+    /// 揺らぎの範囲を同点として扱い、実質的な差があるときだけ効くようにする。
+    /// </summary>
+    public class AssemblySelectorTradeOffTests
+    {
+        private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
+            int p_k長, long p_NG50, double p_完全性, double p_正確性)
+        {
+            const long l_期待延べ数 = 1_000_000;
+            var l_実行結果 = new アセンブリ実行結果(
+                p_k長, $"k{p_k長}_unitigs.fasta", $"k{p_k長}_contigs.fasta",
+                $"k{p_k長}_scaffolds.fasta", 2, 20.0);
+            var l_評価 = new アセンブリ評価(
+                A_期待延べ数: l_期待延べ数,
+                A_欠損延べ数: (long)Math.Round(l_期待延べ数 * (1 - p_完全性)),
+                A_過剰延べ数: (long)Math.Round(l_期待延べ数 * (1 - p_正確性)),
+                A_総延長: 7_200_000,
+                A_本数: 100,
+                A_NG50: p_NG50);
+            return (l_実行結果, l_評価);
+        }
+
+        /// <summary>
+        /// 7.4Mbp の実データで観測された6候補。完全性は単調増加、
+        /// 正確性は単調減少し、NG50 は k=93 で最大になる。
+        /// </summary>
+        private static List<(アセンブリ実行結果, アセンブリ評価)> Get_実データの候補()
+        {
+            return
+            [
+                Get_候補(21, 38_261, 0.9843, 0.9994),
+                Get_候補(29, 108_311, 0.9859, 0.9990),
+                Get_候補(43, 173_868, 0.9868, 0.9987),
+                Get_候補(63, 229_134, 0.9875, 0.9983),
+                Get_候補(93, 277_063, 0.9881, 0.9976),
+                Get_候補(135, 260_804, 0.9886, 0.9970),
+            ];
+        }
+
+        [Fact]
+        public void Get_最良_揺らぎの範囲の差では連続性で決める()
+        {
+            var l_選択 = AssemblySelector.Get_最良(Get_実データの候補());
+
+            // 完全性・正確性の差はいずれも同点幅に収まるので NG50 が決める。
+            // 正確性を生の値で先に見ていた頃は、3指標のうち2つで最下位の
+            // k=21 が 0.18 ポイントの差だけで選ばれていた。
+            Assert.NotNull(l_選択);
+            Assert.Equal(93, l_選択!.Value.A_実行結果.A_k長);
+        }
+
+        [Fact]
+        public void Get_最良_正確性に実質的な差があればそちらを優先する()
+        {
+            // 連続性で勝る候補が、正確性で同点幅をはっきり超えて劣る場合。
+            var l_選択 = AssemblySelector.Get_最良(
+            [
+                Get_候補(21, 38_261, 0.9843, 0.9994),
+                Get_候補(93, 277_063, 0.9881, 0.9700),
+            ]);
+
+            Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
+        }
+
+        [Fact]
+        public void Get_最良_完全性で足切りされた候補は連続性に関わらず選ばれない()
+        {
+            // 反復を飛ばして繋いだ結果、連続性は跳ね上がるが配列を大きく落とした候補。
+            var l_選択 = AssemblySelector.Get_最良(
+            [
+                Get_候補(21, 38_261, 0.9843, 0.9994),
+                Get_候補(93, 900_000, 0.9500, 0.9994),
+            ]);
+
+            Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
+        }
+
+        [Fact]
+        public void Get_最良_統合で正確性が大きく落ちた候補は退ける()
+        {
+            // 実データで観測された統合の失敗(99.94% -> 86.97%)。
+            var l_選択 = AssemblySelector.Get_最良(
+            [
+                Get_候補(21, 38_261, 0.9843, 0.9994),
+                Get_候補(21, 44_916, 0.9851, 0.8697),
+            ]);
+
+            Assert.Equal(38_261, l_選択!.Value.A_評価.A_NG50);
+        }
+
+        [Fact]
+        public void Get_段_同点幅に収まる差は同じ段になる()
+        {
+            Assert.Equal(0, AssemblySelector.Get_段(0.9994, 0.9994));
+            Assert.Equal(0, AssemblySelector.Get_段(0.9976, 0.9994));
+            Assert.Equal(0, AssemblySelector.Get_段(0.9970, 0.9994));
+
+            // 同点幅(0.5ポイント)を超えれば段が下がる。
+            Assert.True(AssemblySelector.Get_段(0.9900, 0.9994) > 0);
+        }
+
+        [Fact]
+        public void Get_段_基準より良い値は0段のままにする()
+        {
+            // 丸めの都合で基準をわずかに上回っても、負の段にはしない。
+            Assert.Equal(0, AssemblySelector.Get_段(0.9999, 0.9994));
+        }
+    }
+}

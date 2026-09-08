@@ -1,4 +1,4 @@
-﻿using Tsumiki.Common;
+using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -71,7 +71,7 @@ namespace Tsumiki.Core
             // 両方が同じ条件(同じ k・同じカットオフ)で必要とする。生リードの
             // 走査とカウントはコストが高いため、1つのインデックスを両方で
             // 使い回す(以前は統合評価のたびに同じ内容をもう一度数え直していた)。
-            var l_アンカーk長 = l_k候補[0];
+            var l_アンカーk長 = Get_アンカーk長(l_k候補);
             var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
             _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
 
@@ -261,6 +261,26 @@ namespace Tsumiki.Core
                 _ = l_候補.Add(Get_奇数((int)Math.Round(l_下限 * Math.Pow(l_比, i))));
             }
             return [.. l_候補];
+        }
+
+        /// <summary>
+        /// 候補を評価する物差しの k。候補のどれとも一致しない値にする。
+        ///
+        /// 候補と同じ k を使うと、その候補だけが自分と同じ k・同じカットオフで
+        /// 作った k-mer 集合を物差しに測られ、他の k の候補と条件が揃わない。
+        /// 候補より小さく取るのは、短い k-mer ほど断片化の影響を受けにくく、
+        /// 「ゲノムのどこを出せているか」を測る物差しとして素直なため。
+        /// </summary>
+        public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
+        {
+            var l_k長 = p_k候補[0] - Consts.アンカーk長の候補からの差;
+
+            // 偶数の k は k-mer 自身がその逆相補と一致しうるため避ける。
+            if (l_k長 % 2 == 0)
+            {
+                l_k長--;
+            }
+            return Math.Max(Consts.アンカーk長の下限, l_k長);
         }
 
         /// <summary>
