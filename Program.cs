@@ -224,6 +224,8 @@ namespace Tsumiki
                 ? Consts.コンティグファイル名
                 : Consts.スキャフォールドファイル名;
 
+            V_除外_短い配列(l_最終パス, l_リード長);
+
             var l_ポリッシュ統計 = V_磨く(l_引数, l_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(l_引数, l_最終パス);
 
@@ -232,6 +234,39 @@ namespace Tsumiki
             Logger.V_出力(メッセージID.開発中);
 
             Logger.V_出力_タイムスタンプ();
+        }
+
+        /// <summary>
+        /// 最終成果物から、リード長より短い配列を落とす。
+        ///
+        /// リード1本に収まる長さの配列は、リードそのものが既に持っている以上の
+        /// 情報を運ばない。加えてこの帯にはタンデムリピートのコピー数を誤って
+        /// 繋いだ断片が集まりやすく、下流の注釈ツールも同種の閾値で捨てる。
+        /// 落とした分は一時ディレクトリの k ごとの成果物にそのまま残る。
+        /// </summary>
+        internal static void V_除外_短い配列(string p_パス, int? p_リード長)
+        {
+            if (p_リード長 is not { } l_下限 || l_下限 <= 0 || !File.Exists(p_パス))
+            {
+                return;
+            }
+
+            var l_全件 = FastaReader.Get_全エントリ(p_パス);
+            var l_残す = l_全件.Where(x => x.A_配列.Length >= l_下限).ToList();
+            if (l_残す.Count == l_全件.Count)
+            {
+                return;
+            }
+
+            var l_落とした延長 = l_全件.Sum(x => (long)x.A_配列.Length) - l_残す.Sum(x => (long)x.A_配列.Length);
+            using (var l_書き込み = new FastaWriter(p_パス))
+            {
+                foreach (var (l_ID, l_配列) in l_残す)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+            Logger.V_出力(メッセージID.短い配列を除外, l_全件.Count - l_残す.Count, l_下限, l_落とした延長);
         }
 
         /// <summary>

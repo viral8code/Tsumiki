@@ -141,5 +141,83 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(truth, result);
         }
-    }
+    
+        /// <summary>
+        /// 断片がリード長の2倍を下回るライブラリでは read1 と RC(read2) が重なる。
+        /// 橋渡しに必要な長さが負になり経路探索では解けないが、重なりそのものが
+        /// 断片を決めるので統合できる。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_OverlappingMates_RestoresTheTrueFragment()
+        {
+            const int k = 21;
+            var truth = RandomSequence(225, seed: 20260909);
+
+            using var index = this.BuildIndex(k, truth);
+
+            var read1 = truth[..150];
+            var read2 = Util.V_逆相補(truth[75..225]); // RC(read2) == truth[75..225]
+
+            var result = SuperReadJoiner.Get_合成配列(read1, read2, index, k);
+
+            Assert.Equal(truth, result);
+        }
+
+        /// <summary>
+        /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列の継ぎ目には
+        /// どのリードにも無い k-mer が生まれる。そこで弾く。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_OverlapWithAnUnseenSeam_IsRejected()
+        {
+            const int k = 21;
+            var truth = RandomSequence(225, seed: 20260910);
+
+            using var index = this.BuildIndex(k, truth);
+
+            var l_文字 = truth[..150].ToCharArray();
+            l_文字[145] = l_文字[145] == 'A' ? 'C' : 'A';
+            var read1 = new string(l_文字);
+            var read2 = Util.V_逆相補(truth[75..225]);
+
+            Assert.Null(SuperReadJoiner.Get_合成配列(read1, read2, index, k));
+        }
+
+        /// <summary>
+        /// 断片が read1 に収まっている(アダプタ読み抜け)場合は、繋いでも
+        /// 長さが伸びないので重なりでは統合しない。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_FragmentShorterThanTheRead_IsNotJoinedByOverlap()
+        {
+            const int k = 21;
+            var truth = RandomSequence(120, seed: 20260911);
+
+            using var index = this.BuildIndex(k, truth);
+
+            var read1 = truth;
+            var read2 = Util.V_逆相補(truth);
+
+            Assert.Null(SuperReadJoiner.Get_合成配列(read1, read2, index, k));
+        }
+
+        /// <summary>
+        /// 重なりが最小長に満たないときは、偶然の一致と区別できないので繋がない。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_OverlapShorterThanTheMinimum_IsNotJoinedByOverlap()
+        {
+            const int k = 121;
+            var truth = RandomSequence(280, seed: 20260912);
+
+            // 重なりは 20bp (Consts.ペア結合の最小重なり長 = 40 未満)。
+            // k を read1 より長くして、経路探索の側も走らないようにする。
+            var read1 = truth[..150];
+            var read2 = Util.V_逆相補(truth[130..280]);
+
+            using var index = this.BuildIndex(k, truth);
+
+            Assert.Null(SuperReadJoiner.Get_合成配列(read1, read2, index, k));
+        }
+}
 }

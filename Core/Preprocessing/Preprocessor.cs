@@ -205,7 +205,7 @@ namespace Tsumiki.Core.Preprocessing
         /// 重なりが最長のもの(同点なら不一致数が少ないもの)を返す。
         /// 見つからなければ null(=通常の、フラグメント長がリード長を超える場合)。
         /// </summary>
-        private static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC)
+        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC)
         {
             var l_n1 = p_塩基列1.Length;
             var l_n2 = p_塩基列2RC.Length;

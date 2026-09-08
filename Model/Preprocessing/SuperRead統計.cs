@@ -3,5 +3,9 @@
     /// <summary>
     /// ペアを合成リードへ統合する処理1回分の集計。
     /// </summary>
-    internal readonly record struct SuperRead統計(int A_総ペア数, int A_統合数);
+    internal readonly record struct SuperRead統計(int A_総ペア数, int A_統合数, int A_重なり結合数)
+    {
+        /// <summary>グラフ上の経路で橋渡しした数。</summary>
+        public int A_橋渡し数 => this.A_統合数 - this.A_重なり結合数;
+    }
 }
