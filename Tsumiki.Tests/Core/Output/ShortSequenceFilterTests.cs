@@ -79,5 +79,33 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(l_元, File.ReadAllBytes(l_パス));
         }
-    }
+    
+        [Fact]
+        public void V_削除_中間ファイル_KeepsTheFinalProductsAndTheLog()
+        {
+            foreach (var l_名前 in new[]
+            {
+                "unitigs.fasta", "contigs.fasta", "scaffolds.fasta", "assembly.gfa",
+                "assembly.report.json", "assembly.ambiguous.tsv", "Tsumiki.log",
+                "corrected.1.fq", "preprocessed.1.fq", "polished.fasta", "merged_scaffolds.fasta",
+            })
+            {
+                File.WriteAllText(Path.Combine(this._tempDir, l_名前), l_名前);
+            }
+            _ = Directory.CreateDirectory(Path.Combine(this._tempDir, "k93"));
+            File.WriteAllText(Path.Combine(this._tempDir, "k93", "unitigs.fasta"), "x");
+
+            Tsumiki.Program.V_削除_中間ファイル(this._tempDir);
+
+            var l_残り = Directory.EnumerateFiles(this._tempDir)
+                .Select(Path.GetFileName).Order(StringComparer.Ordinal).ToList();
+            Assert.Equal(
+                [
+                    "Tsumiki.log", "assembly.ambiguous.tsv", "assembly.gfa", "assembly.report.json",
+                    "contigs.fasta", "scaffolds.fasta", "unitigs.fasta",
+                ],
+                l_残り);
+            Assert.Empty(Directory.EnumerateDirectories(this._tempDir));
+        }
+}
 }

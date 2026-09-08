@@ -19,7 +19,7 @@ namespace Tsumiki.Core.Pipeline
         /// p_k長 でアセンブリを実行し、生成物のパスを返す。
         /// unitig 数が上限を超えた場合は null。
         /// 生成物は k ごとの作業ディレクトリに置く。最終的に採用したものだけを
-        /// V_複製_最終成果物 が実行ディレクトリへ複製する。
+        /// V_複製_最終成果物 が作業ディレクトリの直下へ複製する。
         /// </summary>
         public static アセンブリ実行結果? Get_実行結果(
             Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長,
@@ -261,20 +261,20 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 採用した結果を実行ディレクトリへ複製する。k ごとの成果物は
-        /// 一時ディレクトリに残したまま、利用者が受け取る1組だけを外へ出す。
+        /// 採用した結果を作業ディレクトリの直下へ複製する。k ごとの成果物は
+        /// k のサブディレクトリに残したまま、利用者が受け取る1組だけを上へ出す。
         /// </summary>
-        public static void V_複製_最終成果物(アセンブリ実行結果 p_結果)
+        public static void V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
-            V_複製(p_結果.A_ユニティグパス, Consts.ユニティグファイル名);
-            V_複製(p_結果.A_コンティグパス, Consts.コンティグファイル名);
+            V_複製(p_結果.A_ユニティグパス, Path.Combine(p_出力ディレクトリ, Consts.ユニティグファイル名));
+            V_複製(p_結果.A_コンティグパス, Path.Combine(p_出力ディレクトリ, Consts.コンティグファイル名));
             if (p_結果.A_スキャフォールドパス is { } l_スキャフォールドパス)
             {
-                V_複製(l_スキャフォールドパス, Consts.スキャフォールドファイル名);
+                V_複製(l_スキャフォールドパス, Path.Combine(p_出力ディレクトリ, Consts.スキャフォールドファイル名));
             }
             if (p_結果.A_GFAパス is { } l_GFAパス)
             {
-                V_複製(l_GFAパス, Consts.GFAファイル名);
+                V_複製(l_GFAパス, Path.Combine(p_出力ディレクトリ, Consts.GFAファイル名));
             }
         }
 

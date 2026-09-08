@@ -177,7 +177,7 @@ namespace Tsumiki.Common
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] Of those, {0} pair(s) were joined by direct mate overlap and {1} by a path through the graph.",
             [メッセージID.短い配列を除外] =
-                "[Info] Dropped {0} sequence(s) shorter than {1} bp ({2} bp in total) from the final output; they remain in the per-k results under the temporary directory.",
+                "[Info] Dropped {0} sequence(s) shorter than {1} bp ({2} bp in total) from the final output; they remain in the per-k results under the working directory.",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] Gap filling: no gaps to fill.",
             [メッセージID.ギャップ充填統計] =
@@ -259,7 +259,9 @@ namespace Tsumiki.Common
             [メッセージID.開始kmerの探索] =
                 "[Debug] Search First k-mer",
             [メッセージID.一時ディレクトリを残した] =
-                "[Info] Per-k assemblies are kept in {0} (use {1} to delete it).",
+                "[Info] Results and intermediates are kept in {0} (use {1} to delete the intermediates).",
+            [メッセージID.中間ファイルを削除した] =
+                "[Info] Deleted the intermediates under {0}; the final products and the log remain.",
             [メッセージID.リード長の観測値] =
                 "[Info] Read length (median of sampled reads): {0} bp",
             [メッセージID.一時ディレクトリが既にある] =
@@ -367,9 +369,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_GFA出力] =
                 "also write {0} (the unitig graph, GFA1) for viewers like Bandage (default: false)",
             [メッセージID.ヘルプ_一時ディレクトリ] =
-                "temp directory, keeps the per-k assemblies (default: {0})",
+                "working directory; the final products, the per-k assemblies and the intermediates all go here (default: {0})",
             [メッセージID.ヘルプ_一時ディレクトリ削除] =
-                "delete the temp directory when finished (default: keep)",
+                "delete the intermediates when finished, keeping the final products and the log (default: keep)",
             [メッセージID.ヘルプ_スレッド数] =
                 "worker threads for read loading (default: number of logical processors)",
             [メッセージID.ヘルプ_言語] =
@@ -621,7 +623,7 @@ namespace Tsumiki.Common
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] うち {0} 組はペアの重なりで直接結合、{1} 組はグラフ上の経路で橋渡し",
             [メッセージID.短い配列を除外] =
-                "[Info] 最終成果物から {1}bp 未満の配列 {0} 本 (計 {2}bp) を除外 -- 一時ディレクトリの k ごとの成果物には残る",
+                "[Info] 最終成果物から {1}bp 未満の配列 {0} 本 (計 {2}bp) を除外 -- k ごとの成果物には残る",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] ギャップ充填: 埋めるギャップなし",
             [メッセージID.ギャップ充填統計] =
@@ -703,7 +705,9 @@ namespace Tsumiki.Common
             [メッセージID.開始kmerの探索] =
                 "[Debug] 開始 k-mer を探索",
             [メッセージID.一時ディレクトリを残した] =
-                "[Info] k ごとのアセンブリを {0} に保持 ({1} を付けると削除)",
+                "[Info] 成果物と中間ファイルを {0} に保持 ({1} を付けると中間ファイルを削除)",
+            [メッセージID.中間ファイルを削除した] =
+                "[Info] {0} の中間ファイルを削除 -- 最終成果物とログは残した",
             [メッセージID.リード長の観測値] =
                 "[Info] リード長 (標本の中央値): {0} bp",
             [メッセージID.一時ディレクトリが既にある] =
@@ -811,9 +815,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_GFA出力] =
                 "Bandage などで見るために {0} (ユニティググラフ、GFA1) も書き出す (既定: false)",
             [メッセージID.ヘルプ_一時ディレクトリ] =
-                "一時ディレクトリ。k ごとのアセンブリはここに残る (既定: {0})",
+                "作業ディレクトリ。最終成果物・k ごとのアセンブリ・中間ファイルはすべてここに出る (既定: {0})",
             [メッセージID.ヘルプ_一時ディレクトリ削除] =
-                "実行後に一時ディレクトリを削除する (既定: 残す)",
+                "実行後に中間ファイルを削除する。最終成果物とログは残す (既定: 残す)",
             [メッセージID.ヘルプ_スレッド数] =
                 "リード読み込みに使うワーカースレッド数 (既定: 論理プロセッサ数)",
             [メッセージID.ヘルプ_言語] =
@@ -1065,7 +1069,7 @@ namespace Tsumiki.Common
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] 其中 {0} 对通过配对重叠直接连接，{1} 对通过图上路径桥接",
             [メッセージID.短い配列を除外] =
-                "[Info] 从最终结果中剔除了 {0} 条短于 {1}bp 的序列 (共 {2}bp) -- 临时目录中各 k 的结果仍保留",
+                "[Info] 从最终结果中剔除了 {0} 条短于 {1}bp 的序列 (共 {2}bp) -- 各 k 的结果中仍保留",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] 空缺填补：没有需要填补的空缺",
             [メッセージID.ギャップ充填統計] =
@@ -1147,7 +1151,9 @@ namespace Tsumiki.Common
             [メッセージID.開始kmerの探索] =
                 "[Debug] 正在搜索起始 k-mer",
             [メッセージID.一時ディレクトリを残した] =
-                "[Info] 各 k 的组装结果保留在 {0}（加上 {1} 可删除）",
+                "[Info] 结果与中间文件保留在 {0}（加上 {1} 可删除中间文件）",
+            [メッセージID.中間ファイルを削除した] =
+                "[Info] 已删除 {0} 中的中间文件 —— 最终结果与日志保留",
             [メッセージID.リード長の観測値] =
                 "[Info] read 长度（采样中位数）：{0} bp",
             [メッセージID.一時ディレクトリが既にある] =
@@ -1255,9 +1261,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_GFA出力] =
                 "同时写出 {0}（unitig 图，GFA1）以便用 Bandage 等查看（默认：false）",
             [メッセージID.ヘルプ_一時ディレクトリ] =
-                "临时目录，保留各 k 的组装结果（默认：{0}）",
+                "工作目录。最终结果、各 k 的组装结果与中间文件都输出到这里（默认：{0}）",
             [メッセージID.ヘルプ_一時ディレクトリ削除] =
-                "运行结束后删除临时目录（默认：保留）",
+                "运行结束后删除中间文件，保留最终结果与日志（默认：保留）",
             [メッセージID.ヘルプ_スレッド数] =
                 "读取 read 所用的工作线程数（默认：逻辑处理器数）",
             [メッセージID.ヘルプ_言語] =

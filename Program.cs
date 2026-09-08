@@ -36,7 +36,8 @@ namespace Tsumiki
                 {
                     if (l_引数.A_一時ディレクトリを削除するか)
                     {
-                        V_削除_ログ以外(l_一時ディレクトリ);
+                        V_削除_中間ファイル(l_一時ディレクトリ);
+                        Logger.V_出力(メッセージID.中間ファイルを削除した, l_引数.A_一時ディレクトリ);
                     }
                     else
                     {
@@ -51,21 +52,22 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 一時ディレクトリの中身を消す。ログだけは残す。
+        /// 作業ディレクトリから中間ファイルだけを消す。最終成果物とログは残す。
         ///
-        /// 中身を消したいのは成果物や中間ファイルであって、何が起きたかの
-        /// 記録ではない。消す指定をした実行こそ、後から結果を確かめる手段が
-        /// ログしか残らない。
+        /// 作業ディレクトリは利用者が受け取る成果物の置き場でもあるので、
+        /// 消してよいのは k ごとの途中経過や訂正済みリードのほうだけになる。
+        /// ログを残すのは、消す指定をした実行こそ後から確かめる手段が
+        /// それしかなくなるため。
         /// </summary>
-        private static void V_削除_ログ以外(string p_一時ディレクトリ)
+        internal static void V_削除_中間ファイル(string p_作業ディレクトリ)
         {
-            foreach (var l_ディレクトリ in Directory.EnumerateDirectories(p_一時ディレクトリ))
+            foreach (var l_ディレクトリ in Directory.EnumerateDirectories(p_作業ディレクトリ))
             {
                 Directory.Delete(l_ディレクトリ, recursive: true);
             }
-            foreach (var l_ファイル in Directory.EnumerateFiles(p_一時ディレクトリ))
+            foreach (var l_ファイル in Directory.EnumerateFiles(p_作業ディレクトリ))
             {
-                if (Path.GetFileName(l_ファイル) != Consts.ログファイル名)
+                if (!Consts.最終成果物のファイル名.Contains(Path.GetFileName(l_ファイル)))
                 {
                     File.Delete(l_ファイル);
                 }
@@ -216,20 +218,22 @@ namespace Tsumiki
                 return;
             }
 
-            // 採用した1組だけを実行ディレクトリへ出す(k ごとの成果物は
-            // 一時ディレクトリに残る)。
-            AssemblyPipeline.V_複製_最終成果物(l_結果);
+            // 採用した1組だけを作業ディレクトリの直下へ出す(k ごとの成果物は
+            // k のサブディレクトリに残る)。
+            AssemblyPipeline.V_複製_最終成果物(l_結果, l_一時ディレクトリ);
 
-            var l_最終パス = l_結果.A_スキャフォールドパス is null
-                ? Consts.コンティグファイル名
-                : Consts.スキャフォールドファイル名;
+            var l_最終パス = Path.Combine(
+                l_一時ディレクトリ,
+                l_結果.A_スキャフォールドパス is null
+                    ? Consts.コンティグファイル名
+                    : Consts.スキャフォールドファイル名);
 
             V_除外_短い配列(l_最終パス, l_リード長);
 
             var l_ポリッシュ統計 = V_磨く(l_引数, l_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(l_引数, l_最終パス);
 
-            V_出力_完全性レポート(l_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証);
+            V_出力_完全性レポート(l_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_一時ディレクトリ);
 
             Logger.V_出力(メッセージID.開発中);
 
@@ -334,7 +338,8 @@ namespace Tsumiki
             アセンブリ実行結果 p_結果,
             string p_最終パス,
             ポリッシュ統計? p_ポリッシュ統計,
-            IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証)
+            IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証,
+            string p_出力ディレクトリ)
         {
             var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
             var l_未解決ギャップ数 = CompletenessValidator.Get_未解決ギャップ数(p_最終パス);
@@ -344,8 +349,11 @@ namespace Tsumiki
                 l_未解決ギャップ数, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所);
             CompletenessValidator.V_出力_判定結果(l_判定);
 
+            var l_レポートパス = Path.Combine(p_出力ディレクトリ, Consts.レポートファイル名);
+            var l_曖昧箇所パス = Path.Combine(p_出力ディレクトリ, Consts.曖昧箇所ファイル名);
+
             ReportWriter.V_書き出し_レポート(
-                Consts.レポートファイル名,
+                l_レポートパス,
                 p_結果.A_k長,
                 AssemblyStatsReporter.Get_統計_FASTA(p_最終パス),
                 l_未解決ギャップ数,
@@ -355,10 +363,10 @@ namespace Tsumiki
                 p_閉鎖検証,
                 p_ポリッシュ統計,
                 l_曖昧箇所);
-            Logger.V_出力(メッセージID.レポートを書き出した, Consts.レポートファイル名);
+            Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
 
-            ReportWriter.V_書き出し_曖昧箇所(Consts.曖昧箇所ファイル名, l_曖昧箇所);
-            Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, Consts.曖昧箇所ファイル名);
+            ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);
+            Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, l_曖昧箇所パス);
         }
     }
 }

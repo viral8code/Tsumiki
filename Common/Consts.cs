@@ -322,6 +322,21 @@
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
 
         /// <summary>
+        /// 作業ディレクトリに置く最終成果物のファイル名。
+        /// 中間ファイルの削除で消してはいけないものの一覧でもある。
+        /// </summary>
+        public static readonly string[] 最終成果物のファイル名 =
+        [
+            ユニティグファイル名,
+            コンティグファイル名,
+            スキャフォールドファイル名,
+            GFAファイル名,
+            レポートファイル名,
+            曖昧箇所ファイル名,
+            ログファイル名,
+        ];
+
+        /// <summary>
         /// ポリッシュ結果の一時的な置き場。最後に最終成果物へ被せる。
         /// </summary>
         public const string ポリッシュ済みファイル名 = "polished.fasta";
