@@ -1,7 +1,8 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Tests.Core
@@ -277,16 +278,16 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 500bp(連続性統計の最小長)未満の短い環状プラスミドも、
-        /// 環状化率にはちゃんと反映されること。閉じた複製単位はどれだけ
-        /// 短くても「完全長を組み上げられた」ことの核心であり、
-        /// 連続性統計向けの足切りを適用してはいけない。
+        /// 染色体よりはるかに小さいプラスミドでも、複製単位として数えられる
+        /// 長さがあれば環状化率に反映されること。閉じた複製単位は
+        /// 「完全長を組み上げられた」ことの核心なので、連続性向けの物差しで
+        /// 落としてはいけない。
         /// </summary>
         [Fact]
-        public void Score_ShortCircularPlasmid_CountsTowardCircularFractionDespiteContiguityFloor()
+        public void Score_SmallCircularPlasmid_CountsTowardCircularFraction()
         {
             var chromosome = RandomSequence(20_000, seed: 603);
-            var plasmid = RandomSequence(200, seed: 604);
+            var plasmid = RandomSequence(2_000, seed: 604);
             using var index = this.BuildIndex(chromosome, plasmid);
 
             var genomeSize = chromosome.Length + plasmid.Length;
@@ -297,6 +298,33 @@ namespace Tsumiki.Tests.Core
             Assert.NotNull(評価);
             Assert.Equal(2, 評価.A_環状本数);
             Assert.InRange(評価.A_環状化率, 0.99, 1.0);
+        }
+
+        /// <summary>
+        /// 評価に含める最小長(500bp)を下回る配列は、環状の目印が付いていても
+        /// 数えない。
+        ///
+        /// de Bruijn グラフにはホモポリマーや短いタンデム反復に由来する
+        /// 極小の閉路が多数あり、実データではこれが k あたり10本前後現れて
+        /// 環状本数を埋め尽くした。環状本数は候補選択の最優先キーなので、
+        /// 数えてしまうと k の選択がその雑音で決まる。
+        /// </summary>
+        [Fact]
+        public void Score_TooShortSequences_AreNotCountedAtAll()
+        {
+            var chromosome = RandomSequence(20_000, seed: 605);
+            using var index = this.BuildIndex(chromosome);
+
+            var path = this.WriteFastaWithNames(
+                "with_artefacts.fasta",
+                ("NODE1_circular", chromosome),
+                ("NODE2_circular", chromosome[..30]),
+                ("NODE3_circular", chromosome[100..106]));
+            var 評価 = AssemblyScorer.Get_評価(path, index, K, 深さ, chromosome.Length);
+
+            Assert.NotNull(評価);
+            Assert.Equal(1, 評価.A_環状本数);
+            Assert.Equal(1, 評価.A_本数);
         }
     }
 }

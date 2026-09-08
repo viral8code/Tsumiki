@@ -1,4 +1,4 @@
-namespace Tsumiki.IO
+﻿namespace Tsumiki.IO
 {
     internal class FastqWriter(string p_ファイル名) : IDisposable
     {

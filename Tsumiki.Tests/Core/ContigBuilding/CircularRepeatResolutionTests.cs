@@ -1,6 +1,7 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.Core;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -68,7 +69,9 @@ namespace Tsumiki.Tests.Core
             p_辞書[p_キー] = (p_ID, p_位置);
         }
 
-        /// <summary>A R B R の環を組み、R が入次数2・出次数2になっていることまで確かめる。</summary>
+        /// <summary>
+        /// A R B R の環を組み、R が入次数2・出次数2になっていることまで確かめる。
+        /// </summary>
         private static (UnitigGraph A_グラフ, List<string> A_ユニティグ配列, int A_a, int A_b, int A_r) Get_環()
         {
             var (l_ユニティグ配列, l_kmer辞書) = Get_構成();

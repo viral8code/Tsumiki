@@ -1,7 +1,9 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Scaffolding;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -14,7 +16,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ScaffolderCircularTests : IDisposable
     {
-        private const int k長 = 8;
+        private const int k長 = 21;
+
+        private const int 円周 = 1200;
 
         private readonly string _一時ディレクトリ;
 
@@ -34,11 +38,25 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
-        // 90bp の環をちょうど1周する3本。隣り合う unitig が k-1 = 7 塩基ずつ
-        // 重なり、末尾の 7 塩基が先頭の 7 塩基と一致する。
-        private const string ユニティグA = "TCATTGGCTATCCTAACCCGACCCTAGGAGCGGTTGGC";
-        private const string ユニティグB = "GGTTGGCGTGTATGCCGTGAATTTTCTCATTTCCGCTA";
-        private const string ユニティグC = "TCCGCTAGACATAATCGTTCTGCCTATATCATTGG";
+        // 環をちょうど1周する3本。隣り合う unitig が k-1 塩基ずつ重なり、
+        // 末尾の k-1 塩基が先頭の k-1 塩基と一致する。
+        // 複製単位として数えてもらえる長さ(Consts.環状として数える最小長)を
+        // 超えるようにしないと、環状の目印が付かない。
+        private static readonly string 環 = Get_乱数配列(円周, p_種: 20250908);
+
+        private static readonly string ユニティグA = 環[..(400 + k長 - 1)];
+
+        private static readonly string ユニティグB = 環[400..(800 + k長 - 1)];
+
+        private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
+
+        private static string Get_乱数配列(int p_長さ, int p_種)
+        {
+            var l_乱数 = new Random(p_種);
+            const string 塩基 = "ACGT";
+            return string.Concat(
+                Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
+        }
 
         private string Get_スキャフォールド出力()
         {

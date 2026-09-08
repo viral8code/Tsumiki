@@ -1,5 +1,5 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Tests.Utility
@@ -21,7 +21,9 @@ namespace Tsumiki.Tests.Utility
     {
         private const int R = 18;
 
-        /// <summary>アセンブリ側の k(=head/repeat/tail が共有する重なりの長さ+1)。</summary>
+        /// <summary>
+        /// アセンブリ側の k(=head/repeat/tail が共有する重なりの長さ+1)。
+        /// </summary>
         private const int AssemblyK = 8;
 
         private readonly string _tempDir;

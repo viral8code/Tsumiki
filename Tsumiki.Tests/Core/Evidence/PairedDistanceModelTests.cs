@@ -1,3 +1,4 @@
+﻿using Tsumiki.Core.Evidence;
 using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
@@ -9,7 +10,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class PairedDistanceModelTests
     {
-        /// <summary>中央 400、おおよそ 350-450 に広がるフラグメント長分布。</summary>
+        /// <summary>
+        /// 中央 400、おおよそ 350-450 に広がるフラグメント長分布。
+        /// </summary>
         private static List<int> Get_分布(int p_件数 = 2000)
         {
             var l_乱数 = new Random(4649);

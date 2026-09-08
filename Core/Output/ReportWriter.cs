@@ -1,9 +1,12 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Polishing;
+using Tsumiki.Model.Reporting;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Output
 {
     /// <summary>
     /// 完全長の判定と、その根拠になった数値をファイルへ書き出す。
@@ -98,7 +101,9 @@ namespace Tsumiki.Core
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
-        /// <summary>TSV に出す固定の種別名。訳さない。</summary>
+        /// <summary>
+        /// TSV に出す固定の種別名。訳さない。
+        /// </summary>
         private static string Get_種別コード(曖昧箇所の種別 p_種別)
         {
             return p_種別 switch
@@ -179,7 +184,9 @@ namespace Tsumiki.Core
             return p_値.ToString("0.####", CultureInfo.InvariantCulture);
         }
 
-        /// <summary>JSON の文字列リテラル。ID には引用符も含まれうる。</summary>
+        /// <summary>
+        /// JSON の文字列リテラル。ID には引用符も含まれうる。
+        /// </summary>
         private static string Get_文字列(string? p_値)
         {
             if (p_値 is null)
@@ -189,29 +196,17 @@ namespace Tsumiki.Core
             var l_文 = new StringBuilder("\"");
             foreach (var l_文字 in p_値)
             {
-                switch (l_文字)
+                _ = l_文字 switch
                 {
-                    case '"':
-                        _ = l_文.Append("\\\"");
-                        break;
-                    case '\\':
-                        _ = l_文.Append("\\\\");
-                        break;
-                    case '\n':
-                        _ = l_文.Append("\\n");
-                        break;
-                    case '\r':
-                        _ = l_文.Append("\\r");
-                        break;
-                    case '\t':
-                        _ = l_文.Append("\\t");
-                        break;
-                    default:
-                        _ = l_文字 < ' '
-                            ? l_文.Append(CultureInfo.InvariantCulture, $"\\u{(int)l_文字:x4}")
-                            : l_文.Append(l_文字);
-                        break;
-                }
+                    '"' => l_文.Append("\\\""),
+                    '\\' => l_文.Append("\\\\"),
+                    '\n' => l_文.Append("\\n"),
+                    '\r' => l_文.Append("\\r"),
+                    '\t' => l_文.Append("\\t"),
+                    _ => l_文字 < ' '
+                                                ? l_文.Append(CultureInfo.InvariantCulture, $"\\u{(int)l_文字:x4}")
+                                                : l_文.Append(l_文字),
+                };
             }
             return l_文.Append('"').ToString();
         }

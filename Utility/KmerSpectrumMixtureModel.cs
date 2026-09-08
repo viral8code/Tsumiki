@@ -1,4 +1,4 @@
-using Tsumiki.Model;
+﻿using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Utility
 {
@@ -20,15 +20,21 @@ namespace Tsumiki.Utility
     /// </summary>
     internal static class KmerSpectrumMixtureModel
     {
-        /// <summary>混合する真のk-mer成分のコピー数上限。これを超える倍率は稀な高コピー反復と見分けがつかない。</summary>
+        /// <summary>
+        /// 混合する真のk-mer成分のコピー数上限。これを超える倍率は稀な高コピー反復と見分けがつかない。
+        /// </summary>
         private const int コピー数の上限 = 10;
 
         private const int 最大反復数 = 500;
 
-        /// <summary>対数尤度の変化がこれを下回ったら収束とみなす(相対値)。</summary>
+        /// <summary>
+        /// 対数尤度の変化がこれを下回ったら収束とみなす(相対値)。
+        /// </summary>
         private const double 収束判定 = 1e-8;
 
-        /// <summary>事後誤り確率がこれを下回ったら「誤りではない」と判定する有意水準。</summary>
+        /// <summary>
+        /// 事後誤り確率がこれを下回ったら「誤りではない」と判定する有意水準。
+        /// </summary>
         private const double 有意水準 = 0.5;
 
         /// <summary>
@@ -43,7 +49,9 @@ namespace Tsumiki.Utility
         /// </summary>
         private const double 単一コピー平均の下限 = 3.0;
 
-        /// <summary>局所極大から拾う初期値候補の上限数。頻度上位のものだけを試す。</summary>
+        /// <summary>
+        /// 局所極大から拾う初期値候補の上限数。頻度上位のものだけを試す。
+        /// </summary>
         private const int 局所極大候補の上限数 = 20;
 
         /// <summary>
@@ -186,7 +194,7 @@ namespace Tsumiki.Utility
 
             var l_前回対数尤度 = double.NegativeInfinity;
             var l_対数尤度 = double.NegativeInfinity;
-            var l_反復数 = 0;
+            int l_反復数;
             for (l_反復数 = 1; l_反復数 <= 最大反復数; l_反復数++)
             {
                 var l_コピー数別混合比 = Get_コピー数別混合比(l_r);
@@ -214,12 +222,7 @@ namespace Tsumiki.Utility
                 l_前回対数尤度 = l_対数尤度;
             }
 
-            if (double.IsNaN(l_λ) || double.IsInfinity(l_λ) || l_λ < 単一コピー平均の下限)
-            {
-                return null;
-            }
-
-            return new 試行結果(l_λ, l_誤り平均, l_誤り混合比, l_r, l_対数尤度, l_反復数);
+            return double.IsNaN(l_λ) || double.IsInfinity(l_λ) || l_λ < 単一コピー平均の下限 ? null : new 試行結果(l_λ, l_誤り平均, l_誤り混合比, l_r, l_対数尤度, l_反復数);
         }
 
         /// <summary>
@@ -264,7 +267,7 @@ namespace Tsumiki.Utility
                 .Select(i => p_出現回数[i])
                 .ToList();
 
-            for (double l_値 = 単一コピー平均の下限; l_値 <= p_走査上限; l_値 *= 2)
+            for (var l_値 = 単一コピー平均の下限; l_値 <= p_走査上限; l_値 *= 2)
             {
                 l_候補.Add(l_値);
             }
@@ -384,7 +387,9 @@ namespace Tsumiki.Utility
             return true;
         }
 
-        /// <summary>最終パラメータでの、各出現回数における事後誤り確率 P(誤り成分 | c)。</summary>
+        /// <summary>
+        /// 最終パラメータでの、各出現回数における事後誤り確率 P(誤り成分 | c)。
+        /// </summary>
         private static double[] Get_事後誤り確率(
             double[] p_出現回数, double[] p_log階乗,
             double p_誤り平均, double p_誤り混合比, double p_λ, double[] p_コピー数別混合比)
@@ -428,7 +433,9 @@ namespace Tsumiki.Utility
             return l_最大 + Math.Log(l_合計);
         }
 
-        /// <summary>c=0..p_上限 の log(c!) の表。ポアソン対数尤度の計算に使う。</summary>
+        /// <summary>
+        /// c=0..p_上限 の log(c!) の表。ポアソン対数尤度の計算に使う。
+        /// </summary>
         private static double[] Get_log階乗テーブル(int p_上限)
         {
             var l_表 = new double[p_上限 + 1];

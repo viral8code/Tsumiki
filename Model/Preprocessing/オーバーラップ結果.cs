@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Preprocessing
 {
     /// <summary>
     /// ペアの重なり解析(R1 と RC(R2))が見つけた最良の位置合わせ。

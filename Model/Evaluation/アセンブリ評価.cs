@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
     /// リファレンス無しで測ったアセンブリの良さ。

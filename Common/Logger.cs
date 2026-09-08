@@ -1,5 +1,5 @@
-using System.Runtime.CompilerServices;
-using Tsumiki.Model;
+﻿using System.Runtime.CompilerServices;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Common
 {
@@ -7,10 +7,17 @@ namespace Tsumiki.Common
     {
         private static readonly object _錠 = new();
 
-        /// <summary>画面へ出す量。ファイルへの記録はこれに関わらず全量を残す。</summary>
+        /// <summary>
+        /// 画面へ出す量。ファイルへの記録はこれに関わらず全量を残す。
+        /// </summary>
         public static ログ水準 A_水準 { get; set; } = ログ水準.標準;
 
         private static StreamWriter? _ファイル;
+
+        /// <summary>
+        /// 0 より大きい間は何も出さない。入れ子にできるよう数で持つ。
+        /// </summary>
+        private static int _休止の深さ;
 
         /// <summary>
         /// 一時ディレクトリを作る前に出た行の控え。
@@ -56,13 +63,17 @@ namespace Tsumiki.Common
             }
         }
 
-        /// <summary>標準出力へ1行出す。文言は言語ごとのカタログから引く。</summary>
+        /// <summary>
+        /// 標準出力へ1行出す。文言は言語ごとのカタログから引く。
+        /// </summary>
         public static void V_出力(メッセージID p_ID, params object?[] p_引数)
         {
             V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: false);
         }
 
-        /// <summary>標準エラーへ1行出す。</summary>
+        /// <summary>
+        /// 標準エラーへ1行出す。
+        /// </summary>
         public static void V_出力_標準エラー(メッセージID p_ID, params object?[] p_引数)
         {
             V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: true);
@@ -98,7 +109,9 @@ namespace Tsumiki.Common
             V_出力(メッセージID.タイムスタンプ, DateTime.Now);
         }
 
-        /// <summary>区切りの空行。文言を持たないのでカタログには載せない。</summary>
+        /// <summary>
+        /// 区切りの空行。文言を持たないのでカタログには載せない。
+        /// </summary>
         public static void V_出力_空行()
         {
             V_書き出し(string.Empty, p_標準エラーか: false);
@@ -112,6 +125,10 @@ namespace Tsumiki.Common
         {
             lock (_錠)
             {
+                if (_休止の深さ > 0)
+                {
+                    return;
+                }
                 if (_ファイル is { } l_ファイル)
                 {
                     l_ファイル.WriteLine(p_行);
@@ -139,17 +156,48 @@ namespace Tsumiki.Common
         /// </summary>
         private static ログ水準 Get_水準(string p_行)
         {
-            if (p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal))
-            {
-                return ログ水準.詳細;
-            }
-            return p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal)
+            return p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal)
+                ? ログ水準.詳細
+                : p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal)
                 || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal)
                 ? ログ水準.最小
                 : ログ水準.標準;
         }
 
-        /// <summary>記録を閉じる。ここまでに書いたものは失われない。</summary>
+        /// <summary>
+        /// この場を抜けるまで、画面にもファイルにも何も出さない。
+        ///
+        /// 局所アセンブリのように、小さな使い捨ての処理を数百回繰り返す
+        /// 区間で使う。1回あたりの索引の統計は、集めても読む意味が無い割に
+        /// 本来のログを埋め尽くす(実データでは k=21 だけで千行を超えた)。
+        /// </summary>
+        public static IDisposable V_止める_記録()
+        {
+            return new 記録の休止();
+        }
+
+        private sealed class 記録の休止 : IDisposable
+        {
+            public 記録の休止()
+            {
+                lock (_錠)
+                {
+                    _休止の深さ++;
+                }
+            }
+
+            public void Dispose()
+            {
+                lock (_錠)
+                {
+                    _休止の深さ--;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 記録を閉じる。ここまでに書いたものは失われない。
+        /// </summary>
         public static void V_終了_ファイル出力()
         {
             lock (_錠)

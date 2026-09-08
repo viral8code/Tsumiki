@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.UnitigBuilding
 {
     /// <summary>
     /// カバレッジからのコピー数推定の結果。

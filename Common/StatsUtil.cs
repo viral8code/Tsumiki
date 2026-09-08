@@ -1,4 +1,4 @@
-namespace Tsumiki.Common
+﻿namespace Tsumiki.Common
 {
     /// <summary>
     /// 中央値・分位点・N50・長さ加重中央値など、複数箇所で必要になる
@@ -21,7 +21,9 @@ namespace Tsumiki.Common
             return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2.0 : l_整列済み[l_中央];
         }
 
-        /// <summary>整列済みの一覧から分位点の値を取り出す。</summary>
+        /// <summary>
+        /// 整列済みの一覧から分位点の値を取り出す。
+        /// </summary>
         public static int Get_分位点(IReadOnlyList<int> p_整列済み, double p_分位)
         {
             return p_整列済み[Math.Clamp((int)(p_分位 * (p_整列済み.Count - 1)), 0, p_整列済み.Count - 1)];

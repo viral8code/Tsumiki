@@ -1,4 +1,4 @@
-namespace Tsumiki.Common
+﻿namespace Tsumiki.Common
 {
     internal class Consts
     {
@@ -86,7 +86,9 @@ namespace Tsumiki.Common
         /// --mode {conservative, normal, bold} のようなプリセットのほうが
         /// 意図を素直に表せる。normal は既定値そのもの。
         /// </summary>
-        /// <summary>-lang に指定できる言語名。</summary>
+        /// <summary>
+        /// -lang に指定できる言語名。
+        /// </summary>
         public static class 言語名
         {
             public const string 英語 = "en";
@@ -96,7 +98,9 @@ namespace Tsumiki.Common
             public const string 中国語 = "zh";
         }
 
-        /// <summary>-log に指定できる水準名。</summary>
+        /// <summary>
+        /// -log に指定できる水準名。
+        /// </summary>
         public static class ログ水準名
         {
             public const string 最小 = "quiet";
@@ -113,13 +117,19 @@ namespace Tsumiki.Common
         /// </summary>
         public static class ログ目印
         {
-            /// <summary>内部の判断過程。既定では画面に出さない。</summary>
+            /// <summary>
+            /// 内部の判断過程。既定では画面に出さない。
+            /// </summary>
             public const string 詳細 = "[Debug]";
 
-            /// <summary>完全長の判定。静かにしていても出す。</summary>
+            /// <summary>
+            /// 完全長の判定。静かにしていても出す。
+            /// </summary>
             public const string 完全性 = "[Complete]";
 
-            /// <summary>レポートの出力先。静かにしていても出す。</summary>
+            /// <summary>
+            /// レポートの出力先。静かにしていても出す。
+            /// </summary>
             public const string レポート = "[Report]";
         }
 
@@ -187,7 +197,9 @@ namespace Tsumiki.Common
         /// </summary>
         public const double マルチk上限のリード長比 = 0.9;
 
-        /// <summary>自動で試す k の下限。</summary>
+        /// <summary>
+        /// 自動で試す k の下限。
+        /// </summary>
         public const int マルチkの下限 = 21;
 
         /// <summary>
@@ -235,7 +247,9 @@ namespace Tsumiki.Common
 
         public const ulong ペア支持数閾値の既定値 = 10;
 
-        /// <summary>フラグメント長の経験分布を刻むビン幅。</summary>
+        /// <summary>
+        /// フラグメント長の経験分布を刻むビン幅。
+        /// </summary>
         public const int フラグメント長のビン幅 = 5;
 
         /// <summary>
@@ -290,11 +304,26 @@ namespace Tsumiki.Common
         /// </summary>
         public const string 環状の目印 = "circular";
 
+        /// <summary>
+        /// 環状に閉じた経路を「複製単位が1周組み上がった」とみなす最小の長さ。
+        ///
+        /// de Bruijn グラフにはホモポリマーや短いタンデム反復に由来する
+        /// 極小の閉路が多数ある(実データで 1bp〜150bp の閉路が k あたり
+        /// 10本前後現れた)。これらを複製単位として数えると、環状本数が
+        /// 候補選択の最優先キーである以上、k の選択がその雑音で決まってしまう。
+        ///
+        /// 既知の自然プラスミドで最も小さいものが 1kb 前後なので、そこで切る。
+        /// 下回る閉路も配列としては出力する。数えないだけ。
+        /// </summary>
+        public const int 環状として数える最小長 = 1000;
+
         public const string レポートファイル名 = "assembly.report.json";
 
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
 
-        /// <summary>ポリッシュ結果の一時的な置き場。最後に最終成果物へ被せる。</summary>
+        /// <summary>
+        /// ポリッシュ結果の一時的な置き場。最後に最終成果物へ被せる。
+        /// </summary>
         public const string ポリッシュ済みファイル名 = "polished.fasta";
 
         /// <summary>

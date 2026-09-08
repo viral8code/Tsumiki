@@ -1,4 +1,4 @@
-using Tsumiki.IO;
+﻿using Tsumiki.IO;
 
 namespace Tsumiki.Tests.IO
 {

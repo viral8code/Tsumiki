@@ -1,9 +1,10 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Polishing;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Polishing
 {
     /// <summary>
     /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す。
@@ -39,13 +40,19 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 試すヒット数 = 4;
 
-        /// <summary>照合を認める不一致の割合。これを超えたら別の場所とみなす。</summary>
+        /// <summary>
+        /// 照合を認める不一致の割合。これを超えたら別の場所とみなす。
+        /// </summary>
         private const double 許容不一致率 = 0.1;
 
-        /// <summary>ungapped 照合として意味を持つ最小の重なり長。</summary>
+        /// <summary>
+        /// ungapped 照合として意味を持つ最小の重なり長。
+        /// </summary>
         private const int 最小重なり長 = シード長;
 
-        /// <summary>置換を認めるのに必要な、その位置の深度。</summary>
+        /// <summary>
+        /// 置換を認めるのに必要な、その位置の深度。
+        /// </summary>
         private const int 訂正に必要な深度 = 5;
 
         /// <summary>
@@ -55,16 +62,24 @@ namespace Tsumiki.Core
         /// </summary>
         private const double 訂正に必要な占有率 = 0.7;
 
-        /// <summary>深度が不足しているとみなす、中央値に対する比。</summary>
+        /// <summary>
+        /// 深度が不足しているとみなす、中央値に対する比。
+        /// </summary>
         private const double 深度不足とみなす比 = 0.2;
 
-        /// <summary>深度のヒストグラムを取る上限。これ以上は同じ枠に入れる。</summary>
+        /// <summary>
+        /// 深度のヒストグラムを取る上限。これ以上は同じ枠に入れる。
+        /// </summary>
         private const int 深度ヒストグラムの上限 = 65535;
 
-        /// <summary>種索引の1件。A_配列番号 が負の値なら複数箇所に当たる曖昧な種。</summary>
+        /// <summary>
+        /// 種索引の1件。A_配列番号 が負の値なら複数箇所に当たる曖昧な種。
+        /// </summary>
         private readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
 
-        /// <summary>複数の位置に当たった種であることを示す番兵。</summary>
+        /// <summary>
+        /// 複数の位置に当たった種であることを示す番兵。
+        /// </summary>
         private const int 曖昧な種の番兵 = -1;
 
         /// <summary>
@@ -402,7 +417,7 @@ namespace Tsumiki.Core
                     var l_起点 = l_位置 * 4;
                     var l_最多の塩基ID = Consts.塩基ID.A;
                     var l_最多得票 = l_票[l_起点];
-                    for (byte l_塩基ID = Consts.塩基ID.C; l_塩基ID <= Consts.塩基ID.T; l_塩基ID++)
+                    for (var l_塩基ID = Consts.塩基ID.C; l_塩基ID <= Consts.塩基ID.T; l_塩基ID++)
                     {
                         if (l_票[l_起点 + l_塩基ID - 1] > l_最多得票)
                         {

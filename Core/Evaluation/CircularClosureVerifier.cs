@@ -1,9 +1,10 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 環状に閉じたと判定された配列について、その閉じ目を元リードが
@@ -24,7 +25,9 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 接合フランク長 = 30;
 
-        /// <summary>閉じ目を跨いだとみなす窓の長さ。</summary>
+        /// <summary>
+        /// 閉じ目を跨いだとみなす窓の長さ。
+        /// </summary>
         private const int 接合窓長 = 接合フランク長 * 2;
 
         /// <summary>

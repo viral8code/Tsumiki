@@ -1,6 +1,6 @@
-using System.Text;
+﻿using System.Text;
 
-namespace Tsumiki.Model
+namespace Tsumiki.Model.UnitigBuilding
 {
     internal class ユニティグ(object p_ID, string p_配列)
     {

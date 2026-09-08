@@ -1,6 +1,9 @@
 ﻿using Tsumiki.Common;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.ContigBuilding;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.UnitigBuilding;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core
@@ -419,7 +422,9 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>FASTQ を順に読み進めて生リード文字列だけを返す。</summary>
+        /// <summary>
+        /// FASTQ を順に読み進めて生リード文字列だけを返す。
+        /// </summary>
         private static IEnumerable<string> Get_生リード列(string p_リードパス)
         {
             using var l_読み込み = new FastqReader(p_リードパス);

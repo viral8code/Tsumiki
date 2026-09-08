@@ -1,5 +1,5 @@
-using System.Text;
-using Tsumiki.Model;
+﻿using System.Text;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Common
 {
@@ -12,10 +12,14 @@ namespace Tsumiki.Common
     /// </summary>
     internal static class HelpText
     {
-        /// <summary>説明を書き始める桁。オプション名がこれを超える行は説明を次行へ送る。</summary>
+        /// <summary>
+        /// 説明を書き始める桁。オプション名がこれを超える行は説明を次行へ送る。
+        /// </summary>
         private const int 説明の開始桁 = 20;
 
-        /// <summary>名前・作者・バージョン。引数なしの起動と -v で出す。</summary>
+        /// <summary>
+        /// 名前・作者・バージョン。引数なしの起動と -v で出す。
+        /// </summary>
         public static string Get_概要()
         {
             var l_文 = new StringBuilder();
@@ -117,7 +121,9 @@ namespace Tsumiki.Common
             _ = p_文.AppendLine(Messages.Get_文言(p_見出し));
         }
 
-        /// <summary>オプションに紐づかない補足を、説明と同じ桁に1行足す。</summary>
+        /// <summary>
+        /// オプションに紐づかない補足を、説明と同じ桁に1行足す。
+        /// </summary>
         private static void V_追加_説明(
             StringBuilder p_文, メッセージID p_説明, params object?[] p_引数)
         {

@@ -1,11 +1,13 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
-        /// <summary>FASTA を1回で全件読み込む。ID の先頭 '>' は取り除く。</summary>
+        /// <summary>
+        /// FASTA を1回で全件読み込む。ID の先頭 '>' は取り除く。
+        /// </summary>
         public static List<(string A_ID, string A_配列)> Get_全エントリ(string p_パス)
         {
             List<(string, string)> l_結果 = [];

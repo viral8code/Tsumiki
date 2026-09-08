@@ -1,3 +1,4 @@
+﻿using Tsumiki.Core.Evidence;
 using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
@@ -12,7 +13,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class EvidenceCalibratorTests
     {
-        /// <summary>中央 400 付近に集まるフラグメント長の標本。</summary>
+        /// <summary>
+        /// 中央 400 付近に集まるフラグメント長の標本。
+        /// </summary>
         private static List<int> Get_同一ユニティグ標本(int p_件数 = 2000)
         {
             var l_乱数 = new Random(20260908);

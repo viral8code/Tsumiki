@@ -1,7 +1,7 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
-    /// 画面に出す文言の識別子。文言そのものは <see cref="Tsumiki.Common.MessageCatalog"/> が
+    /// 画面に出す文言の識別子。文言そのものは <see cref="Common.MessageCatalog"/> が
     /// 言語ごとに持つ。呼び出し側はこの ID だけを指す。
     /// </summary>
     internal enum メッセージID
@@ -222,5 +222,7 @@ namespace Tsumiki.Model
         孤立した環状の複製単位,
         ヘルプ_ログ水準,
         ログの保存先,
+        短すぎる閉路,
+        合成リードを再利用,
     }
 }

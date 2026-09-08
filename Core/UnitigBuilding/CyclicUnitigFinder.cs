@@ -1,8 +1,8 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
     /// 分岐を1つも持たない閉路を拾い、そこからの走査の開始点を返す。
@@ -117,7 +117,7 @@ namespace Tsumiki.Core
                 l_現在.AsSpan(1).CopyTo(l_次);
                 var l_候補数 = 0;
                 byte l_次の塩基 = 0;
-                for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+                for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     l_次[^1] = i;
                     if (p_kmerインデックス.Get_含まれるか(l_次))
@@ -174,7 +174,9 @@ namespace Tsumiki.Core
                     : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
             }
 
-            /// <summary>2つの k-mer が、逆相補を同一視して同じ座位を指すか。</summary>
+            /// <summary>
+            /// 2つの k-mer が、逆相補を同一視して同じ座位を指すか。
+            /// </summary>
             public static bool Get_同じ座位か(
                 ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
             {

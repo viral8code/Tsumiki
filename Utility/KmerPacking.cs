@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
@@ -31,7 +31,9 @@ namespace Tsumiki.Utility
             return true;
         }
 
-        /// <summary>塩基ID列(1..4)を 2bit パックし、正規形を返す。</summary>
+        /// <summary>
+        /// 塩基ID列(1..4)を 2bit パックし、正規形を返す。
+        /// </summary>
         public static UInt128 Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_順鎖 = 0;
@@ -66,7 +68,9 @@ namespace Tsumiki.Utility
             return true;
         }
 
-        /// <summary>パック済みの値の逆相補。</summary>
+        /// <summary>
+        /// パック済みの値の逆相補。
+        /// </summary>
         public static UInt128 Get_逆相補(UInt128 p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
@@ -80,7 +84,9 @@ namespace Tsumiki.Utility
             return l_逆相補;
         }
 
-        /// <summary>パック済みの値とその逆相補のうち小さいほうを返す。</summary>
+        /// <summary>
+        /// パック済みの値とその逆相補のうち小さいほうを返す。
+        /// </summary>
         public static UInt128 Get_小さいほう(UInt128 p_パック済み, int p_長さ)
         {
             var l_逆相補 = Get_逆相補(p_パック済み, p_長さ);

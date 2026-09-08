@@ -1,4 +1,4 @@
-namespace Tsumiki.IO
+﻿namespace Tsumiki.IO
 {
     internal class FastaWriter(string p_ファイル名) : IDisposable
     {

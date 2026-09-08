@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Polishing
 {
     /// <summary>
     /// 最終配列へのリード再マッピングと、その多数決による置換訂正の集計。

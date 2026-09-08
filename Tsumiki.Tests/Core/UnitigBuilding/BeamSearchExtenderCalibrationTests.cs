@@ -1,6 +1,8 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evidence;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.Core;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -83,7 +85,9 @@ namespace Tsumiki.Tests.Core
             return merge;
         }
 
-        /// <summary>中央 150 のフラグメント長標本(密度較正に使う)。</summary>
+        /// <summary>
+        /// 中央 150 のフラグメント長標本(密度較正に使う)。
+        /// </summary>
         private static List<int> Get_同一ユニティグ標本(int p_件数 = 300) => [.. Enumerable.Repeat(150, p_件数)];
 
         [Fact]

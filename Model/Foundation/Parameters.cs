@@ -1,6 +1,6 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
-namespace Tsumiki.Model
+namespace Tsumiki.Model.Foundation
 {
     internal class Parameters
     {
@@ -183,10 +183,14 @@ namespace Tsumiki.Model
 
         public bool A_ヘルプモードか { get; set; } = false;
 
-        /// <summary>バージョンだけ表示して終わるか。</summary>
+        /// <summary>
+        /// バージョンだけ表示して終わるか。
+        /// </summary>
         public bool A_バージョンモードか { get; set; } = false;
 
-        /// <summary>進行状況メッセージの言語。</summary>
+        /// <summary>
+        /// 進行状況メッセージの言語。
+        /// </summary>
         public 言語 A_言語 { get; set; } = 言語.日本語;
 
         /// <summary>
@@ -195,7 +199,9 @@ namespace Tsumiki.Model
         /// </summary>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
 
-        /// <summary>-log に書く綴り。表示は CLI で指定する形に合わせる。</summary>
+        /// <summary>
+        /// -log に書く綴り。表示は CLI で指定する形に合わせる。
+        /// </summary>
         private static string Get_ログ水準名(ログ水準 p_水準)
         {
             return p_水準 switch
@@ -206,7 +212,9 @@ namespace Tsumiki.Model
             };
         }
 
-        /// <summary>-lang に書く綴り。表示は CLI で指定する形に合わせる。</summary>
+        /// <summary>
+        /// -lang に書く綴り。表示は CLI で指定する形に合わせる。
+        /// </summary>
         private static string Get_言語名(言語 p_言語)
         {
             return p_言語 switch

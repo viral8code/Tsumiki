@@ -1,3 +1,4 @@
+﻿using Tsumiki.Core.Evidence;
 using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core

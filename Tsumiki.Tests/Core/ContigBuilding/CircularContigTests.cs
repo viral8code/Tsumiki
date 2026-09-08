@@ -1,7 +1,7 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -36,20 +36,35 @@ namespace Tsumiki.Tests.Core
             }
         }
 
-        // 90bp の環状配列。k=8 で3本の unitig 全体を通じて重複する
-        // 正規化 k-mer が無いことを確認済み。
-        private const string Circle = "TCATTGGCTATCCTAACCCGACCCTAGGAGCGGTTGGCGTGTATGCCGTGAATTTTCTCATTTCCGCTAGACATAATCGTTCTGCCTATA";
+        // 複製単位として数えてもらえる長さ(Consts.環状として数える最小長)を
+        // 超える環にする。これを下回る閉路はホモポリマー等の産物とみなされ、
+        // 環状の目印が付かない。
+        private const int k = 21;
 
-        // 隣り合う unitig が k-1 = 7 塩基ずつ重なり、末尾 unitig の末尾 7 塩基が
-        // 先頭 unitig の先頭 7 塩基と一致する(= 環が閉じる)ように切り分けたもの。
-        private const string UnitigA = "TCATTGGCTATCCTAACCCGACCCTAGGAGCGGTTGGC";
-        private const string UnitigB = "GGTTGGCGTGTATGCCGTGAATTTTCTCATTTCCGCTA";
-        private const string UnitigC = "TCCGCTAGACATAATCGTTCTGCCTATATCATTGG";
+        private const int 円周 = 1200;
+
+        // k=21 なら 1200 塩基の乱数列に重複する正規化 k-mer は事実上現れない。
+        private static readonly string Circle = Get_乱数配列(円周, p_種: 20250908);
+
+        // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
+        // 先頭 unitig の先頭 k-1 塩基と一致する(= 環が閉じる)ように切り分ける。
+        private static readonly string UnitigA = Circle[..(400 + k - 1)];
+
+        private static readonly string UnitigB = Circle[400..(800 + k - 1)];
+
+        private static readonly string UnitigC = Circle[800..] + Circle[..(k - 1)];
+
+        private static string Get_乱数配列(int p_長さ, int p_種)
+        {
+            var l_乱数 = new Random(p_種);
+            const string 塩基 = "ACGT";
+            return string.Concat(
+                Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
+        }
 
         [Fact]
         public void UniteContigs_ClosedCircle_IsMarkedCircular_AndHasExactCircumferenceLength()
         {
-            const int k = 8;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
@@ -76,7 +91,7 @@ namespace Tsumiki.Tests.Core
             Assert.Contains("circular", contig.A_ID);
 
             // 重なりを二重に数えず、円周ちょうどの長さになっていること。
-            Assert.Equal(Circle.Length, contig.A_配列.Length);
+            Assert.Equal(円周, contig.A_配列.Length);
 
             // 配列としても、環状配列のいずれかの回転(またはその逆相補)に
             // 一致していなければならない。
@@ -90,7 +105,6 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void UniteContigs_LinearPath_IsNotMarkedCircular()
         {
-            const int k = 8;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             // 環を閉じる最後の unitig を外し、A -> B の線状経路だけにする。

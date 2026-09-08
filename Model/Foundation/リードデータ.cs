@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     internal class リードデータ
     {

@@ -1,9 +1,9 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// 前段の k で組み上がった配列を、次の k の k-mer 集合へ引き継ぐ。
@@ -139,11 +139,7 @@ namespace Tsumiki.Core
 
             var l_前段の本数 = l_リード長 - p_引き継ぎ.A_k長 + 1;
             var l_今の本数 = l_リード長 - p_k長 + 1;
-            if (l_前段の本数 <= 0 || l_今の本数 <= 0)
-            {
-                return (ulong)l_最小;
-            }
-            return (ulong)Math.Max(1, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
+            return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)l_最小 : (ulong)Math.Max(1, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
         }
     }
 }

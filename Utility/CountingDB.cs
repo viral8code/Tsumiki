@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
 namespace Tsumiki.Utility
 {
@@ -220,10 +220,7 @@ namespace Tsumiki.Utility
             BinaryWriter p_書き込み, ulong p_出現回数, Dictionary<ulong, long>? p_ヒストグラム)
         {
             p_書き込み.Write(p_出現回数);
-            if (p_ヒストグラム is not null)
-            {
-                p_ヒストグラム[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1;
-            }
+            p_ヒストグラム?[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1;
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-namespace Tsumiki.IO
+﻿namespace Tsumiki.IO
 {
     /// <summary>
     /// リードファイルの先頭を標本抽出して代表的なリード長を求める。k 長の自動選択に使う。
@@ -42,15 +42,7 @@ namespace Tsumiki.IO
             }
 
             var l_リード長2 = Get_代表リード長(p_リード2のパス, p_標本上限);
-            if (l_リード長1 is not { } l_長さ1)
-            {
-                return l_リード長2;
-            }
-            if (l_リード長2 is not { } l_長さ2)
-            {
-                return l_リード長1;
-            }
-            return Math.Min(l_長さ1, l_長さ2);
+            return l_リード長1 is not { } l_長さ1 ? l_リード長2 : l_リード長2 is not { } l_長さ2 ? l_リード長1 : Math.Min(l_長さ1, l_長さ2);
         }
     }
 }

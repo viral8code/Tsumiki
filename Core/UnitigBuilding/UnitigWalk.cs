@@ -1,7 +1,7 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
     /// unitig の walk を、パック値を転がしながら進める実装(k &lt;= 64 用)。
@@ -31,8 +31,13 @@ namespace Tsumiki.Core
             this._上位シフト = 2 * (p_k長 - 1);
         }
 
-        /// <summary>この実装で扱える k かどうか。</summary>
-        public static bool Get_扱えるか(int p_k長) => p_k長 <= 64;
+        /// <summary>
+        /// この実装で扱える k かどうか。
+        /// </summary>
+        public static bool Get_扱えるか(int p_k長)
+        {
+            return p_k長 <= 64;
+        }
 
         private bool Get_含まれるか(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
@@ -42,7 +47,9 @@ namespace Tsumiki.Core
                 : this._kmerインデックス.Get_含まれるか_中(l_正規形);
         }
 
-        /// <summary>末尾に塩基を足した k-mer の順鎖・逆鎖パック値。</summary>
+        /// <summary>
+        /// 末尾に塩基を足した k-mer の順鎖・逆鎖パック値。
+        /// </summary>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_後続(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
             var l_コドン = (UInt128)(p_塩基ID - 1);
@@ -51,7 +58,9 @@ namespace Tsumiki.Core
             return (l_順鎖, l_逆鎖);
         }
 
-        /// <summary>先頭に塩基を足した(末尾を落とした)k-mer の順鎖・逆鎖パック値。</summary>
+        /// <summary>
+        /// 先頭に塩基を足した(末尾を落とした)k-mer の順鎖・逆鎖パック値。
+        /// </summary>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
             var l_コドン = (UInt128)(p_塩基ID - 1);
@@ -68,7 +77,7 @@ namespace Tsumiki.Core
         private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_件数 = 0;
-            for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+            for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
                 var (l_元順, l_元逆) = this.Get_予測元(p_順鎖, p_逆鎖, i);
                 if (this.Get_含まれるか(l_元順, l_元逆) && ++l_件数 > 1)
@@ -108,7 +117,7 @@ namespace Tsumiki.Core
                 var l_候補数 = 0;
                 UInt128 l_次順 = 0;
                 UInt128 l_次逆 = 0;
-                for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+                for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     var (l_順, l_逆) = this.Get_後続(l_順鎖, l_逆鎖, i);
                     if (!this.Get_含まれるか(l_順, l_逆))

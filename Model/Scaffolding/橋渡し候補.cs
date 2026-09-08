@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Scaffolding
 {
     /// <summary>
     /// 骨格アセンブリの2本の配列が隣接しているという、別の k のアセンブリからの証拠。

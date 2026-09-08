@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 
 namespace Tsumiki.Common
 {
@@ -341,11 +341,7 @@ namespace Tsumiki.Common
             }
 
             var l_バイト数 = (long)(l_数値 * l_倍率);
-            if (l_バイト数 <= 0)
-            {
-                throw new ArgumentException($"Memory size '{p_表記}' is too small");
-            }
-            return l_バイト数;
+            return l_バイト数 <= 0 ? throw new ArgumentException($"Memory size '{p_表記}' is too small") : l_バイト数;
         }
 
         /// <summary>

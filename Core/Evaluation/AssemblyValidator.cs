@@ -1,9 +1,10 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかの自己検査。

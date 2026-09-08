@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.ContigBuilding
 {
     /// <summary>
     /// V_結合_コンティグ が unitig を結合して contig を作る際、各 unitig が

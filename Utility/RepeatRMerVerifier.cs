@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 
 namespace Tsumiki.Utility

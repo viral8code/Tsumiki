@@ -1,4 +1,4 @@
-using Tsumiki.Model;
+﻿using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Common

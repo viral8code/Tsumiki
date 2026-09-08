@@ -1,9 +1,9 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System;
 using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Xunit;
 
 namespace Tsumiki.Tests.Common
@@ -19,7 +19,9 @@ namespace Tsumiki.Tests.Common
             return Enum.GetValues<メッセージID>();
         }
 
-        /// <summary>差し込み位置({0} など)の並び。書式指定は無視する。</summary>
+        /// <summary>
+        /// 差し込み位置({0} など)の並び。書式指定は無視する。
+        /// </summary>
         private static List<int> Get_差し込み位置(string p_書式)
         {
             return [.. Regex.Matches(p_書式, @"(?<!\{)\{(\d+)[^}]*\}")

@@ -1,9 +1,9 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
     /// unitig 間の隣接を、リードマッピングからの推測ではなく de Bruijn グラフ
@@ -19,7 +19,9 @@ namespace Tsumiki.Core
     /// </summary>
     internal sealed class UnitigGraph
     {
-        /// <summary>頂点ごとの出辺(行き先の頂点インデックス)。</summary>
+        /// <summary>
+        /// 頂点ごとの出辺(行き先の頂点インデックス)。
+        /// </summary>
         public List<List<int>> A_出辺 { get; }
 
         /// <summary>
@@ -35,7 +37,9 @@ namespace Tsumiki.Core
             this.A_自己ループ = p_自己ループ;
         }
 
-        /// <summary>頂点の入次数。辺の逆鎖対称性より、v の入次数は v^1 の出次数に等しい。</summary>
+        /// <summary>
+        /// 頂点の入次数。辺の逆鎖対称性より、v の入次数は v^1 の出次数に等しい。
+        /// </summary>
         public int Get_入次数(int p_頂点)
         {
             return this.A_出辺[p_頂点 ^ 1].Count;
@@ -51,11 +55,7 @@ namespace Tsumiki.Core
         /// </summary>
         public bool Get_通り抜けてよいか(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点)
         {
-            if ((p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1)
-            {
-                return true;
-            }
-            return this.A_出辺[p_頂点].Count == 1 && this.Get_入次数(p_頂点) == 1;
+            return (p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1 || this.A_出辺[p_頂点].Count == 1 && this.Get_入次数(p_頂点) == 1;
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                for (byte l_末尾塩基 = Consts.塩基ID.A; l_末尾塩基 <= Consts.塩基ID.T; l_末尾塩基++)
+                for (var l_末尾塩基 = Consts.塩基ID.A; l_末尾塩基 <= Consts.塩基ID.T; l_末尾塩基++)
                 {
                     l_候補[p_k長 - 1] = l_末尾塩基;
                     if (!p_kmer辞書.TryGetValue(new KmerKey(l_候補.AsSpan()), out var l_ヒット))
@@ -148,7 +148,9 @@ namespace Tsumiki.Core
             _ = this.A_出辺[p_終点 ^ 1].Remove(p_始点 ^ 1);
         }
 
-        /// <summary>辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして追加する。</summary>
+        /// <summary>
+        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして追加する。
+        /// </summary>
         private void V_追加_辺の対(int p_始点, int p_終点)
         {
             this.A_出辺[p_始点].Add(p_終点);

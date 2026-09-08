@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.UnitigBuilding
 {
     /// <summary>
     /// ContigMaker.Get_代表ユニティグ の結果。リードが代表としてマップされた

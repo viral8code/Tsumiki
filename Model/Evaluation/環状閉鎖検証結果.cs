@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
     /// 環状に閉じた1本について、閉じ目が元リードから裏付けられるかを調べた結果。
@@ -12,7 +12,9 @@ namespace Tsumiki.Model
         int A_跨いだリード数,
         int A_必要本数)
     {
-        /// <summary>閉じ目を直接読んだリードが必要本数に達しているか。</summary>
+        /// <summary>
+        /// 閉じ目を直接読んだリードが必要本数に達しているか。
+        /// </summary>
         public bool A_支持されたか => this.A_跨いだリード数 >= this.A_必要本数;
     }
 }

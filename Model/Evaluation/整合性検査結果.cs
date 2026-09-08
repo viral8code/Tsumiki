@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかの検査結果。
@@ -11,7 +11,9 @@ namespace Tsumiki.Model
         long A_出しすぎkmer種類数,
         long A_余分な延べ数)
     {
-        /// <summary>信頼できる k-mer のうち、アセンブリに現れなかった割合。</summary>
+        /// <summary>
+        /// 信頼できる k-mer のうち、アセンブリに現れなかった割合。
+        /// </summary>
         public double A_取りこぼし率 => this.A_信頼kmer数 == 0 ? 0 : 100.0 * this.A_取りこぼし数 / this.A_信頼kmer数;
 
         /// <summary>

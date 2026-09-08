@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
     /// 画面へ出す量の段階。
@@ -12,13 +12,19 @@ namespace Tsumiki.Model
     /// </summary>
     internal enum ログ水準
     {
-        /// <summary>結論だけ。警告・エラーと、完全性の判定・レポートの出力先。</summary>
+        /// <summary>
+        /// 結論だけ。警告・エラーと、完全性の判定・レポートの出力先。
+        /// </summary>
         最小 = 0,
 
-        /// <summary>進行状況と結果。内部の判断過程は出さない。</summary>
+        /// <summary>
+        /// 進行状況と結果。内部の判断過程は出さない。
+        /// </summary>
         標準 = 1,
 
-        /// <summary>内部の判断過程まで含めて全部。</summary>
+        /// <summary>
+        /// 内部の判断過程まで含めて全部。
+        /// </summary>
         詳細 = 2,
     }
 }

@@ -1,7 +1,8 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 複数のアセンブリ候補から1つを選ぶ。

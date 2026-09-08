@@ -1,4 +1,4 @@
-namespace Tsumiki.Utility
+﻿namespace Tsumiki.Utility
 {
     internal class ByteArrayComparer : IComparer<byte[]>
     {

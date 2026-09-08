@@ -1,7 +1,8 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Polishing;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -48,7 +49,9 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
-        /// <summary>真の配列から等間隔にリードを切り出して FASTQ にする。</summary>
+        /// <summary>
+        /// 真の配列から等間隔にリードを切り出して FASTQ にする。
+        /// </summary>
         private string V_書き出し_FASTQ(
             string p_真の配列, int p_リード長, int p_刻み, int p_開始 = 0, int? p_終了 = null)
         {

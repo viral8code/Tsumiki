@@ -1,10 +1,10 @@
 ﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理
@@ -133,7 +133,9 @@ namespace Tsumiki.Core
             }
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
-        /// <summary>FASTQ を順に読み進めてリードを返す。</summary>
+        /// <summary>
+        /// FASTQ を順に読み進めてリードを返す。
+        /// </summary>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);

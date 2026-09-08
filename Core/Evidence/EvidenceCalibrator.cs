@@ -1,4 +1,4 @@
-namespace Tsumiki.Core
+﻿namespace Tsumiki.Core.Evidence
 {
     /// <summary>
     /// ペアエンドの隣接証拠を、生の観測本数ではなく期待本数との比で測るための
@@ -60,7 +60,9 @@ namespace Tsumiki.Core
             return l_相異なる距離.Count;
         }
 
-        /// <summary>モデルが構築できたか。false の場合、呼び出し側は生カウント方式に自分でフォールバックする。</summary>
+        /// <summary>
+        /// モデルが構築できたか。false の場合、呼び出し側は生カウント方式に自分でフォールバックする。
+        /// </summary>
         public bool A_使えるか => this._モデル is not null;
 
         /// <summary>

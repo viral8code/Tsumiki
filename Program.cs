@@ -1,8 +1,14 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
-using Tsumiki.Core;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Output;
+using Tsumiki.Core.Pipeline;
+using Tsumiki.Core.Polishing;
+using Tsumiki.Core.Preprocessing;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Polishing;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -286,7 +292,9 @@ namespace Tsumiki
             return l_検証;
         }
 
-        /// <summary>完全長かどうかを判定し、根拠ごとレポートへ残す。</summary>
+        /// <summary>
+        /// 完全長かどうかを判定し、根拠ごとレポートへ残す。
+        /// </summary>
         private static void V_出力_完全性レポート(
             アセンブリ実行結果 p_結果,
             string p_最終パス,

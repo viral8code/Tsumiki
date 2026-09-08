@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
     /// k-mer 出現回数ヒストグラムを「誤り成分(裾の重い幾何分布) ＋ 真のk-mer成分

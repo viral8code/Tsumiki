@@ -1,9 +1,9 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// リファレンス無しでアセンブリの良さを測る。
@@ -13,10 +13,15 @@ namespace Tsumiki.Core
     internal static class AssemblyScorer
     {
         /// <summary>
-        /// 連続性の統計に含める配列の最小長。k-mer の集計側には掛けない。
-        /// 短い配列に入っていても「出せている」ことに変わりはないため。
+        /// 評価に含める配列の最小長。abyss-fac の既定と同じ 500bp。
+        ///
+        /// これより短い断片は、そこに配列が入っていても下流で使いようがない。
+        /// k-mer の集計にも掛けるのが要点で、掛けないと「短い破片を大量に
+        /// 出しただけ」のアセンブリが完全性で得をする。実データでは
+        /// k=21 の 3,421 本のうち 500bp 以上は 322 本しかなく、残りが
+        /// 完全性を底上げして低い k を有利にしていた。
         /// </summary>
-        private const int 連続性統計の最小長 = 500;
+        private const int 評価に含める最小長 = 500;
 
         /// <summary>
         /// p_FASTAパス のアセンブリを、アンカー k-mer 集合に対して評価する。
@@ -61,7 +66,7 @@ namespace Tsumiki.Core
                 }
             }
 
-            var l_統計対象 = l_長さ一覧.Where(x => x >= 連続性統計の最小長).ToList();
+            var l_統計対象 = l_長さ一覧.Where(x => x >= 評価に含める最小長).ToList();
 
             return new アセンブリ評価(
                 A_期待延べ数: l_期待延べ数,
@@ -77,8 +82,10 @@ namespace Tsumiki.Core
         /// <summary>
         /// アセンブリ中に各アンカー k-mer が何回現れるかを数える。逆相補は同一視する。
         /// 併せて、環状に閉じた配列(名前に環状の目印が付いたもの)の
-        /// 本数と総延長も集計する。閉じた複製単位は完全長を目指す評価の核心なので、
-        /// 長さの足切り(連続性統計の最小長)は掛けない。
+        /// 本数と総延長も集計する。
+        ///
+        /// 短すぎる配列は数えない。環状の目印は既にそれより長い閉路にしか
+        /// 付かないため、環状の集計がこの足切りで漏れることはない。
         /// </summary>
         private static Dictionary<UInt128, int> Get_出現回数(
             string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長,
@@ -95,6 +102,10 @@ namespace Tsumiki.Core
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
                 var l_配列 = l_エントリ.A_配列;
+                if (l_配列.Length < 評価に含める最小長)
+                {
+                    continue;
+                }
                 p_長さ一覧.Add(l_配列.Length);
                 p_総延長 += l_配列.Length;
 

@@ -1,4 +1,4 @@
-using System.IO.Compression;
+﻿using System.IO.Compression;
 
 namespace Tsumiki.IO
 {
@@ -38,8 +38,13 @@ namespace Tsumiki.IO
             return l_行;
         }
 
-        /// <summary>空行の読み飛ばしをしない生の1行読み込み。EOF検知が要る派生クラス向け。</summary>
-        protected string? Get_次の行_生() => this._読み込み.ReadLine();
+        /// <summary>
+        /// 空行の読み飛ばしをしない生の1行読み込み。EOF検知が要る派生クラス向け。
+        /// </summary>
+        protected string? Get_次の行_生()
+        {
+            return this._読み込み.ReadLine();
+        }
 
         public void Dispose()
         {

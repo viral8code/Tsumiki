@@ -1,9 +1,11 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Preprocessing;
+using Tsumiki.Model.Scaffolding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// ペアエンドの2本を、間の未読区間ごと1本の「合成リード(SuperRead)」に

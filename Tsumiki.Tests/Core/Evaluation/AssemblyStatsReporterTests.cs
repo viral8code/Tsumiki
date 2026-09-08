@@ -1,4 +1,5 @@
-﻿using Tsumiki.Core;
+﻿using Tsumiki.Core.Evaluation;
+using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
 {

@@ -1,6 +1,9 @@
-using Tsumiki.Model;
+﻿using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Evidence;
+using Tsumiki.Model.Reporting;
+using Tsumiki.Model.UnitigBuilding;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
     /// 相互一意性の判定で決めきれなかった分岐を、先読み(ビームサーチ)で解く。
@@ -28,10 +31,14 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 先読み倍率 = 4;
 
-        /// <summary>1つの分岐あたりに保持する部分経路の数。</summary>
+        /// <summary>
+        /// 1つの分岐あたりに保持する部分経路の数。
+        /// </summary>
         private const int ビーム幅 = 8;
 
-        /// <summary>先読みの1経路あたりの最大ステップ数(暴走防止)。</summary>
+        /// <summary>
+        /// 先読みの1経路あたりの最大ステップ数(暴走防止)。
+        /// </summary>
         private const int 経路あたりの最大ステップ数 = 40;
 
         /// <summary>

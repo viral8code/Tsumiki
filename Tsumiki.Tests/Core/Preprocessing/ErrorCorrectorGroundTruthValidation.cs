@@ -1,7 +1,8 @@
 ﻿using Tsumiki.Common;
+using Tsumiki.Core.Preprocessing;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -153,7 +154,9 @@ namespace Tsumiki.Tests.Core
             }
         }
 
-        /// <summary>FASTQを「id, 配列」の2行単位として読むだけの軽量リーダー(品質行は無視)。</summary>
+        /// <summary>
+        /// FASTQを「id, 配列」の2行単位として読むだけの軽量リーダー(品質行は無視)。
+        /// </summary>
         private sealed class 簡易FASTQ読み込み(string p_パス) : IDisposable
         {
             private readonly StreamReader _reader = new(p_パス);

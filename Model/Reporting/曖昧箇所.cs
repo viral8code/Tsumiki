@@ -1,18 +1,28 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Reporting
 {
-    /// <summary>決めきれずに打ち切った箇所の区分。</summary>
+    /// <summary>
+    /// 決めきれずに打ち切った箇所の区分。
+    /// </summary>
     internal enum 曖昧箇所の種別
     {
-        /// <summary>どの候補にも証拠が無く、伸ばす根拠が得られなかった。</summary>
+        /// <summary>
+        /// どの候補にも証拠が無く、伸ばす根拠が得られなかった。
+        /// </summary>
         支持なし,
 
-        /// <summary>首位と次点の差が小さく、一方に確定できなかった。</summary>
+        /// <summary>
+        /// 首位と次点の差が小さく、一方に確定できなかった。
+        /// </summary>
         僅差,
 
-        /// <summary>両端を繋ぐ経路が複数あり、どれか1本に定まらなかった。</summary>
+        /// <summary>
+        /// 両端を繋ぐ経路が複数あり、どれか1本に定まらなかった。
+        /// </summary>
         経路が一意でない,
 
-        /// <summary>両端を繋ぐ経路がグラフ上に見つからなかった。</summary>
+        /// <summary>
+        /// 両端を繋ぐ経路がグラフ上に見つからなかった。
+        /// </summary>
         到達不能,
 
         /// <summary>
@@ -36,7 +46,9 @@ namespace Tsumiki.Model
         long A_首位の生支持数,
         double A_確信度)
     {
-        /// <summary>首位と次点の差。これが小さいほど選ぶ根拠が薄い。</summary>
+        /// <summary>
+        /// 首位と次点の差。これが小さいほど選ぶ根拠が薄い。
+        /// </summary>
         public double A_余裕 => this.A_首位の支持 - this.A_次点の支持;
     }
 }

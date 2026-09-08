@@ -1,7 +1,8 @@
-using System.Globalization;
-using Tsumiki.Model;
+﻿using System.Globalization;
+using Tsumiki.Core.Evidence;
+using Tsumiki.Model.Reporting;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 決めきれずに打ち切った箇所を、その場で書き留めておくための収集器。
@@ -21,10 +22,14 @@ namespace Tsumiki.Core
 
         private static int _現在のk長;
 
-        /// <summary>k ごとの作業ディレクトリに残す控え。再開時に読み直す。</summary>
+        /// <summary>
+        /// k ごとの作業ディレクトリに残す控え。再開時に読み直す。
+        /// </summary>
         private const string 保存ファイル名 = "ambiguous.tsv";
 
-        /// <summary>この k の記録を集め直す。同じ k を再実行した場合は上書きする。</summary>
+        /// <summary>
+        /// この k の記録を集め直す。同じ k を再実行した場合は上書きする。
+        /// </summary>
         public static void V_開始(int p_k長)
         {
             lock (_錠)
@@ -55,7 +60,9 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>符号付き頂点番号を、記録に残す読める名前にする。</summary>
+        /// <summary>
+        /// 符号付き頂点番号を、記録に残す読める名前にする。
+        /// </summary>
         public static string Get_場所名(int p_頂点, string p_接頭辞 = "unitig")
         {
             return $"{p_接頭辞}{p_頂点 >> 1}{((p_頂点 & 1) == 0 ? '+' : '-')}";
@@ -82,7 +89,9 @@ namespace Tsumiki.Core
             File.WriteAllText(Path.Combine(p_作業ディレクトリ, 保存ファイル名), l_文.ToString());
         }
 
-        /// <summary>作業ディレクトリに残っている記録を読み直す。</summary>
+        /// <summary>
+        /// 作業ディレクトリに残っている記録を読み直す。
+        /// </summary>
         public static void V_読み込み(string p_作業ディレクトリ, int p_k長)
         {
             var l_パス = Path.Combine(p_作業ディレクトリ, 保存ファイル名);
@@ -114,7 +123,9 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>その k で書き留めた箇所の一覧。記録が無ければ空。</summary>
+        /// <summary>
+        /// その k で書き留めた箇所の一覧。記録が無ければ空。
+        /// </summary>
         public static IReadOnlyList<曖昧箇所> Get_記録(int p_k長)
         {
             lock (_錠)

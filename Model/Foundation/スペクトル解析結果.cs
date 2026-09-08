@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
     /// k-mer 出現回数ヒストグラム(k-mer スペクトル)の解析結果。

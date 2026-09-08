@@ -1,6 +1,6 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evidence
 {
     /// <summary>
     /// ペアエンドの隣接証拠を、観測本数ではなく期待本数との比で測るためのモデル。
@@ -11,12 +11,16 @@ namespace Tsumiki.Core
     /// </summary>
     internal sealed class PairedDistanceModel
     {
-        /// <summary>フラグメント長の経験分布。裾は誤マップなので両端を落とす。</summary>
+        /// <summary>
+        /// フラグメント長の経験分布。裾は誤マップなので両端を落とす。
+        /// </summary>
         private readonly (int A_長さ, double A_確率)[] _分布;
 
         private readonly int _リード長;
 
-        /// <summary>同一のギャップ長から出たとみなす既知長のばらつきの幅。</summary>
+        /// <summary>
+        /// 同一のギャップ長から出たとみなす既知長のばらつきの幅。
+        /// </summary>
         private readonly int _窓幅;
 
         private readonly int _中央フラグメント長;

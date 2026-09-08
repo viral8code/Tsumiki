@@ -1,9 +1,10 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Correction;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// k-mer スペクトラムに基づく、Quake/BayesHammer 類似の簡易リードエラー訂正。
@@ -133,17 +134,16 @@ namespace Tsumiki.Core
         public static 訂正結果 Get_訂正結果(
             ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10)
         {
-            if (p_リード.Length < p_k長)
-            {
-                return new 訂正結果(p_リード.ToArray(), 0);
-            }
-
-            return p_k長 <= 64
+            return p_リード.Length < p_k長
+                ? new 訂正結果(p_リード.ToArray(), 0)
+                : p_k長 <= 64
                 ? Get_訂正結果_パック(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数)
                 : Get_訂正結果_逐次(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数);
         }
 
-        /// <summary>k が 64 を超える場合の経路。パックできないので窓ごとに評価する。</summary>
+        /// <summary>
+        /// k が 64 を超える場合の経路。パックできないので窓ごとに評価する。
+        /// </summary>
         internal static 訂正結果 Get_訂正結果_逐次(
             byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
@@ -188,7 +188,7 @@ namespace Tsumiki.Core
                     }
 
                     var l_現在の塩基 = l_塩基列[l_位置];
-                    for (byte l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
+                    for (var l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
                     {
                         if (l_候補 == l_現在の塩基)
                         {
@@ -271,7 +271,7 @@ namespace Tsumiki.Core
                     }
 
                     var l_現在の塩基 = p_塩基列[l_位置];
-                    for (byte l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
+                    for (var l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
                     {
                         if (l_候補 == l_現在の塩基)
                         {
@@ -410,7 +410,9 @@ namespace Tsumiki.Core
             return l_改善数;
         }
 
-        /// <summary>パック済みの順鎖・逆鎖から、信頼できる k-mer 集合に含まれるかを引く。</summary>
+        /// <summary>
+        /// パック済みの順鎖・逆鎖から、信頼できる k-mer 集合に含まれるかを引く。
+        /// </summary>
         private static bool Get_含まれるか(
             TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
         {
@@ -425,7 +427,9 @@ namespace Tsumiki.Core
             return p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
         }
 
-        /// <summary>塩基IDの2bit表現。曖昧塩基は0として詰める(判定は無効数で弾く)。</summary>
+        /// <summary>
+        /// 塩基IDの2bit表現。曖昧塩基は0として詰める(判定は無効数で弾く)。
+        /// </summary>
         private static UInt128 Get_コドン(byte p_塩基ID)
         {
             return p_塩基ID == Consts.無効な塩基 ? 0 : (UInt128)(p_塩基ID - 1);

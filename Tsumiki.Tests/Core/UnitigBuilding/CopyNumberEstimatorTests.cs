@@ -1,7 +1,8 @@
 ﻿using Tsumiki.Common;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Tests.Core

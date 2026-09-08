@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Scaffolding
 {
     /// <summary>
     /// スキャフォールド辺の候補。観測本数だけでなく期待本数に対する比を持つ。

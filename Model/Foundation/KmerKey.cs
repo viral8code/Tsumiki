@@ -1,6 +1,6 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
-namespace Tsumiki.Model
+namespace Tsumiki.Model.Foundation
 {
     internal readonly struct KmerKey : IEquatable<KmerKey>
     {

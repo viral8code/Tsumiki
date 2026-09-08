@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に
@@ -149,7 +149,9 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>パック済みの正規形を塩基ID列へ戻す。</summary>
+        /// <summary>
+        /// パック済みの正規形を塩基ID列へ戻す。
+        /// </summary>
         private static void V_復元_塩基列(UInt128 p_パック済み, int p_k長, byte[] p_出力)
         {
             for (var i = 0; i < p_k長; i++)

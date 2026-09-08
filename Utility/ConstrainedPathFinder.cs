@@ -1,5 +1,5 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Scaffolding;
 
 namespace Tsumiki.Utility
 {
@@ -91,7 +91,7 @@ namespace Tsumiki.Utility
                     return (null, ギャップ充填判定.一意でない);
                 }
 
-                for (byte l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)
+                for (var l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)
                 {
                     Array.Copy(l_現在のkmer, 1, l_作業バッファ, 0, p_k長 - 1);
                     l_作業バッファ[p_k長 - 1] = l_塩基;
@@ -133,7 +133,9 @@ namespace Tsumiki.Utility
                 : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
         }
 
-        /// <summary>k-mer を1塩基2ビットで詰める(k &lt;= 64 でのみ使える)。</summary>
+        /// <summary>
+        /// k-mer を1塩基2ビットで詰める(k &lt;= 64 でのみ使える)。
+        /// </summary>
         private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_パック = 0;
@@ -144,7 +146,9 @@ namespace Tsumiki.Utility
             return l_パック;
         }
 
-        /// <summary>k &gt; 64 で k-mer を鍵にするための文字列表現。</summary>
+        /// <summary>
+        /// k &gt; 64 で k-mer を鍵にするための文字列表現。
+        /// </summary>
         private static string Get_状態の鍵(ReadOnlySpan<byte> p_kmer)
         {
             var l_文字 = new char[p_kmer.Length];
@@ -155,7 +159,9 @@ namespace Tsumiki.Utility
             return new string(l_文字);
         }
 
-        /// <summary>この状態までの経路上に、別経路からも到達された状態があるか。</summary>
+        /// <summary>
+        /// この状態までの経路上に、別経路からも到達された状態があるか。
+        /// </summary>
         private static bool Get_多重到達を通るか(
             List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
         {

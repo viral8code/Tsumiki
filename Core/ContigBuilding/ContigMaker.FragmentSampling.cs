@@ -1,5 +1,7 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.ContigBuilding;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.UnitigBuilding;
 
 namespace Tsumiki.Core
 {

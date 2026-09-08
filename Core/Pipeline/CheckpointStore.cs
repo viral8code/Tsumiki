@@ -1,10 +1,11 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Pipeline
 {
     /// <summary>
     /// k ごとの成果を作業ディレクトリに残し、次回の実行でそこから再開できるようにする。
@@ -24,7 +25,9 @@ namespace Tsumiki.Core
 
         private const string 引き継ぎファイル名 = "carryover.tsv";
 
-        /// <summary>成果物が無いことを示す印。</summary>
+        /// <summary>
+        /// 成果物が無いことを示す印。
+        /// </summary>
         private const string 無し = "-";
 
         /// <summary>
@@ -117,7 +120,9 @@ namespace Tsumiki.Core
                 Get_整合性検査(l_項目));
         }
 
-        /// <summary>この k を作り終えたことを記録する。</summary>
+        /// <summary>
+        /// この k を作り終えたことを記録する。
+        /// </summary>
         public static void V_保存(
             string p_作業ディレクトリ, string p_署名, アセンブリ実行結果 p_結果,
             IReadOnlyList<引き継ぎ配列>? p_次への引き継ぎ)

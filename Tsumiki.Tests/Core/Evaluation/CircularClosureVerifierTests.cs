@@ -1,7 +1,8 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Core
 {
@@ -63,7 +64,9 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
-        /// <summary>末尾と先頭を跨ぐリード。閉じ目の左右へ 50bp ずつ踏み込む。</summary>
+        /// <summary>
+        /// 末尾と先頭を跨ぐリード。閉じ目の左右へ 50bp ずつ踏み込む。
+        /// </summary>
         private static string Get_閉じ目を跨ぐリード(string p_配列)
         {
             return string.Concat(p_配列.AsSpan(p_配列.Length - 50), p_配列.AsSpan(0, 50));

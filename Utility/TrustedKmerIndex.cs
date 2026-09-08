@@ -1,6 +1,5 @@
-﻿using System.Runtime.InteropServices;
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Utility
 {
@@ -22,7 +21,7 @@ namespace Tsumiki.Utility
 
         // シャードごとのロック。k-mer をワーカー単位ではなくハッシュ値で
         // 振り分けるようにしたため、複数スレッドが同じシャードへ書きうる。
-        private object[]? _シャードロック;
+        private readonly object[]? _シャードロック;
 
         // カットオフを通過した k-mer の厳密な集合(常に正規形)。値はカバレッジ。
         //
@@ -171,7 +170,9 @@ namespace Tsumiki.Utility
             return true;
         }
 
-        /// <summary>パック済みキーの FNV-1a ハッシュ。シャードの振り分けに使う。</summary>
+        /// <summary>
+        /// パック済みキーの FNV-1a ハッシュ。シャードの振り分けに使う。
+        /// </summary>
         private static uint Get_ハッシュ(byte[] p_パック済みkmer)
         {
             var l_ハッシュ = 2166136261u;
@@ -189,15 +190,9 @@ namespace Tsumiki.Utility
         /// </summary>
         public bool Get_含まれるか(Span<byte> p_kmer)
         {
-            if (小経路を使うか)
-            {
-                return this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer));
-            }
-            if (中経路を使うか)
-            {
-                return this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer));
-            }
-            return this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
+            return this.小経路を使うか
+                ? this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer))
+                : this.中経路を使うか ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -206,10 +201,18 @@ namespace Tsumiki.Utility
         /// walk は1塩基ずつ進むためパック値を転がして更新できる。
         /// Span を受ける版だと呼ぶたびに O(k) の詰め直しが要る。
         /// </summary>
-        public bool Get_含まれるか_小(ulong p_正規形) => this._信頼kmer_小!.ContainsKey(p_正規形);
+        public bool Get_含まれるか_小(ulong p_正規形)
+        {
+            return this._信頼kmer_小!.ContainsKey(p_正規形);
+        }
 
-        /// <summary>正規形にパック済みの値で所属を判定する(33 &lt;= k &lt;= 64)。</summary>
-        public bool Get_含まれるか_中(UInt128 p_正規形) => this._信頼kmer_中!.ContainsKey(p_正規形);
+        /// <summary>
+        /// 正規形にパック済みの値で所属を判定する(33 &lt;= k &lt;= 64)。
+        /// </summary>
+        public bool Get_含まれるか_中(UInt128 p_正規形)
+        {
+            return this._信頼kmer_中!.ContainsKey(p_正規形);
+        }
 
         /// <summary>
         /// kmerの出現回数(カバレッジ)を返す。信頼できるk-mer集合に
@@ -217,15 +220,11 @@ namespace Tsumiki.Utility
         /// </summary>
         public ulong Get_カバレッジ(Span<byte> p_kmer)
         {
-            if (小経路を使うか)
-            {
-                return this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL);
-            }
-            if (中経路を使うか)
-            {
-                return this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL);
-            }
-            return this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
+            return this.小経路を使うか
+                ? this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL)
+                : this.中経路を使うか
+                ? this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL)
+                : this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
         }
 
         /// <summary>
@@ -281,7 +280,9 @@ namespace Tsumiki.Utility
             return l_値 >> p_余りビット;
         }
 
-        /// <summary>Get_読み替え_小 の 128bit 版(33 &lt;= k &lt;= 64)。</summary>
+        /// <summary>
+        /// Get_読み替え_小 の 128bit 版(33 &lt;= k &lt;= 64)。
+        /// </summary>
         internal static UInt128 Get_読み替え_中(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
         {
             UInt128 l_値 = 0;
@@ -292,7 +293,9 @@ namespace Tsumiki.Utility
             return l_値 >> p_余りビット;
         }
 
-        /// <summary>パック済みバイト列から塩基ID列を復元する(k &gt; 64 の経路用)。</summary>
+        /// <summary>
+        /// パック済みバイト列から塩基ID列を復元する(k &gt; 64 の経路用)。
+        /// </summary>
         private static byte[] Get_復元_塩基列(ReadOnlySpan<byte> p_パック済み, int p_k長)
         {
             var l_塩基列 = new byte[p_k長];
@@ -305,7 +308,9 @@ namespace Tsumiki.Utility
             return l_塩基列;
         }
 
-        /// <summary>Get_パック_小 の逆変換。末尾塩基が最下位ビット側にあるため、末尾から復元する。</summary>
+        /// <summary>
+        /// Get_パック_小 の逆変換。末尾塩基が最下位ビット側にあるため、末尾から復元する。
+        /// </summary>
         private static byte[] Get_復元_小(ulong p_パック済み, int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];
@@ -331,7 +336,9 @@ namespace Tsumiki.Utility
             return l_値;
         }
 
-        /// <summary>Get_逆相補_小 の 128bit 版。</summary>
+        /// <summary>
+        /// Get_逆相補_小 の 128bit 版。
+        /// </summary>
         private static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
@@ -352,7 +359,9 @@ namespace Tsumiki.Utility
             return l_パック済み < l_逆相補 ? l_パック済み : l_逆相補;
         }
 
-        /// <summary>Get_パック_中 の逆変換。</summary>
+        /// <summary>
+        /// Get_パック_中 の逆変換。
+        /// </summary>
         private static byte[] Get_復元_中(UInt128 p_パック済み, int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];
@@ -372,14 +381,14 @@ namespace Tsumiki.Utility
         public IEnumerable<byte[]> Get_信頼kmer一覧()
         {
             var l_k長 = this._k長;
-            if (小経路を使うか)
+            if (this.小経路を使うか)
             {
                 foreach (var l_パック済み in this._信頼kmer_小!.Keys)
                 {
                     yield return Get_復元_小(l_パック済み, l_k長);
                 }
             }
-            else if (中経路を使うか)
+            else if (this.中経路を使うか)
             {
                 foreach (var l_パック済み in this._信頼kmer_中!.Keys)
                 {
@@ -401,18 +410,9 @@ namespace Tsumiki.Utility
         /// </summary>
         public void V_除去(ReadOnlySpan<byte> p_kmer)
         {
-            if (小経路を使うか)
-            {
-                _ = this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer));
-            }
-            else if (中経路を使うか)
-            {
-                _ = this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer));
-            }
-            else
-            {
-                _ = this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
-            }
+            _ = this.小経路を使うか
+                ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer))
+                : this.中経路を使うか ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -425,15 +425,11 @@ namespace Tsumiki.Utility
         /// </summary>
         public bool V_追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
         {
-            if (小経路を使うか)
-            {
-                return this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ);
-            }
-            if (中経路を使うか)
-            {
-                return this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ);
-            }
-            return this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
+            return this.小経路を使うか
+                ? this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ)
+                : this.中経路を使うか
+                ? this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ)
+                : this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
         }
 
         /// <summary>
@@ -534,8 +530,8 @@ namespace Tsumiki.Utility
             var l_ファイルパス = this.Get_統合済みファイル();
 
             var l_パック長 = (this._k長 + 3) / 4;
-            var l_小経路 = 小経路を使うか;
-            var l_中経路 = 中経路を使うか;
+            var l_小経路 = this.小経路を使うか;
+            var l_中経路 = this.中経路を使うか;
             Dictionary<KmerKey, ulong>? l_信頼kmer_大;
             Dictionary<ulong, ulong>? l_信頼kmer_小;
             Dictionary<UInt128, ulong>? l_信頼kmer_中;
@@ -649,11 +645,7 @@ namespace Tsumiki.Utility
         public bool Get_開始kmerか(Span<byte> p_kmer)
         {
             var l_入次数 = this.Get_入次数(p_kmer, out var l_唯一の予測元);
-            if (l_入次数 != 1)
-            {
-                return true;
-            }
-            return this.Get_出次数(l_唯一の予測元!) != 1;
+            return l_入次数 != 1 || this.Get_出次数(l_唯一の予測元!) != 1;
         }
 
         /// <summary>
@@ -679,7 +671,7 @@ namespace Tsumiki.Utility
             p_kmer[..^1].CopyTo(l_候補.AsSpan(1));
             var l_件数 = 0;
             byte[]? l_一致 = null;
-            for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+            for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
                 l_候補[0] = i;
                 if (this.Get_含まれるか(l_候補))
@@ -702,7 +694,7 @@ namespace Tsumiki.Utility
             var l_候補 = new byte[p_kmer.Length];
             p_kmer[1..].CopyTo(l_候補.AsSpan(0, p_kmer.Length - 1));
             var l_件数 = 0;
-            for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+            for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
                 l_候補[^1] = i;
                 if (this.Get_含まれるか(l_候補))

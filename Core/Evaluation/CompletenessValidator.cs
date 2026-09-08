@@ -1,8 +1,11 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Polishing;
+using Tsumiki.Model.Reporting;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 最終成果物が完全長を名乗れるかを判定する。
@@ -14,13 +17,19 @@ namespace Tsumiki.Core
     /// </summary>
     internal static class CompletenessValidator
     {
-        /// <summary>信頼できる k-mer の取りこぼしとして許す割合(%)。</summary>
+        /// <summary>
+        /// 信頼できる k-mer の取りこぼしとして許す割合(%)。
+        /// </summary>
         private const double 取りこぼしの許容率 = 5.0;
 
-        /// <summary>コピー数の推定を超えて出している延べ数として許す割合(%)。</summary>
+        /// <summary>
+        /// コピー数の推定を超えて出している延べ数として許す割合(%)。
+        /// </summary>
         private const double 出しすぎの許容率 = 1.0;
 
-        /// <summary>深度が落ち込んだ位置として許す割合。</summary>
+        /// <summary>
+        /// 深度が落ち込んだ位置として許す割合。
+        /// </summary>
         private const double 深度不足の許容率 = 0.01;
 
         /// <summary>
@@ -121,7 +130,9 @@ namespace Tsumiki.Core
             }
         }
 
-        /// <summary>レポートに出す固定の理由コード。訳さない。</summary>
+        /// <summary>
+        /// レポートに出す固定の理由コード。訳さない。
+        /// </summary>
         public static string Get_理由コード(未達理由 p_理由)
         {
             return p_理由 switch
@@ -139,7 +150,9 @@ namespace Tsumiki.Core
             };
         }
 
-        /// <summary>レポートに出す固定の判定名。訳さない。</summary>
+        /// <summary>
+        /// レポートに出す固定の判定名。訳さない。
+        /// </summary>
         public static string Get_判定コード(検査判定 p_判定)
         {
             return p_判定 switch
@@ -205,28 +218,22 @@ namespace Tsumiki.Core
             検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度,
             検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
         {
-            if (p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格)
-            {
-                return 品質保証レベル.出力のみ;
-            }
-            if (p_深度 != 検査判定.合格)
-            {
-                return 品質保証レベル.グラフ整合;
-            }
-            if (p_ギャップ != 検査判定.合格)
-            {
-                return 品質保証レベル.マッピング整合;
-            }
-            if (p_接合点 != 検査判定.合格)
-            {
-                return 品質保証レベル.ペア整合;
-            }
-            return p_代替経路 != 検査判定.合格 || p_閉鎖 != 検査判定.合格
+            return p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格
+                ? 品質保証レベル.出力のみ
+                : p_深度 != 検査判定.合格
+                ? 品質保証レベル.グラフ整合
+                : p_ギャップ != 検査判定.合格
+                ? 品質保証レベル.マッピング整合
+                : p_接合点 != 検査判定.合格
+                ? 品質保証レベル.ペア整合
+                : p_代替経路 != 検査判定.合格 || p_閉鎖 != 検査判定.合格
                 ? 品質保証レベル.接合点が支持済み
                 : 品質保証レベル.完全長;
         }
 
-        /// <summary>環状として出力された配列の本数。</summary>
+        /// <summary>
+        /// 環状として出力された配列の本数。
+        /// </summary>
         public static int Get_環状本数(string p_FASTAパス)
         {
             var l_数 = 0;

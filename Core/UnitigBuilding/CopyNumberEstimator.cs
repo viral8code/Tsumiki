@@ -1,8 +1,9 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.UnitigBuilding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
     /// 各 unitig のコピー数をカバレッジから推定する。
@@ -330,7 +331,7 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                l_結果.Add(l_次 >> 1);
+                _ = l_結果.Add(l_次 >> 1);
                 if (l_訪問済み頂点.Add(l_次 ^ 1))
                 {
                     l_キュー.Enqueue(l_次 ^ 1);

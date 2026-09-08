@@ -1,6 +1,7 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.Core;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Tests.Core
@@ -81,7 +82,9 @@ namespace Tsumiki.Tests.Core
             }
         }
 
-        /// <summary>配列が環状配列の回転(順鎖・逆鎖のいずれか)になっているか。</summary>
+        /// <summary>
+        /// 配列が環状配列の回転(順鎖・逆鎖のいずれか)になっているか。
+        /// </summary>
         private static bool Get_環の1周か(string p_配列, string p_環状配列)
         {
             var l_二周 = p_環状配列 + p_環状配列;

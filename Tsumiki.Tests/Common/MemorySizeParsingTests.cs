@@ -1,5 +1,5 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Common
 {

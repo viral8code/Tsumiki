@@ -1,8 +1,11 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Preprocessing;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Pipeline
 {
     /// <summary>
     /// 複数の k 長でアセンブリし、リファレンス無しの評価で最良のものを選ぶ。
@@ -33,6 +36,9 @@ namespace Tsumiki.Core
             List<引き継ぎ配列> l_引き継ぎ = [];
             List<引き継ぎ配列> l_次への引き継ぎ = [];
 
+            // 合成リード(-sr)は最初に作れた k のものを以降でも使い回す。
+            List<引き継ぎ配列> l_合成リードの控え = [];
+
             foreach (var l_k長 in l_k候補)
             {
                 if (Get_薄すぎるか(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
@@ -46,7 +52,8 @@ namespace Tsumiki.Core
                 var l_結果 = AssemblyPipeline.Get_実行結果(
                     p_引数, l_k長, p_一時ディレクトリ, p_リード長,
                     p_引数.A_引き継ぐか ? l_引き継ぎ : null,
-                    p_引数.A_引き継ぐか ? l_次への引き継ぎ : null);
+                    p_引数.A_引き継ぐか ? l_次への引き継ぎ : null,
+                    l_合成リードの控え);
                 if (l_結果 is null)
                 {
                     Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
@@ -165,8 +172,8 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
             Logger.V_出力(メッセージID.統合後の評価, l_統合の評価);
 
-            var l_勝者 = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
-            if (l_勝者.A_実行結果.A_最終パス != l_統合パス)
+            var (A_実行結果, A_評価) = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
+            if (A_実行結果.A_最終パス != l_統合パス)
             {
                 Logger.V_出力(メッセージID.統合が骨格に勝てず);
                 return null;

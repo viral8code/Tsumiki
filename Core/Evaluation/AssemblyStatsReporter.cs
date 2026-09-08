@@ -1,8 +1,9 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     internal static class AssemblyStatsReporter
     {

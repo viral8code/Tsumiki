@@ -1,9 +1,9 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.UnitigBuilding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.UnitigBuilding
 {
     internal class UnitigMaker(TrustedKmerIndex p_kmerインデックス)
     {
@@ -125,7 +125,7 @@ namespace Tsumiki.Core
                 l_配列.Add(0);
                 byte l_次の塩基 = 0;
                 var l_候補数 = 0;
-                for (byte i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+                for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     l_配列[^1] = i;
                     if (this._kmerインデックス.Get_含まれるか(CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..]))

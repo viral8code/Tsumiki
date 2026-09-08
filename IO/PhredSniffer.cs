@@ -1,5 +1,5 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
@@ -106,11 +106,7 @@ namespace Tsumiki.IO
 
             var l_33が妥当 = Get_妥当なオフセットか(p_標本, 33);
             var l_64が妥当 = Get_妥当なオフセットか(p_標本, 64);
-            if (l_33が妥当 == l_64が妥当)
-            {
-                return null;
-            }
-            return l_33が妥当 ? 33 : 64;
+            return l_33が妥当 == l_64が妥当 ? null : l_33が妥当 ? 33 : 64;
         }
 
         /// <summary>
@@ -122,7 +118,9 @@ namespace Tsumiki.IO
         ///
         /// read1 と read2 で推定が食い違う場合は自信が持てないため警告に留める。
         /// </summary>
-        /// <summary>推定できなかった場合も含めた、表示用のオフセット。</summary>
+        /// <summary>
+        /// 推定できなかった場合も含めた、表示用のオフセット。
+        /// </summary>
         private static string Get_表示用オフセット(int? p_推定)
         {
             return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);

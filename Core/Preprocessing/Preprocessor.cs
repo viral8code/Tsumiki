@@ -1,8 +1,9 @@
 ﻿using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Preprocessing;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// ペアエンドの2本を重ね合わせて(R1 と RC(R2))、アダプタリードスルーの
@@ -30,7 +31,9 @@ namespace Tsumiki.Core
         /// </summary>
         private const double 許容不一致率 = 0.2;
 
-        /// <summary>相互訂正で「高信頼」とみなす最小Phredスコア。</summary>
+        /// <summary>
+        /// 相互訂正で「高信頼」とみなす最小Phredスコア。
+        /// </summary>
         private const int 高信頼スコア = 30;
 
         /// <summary>

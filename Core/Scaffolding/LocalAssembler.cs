@@ -1,10 +1,11 @@
 ﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Scaffolding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
     /// GapFiller が埋められなかったスキャフォールドのギャップを、局所アセンブリ
@@ -25,7 +26,9 @@ namespace Tsumiki.Core
     /// </summary>
     internal static class LocalAssembler
     {
-        /// <summary>ギャップの両端からアンカーとして使う長さ。</summary>
+        /// <summary>
+        /// ギャップの両端からアンカーとして使う長さ。
+        /// </summary>
         private const int アンカー長 = 300;
 
         /// <summary>
@@ -34,7 +37,9 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 局所リード数の上限 = 4000;
 
-        /// <summary>局所アセンブリで使う k-mer カットオフ。1回読まれていれば信頼する。</summary>
+        /// <summary>
+        /// 局所アセンブリで使う k-mer カットオフ。1回読まれていれば信頼する。
+        /// </summary>
         private const ulong 局所カットオフ = 1;
 
         public static 局所アセンブリ統計 V_充填_ギャップ(
@@ -219,7 +224,7 @@ namespace Tsumiki.Core
             return l_局所リード;
         }
 
-        private static IEnumerable<int> Get_一致するギャップ(
+        private static HashSet<int> Get_一致するギャップ(
             Dictionary<KmerKey, List<int>> p_索引, string p_リード, int p_k長)
         {
             HashSet<int>? l_見つかった = null;
@@ -239,7 +244,7 @@ namespace Tsumiki.Core
                     }
                 }
             }
-            return (IEnumerable<int>?)l_見つかった ?? [];
+            return l_見つかった ?? [];
         }
 
         /// <summary>
@@ -261,6 +266,9 @@ namespace Tsumiki.Core
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
             try
             {
+                // 索引の構築はギャップの数だけ繰り返される。1件ごとの
+                // 統計はログを埋めるだけなので、この区間は記録を止める。
+                using var l_休止 = Logger.V_止める_記録();
                 using var l_索引 = new TrustedKmerIndex(l_一時ディレクトリ);
                 V_登録_全kmer(l_索引, p_ギャップ.A_左アンカー, p_k長);
                 V_登録_全kmer(l_索引, p_ギャップ.A_右アンカー, p_k長);

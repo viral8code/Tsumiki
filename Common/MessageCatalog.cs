@@ -1,4 +1,4 @@
-using Tsumiki.Model;
+﻿using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Common
 {
@@ -11,25 +11,27 @@ namespace Tsumiki.Common
     /// </summary>
     internal static class MessageCatalog
     {
-        /// <summary>p_ID の書式文字列。指定言語に無ければ英語を返す。</summary>
+        /// <summary>
+        /// p_ID の書式文字列。指定言語に無ければ英語を返す。
+        /// </summary>
         public static string Get_書式(言語 p_言語, メッセージID p_ID)
         {
             var l_辞書 = Get_辞書(p_言語);
-            if (l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式))
-            {
-                return l_書式;
-            }
-            return _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
+            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
         }
 
-        /// <summary>その言語にこの ID の訳があるか。訳の入れ忘れの検査に使う。</summary>
+        /// <summary>
+        /// その言語にこの ID の訳があるか。訳の入れ忘れの検査に使う。
+        /// </summary>
         public static bool Get_訳があるか(言語 p_言語, メッセージID p_ID)
         {
             return Get_辞書(p_言語)?.ContainsKey(p_ID) == true;
         }
 
-        /// <summary>その言語の辞書。まだ用意していない言語は null。</summary>
-        private static IReadOnlyDictionary<メッセージID, string>? Get_辞書(言語 p_言語)
+        /// <summary>
+        /// その言語の辞書。まだ用意していない言語は null。
+        /// </summary>
+        private static Dictionary<メッセージID, string>? Get_辞書(言語 p_言語)
         {
             return p_言語 switch
             {
@@ -251,7 +253,7 @@ namespace Tsumiki.Common
             [メッセージID.k自動選択] =
                 "[Info] k auto-selected as {0} from the observed read length ({1} bp). Pass -k explicitly to override.",
             [メッセージID.開始kmerの探索] =
-                "Search First k-mer",
+                "[Debug] Search First k-mer",
             [メッセージID.一時ディレクトリを残した] =
                 "[Info] Per-k assemblies are kept in {0} (use {1} to delete it).",
             [メッセージID.リード長の観測値] =
@@ -275,7 +277,7 @@ namespace Tsumiki.Common
             [メッセージID.試すk一覧] =
                 "[Multi-k] Trying k = {0}",
             [メッセージID.リード読込の進捗] =
-                "{0} reads Loaded",
+                "[Debug] {0} reads Loaded",
             [メッセージID.リード1の読込開始] =
                 "Loading File1",
             [メッセージID.単一リードの読込開始] =
@@ -291,9 +293,9 @@ namespace Tsumiki.Common
             [メッセージID.Phred_未確定] =
                 "undetermined",
             [メッセージID.kmer種類数] =
-                "kmer count: {0}",
+                "[Debug] kmer count: {0}",
             [メッセージID.採用kmer数] =
-                "good kmer: {0}",
+                "[Debug] good kmer: {0}",
             [メッセージID.アセンブリ不能] =
                 "\nThis genome is too complex to assembly...\nPlease adjust the parameters!\n",
             [メッセージID.概要_説明] =
@@ -474,6 +476,10 @@ namespace Tsumiki.Common
                 "how much to print to the console (default: {0}); {1} in the temp directory always keeps everything",
             [メッセージID.ログの保存先] =
                 "[Info] Full log kept at {0}",
+            [メッセージID.短すぎる閉路] =
+                "[Debug] {0} closed loop(s) shorter than {1}bp are not counted as replicons (homopolymer or short tandem repeat artefacts)",
+            [メッセージID.合成リードを再利用] =
+                "[SuperRead] Reusing the {0:N0} synthetic read(s) built at the first k",
         };
 
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
@@ -687,7 +693,7 @@ namespace Tsumiki.Common
             [メッセージID.k自動選択] =
                 "[Info] 観測されたリード長 ({1} bp) から k を {0} と自動選択 -- -k の明示指定で上書き可能",
             [メッセージID.開始kmerの探索] =
-                "開始 k-mer を探索",
+                "[Debug] 開始 k-mer を探索",
             [メッセージID.一時ディレクトリを残した] =
                 "[Info] k ごとのアセンブリを {0} に保持 ({1} を付けると削除)",
             [メッセージID.リード長の観測値] =
@@ -711,7 +717,7 @@ namespace Tsumiki.Common
             [メッセージID.試すk一覧] =
                 "[Multi-k] 試す k = {0}",
             [メッセージID.リード読込の進捗] =
-                "{0} リードを読み込み済み",
+                "[Debug] {0} リードを読み込み済み",
             [メッセージID.リード1の読込開始] =
                 "ファイル1を読み込み",
             [メッセージID.単一リードの読込開始] =
@@ -727,9 +733,9 @@ namespace Tsumiki.Common
             [メッセージID.Phred_未確定] =
                 "不明",
             [メッセージID.kmer種類数] =
-                "k-mer の種類数: {0}",
+                "[Debug] k-mer の種類数: {0}",
             [メッセージID.採用kmer数] =
-                "採用した k-mer: {0}",
+                "[Debug] 採用した k-mer: {0}",
             [メッセージID.アセンブリ不能] =
                 "\nこのゲノムは複雑すぎてアセンブリできません...\nパラメータを見直してください\n",
             [メッセージID.概要_説明] =
@@ -910,6 +916,10 @@ namespace Tsumiki.Common
                 "画面へ出す量 (既定: {0})。一時ディレクトリの {1} には常に全量を残す",
             [メッセージID.ログの保存先] =
                 "[Info] 全量のログを {0} に保存",
+            [メッセージID.短すぎる閉路] =
+                "[Debug] {1}bp 未満の閉路 {0} 個は複製単位として数えない (ホモポリマーや短いタンデム反復に由来する閉路)",
+            [メッセージID.合成リードを再利用] =
+                "[SuperRead] 最初の k で作った合成リード {0:N0} 本を再利用",
         };
 
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
@@ -1123,7 +1133,7 @@ namespace Tsumiki.Common
             [メッセージID.k自動選択] =
                 "[Info] 依据观测到的 read 长度（{1} bp）自动选择 k 为 {0} -- 可用 -k 显式覆盖",
             [メッセージID.開始kmerの探索] =
-                "正在搜索起始 k-mer",
+                "[Debug] 正在搜索起始 k-mer",
             [メッセージID.一時ディレクトリを残した] =
                 "[Info] 各 k 的组装结果保留在 {0}（加上 {1} 可删除）",
             [メッセージID.リード長の観測値] =
@@ -1147,7 +1157,7 @@ namespace Tsumiki.Common
             [メッセージID.試すk一覧] =
                 "[Multi-k] 将尝试 k = {0}",
             [メッセージID.リード読込の進捗] =
-                "已读入 {0} 条 read",
+                "[Debug] 已读入 {0} 条 read",
             [メッセージID.リード1の読込開始] =
                 "正在读取文件 1",
             [メッセージID.単一リードの読込開始] =
@@ -1163,9 +1173,9 @@ namespace Tsumiki.Common
             [メッセージID.Phred_未確定] =
                 "未确定",
             [メッセージID.kmer種類数] =
-                "k-mer 种类数：{0}",
+                "[Debug] k-mer 种类数：{0}",
             [メッセージID.採用kmer数] =
-                "采用的 k-mer：{0}",
+                "[Debug] 采用的 k-mer：{0}",
             [メッセージID.アセンブリ不能] =
                 "\n该基因组过于复杂，无法组装...\n请调整参数\n",
             [メッセージID.概要_説明] =
@@ -1346,6 +1356,10 @@ namespace Tsumiki.Common
                 "输出到控制台的信息量（默认：{0}）；临时目录中的 {1} 始终保留全部内容",
             [メッセージID.ログの保存先] =
                 "[Info] 完整日志保存于 {0}",
+            [メッセージID.短すぎる閉路] =
+                "[Debug] 短于 {1}bp 的闭环 {0} 个不计为复制单元（源自同聚物或短串联重复）",
+            [メッセージID.合成リードを再利用] =
+                "[SuperRead] 复用在首个 k 构建的合成 read {0:N0} 条",
         };
     }
 }

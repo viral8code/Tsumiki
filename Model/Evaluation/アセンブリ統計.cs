@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
     /// アセンブリ結果(unitigs/contigs/scaffolds)の品質を大まかに把握するための
@@ -18,10 +18,14 @@ namespace Tsumiki.Model
         public readonly int A_最大長 = p_最大長;
         public readonly int A_最小長 = p_最小長;
 
-        /// <summary>長い順に並べて累積長が全長の50%に達した時点の配列長。</summary>
+        /// <summary>
+        /// 長い順に並べて累積長が全長の50%に達した時点の配列長。
+        /// </summary>
         public readonly int A_N50 = p_N50;
 
-        /// <summary>N50 に達するまでに必要だった配列の本数(1始まり)。</summary>
+        /// <summary>
+        /// N50 に達するまでに必要だった配列の本数(1始まり)。
+        /// </summary>
         public readonly int A_L50 = p_L50;
 
         public readonly double A_GC率 = p_GC率;

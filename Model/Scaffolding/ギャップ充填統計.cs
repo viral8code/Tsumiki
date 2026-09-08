@@ -1,6 +1,8 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Scaffolding
 {
-    /// <summary>スキャフォールドのギャップ充填の集計。</summary>
+    /// <summary>
+    /// スキャフォールドのギャップ充填の集計。
+    /// </summary>
     internal readonly record struct ギャップ充填統計(
         int A_総ギャップ数,
         int A_埋めたギャップ数,

@@ -1,10 +1,13 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Reporting;
+using Tsumiki.Model.Scaffolding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
     /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える。

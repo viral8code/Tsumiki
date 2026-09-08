@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
     /// 次の k へ引き継ぐ、前段のアセンブリの1配列。

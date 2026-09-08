@@ -1,7 +1,12 @@
-using System.Text;
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Evidence;
+using Tsumiki.Core.Output;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.ContigBuilding;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Reporting;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core
@@ -429,7 +434,12 @@ namespace Tsumiki.Core
                 var l_逆相補を採用するか = string.CompareOrdinal(l_コンティグ, l_逆相補) > 0;
                 // 環状に閉じた contig は、その複製単位(染色体・プラスミド)を
                 // 完全に組み上げられたことを意味するため、名前に明示する。
-                var l_名前 = l_環状フラグ群[c] ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
+                // 閉じていても、複製単位と呼べる長さが無ければ目印は付けない。
+                // ホモポリマー由来の 1bp の閉路まで環状のレプリコンとして数えると、
+                // 候補選択も完全性の判定もその雑音に従ってしまう。
+                var l_複製単位か = l_環状フラグ群[c]
+                    && l_コンティグ群[c].Length >= Consts.環状として数える最小長;
+                var l_名前 = l_複製単位か ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
                 var l_出力配列 = l_逆相補を採用するか ? l_逆相補 : l_コンティグ;
                 if (l_環状フラグ群[c])
                 {
@@ -447,7 +457,7 @@ namespace Tsumiki.Core
                 for (var w = 0; w < l_walk順.Count; w++)
                 {
                     var l_頂点番号 = l_walk順[w];
-                    this._ユニティグ配置[l_頂点番号 >> 1] = new Model.ユニティグ配置(
+                    this._ユニティグ配置[l_頂点番号 >> 1] = new ユニティグ配置(
                         p_コンティグID: l_ID,
                         p_コンティグが逆相補か: l_逆相補を採用するか,
                         p_walk順の位置: w,
@@ -460,7 +470,15 @@ namespace Tsumiki.Core
             }
             Logger.V_出力(メッセージID.コンティグ総延長, l_総延長);
 
-            var l_環状コンティグ = Enumerable.Range(0, l_コンティグ群.Count).Where(x => l_環状フラグ群[x]).ToList();
+            var l_環状コンティグ = Enumerable.Range(0, l_コンティグ群.Count)
+                .Where(x => l_環状フラグ群[x] && l_コンティグ群[x].Length >= Consts.環状として数える最小長)
+                .ToList();
+            var l_短すぎる閉路 = Enumerable.Range(0, l_コンティグ群.Count)
+                .Count(x => l_環状フラグ群[x] && l_コンティグ群[x].Length < Consts.環状として数える最小長);
+            if (l_短すぎる閉路 > 0)
+            {
+                Logger.V_出力(メッセージID.短すぎる閉路, l_短すぎる閉路, Consts.環状として数える最小長);
+            }
             if (l_環状コンティグ.Count > 0)
             {
                 var l_長さ一覧 = string.Join(", ", l_環状コンティグ.Select(x => $"{l_コンティグ群[x].Length}bp"));

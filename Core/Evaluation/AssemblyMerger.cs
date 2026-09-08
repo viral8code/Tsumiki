@@ -1,10 +1,12 @@
 ﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Scaffolding;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 複数の k のアセンブリを1つに統合する。
@@ -226,7 +228,7 @@ namespace Tsumiki.Core
                 // 跨いだ配列のうち、2つのアンカーに挟まれた部分が繋ぎ目になる。
                 var l_開始 = l_前.A_自分の位置 + p_アンカーk長;
                 var l_長さ = l_後.A_自分の位置 - l_開始;
-                if (l_長さ < 0 || l_長さ > 橋渡し長の上限)
+                if (l_長さ is < 0 or > 橋渡し長の上限)
                 {
                     continue;
                 }
@@ -246,11 +248,7 @@ namespace Tsumiki.Core
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            if (p_当たり.A_同じ向きか)
-            {
-                return l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null;
-            }
-            return p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_同じ向きか ? l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         private static int? Get_入口頂点(
@@ -259,11 +257,7 @@ namespace Tsumiki.Core
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            if (p_当たり.A_同じ向きか)
-            {
-                return p_当たり.A_位置 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null;
-            }
-            return l_末尾からの距離 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_同じ向きか ? p_当たり.A_位置 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : l_末尾からの距離 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         /// <summary>
@@ -345,7 +339,7 @@ namespace Tsumiki.Core
                 p_行き先[p_候補.A_始点] = l_集合;
             }
             _ = l_集合.Add(p_候補.A_終点);
-            p_代表.TryAdd((p_候補.A_始点, p_候補.A_終点), p_候補);
+            _ = p_代表.TryAdd((p_候補.A_始点, p_候補.A_終点), p_候補);
         }
 
         /// <summary>

@@ -1,5 +1,5 @@
-using System.Globalization;
-using Tsumiki.Model;
+﻿using System.Globalization;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Common
 {
@@ -12,10 +12,14 @@ namespace Tsumiki.Common
     /// </summary>
     internal static class Messages
     {
-        /// <summary>表示に使う言語。</summary>
+        /// <summary>
+        /// 表示に使う言語。
+        /// </summary>
         public static 言語 A_言語 { get; set; } = 言語.日本語;
 
-        /// <summary>p_ID の文言に p_引数 を差し込んで返す。</summary>
+        /// <summary>
+        /// p_ID の文言に p_引数 を差し込んで返す。
+        /// </summary>
         public static string Get_文言(メッセージID p_ID, params object?[] p_引数)
         {
             var l_書式 = MessageCatalog.Get_書式(A_言語, p_ID);

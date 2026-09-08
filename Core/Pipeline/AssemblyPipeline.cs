@@ -1,9 +1,14 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Preprocessing;
+using Tsumiki.Core.Scaffolding;
+using Tsumiki.Core.UnitigBuilding;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.Evaluation;
+using Tsumiki.Model.Foundation;
 using Tsumiki.Utility;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Pipeline
 {
     /// <summary>
     /// 指定した k 長で、k-mer カウントからスキャフォールドまでを一通り実行する。
@@ -19,7 +24,8 @@ namespace Tsumiki.Core
         public static アセンブリ実行結果? Get_実行結果(
             Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長,
             IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null,
-            List<引き継ぎ配列>? p_次への引き継ぎ = null)
+            List<引き継ぎ配列>? p_次への引き継ぎ = null,
+            List<引き継ぎ配列>? p_合成リードの控え = null)
         {
             // 以降の全処理は ConfigurationManager 経由で k 長を参照する。
             // 明示指定の印は立てない(自動選択された値のままとして扱う)。
@@ -186,7 +192,9 @@ namespace Tsumiki.Core
                 AssemblyValidator.V_出力_検査結果("contigs", l_コンティグの検査);
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
+                V_用意_次への引き継ぎ(
+                    p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数,
+                    l_バブル敗者, p_合成リードの控え);
                 var l_コンティグのみの結果 = new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
@@ -228,7 +236,9 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
+            V_用意_次への引き継ぎ(
+                p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数,
+                l_バブル敗者, p_合成リードの控え);
             var l_結果 = new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
@@ -290,7 +300,7 @@ namespace Tsumiki.Core
         private static void V_用意_次への引き継ぎ(
             List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
             TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数,
-            IReadOnlyList<string> p_バブル敗者)
+            IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -315,17 +325,37 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.引き継ぎの準備完了, p_次への引き継ぎ.Count);
             Logger.V_出力_タイムスタンプ();
 
-            if (p_引数.A_SuperReadを作るか && !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            if (!p_引数.A_SuperReadを作るか || string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
-                var l_合成リード = SuperReadJoiner.Get_合成リード(
-                    p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
-                SuperReadJoiner.V_出力_統計(l_統計);
-                p_次への引き継ぎ.AddRange(l_合成リード);
-                Logger.V_出力_タイムスタンプ();
+                return;
             }
+
+            // 合成リードは最初の k で作ったものを以降の k でも使い回す。
+            //
+            // 橋渡しはその k の信頼できる k-mer 集合を通るので k ごとに
+            // 作り直していたが、実データでは本数がほとんど動かなかった
+            // (7.4Mbp・170x で 556,352 -> 557,761 -> 557,867 -> 558,026 -> 557,931)。
+            // 一方で費用は k とともに増え、6つの k の合計で実行時間の
+            // 3分の1を占めていた。狙いは次の k のためにリードを実効的に
+            // 伸ばすことなので、最も繋がりやすい最小の k で1度作れば足りる。
+            if (p_合成リードの控え is { Count: > 0 })
+            {
+                Logger.V_出力(メッセージID.合成リードを再利用, p_合成リードの控え.Count);
+                p_次への引き継ぎ.AddRange(p_合成リードの控え);
+                return;
+            }
+
+            var l_合成リード = SuperReadJoiner.Get_合成リード(
+                p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
+            SuperReadJoiner.V_出力_統計(l_統計);
+            p_次への引き継ぎ.AddRange(l_合成リード);
+            p_合成リードの控え?.AddRange(l_合成リード);
+            Logger.V_出力_タイムスタンプ();
         }
 
-        /// <summary>配列を、位置ごとのカバレッジ付きの引き継ぎ配列にする。</summary>
+        /// <summary>
+        /// 配列を、位置ごとのカバレッジ付きの引き継ぎ配列にする。
+        /// </summary>
         private static 引き継ぎ配列 Get_引き継ぎ配列(string p_配列, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();

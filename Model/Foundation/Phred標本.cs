@@ -1,4 +1,4 @@
-namespace Tsumiki.Model
+﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
     /// FASTQ のクオリティ文字列を一定数サンプリングした結果。

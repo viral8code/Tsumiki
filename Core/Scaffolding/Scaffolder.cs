@@ -1,9 +1,14 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
+using Tsumiki.Core.Evaluation;
+using Tsumiki.Core.Evidence;
 using Tsumiki.IO;
-using Tsumiki.Model;
+using Tsumiki.Model.ContigBuilding;
+using Tsumiki.Model.Foundation;
+using Tsumiki.Model.Reporting;
+using Tsumiki.Model.Scaffolding;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
     /// 確定した contig を読み直し、ペアエンド由来の隣接で N 埋め連結する。
@@ -448,12 +453,7 @@ namespace Tsumiki.Core
 
             var l_合計 = l_候補.Sum(x => x.A_期待に対する比);
             var l_最良 = l_候補.OrderByDescending(x => x.A_期待に対する比).First();
-            if (l_合計 <= 0 || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値)
-            {
-                return null;
-            }
-
-            return l_最良;
+            return l_合計 <= 0 || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値 ? null : l_最良;
         }
 
         private long Get_コンティグ長(int p_頂点)
@@ -525,7 +525,9 @@ namespace Tsumiki.Core
             return l_出力.ToString();
         }
 
-        /// <summary>その contig が環状に閉じたものとして作られたか。</summary>
+        /// <summary>
+        /// その contig が環状に閉じたものとして作られたか。
+        /// </summary>
         private bool Get_環状か(int p_コンティグID)
         {
             return this._コンティグ名.TryGetValue(p_コンティグID, out var l_名前)

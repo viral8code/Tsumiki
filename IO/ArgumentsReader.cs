@@ -1,5 +1,5 @@
-using Tsumiki.Common;
-using Tsumiki.Model;
+﻿using Tsumiki.Common;
+using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
@@ -181,7 +181,9 @@ namespace Tsumiki.IO
             return l_引数;
         }
 
-        /// <summary>-lang に渡された言語名を解釈する。</summary>
+        /// <summary>
+        /// -lang に渡された言語名を解釈する。
+        /// </summary>
         private static 言語 Get_言語(string p_言語名)
         {
             return p_言語名 switch
@@ -195,7 +197,9 @@ namespace Tsumiki.IO
             };
         }
 
-        /// <summary>-log に渡された水準名を解釈する。</summary>
+        /// <summary>
+        /// -log に渡された水準名を解釈する。
+        /// </summary>
         private static ログ水準 Get_ログ水準(string p_水準名)
         {
             return p_水準名 switch

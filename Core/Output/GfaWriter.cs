@@ -1,6 +1,6 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Core.UnitigBuilding;
 
-namespace Tsumiki.Core
+namespace Tsumiki.Core.Output
 {
     /// <summary>
     /// unitig グラフを GFA1 形式で書き出す(SPAdes/Unicycler と同様の診断出力)。

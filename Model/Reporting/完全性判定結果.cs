@@ -1,4 +1,6 @@
-namespace Tsumiki.Model
+﻿using Tsumiki.Model.Foundation;
+
+namespace Tsumiki.Model.Reporting
 {
     /// <summary>
     /// 品質保証の段階。完全長を名乗れるのは最上位だけとし、
@@ -6,37 +8,55 @@ namespace Tsumiki.Model
     /// </summary>
     internal enum 品質保証レベル
     {
-        /// <summary>配列を出力できた。</summary>
+        /// <summary>
+        /// 配列を出力できた。
+        /// </summary>
         出力のみ = 0,
 
-        /// <summary>k-mer の取りこぼしと出しすぎが許容範囲に収まる。</summary>
+        /// <summary>
+        /// k-mer の取りこぼしと出しすぎが許容範囲に収まる。
+        /// </summary>
         グラフ整合 = 1,
 
-        /// <summary>元リードを貼り直しても深度が途切れない。</summary>
+        /// <summary>
+        /// 元リードを貼り直しても深度が途切れない。
+        /// </summary>
         マッピング整合 = 2,
 
-        /// <summary>未解決のギャップが残っていない。</summary>
+        /// <summary>
+        /// 未解決のギャップが残っていない。
+        /// </summary>
         ペア整合 = 3,
 
-        /// <summary>決めきれずに打ち切った分岐が残っていない。</summary>
+        /// <summary>
+        /// 決めきれずに打ち切った分岐が残っていない。
+        /// </summary>
         接合点が支持済み = 4,
 
-        /// <summary>閉じ目まで元リードで裏付けられている。</summary>
+        /// <summary>
+        /// 閉じ目まで元リードで裏付けられている。
+        /// </summary>
         完全長 = 5,
     }
 
-    /// <summary>1つの検査項目の結果。材料が無い場合は不合格と区別する。</summary>
+    /// <summary>
+    /// 1つの検査項目の結果。材料が無い場合は不合格と区別する。
+    /// </summary>
     internal enum 検査判定
     {
         合格,
 
         不合格,
 
-        /// <summary>判定に必要な材料が揃っておらず、合否を言えない。</summary>
+        /// <summary>
+        /// 判定に必要な材料が揃っておらず、合否を言えない。
+        /// </summary>
         判定不能,
     }
 
-    /// <summary>完全長に届かなかった理由。レポートの reason_codes になる。</summary>
+    /// <summary>
+    /// 完全長に届かなかった理由。レポートの reason_codes になる。
+    /// </summary>
     internal enum 未達理由
     {
         取りこぼしが多い,
