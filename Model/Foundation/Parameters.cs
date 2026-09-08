@@ -1,4 +1,4 @@
-﻿using Tsumiki.Common;
+using Tsumiki.Common;
 
 namespace Tsumiki.Model
 {
@@ -257,6 +257,31 @@ namespace Tsumiki.Model
         /// </summary>
         public bool A_マージするか { get; set; } = false;
 
+        /// <summary>
+        /// 最終成果物に元リードを貼り直し、多数決で置換を直すか。
+        /// リードを1回余分に走査するぶん時間がかかるため既定は false。
+        /// </summary>
+        public bool A_ポリッシュするか { get; set; } = false;
+
+        /// <summary>
+        /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが
+        /// 実在するかを確かめるか。完全長を名乗るには必須の検査だが、
+        /// リードの追加走査が要るため既定は false。
+        /// </summary>
+        public bool A_環状閉鎖を検証するか { get; set; } = false;
+
+        /// <summary>
+        /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に
+        /// 挟まれているものを救い上げるか。
+        /// </summary>
+        public bool A_救済kmerを使うか { get; set; } = false;
+
+        /// <summary>
+        /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか。
+        /// 同じ入力・同じオプションで作り終えた k だけを飛ばす。
+        /// </summary>
+        public bool A_再開するか { get; set; } = false;
+
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         /// <summary>
@@ -331,6 +356,10 @@ namespace Tsumiki.Model
                 local assembly for remaining gaps : {this.A_局所アセンブリするか}
                 write GFA of the unitig graph : {this.A_GFAを出力するか}
                 merge multi-k results : {this.A_マージするか}
+                rescue mercy k-mers : {this.A_救済kmerを使うか}
+                polish final assembly with reads : {this.A_ポリッシュするか}
+                verify circular closure with reads : {this.A_環状閉鎖を検証するか}
+                resume from temp directory : {this.A_再開するか}
                 temp directory : {this.A_一時ディレクトリ}
                 delete temp directory when finished : {this.A_一時ディレクトリを削除するか}
                 thread count : {this.A_スレッド数}

@@ -48,6 +48,27 @@ namespace Tsumiki.IO
             return (l_ID, l_配列, l_クオリティ);
         }
 
+        /// <summary>
+        /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す。
+        /// 最終成果物へリードを貼り直す処理(ポリッシュ・閉じ目の検証)のように、
+        /// ID もクオリティも要らない全走査のための入口。
+        /// </summary>
+        public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)
+        {
+            foreach (var l_パス in p_パス群)
+            {
+                if (string.IsNullOrWhiteSpace(l_パス))
+                {
+                    continue;
+                }
+                using var l_読み込み = new FastqReader(l_パス);
+                while (l_読み込み.Get_続きがあるか())
+                {
+                    yield return l_読み込み.Get_次のレコード().A_配列;
+                }
+            }
+        }
+
         public リードデータ Get_次のリード()
         {
             try

@@ -257,9 +257,13 @@ namespace Tsumiki.Core
 
             var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
             var l_首位 = l_順位[0];
+            var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0;
             if ((ulong)Math.Max(0, l_首位.Value.A_生) < p_最小証拠数)
             {
                 // どの枝にもペアエンドの支持が無い。根拠が無いので繋がない。
+                AmbiguityRecorder.V_記録(
+                    曖昧箇所の種別.支持なし, AmbiguityRecorder.Get_場所名(p_分岐元),
+                    l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
 
@@ -267,6 +271,9 @@ namespace Tsumiki.Core
             if (l_合計 <= 0 || (decimal)(l_首位.Value.A_正規化 / l_合計) < p_優勢閾値)
             {
                 // 上位が割れている。僅差で選ぶくらいなら繋がないほうがよい。
+                AmbiguityRecorder.V_記録(
+                    曖昧箇所の種別.僅差, AmbiguityRecorder.Get_場所名(p_分岐元),
+                    l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
 

@@ -1,4 +1,4 @@
-﻿using Tsumiki.Common;
+using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -31,6 +31,18 @@ namespace Tsumiki.Core
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
 
+            // 同じ条件で作り終えているなら、この k は丸ごと飛ばす。
+            var l_署名 = CheckpointStore.Get_署名(p_引数, p_k長);
+            if (p_引数.A_再開するか
+                && CheckpointStore.Get_再開結果(l_作業ディレクトリ, l_署名, p_次への引き継ぎ) is { } l_再開結果)
+            {
+                Logger.V_出力(メッセージID.再開_kを飛ばした, p_k長);
+                AmbiguityRecorder.V_読み込み(l_作業ディレクトリ, p_k長);
+                return l_再開結果;
+            }
+
+            AmbiguityRecorder.V_開始(p_k長);
+
             var l_ユニティグパス = Path.Combine(l_作業ディレクトリ, Consts.ユニティグファイル名);
             var l_コンティグパス = Path.Combine(l_作業ディレクトリ, Consts.コンティグファイル名);
             var l_スキャフォールドパス = Path.Combine(l_作業ディレクトリ, Consts.スキャフォールドファイル名);
@@ -49,6 +61,16 @@ namespace Tsumiki.Core
             _ = l_kmerインデックス.V_カットオフ(p_引数.A_kmerカットオフ);
 
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
+
+            // 救済はカットオフの直後に行う。スペクトルを出し終えてからにするのは、
+            // 救済した k-mer を混ぜたヒストグラムがカバレッジ推定の材料に
+            // 使われないようにするため。
+            if (p_引数.A_救済kmerを使うか)
+            {
+                Logger.V_出力(メッセージID.救済kmerの開始);
+                _ = MercyKmerRescuer.Get_救済数(p_引数, l_kmerインデックス, p_k長);
+                Logger.V_出力_タイムスタンプ();
+            }
 
             // 引き継ぎはカットオフの後に行う。カウントとカットオフを通常どおり
             // 済ませてから足すことで、スペクトルが実データのまま保たれ、
@@ -160,17 +182,20 @@ namespace Tsumiki.Core
 
             if (!l_スキャフォールドを作ったか)
             {
-                AssemblyValidator.V_出力_検査結果(
-                    "contigs",
-                    AssemblyValidator.Get_検査結果(
-                        l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値));
+                var l_コンティグの検査 = AssemblyValidator.Get_検査結果(
+                    l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
+                AssemblyValidator.V_出力_検査結果("contigs", l_コンティグの検査);
                 Logger.V_出力_タイムスタンプ();
 
                 V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
-                return new アセンブリ実行結果(
+                var l_コンティグのみの結果 = new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
-                    p_引数.A_GFAを出力するか ? l_GFAパス : null);
+                    p_引数.A_GFAを出力するか ? l_GFAパス : null,
+                    l_コンティグの検査);
+                V_保存_チェックポイント(
+                    l_作業ディレクトリ, l_署名, l_コンティグのみの結果, p_次への引き継ぎ, p_k長);
+                return l_コンティグのみの結果;
             }
 
             AssemblyStatsReporter.V_出力_統計("scaffolds", l_スキャフォールドパス);
@@ -198,18 +223,32 @@ namespace Tsumiki.Core
                 }
             }
 
-            AssemblyValidator.V_出力_検査結果(
-                "scaffolds",
-                AssemblyValidator.Get_検査結果(
-                    l_スキャフォールドパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値));
+            var l_スキャフォールドの検査 = AssemblyValidator.Get_検査結果(
+                l_スキャフォールドパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
+            AssemblyValidator.V_出力_検査結果("scaffolds", l_スキャフォールドの検査);
 
             Logger.V_出力_タイムスタンプ();
 
             V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
-            return new アセンブリ実行結果(
+            var l_結果 = new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
-                p_引数.A_GFAを出力するか ? l_GFAパス : null);
+                p_引数.A_GFAを出力するか ? l_GFAパス : null,
+                l_スキャフォールドの検査);
+            V_保存_チェックポイント(l_作業ディレクトリ, l_署名, l_結果, p_次への引き継ぎ, p_k長);
+            return l_結果;
+        }
+
+        /// <summary>
+        /// この k を作り終えたことを記録する。決めきれなかった箇所の控えも
+        /// 一緒に残す(再開でこの k を飛ばしたときに、レポートから消えないように)。
+        /// </summary>
+        private static void V_保存_チェックポイント(
+            string p_作業ディレクトリ, string p_署名, アセンブリ実行結果 p_結果,
+            IReadOnlyList<引き継ぎ配列>? p_次への引き継ぎ, int p_k長)
+        {
+            AmbiguityRecorder.V_保存(p_作業ディレクトリ, p_k長);
+            CheckpointStore.V_保存(p_作業ディレクトリ, p_署名, p_結果, p_次への引き継ぎ);
         }
 
         /// <summary>

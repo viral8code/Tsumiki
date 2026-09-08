@@ -1,4 +1,4 @@
-﻿namespace Tsumiki.Common
+namespace Tsumiki.Common
 {
     internal class Consts
     {
@@ -67,6 +67,14 @@
             public const string 積極性モード = "-mode";
 
             public const string GFA出力 = "-gfa";
+
+            public const string ポリッシュ = "-po";
+
+            public const string 環状閉鎖検証 = "-cc";
+
+            public const string 救済kmer = "-my";
+
+            public const string 再開 = "-rs";
         }
 
         /// <summary>
@@ -231,6 +239,13 @@
         public const string スキャフォールドファイル名 = "scaffolds.fasta";
 
         public const string GFAファイル名 = "assembly.gfa";
+
+        public const string レポートファイル名 = "assembly.report.json";
+
+        public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
+
+        /// <summary>ポリッシュ結果の一時的な置き場。最後に最終成果物へ被せる。</summary>
+        public const string ポリッシュ済みファイル名 = "polished.fasta";
 
         /// <summary>
         /// 塩基の内部表現。A/C/G/T は塩基記号そのものなので英字のまま残す

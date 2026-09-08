@@ -1,4 +1,4 @@
-﻿using Tsumiki.Common;
+using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
@@ -124,6 +124,22 @@ namespace Tsumiki.IO
 
                         case Consts.引数キー.GFA出力:
                             l_引数.A_GFAを出力するか = true;
+                            break;
+
+                        case Consts.引数キー.ポリッシュ:
+                            l_引数.A_ポリッシュするか = true;
+                            break;
+
+                        case Consts.引数キー.環状閉鎖検証:
+                            l_引数.A_環状閉鎖を検証するか = true;
+                            break;
+
+                        case Consts.引数キー.救済kmer:
+                            l_引数.A_救済kmerを使うか = true;
+                            break;
+
+                        case Consts.引数キー.再開:
+                            l_引数.A_再開するか = true;
                             break;
 
                         default:

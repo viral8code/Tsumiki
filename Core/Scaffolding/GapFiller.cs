@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -73,6 +73,11 @@ namespace Tsumiki.Core
                         {
                             l_到達不能数++;
                         }
+                        AmbiguityRecorder.V_記録(
+                            l_判定 == ギャップ充填判定.一意でない
+                                ? 曖昧箇所の種別.経路が一意でない
+                                : 曖昧箇所の種別.到達不能,
+                            $"{l_ID.TrimStart('>')}:{l_ギャップ開始}-{l_位置}");
                         _ = l_出力.Append('N', l_ギャップ長);
                     }
                 }

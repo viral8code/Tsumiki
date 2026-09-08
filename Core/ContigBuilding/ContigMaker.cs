@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -272,6 +272,8 @@ namespace Tsumiki.Core
                 if (p_コピー数 is not null && p_コピー数.GetValueOrDefault(v >> 1, 1) > 1)
                 {
                     l_反復由来で未解決の数++;
+                    AmbiguityRecorder.V_記録(
+                        曖昧箇所の種別.反復の内側, AmbiguityRecorder.Get_場所名(v));
                     continue;
                 }
 
@@ -303,6 +305,18 @@ namespace Tsumiki.Core
                 {
                     l_選択[v] = l_最良;
                     l_支持で解決した数++;
+                }
+                else
+                {
+                    // 支持が足りないのか、上位が割れているのかで意味が違う。
+                    AmbiguityRecorder.V_記録(
+                        l_最良の生本数 < p_最小証拠数
+                            ? 曖昧箇所の種別.支持なし
+                            : 曖昧箇所の種別.僅差,
+                        AmbiguityRecorder.Get_場所名(v),
+                        l_最良の正規化 is double.NegativeInfinity ? 0 : l_最良の正規化,
+                        l_正規化合計 - (l_最良の正規化 is double.NegativeInfinity ? 0 : l_最良の正規化),
+                        (long)l_最良の生本数);
                 }
             }
             Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);

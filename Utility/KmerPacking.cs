@@ -42,8 +42,32 @@ namespace Tsumiki.Utility
             return Get_小さいほう(l_順鎖, p_kmer.Length);
         }
 
-        /// <summary>パック済みの値とその逆相補のうち小さいほうを返す。</summary>
-        public static UInt128 Get_小さいほう(UInt128 p_パック済み, int p_長さ)
+        /// <summary>
+        /// 配列の位置 p_開始位置 から p_k長 塩基を、正規化せず順鎖のまま
+        /// 2bit パックする。曖昧塩基を含む場合は false を返す。
+        ///
+        /// 向きを区別したい索引(どちらの鎖に載ったのかで座標の解釈が変わる場合)
+        /// では正規形を使えないため、順鎖と逆相補を別々のキーとして扱う。
+        /// </summary>
+        public static bool Get_パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_順鎖)
+        {
+            UInt128 l_順鎖 = 0;
+            for (var i = 0; i < p_k長; i++)
+            {
+                var l_塩基ID = Util.Get_塩基ID(p_配列[p_開始位置 + i]);
+                if (l_塩基ID is < Consts.塩基ID.A or > Consts.塩基ID.T)
+                {
+                    p_順鎖 = 0;
+                    return false;
+                }
+                l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
+            }
+            p_順鎖 = l_順鎖;
+            return true;
+        }
+
+        /// <summary>パック済みの値の逆相補。</summary>
+        public static UInt128 Get_逆相補(UInt128 p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
             UInt128 l_逆相補 = 0;
@@ -53,6 +77,13 @@ namespace Tsumiki.Utility
                 l_逆相補 = (l_逆相補 << 2) | (l_コドン ^ 3);
                 l_残り >>= 2;
             }
+            return l_逆相補;
+        }
+
+        /// <summary>パック済みの値とその逆相補のうち小さいほうを返す。</summary>
+        public static UInt128 Get_小さいほう(UInt128 p_パック済み, int p_長さ)
+        {
+            var l_逆相補 = Get_逆相補(p_パック済み, p_長さ);
             return p_パック済み < l_逆相補 ? p_パック済み : l_逆相補;
         }
     }

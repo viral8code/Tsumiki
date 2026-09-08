@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -215,6 +215,9 @@ namespace Tsumiki.Core
                 {
                     l_確定辺[v] = null;
                     l_相互一意で棄却した数++;
+                    AmbiguityRecorder.V_記録(
+                        曖昧箇所の種別.経路が一意でない,
+                        AmbiguityRecorder.Get_場所名(v, "contig"));
                 }
             }
             Logger.V_出力(メッセージID.閾値後のスキャフォールド辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);

@@ -52,6 +52,7 @@ namespace Tsumiki.Common
             V_追加_行(
                 l_文, $"{Consts.引数キー.メモリ予算} <size>", メッセージID.ヘルプ_メモリ予算,
                 Util.Get_表示用メモリサイズ(Consts.メモリ予算の既定値));
+            V_追加_行(l_文, Consts.引数キー.救済kmer, メッセージID.ヘルプ_救済kmer);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_ペアエンド);
             V_追加_行(l_文, $"{Consts.引数キー.インサートサイズ} <int>", メッセージID.ヘルプ_インサートサイズ);
@@ -81,12 +82,20 @@ namespace Tsumiki.Common
             V_追加_行(l_文, Consts.引数キー.反復r_mer検証, メッセージID.ヘルプ_反復rMer検証);
             V_追加_行(l_文, Consts.引数キー.局所アセンブリ, メッセージID.ヘルプ_局所アセンブリ, Consts.引数キー.マージ);
 
+            V_追加_節(l_文, メッセージID.ヘルプ節_完全性の検証);
+            V_追加_行(l_文, Consts.引数キー.ポリッシュ, メッセージID.ヘルプ_ポリッシュ);
+            V_追加_行(l_文, Consts.引数キー.環状閉鎖検証, メッセージID.ヘルプ_環状閉鎖検証);
+            V_追加_説明(
+                l_文, メッセージID.ヘルプ_レポートの説明,
+                Consts.レポートファイル名, Consts.曖昧箇所ファイル名);
+
             V_追加_節(l_文, メッセージID.ヘルプ節_出力とその他);
             V_追加_行(l_文, Consts.引数キー.GFA出力, メッセージID.ヘルプ_GFA出力, Consts.GFAファイル名);
             V_追加_行(
                 l_文, $"{Consts.引数キー.一時ディレクトリ} <path>", メッセージID.ヘルプ_一時ディレクトリ,
                 Consts.一時ディレクトリの既定値);
             V_追加_行(l_文, Consts.引数キー.一時ディレクトリ削除, メッセージID.ヘルプ_一時ディレクトリ削除);
+            V_追加_行(l_文, Consts.引数キー.再開, メッセージID.ヘルプ_再開);
             V_追加_行(l_文, $"{Consts.引数キー.スレッド数} <int>", メッセージID.ヘルプ_スレッド数);
             V_追加_行(
                 l_文,
@@ -102,6 +111,14 @@ namespace Tsumiki.Common
         {
             _ = p_文.AppendLine();
             _ = p_文.AppendLine(Messages.Get_文言(p_見出し));
+        }
+
+        /// <summary>オプションに紐づかない補足を、説明と同じ桁に1行足す。</summary>
+        private static void V_追加_説明(
+            StringBuilder p_文, メッセージID p_説明, params object?[] p_引数)
+        {
+            _ = p_文.AppendLine(
+                new string(' ', 説明の開始桁) + Messages.Get_文言(p_説明, p_引数));
         }
 
         private static void V_追加_行(

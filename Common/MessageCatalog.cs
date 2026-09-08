@@ -1,4 +1,4 @@
-﻿using Tsumiki.Model;
+using Tsumiki.Model;
 
 namespace Tsumiki.Common
 {
@@ -384,6 +384,88 @@ namespace Tsumiki.Common
                 "[SuperRead] Bridging read pairs",
             [メッセージID.SuperRead橋渡し進捗] =
                 "[SuperRead] {0:N0} pair(s) processed, {1:N0} bridged",
+            [メッセージID.ポリッシュ開始] =
+                "[Polish] Remapping reads onto the final assembly",
+            [メッセージID.ポリッシュの索引構築] =
+                "[Polish] Indexing {0:N0} sequence(s), {1:N0} bp",
+            [メッセージID.ポリッシュの種が無い] =
+                "[Polish] No {0}-mer seed can be taken from the assembly, so polishing is skipped",
+            [メッセージID.ポリッシュのマッピング開始] =
+                "[Polish] Mapping reads",
+            [メッセージID.ポリッシュの深度中央値] =
+                "[Polish] Median depth: {0:F1}x",
+            [メッセージID.ポリッシュを行えず] =
+                "[Polish] Nothing to polish",
+            [メッセージID.ポリッシュのマッピング結果] =
+                "[Polish] {0:N0} read(s) placed, {1:N0} rejected",
+            [メッセージID.ポリッシュの訂正結果] =
+                "[Polish] Corrected {0:N0} base(s) out of {1:N0}",
+            [メッセージID.ポリッシュの深度不足] =
+                "[Polish] Depth is low at {0:N0} of {1:N0} position(s) ({2:F2}%)",
+            [メッセージID.閉じ目の検証開始] =
+                "[Closure] Checking {0} circular sequence(s) for reads spanning the join ({1}bp window)",
+            [メッセージID.閉じ目_環状の配列が無い] =
+                "[Closure] No circular sequence in the assembly",
+            [メッセージID.閉じ目を裏付けた] =
+                "[Closure] {0} ({1:N0} bp): {2} spanning read(s), {3} required",
+            [メッセージID.閉じ目を裏付けられず] =
+                "[Closure] {0} ({1:N0} bp): only {2} spanning read(s) against {3} required, closure unsupported",
+            [メッセージID.検査項目_グラフ被覆] =
+                "graph coverage",
+            [メッセージID.検査項目_コピー数整合] =
+                "copy consistency",
+            [メッセージID.検査項目_深度の連続性] =
+                "coverage continuity",
+            [メッセージID.検査項目_未解決のギャップ] =
+                "unresolved gaps",
+            [メッセージID.検査項目_接合点の支持] =
+                "junction support",
+            [メッセージID.検査項目_競合経路] =
+                "competing paths",
+            [メッセージID.検査項目_環状閉鎖] =
+                "circular closure",
+            [メッセージID.検査判定_合格] =
+                "pass",
+            [メッセージID.検査判定_不合格] =
+                "fail",
+            [メッセージID.検査判定_判定不能] =
+                "unknown",
+            [メッセージID.完全性の見出し] =
+                "[Complete] Completeness checks",
+            [メッセージID.完全性の検査行] =
+                "[Complete]   {0}: {1} {2}",
+            [メッセージID.完全長と判定] =
+                "[Complete] Complete (Q{0})",
+            [メッセージID.完全長に届かず] =
+                "[Complete] Not complete (Q{0})",
+            [メッセージID.完全性の未達理由] =
+                "[Complete] Reasons: {0}",
+            [メッセージID.救済kmerの開始] =
+                "[Mercy] Rescuing k-mers dropped by the cutoff but flanked by trusted ones inside a read",
+            [メッセージID.救済_対象外のk長] =
+                "[Mercy] k={0} is above 64, so rescue is unavailable",
+            [メッセージID.救済したkmer数] =
+                "[Mercy] Rescued {0:N0} k-mer(s) out of {1:N0} candidate(s)",
+            [メッセージID.レポートを書き出した] =
+                "[Report] Wrote {0}",
+            [メッセージID.曖昧箇所を書き出した] =
+                "[Report] Wrote {0:N0} ambiguous site(s) to {1}",
+            [メッセージID.再開_kを飛ばした] =
+                "[Resume] k={0} is already finished under the same settings, reusing it",
+            [メッセージID.再開_中間ファイルを再利用] =
+                "[Resume] Reusing {0}",
+            [メッセージID.ヘルプ節_完全性の検証] =
+                "# Completeness",
+            [メッセージID.ヘルプ_ポリッシュ] =
+                "remap reads onto the final assembly and fix substitutions by majority vote (default: false)",
+            [メッセージID.ヘルプ_環状閉鎖検証] =
+                "require reads spanning the join before a sequence counts as circular (default: false)",
+            [メッセージID.ヘルプ_救済kmer] =
+                "rescue below-cutoff k-mers that sit between trusted ones inside a read (default: false)",
+            [メッセージID.ヘルプ_再開] =
+                "reuse the per-k results left in the temp directory and continue (default: false)",
+            [メッセージID.ヘルプ_レポートの説明] =
+                "{0} and {1} are always written alongside the assembly.",
         };
 
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
@@ -730,6 +812,88 @@ namespace Tsumiki.Common
                 "[SuperRead] リードペアを橋渡し中",
             [メッセージID.SuperRead橋渡し進捗] =
                 "[SuperRead] {0:N0} 組を処理、うち {1:N0} 組を橋渡し",
+            [メッセージID.ポリッシュ開始] =
+                "[Polish] 最終成果物にリードを貼り直し中",
+            [メッセージID.ポリッシュの索引構築] =
+                "[Polish] 配列 {0:N0} 本、{1:N0} bp を索引化",
+            [メッセージID.ポリッシュの種が無い] =
+                "[Polish] アセンブリから {0}-mer の種を取れないため見送り",
+            [メッセージID.ポリッシュのマッピング開始] =
+                "[Polish] リードをマッピング中",
+            [メッセージID.ポリッシュの深度中央値] =
+                "[Polish] 深度の中央値: {0:F1}x",
+            [メッセージID.ポリッシュを行えず] =
+                "[Polish] 磨く対象なし",
+            [メッセージID.ポリッシュのマッピング結果] =
+                "[Polish] リード {0:N0} 本を配置、{1:N0} 本は棄却",
+            [メッセージID.ポリッシュの訂正結果] =
+                "[Polish] 全 {1:N0} 塩基のうち {0:N0} 塩基を訂正",
+            [メッセージID.ポリッシュの深度不足] =
+                "[Polish] 深度が落ち込んだ位置: {1:N0} 中 {0:N0} ({2:F2}%)",
+            [メッセージID.閉じ目の検証開始] =
+                "[Closure] 環状 {0} 本の閉じ目を跨ぐリードを確認中 ({1}bp の窓)",
+            [メッセージID.閉じ目_環状の配列が無い] =
+                "[Closure] 環状に閉じた配列なし",
+            [メッセージID.閉じ目を裏付けた] =
+                "[Closure] {0} ({1:N0} bp): 閉じ目を跨ぐリード {2} 本 (必要 {3} 本)",
+            [メッセージID.閉じ目を裏付けられず] =
+                "[Closure] {0} ({1:N0} bp): 閉じ目を跨ぐリードは {2} 本のみで裏付け不足 (必要 {3} 本)",
+            [メッセージID.検査項目_グラフ被覆] =
+                "グラフ被覆",
+            [メッセージID.検査項目_コピー数整合] =
+                "コピー数の整合",
+            [メッセージID.検査項目_深度の連続性] =
+                "深度の連続性",
+            [メッセージID.検査項目_未解決のギャップ] =
+                "未解決のギャップ",
+            [メッセージID.検査項目_接合点の支持] =
+                "接合点の支持",
+            [メッセージID.検査項目_競合経路] =
+                "競合する経路",
+            [メッセージID.検査項目_環状閉鎖] =
+                "環状の閉じ目",
+            [メッセージID.検査判定_合格] =
+                "合格",
+            [メッセージID.検査判定_不合格] =
+                "不合格",
+            [メッセージID.検査判定_判定不能] =
+                "判定不能",
+            [メッセージID.完全性の見出し] =
+                "[Complete] 完全長の検査",
+            [メッセージID.完全性の検査行] =
+                "[Complete]   {0}: {1} {2}",
+            [メッセージID.完全長と判定] =
+                "[Complete] 完全長 (Q{0})",
+            [メッセージID.完全長に届かず] =
+                "[Complete] 完全長には未到達 (Q{0})",
+            [メッセージID.完全性の未達理由] =
+                "[Complete] 理由: {0}",
+            [メッセージID.救済kmerの開始] =
+                "[Mercy] カットオフで落ちたが、リード内で信頼できる k-mer に挟まれた k-mer を救済中",
+            [メッセージID.救済_対象外のk長] =
+                "[Mercy] k={0} は 64 を超えるため救済の対象外",
+            [メッセージID.救済したkmer数] =
+                "[Mercy] 候補 {1:N0} 件のうち {0:N0} 件を救済",
+            [メッセージID.レポートを書き出した] =
+                "[Report] {0} を書き出し",
+            [メッセージID.曖昧箇所を書き出した] =
+                "[Report] 決めきれなかった {0:N0} 箇所を {1} に書き出し",
+            [メッセージID.再開_kを飛ばした] =
+                "[Resume] k={0} は同じ条件で完了済みのため再利用",
+            [メッセージID.再開_中間ファイルを再利用] =
+                "[Resume] {0} を再利用",
+            [メッセージID.ヘルプ節_完全性の検証] =
+                "# 完全性の検証",
+            [メッセージID.ヘルプ_ポリッシュ] =
+                "最終成果物にリードを貼り直し、多数決で置換を直す (既定: false)",
+            [メッセージID.ヘルプ_環状閉鎖検証] =
+                "環状として数えるのに、閉じ目を跨ぐリードの裏付けを課す (既定: false)",
+            [メッセージID.ヘルプ_救済kmer] =
+                "リード内で信頼できる k-mer に挟まれた、カットオフ未満の k-mer を救済する (既定: false)",
+            [メッセージID.ヘルプ_再開] =
+                "一時ディレクトリに残った k ごとの結果を再利用して続きから実行する (既定: false)",
+            [メッセージID.ヘルプ_レポートの説明] =
+                "{0} と {1} は常にアセンブリと同じ場所へ書き出す",
         };
 
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
@@ -1076,6 +1240,88 @@ namespace Tsumiki.Common
                 "[SuperRead] 正在桥接 read 对",
             [メッセージID.SuperRead橋渡し進捗] =
                 "[SuperRead] 已处理 {0:N0} 对，其中 {1:N0} 对完成桥接",
+            [メッセージID.ポリッシュ開始] =
+                "[Polish] 正在将 read 重新比对到最终组装结果",
+            [メッセージID.ポリッシュの索引構築] =
+                "[Polish] 正在索引 {0:N0} 条序列、{1:N0} bp",
+            [メッセージID.ポリッシュの種が無い] =
+                "[Polish] 无法从组装结果取得 {0}-mer 种子，跳过打磨",
+            [メッセージID.ポリッシュのマッピング開始] =
+                "[Polish] 正在比对 read",
+            [メッセージID.ポリッシュの深度中央値] =
+                "[Polish] 深度中位数：{0:F1}x",
+            [メッセージID.ポリッシュを行えず] =
+                "[Polish] 无可打磨的对象",
+            [メッセージID.ポリッシュのマッピング結果] =
+                "[Polish] 已放置 read {0:N0} 条，舍弃 {1:N0} 条",
+            [メッセージID.ポリッシュの訂正結果] =
+                "[Polish] 在全部 {1:N0} 个碱基中修正 {0:N0} 个",
+            [メッセージID.ポリッシュの深度不足] =
+                "[Polish] 深度偏低的位置：{1:N0} 中的 {0:N0}（{2:F2}%）",
+            [メッセージID.閉じ目の検証開始] =
+                "[Closure] 正在确认跨越 {0} 条环状序列闭合处的 read（{1}bp 窗口）",
+            [メッセージID.閉じ目_環状の配列が無い] =
+                "[Closure] 组装结果中没有闭合的环状序列",
+            [メッセージID.閉じ目を裏付けた] =
+                "[Closure] {0}（{1:N0} bp）：跨越闭合处的 read {2} 条（需要 {3} 条）",
+            [メッセージID.閉じ目を裏付けられず] =
+                "[Closure] {0}（{1:N0} bp）：跨越闭合处的 read 仅 {2} 条，不足以支持闭合（需要 {3} 条）",
+            [メッセージID.検査項目_グラフ被覆] =
+                "图覆盖",
+            [メッセージID.検査項目_コピー数整合] =
+                "拷贝数一致性",
+            [メッセージID.検査項目_深度の連続性] =
+                "深度连续性",
+            [メッセージID.検査項目_未解決のギャップ] =
+                "未解决的空缺",
+            [メッセージID.検査項目_接合点の支持] =
+                "接合点支持",
+            [メッセージID.検査項目_競合経路] =
+                "竞争路径",
+            [メッセージID.検査項目_環状閉鎖] =
+                "环状闭合",
+            [メッセージID.検査判定_合格] =
+                "合格",
+            [メッセージID.検査判定_不合格] =
+                "不合格",
+            [メッセージID.検査判定_判定不能] =
+                "无法判定",
+            [メッセージID.完全性の見出し] =
+                "[Complete] 完整性检查",
+            [メッセージID.完全性の検査行] =
+                "[Complete]   {0}：{1} {2}",
+            [メッセージID.完全長と判定] =
+                "[Complete] 完整（Q{0}）",
+            [メッセージID.完全長に届かず] =
+                "[Complete] 未达到完整（Q{0}）",
+            [メッセージID.完全性の未達理由] =
+                "[Complete] 原因：{0}",
+            [メッセージID.救済kmerの開始] =
+                "[Mercy] 正在救回被截断值剔除、但在 read 内位于可信 k-mer 之间的 k-mer",
+            [メッセージID.救済_対象外のk長] =
+                "[Mercy] k={0} 超过 64，无法进行救回",
+            [メッセージID.救済したkmer数] =
+                "[Mercy] 在 {1:N0} 个候选中救回 {0:N0} 个",
+            [メッセージID.レポートを書き出した] =
+                "[Report] 已写出 {0}",
+            [メッセージID.曖昧箇所を書き出した] =
+                "[Report] 已将 {0:N0} 处无法确定的位置写入 {1}",
+            [メッセージID.再開_kを飛ばした] =
+                "[Resume] k={0} 已在相同条件下完成，直接复用",
+            [メッセージID.再開_中間ファイルを再利用] =
+                "[Resume] 复用 {0}",
+            [メッセージID.ヘルプ節_完全性の検証] =
+                "# 完整性检查",
+            [メッセージID.ヘルプ_ポリッシュ] =
+                "将 read 重新比对到最终组装结果，按多数表决修正替换（默认：false）",
+            [メッセージID.ヘルプ_環状閉鎖検証] =
+                "在将序列计为环状前要求跨越闭合处的 read 支持（默认：false）",
+            [メッセージID.ヘルプ_救済kmer] =
+                "救回 read 内位于可信 k-mer 之间、低于截断值的 k-mer（默认：false）",
+            [メッセージID.ヘルプ_再開] =
+                "复用临时目录中各 k 的结果并继续执行（默认：false）",
+            [メッセージID.ヘルプ_レポートの説明] =
+                "{0} 与 {1} 始终与组装结果写在同一位置",
         };
     }
 }

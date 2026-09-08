@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
@@ -87,9 +87,15 @@ namespace Tsumiki
 
             if (Path.Exists(l_一時ディレクトリ))
             {
-                Logger.V_出力(メッセージID.一時ディレクトリが既にある, l_引数.A_一時ディレクトリ);
-                Logger.V_出力(メッセージID.パスの確認);
-                Environment.Exit(0);
+                // 中身を上書きすると、前回の成果と今回の成果が混ざった状態になる。
+                // 再開を明示されたときだけ、残っているものを使うことを許す。
+                if (!l_引数.A_再開するか)
+                {
+                    Logger.V_出力(メッセージID.一時ディレクトリが既にある, l_引数.A_一時ディレクトリ);
+                    Logger.V_出力(メッセージID.パスの確認);
+                    Environment.Exit(0);
+                }
+                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_引数.A_一時ディレクトリ);
             }
 
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
@@ -107,9 +113,16 @@ namespace Tsumiki
                     var l_前処理済み1 = Path.Combine(l_一時ディレクトリ, "preprocessed.1.fq");
                     var l_前処理済み2 = Path.Combine(l_一時ディレクトリ, "preprocessed.2.fq");
 
-                    var l_前処理統計 = Preprocessor.V_前処理_リードファイル(
-                        l_引数.A_リード1のパス, l_引数.A_リード2のパス, l_前処理済み1, l_前処理済み2);
-                    Preprocessor.V_出力_前処理統計(l_前処理統計);
+                    if (Get_再利用できるか(l_引数, l_前処理済み1, l_前処理済み2))
+                    {
+                        Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_前処理済み1);
+                    }
+                    else
+                    {
+                        var l_前処理統計 = Preprocessor.V_前処理_リードファイル(
+                            l_引数.A_リード1のパス, l_引数.A_リード2のパス, l_前処理済み1, l_前処理済み2);
+                        Preprocessor.V_出力_前処理統計(l_前処理統計);
+                    }
 
                     // 以降の全処理(エラー訂正・k-merカウント・グラフ構築)は
                     // 前処理済みファイルを見るようにする。
@@ -128,12 +141,19 @@ namespace Tsumiki
                 var l_リード2があるか = !string.IsNullOrWhiteSpace(l_引数.A_リード2のパス);
                 var l_訂正済み2 = l_リード2があるか ? Path.Combine(l_一時ディレクトリ, "corrected.2.fq") : null;
 
-                ErrorCorrector.V_訂正_リードファイル(
-                    l_引数.A_リード1のパス,
-                    l_リード2があるか ? l_引数.A_リード2のパス : null,
-                    l_一時ディレクトリ,
-                    l_訂正済み1,
-                    l_訂正済み2);
+                if (Get_再利用できるか(l_引数, l_訂正済み1, l_訂正済み2))
+                {
+                    Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_訂正済み1);
+                }
+                else
+                {
+                    ErrorCorrector.V_訂正_リードファイル(
+                        l_引数.A_リード1のパス,
+                        l_リード2があるか ? l_引数.A_リード2のパス : null,
+                        l_一時ディレクトリ,
+                        l_訂正済み1,
+                        l_訂正済み2);
+                }
 
                 // 以降の全処理(k-merカウント・グラフ構築・リードの再マッピング)は
                 // 訂正済みファイルを見るようにする。
@@ -163,9 +183,108 @@ namespace Tsumiki
             // 一時ディレクトリに残る)。
             AssemblyPipeline.V_複製_最終成果物(l_結果);
 
+            var l_最終パス = l_結果.A_スキャフォールドパス is null
+                ? Consts.コンティグファイル名
+                : Consts.スキャフォールドファイル名;
+
+            var l_ポリッシュ統計 = V_磨く(l_引数, l_一時ディレクトリ, l_最終パス);
+            var l_閉鎖検証 = V_検証_環状閉鎖(l_引数, l_最終パス);
+
+            V_出力_完全性レポート(l_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証);
+
             Logger.V_出力(メッセージID.開発中);
 
             Logger.V_出力_タイムスタンプ();
+        }
+
+        /// <summary>
+        /// 再開が指定されていて、その工程の出力が既に揃っているか。
+        /// 揃っていれば作り直さずそのまま使う。
+        /// </summary>
+        private static bool Get_再利用できるか(Parameters p_引数, string p_出力1, string? p_出力2)
+        {
+            return p_引数.A_再開するか
+                && File.Exists(p_出力1)
+                && (p_出力2 is null || File.Exists(p_出力2));
+        }
+
+        /// <summary>
+        /// 最終成果物にリードを貼り直して磨く。-po が無ければ何もしない。
+        /// 磨いた結果は同じファイル名へ被せ、利用者が受け取るものを1つに保つ。
+        /// </summary>
+        private static ポリッシュ統計? V_磨く(
+            Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
+        {
+            if (!p_引数.A_ポリッシュするか)
+            {
+                return null;
+            }
+
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.ポリッシュ開始);
+            var l_出力先 = Path.Combine(p_一時ディレクトリ, Consts.ポリッシュ済みファイル名);
+            var l_統計 = Polisher.Get_磨いた結果(
+                p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先);
+            Polisher.V_出力_統計(l_統計);
+            if (l_統計 is not null)
+            {
+                File.Copy(l_出力先, p_最終パス, overwrite: true);
+            }
+            Logger.V_出力_タイムスタンプ();
+            return l_統計;
+        }
+
+        /// <summary>
+        /// 環状の閉じ目を元リードで確かめる。-cc が無ければ何もしない。
+        /// 検証していないことと、検証して支持が無かったことは別なので、
+        /// 前者は null を返して判定不能として扱わせる。
+        /// </summary>
+        private static IReadOnlyList<環状閉鎖検証結果>? V_検証_環状閉鎖(
+            Parameters p_引数, string p_最終パス)
+        {
+            if (!p_引数.A_環状閉鎖を検証するか)
+            {
+                return null;
+            }
+
+            Logger.V_出力_空行();
+            var l_検証 = CircularClosureVerifier.Get_検証結果(
+                p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス);
+            CircularClosureVerifier.V_出力_検証結果(l_検証);
+            Logger.V_出力_タイムスタンプ();
+            return l_検証;
+        }
+
+        /// <summary>完全長かどうかを判定し、根拠ごとレポートへ残す。</summary>
+        private static void V_出力_完全性レポート(
+            アセンブリ実行結果 p_結果,
+            string p_最終パス,
+            ポリッシュ統計? p_ポリッシュ統計,
+            IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証)
+        {
+            var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
+            var l_未解決ギャップ数 = CompletenessValidator.Get_未解決ギャップ数(p_最終パス);
+            var l_環状本数 = CompletenessValidator.Get_環状本数(p_最終パス);
+
+            var l_判定 = CompletenessValidator.Get_判定結果(
+                l_未解決ギャップ数, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所);
+            CompletenessValidator.V_出力_判定結果(l_判定);
+
+            ReportWriter.V_書き出し_レポート(
+                Consts.レポートファイル名,
+                p_結果.A_k長,
+                AssemblyStatsReporter.Get_統計_FASTA(p_最終パス),
+                l_未解決ギャップ数,
+                l_環状本数,
+                l_判定,
+                p_結果.A_整合性検査,
+                p_閉鎖検証,
+                p_ポリッシュ統計,
+                l_曖昧箇所);
+            Logger.V_出力(メッセージID.レポートを書き出した, Consts.レポートファイル名);
+
+            ReportWriter.V_書き出し_曖昧箇所(Consts.曖昧箇所ファイル名, l_曖昧箇所);
+            Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, Consts.曖昧箇所ファイル名);
         }
     }
 }
