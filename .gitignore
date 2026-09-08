@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 # ドキュメント類はリポジトリに含めない
 *.md
+
+# 検証用の補助スクリプト群はリポジトリに含めない
+/tools/
