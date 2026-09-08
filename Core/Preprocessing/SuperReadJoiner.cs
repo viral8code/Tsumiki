@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -137,9 +137,7 @@ namespace Tsumiki.Core
 
         public static void V_出力_統計(SuperRead統計 p_統計)
         {
-            Console.WriteLine(
-                $"[SuperRead] {p_統計.A_統合数}/{p_統計.A_総ペア数} pair(s) bridged into a single synthetic " +
-                "read and carried into the next k.");
+            Logger.V_出力(メッセージID.SuperRead統計, p_統計.A_統合数, p_統計.A_総ペア数);
         }
     }
 }

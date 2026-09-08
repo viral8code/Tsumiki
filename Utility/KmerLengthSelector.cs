@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Utility
@@ -19,8 +19,7 @@ namespace Tsumiki.Utility
         {
             if (p_リード長 is not { } l_リード長)
             {
-                Console.WriteLine(
-                    $"[Info] Could not sample a read length; keeping -k {p_引数.A_k長}.");
+                Logger.V_出力(メッセージID.k自動選択_リード長不明, p_引数.A_k長);
                 return;
             }
 
@@ -28,18 +27,14 @@ namespace Tsumiki.Utility
             {
                 if (p_引数.A_k長 >= l_リード長)
                 {
-                    Console.WriteLine(
-                        $"[Warning] -k {p_引数.A_k長} is not shorter than the observed read length ({l_リード長} bp); " +
-                        "no k-mer can be extracted from a read. Lower -k.");
+                    Logger.V_出力(メッセージID.k自動選択_kが長すぎる, p_引数.A_k長, l_リード長);
                 }
                 return;
             }
 
             if (Get_推奨k長(l_リード長) is not { } l_推奨値)
             {
-                Console.WriteLine(
-                    $"[Info] Observed read length ({l_リード長} bp) is too short to pick a k automatically; " +
-                    $"keeping -k {p_引数.A_k長}.");
+                Logger.V_出力(メッセージID.k自動選択_リード長が短い, l_リード長, p_引数.A_k長);
                 return;
             }
 
@@ -49,9 +44,7 @@ namespace Tsumiki.Utility
             }
 
             p_引数.Set_推定k長(l_推奨値);
-            Console.WriteLine(
-                $"[Info] k auto-selected as {l_推奨値} from the observed read length ({l_リード長} bp). " +
-                "Pass -k explicitly to override.");
+            Logger.V_出力(メッセージID.k自動選択, l_推奨値, l_リード長);
         }
 
         /// <summary>

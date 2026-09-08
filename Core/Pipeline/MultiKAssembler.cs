@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -23,7 +23,7 @@ namespace Tsumiki.Core
             Parameters p_引数, string p_一時ディレクトリ, int? p_リード長)
         {
             var l_k候補 = Get_k候補一覧(p_引数, p_リード長);
-            Console.WriteLine($"[Multi-k] Trying k = {string.Join(", ", l_k候補)}");
+            Logger.V_出力(メッセージID.試すk一覧, string.Join(", ", l_k候補));
 
             var l_実行結果一覧 = new List<アセンブリ実行結果>();
             アセンブリ実行結果? l_直前 = null;
@@ -37,21 +37,19 @@ namespace Tsumiki.Core
             {
                 if (Get_薄すぎるか(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
                 {
-                    Console.WriteLine(
-                        $"[Multi-k] Skipping k={l_k長}: predicted k-mer coverage {l_予測:F1}x is below " +
-                        $"{Consts.マルチkの最小kmerカバレッジ:F1}x, so this k cannot produce a usable graph.");
+                    Logger.V_出力(メッセージID.kが薄すぎて省略, l_k長, l_予測, Consts.マルチkの最小kmerカバレッジ);
                     continue;
                 }
 
-                Console.WriteLine();
-                Console.WriteLine($"[Multi-k] ===== Assembling with k={l_k長} =====");
+                Logger.V_出力_空行();
+                Logger.V_出力(メッセージID.kの開始見出し, l_k長);
                 var l_結果 = AssemblyPipeline.Get_実行結果(
-                    p_引数, l_k長, p_一時ディレクトリ, $"k{l_k長}_", p_リード長,
+                    p_引数, l_k長, p_一時ディレクトリ, p_リード長,
                     p_引数.A_引き継ぐか ? l_引き継ぎ : null,
                     p_引数.A_引き継ぐか ? l_次への引き継ぎ : null);
                 if (l_結果 is null)
                 {
-                    Console.WriteLine($"[Multi-k] k={l_k長} produced no assembly; skipping it.");
+                    Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
                     continue;
                 }
                 l_実行結果一覧.Add(l_結果);
@@ -65,8 +63,7 @@ namespace Tsumiki.Core
             }
             if (l_実行結果一覧.Count == 1)
             {
-                Console.WriteLine("[Multi-k] Only one k produced an assembly; using it without comparison.");
-                V_複製_採用した結果(l_実行結果一覧[0]);
+                Logger.V_出力(メッセージID.単一のkのみ成功);
                 return l_実行結果一覧[0];
             }
 
@@ -78,8 +75,8 @@ namespace Tsumiki.Core
             var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
             _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
 
-            Console.WriteLine();
-            Console.WriteLine($"[Multi-k] Building the common anchor k-mer set (k={l_アンカーk長}) for comparison");
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
             p_引数.Set_推定k長(l_アンカーk長);
             using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_アンカー;
@@ -94,10 +91,9 @@ namespace Tsumiki.Core
             var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
             if (l_解析 is null)
             {
-                Console.WriteLine("[Multi-k] The anchor k-mer spectrum is not bimodal; candidates cannot be compared.");
-                Console.WriteLine("[Multi-k] Could not evaluate the candidates; falling back to the largest k.");
+                Logger.V_出力(メッセージID.アンカースペクトルが二峰でない);
+                Logger.V_出力(メッセージID.候補を評価できない);
                 var l_代替 = l_実行結果一覧[^1];
-                V_複製_採用した結果(l_代替);
                 return l_代替;
             }
 
@@ -105,21 +101,19 @@ namespace Tsumiki.Core
             if (l_候補.Count == 0)
             {
                 // 評価できない以上、根拠のある選択はできない。
-                Console.WriteLine("[Multi-k] Could not evaluate the candidates; falling back to the largest k.");
+                Logger.V_出力(メッセージID.候補を評価できない);
                 var l_代替 = l_実行結果一覧[^1];
-                V_複製_採用した結果(l_代替);
                 return l_代替;
             }
 
             var l_最良 = AssemblySelector.Get_最良(l_候補)!.Value;
             AssemblySelector.V_出力_候補一覧(l_候補, l_最良.A_実行結果);
-            Console.WriteLine($"[Multi-k] Selected k={l_最良.A_実行結果.A_k長}.");
+            Logger.V_出力(メッセージID.採用したk, l_最良.A_実行結果.A_k長);
 
             var l_採用 = (p_引数.A_マージするか
-                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析)
+                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ)
                     : null)
                 ?? l_最良.A_実行結果;
-            V_複製_採用した結果(l_採用);
             return l_採用;
         }
 
@@ -135,12 +129,13 @@ namespace Tsumiki.Core
             List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
             TrustedKmerIndex p_アンカー,
             int p_アンカーk長,
-            スペクトル解析結果 p_解析)
+            スペクトル解析結果 p_解析,
+            string p_一時ディレクトリ)
         {
-            Console.WriteLine();
-            Console.WriteLine("[Merge] Merging the other k values into the selected assembly");
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.統合開始);
 
-            var l_統合パス = "merged_" + Consts.スキャフォールドファイル名;
+            var l_統合パス = Path.Combine(p_一時ディレクトリ, "merged_" + Consts.スキャフォールドファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
             if (!AssemblyMerger.V_統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
             {
@@ -163,21 +158,21 @@ namespace Tsumiki.Core
                 p_解析.A_ピーク出現回数, p_解析.A_推定ゲノムサイズ);
             if (l_統合の評価 is null)
             {
-                Console.WriteLine("[Merge] Could not evaluate the merged assembly; keeping the selected one.");
+                Logger.V_出力(メッセージID.統合結果を評価できない);
                 return null;
             }
 
-            Console.WriteLine($"[Merge]   before: {p_最良.A_評価}");
-            Console.WriteLine($"[Merge]   merged: {l_統合の評価}");
+            Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
+            Logger.V_出力(メッセージID.統合後の評価, l_統合の評価);
 
             var l_勝者 = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
             if (l_勝者.A_実行結果.A_最終パス != l_統合パス)
             {
-                Console.WriteLine("[Merge] The merged assembly did not beat the selected one; keeping the selected one.");
+                Logger.V_出力(メッセージID.統合が骨格に勝てず);
                 return null;
             }
 
-            Console.WriteLine("[Merge] Using the merged assembly.");
+            Logger.V_出力(メッセージID.統合結果を採用);
             return l_統合結果;
         }
 
@@ -231,24 +226,6 @@ namespace Tsumiki.Core
         /// 採用した k の生成物を接頭辞の無い名前へ複製する。
         /// 各 k の生成物は、選択の妥当性を後から確かめられるよう残す。
         /// </summary>
-        private static void V_複製_採用した結果(アセンブリ実行結果 p_結果)
-        {
-            V_複製(p_結果.A_ユニティグパス, Consts.ユニティグファイル名);
-            V_複製(p_結果.A_コンティグパス, Consts.コンティグファイル名);
-            if (p_結果.A_スキャフォールドパス is { } l_スキャフォールドパス)
-            {
-                V_複製(l_スキャフォールドパス, Consts.スキャフォールドファイル名);
-            }
-        }
-
-        private static void V_複製(string p_元, string p_先)
-        {
-            if (p_元 != p_先 && File.Exists(p_元))
-            {
-                File.Copy(p_元, p_先, overwrite: true);
-            }
-        }
-
         /// <summary>
         /// 試す k の一覧。-k にカンマ区切りで指定されていればそれをそのまま使う。
         ///

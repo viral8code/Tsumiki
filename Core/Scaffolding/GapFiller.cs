@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -150,14 +150,11 @@ namespace Tsumiki.Core
         {
             if (p_統計.A_総ギャップ数 == 0)
             {
-                Console.WriteLine("[Info] Gap filling: no gaps to fill.");
+                Logger.V_出力(メッセージID.ギャップ充填_対象なし);
                 return;
             }
-            Console.WriteLine(
-                $"[Info] Gap filling: {p_統計.A_埋めたギャップ数}/{p_統計.A_総ギャップ数} gap(s) closed with real sequence " +
-                $"({p_統計.A_埋めた塩基数:N0}bp of N replaced). " +
-                $"{p_統計.A_一意に定まらなかった数} left as N because more than one path fits, " +
-                $"{p_統計.A_到達できなかった数} because no path through the graph connects the two sides.");
+            Logger.V_出力(
+                メッセージID.ギャップ充填統計, p_統計.A_埋めたギャップ数, p_統計.A_総ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
     }
 }

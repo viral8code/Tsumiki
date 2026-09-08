@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.Model;
 
@@ -621,8 +621,8 @@ namespace Tsumiki.Utility
                     }
                 }
 
-                Console.WriteLine("kmer count: " + l_総種類数);
-                Console.WriteLine("good kmer: " + l_採用数);
+                Logger.V_出力(メッセージID.kmer種類数, l_総種類数);
+                Logger.V_出力(メッセージID.採用kmer数, l_採用数);
                 this.A_出現回数ヒストグラム = l_ヒストグラム;
             }
             File.Delete(l_ファイルパス);
@@ -631,7 +631,7 @@ namespace Tsumiki.Utility
             this._信頼kmer_小 = l_信頼kmer_小;
             this._信頼kmer_中 = l_信頼kmer_中;
 
-            Console.WriteLine("Search First k-mer");
+            Logger.V_出力(メッセージID.開始kmerの探索);
             // 以前はここで一度カットオフ通過k-merをファイルへ書き出し、
             // 読み直して開始点を判定していた。厳密な集合をインメモリで
             // 保持するようになったため、その集合を直接走査すれば同じ結果が

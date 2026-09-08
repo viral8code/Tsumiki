@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -371,15 +371,11 @@ namespace Tsumiki.Core
         {
             if (p_統計.A_対象ギャップ数 == 0)
             {
-                Console.WriteLine("[Info] Local assembly: no remaining gap was eligible.");
+                Logger.V_出力(メッセージID.局所アセンブリ_対象なし);
                 return;
             }
-            Console.WriteLine(
-                $"[Info] Local assembly: {p_統計.A_埋めたギャップ数}/{p_統計.A_対象ギャップ数} remaining gap(s) closed " +
-                $"with locally re-assembled reads ({p_統計.A_埋めた塩基数:N0}bp of N replaced). " +
-                $"{p_統計.A_局所リードが集まらなかった数} had no local read at all, " +
-                $"{p_統計.A_一意に定まらなかった数} had more than one local path, " +
-                $"{p_統計.A_到達できなかった数} had no local path connecting the two sides.");
+            Logger.V_出力(
+                メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
 
         private readonly record struct 局所ギャップ(

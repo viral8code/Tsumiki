@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 
@@ -78,14 +78,14 @@ namespace Tsumiki.Core
         {
             if (!File.Exists(p_FASTAパス))
             {
-                Console.WriteLine($"[Stats] {p_ラベル}: (file not found: {p_FASTAパス})");
+                Logger.V_出力(メッセージID.統計_ファイルなし, p_ラベル, p_FASTAパス);
                 return;
             }
             var l_統計 = Get_統計_FASTA(p_FASTAパス);
-            Console.WriteLine($"[Stats] {p_ラベル}: {l_統計}");
+            Logger.V_出力(メッセージID.統計, p_ラベル, l_統計);
 
             var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= 比較用の最小長));
-            Console.WriteLine($"[Stats] {p_ラベル} (>={比較用の最小長}bp, comparable to abyss-fac): {l_絞り込み統計}");
+            Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, 比較用の最小長, l_絞り込み統計);
         }
     }
 }

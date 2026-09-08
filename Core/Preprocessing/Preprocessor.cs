@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 
@@ -115,9 +115,7 @@ namespace Tsumiki.Core
 
         public static void V_出力_前処理統計(前処理統計 p_統計)
         {
-            Console.WriteLine(
-                $"[Preprocess] {p_統計.A_アダプタ検出ペア数}/{p_統計.A_総ペア数} pair(s) showed adapter read-through " +
-                $"(trimmed to the overlapping fragment length); {p_統計.A_訂正塩基数} base(s) mutually corrected.");
+            Logger.V_出力(メッセージID.前処理統計, p_統計.A_アダプタ検出ペア数, p_統計.A_総ペア数, p_統計.A_訂正塩基数);
         }
 
         /// <summary>

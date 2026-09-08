@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -280,9 +280,7 @@ namespace Tsumiki.Core
 
             if (p_r_mer検証器 is not null && l_r_mer検証で棄却した数 > 0)
             {
-                Console.WriteLine(
-                    $"[Debug] r-mer verification vetoed {l_r_mer検証で棄却した数} repeat duplication(s) whose winning " +
-                    "pairing was not confirmed by reads actually crossing the junction (pair-count evidence alone would have duplicated them).");
+                Logger.V_出力(メッセージID.rMer検証による棄却, l_r_mer検証で棄却した数);
             }
 
             return l_解決数;

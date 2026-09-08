@@ -1,3 +1,4 @@
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Utility
@@ -204,19 +205,15 @@ namespace Tsumiki.Utility
         public static void V_出力_スペクトル(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, int p_k長, int? p_リード長)
         {
-            Console.WriteLine($"[Info] k-mer count histogram (count:#distinct kmers): {Get_要約(p_ヒストグラム)}");
+            Logger.V_出力(メッセージID.kmerヒストグラム, Get_要約(p_ヒストグラム));
 
             if (Get_解析結果(p_ヒストグラム) is not { } l_解析)
             {
-                Console.WriteLine(
-                    "[Info] Could not identify a clear histogram valley " +
-                    "(the spectrum may not be bimodal at this coverage).");
+                Logger.V_出力(メッセージID.スペクトルの谷が不明);
                 return;
             }
 
-            Console.WriteLine(
-                $"[Info] k-mer spectrum: valley at count {l_解析.A_谷} ({l_解析.A_谷の頻度} distinct kmers), " +
-                $"single-copy peak at count {l_解析.A_ピーク出現回数} ({l_解析.A_ピークの頻度} distinct kmers)");
+            Logger.V_出力(メッセージID.スペクトルの谷とピーク, l_解析.A_谷, l_解析.A_谷の頻度, l_解析.A_ピーク出現回数, l_解析.A_ピークの頻度);
 
             var l_カバレッジ表記 = $"{l_解析.A_ピーク出現回数}x (k-mer)";
             if (p_リード長 is { } l_リード長 && l_リード長 > p_k長)
@@ -230,8 +227,7 @@ namespace Tsumiki.Utility
                 l_カバレッジ表記 += $" / {l_リードカバレッジ:F1}x (read)";
             }
 
-            Console.WriteLine(
-                $"[Info] Estimated genome size: {l_解析.A_推定ゲノムサイズ:N0} bp, estimated coverage: {l_カバレッジ表記}");
+            Logger.V_出力(メッセージID.ゲノムサイズとカバレッジの推定, l_解析.A_推定ゲノムサイズ, l_カバレッジ表記);
         }
 
         /// <summary>

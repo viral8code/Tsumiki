@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -72,12 +72,12 @@ namespace Tsumiki.Core
             var l_確定 = Get_相互一意な橋渡し(l_候補, l_骨格配列.Count, p_必要な独立支持数);
             if (l_確定.Count == 0)
             {
-                Console.WriteLine("[Merge] No junction in the backbone was spanned by another k; keeping it as-is.");
+                Logger.V_出力(メッセージID.統合できる接合点なし);
                 return false;
             }
 
             V_書き出し(p_出力パス, l_骨格名一覧, l_骨格配列, l_確定);
-            Console.WriteLine($"[Merge] Joined {l_確定.Count} backbone junction(s) using sequence from other k values.");
+            Logger.V_出力(メッセージID.統合した接合点数, l_確定.Count);
             return true;
         }
 

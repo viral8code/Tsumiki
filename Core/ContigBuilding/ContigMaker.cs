@@ -1,6 +1,7 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core
@@ -67,7 +68,7 @@ namespace Tsumiki.Core
                     l_分岐頂点数++;
                 }
             }
-            Console.WriteLine($"[Debug] Exact de Bruijn unitig graph: {l_辺数} directed edge(s), {l_分岐頂点数} branching vertex(es) out of {l_グラフ.A_出辺.Count - 2}.");
+            Logger.V_出力(メッセージID.デブルーイングラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
 
             var (l_支持, l_ペア連結) = this.Get_辺重み(l_グラフ);
 
@@ -108,15 +109,13 @@ namespace Tsumiki.Core
                 p_較正器: l_較正器);
             if (l_先読みで解決した数 > 0)
             {
-                Console.WriteLine(
-                    $"[Debug] Beam-search lookahead resolved {l_先読みで解決した数 / 2} further junction(s) that the " +
-                    "single-step mutual-uniqueness rule could not decide.");
+                Logger.V_出力(メッセージID.先読みで解決した分岐数, l_先読みで解決した数 / 2);
             }
 
             if (p_GFAパス is not null)
             {
                 GfaWriter.V_出力(p_GFAパス, l_ユニティグ配列, l_グラフ, l_k長, p_コピー数);
-                Console.WriteLine($"[Info] Wrote unitig graph to {p_GFAパス} (GFA1).");
+                Logger.V_出力(メッセージID.GFA出力完了, p_GFAパス);
             }
 
             this.V_収集_確定辺標本(l_結合);
@@ -179,7 +178,7 @@ namespace Tsumiki.Core
                 l_ペア連結[(w ^ 1, v ^ 1)] = l_ペア連結.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
                 l_ペア支持を足した数++;
             }
-            Console.WriteLine($"[Debug] Branch-selection weights: {this._リード隣接.Count} single-read adjacency pair(s) + {l_ペア支持を足した数} paired-end pair(s).");
+            Logger.V_出力(メッセージID.分岐選択の重み内訳, this._リード隣接.Count, l_ペア支持を足した数);
 
             return (l_支持, l_ペア連結);
         }
@@ -221,21 +220,19 @@ namespace Tsumiki.Core
 
                 if (l_今回のバブル数 == 0 && l_今回の反復数 == 0)
                 {
-                    Console.WriteLine($"[Debug] Simplification converged after {l_ラウンド} round(s).");
+                    Logger.V_出力(メッセージID.単純化の収束, l_ラウンド);
                     break;
                 }
                 if (l_ラウンド == ラウンド数上限)
                 {
-                    Console.WriteLine($"[Debug] Simplification stopped at the round limit ({ラウンド数上限}) without fully converging.");
+                    Logger.V_出力(メッセージID.単純化の打ち切り, ラウンド数上限);
                 }
             }
             if (l_除去バブル数 > 0)
             {
-                Console.WriteLine($"[Debug] Popped {l_除去バブル数} simple bubble branch(es) total (kept as standalone contigs; only their graph edges were removed).");
+                Logger.V_出力(メッセージID.バブル除去数, l_除去バブル数);
             }
-            Console.WriteLine(
-                $"[Debug] Repeat resolution: {l_解決した反復数} short repeat(s) (<= {p_反復長の上限}bp) total were duplicated " +
-                "and untangled using read pairs that span them.");
+            Logger.V_出力(メッセージID.反復解決数, l_解決した反復数, p_反復長の上限);
         }
 
         /// <summary>
@@ -308,8 +305,7 @@ namespace Tsumiki.Core
                     l_支持で解決した数++;
                 }
             }
-            Console.WriteLine($"[Debug] Edge selection: {l_一意な頂点数} vertex(es) had a single out-edge, {l_支持で解決した数} branch(es) resolved by read support, " +
-                $"{l_反復由来で未解決の数} branch(es) left unresolved because they leave a multi-copy repeat (reads inside a repeat cannot tell the copies apart).");
+            Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);
 
             return l_選択;
         }
@@ -346,11 +342,9 @@ namespace Tsumiki.Core
             }
             if (l_反復通り抜けで棄却した数 > 0)
             {
-                Console.WriteLine(
-                    $"[Debug] {l_反復通り抜けで棄却した数 / 2} join(s) were refused because they would chain through a multi-copy " +
-                    "repeat that has not been untangled (doing so skips whatever lies between the repeat's copies).");
+                Logger.V_出力(メッセージID.反復通り抜けで棄却した結合数, l_反復通り抜けで棄却した数 / 2);
             }
-            Console.WriteLine($"[Debug] {l_結合数} directed merge(s) survived the mutual-uniqueness check ({l_結合数 / 2} undirected join(s)).");
+            Logger.V_出力(メッセージID.相互一意で残った結合数, l_結合数, l_結合数 / 2);
 
             return l_結合;
         }
@@ -430,19 +424,17 @@ namespace Tsumiki.Core
                 l_ID++;
                 l_総延長 += l_コンティグ.Length;
             }
-            Console.WriteLine("Total Length of contigs : " + l_総延長);
+            Logger.V_出力(メッセージID.コンティグ総延長, l_総延長);
 
             var l_環状コンティグ = Enumerable.Range(0, l_コンティグ群.Count).Where(x => l_環状フラグ群[x]).ToList();
             if (l_環状コンティグ.Count > 0)
             {
                 var l_長さ一覧 = string.Join(", ", l_環状コンティグ.Select(x => $"{l_コンティグ群[x].Length}bp"));
-                Console.WriteLine(
-                    $"[Info] {l_環状コンティグ.Count} contig(s) closed into a circle ({l_長さ一覧}). " +
-                    "A closed circle means that replicon (chromosome or plasmid) was assembled end to end.");
+                Logger.V_出力(メッセージID.環状コンティグあり, l_環状コンティグ.Count, l_長さ一覧);
             }
             else
             {
-                Console.WriteLine("[Info] No contig closed into a circle; every replicon is still fragmented.");
+                Logger.V_出力(メッセージID.環状コンティグなし);
             }
         }
     }

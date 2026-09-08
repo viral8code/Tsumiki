@@ -1,3 +1,4 @@
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Core
@@ -71,11 +72,11 @@ namespace Tsumiki.Core
             IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
             アセンブリ実行結果 p_採用したもの)
         {
-            Console.WriteLine("[Multi-k] Candidate assemblies (reference-free evaluation against a common anchor k-mer set):");
+            Logger.V_出力(メッセージID.候補一覧の見出し);
             foreach (var (l_実行結果, l_評価) in p_候補.OrderBy(x => x.A_実行結果.A_k長))
             {
                 var l_印 = l_実行結果.A_k長 == p_採用したもの.A_k長 ? " <- selected" : string.Empty;
-                Console.WriteLine($"[Multi-k]   k={l_実行結果.A_k長,3}: {l_評価}{l_印}");
+                Logger.V_出力(メッセージID.候補一覧の明細, l_実行結果.A_k長, l_評価, l_印);
             }
         }
     }

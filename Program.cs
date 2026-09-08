@@ -1,6 +1,8 @@
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.Core;
 using Tsumiki.IO;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki
@@ -19,29 +21,49 @@ namespace Tsumiki
             }
             finally
             {
+                // 一時ディレクトリには k ごとの成果物が入っており、後から
+                // 見比べたくなることが多い。消すかどうかは利用者に決めさせる。
+                var l_引数 = ConfigurationManager.A_実行時引数;
                 var l_一時ディレクトリ = Path.Combine(
-                    Environment.CurrentDirectory, ConfigurationManager.A_実行時引数.A_一時ディレクトリ);
+                    Environment.CurrentDirectory, l_引数.A_一時ディレクトリ);
                 if (Directory.Exists(l_一時ディレクトリ))
                 {
-                    Directory.Delete(l_一時ディレクトリ, true);
+                    if (l_引数.A_一時ディレクトリを削除するか)
+                    {
+                        Directory.Delete(l_一時ディレクトリ, true);
+                    }
+                    else
+                    {
+                        Logger.V_出力(メッセージID.一時ディレクトリを残した, l_引数.A_一時ディレクトリ, Consts.引数キー.一時ディレクトリ削除);
+                    }
                 }
             }
         }
 
         private static void V_実行(string[] p_引数列)
         {
+            // 日本語・中国語の文言をそのまま出せるようにする。
+            Console.OutputEncoding = Encoding.UTF8;
+
             if (p_引数列.Length == 0)
             {
-                Console.WriteLine(Consts.概要テキスト);
+                Console.WriteLine(HelpText.Get_概要());
                 Environment.Exit(0);
             }
 
             var l_引数 = ArgumentsReader.Get_実行時引数(p_引数列);
             ConfigurationManager.A_実行時引数 = l_引数;
+            Messages.A_言語 = l_引数.A_言語;
+
+            if (l_引数.A_バージョンモードか)
+            {
+                Console.WriteLine(HelpText.Get_概要());
+                Environment.Exit(0);
+            }
 
             if (l_引数.A_ヘルプモードか)
             {
-                Console.WriteLine(Consts.ヘルプテキスト);
+                Console.WriteLine(HelpText.Get_ヘルプ());
                 Environment.Exit(0);
             }
 
@@ -53,7 +75,7 @@ namespace Tsumiki
             var l_リード長 = ReadLengthSniffer.Get_代表リード長(l_引数.A_リード1のパス, l_引数.A_リード2のパス);
             if (l_リード長 is { } l_観測リード長)
             {
-                Console.WriteLine($"[Info] Read length (median of sampled reads): {l_観測リード長} bp");
+                Logger.V_出力(メッセージID.リード長の観測値, l_観測リード長);
             }
             KmerLengthSelector.V_解決_k長(l_引数, l_リード長);
 
@@ -65,8 +87,8 @@ namespace Tsumiki
 
             if (Path.Exists(l_一時ディレクトリ))
             {
-                Console.WriteLine($"{l_引数.A_一時ディレクトリ} already exists");
-                Console.WriteLine("Please check path!");
+                Logger.V_出力(メッセージID.一時ディレクトリが既にある, l_引数.A_一時ディレクトリ);
+                Logger.V_出力(メッセージID.パスの確認);
                 Environment.Exit(0);
             }
 
@@ -76,11 +98,11 @@ namespace Tsumiki
             {
                 if (string.IsNullOrWhiteSpace(l_引数.A_リード2のパス))
                 {
-                    Console.WriteLine("[Warning] -pp requires paired-end reads (read2 is not set). Skipping preprocessing.");
+                    Logger.V_出力(メッセージID.前処理省略_ペアなし);
                 }
                 else
                 {
-                    Console.WriteLine("Preprocessing reads (adapter trim + pair correction)");
+                    Logger.V_出力(メッセージID.前処理開始);
 
                     var l_前処理済み1 = Path.Combine(l_一時ディレクトリ, "preprocessed.1.fq");
                     var l_前処理済み2 = Path.Combine(l_一時ディレクトリ, "preprocessed.2.fq");
@@ -100,7 +122,7 @@ namespace Tsumiki
 
             if (l_引数.A_エラー訂正するか)
             {
-                Console.WriteLine("Correcting reads before assembly");
+                Logger.V_出力(メッセージID.エラー訂正開始);
 
                 var l_訂正済み1 = Path.Combine(l_一時ディレクトリ, "corrected.1.fq");
                 var l_リード2があるか = !string.IsNullOrWhiteSpace(l_引数.A_リード2のパス);
@@ -129,20 +151,19 @@ namespace Tsumiki
             var l_結果 = l_引数.A_マルチkか || l_引数.A_k長一覧.Count > 1
                 ? MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長)
                 : AssemblyPipeline.Get_実行結果(
-                    l_引数, l_引数.A_k長, l_一時ディレクトリ, p_出力接頭辞: string.Empty, l_リード長);
+                    l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長);
 
             if (l_結果 is null)
             {
-                Console.WriteLine("""
-
-                    This genome is too complex to assembly...
-                    Please adjust the parameters!
-
-                    """);
+                Logger.V_出力(メッセージID.アセンブリ不能);
                 return;
             }
 
-            Console.WriteLine("開発中！");
+            // 採用した1組だけを実行ディレクトリへ出す(k ごとの成果物は
+            // 一時ディレクトリに残る)。
+            AssemblyPipeline.V_複製_最終成果物(l_結果);
+
+            Logger.V_出力(メッセージID.開発中);
 
             Logger.V_出力_タイムスタンプ();
         }

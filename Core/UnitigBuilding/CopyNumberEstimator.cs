@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 using Tsumiki.Utility;
 
@@ -362,7 +362,7 @@ namespace Tsumiki.Core
         /// </summary>
         public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
-            Console.WriteLine($"[Info] Single-copy coverage baseline estimated as {p_推定結果.A_単一コピー基準値:0.#} (length-weighted median).");
+            Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);
 
             var l_コピー数別 = p_推定結果.A_コピー数
                 .GroupBy(x => x.Value)
@@ -373,15 +373,13 @@ namespace Tsumiki.Core
                 .ToList();
 
             var l_要約 = string.Join(", ", l_コピー数別.Select(x => $"x{x.A_コピー数}: {x.A_本数} unitig(s)/{x.A_塩基数:N0}bp"));
-            Console.WriteLine($"[Info] Estimated copy numbers -- {l_要約}");
+            Logger.V_出力(メッセージID.コピー数の要約, l_要約);
 
             var l_反復塩基数 = l_コピー数別.Where(x => x.A_コピー数 >= 2).Sum(x => x.A_塩基数);
             var l_総塩基数 = l_コピー数別.Sum(x => x.A_塩基数);
             if (l_総塩基数 > 0)
             {
-                Console.WriteLine(
-                    $"[Info] Multi-copy (repeat) content: {l_反復塩基数:N0}bp of {l_総塩基数:N0}bp " +
-                    $"({100.0 * l_反復塩基数 / l_総塩基数:0.0}% of the assembly is sequence that occurs more than once).");
+                Logger.V_出力(メッセージID.反復配列の割合, l_反復塩基数, l_総塩基数, 100.0 * l_反復塩基数 / l_総塩基数);
             }
         }
     }

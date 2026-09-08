@@ -1,4 +1,4 @@
-namespace Tsumiki.Common
+﻿namespace Tsumiki.Common
 {
     internal class Consts
     {
@@ -7,14 +7,6 @@ namespace Tsumiki.Common
         public static readonly List<string> 作者一覧 = [
             "viral",
             ];
-
-        public static readonly string 概要テキスト = $"""
-
-            Tsumiki is a genome assembler.
-            author: {string.Join(", ", 作者一覧)}
-            version: {バージョン}
-
-            """;
 
         /// <summary>
         /// コマンドライン引数のキー。定数をまとめるための入れ子であり、
@@ -41,6 +33,12 @@ namespace Tsumiki.Common
             public const string ヘルプ = "-h";
 
             public const string 一時ディレクトリ = "-t";
+
+            public const string 一時ディレクトリ削除 = "-rt";
+
+            public const string 言語 = "-lang";
+
+            public const string バージョン = "-v";
 
             public const string スレッド数 = "-th";
 
@@ -78,6 +76,16 @@ namespace Tsumiki.Common
         /// --mode {conservative, normal, bold} のようなプリセットのほうが
         /// 意図を素直に表せる。normal は既定値そのもの。
         /// </summary>
+        /// <summary>-lang に指定できる言語名。</summary>
+        public static class 言語名
+        {
+            public const string 英語 = "en";
+
+            public const string 日本語 = "ja";
+
+            public const string 中国語 = "zh";
+        }
+
         public static class 積極性モード名
         {
             public const string 保守的 = "conservative";
@@ -215,50 +223,6 @@ namespace Tsumiki.Common
         /// </summary>
         public const int r_mer接合点支持の閾値の既定値 = 4;
 
-        public static readonly string ヘルプテキスト = $"""
-            {概要テキスト}
-            Usage: tsumiki {引数キー.リード1のパス} <path> [{引数キー.リード2のパス} <path>] [options]
-
-            # Input
-            {$"{引数キー.リード1のパス} <path>",-20}forward fastq(.gz) path (required; also use this for single-end reads)
-            {$"{引数キー.リード2のパス} <path>",-20}reverse fastq(.gz) path
-            {$"{引数キー.曖昧塩基を許容}",-20}allow ambiguous bases (e.g. N) in reads (default: false)
-
-            # k-mer / quality
-            {$"{引数キー.k長} <int[,int...]>",-20}k-mer length; a comma-separated list (e.g. 31,63,95) tries each and keeps the best, like {引数キー.マルチk} (default: auto from read length, capped at {自動k長の上限})
-            {$"{引数キー.kmerカットオフ} <int>",-20}minimum k-mer count to trust (default: auto from the k-mer spectrum)
-            {$"{引数キー.Phredオフセット} <int>",-20}phred score base ({string.Join(" or ", 許容Phredオフセット)}) (default: {Phredオフセットの既定値})
-            {$"{引数キー.クオリティカットオフ} <int>",-20}minimum base quality to trust (default: {クオリティカットオフの既定値})
-            {$"{引数キー.メモリ予算} <size>",-20}memory budget for k-mer counting, e.g. 2G, 512M (default: {Util.Get_表示用メモリサイズ(メモリ予算の既定値)})
-
-            # Paired-end / scaffolding
-            {$"{引数キー.インサートサイズ} <int>",-20}expected insert size (default: auto-estimated from mapped pairs)
-            {$"{引数キー.ペア結合閾値} <decimal>",-20}minimum dominance ratio to accept a scaffold edge (default: {ペア結合閾値の既定値})
-            {$"{引数キー.ペア支持数閾値} <int>",-20}minimum read-pair support to resolve a short repeat (default: {ペア支持数閾値の既定値})
-            {引数キー.積極性モード} <{積極性モード名.保守的}|{積極性モード名.標準}|{積極性モード名.積極的}>
-            {"",20}preset for {引数キー.ペア結合閾値}/{引数キー.ペア支持数閾値}: trades completeness for safety (default: {積極性モード名.標準})
-
-            # Preprocessing
-            {$"{引数キー.前処理}",-20}trim adapter read-through and cross-correct low-quality bases via mate overlap (default: false)
-            {$"{引数キー.エラー訂正}",-20}correct reads from the k-mer spectrum before assembly (default: false)
-
-            # Multi-k assembly
-            {$"{引数キー.マルチk}",-20}assemble at several k values and keep the best (default: false; up to {マルチkで試す個数 + 1}x runtime)
-            {$"{引数キー.引き継ぎなし}",-20}don't carry sequence from one k to the next (default: carry)
-            {$"{引数キー.SuperRead}",-20}with paired-end reads, bridge pairs into synthetic long reads and carry those too (default: false)
-            {$"{引数キー.マージ}",-20}splice sequence from other k values into junctions the best k left open (default: false; can raise misassemblies)
-
-            # Repeat resolution safeguards
-            {$"{引数キー.反復r_mer検証}",-20}require raw-read r-mer support before duplicating a short repeat (default: false)
-            {$"{引数キー.局所アセンブリ}",-20}re-assemble unclosed scaffold gaps from reads mapped near their edges; safer than {引数キー.マージ} (default: false)
-
-            # Output / misc
-            {$"{引数キー.GFA出力}",-20}also write {GFAファイル名} (the unitig graph, GFA1) for viewers like Bandage (default: false)
-            {$"{引数キー.一時ディレクトリ} <path>",-20}temp directory (default: {一時ディレクトリの既定値})
-            {$"{引数キー.スレッド数} <int>",-20}worker threads for read loading (default: number of logical processors)
-            {$"{引数キー.ヘルプ}",-20}show this text
-
-            """;
 
         public const string ユニティグファイル名 = "unitigs.fasta";
 

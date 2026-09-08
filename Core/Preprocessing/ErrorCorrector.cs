@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -35,7 +35,7 @@ namespace Tsumiki.Core
             var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, "error_correction");
             _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
 
-            Console.WriteLine("[ErrorCorrection] Building k-mer spectrum...");
+            Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
             using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ))
             {
                 KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス);
@@ -49,16 +49,16 @@ namespace Tsumiki.Core
                     ConfigurationManager.A_実行時引数, l_kmerインデックス);
                 _ = l_kmerインデックス.V_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
 
-                Console.WriteLine("[ErrorCorrection] Correcting reads...");
+                Logger.V_出力(メッセージID.エラー訂正_訂正開始);
                 var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長);
-                Console.WriteLine($"[ErrorCorrection] {Path.GetFileName(p_リード1のパス)}: " +
-                    $"{l_統計1.A_訂正されたリード数}/{l_統計1.A_総リード数} reads corrected ({l_統計1.A_総訂正塩基数} base corrections total).");
+                Logger.V_出力(
+                    メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード1のパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
 
                 if (p_リード2のパス != null && p_出力先2 != null)
                 {
                     var l_統計2 = Get_訂正統計_ファイル(p_リード2のパス, p_出力先2, l_kmerインデックス, l_k長);
-                    Console.WriteLine($"[ErrorCorrection] {Path.GetFileName(p_リード2のパス)}: " +
-                        $"{l_統計2.A_訂正されたリード数}/{l_統計2.A_総リード数} reads corrected ({l_統計2.A_総訂正塩基数} base corrections total).");
+                    Logger.V_出力(
+                        メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード2のパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
                 }
             }
 

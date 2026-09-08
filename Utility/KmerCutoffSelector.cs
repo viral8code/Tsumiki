@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Utility
@@ -43,10 +43,8 @@ namespace Tsumiki.Utility
                 {
                     p_引数.Set_推定kmerカットオフ(l_混合モデル.A_カットオフ);
                 }
-                Console.WriteLine(
-                    $"[Info] k-mer cutoff auto-selected as {l_混合モデル.A_カットオフ} from a 2-component mixture model " +
-                    $"(error + genomic; single-copy mean {l_混合モデル.A_単一コピー平均:0.#}, trusted from " +
-                    $"{l_混合モデル.A_信頼下限}, {l_混合モデル.A_反復回数} EM iteration(s)). Pass -kc explicitly to override.");
+                Logger.V_出力(
+                    メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_混合モデル.A_信頼下限, l_混合モデル.A_反復回数);
                 return;
             }
 
@@ -55,9 +53,7 @@ namespace Tsumiki.Utility
             // 成分と誤り成分を分離できない)場合。
             if (KmerHistogram.Get_推奨カットオフ(l_ヒストグラム) is not { } l_推奨値)
             {
-                Console.WriteLine(
-                    "[Info] Could not identify a clear histogram valley " +
-                    $"(the spectrum may not be bimodal at this coverage); keeping -kc {p_引数.A_kmerカットオフ}.");
+                Logger.V_出力(メッセージID.kmerカットオフ_谷が不明, p_引数.A_kmerカットオフ);
                 return;
             }
 
@@ -67,9 +63,7 @@ namespace Tsumiki.Utility
             }
 
             p_引数.Set_推定kmerカットオフ(l_推奨値);
-            Console.WriteLine(
-                $"[Info] k-mer cutoff auto-selected as {l_推奨値} from the k-mer spectrum. " +
-                "Pass -kc explicitly to override.");
+            Logger.V_出力(メッセージID.kmerカットオフ_スペクトル, l_推奨値);
         }
     }
 }

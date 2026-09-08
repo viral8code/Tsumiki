@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 
 namespace Tsumiki.Model
 {
@@ -183,6 +183,23 @@ namespace Tsumiki.Model
 
         public bool A_ヘルプモードか { get; set; } = false;
 
+        /// <summary>バージョンだけ表示して終わるか。</summary>
+        public bool A_バージョンモードか { get; set; } = false;
+
+        /// <summary>進行状況メッセージの言語。</summary>
+        public 言語 A_言語 { get; set; } = 言語.日本語;
+
+        /// <summary>-lang に書く綴り。表示は CLI で指定する形に合わせる。</summary>
+        private static string Get_言語名(言語 p_言語)
+        {
+            return p_言語 switch
+            {
+                言語.日本語 => Consts.言語名.日本語,
+                言語.中国語 => Consts.言語名.中国語,
+                _ => Consts.言語名.英語,
+            };
+        }
+
         public bool A_曖昧塩基を許容するか { get; set; } = false;
 
         public bool A_エラー訂正するか { get; set; } = false;
@@ -241,6 +258,12 @@ namespace Tsumiki.Model
         public bool A_マージするか { get; set; } = false;
 
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
+
+        /// <summary>
+        /// 実行後に一時ディレクトリを消すか。k ごとの成果物が入っており
+        /// 後から見比べたくなるため、既定では残す。
+        /// </summary>
+        public bool A_一時ディレクトリを削除するか { get; set; } = false;
 
         private int _スレッド数 = Environment.ProcessorCount;
         public int A_スレッド数
@@ -309,7 +332,9 @@ namespace Tsumiki.Model
                 write GFA of the unitig graph : {this.A_GFAを出力するか}
                 merge multi-k results : {this.A_マージするか}
                 temp directory : {this.A_一時ディレクトリ}
+                delete temp directory when finished : {this.A_一時ディレクトリを削除するか}
                 thread count : {this.A_スレッド数}
+                message language : {Get_言語名(this.A_言語)}
                 pair unite threshold : {this.A_ペア結合閾値}
                 pair count threshold : {this.A_ペア支持数閾値}
 

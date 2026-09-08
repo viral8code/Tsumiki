@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
@@ -50,6 +50,10 @@ namespace Tsumiki.IO
                             l_引数.A_インサートサイズ = int.Parse(p_引数列[l_位置++]);
                             break;
 
+                        case Consts.引数キー.一時ディレクトリ削除:
+                            l_引数.A_一時ディレクトリを削除するか = true;
+                            break;
+
                         case Consts.引数キー.一時ディレクトリ:
                             l_引数.A_一時ディレクトリ = p_引数列[l_位置++];
                             break;
@@ -68,6 +72,10 @@ namespace Tsumiki.IO
 
                         case Consts.引数キー.ヘルプ:
                             l_引数.A_ヘルプモードか = true;
+                            break;
+
+                        case Consts.引数キー.バージョン:
+                            l_引数.A_バージョンモードか = true;
                             break;
 
                         case Consts.引数キー.曖昧塩基を許容:
@@ -106,6 +114,10 @@ namespace Tsumiki.IO
                             l_引数.A_局所アセンブリするか = true;
                             break;
 
+                        case Consts.引数キー.言語:
+                            l_引数.A_言語 = Get_言語(p_引数列[l_位置++]);
+                            break;
+
                         case Consts.引数キー.積極性モード:
                             V_適用_積極性モード(l_引数, p_引数列[l_位置++]);
                             break;
@@ -129,7 +141,7 @@ namespace Tsumiki.IO
             // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない。
             // (以前は -h のみを指定してもここで「Please set read path」エラーになり
             //  ヘルプが表示できなかった)
-            if (l_引数.A_ヘルプモードか)
+            if (l_引数.A_ヘルプモードか || l_引数.A_バージョンモードか)
             {
                 return l_引数;
             }
@@ -147,6 +159,20 @@ namespace Tsumiki.IO
             }
 
             return l_引数;
+        }
+
+        /// <summary>-lang に渡された言語名を解釈する。</summary>
+        private static 言語 Get_言語(string p_言語名)
+        {
+            return p_言語名 switch
+            {
+                Consts.言語名.日本語 => 言語.日本語,
+                Consts.言語名.英語 => 言語.英語,
+                Consts.言語名.中国語 => 言語.中国語,
+                _ => throw new ArgumentException(
+                    $"Unknown language \"{p_言語名}\": expected one of " +
+                    $"{Consts.言語名.日本語}, {Consts.言語名.英語}, {Consts.言語名.中国語}"),
+            };
         }
 
         /// <summary>

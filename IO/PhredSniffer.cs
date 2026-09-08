@@ -1,3 +1,4 @@
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.IO
@@ -121,6 +122,12 @@ namespace Tsumiki.IO
         ///
         /// read1 と read2 で推定が食い違う場合は自信が持てないため警告に留める。
         /// </summary>
+        /// <summary>推定できなかった場合も含めた、表示用のオフセット。</summary>
+        private static string Get_表示用オフセット(int? p_推定)
+        {
+            return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);
+        }
+
         public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
@@ -132,10 +139,11 @@ namespace Tsumiki.IO
                 var l_推定2 = Get_推定オフセット(l_標本2);
                 if (l_推定 != l_推定2)
                 {
-                    Console.WriteLine(
-                        "[Warning] Phred offset inference disagreed between the two read files " +
-                        $"(read1 -> {l_推定?.ToString() ?? "undetermined"}, read2 -> {l_推定2?.ToString() ?? "undetermined"}). " +
-                        $"Keeping -p {p_引数.A_Phredオフセット} as-is.");
+                    Logger.V_出力(
+                        メッセージID.Phred_ファイル間で不一致,
+                        Get_表示用オフセット(l_推定),
+                        Get_表示用オフセット(l_推定2),
+                        p_引数.A_Phredオフセット);
                     l_推定 = null;
                 }
             }
@@ -144,16 +152,12 @@ namespace Tsumiki.IO
             {
                 if (p_引数.A_Phredが明示指定されたか)
                 {
-                    Console.WriteLine(
-                        $"[Warning] Quality strings look like Phred{l_オフセット}, but -p {p_引数.A_Phredオフセット} was given explicitly. " +
-                        $"Honouring the explicit value; re-run with -p {l_オフセット} if the data really is Phred{l_オフセット}.");
+                    Logger.V_出力(メッセージID.Phred_明示指定と不一致, l_オフセット, p_引数.A_Phredオフセット, l_オフセット, l_オフセット);
                 }
                 else
                 {
                     p_引数.Set_推定Phredオフセット(l_オフセット);
-                    Console.WriteLine(
-                        $"[Info] Phred offset auto-detected as {l_オフセット} from the quality strings " +
-                        $"(observed ASCII range [{l_標本1.A_最小ASCII}, {l_標本1.A_最大ASCII}]). Pass -p explicitly to override.");
+                    Logger.V_出力(メッセージID.Phred_自動判定, l_オフセット, l_標本1.A_最小ASCII, l_標本1.A_最大ASCII);
                 }
             }
 
@@ -173,7 +177,7 @@ namespace Tsumiki.IO
             var l_警告 = Get_警告文(l_標本, p_有効オフセット);
             if (l_警告 != null)
             {
-                Console.WriteLine($"[Warning] Phred encoding check for {Path.GetFileName(p_ファイルパス)}: {l_警告}");
+                Logger.V_出力(メッセージID.Phred_検査の警告, Path.GetFileName(p_ファイルパス), l_警告);
             }
         }
 

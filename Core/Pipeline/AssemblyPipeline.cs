@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -13,10 +13,11 @@ namespace Tsumiki.Core
         /// <summary>
         /// p_k長 でアセンブリを実行し、生成物のパスを返す。
         /// unitig 数が上限を超えた場合は null。
-        /// p_出力接頭辞 は出力ファイル名の先頭に付く(単一 k では空文字)。
+        /// 生成物は k ごとの作業ディレクトリに置く。最終的に採用したものだけを
+        /// V_複製_最終成果物 が実行ディレクトリへ複製する。
         /// </summary>
         public static アセンブリ実行結果? Get_実行結果(
-            Parameters p_引数, int p_k長, string p_一時ディレクトリ, string p_出力接頭辞, int? p_リード長,
+            Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長,
             IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null,
             List<引き継ぎ配列>? p_次への引き継ぎ = null)
         {
@@ -30,12 +31,12 @@ namespace Tsumiki.Core
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
 
-            var l_ユニティグパス = p_出力接頭辞 + Consts.ユニティグファイル名;
-            var l_コンティグパス = p_出力接頭辞 + Consts.コンティグファイル名;
-            var l_スキャフォールドパス = p_出力接頭辞 + Consts.スキャフォールドファイル名;
-            var l_GFAパス = p_出力接頭辞 + Consts.GFAファイル名;
+            var l_ユニティグパス = Path.Combine(l_作業ディレクトリ, Consts.ユニティグファイル名);
+            var l_コンティグパス = Path.Combine(l_作業ディレクトリ, Consts.コンティグファイル名);
+            var l_スキャフォールドパス = Path.Combine(l_作業ディレクトリ, Consts.スキャフォールドファイル名);
+            var l_GFAパス = Path.Combine(l_作業ディレクトリ, Consts.GFAファイル名);
 
-            Console.WriteLine("Start construction k-mer index");
+            Logger.V_出力(メッセージID.kmerインデックス構築開始);
             using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_kmerインデックス;
 
@@ -43,7 +44,7 @@ namespace Tsumiki.Core
 
             Logger.V_出力_タイムスタンプ();
 
-            Console.WriteLine("Applying k-mer cutoff");
+            Logger.V_出力(メッセージID.kmerカットオフ適用);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
             _ = l_kmerインデックス.V_カットオフ(p_引数.A_kmerカットオフ);
 
@@ -55,20 +56,19 @@ namespace Tsumiki.Core
             if (p_引き継ぎ is { Count: > 0 })
             {
                 var l_追加数 = KmerCarryOver.V_引き継ぎ(p_引き継ぎ, l_kmerインデックス, p_k長, p_リード長);
-                Console.WriteLine(
-                    $"[Carry-over] Added {l_追加数:N0} k-mer(s) from the previous k that this k did not observe.");
+                Logger.V_出力(メッセージID.引き継ぎで追加したkmer数, l_追加数);
             }
 
             Logger.V_出力_タイムスタンプ();
 
-            Console.WriteLine("Clipping short tips");
+            Logger.V_出力(メッセージID.tip除去開始);
             // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
             // 数え直す必要がある。除去側が最終状態のものを返す。
             var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長);
 
             Logger.V_出力_タイムスタンプ();
 
-            Console.WriteLine("Make unitigs");
+            Logger.V_出力(メッセージID.ユニティグ構築開始);
             var l_ユニティグ配列 = Get_ユニティグ(
                 l_kmerインデックス, l_開始kmer, l_ユニティグパス, out var l_上限に達したか);
 
@@ -76,12 +76,11 @@ namespace Tsumiki.Core
 
             if (l_上限に達したか)
             {
-                Console.WriteLine($"[Warning] The graph is too complex to assemble at k={p_k長} " +
-                    $"(unitig count exceeded {Consts.ユニティグ数の上限}). Skipping this k.");
+                Logger.V_出力(メッセージID.グラフが複雑すぎる, p_k長, Consts.ユニティグ数の上限);
                 return null;
             }
 
-            Console.WriteLine("Map reads to unitigs");
+            Logger.V_出力(メッセージID.リードのマッピング開始);
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
 
             // 反復配列かどうかをグラフの形ではなく量的な根拠で判定するための
@@ -99,21 +98,21 @@ namespace Tsumiki.Core
 
             if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
-                Console.WriteLine(p_引数.A_リード1のパス);
+                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
                 l_コンティグ構築.V_マッピング_リード(p_引数.A_リード1のパス);
             }
             else
             {
                 // ペアエンドの場合、read1/read2 を同時に読み進めて
                 // インサートサイズによる隣接検出も行う。
-                Console.WriteLine(p_引数.A_リード1のパス);
-                Console.WriteLine(p_引数.A_リード2のパス);
+                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
+                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード2のパス);
                 l_コンティグ構築.V_マッピング_ペアリード(p_引数.A_リード1のパス, p_引数.A_リード2のパス);
             }
 
             Logger.V_出力_タイムスタンプ();
 
-            Console.WriteLine("unite unitigs");
+            Logger.V_出力(メッセージID.ユニティグ結合開始);
             // careful_bubble: バブル除去で外れた側の配列も、この k では
             // 敗者と判断しただけであって存在しないわけではない。捨てずに
             // 次の k への引き継ぎ候補として集めておく。
@@ -135,15 +134,14 @@ namespace Tsumiki.Core
                 }
                 else
                 {
-                    Console.WriteLine(
-                        $"[Info] Repeat r-mer verification skipped for k={p_k長}: r-mer length would be {l_r長}bp, exceeding the 32bp packing limit.");
+                    Logger.V_出力(メッセージID.rMer検証の見送り, p_k長, l_r長);
                 }
             }
 
             l_コンティグ構築.V_結合_コンティグ(
                 l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数,
                 l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_GFAを出力するか ? l_GFAパス : null);
-            Console.WriteLine("Maked contigs");
+            Logger.V_出力(メッセージID.コンティグ構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 
             Logger.V_出力_タイムスタンプ();
@@ -153,7 +151,7 @@ namespace Tsumiki.Core
             var l_スキャフォールドを作ったか = false;
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
-                Console.WriteLine("Scaffolding contigs");
+                Logger.V_出力(メッセージID.スキャフォールディング開始);
                 var l_スキャフォールド構築 = new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長);
                 l_スキャフォールド構築.V_実行(l_スキャフォールドパス);
                 l_スキャフォールドを作ったか = File.Exists(l_スキャフォールドパス);
@@ -170,14 +168,15 @@ namespace Tsumiki.Core
                 V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
                 return new アセンブリ実行結果(
                     p_k長, l_ユニティグパス, l_コンティグパス, null,
-                    p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
+                    p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
+                    p_引数.A_GFAを出力するか ? l_GFAパス : null);
             }
 
             AssemblyStatsReporter.V_出力_統計("scaffolds", l_スキャフォールドパス);
 
             // contig が途切れる原因は配列の不在より分岐の未解決が多く、
             // その場合ギャップを埋める配列はグラフ上に実在する。
-            Console.WriteLine("Filling scaffold gaps");
+            Logger.V_出力(メッセージID.ギャップ充填開始);
             var l_ギャップ統計 = GapFiller.V_充填_ギャップ(l_スキャフォールドパス, l_kmerインデックス, p_k長);
             GapFiller.V_出力_充填統計(l_ギャップ統計);
             if (l_ギャップ統計.A_埋めたギャップ数 > 0)
@@ -208,7 +207,34 @@ namespace Tsumiki.Core
             V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者);
             return new アセンブリ実行結果(
                 p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
-                p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値);
+                p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
+                p_引数.A_GFAを出力するか ? l_GFAパス : null);
+        }
+
+        /// <summary>
+        /// 採用した結果を実行ディレクトリへ複製する。k ごとの成果物は
+        /// 一時ディレクトリに残したまま、利用者が受け取る1組だけを外へ出す。
+        /// </summary>
+        public static void V_複製_最終成果物(アセンブリ実行結果 p_結果)
+        {
+            V_複製(p_結果.A_ユニティグパス, Consts.ユニティグファイル名);
+            V_複製(p_結果.A_コンティグパス, Consts.コンティグファイル名);
+            if (p_結果.A_スキャフォールドパス is { } l_スキャフォールドパス)
+            {
+                V_複製(l_スキャフォールドパス, Consts.スキャフォールドファイル名);
+            }
+            if (p_結果.A_GFAパス is { } l_GFAパス)
+            {
+                V_複製(l_GFAパス, Consts.GFAファイル名);
+            }
+        }
+
+        private static void V_複製(string p_元, string p_先)
+        {
+            if (p_元 != p_先 && File.Exists(p_元))
+            {
+                File.Copy(p_元, p_先, overwrite: true);
+            }
         }
 
         /// <summary>

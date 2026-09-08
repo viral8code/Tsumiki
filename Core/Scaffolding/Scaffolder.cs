@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -41,17 +41,17 @@ namespace Tsumiki.Core
         {
             if (!this.Get_インサートサイズ(out var l_インサートサイズ))
             {
-                Console.WriteLine("[Info] Scaffolding skipped: insert size was not specified and could not be estimated from mapped pairs.");
+                Logger.V_出力(メッセージID.スキャフォールディング省略_インサートサイズ不明);
                 return;
             }
             this.A_有効インサートサイズ = l_インサートサイズ;
-            Console.WriteLine($"[Info] Scaffolding with insert size = {l_インサートサイズ}");
+            Logger.V_出力(メッセージID.スキャフォールディング開始_インサートサイズ, l_インサートサイズ);
 
             this.V_読込_コンティグ();
 
             if (this._コンティグ配列.Count == 0)
             {
-                Console.WriteLine("[Info] Scaffolding skipped: no contigs were found.");
+                Logger.V_出力(メッセージID.スキャフォールディング省略_コンティグなし);
                 return;
             }
 
@@ -125,11 +125,11 @@ namespace Tsumiki.Core
 
             if (l_内部を指した数 > 0)
             {
-                Console.WriteLine($"[Info] {l_内部を指した数} pair-end candidate(s) pointed at unitigs interior to an already-joined contig and were skipped (endpoint already resolved by contig construction).");
+                Logger.V_出力(メッセージID.内部を指したペア候補, l_内部を指した数);
             }
             if (l_未配置を指した数 > 0)
             {
-                Console.WriteLine($"[Info] {l_未配置を指した数} pair-end candidate(s) referenced unitigs that were not placed into any contig (e.g. too short) and were skipped.");
+                Logger.V_出力(メッセージID.未配置を指したペア候補, l_未配置を指した数);
             }
 
             // v→w と双子 w^1→v^1 は同一の隣接だが、ペアエンドの観測は
@@ -173,8 +173,12 @@ namespace Tsumiki.Core
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
             var l_最小証拠数 = Consts.スキャフォールド支持数の下限;
 
-            Console.WriteLine($"[Info] Scaffold candidate edges (contig-level, before thresholding): {l_辺の集計.Count}"
-                + (l_較正器.A_使えるか ? "; ideal-count model available" : "; ideal-count model unavailable"));
+            Logger.V_出力(
+                メッセージID.スキャフォールド候補辺数,
+                l_辺の集計.Count,
+                Messages.Get_文言(l_較正器.A_使えるか
+                    ? メッセージID.理想本数モデルあり
+                    : メッセージID.理想本数モデルなし));
 
             // 各頂点について、最多支持の辺1本だけを残す。
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
@@ -213,7 +217,7 @@ namespace Tsumiki.Core
                     l_相互一意で棄却した数++;
                 }
             }
-            Console.WriteLine($"[Info] Scaffold edges resolved after thresholding: {l_確定数}; {l_相互一意で棄却した数} rejected by the mutual-uniqueness check, {l_確定数 - l_相互一意で棄却した数} kept.");
+            Logger.V_出力(メッセージID.閾値後のスキャフォールド辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
 
             // 「入ってくる結合を持たない」頂点が経路の始点。v への結合が
             // 存在することは、逆鎖対称性より 確定辺[v^1] != null と同値。
@@ -271,7 +275,7 @@ namespace Tsumiki.Core
                 l_総延長 += l_スキャフォールド.Length;
             }
 
-            Console.WriteLine($"[Info] Wrote {l_スキャフォールド群.Count} scaffold(s), total length {l_総延長}, to {p_スキャフォールドパス}");
+            Logger.V_出力(メッセージID.スキャフォールド出力完了, l_スキャフォールド群.Count, l_総延長, p_スキャフォールドパス);
         }
 
         /// <summary>
@@ -298,9 +302,7 @@ namespace Tsumiki.Core
                 if (l_推定値 > 0 && l_ユニティグN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
                 {
                     p_インサートサイズ = l_推定値;
-                    Console.WriteLine(
-                        $"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_同一ユニティグ標本.Count} same-unitig sampled pairs " +
-                        $"(median; unitig N50 {l_ユニティグN50} is >= {偏りが無いとみなす長さ比}x the estimate, so the short-fragment truncation bias does not apply).");
+                    Logger.V_出力(メッセージID.インサートサイズ推定_同一ユニティグ, p_インサートサイズ, l_同一ユニティグ標本.Count, l_ユニティグN50, 偏りが無いとみなす長さ比);
                     return true;
                 }
             }
@@ -309,20 +311,20 @@ namespace Tsumiki.Core
             if (l_確定辺標本.Count >= Consts.インサートサイズ標本数の下限)
             {
                 p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
-                Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_確定辺標本.Count} resolved-edge sampled pairs (median, preferred over same-unitig samples because the unitigs are not long enough for same-unitig samples to be unbiased).");
+                Logger.V_出力(メッセージID.インサートサイズ推定_確定辺, p_インサートサイズ, l_確定辺標本.Count);
                 return true;
             }
 
             var l_全標本 = p_コンティグ構築.A_インサートサイズ標本;
             if (l_全標本.Count < Consts.インサートサイズ標本数の下限)
             {
-                Console.WriteLine($"[Info] Insert size auto-estimation requires at least {Consts.インサートサイズ標本数の下限} samples; only {l_確定辺標本.Count} resolved-edge and {l_全標本.Count} total samples were collected.");
+                Logger.V_出力(メッセージID.インサートサイズ推定_標本不足, Consts.インサートサイズ標本数の下限, l_確定辺標本.Count, l_全標本.Count);
                 p_インサートサイズ = 0;
                 return false;
             }
 
             p_インサートサイズ = StatsUtil.Get_中央値(l_全標本);
-            Console.WriteLine($"[Info] Insert size auto-estimated as {p_インサートサイズ} from {l_全標本.Count} sampled pairs (median; resolved-edge samples were too few ({l_確定辺標本.Count}), fell back to the full pool which may be biased short).");
+            Logger.V_出力(メッセージID.インサートサイズ推定_全標本, p_インサートサイズ, l_全標本.Count, l_確定辺標本.Count);
             return true;
         }
 

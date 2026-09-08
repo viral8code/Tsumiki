@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
@@ -46,11 +46,11 @@ namespace Tsumiki.Core
                     }
                     if (l_ログ出力するか)
                     {
-                        Console.WriteLine(l_ログ値 + " reads Loaded");
+                        Logger.V_出力(メッセージID.リード読込の進捗, l_ログ値);
                     }
                 });
 
-            Console.WriteLine($"Loaded {l_総リード数} reads from {Path.GetFileName(p_ファイルパス)}");
+            Logger.V_出力(メッセージID.リード読込完了, l_総リード数, Path.GetFileName(p_ファイルパス));
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace Tsumiki.Core
             var l_ペアエンドか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
             if (p_進行状況を出力するか)
             {
-                Console.WriteLine(l_ペアエンドか ? "Loading File1" : "Loading File");
+                Logger.V_出力(l_ペアエンドか ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
             }
             V_読込_1ファイル(p_引数.A_リード1のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
 
@@ -76,7 +76,7 @@ namespace Tsumiki.Core
 
             if (p_進行状況を出力するか)
             {
-                Console.WriteLine("Loading File2");
+                Logger.V_出力(メッセージID.リード2の読込開始);
             }
             V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
         }
@@ -127,11 +127,11 @@ namespace Tsumiki.Core
                 }
                 if (++l_件数 == Consts.進捗ログ間隔)
                 {
-                    Console.WriteLine((++l_ログ回数 * Consts.進捗ログ間隔) + " reads Loaded");
+                    Logger.V_出力(メッセージID.リード読込の進捗, ++l_ログ回数 * Consts.進捗ログ間隔);
                     l_件数 = 0;
                 }
             }
-            Console.WriteLine($"Loaded {(l_ログ回数 * Consts.進捗ログ間隔) + l_件数} reads from {Path.GetFileName(p_ファイルパス)}");
+            Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
         /// <summary>FASTQ を順に読み進めてリードを返す。</summary>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)

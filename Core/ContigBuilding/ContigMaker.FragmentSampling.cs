@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Core
@@ -182,14 +182,14 @@ namespace Tsumiki.Core
             this.A_インサートサイズ標本.AddRange(l_確定辺標本);
             this.A_確定辺標本.AddRange(l_確定辺標本);
 
-            Console.WriteLine($"[Info] InsertSize samples derived from resolved (actually-joined) unitig adjacency: {l_確定辺標本.Count}.");
+            Logger.V_出力(メッセージID.確定辺標本数, l_確定辺標本.Count);
             if (l_確定辺標本.Count > 0)
             {
                 // このプールは「unitig同士がk-1オーバーラップで直接結合された」
                 // ペアのみを対象とするため、同一unitig標本のような
                 // 「フラグメントが1つのunitigに収まる必要がある」制約が
                 // なく、短いunitigによる短フラグメントへの偏りを受けにくい。
-                Console.WriteLine($"[Info] Resolved-edge sample median: {StatsUtil.Get_中央値(l_確定辺標本)} (from {l_確定辺標本.Count} samples; not subject to the same-unitig length bias).");
+                Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);
             }
         }
 

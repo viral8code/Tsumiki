@@ -1,4 +1,5 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
+using Tsumiki.Model;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core
@@ -106,9 +107,8 @@ namespace Tsumiki.Core
                     }
                 }
 
-                Console.WriteLine($"[GraphSimplifier] Iteration {l_反復}: examined {l_ユニティグ群.Length} unitig(s) " +
-                    $"(tip threshold < {l_tip長閾値}bp, coverage baseline {l_基準値:0.#}), " +
-                    $"removed {l_除去tip数} tip(s), trimmed {l_剥がしたkmer数} low-coverage k-mer(s) from {l_トリミングしたunitig数} unitig edge(s).");
+                Logger.V_出力(
+                    メッセージID.グラフ単純化の反復, l_反復, l_ユニティグ群.Length, l_tip長閾値, l_基準値, l_除去tip数, l_剥がしたkmer数, l_トリミングしたunitig数);
 
                 if (l_除去tip数 == 0 && l_剥がしたkmer数 == 0)
                 {

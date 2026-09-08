@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -84,11 +84,11 @@ namespace Tsumiki.Core
             }
             if (l_短すぎるユニティグ数 > 0)
             {
-                Console.WriteLine($"[Warning] {l_短すぎるユニティグ数} unitig(s) shorter than k-mer length were skipped in mapping.");
+                Logger.V_出力(メッセージID.短すぎるユニティグの除外, l_短すぎるユニティグ数);
             }
             if (l_曖昧数 > 0)
             {
-                Console.WriteLine($"[Warning] {l_曖昧数} k-mer registration(s) were ambiguous (shared by multiple unitigs) and will be ignored during mapping.");
+                Logger.V_出力(メッセージID.曖昧なkmer登録, l_曖昧数);
             }
         }
 
@@ -262,15 +262,15 @@ namespace Tsumiki.Core
             this.A_同一ユニティグ標本.AddRange(l_同一ユニティグ標本);
 
             var l_ペア支持数 = this._ペア経路.Values.Sum(x => x.Count);
-            Console.WriteLine($"[Info] Paired-end adjacency candidates detected: {this._ペア経路.Count} edges ({l_ペア支持数} supporting pairs total).");
-            Console.WriteLine($"[Info] Same-unitig pair orientation counts: same-orientation={l_同一向き合計}, opposite-orientation={l_逆向き合計}. Using '{l_採用ラベル}' as the library's observed orientation for InsertSize estimation ({l_同一ユニティグ標本.Count} samples).");
+            Logger.V_出力(メッセージID.ペア隣接候補数, this._ペア経路.Count, l_ペア支持数);
+            Logger.V_出力(メッセージID.同一ユニティグのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一ユニティグ標本.Count);
             if (l_同一ユニティグ標本.Count > 0)
             {
                 // 同一unitig内標本は、unitig自体がフラグメント長より短い場合
                 // 両端が同じunitig内に収まるペアしか観測できず、より短い
                 // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)。
-                Console.WriteLine($"[Info] Same-unitig fragment-length distribution: {Get_分布要約(l_同一ユニティグ標本)}.");
-                Console.WriteLine($"[Info] Same-unitig fragment-length median: {StatsUtil.Get_中央値(l_同一ユニティグ標本)} (from {l_同一ユニティグ標本.Count} samples; read lengths added back to the inner distance, so this is a true fragment length. May still be biased short if unitigs are shorter than the true insert size).");
+                Logger.V_出力(メッセージID.同一ユニティグの断片長分布, Get_分布要約(l_同一ユニティグ標本));
+                Logger.V_出力(メッセージID.同一ユニティグの断片長中央値, StatsUtil.Get_中央値(l_同一ユニティグ標本), l_同一ユニティグ標本.Count);
             }
         }
 
@@ -362,9 +362,7 @@ namespace Tsumiki.Core
                 {
                     if (!l_不一致を警告済みか)
                     {
-                        Console.WriteLine($"[Warning] Paired read IDs do not match at this position (\"{l_データ1.A_ID}\" vs \"{l_データ2.A_ID}\"). " +
-                            "Paired-end adjacency detection may be unreliable for reads after this point; " +
-                            "single-read adjacency detection is unaffected.");
+                        Logger.V_出力(メッセージID.ペアリードIDの不一致, l_データ1.A_ID, l_データ2.A_ID);
                         l_不一致を警告済みか = true;
                     }
                     // お互いを誤ってペアとして扱わないよう、別々に流す。

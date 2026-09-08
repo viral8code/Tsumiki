@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.IO;
 using Tsumiki.Model;
 using Tsumiki.Utility;
@@ -93,17 +93,11 @@ namespace Tsumiki.Core
         {
             if (p_検査結果 is not { } p_結果)
             {
-                Console.WriteLine($"[Check] {p_ラベル}: skipped (the self-check supports k <= 64 only).");
+                Logger.V_出力(メッセージID.検査_対象外のk長, p_ラベル);
                 return;
             }
-            Console.WriteLine(
-                $"[Check] {p_ラベル}: {p_結果.A_信頼kmer数:N0} trusted k-mer(s); " +
-                $"{p_結果.A_取りこぼし数:N0} ({p_結果.A_取りこぼし率:0.00}%) do not appear in the assembly at all " +
-                "(sequence that was trimmed away or never reached by any path).");
-            Console.WriteLine(
-                $"[Check] {p_ラベル}: {p_結果.A_アセンブリ内の延べ数:N0} k-mer instance(s) in the assembly; " +
-                $"{p_結果.A_余分な延べ数:N0} ({p_結果.A_出しすぎ率:0.00}%) are more copies than the coverage supports " +
-                $"across {p_結果.A_出しすぎkmer種類数:N0} distinct k-mer(s) -- this is the part of the total length that is inflated.");
+            Logger.V_出力(メッセージID.検査_取りこぼし, p_ラベル, p_結果.A_信頼kmer数, p_結果.A_取りこぼし数, p_結果.A_取りこぼし率);
+            Logger.V_出力(メッセージID.検査_出しすぎ, p_ラベル, p_結果.A_アセンブリ内の延べ数, p_結果.A_余分な延べ数, p_結果.A_出しすぎ率, p_結果.A_出しすぎkmer種類数);
         }
     }
 }
