@@ -125,6 +125,10 @@ namespace Tsumiki.Core
         /// <summary>
         /// 1リード(塩基ID空間のバイト列、曖昧塩基は Consts.無効な塩基)を
         /// 貪欲法で訂正する。副作用のない純粋関数(入力は変更しない)。
+        ///
+        /// k が 64 以下なら、窓を 2bit パックして転がす経路を使う。判定内容も
+        /// 選ぶ置換も逐次経路と同じで、1窓あたりの手間だけが O(k) から O(1) に
+        /// 変わる(逐次経路は窓を見るたびにパックと逆相補を取り直していた)。
         /// </summary>
         public static 訂正結果 Get_訂正結果(
             ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10)
@@ -134,7 +138,16 @@ namespace Tsumiki.Core
                 return new 訂正結果(p_リード.ToArray(), 0);
             }
 
-            var l_塩基列 = p_リード.ToArray();
+            return p_k長 <= 64
+                ? Get_訂正結果_パック(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数)
+                : Get_訂正結果_逐次(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数);
+        }
+
+        /// <summary>k が 64 を超える場合の経路。パックできないので窓ごとに評価する。</summary>
+        internal static 訂正結果 Get_訂正結果_逐次(
+            byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
+        {
+            var l_塩基列 = p_塩基列;
             var l_窓数 = l_塩基列.Length - p_k長 + 1;
             var l_訂正数 = 0;
 
@@ -205,6 +218,222 @@ namespace Tsumiki.Core
             }
 
             return new 訂正結果(l_塩基列, l_訂正数);
+        }
+
+        /// <summary>
+        /// パック経路の訂正本体。逐次経路と同じ貪欲法で、窓の評価だけを
+        /// パック値の更新で済ませる。
+        /// </summary>
+        private static 訂正結果 Get_訂正結果_パック(
+            byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
+        {
+            var l_窓数 = p_塩基列.Length - p_k長 + 1;
+            var l_パック = new UInt128[l_窓数];
+            var l_逆相補 = new UInt128[l_窓数];
+            var l_無効数 = new int[l_窓数];
+            var l_信頼状況 = new bool[l_窓数];
+
+            // 「位置 p を含む窓の中に信頼できないものがあるか」と、候補を
+            // 打ち切ってよいかの上界計算に使う、信頼できない窓の累積数。
+            var l_未信頼累積 = new int[l_窓数 + 1];
+            var l_訂正数 = 0;
+
+            for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
+            {
+                V_計算_窓の状態(p_塩基列, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況);
+
+                l_未信頼累積[0] = 0;
+                for (var w = 0; w < l_窓数; w++)
+                {
+                    l_未信頼累積[w + 1] = l_未信頼累積[w] + (l_信頼状況[w] ? 0 : 1);
+                }
+                if (l_未信頼累積[l_窓数] == 0)
+                {
+                    break;
+                }
+
+                var l_最良位置 = -1;
+                byte l_最良塩基 = 0;
+                var l_最良改善数 = 0;
+
+                for (var l_位置 = 0; l_位置 < p_塩基列.Length; l_位置++)
+                {
+                    if (p_塩基列[l_位置] == Consts.無効な塩基)
+                    {
+                        continue;
+                    }
+
+                    var l_窓開始 = Math.Max(0, l_位置 - p_k長 + 1);
+                    var l_窓終了 = Math.Min(l_窓数 - 1, l_位置);
+                    if (l_未信頼累積[l_窓終了 + 1] - l_未信頼累積[l_窓開始] == 0)
+                    {
+                        continue;
+                    }
+
+                    var l_現在の塩基 = p_塩基列[l_位置];
+                    for (byte l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
+                    {
+                        if (l_候補 == l_現在の塩基)
+                        {
+                            continue;
+                        }
+
+                        var l_改善数 = Get_置換の改善数_パック(
+                            l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス,
+                            l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
+                        if (l_改善数 > l_最良改善数)
+                        {
+                            l_最良改善数 = l_改善数;
+                            l_最良位置 = l_位置;
+                            l_最良塩基 = l_候補;
+                        }
+                    }
+                }
+
+                if (l_最良位置 < 0)
+                {
+                    break;
+                }
+
+                p_塩基列[l_最良位置] = l_最良塩基;
+                l_訂正数++;
+            }
+
+            return new 訂正結果(p_塩基列, l_訂正数);
+        }
+
+        /// <summary>
+        /// 全窓のパック値・逆相補・曖昧塩基の数・信頼状況を、隣の窓から
+        /// 転がして求める。曖昧塩基はコドン0として詰めておき、判定では
+        /// 曖昧塩基の数で弾く(窓から出れば残りのコドンはそのまま正しい)。
+        /// </summary>
+        private static void V_計算_窓の状態(
+            byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス,
+            UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
+        {
+            var l_マスク = Get_マスク(p_k長);
+            var l_最上位への移動 = 2 * (p_k長 - 1);
+
+            UInt128 l_パック = 0;
+            UInt128 l_逆相補 = 0;
+            var l_無効数 = 0;
+            for (var i = 0; i < p_k長; i++)
+            {
+                l_パック = ((l_パック << 2) | Get_コドン(p_塩基列[i])) & l_マスク;
+                l_逆相補 = (l_逆相補 >> 2) | (Get_相補コドン(p_塩基列[i]) << l_最上位への移動);
+                if (p_塩基列[i] == Consts.無効な塩基)
+                {
+                    l_無効数++;
+                }
+            }
+
+            for (var w = 0; w < p_パック.Length; w++)
+            {
+                if (w > 0)
+                {
+                    var l_出る塩基 = p_塩基列[w - 1];
+                    var l_入る塩基 = p_塩基列[w + p_k長 - 1];
+                    l_パック = ((l_パック << 2) | Get_コドン(l_入る塩基)) & l_マスク;
+                    l_逆相補 = (l_逆相補 >> 2) | (Get_相補コドン(l_入る塩基) << l_最上位への移動);
+                    if (l_出る塩基 == Consts.無効な塩基)
+                    {
+                        l_無効数--;
+                    }
+                    if (l_入る塩基 == Consts.無効な塩基)
+                    {
+                        l_無効数++;
+                    }
+                }
+
+                p_パック[w] = l_パック;
+                p_逆相補[w] = l_逆相補;
+                p_無効数[w] = l_無効数;
+                p_信頼状況[w] = l_無効数 == 0
+                    && Get_含まれるか(p_kmerインデックス, p_k長, l_パック, l_逆相補);
+            }
+        }
+
+        /// <summary>
+        /// p_位置 を p_候補 に置換したときの、信頼できる窓の純増数。
+        ///
+        /// 置換で変わるのは各窓のうち1コドンだけなので、窓ごとにパック値を
+        /// 詰め直さず、その1コドンを差し替えて引く。残りの窓が全て改善に
+        /// 転じても現在の最良に届かないと分かった時点で打ち切る(打ち切っても
+        /// 選ばれる置換は変わらない。改善数が同じ候補は元から採用されない)。
+        /// </summary>
+        private static int Get_置換の改善数_パック(
+            int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長,
+            TrustedKmerIndex p_kmerインデックス,
+            UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況,
+            int[] p_未信頼累積, int p_最良改善数)
+        {
+            var l_コドン = Get_コドン(p_候補);
+            var l_相補コドン = Get_相補コドン(p_候補);
+            var l_改善数 = 0;
+
+            for (var w = p_窓開始; w <= p_窓終了; w++)
+            {
+                // まだ見ていない窓が全て改善しても最良に届かないなら、
+                // これ以上引く意味がない。
+                var l_残りの上界 = p_未信頼累積[p_窓終了 + 1] - p_未信頼累積[w];
+                if (l_改善数 + l_残りの上界 <= p_最良改善数)
+                {
+                    return l_改善数;
+                }
+
+                bool l_信頼できるか;
+                if (p_無効数[w] > 0)
+                {
+                    l_信頼できるか = false;
+                }
+                else
+                {
+                    var l_窓内の位置 = p_位置 - w;
+                    var l_移動 = 2 * (p_k長 - 1 - l_窓内の位置);
+                    var l_逆相補の移動 = 2 * l_窓内の位置;
+                    var l_パック = (p_パック[w] & ~((UInt128)3 << l_移動)) | (l_コドン << l_移動);
+                    var l_逆相補 =
+                        (p_逆相補[w] & ~((UInt128)3 << l_逆相補の移動)) | (l_相補コドン << l_逆相補の移動);
+                    l_信頼できるか = Get_含まれるか(p_kmerインデックス, p_k長, l_パック, l_逆相補);
+                }
+
+                if (l_信頼できるか && !p_信頼状況[w])
+                {
+                    l_改善数++;
+                }
+                else if (!l_信頼できるか && p_信頼状況[w])
+                {
+                    l_改善数--;
+                }
+            }
+
+            return l_改善数;
+        }
+
+        /// <summary>パック済みの順鎖・逆鎖から、信頼できる k-mer 集合に含まれるかを引く。</summary>
+        private static bool Get_含まれるか(
+            TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
+        {
+            var l_正規形 = p_パック < p_逆相補 ? p_パック : p_逆相補;
+            return p_k長 <= 32
+                ? p_kmerインデックス.Get_含まれるか_小((ulong)l_正規形)
+                : p_kmerインデックス.Get_含まれるか_中(l_正規形);
+        }
+
+        private static UInt128 Get_マスク(int p_k長)
+        {
+            return p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
+        }
+
+        /// <summary>塩基IDの2bit表現。曖昧塩基は0として詰める(判定は無効数で弾く)。</summary>
+        private static UInt128 Get_コドン(byte p_塩基ID)
+        {
+            return p_塩基ID == Consts.無効な塩基 ? 0 : (UInt128)(p_塩基ID - 1);
+        }
+
+        private static UInt128 Get_相補コドン(byte p_塩基ID)
+        {
+            return p_塩基ID == Consts.無効な塩基 ? 3 : (UInt128)(3 - (p_塩基ID - 1));
         }
 
         private static bool[] Get_窓ごとの信頼状況(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス)
