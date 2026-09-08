@@ -372,6 +372,18 @@ namespace Tsumiki.Common
                 "show the version and exit",
             [メッセージID.ヘルプ_ヘルプ] =
                 "show this text",
+            [メッセージID.引き継ぎの統合開始] =
+                "Merging {0:N0} carry-over sequence(s) from the previous k",
+            [メッセージID.引き継ぎの統合進捗] =
+                "[Carry-over] {0:N0}/{1:N0} sequence(s) merged",
+            [メッセージID.引き継ぎの準備開始] =
+                "Preparing carry-over sequences for the next k",
+            [メッセージID.引き継ぎの準備完了] =
+                "[Carry-over] Prepared {0:N0} sequence(s) for the next k.",
+            [メッセージID.SuperRead橋渡し開始] =
+                "[SuperRead] Bridging read pairs",
+            [メッセージID.SuperRead橋渡し進捗] =
+                "[SuperRead] {0:N0} pair(s) processed, {1:N0} bridged",
         };
 
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
@@ -706,6 +718,18 @@ namespace Tsumiki.Common
                 "バージョンを表示して終了する",
             [メッセージID.ヘルプ_ヘルプ] =
                 "このテキストを表示する",
+            [メッセージID.引き継ぎの統合開始] =
+                "前の k から引き継いだ配列 {0:N0} 本を統合中",
+            [メッセージID.引き継ぎの統合進捗] =
+                "[Carry-over] {1:N0} 本中 {0:N0} 本を統合済み",
+            [メッセージID.引き継ぎの準備開始] =
+                "次の k へ引き継ぐ配列を準備中",
+            [メッセージID.引き継ぎの準備完了] =
+                "[Carry-over] 次の k へ引き継ぐ配列を {0:N0} 本用意した。",
+            [メッセージID.SuperRead橋渡し開始] =
+                "[SuperRead] リードペアを橋渡し中",
+            [メッセージID.SuperRead橋渡し進捗] =
+                "[SuperRead] {0:N0} 組を処理、うち {1:N0} 組を橋渡し",
         };
 
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
@@ -1040,6 +1064,18 @@ namespace Tsumiki.Common
                 "显示版本并退出",
             [メッセージID.ヘルプ_ヘルプ] =
                 "显示本说明",
+            [メッセージID.引き継ぎの統合開始] =
+                "正在合并从上一个 k 传递来的 {0:N0} 条序列",
+            [メッセージID.引き継ぎの統合進捗] =
+                "[Carry-over] 已合并 {1:N0} 条中的 {0:N0} 条",
+            [メッセージID.引き継ぎの準備開始] =
+                "正在准备传递给下一个 k 的序列",
+            [メッセージID.引き継ぎの準備完了] =
+                "[Carry-over] 已为下一个 k 准备 {0:N0} 条序列。",
+            [メッセージID.SuperRead橋渡し開始] =
+                "[SuperRead] 正在桥接 read 对",
+            [メッセージID.SuperRead橋渡し進捗] =
+                "[SuperRead] 已处理 {0:N0} 对，其中 {1:N0} 对完成桥接",
         };
     }
 }

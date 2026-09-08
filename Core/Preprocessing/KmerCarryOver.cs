@@ -65,8 +65,20 @@ namespace Tsumiki.Core
             int? p_リード長)
         {
             var l_追加数 = 0;
+            var l_処理数 = 0;
+            ulong l_出力済みの区切り = 0;
             foreach (var l_引き継ぎ in p_引き継ぎ配列)
             {
+                // -sr を使うと引き継ぎ配列はリードペアの数まで増える。
+                // 全 k-mer を足し終えるまで無言だと止まったように見える。
+                l_処理数++;
+                var l_区切り = (ulong)l_処理数 / Consts.進捗ログ間隔;
+                if (l_区切り > l_出力済みの区切り)
+                {
+                    l_出力済みの区切り = l_区切り;
+                    Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_処理数, p_引き継ぎ配列.Count);
+                }
+
                 if (l_引き継ぎ.A_配列.Length < p_k長)
                 {
                     continue;

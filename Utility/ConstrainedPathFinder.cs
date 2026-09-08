@@ -1,4 +1,4 @@
-using Tsumiki.Common;
+﻿using Tsumiki.Common;
 using Tsumiki.Model;
 
 namespace Tsumiki.Utility
@@ -37,6 +37,17 @@ namespace Tsumiki.Utility
             var l_kmer群 = new List<byte[]>(1024) { p_左のkmer };
             var l_深さ群 = new List<int>(1024) { 0 };
 
+            // 同じ k-mer に同じ深さで別経路から着いた状態を作らないための記録。
+            // これをしないと分岐点の数だけ経路が掛け算で増え、同じ部分木を
+            // 何度も展開する(反復配列では容易に状態数上限に達する)。
+            // 一意性の判定は捨てられないので、重ねて到達された状態には印を付け、
+            // 目標へ届いた経路がその印を通っていたら一意でないとみなす。
+            // k <= 64 なら k-mer は UInt128 に詰められるので、鍵の生成に
+            // 割り当てが要らない。それを超える k だけ文字列に落とす。
+            var l_到達済み = p_k長 <= 64 ? new Dictionary<(UInt128, int), int>(1024) : null;
+            var l_到達済み_長いk = p_k長 <= 64 ? null : new Dictionary<(string, int), int>(1024);
+            var l_多重到達 = new List<bool>(1024) { false };
+
             var l_見つかった経路 = new List<string>();
             var l_キュー = new Queue<int>();
             l_キュー.Enqueue(0);
@@ -62,6 +73,10 @@ namespace Tsumiki.Utility
 
                 if (l_埋める長さ >= p_最小長 && l_現在のkmer.AsSpan().SequenceEqual(p_目標kmer))
                 {
+                    if (Get_多重到達を通るか(l_節点, l_多重到達, l_現在))
+                    {
+                        return (null, ギャップ充填判定.一意でない);
+                    }
                     l_見つかった経路.Add(Get_復元経路(l_節点, l_現在, l_埋める長さ));
                     if (l_見つかった経路.Count > 1)
                     {
@@ -84,9 +99,31 @@ namespace Tsumiki.Utility
                     {
                         continue;
                     }
+                    var l_深さ = l_継ぎ足した数 + 1;
+                    if (l_到達済み is not null)
+                    {
+                        var l_鍵 = (Get_パック(l_作業バッファ), l_深さ);
+                        if (l_到達済み.TryGetValue(l_鍵, out var l_既存))
+                        {
+                            l_多重到達[l_既存] = true;
+                            continue;
+                        }
+                        l_到達済み[l_鍵] = l_節点.Count;
+                    }
+                    else
+                    {
+                        var l_鍵 = (Get_状態の鍵(l_作業バッファ), l_深さ);
+                        if (l_到達済み_長いk!.TryGetValue(l_鍵, out var l_既存))
+                        {
+                            l_多重到達[l_既存] = true;
+                            continue;
+                        }
+                        l_到達済み_長いk[l_鍵] = l_節点.Count;
+                    }
                     l_節点.Add((l_現在, l_塩基));
                     l_kmer群.Add((byte[])l_作業バッファ.Clone());
-                    l_深さ群.Add(l_継ぎ足した数 + 1);
+                    l_深さ群.Add(l_深さ);
+                    l_多重到達.Add(false);
                     l_キュー.Enqueue(l_節点.Count - 1);
                 }
             }
@@ -94,6 +131,42 @@ namespace Tsumiki.Utility
             return l_見つかった経路.Count == 1
                 ? (l_見つかった経路[0], ギャップ充填判定.充填済み)
                 : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
+        }
+
+        /// <summary>k-mer を1塩基2ビットで詰める(k &lt;= 64 でのみ使える)。</summary>
+        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
+        {
+            UInt128 l_パック = 0;
+            foreach (var l_塩基 in p_kmer)
+            {
+                l_パック = (l_パック << 2) | l_塩基;
+            }
+            return l_パック;
+        }
+
+        /// <summary>k &gt; 64 で k-mer を鍵にするための文字列表現。</summary>
+        private static string Get_状態の鍵(ReadOnlySpan<byte> p_kmer)
+        {
+            var l_文字 = new char[p_kmer.Length];
+            for (var i = 0; i < p_kmer.Length; i++)
+            {
+                l_文字[i] = (char)p_kmer[i];
+            }
+            return new string(l_文字);
+        }
+
+        /// <summary>この状態までの経路上に、別経路からも到達された状態があるか。</summary>
+        private static bool Get_多重到達を通るか(
+            List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
+        {
+            for (var l_位置 = p_末端; l_位置 >= 0; l_位置 = p_節点[l_位置].A_親)
+            {
+                if (p_多重到達[l_位置])
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>

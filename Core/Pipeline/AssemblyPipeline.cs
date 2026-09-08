@@ -55,6 +55,7 @@ namespace Tsumiki.Core
             // ゲノムサイズとカバレッジの推定が歪まない。
             if (p_引き継ぎ is { Count: > 0 })
             {
+                Logger.V_出力(メッセージID.引き継ぎの統合開始, p_引き継ぎ.Count);
                 var l_追加数 = KmerCarryOver.V_引き継ぎ(p_引き継ぎ, l_kmerインデックス, p_k長, p_リード長);
                 Logger.V_出力(メッセージID.引き継ぎで追加したkmer数, l_追加数);
             }
@@ -257,6 +258,10 @@ namespace Tsumiki.Core
             {
                 return;
             }
+            // ここから次の k が始まるまでは出力の無い区間が続く。何をしている
+            // ところなのかが分からないと止まったように見えるため、区切りを出す。
+            Logger.V_出力(メッセージID.引き継ぎの準備開始);
+
             p_次への引き継ぎ.Clear();
             p_次への引き継ぎ.AddRange(
                 KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
@@ -269,6 +274,8 @@ namespace Tsumiki.Core
                 }
                 p_次への引き継ぎ.Add(Get_引き継ぎ配列(l_配列, p_kmerインデックス, p_k長));
             }
+            Logger.V_出力(メッセージID.引き継ぎの準備完了, p_次への引き継ぎ.Count);
+            Logger.V_出力_タイムスタンプ();
 
             if (p_引数.A_SuperReadを作るか && !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
@@ -276,6 +283,7 @@ namespace Tsumiki.Core
                     p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
                 SuperReadJoiner.V_出力_統計(l_統計);
                 p_次への引き継ぎ.AddRange(l_合成リード);
+                Logger.V_出力_タイムスタンプ();
             }
         }
 
