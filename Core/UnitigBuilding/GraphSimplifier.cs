@@ -94,7 +94,7 @@ namespace Tsumiki.Core.UnitigBuilding
                             var l_無条件に信頼できるか = l_信頼下限 is { } l_下限 && l_平均カバレッジ >= l_下限;
 
                             if (!l_無条件に信頼できるか
-                                && (l_基準値 <= 0 || l_平均カバレッジ < l_基準値 * p_tipカバレッジ比))
+                                && (l_基準値 <= 0D || l_平均カバレッジ < l_基準値 * p_tipカバレッジ比))
                             {
                                 V_除去_ユニティグ全体(p_kmerインデックス, l_塩基列, p_k長);
                                 l_除去tip数++;
@@ -103,7 +103,7 @@ namespace Tsumiki.Core.UnitigBuilding
                         }
                     }
 
-                    if (l_基準値 <= 0)
+                    if (l_基準値 <= 0D)
                     {
                         continue;
                     }
@@ -205,14 +205,14 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </summary>
         private static double Get_平均カバレッジ(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
-            ulong l_合計 = 0UL;
+            var l_合計 = 0UL;
             var l_件数 = 0;
             for (var i = 0; i + p_k長 <= p_塩基列.Length; i++)
             {
                 l_合計 += p_kmerインデックス.Get_カバレッジ(p_塩基列.AsSpan(i, p_k長));
                 l_件数++;
             }
-            return l_件数 == 0 ? 0 : (double)l_合計 / l_件数;
+            return l_件数 == 0 ? 0D : (double)l_合計 / l_件数;
         }
 
         /// <summary>

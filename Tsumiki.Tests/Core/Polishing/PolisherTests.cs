@@ -71,6 +71,12 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 真の配列から等間隔にリードを切り出して FASTQ にする
         /// </summary>
+        /// <param name="p_真の配列">元になる配列</param>
+        /// <param name="p_リード長">切り出すリードの長さ</param>
+        /// <param name="p_刻み">開始位置の刻み幅</param>
+        /// <param name="p_開始">切り出しを始める位置</param>
+        /// <param name="p_終了">切り出しを終える位置</param>
+        /// <returns>書き出したパス</returns>
         private string V_書き出し_FASTQ(
             string p_真の配列, int p_リード長, int p_刻み, int p_開始 = 0, int? p_終了 = null)
         {
@@ -96,6 +102,9 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
+        /// <summary>
+        /// リードが支持する塩基へ置換を直すことを確かめる
+        /// </summary>
         [Fact]
         public void Get_磨いた結果_リードが支持する塩基へ置換を直す()
         {
@@ -119,6 +128,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_真の配列, l_結果[0].A_配列);
         }
 
+        /// <summary>
+        /// リードが届かない位置は動かさないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_磨いた結果_リードが届かない位置は動かさない()
         {
@@ -143,6 +155,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_誤りを含む配列, l_結果[0].A_配列);
         }
 
+        /// <summary>
+        /// リードが届かない範囲は深度不足として数えることを確かめる
+        /// </summary>
         [Fact]
         public void Get_磨いた結果_リードが届かない範囲は深度不足として数える()
         {

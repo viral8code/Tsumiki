@@ -24,34 +24,48 @@ namespace Tsumiki.Tests.Core
             return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
         }
 
+        /// <summary>
+        /// リード長が不明な較正器は使えないこと
+        /// </summary>
         [Fact]
-        public void Get_較正器_IsUnusable_WhenReadLengthIsUnknown()
+        public void 較正器_リード長が不明なら使えない()
         {
             var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: null, [1000L, 2000L]);
 
             Assert.False(l_較正器.A_使えるか);
         }
 
+        /// <summary>
+        /// 標本が空な較正器は使えないこと
+        /// </summary>
         [Fact]
-        public void Get_較正器_IsUnusable_WhenThereAreNoSamples()
+        public void 較正器_標本が空なら使えない()
         {
             var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1000L, 2000L]);
 
             Assert.False(l_較正器.A_使えるか);
         }
 
+        /// <summary>
+        /// 全ユニティグがフラグメントより短い較正器は使えないこと
+        /// </summary>
+        /// <remarks>
+        /// すべての unitig がフラグメントより短いと、期待位置数の合計が 0 になり
+        /// 密度を較正できない (0 除算を避けて安全にフォールバックする)
+        /// </remarks>
         [Fact]
-        public void Get_較正器_IsUnusable_WhenEveryUnitigIsShorterThanTheFragment()
+        public void 較正器_全ユニティグがフラグメントより短いと使えない()
         {
-            // すべての unitig がフラグメントより短いと、期待位置数の合計が 0 になり
-            // 密度を較正できない (0 除算を避けて安全にフォールバックする)
             var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 100, [50L, 80L]);
 
             Assert.False(l_較正器.A_使えるか);
         }
 
+        /// <summary>
+        /// 較正器が使えない場合の正規化済み支持はゼロになること
+        /// </summary>
         [Fact]
-        public void Get_正規化済み支持_ReturnsZero_WhenTheCalibratorIsUnusable()
+        public void 正規化済み支持_較正器が使えないとゼロ()
         {
             var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1000L, 2000L]);
 
@@ -67,7 +81,7 @@ namespace Tsumiki.Tests.Core
         /// 提案 D の問題意識そのものへの解答になっている
         /// </remarks>
         [Fact]
-        public void Get_正規化済み支持_IsHigherForTheSameRawCount_WhenTheFlankingUnitigIsShorter()
+        public void 正規化済み支持_同じ観測本数でも隣接ユニティグが短いほど大きい()
         {
             // 分岐元 (片側) の長さは固定し、行き先側の長さだけを短い/長いで変える
             // (現実の分岐選択でも、変わるのは行き先の unitig 長のほうである)
@@ -86,7 +100,7 @@ namespace Tsumiki.Tests.Core
         /// 観測本数がちょうど期待本数どおりなら比はおよそ 1.0 になること
         /// </summary>
         [Fact]
-        public void Get_正規化済み支持_IsAboutOne_WhenObservedMatchesIdeal()
+        public void 正規化済み支持_観測本数が理想どおりならおよそ1()
         {
             var l_標本 = Get_同一ユニティグ標本(20_000);
             IReadOnlyList<long> l_ユニティグ長一覧 = [50_000L, 50_000L, 50_000L];

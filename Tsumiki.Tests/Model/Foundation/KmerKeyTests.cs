@@ -11,25 +11,28 @@ namespace Tsumiki.Tests.Model
         /// <summary>
         /// 実行時引数の k 長を差し替える
         /// </summary>
-        /// <param name="k">設定する k 長</param>
-        private static void SetKmerLength(int k)
+        /// <param name="p_k長">設定する k 長</param>
+        private static void V_設定_k長(int p_k長)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長 };
         }
 
+        /// <summary>
+        /// バイト列版と char 版のコンストラクタが同じキーを作る
+        /// </summary>
         [Theory]
         [InlineData(4)]   // 1つの ulong に収まる短いk-mer
         [InlineData(31)]  // デフォルトのk-mer長
         [InlineData(33)]  // 32境界をまたぐ長さ(Dataが複数ulongになる)
         [InlineData(64)]  // ちょうど2 ulong 分
-        public void ByteConstructor_And_CharConstructor_ProduceEqualKeys(int k)
+        public void バイト列版とchar版で同じキーになる(int p_k長)
         {
-            SetKmerLength(k);
-            var bases = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..k];
-            var byteKmer = new byte[k];
-            for (var i = 0; i < k; i++)
+            V_設定_k長(p_k長);
+            var l_塩基列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..p_k長];
+            var l_バイトkmer = new byte[p_k長];
+            for (var i = 0; i < p_k長; i++)
             {
-                byteKmer[i] = bases[i] switch
+                l_バイトkmer[i] = l_塩基列[i] switch
                 {
                     'A' => Consts.塩基ID.A,
                     'C' => Consts.塩基ID.C,
@@ -39,64 +42,76 @@ namespace Tsumiki.Tests.Model
                 };
             }
 
-            var fromChar = new KmerKey(bases.AsSpan());
-            var fromByte = new KmerKey(byteKmer);
+            var l_char版 = new KmerKey(l_塩基列.AsSpan());
+            var l_バイト版 = new KmerKey(l_バイトkmer);
 
-            Assert.True(fromChar.Equals(fromByte));
-            Assert.Equal(fromChar.GetHashCode(), fromByte.GetHashCode());
+            Assert.True(l_char版.Equals(l_バイト版));
+            Assert.Equal(l_char版.GetHashCode(), l_バイト版.GetHashCode());
         }
 
+        /// <summary>
+        /// 逆相補が文字列版の逆相補と一致する
+        /// </summary>
         [Theory]
         [InlineData(4)]
         [InlineData(31)]
         [InlineData(33)]
         [InlineData(64)]
-        public void ReverseComprement_MatchesStringBasedReverseComplement(int k)
+        public void 逆相補が文字列版と一致する(int p_k長)
         {
-            SetKmerLength(k);
-            var forward = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..k];
+            V_設定_k長(p_k長);
+            var l_フォワード = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..p_k長];
 
-            var expected = new KmerKey(Util.V_逆相補(forward).AsSpan());
-            var actual = new KmerKey(forward.AsSpan()).Get_逆相補();
+            var l_期待値 = new KmerKey(Util.V_逆相補(l_フォワード).AsSpan());
+            var l_実際 = new KmerKey(l_フォワード.AsSpan()).Get_逆相補();
 
-            Assert.True(expected.Equals(actual), $"expected Data=[{string.Join(",", expected.A_パック済みデータ)}] actual Data=[{string.Join(",", actual.A_パック済みデータ)}]");
+            Assert.True(l_期待値.Equals(l_実際), $"expected Data=[{string.Join(",", l_期待値.A_パック済みデータ)}] actual Data=[{string.Join(",", l_実際.A_パック済みデータ)}]");
         }
 
+        /// <summary>
+        /// 正規形は kmer とその逆相補で同じになる
+        /// </summary>
         [Theory]
         [InlineData(4)]
         [InlineData(31)]
         [InlineData(33)]
-        public void Canonical_IsSameForKmerAndItsReverseComplement(int k)
+        public void 正規形はkmerと逆相補で一致する(int p_k長)
         {
-            SetKmerLength(k);
-            var forward = "ACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAA"[..k];
-            var reverse = Util.V_逆相補(forward);
+            V_設定_k長(p_k長);
+            var l_フォワード = "ACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAA"[..p_k長];
+            var l_逆相補 = Util.V_逆相補(l_フォワード);
 
-            var forwardKey = new KmerKey(forward.AsSpan());
-            var reverseKey = new KmerKey(reverse.AsSpan());
+            var l_フォワードキー = new KmerKey(l_フォワード.AsSpan());
+            var l_逆相補キー = new KmerKey(l_逆相補.AsSpan());
 
-            Assert.True(forwardKey.Get_正規形().Equals(reverseKey.Get_正規形()));
+            Assert.True(l_フォワードキー.Get_正規形().Equals(l_逆相補キー.Get_正規形()));
         }
 
+        /// <summary>
+        /// 正規形はべき等
+        /// </summary>
         [Fact]
-        public void Canonical_IsIdempotent()
+        public void 正規形はべき等()
         {
-            SetKmerLength(31);
-            var key = new KmerKey("ACGTGGCCTTAAACGTGGCCTTAAACGTG".PadRight(31, 'A').AsSpan());
+            V_設定_k長(31);
+            var l_キー = new KmerKey("ACGTGGCCTTAAACGTGGCCTTAAACGTG".PadRight(31, 'A').AsSpan());
 
-            var canonical = key.Get_正規形();
+            var l_正規形 = l_キー.Get_正規形();
 
-            Assert.True(canonical.Equals(canonical.Get_正規形()));
+            Assert.True(l_正規形.Equals(l_正規形.Get_正規形()));
         }
 
+        /// <summary>
+        /// 異なる kmer の正規形は区別される
+        /// </summary>
         [Fact]
-        public void Canonical_DifferentKmers_RemainDistinct()
+        public void 異なるkmerの正規形は区別される()
         {
-            SetKmerLength(4);
-            var a = new KmerKey("ACGT".AsSpan()).Get_正規形();
-            var b = new KmerKey("TTTT".AsSpan()).Get_正規形();
+            V_設定_k長(4);
+            var l_甲 = new KmerKey("ACGT".AsSpan()).Get_正規形();
+            var l_乙 = new KmerKey("TTTT".AsSpan()).Get_正規形();
 
-            Assert.False(a.Equals(b));
+            Assert.False(l_甲.Equals(l_乙));
         }
     }
 }

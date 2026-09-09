@@ -11,6 +11,9 @@ namespace Tsumiki.Tests.Common
     /// </remarks>
     public class AmbiguousBaseTests
     {
+        /// <summary>
+        /// 曖昧塩基かの判定が候補数による判定と一致する
+        /// </summary>
         [Theory]
         [InlineData('A')]
         [InlineData('C')]
@@ -27,7 +30,7 @@ namespace Tsumiki.Tests.Common
         [InlineData('B')]
         [InlineData('Y')]
         [InlineData('K')]
-        public void Get_曖昧塩基か_AgreesWithTheCandidateCount(char p_塩基文字)
+        public void 候補数による判定と一致する(char p_塩基文字)
         {
             Assert.Equal(
                 Util.Get_塩基ID候補(p_塩基文字).Count > 1,
@@ -44,7 +47,7 @@ namespace Tsumiki.Tests.Common
         [InlineData('a')]
         [InlineData('Z')]
         [InlineData('-')]
-        public void Get_曖昧塩基か_RejectsANonBaseCharacter(char p_文字)
+        public void 塩基でない文字を拒否する(char p_文字)
         {
             _ = Assert.Throws<ArgumentException>(() => Util.Get_曖昧塩基か(p_文字));
         }

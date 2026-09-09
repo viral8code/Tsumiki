@@ -87,14 +87,20 @@ namespace Tsumiki.Tests.Utility
             return l_比;
         }
 
+        /// <summary>
+        /// 空のヒストグラムでは null を返す
+        /// </summary>
         [Fact]
-        public void Get_解析結果_EmptyHistogram_ReturnsNull()
+        public void 空のヒストグラムではnullを返す()
         {
             Assert.Null(KmerSpectrumMixtureModel.Get_解析結果(new Dictionary<ulong, long>()));
         }
 
+        /// <summary>
+        /// 走査範囲が狭すぎる場合は null を返す
+        /// </summary>
         [Fact]
-        public void Get_解析結果_TooNarrowAScanRange_ReturnsNull()
+        public void 走査範囲が狭すぎる場合はnullを返す()
         {
             // コピー数上限 (10) の 2 倍に満たない走査範囲では、単一コピーの山と
             // その倍数の山を区別する材料が無い
@@ -102,23 +108,26 @@ namespace Tsumiki.Tests.Utility
             Assert.Null(KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム));
         }
 
+        /// <summary>
+        /// 理論混合分布から、単一コピー平均を復元できる
+        /// </summary>
         [Fact]
-        public void Get_解析結果_RecoversSingleCopyMeanFromATheoreticalMixture()
+        public void 理論混合分布から単一コピー平均を復元できる()
         {
-            const double 真のλ = 30.0D;
-            const double 真の誤り平均 = 3.0D;
-            const double 真の誤り混合比 = 0.35D;
+            const double l_真のλ = 30.0D;
+            const double l_真の誤り平均 = 3.0D;
+            const double l_真の誤り混合比 = 0.35D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
 
             var l_ヒストグラム = Get_理論ヒストグラム(
-                真のλ, 真の誤り混合比, 真の誤り平均, l_コピー数別混合比, p_上限: 300, p_総数: 1_000_000);
+                l_真のλ, l_真の誤り混合比, l_真の誤り平均, l_コピー数別混合比, p_上限: 300, p_総数: 1_000_000L);
 
             var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
 
             Assert.NotNull(l_結果);
-            Assert.InRange(l_結果!.A_単一コピー平均, 真のλ - 2, 真のλ + 2);
+            Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ - 2, l_真のλ + 2);
             // カットオフは誤り成分側、信頼下限はカットオフ以上、どちらも単一コピー峰 (30) 未満のはず
-            Assert.InRange((double)l_結果.A_カットオフ, 1, 真のλ);
+            Assert.InRange((double)l_結果.A_カットオフ, 1, l_真のλ);
             Assert.True(l_結果.A_信頼下限 >= l_結果.A_カットオフ);
         }
 
@@ -127,20 +136,20 @@ namespace Tsumiki.Tests.Utility
         /// 谷が視認できるかどうかに関わらずモデルが分離できることを確かめる
         /// </summary>
         [Fact]
-        public void Get_解析結果_SeparatesComponentsEvenAtLowCoverage()
+        public void 低カバレッジでも成分を分離できる()
         {
-            const double 真のλ = 12.0D;
-            const double 真の誤り平均 = 2.0D;
-            const double 真の誤り混合比 = 0.5D;
+            const double l_真のλ = 12.0D;
+            const double l_真の誤り平均 = 2.0D;
+            const double l_真の誤り混合比 = 0.5D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
 
             var l_ヒストグラム = Get_理論ヒストグラム(
-                真のλ, 真の誤り混合比, 真の誤り平均, l_コピー数別混合比, p_上限: 150, p_総数: 500_000);
+                l_真のλ, l_真の誤り混合比, l_真の誤り平均, l_コピー数別混合比, p_上限: 150, p_総数: 500_000L);
 
             var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
 
             Assert.NotNull(l_結果);
-            Assert.InRange(l_結果!.A_単一コピー平均, 真のλ - 2, 真のλ + 2);
+            Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ - 2, l_真のλ + 2);
         }
     }
 }

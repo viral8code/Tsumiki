@@ -11,7 +11,7 @@
         public required string A_ID { get; set; }
 
         /// <summary>
-        /// 曖昧塩基を許容する経路 (Program.V_読込_リードファイル_曖昧塩基あり)向け
+        /// 曖昧塩基を許容する経路 (Program.V_読込_リードファイル_曖昧塩基あり) 向け
         /// </summary>
         /// <remarks>
         /// 各塩基が取りうる ID の候補リスト
@@ -19,7 +19,7 @@
         public List<byte[]>? A_塩基候補列 { get; set; }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路 (KmerCounting.V_読込_リードファイル)向けの軽量表現
+        /// 曖昧塩基を無視する経路 (KmerCounting.V_読込_リードファイル) 向けの軽量表現
         /// </summary>
         /// <remarks>
         /// 各塩基を 1 バイトの ID に変換したもの<br/>

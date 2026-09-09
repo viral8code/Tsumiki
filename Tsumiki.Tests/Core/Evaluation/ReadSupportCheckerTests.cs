@@ -50,14 +50,18 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_長さ">作る長さ</param>
         /// <param name="p_種">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int p_長さ, int p_種)
+        private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
-        /// <summary>元の配列を 100 bp のリードで隙間なく覆った FASTQ を作る<br/>
+        /// <summary>
+        /// 元の配列を 100 bp のリードで隙間なく覆った FASTQ を作る
         /// </summary>
+        /// <param name="p_名前">ファイル名</param>
+        /// <param name="p_元">元になる配列</param>
+        /// <returns>書き出したパス</returns>
         private string Get_リード(string p_名前, params string[] p_元)
         {
             var l_パス = Path.Combine(this._tempDir, p_名前);
@@ -89,10 +93,13 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
+        /// <summary>
+        /// リードどおりの配列なら支持のない位置は出ないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検査結果_リードどおりの配列なら支持のない位置は出ない()
         {
-            var l_真値 = RandomSequence(2000, p_種: 20260913);
+            var l_真値 = Get_乱数配列(2000, p_種: 20260913);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 
@@ -103,11 +110,14 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(l_結果.Value.A_区間);
         }
 
+        /// <summary>
+        /// 無関係な 2 本を繋いだ接合を 1 つの区間として指すことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検査結果_無関係な2本を繋いだ接合を1つの区間として指す()
         {
-            var l_左 = RandomSequence(1000, p_種: 20260914);
-            var l_右 = RandomSequence(1000, p_種: 20260915);
+            var l_左 = Get_乱数配列(1000, p_種: 20260914);
+            var l_右 = Get_乱数配列(1000, p_種: 20260915);
 
             // リードは左右それぞれからしか出ない
             // 繋いだ接合を読んだリードは無い
@@ -127,10 +137,13 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_左.Length + R - 1, l_区間.A_終了);
         }
 
+        /// <summary>
+        /// ギャップの N は支持を問わないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検査結果_ギャップのNは支持を問わない()
         {
-            var l_真値 = RandomSequence(2000, p_種: 20260916);
+            var l_真値 = Get_乱数配列(2000, p_種: 20260916);
             var l_リード = this.Get_リード("reads.fq", l_真値);
             var l_FASTA = this.Get_FASTA(
                 ("SEQ1", l_真値[..1000] + new string('N', 50) + l_真値[1000..]));
@@ -142,10 +155,13 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(l_結果.Value.A_区間);
         }
 
+        /// <summary>
+        /// r が長すぎる場合は調べないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検査結果_rが長すぎる場合は調べない()
         {
-            var l_真値 = RandomSequence(500, p_種: 20260917);
+            var l_真値 = Get_乱数配列(500, p_種: 20260917);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 

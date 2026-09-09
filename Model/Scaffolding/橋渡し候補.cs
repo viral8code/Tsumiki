@@ -8,9 +8,5 @@
     /// A_橋渡し配列 は 2 本の間に挟まる塩基<br/>
     /// 重なりだけで繋がる場合は空になる
     /// </remarks>
-    internal record 橋渡し候補(
-        int A_始点,
-        int A_終点,
-        string A_橋渡し配列,
-        int A_由来のk長);
+    internal record 橋渡し候補(int A_始点, int A_終点, string A_橋渡し配列, int A_由来のk長);
 }

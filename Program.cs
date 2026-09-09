@@ -21,16 +21,16 @@ namespace Tsumiki
         /// <summary>
         /// エントリポイント
         /// </summary>
-        /// <param name="args">コマンドライン引数</param>
-        private static void Main(string[] args)
+        /// <param name="p_引数列">コマンドライン引数</param>
+        private static void Main(string[] p_引数列)
         {
             try
             {
-                V_実行(args);
+                V_実行(p_引数列);
             }
-            catch (Exception ex)
+            catch (Exception l_例外)
             {
-                Logger.V_出力_エラー("Unhandled Tsumiki's method", ex);
+                Logger.V_出力_エラー("Unhandled Tsumiki's method", l_例外);
             }
             finally
             {

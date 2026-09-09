@@ -41,8 +41,10 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>リードに裏付けの無い位置が一つも無い検査結果<br/>
+        /// <summary>
+        /// リードに裏付けの無い位置が一つも無い検査結果
         /// </summary>
+        /// <returns>支持検査の結果</returns>
         private static 支持検査結果 Get_良好な支持()
         {
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
@@ -79,6 +81,9 @@ namespace Tsumiki.Tests.Core
             return JsonDocument.Parse(File.ReadAllText(l_パス)).RootElement.Clone();
         }
 
+        /// <summary>
+        /// 完全長の判定をそのまま JSON へ載せることを確かめる
+        /// </summary>
         [Fact]
         public void V_書き出し_レポート_完全長の判定をそのまま載せる()
         {
@@ -108,6 +113,9 @@ namespace Tsumiki.Tests.Core
                 l_JSON.GetProperty("circular_closure")[0].GetProperty("spanning_reads").GetInt32());
         }
 
+        /// <summary>
+        /// 未達の理由をコードで載せ、測っていない項目は null で区別することを確かめる
+        /// </summary>
         [Fact]
         public void V_書き出し_レポート_未達の理由をコードで載せる()
         {
@@ -135,6 +143,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(JsonValueKind.Null, l_JSON.GetProperty("circular_closure").ValueKind);
         }
 
+        /// <summary>
+        /// 引用符を含む ID でも JSON が壊れないことを確かめる
+        /// </summary>
         [Fact]
         public void V_書き出し_レポート_引用符を含むIDでも壊れない()
         {
@@ -147,6 +158,9 @@ namespace Tsumiki.Tests.Core
                 l_JSON.GetProperty("circular_closure")[0].GetProperty("id").GetString());
         }
 
+        /// <summary>
+        /// 見出しと各行を出力し、列数が見出しと一致することを確かめる
+        /// </summary>
         [Fact]
         public void V_書き出し_曖昧箇所_見出しと各行を出す()
         {

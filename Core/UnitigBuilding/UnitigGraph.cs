@@ -35,6 +35,11 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </remarks>
         public HashSet<int> A_自己ループ { get; }
 
+        /// <summary>
+        /// 構築済みの出辺と自己ループから頂点を作る
+        /// </summary>
+        /// <param name="p_出辺">頂点ごとの出辺</param>
+        /// <param name="p_自己ループ">自己ループを持つ頂点</param>
         private UnitigGraph(List<List<int>> p_出辺, HashSet<int> p_自己ループ)
         {
             this.A_出辺 = p_出辺;
@@ -411,8 +416,8 @@ namespace Tsumiki.Core.UnitigBuilding
                     var l_配列群 = l_経路群.Select(x => Get_経路配列(p_ユニティグ配列, x, p_k長)).ToList();
 
                     var l_基準長 = l_配列群.Min(x => x.Length);
-                    var l_delta = Math.Max(p_長さ帯の下限, p_長さ帯の割合 * l_基準長);
-                    if (l_配列群.Any(x => Math.Abs(x.Length - l_基準長) > l_delta))
+                    var l_差分 = Math.Max(p_長さ帯の下限, p_長さ帯の割合 * l_基準長);
+                    if (l_配列群.Any(x => Math.Abs(x.Length - l_基準長) > l_差分))
                     {
                         // 長さが揃っていない = 同じ領域の別表現ではなく
                         // 本物の分岐の可能性が高い

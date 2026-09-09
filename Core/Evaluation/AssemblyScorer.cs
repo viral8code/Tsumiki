@@ -51,9 +51,9 @@ namespace Tsumiki.Core.Evaluation
                 p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長,
                 out var l_環状本数, out var l_環状延長);
 
-            long l_期待延べ数 = 0L;
-            long l_欠損延べ数 = 0L;
-            long l_過剰延べ数 = 0L;
+            var l_期待延べ数 = 0L;
+            var l_欠損延べ数 = 0L;
+            var l_過剰延べ数 = 0L;
 
             foreach (var l_kmer in p_アンカーインデックス.Get_信頼kmer一覧())
             {
@@ -152,7 +152,7 @@ namespace Tsumiki.Core.Evaluation
                 return 0;
             }
 
-            long l_累積 = 0L;
+            var l_累積 = 0L;
             foreach (var l_長さ in p_長さ一覧.OrderByDescending(x => x))
             {
                 l_累積 += l_長さ;

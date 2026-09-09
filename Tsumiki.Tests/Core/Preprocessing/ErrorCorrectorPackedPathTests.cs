@@ -71,6 +71,9 @@ namespace Tsumiki.Tests.Core
             return l_インデックス;
         }
 
+        /// <summary>
+        /// さまざまな k 長でパック経路と逐次経路の訂正結果が一致することを検証する
+        /// </summary>
         [Theory]
         [InlineData(21)]
         [InlineData(32)]

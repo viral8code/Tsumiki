@@ -115,6 +115,9 @@ namespace Tsumiki.Tests.Core
             return p_インデックス.Get_含まれるか(l_kmer);
         }
 
+        /// <summary>
+        /// 信頼できる k-mer に両側から挟まれた低頻度 k-mer を救済することを検証する
+        /// </summary>
         [Fact]
         public void Get_救済数_信頼できるkmerに挟まれた低頻度kmerを救う()
         {
@@ -142,6 +145,9 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 穴を跨ぐ観測が 1 回だけでは救済しないことを検証する
+        /// </summary>
         [Fact]
         public void Get_救済数_観測が1回だけなら救わない()
         {
@@ -155,6 +161,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
         }
 
+        /// <summary>
+        /// 片側しか信頼できる窓に届かない端の低頻度 k-mer は救済しないことを検証する
+        /// </summary>
         [Fact]
         public void Get_救済数_片側しか信頼できない端の低頻度kmerは救わない()
         {
@@ -170,6 +179,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
         }
 
+        /// <summary>
+        /// k が 64 を超える場合は救済処理を何もしないことを検証する
+        /// </summary>
         [Fact]
         public void Get_救済数_kが64を超える場合は何もしない()
         {

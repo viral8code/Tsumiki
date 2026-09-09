@@ -71,48 +71,51 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const string UnitigD = "GAGCAGACCGTCTGTAACAGC";
 
-        private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build()
+        /// <summary>
+        /// A・B・R・C・D のユニティグ配列と、それらから作った kmer 辞書を組み立てる
+        /// </summary>
+        private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
-            List<string> unitigList = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
+            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int UnitigId, int Position)> l_kmer辞書 = [];
 
-            var id = 1;
-            foreach (var seq in new[] { UnitigA, UnitigB, UnitigR, UnitigC, UnitigD })
+            var l_ID = 1;
+            foreach (var l_配列 in new[] { UnitigA, UnitigB, UnitigR, UnitigC, UnitigD })
             {
-                unitigList.Add(seq);
-                unitigList.Add(Util.V_逆相補(seq));
-                for (var i = K; i <= seq.Length; i++)
+                l_ユニティグ配列.Add(l_配列);
+                l_ユニティグ配列.Add(Util.V_逆相補(l_配列));
+                for (var i = K; i <= l_配列.Length; i++)
                 {
-                    var startPos = i - K;
-                    var key = new KmerKey(seq.AsSpan(startPos, K));
-                    Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
+                    var l_開始位置 = i - K;
+                    var l_キー = new KmerKey(l_配列.AsSpan(l_開始位置, K));
+                    V_登録(l_kmer辞書, l_キー, l_ID, l_開始位置);
+                    V_登録(l_kmer辞書, l_キー.Get_逆相補(), -l_ID, l_配列.Length - i);
                 }
-                id++;
+                l_ID++;
             }
-            return (unitigList, kmerDict);
+            return (l_ユニティグ配列, l_kmer辞書);
         }
 
         /// <summary>
         /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
         /// </summary>
-        /// <param name="dict">登録先の辞書</param>
-        /// <param name="key">登録する k-mer</param>
-        /// <param name="id">ユニティグ ID</param>
-        /// <param name="position">ユニティグ内の開始位置</param>
-        private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
+        /// <param name="p_辞書">登録先の辞書</param>
+        /// <param name="p_キー">登録する k-mer</param>
+        /// <param name="p_ID">ユニティグ ID</param>
+        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
-            if (dict.TryGetValue(key, out var existing))
+            if (p_辞書.TryGetValue(p_キー, out var l_既存))
             {
-                if (existing.Item1 is AmbiguousKmer || existing.Item1 == id)
+                if (l_既存.Item1 is AmbiguousKmer || l_既存.Item1 == p_ID)
                 {
                     return;
                 }
-                dict[key] = (AmbiguousKmer, 0);
+                p_辞書[p_キー] = (AmbiguousKmer, 0);
                 return;
             }
-            dict[key] = (id, position);
+            p_辞書[p_キー] = (p_ID, p_位置);
         }
 
         /// <summary>
@@ -123,7 +126,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void WithoutVerifier_TheMisleadingCrossedPairingIsResolvedByPairSupportAlone()
         {
-            var (unitigList, kmerDict) = Build();
+            var (unitigList, kmerDict) = V_構築();
             var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
             var a = ContigMaker.Get_頂点番号(1);
@@ -170,7 +173,7 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(tempDir);
             try
             {
-                var (unitigList, kmerDict) = Build();
+                var (unitigList, kmerDict) = V_構築();
                 var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
                 var a = ContigMaker.Get_頂点番号(1);
@@ -217,7 +220,7 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(tempDir);
             try
             {
-                var (unitigList, kmerDict) = Build();
+                var (unitigList, kmerDict) = V_構築();
                 var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
 
                 var a = ContigMaker.Get_頂点番号(1);

@@ -51,6 +51,9 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const string ユニティグB = "GAGCAGACCGTCTGTAACAGCTGTATTGAGGTCGTCTCCGTC";
 
+        /// <summary>
+        /// A・B・R のユニティグ配列と、それらから作った kmer 辞書を組み立てる
+        /// </summary>
         private static (List<string> A_ユニティグ配列, Dictionary<KmerKey, (int, int)> A_kmer辞書) Get_構成()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
@@ -119,6 +122,9 @@ namespace Tsumiki.Tests.Core
             return (l_グラフ, l_ユニティグ配列, l_a, l_b, l_r);
         }
 
+        /// <summary>
+        /// A の次は B、B の次は A というペア証拠があれば、入口と出口が同じユニティグの環でも 1 本道に解ける
+        /// </summary>
         [Fact]
         public void V_解決_短い反復_入口と出口に同じユニティグが立つ環でも解ける()
         {
@@ -150,6 +156,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_a, Assert.Single(l_グラフ.A_出辺[l_Bの次]));
         }
 
+        /// <summary>
+        /// A の次は A、B の次は B というペア証拠があれば、2 本の独立した環に解ける
+        /// </summary>
         [Fact]
         public void V_解決_短い反復_2本の環に分かれる対応付けも同じように解ける()
         {
@@ -175,6 +184,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_b, Assert.Single(l_グラフ.A_出辺[l_Bの次]));
         }
 
+        /// <summary>
+        /// 1 本の環と 2 本の環の証拠が拮抗していれば解決せずグラフを変えない
+        /// </summary>
         [Fact]
         public void V_解決_短い反復_どちらの対応付けとも決まらなければ触らない()
         {
@@ -199,6 +211,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(2, l_グラフ.A_出辺[l_r].Count);
         }
 
+        /// <summary>
+        /// 反復を跨ぐペアの証拠数が最小証拠数に届かなければ解決せずグラフを変えない
+        /// </summary>
         [Fact]
         public void V_解決_短い反復_跨いだペアが足りなければ触らない()
         {
@@ -218,6 +233,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(2, l_グラフ.A_出辺[l_r].Count);
         }
 
+        /// <summary>
+        /// 反復の長さが上限を超えていれば解決せずグラフを変えない
+        /// </summary>
         [Fact]
         public void V_解決_短い反復_反復が長すぎれば触らない()
         {

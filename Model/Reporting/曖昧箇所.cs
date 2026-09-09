@@ -42,15 +42,10 @@
     /// N で埋めて黙って落とすと、後から
     /// 人や別のツールが再解析するための手掛かりが残らない
     /// </remarks>
-    internal readonly record struct 曖昧箇所(
-        int A_k長,
-        曖昧箇所の種別 A_種別,
-        string A_場所,
-        double A_首位の支持,
-        double A_次点の支持,
-        long A_首位の生支持数,
-        double A_確信度)
+    internal readonly record struct 曖昧箇所(int A_k長, 曖昧箇所の種別 A_種別, string A_場所, double A_首位の支持, double A_次点の支持, long A_首位の生支持数, double A_確信度)
     {
+        #region カスタムプロパティ
+
         /// <summary>
         /// 首位と次点の差
         /// </summary>
@@ -58,5 +53,7 @@
         /// これが小さいほど選ぶ根拠が薄い
         /// </remarks>
         public double A_余裕 => this.A_首位の支持 - this.A_次点の支持;
+
+        #endregion
     }
 }

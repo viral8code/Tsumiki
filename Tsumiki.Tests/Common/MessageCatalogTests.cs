@@ -40,6 +40,9 @@ namespace Tsumiki.Tests.Common
                 .Order()];
         }
 
+        /// <summary>
+        /// 全てのメッセージIDに全ての言語の訳がある
+        /// </summary>
         [Fact]
         public void 全てのIDに全ての言語の文言がある()
         {
@@ -51,6 +54,9 @@ namespace Tsumiki.Tests.Common
             Assert.Empty(l_欠け);
         }
 
+        /// <summary>
+        /// 各言語の訳の差し込み位置が英語の書式と一致する
+        /// </summary>
         [Fact]
         public void 訳の差し込み位置が英語と一致する()
         {
@@ -64,6 +70,9 @@ namespace Tsumiki.Tests.Common
             }
         }
 
+        /// <summary>
+        /// 文言に引数を差し込める
+        /// </summary>
         [Fact]
         public void 引数を差し込める()
         {

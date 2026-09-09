@@ -16,6 +16,9 @@ namespace Tsumiki.Core.Scaffolding
     /// <remarks>
     /// 出力は新規ファイルで、contigs.fasta 自体は変更しない
     /// </remarks>
+    /// <param name="p_コンティグ構築">確定辺・配置情報を持つコンティグ構築器</param>
+    /// <param name="p_コンティグファイルパス">読み直す contig ファイルのパス</param>
+    /// <param name="p_リード長">リード長、不明なら null</param>
     internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
     {
         /// <summary>
@@ -308,7 +311,7 @@ namespace Tsumiki.Core.Scaffolding
 
             using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
             var l_スキャフォールドID = 1;
-            long l_総延長 = 0L;
+            var l_総延長 = 0L;
             foreach (var (l_配列, l_環状か) in l_スキャフォールド群)
             {
                 var l_名前 = l_環状か

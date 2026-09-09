@@ -50,46 +50,56 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る
         /// </summary>
-        /// <param name="length">作る長さ</param>
-        /// <param name="seed">乱数の種</param>
+        /// <param name="p_length">作る長さ</param>
+        /// <param name="p_seed">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int length, int seed)
+        private static string V_生成_乱数配列(int p_length, int p_seed)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_rng = new Random(p_seed);
+            return string.Concat(Enumerable.Range(0, p_length).Select(_ => "ACGT"[l_rng.Next(4)]));
         }
 
+        /// <summary>
+        /// 配列の全 k-mer を、指定した深さだけ信頼できる kmer 索引へ登録する
+        /// </summary>
+        /// <param name="p_index">登録先の索引</param>
+        /// <param name="p_seq">登録する配列</param>
+        /// <param name="p_depth">各 k-mer を登録する回数</param>
+        /// <param name="p_k">k-mer 長</param>
+        private static void V_登録_全kmer(TrustedKmerIndex p_index, string p_seq, int p_depth, int p_k)
+        {
+            var l_bytes = p_seq.Select(Util.Get_塩基ID).ToArray();
+            for (var i = 0; i + p_k <= l_bytes.Length; i++)
+            {
+                for (var rep = 0; rep < p_depth; rep++)
+                {
+                    p_index.V_登録(l_bytes.AsSpan(i, p_k), p_ワーカー番号: 0);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 単一コピーと 2 倍・4 倍コピーの配列をカバレッジ比から分離できる
+        /// </summary>
         [Fact]
-        public void Estimate_SeparatesSingleCopyFromTwoCopyAndFourCopySequences()
+        public void 単一コピーと2倍_4倍コピーの配列を分離できる()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             // 単一コピー相当を 2 本 (長さで基準値を支配させる)、
             // 2 倍・4 倍のカバレッジで登録する配列を 1 本ずつ用意する
-            var single1 = RandomSequence(400, seed: 1);
-            var single2 = RandomSequence(400, seed: 2);
-            var doubled = RandomSequence(120, seed: 3);
-            var quadrupled = RandomSequence(120, seed: 4);
+            var single1 = V_生成_乱数配列(400, p_seed: 1);
+            var single2 = V_生成_乱数配列(400, p_seed: 2);
+            var doubled = V_生成_乱数配列(120, p_seed: 3);
+            var quadrupled = V_生成_乱数配列(120, p_seed: 4);
 
             using var index = new TrustedKmerIndex(this._tempDir);
 
-            void Add(string seq, int depth)
-            {
-                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + k <= bytes.Length; i++)
-                {
-                    for (var rep = 0; rep < depth; rep++)
-                    {
-                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
-                    }
-                }
-            }
-
-            Add(single1, 20);
-            Add(single2, 20);
-            Add(doubled, 40);
-            Add(quadrupled, 80);
+            V_登録_全kmer(index, single1, 20, k);
+            V_登録_全kmer(index, single2, 20, k);
+            V_登録_全kmer(index, doubled, 40, k);
+            V_登録_全kmer(index, quadrupled, 80, k);
 
             _ = index.V_カットオフ(p_カットオフ: 2);
 
@@ -122,30 +132,18 @@ namespace Tsumiki.Tests.Core
         /// 1.5 倍未満は単一コピーとして扱う
         /// </remarks>
         [Fact]
-        public void Estimate_TreatsMildlyElevatedCoverageAsSingleCopy()
+        public void わずかに高いカバレッジの配列を単一コピーとして扱う()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
-            var baselineSeq = RandomSequence(400, seed: 5);
-            var slightlyHigher = RandomSequence(120, seed: 6);
+            var baselineSeq = V_生成_乱数配列(400, p_seed: 5);
+            var slightlyHigher = V_生成_乱数配列(120, p_seed: 6);
 
             using var index = new TrustedKmerIndex(this._tempDir);
 
-            void Add(string seq, int depth)
-            {
-                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + k <= bytes.Length; i++)
-                {
-                    for (var rep = 0; rep < depth; rep++)
-                    {
-                        index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
-                    }
-                }
-            }
-
-            Add(baselineSeq, 20);
-            Add(slightlyHigher, 26); // 1.3倍
+            V_登録_全kmer(index, baselineSeq, 20, k);
+            V_登録_全kmer(index, slightlyHigher, 26, k); // 1.3倍
 
             _ = index.V_カットオフ(p_カットオフ: 2);
 
@@ -163,23 +161,16 @@ namespace Tsumiki.Tests.Core
         /// コピー数 0 にして経路から締め出してはいけない (配列自体は存在する)
         /// </summary>
         [Fact]
-        public void Estimate_UnitigShorterThanKmer_GetsCopyNumberOneRatherThanZero()
+        public void kmer長より短いunitigはコピー数0でなく1になる()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
-            var normal = RandomSequence(300, seed: 8);
-            var tooShort = RandomSequence(10, seed: 9);
+            var normal = V_生成_乱数配列(300, p_seed: 8);
+            var tooShort = V_生成_乱数配列(10, p_seed: 9);
 
             using var index = new TrustedKmerIndex(this._tempDir);
-            var bytes = normal.Select(Util.Get_塩基ID).ToArray();
-            for (var i = 0; i + k <= bytes.Length; i++)
-            {
-                for (var rep = 0; rep < 20; rep++)
-                {
-                    index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: 0);
-                }
-            }
+            V_登録_全kmer(index, normal, 20, k);
             _ = index.V_カットオフ(p_カットオフ: 2);
 
             Dictionary<int, string> unitigs = new() { [1] = normal, [2] = tooShort };
@@ -203,19 +194,19 @@ namespace Tsumiki.Tests.Core
         /// unicycler の copy depth propagation が解決する問題そのもの
         /// </remarks>
         [Fact]
-        public void Estimate_WithGraph_RecognisesAHighCoveragePlasmidBackboneAsSingleCopy()
+        public void グラフを使うと高カバレッジのプラスミド骨格を単一コピーと認識できる()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             ConfigurationManager.A_スペクトルモデル = null;
 
             // 染色体相当 (長さで大域基準値=60 を支配する)
-            var chromosome = RandomSequence(400, seed: 10);
+            var chromosome = V_生成_乱数配列(400, p_seed: 10);
 
             // プラスミド相当
             // 1 本の配列を k-1(=20) ずつ重ねて 3 本に切り出し、
             // 分岐の無い鎖 plasmid1 -> plasmid2 -> plasmid3 を作る
-            var plasmidFull = RandomSequence(90, seed: 20);
+            var plasmidFull = V_生成_乱数配列(90, p_seed: 20);
             var plasmid1 = plasmidFull[..40];
             var plasmid2 = plasmidFull[20..60];
             var plasmid3 = plasmidFull[40..90];
@@ -265,14 +256,14 @@ namespace Tsumiki.Tests.Core
         /// 比較材料が無いため接続補正の対象にせず、大域基準値との比のまま残す
         /// </summary>
         [Fact]
-        public void Estimate_WithGraph_LeavesAnIsolatedHighCoverageUnitigUnchanged()
+        public void グラフを使っても孤立した高カバレッジunitigは補正されない()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             ConfigurationManager.A_スペクトルモデル = null;
 
-            var chromosome = RandomSequence(400, seed: 11);
-            var isolatedRepeat = RandomSequence(50, seed: 21); // 他のどれとも重ならない
+            var chromosome = V_生成_乱数配列(400, p_seed: 11);
+            var isolatedRepeat = V_生成_乱数配列(50, p_seed: 21); // 他のどれとも重ならない
 
             var fastaPath = Path.Combine(this._tempDir, "unitigs.fasta");
             using (var writer = new FastaWriter(fastaPath))
@@ -302,14 +293,14 @@ namespace Tsumiki.Tests.Core
         /// 単一コピーとみなしてよい (高コピープラスミド自身の水準で 1 コピー)
         /// </remarks>
         [Fact]
-        public void Estimate_WithGraph_RecognisesAnIsolatedLongUnitigAsItsOwnSingleCopyReplicon()
+        public void グラフを使うと孤立した長いunitigを単独の単一コピーレプリコンと認識できる()
         {
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             ConfigurationManager.A_スペクトルモデル = null;
 
-            var chromosome = RandomSequence(400, seed: 12);
-            var plasmid = RandomSequence(600, seed: 22); // 染色体とは無関係、500bp超
+            var chromosome = V_生成_乱数配列(400, p_seed: 12);
+            var plasmid = V_生成_乱数配列(600, p_seed: 22); // 染色体とは無関係、500bp超
 
             var fastaPath = Path.Combine(this._tempDir, "unitigs.fasta");
             using (var writer = new FastaWriter(fastaPath))

@@ -14,6 +14,9 @@ namespace Tsumiki.Tests.Common
     /// </remarks>
     public class MemorySizeParsingTests
     {
+        /// <summary>
+        /// 接尾辞付きのサイズ指定を読み取る
+        /// </summary>
         [Theory]
         [InlineData("2G", 2L * 1024 * 1024 * 1024)]
         [InlineData("2g", 2L * 1024 * 1024 * 1024)]
@@ -24,9 +27,9 @@ namespace Tsumiki.Tests.Common
         [InlineData("1T", 1024L * 1024 * 1024 * 1024)]
         [InlineData("1.5G", (long)(1.5 * 1024 * 1024 * 1024))]
         [InlineData("0.5G", 512L * 1024 * 1024)]
-        public void ParseMemorySize_ReadsSuffixedSizes(string text, long expected)
+        public void 接尾辞付きサイズを読み取る(string p_文字列, long p_期待値)
         {
-            Assert.Equal(expected, Util.V_変換_メモリサイズ(text));
+            Assert.Equal(p_期待値, Util.V_変換_メモリサイズ(p_文字列));
         }
 
         /// <summary>
@@ -39,11 +42,14 @@ namespace Tsumiki.Tests.Common
         [Theory]
         [InlineData("768", 768L * 1024 * 1024)]
         [InlineData("2048", 2048L * 1024 * 1024)]
-        public void ParseMemorySize_BareNumberMeansMegabytes(string text, long expected)
+        public void 接尾辞なしはメガバイト扱い(string p_文字列, long p_期待値)
         {
-            Assert.Equal(expected, Util.V_変換_メモリサイズ(text));
+            Assert.Equal(p_期待値, Util.V_変換_メモリサイズ(p_文字列));
         }
 
+        /// <summary>
+        /// 不正な入力を拒否する
+        /// </summary>
         [Theory]
         [InlineData("")]
         [InlineData("   ")]
@@ -51,16 +57,19 @@ namespace Tsumiki.Tests.Common
         [InlineData("-1G")]
         [InlineData("0")]
         [InlineData("G")]
-        public void ParseMemorySize_RejectsInvalidInput(string text)
+        public void 不正な入力を拒否する(string p_文字列)
         {
-            _ = Assert.Throws<ArgumentException>(() => Util.V_変換_メモリサイズ(text));
+            _ = Assert.Throws<ArgumentException>(() => Util.V_変換_メモリサイズ(p_文字列));
         }
 
+        /// <summary>
+        /// Parameters が接尾辞付きのメモリ予算を受け付ける
+        /// </summary>
         [Fact]
-        public void Parameters_AcceptsSuffixedMemoryBudget()
+        public void メモリ予算に接尾辞付き指定を受け付ける()
         {
-            var param = new Parameters { A_メモリ予算 = "2G" };
-            Assert.Equal(2L * 1024 * 1024 * 1024, param.A_メモリ予算バイト数);
+            var l_パラメータ = new Parameters { A_メモリ予算 = "2G" };
+            Assert.Equal(2L * 1024 * 1024 * 1024, l_パラメータ.A_メモリ予算バイト数);
         }
 
         /// <summary>
@@ -70,9 +79,9 @@ namespace Tsumiki.Tests.Common
         [InlineData(2L * 1024 * 1024 * 1024, "2 GB")]
         [InlineData(768L * 1024 * 1024, "768 MB")]
         [InlineData(1536L * 1024 * 1024, "1.5 GB")]
-        public void FormatMemorySize_RoundTripsToAReadableForm(long bytes, string expected)
+        public void 読みやすい形式へ変換する(long p_バイト数, string p_期待値)
         {
-            Assert.Equal(expected, Util.Get_表示用メモリサイズ(bytes));
+            Assert.Equal(p_期待値, Util.Get_表示用メモリサイズ(p_バイト数));
         }
     }
 }

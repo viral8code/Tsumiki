@@ -11,11 +11,5 @@
     /// 前者は「これ以上は使ってよい」、後者は「これ以上は誤り成分が
     /// 全く混じらないので判定を待たず無条件に信頼してよい」を意味する
     /// </remarks>
-    internal record 混合スペクトル解析結果(
-        double A_単一コピー平均,
-        ulong A_カットオフ,
-        ulong A_信頼下限,
-        double A_誤り成分の混合比,
-        double A_誤り成分の平均,
-        int A_反復回数);
+    internal record 混合スペクトル解析結果(double A_単一コピー平均, ulong A_カットオフ, ulong A_信頼下限, double A_誤り成分の混合比, double A_誤り成分の平均, int A_反復回数);
 }

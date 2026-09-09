@@ -26,7 +26,7 @@ namespace Tsumiki.Core
         /// </summary>
         private const int 曖昧kmerの番兵 = int.MinValue;
 
-        // 値は (符号付き unitig ID, その unitig 内での k-mer開始位置 (0 始まり、
+        // 値は (符号付き unitig ID, その unitig 内での k-mer 開始位置 (0 始まり、
         // 符号が示す向きの座標系))
         // 位置情報は代表ユニティグの判定が
         // 「read 内での最後のヒット位置」ではなく「unitig 内での最後のヒット

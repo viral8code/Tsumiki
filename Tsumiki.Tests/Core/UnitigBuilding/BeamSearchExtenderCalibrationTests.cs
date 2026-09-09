@@ -24,49 +24,49 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 曖昧塩基を含む窓を表す番号
         /// </summary>
-        private const int AmbiguousKmer = int.MinValue;
+        private const int 曖昧kmer番号 = int.MinValue;
 
         /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int K = 21;
+        private const int k長 = 21;
 
         /// <summary>
         /// アンカーとして使う長さ
         /// </summary>
-        private const int AnchorLength = K - 1;
+        private const int アンカー長 = k長 - 1;
 
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る
         /// </summary>
-        /// <param name="length">作る長さ</param>
-        /// <param name="seed">乱数の種</param>
+        /// <param name="p_length">作る長さ</param>
+        /// <param name="p_seed">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int length, int seed)
+        private static string V_生成_乱数配列(int p_length, int p_seed)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_rng = new Random(p_seed);
+            return string.Concat(Enumerable.Range(0, p_length).Select(_ => "ACGT"[l_rng.Next(4)]));
         }
 
         /// <summary>
         /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
         /// </summary>
-        /// <param name="dict">登録先の辞書</param>
-        /// <param name="key">登録する k-mer</param>
-        /// <param name="id">ユニティグ ID</param>
-        /// <param name="position">ユニティグ内の開始位置</param>
-        private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
+        /// <param name="p_dict">登録先の辞書</param>
+        /// <param name="p_key">登録する k-mer</param>
+        /// <param name="p_id">ユニティグ ID</param>
+        /// <param name="p_position">ユニティグ内の開始位置</param>
+        private static void V_登録_kmer(Dictionary<KmerKey, (int, int)> p_dict, KmerKey p_key, int p_id, int p_position)
         {
-            if (dict.TryGetValue(key, out var existing))
+            if (p_dict.TryGetValue(p_key, out var l_existing))
             {
-                if (existing.Item1 is AmbiguousKmer || existing.Item1 == id)
+                if (l_existing.Item1 is 曖昧kmer番号 || l_existing.Item1 == p_id)
                 {
                     return;
                 }
-                dict[key] = (AmbiguousKmer, 0);
+                p_dict[p_key] = (曖昧kmer番号, 0);
                 return;
             }
-            dict[key] = (id, position);
+            p_dict[p_key] = (p_id, p_position);
         }
 
         /// <summary>
@@ -75,47 +75,47 @@ namespace Tsumiki.Tests.Core
         /// <remarks>
         /// A の末尾 20 塩基 (=k-1) を B・C 両方の先頭が共有することで分岐にする
         /// </remarks>
-        private static (List<string> UnitigList, UnitigGraph Graph, int A, int B, int C) Build()
+        private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ, int A_分岐元ID, int A_短い方ID, int A_長い方ID) V_構築()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
 
-            var anchor = RandomSequence(AnchorLength, seed: 20260908);
-            var unitigA = RandomSequence(230, seed: 1) + anchor; // 250bp
-            var unitigB = anchor + RandomSequence(15, seed: 2); // 35bp(短い)
-            var unitigC = anchor + RandomSequence(2000, seed: 3); // 2020bp(長い)
+            var l_anchor = V_生成_乱数配列(アンカー長, p_seed: 20260908);
+            var l_unitigA = V_生成_乱数配列(230, p_seed: 1) + l_anchor; // 250bp
+            var l_unitigB = l_anchor + V_生成_乱数配列(15, p_seed: 2); // 35bp(短い)
+            var l_unitigC = l_anchor + V_生成_乱数配列(2000, p_seed: 3); // 2020bp(長い)
 
-            List<string> unitigList = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
+            List<string> l_unitigList = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int UnitigId, int Position)> l_kmerDict = [];
 
-            var id = 1;
-            foreach (var seq in new[] { unitigA, unitigB, unitigC })
+            var l_id = 1;
+            foreach (var l_seq in new[] { l_unitigA, l_unitigB, l_unitigC })
             {
-                unitigList.Add(seq);
-                unitigList.Add(Util.V_逆相補(seq));
-                for (var i = K; i <= seq.Length; i++)
+                l_unitigList.Add(l_seq);
+                l_unitigList.Add(Util.V_逆相補(l_seq));
+                for (var i = k長; i <= l_seq.Length; i++)
                 {
-                    var startPos = i - K;
-                    var key = new KmerKey(seq.AsSpan(startPos, K));
-                    Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
+                    var l_startPos = i - k長;
+                    var l_key = new KmerKey(l_seq.AsSpan(l_startPos, k長));
+                    V_登録_kmer(l_kmerDict, l_key, l_id, l_startPos);
+                    V_登録_kmer(l_kmerDict, l_key.Get_逆相補(), -l_id, l_seq.Length - i);
                 }
-                id++;
+                l_id++;
             }
 
-            var graph = UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer);
-            return (unitigList, graph, 1, 2, 3);
+            var l_graph = UnitigGraph.Get_グラフ(l_unitigList, l_kmerDict, k長, 曖昧kmer番号);
+            return (l_unitigList, l_graph, 1, 2, 3);
         }
 
         /// <summary>
         /// どこも結合していない状態の結合表を作る
         /// </summary>
-        /// <param name="graph">対象のユニティググラフ</param>
+        /// <param name="p_graph">対象のユニティググラフ</param>
         /// <returns>結合表</returns>
-        private static int[] NoMerges(UnitigGraph graph)
+        private static int[] V_構築_未結合表(UnitigGraph p_graph)
         {
-            var merge = new int[graph.A_出辺.Count];
-            Array.Fill(merge, -1);
-            return merge;
+            var l_merge = new int[p_graph.A_出辺.Count];
+            Array.Fill(l_merge, -1);
+            return l_merge;
         }
 
         /// <summary>
@@ -123,25 +123,28 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private static List<int> Get_同一ユニティグ標本(int p_件数 = 300) => [.. Enumerable.Repeat(150, p_件数)];
 
+        /// <summary>
+        /// 較正なしでは、生カウントの差だけでは優勢と判定されない
+        /// </summary>
         [Fact]
-        public void Extend_WithoutCalibration_RawCountsDoNotDominateEnoughToDecide()
+        public void 較正なしでは生カウントの差だけでは優勢と判定されない()
         {
-            var (unitigList, graph, aId, bId, cId) = Build();
-            var a = ContigMaker.Get_頂点番号(aId);
-            var b = ContigMaker.Get_頂点番号(bId);
-            var c = ContigMaker.Get_頂点番号(cId);
+            var (l_unitigList, l_graph, l_aId, l_bId, l_cId) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(l_aId);
+            var l_b = ContigMaker.Get_頂点番号(l_bId);
+            var l_c = ContigMaker.Get_頂点番号(l_cId);
 
             // 生カウントでは C(4) が B(3) よりわずかに多いが、
             // 優勢比 4/7=0.571 は閾値 0.8 を超えない
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, b)] = 3, [(a, c)] = 4 };
-            Dictionary<int, int> copyNumber = new() { [aId] = 1, [bId] = 1, [cId] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_b)] = 3, [(l_a, l_c)] = 4 };
+            Dictionary<int, int> l_copyNumber = new() { [l_aId] = 1, [l_bId] = 1, [l_cId] = 1 };
 
-            var merge = NoMerges(graph);
+            var l_merge = V_構築_未結合表(l_graph);
             _ = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: null);
 
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(-1, l_merge[l_a]);
         }
 
         /// <summary>
@@ -153,29 +156,29 @@ namespace Tsumiki.Tests.Core
         /// あるとわかり、優勢閾値を超えて A→B が選ばれるはず
         /// </remarks>
         [Fact]
-        public void Extend_WithCalibration_PrefersTheShortFlank_ThatRawCountsCouldNotDecide()
+        public void 較正すると生カウントでは決められなかった短い側の分岐が選ばれる()
         {
-            var (unitigList, graph, aId, bId, cId) = Build();
-            var a = ContigMaker.Get_頂点番号(aId);
-            var b = ContigMaker.Get_頂点番号(bId);
-            var c = ContigMaker.Get_頂点番号(cId);
+            var (l_unitigList, l_graph, l_aId, l_bId, l_cId) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(l_aId);
+            var l_b = ContigMaker.Get_頂点番号(l_bId);
+            var l_c = ContigMaker.Get_頂点番号(l_cId);
 
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, b)] = 3, [(a, c)] = 4 };
-            Dictionary<int, int> copyNumber = new() { [aId] = 1, [bId] = 1, [cId] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_b)] = 3, [(l_a, l_c)] = 4 };
+            Dictionary<int, int> l_copyNumber = new() { [l_aId] = 1, [l_bId] = 1, [l_cId] = 1 };
 
-            var 較正器 = 証拠較正器.Get_較正器(
+            var l_較正器 = 証拠較正器.Get_較正器(
                 Get_同一ユニティグ標本(), p_リード長: 30,
-                [(long)unitigList[a].Length, (long)unitigList[b].Length, (long)unitigList[c].Length]);
-            Assert.True(較正器.A_使えるか);
+                [(long)l_unitigList[l_a].Length, (long)l_unitigList[l_b].Length, (long)l_unitigList[l_c].Length]);
+            Assert.True(l_較正器.A_使えるか);
 
-            var merge = NoMerges(graph);
-            var committed = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: 較正器);
+            var l_merge = V_構築_未結合表(l_graph);
+            var l_committed = BeamSearchExtender.V_延長_先読み(
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: l_較正器);
 
-            Assert.True(committed > 0, "calibrated lookahead should have resolved the junction toward the short flank");
-            Assert.Equal(b, merge[a]);
-            Assert.Equal(a ^ 1, merge[b ^ 1]);
+            Assert.True(l_committed > 0, "calibrated lookahead should have resolved the junction toward the short flank");
+            Assert.Equal(l_b, l_merge[l_a]);
+            Assert.Equal(l_a ^ 1, l_merge[l_b ^ 1]);
         }
     }
 }

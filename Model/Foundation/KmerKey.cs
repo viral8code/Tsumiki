@@ -2,6 +2,9 @@
 
 namespace Tsumiki.Model.Foundation
 {
+    /// <summary>
+    /// k-mer をパックした固定長キー
+    /// </summary>
     internal readonly struct KmerKey : IEquatable<KmerKey>
     {
         /// <summary>
@@ -9,6 +12,10 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public readonly ulong[] A_パック済みデータ;
 
+        /// <summary>
+        /// char の k-mer 文字列からパック済みデータを構築する
+        /// </summary>
+        /// <param name="p_kmer">パックする k-mer 文字列</param>
         public KmerKey(ReadOnlySpan<char> p_kmer)
         {
             this.A_パック済みデータ = new ulong[(p_kmer.Length + 31) >> 5];
@@ -30,11 +37,11 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 塩基ID(1=A,2=C,3=G,4=T) のバイト列から直接構築する版
+        /// 塩基ID (1=A,2=C,3=G,4=T) のバイト列から直接構築する版
         /// </summary>
         /// <remarks>
         /// UnitigMaker/TrustedKmerIndex はバイト ID 空間で動作しているため、
-        /// char経由の変換を挟まずに済む (ホットパス向け)
+        /// char 経由の変換を挟まずに済む (ホットパス向け)
         /// </remarks>
         public KmerKey(ReadOnlySpan<byte> p_kmer)
         {
@@ -91,7 +98,7 @@ namespace Tsumiki.Model.Foundation
         /// <remarks>
         /// 64 bit 全体のビット反転で済ませてはいけない<br/>
         /// 2 bit コドン内部の
-        /// ビット順まで入れ替わり、C(01) と G(10) のような塩基で値が化ける
+        /// ビット順まで入れ替わり、C (01) と G (10) のような塩基で値が化ける
         /// </remarks>
         public KmerKey Get_逆相補()
         {
@@ -100,10 +107,10 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// パック済みデータを、塩基ID(1=A,2=C,3=G,4=T) のバイト列へデコードする
+        /// パック済みデータを、塩基ID (1=A,2=C,3=G,4=T) のバイト列へデコードする
         /// </summary>
         /// <remarks>
-        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ)を指定する
+        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ) を指定する
         /// </remarks>
         public byte[] Get_塩基列(int p_長さ)
         {

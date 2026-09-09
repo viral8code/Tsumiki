@@ -25,8 +25,8 @@ namespace Tsumiki.Core.Preprocessing
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ulong l_総リード数 = 0UL;
-            ulong l_ログ回数 = 0UL;
+            var l_総リード数 = 0UL;
+            var l_ログ回数 = 0UL;
             var l_カウンタロック = new object();
 
             ReadPipeline.V_実行(
@@ -38,7 +38,7 @@ namespace Tsumiki.Core.Preprocessing
                     V_登録_1リード(l_リード, p_kmerインデックス, l_ワーカー番号);
 
                     var l_ログ出力するか = false;
-                    ulong l_ログ値 = 0UL;
+                    var l_ログ値 = 0UL;
                     lock (l_カウンタロック)
                     {
                         l_総リード数++;
@@ -115,8 +115,8 @@ namespace Tsumiki.Core.Preprocessing
         /// </remarks>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
-            ulong l_件数 = 0UL;
-            ulong l_ログ回数 = 0UL;
+            var l_件数 = 0UL;
+            var l_ログ回数 = 0UL;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;

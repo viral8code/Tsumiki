@@ -62,20 +62,20 @@ namespace Tsumiki.Core.UnitigBuilding
             {
                 if (l_配列.Length < p_k長)
                 {
-                    l_カバレッジ[l_ID] = 0;
+                    l_カバレッジ[l_ID] = 0D;
                     continue;
                 }
 
                 var l_塩基列 = Util.V_変換_塩基列(l_配列);
 
-                ulong l_合計 = 0UL;
+                var l_合計 = 0UL;
                 var l_件数 = 0;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
                 {
                     l_合計 += p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長));
                     l_件数++;
                 }
-                l_カバレッジ[l_ID] = l_件数 == 0 ? 0 : (double)l_合計 / l_件数;
+                l_カバレッジ[l_ID] = l_件数 == 0 ? 0D : (double)l_合計 / l_件数;
             }
             return l_カバレッジ;
         }
@@ -105,14 +105,14 @@ namespace Tsumiki.Core.UnitigBuilding
             // 適合に失敗している場合は
             // 従来どおり unitig カバレッジの長さ加重中央値にフォールバックする
             var l_モデル基準値 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均;
-            var l_基準値 = l_モデル基準値 is { } l_値 && l_値 > 0
+            var l_基準値 = l_モデル基準値 is { } l_値 && l_値 > 0D
                 ? l_値
                 : Get_長さ加重中央値(p_カバレッジ, p_ユニティグ長);
 
             Dictionary<int, int> l_コピー数 = [];
             foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
             {
-                if (l_基準値 <= 0)
+                if (l_基準値 <= 0D)
                 {
                     l_コピー数[l_ID] = 1;
                     continue;
@@ -181,8 +181,8 @@ namespace Tsumiki.Core.UnitigBuilding
                 }
 
                 var l_島内カバレッジ = l_島
-                    .Select(id => p_カバレッジ.GetValueOrDefault(id, 0.0))
-                    .Where(x => x > 0)
+                    .Select(id => p_カバレッジ.GetValueOrDefault(id, 0D))
+                    .Where(x => x > 0D)
                     .ToList();
                 if (l_島内カバレッジ.Count == 0)
                 {
@@ -190,15 +190,15 @@ namespace Tsumiki.Core.UnitigBuilding
                 }
 
                 var l_局所基準値 = StatsUtil.Get_中央値(l_島内カバレッジ);
-                if (l_局所基準値 <= 0)
+                if (l_局所基準値 <= 0D)
                 {
                     continue;
                 }
 
                 var l_内部で一貫しているか = l_島.All(id =>
                 {
-                    var l_値 = p_カバレッジ.GetValueOrDefault(id, 0.0);
-                    return l_値 <= 0 || l_値 / l_局所基準値 < 多コピーとみなす比の下限;
+                    var l_値 = p_カバレッジ.GetValueOrDefault(id, 0D);
+                    return l_値 <= 0D || l_値 / l_局所基準値 < 多コピーとみなす比の下限;
                 });
                 if (!l_内部で一貫しているか)
                 {
@@ -288,7 +288,7 @@ namespace Tsumiki.Core.UnitigBuilding
                 {
                     continue;
                 }
-                if (!p_カバレッジ.TryGetValue(l_ID, out var l_自身のカバレッジ) || l_自身のカバレッジ <= 0)
+                if (!p_カバレッジ.TryGetValue(l_ID, out var l_自身のカバレッジ) || l_自身のカバレッジ <= 0D)
                 {
                     continue;
                 }
@@ -302,8 +302,8 @@ namespace Tsumiki.Core.UnitigBuilding
                 }
 
                 var l_成分内カバレッジ = l_成分
-                    .Select(x => p_カバレッジ.GetValueOrDefault(x, 0.0))
-                    .Where(x => x > 0)
+                    .Select(x => p_カバレッジ.GetValueOrDefault(x, 0D))
+                    .Where(x => x > 0D)
                     .ToList();
                 if (l_成分内カバレッジ.Count < 2)
                 {
@@ -311,7 +311,7 @@ namespace Tsumiki.Core.UnitigBuilding
                 }
 
                 var l_局所基準値 = StatsUtil.Get_中央値(l_成分内カバレッジ);
-                if (l_局所基準値 <= 0)
+                if (l_局所基準値 <= 0D)
                 {
                     continue;
                 }
@@ -377,7 +377,7 @@ namespace Tsumiki.Core.UnitigBuilding
             IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
             var l_組 = p_カバレッジ
-                .Where(x => p_ユニティグ長.ContainsKey(x.Key) && x.Value > 0)
+                .Where(x => p_ユニティグ長.ContainsKey(x.Key) && x.Value > 0D)
                 .Select(x => ((long)p_ユニティグ長[x.Key], x.Value));
             return StatsUtil.Get_長さ加重中央値(l_組);
         }
@@ -406,9 +406,9 @@ namespace Tsumiki.Core.UnitigBuilding
 
             var l_反復塩基数 = l_コピー数別.Where(x => x.A_コピー数 >= 2).Sum(x => x.A_塩基数);
             var l_総塩基数 = l_コピー数別.Sum(x => x.A_塩基数);
-            if (l_総塩基数 > 0)
+            if (l_総塩基数 > 0L)
             {
-                Logger.V_出力(メッセージID.反復配列の割合, l_反復塩基数, l_総塩基数, 100.0 * l_反復塩基数 / l_総塩基数);
+                Logger.V_出力(メッセージID.反復配列の割合, l_反復塩基数, l_総塩基数, 100.0D * l_反復塩基数 / l_総塩基数);
             }
         }
     }

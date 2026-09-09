@@ -278,8 +278,8 @@ namespace Tsumiki.Core.UnitigBuilding
 
             var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
             var l_首位 = l_順位[0];
-            var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0;
-            if ((ulong)Math.Max(0, l_首位.Value.A_生) < p_最小証拠数)
+            var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0D;
+            if ((ulong)Math.Max(0L, l_首位.Value.A_生) < p_最小証拠数)
             {
                 // どの枝にもペアエンドの支持が無い
                 // 根拠が無いので繋がない
@@ -289,8 +289,8 @@ namespace Tsumiki.Core.UnitigBuilding
                 return null;
             }
 
-            var l_合計 = l_順位.Sum(x => Math.Max(0, x.Value.A_正規化));
-            if (l_合計 <= 0 || (decimal)(l_首位.Value.A_正規化 / l_合計) < p_優勢閾値)
+            var l_合計 = l_順位.Sum(x => Math.Max(0D, x.Value.A_正規化));
+            if (l_合計 <= 0D || (decimal)(l_首位.Value.A_正規化 / l_合計) < p_優勢閾値)
             {
                 // 上位が割れている
                 // 僅差で選ぶくらいなら繋がないほうがよい
@@ -332,8 +332,8 @@ namespace Tsumiki.Core.UnitigBuilding
             List<int> p_足場, int p_候補, List<string> p_ユニティグ配列,
             IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器)
         {
-            long l_生スコア = 0L;
-            double l_正規化スコア = 0D;
+            var l_生スコア = 0L;
+            var l_正規化スコア = 0D;
             var l_候補長 = p_ユニティグ配列[p_候補].Length;
             foreach (var l_足場頂点 in p_足場)
             {

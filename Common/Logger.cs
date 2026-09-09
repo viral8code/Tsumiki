@@ -14,7 +14,7 @@ namespace Tsumiki.Common
         /// <summary>
         /// 錠
         /// </summary>
-        private static readonly object _錠 = new();
+        protected internal static readonly object _錠 = new();
 
         /// <summary>
         /// 画面へ出す量
@@ -35,7 +35,7 @@ namespace Tsumiki.Common
         /// <remarks>
         /// 入れ子にできるよう数で持つ
         /// </remarks>
-        private static int _休止の深さ;
+        protected internal static int _休止の深さ;
 
         /// <summary>
         /// 一時ディレクトリを作る前に出た行の控え
@@ -235,28 +235,6 @@ namespace Tsumiki.Common
             return new 記録の休止();
         }
 
-        private sealed class 記録の休止 : IDisposable
-        {
-            public 記録の休止()
-            {
-                lock (_錠)
-                {
-                    _休止の深さ++;
-                }
-            }
-
-            /// <summary>
-            /// 保持している資源を解放する
-            /// </summary>
-            public void Dispose()
-            {
-                lock (_錠)
-                {
-                    _休止の深さ--;
-                }
-            }
-        }
-
         /// <summary>
         /// 記録を閉じる
         /// </summary>
@@ -269,6 +247,31 @@ namespace Tsumiki.Common
             {
                 _ファイル?.Dispose();
                 _ファイル = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Logger の記録を一時的に止めるための解放用ハンドル
+    /// </summary>
+    internal sealed class 記録の休止 : IDisposable
+    {
+        public 記録の休止()
+        {
+            lock (Logger._錠)
+            {
+                Logger._休止の深さ++;
+            }
+        }
+
+        /// <summary>
+        /// 保持している資源を解放する
+        /// </summary>
+        public void Dispose()
+        {
+            lock (Logger._錠)
+            {
+                Logger._休止の深さ--;
             }
         }
     }

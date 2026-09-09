@@ -89,18 +89,14 @@ namespace Tsumiki.Core.Output
         }
 
         /// <summary>
-        /// 決めきれなかった箇所を TSV で残す
-        /// </summary>
-        /// <remarks>
-        /// FASTA に N を出すだけでは
-        /// 「どちらとも言えなかった」のか「配列が無かった」のかが区別できない
-        /// </remarks>
-        /// <summary>
         /// リードに裏付けの無い区間を TSV で書き出す
         /// </summary>
         /// <remarks>
         /// 位置は 1 始まり・両端を含む
         /// </remarks>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_区間">支持のない区間</param>
+        /// <param name="p_r長">支持を問うた r-mer の長さ</param>
         public static void V_書き出し_支持のない箇所(
             string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
         {

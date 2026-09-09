@@ -52,34 +52,33 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る
         /// </summary>
-        /// <param name="length">作る長さ</param>
-        /// <param name="seed">乱数の種</param>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_シード">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int length, int seed)
+        private static string V_生成_ランダム配列(int p_長さ, int p_シード)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_乱数 = new Random(p_シード);
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
         /// <summary>
         /// リードを FASTQ として書き出す
         /// </summary>
-        /// <param name="name">ファイル名</param>
-        /// <param name="reads">書き出すリード</param>
-        /// <param name="path">書き出し先</param>
+        /// <param name="p_ファイル名">ファイル名</param>
+        /// <param name="p_リード列">書き出すリード</param>
         /// <returns>書き出したパス</returns>
-        private string WriteFastq(string name, IEnumerable<(string A_ID, string A_配列)> reads)
+        private string V_書き出し_FASTQ(string p_ファイル名, IEnumerable<(string A_ID, string A_配列)> p_リード列)
         {
-            var path = Path.Combine(this._tempDir, name);
-            using var writer = new StreamWriter(path);
-            foreach (var (id, seq) in reads)
+            var l_パス = Path.Combine(this._tempDir, p_ファイル名);
+            using var l_writer = new StreamWriter(l_パス);
+            foreach (var (l_id, l_配列) in p_リード列)
             {
-                writer.WriteLine($"@{id}");
-                writer.WriteLine(seq);
-                writer.WriteLine("+");
-                writer.WriteLine(new string('I', seq.Length)); // Q40相当
+                l_writer.WriteLine($"@{l_id}");
+                l_writer.WriteLine(l_配列);
+                l_writer.WriteLine("+");
+                l_writer.WriteLine(new string('I', l_配列.Length)); // Q40 相当
             }
-            return path;
+            return l_パス;
         }
 
         /// <summary>
@@ -89,15 +88,15 @@ namespace Tsumiki.Tests.Core
         /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること
         /// </remarks>
         [Fact]
-        public void MapPairedReads_ReadsShorterThanK_AreSkippedWithoutFailing()
+        public void k未満のペアリードは失敗せずに読み飛ばされる()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 4 };
 
-            var unitigSeq = RandomSequence(600, seed: 987);
+            var unitigSeq = V_生成_ランダム配列(600, p_シード: 987);
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
-            // 19 bp(最短の実例と同じ長さ) から 200 bp まで、k をまたぐ長さを混ぜる
+            // 19 bp (最短の実例と同じ長さ) から 200 bp まで、k をまたぐ長さを混ぜる
             var lengths = new[] { 19, 30, K - 1, K, K + 1, 120, 200 };
             var reads1 = new List<(string, string)>();
             var reads2 = new List<(string, string)>();
@@ -108,8 +107,8 @@ namespace Tsumiki.Tests.Core
                 reads2.Add(($"pair{i}/2", Util.V_逆相補(unitigSeq[^length..])));
             }
 
-            var path1 = this.WriteFastq("short.1.fq", reads1);
-            var path2 = this.WriteFastq("short.2.fq", reads2);
+            var path1 = this.V_書き出し_FASTQ("short.1.fq", reads1);
+            var path2 = this.V_書き出し_FASTQ("short.2.fq", reads2);
 
             var contigMaker = new ContigMaker(unitigsPath);
 
@@ -124,12 +123,15 @@ namespace Tsumiki.Tests.Core
             Assert.NotEmpty(contigMaker.A_インサートサイズ標本);
         }
 
+        /// <summary>
+        /// k 未満のリードが混ざっていても、失敗せずに読み飛ばされる
+        /// </summary>
         [Fact]
-        public void MapSingleReads_ReadsShorterThanK_AreSkippedWithoutFailing()
+        public void k未満の単一リードは失敗せずに読み飛ばされる()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 4 };
 
-            var unitigSeq = RandomSequence(400, seed: 654);
+            var unitigSeq = V_生成_ランダム配列(400, p_シード: 654);
             var unitigsPath = Path.Combine(this._tempDir, "unitigs_single.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
@@ -140,7 +142,7 @@ namespace Tsumiki.Tests.Core
                 var length = i % 2 == 0 ? 19 : 150;
                 reads.Add(($"read{i}", unitigSeq[..length]));
             }
-            var path = this.WriteFastq("short_single.fq", reads);
+            var path = this.V_書き出し_FASTQ("short_single.fq", reads);
 
             var contigMaker = new ContigMaker(unitigsPath);
             contigMaker.V_マッピング_リード(path);
@@ -150,19 +152,19 @@ namespace Tsumiki.Tests.Core
         /// すべてのリードが k 未満でも、例外にならず単に何も得られないこと
         /// </summary>
         [Fact]
-        public void MapPairedReads_EveryReadShorterThanK_CompletesWithNoSamples()
+        public void すべてのリードがk未満のときは例外にならず標本が空になる()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 4 };
 
-            var unitigSeq = RandomSequence(400, seed: 321);
+            var unitigSeq = V_生成_ランダム配列(400, p_シード: 321);
             var unitigsPath = Path.Combine(this._tempDir, "unitigs_allshort.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
             var reads1 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/1", unitigSeq[..19]));
             var reads2 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/2", unitigSeq[..20]));
 
-            var path1 = this.WriteFastq("allshort.1.fq", reads1);
-            var path2 = this.WriteFastq("allshort.2.fq", reads2);
+            var path1 = this.V_書き出し_FASTQ("allshort.1.fq", reads1);
+            var path2 = this.V_書き出し_FASTQ("allshort.2.fq", reads2);
 
             var contigMaker = new ContigMaker(unitigsPath);
             contigMaker.V_マッピング_ペアリード(path1, path2);

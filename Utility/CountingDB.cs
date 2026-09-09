@@ -5,7 +5,7 @@ namespace Tsumiki.Utility
     internal class CountingDB : IDisposable
     {
         // 1 エントリあたりの実消費の目安
-        // キーの byte[](ヘッダ24 B + 中身) と
+        // キーの byte[] (ヘッダ 24 B + 中身) と
         // Dictionary のエントリ構造体を合わせて概ね 80 B
         // 予算は全シャードで分け合う総量として扱う (1 シャードあたりにすると
         // スレッド数倍に膨らむ)

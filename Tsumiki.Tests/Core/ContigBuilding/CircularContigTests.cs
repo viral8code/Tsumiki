@@ -68,9 +68,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 環状の複製単位そのもの
         /// </summary>
-        /// <summary>
-        /// 環状の複製単位そのもの
-        /// </summary>
         private static readonly string Circle = Get_乱数配列(円周, p_種: 20250908);
 
         // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
@@ -79,14 +76,8 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 環を 3 分割したうちの 1 本目
         /// </summary>
-        /// <summary>
-        /// 環を 3 分割したうちの 1 本目
-        /// </summary>
         private static readonly string UnitigA = Circle[..(400 + k - 1)];
 
-        /// <summary>
-        /// 環を 3 分割したうちの 2 本目
-        /// </summary>
         /// <summary>
         /// 環を 3 分割したうちの 2 本目
         /// </summary>
@@ -114,8 +105,11 @@ namespace Tsumiki.Tests.Core
                 Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
         }
 
+        /// <summary>
+        /// 閉じた環状経路を結合すると circular の印が付き円周ちょうどの長さになる
+        /// </summary>
         [Fact]
-        public void UniteContigs_ClosedCircle_IsMarkedCircular_AndHasExactCircumferenceLength()
+        public void 閉じた環は環状と判定され円周ちょうどの長さになる()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
@@ -154,8 +148,11 @@ namespace Tsumiki.Tests.Core
                 $"assembled circle did not match any rotation of the true circle: {contig.A_配列}");
         }
 
+        /// <summary>
+        /// 環を閉じない線状経路には circular の印が付かない
+        /// </summary>
         [Fact]
-        public void UniteContigs_LinearPath_IsNotMarkedCircular()
+        public void 環を閉じない経路は環状と判定されない()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 

@@ -99,6 +99,9 @@ namespace Tsumiki.Tests.Core
             return string.Concat(p_配列.AsSpan(p_配列.Length - 50), p_配列.AsSpan(0, 50));
         }
 
+        /// <summary>
+        /// 閉じ目を跨ぐリードが必要本数以上あれば支持されることを確かめる
+        /// </summary>
         [Fact]
         public void Get_検証結果_閉じ目を跨ぐリードが足りていれば支持される()
         {
@@ -116,6 +119,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(l_1件.A_支持されたか);
         }
 
+        /// <summary>
+        /// 逆相補で読まれたリードも跨いだものとして数えることを確かめる
+        /// </summary>
         [Fact]
         public void Get_検証結果_逆相補で読まれたリードも跨いだものとして数える()
         {
@@ -130,6 +136,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(Assert.Single(l_結果).A_支持されたか);
         }
 
+        /// <summary>
+        /// 閉じ目を跨がないリードだけなら支持されないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検証結果_閉じ目を跨がないリードだけなら支持されない()
         {
@@ -148,6 +157,9 @@ namespace Tsumiki.Tests.Core
             Assert.False(l_1件.A_支持されたか);
         }
 
+        /// <summary>
+        /// 環状でない配列は検証の対象にしないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_検証結果_環状でない配列は検証の対象にしない()
         {
@@ -158,6 +170,9 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null));
         }
 
+        /// <summary>
+        /// 同じリードが何度跨いで見えても 1 本と数えることを確かめる
+        /// </summary>
         [Fact]
         public void Get_検証結果_同じリードが何度跨いで見えても1本と数える()
         {

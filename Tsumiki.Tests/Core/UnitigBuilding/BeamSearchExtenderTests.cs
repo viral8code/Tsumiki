@@ -22,120 +22,127 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 曖昧塩基を含む窓を表す番号
         /// </summary>
-        private const int AmbiguousKmer = int.MinValue;
+        private const int 曖昧kmer番号 = int.MinValue;
 
         /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int K = 8;
+        private const int k長 = 8;
 
         // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
 
         /// <summary>
         /// 分岐元
         /// </summary>
-        private const string UnitigA = "TGGCAAGTCACTCTCGACCGA";
+        private const string ユニティグA = "TGGCAAGTCACTCTCGACCGA";
 
         /// <summary>
         /// 分岐先の片方
         /// </summary>
-        private const string UnitigB = "CGACCGAACGGCGCCGGATC";
+        private const string ユニティグB = "CGACCGAACGGCGCCGGATC";
 
         /// <summary>
         /// 分岐先のもう片方
         /// </summary>
-        private const string UnitigC = "CGACCGACTGTAATTCTACC";
+        private const string ユニティグC = "CGACCGACTGTAATTCTACC";
 
         /// <summary>
         /// B の先へ続く配列
         /// </summary>
-        private const string UnitigD = "CCGGATCAAAGCCACGGCTAG";
+        private const string ユニティグD = "CCGGATCAAAGCCACGGCTAG";
 
         /// <summary>
         /// C の先へ続く配列
         /// </summary>
-        private const string UnitigE = "TTCTACCAAAGGCTAGTATGA";
+        private const string ユニティグE = "TTCTACCAAAGGCTAGTATGA";
 
-        private static (List<string> UnitigList, UnitigGraph Graph) Build()
+        /// <summary>
+        /// A →(B or C)、B → D、C → E という形の分岐構造を持つグラフを作る
+        /// </summary>
+        /// <returns>ユニティグ一覧とグラフ</returns>
+        private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ) V_構築()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
-            List<string> unitigList = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            List<string> l_unitigList = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int UnitigId, int Position)> l_kmerDict = [];
 
-            var id = 1;
-            foreach (var seq in new[] { UnitigA, UnitigB, UnitigC, UnitigD, UnitigE })
+            var l_id = 1;
+            foreach (var l_seq in new[] { ユニティグA, ユニティグB, ユニティグC, ユニティグD, ユニティグE })
             {
-                unitigList.Add(seq);
-                unitigList.Add(Util.V_逆相補(seq));
-                for (var i = K; i <= seq.Length; i++)
+                l_unitigList.Add(l_seq);
+                l_unitigList.Add(Util.V_逆相補(l_seq));
+                for (var i = k長; i <= l_seq.Length; i++)
                 {
-                    var startPos = i - K;
-                    var key = new KmerKey(seq.AsSpan(startPos, K));
-                    Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
+                    var l_startPos = i - k長;
+                    var l_key = new KmerKey(l_seq.AsSpan(l_startPos, k長));
+                    V_登録_kmer(l_kmerDict, l_key, l_id, l_startPos);
+                    V_登録_kmer(l_kmerDict, l_key.Get_逆相補(), -l_id, l_seq.Length - i);
                 }
-                id++;
+                l_id++;
             }
-            return (unitigList, UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer));
+            return (l_unitigList, UnitigGraph.Get_グラフ(l_unitigList, l_kmerDict, k長, 曖昧kmer番号));
         }
 
         /// <summary>
         /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
         /// </summary>
-        /// <param name="dict">登録先の辞書</param>
-        /// <param name="key">登録する k-mer</param>
-        /// <param name="id">ユニティグ ID</param>
-        /// <param name="position">ユニティグ内の開始位置</param>
-        private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
+        /// <param name="p_dict">登録先の辞書</param>
+        /// <param name="p_key">登録する k-mer</param>
+        /// <param name="p_id">ユニティグ ID</param>
+        /// <param name="p_position">ユニティグ内の開始位置</param>
+        private static void V_登録_kmer(Dictionary<KmerKey, (int, int)> p_dict, KmerKey p_key, int p_id, int p_position)
         {
-            if (dict.TryGetValue(key, out var existing))
+            if (p_dict.TryGetValue(p_key, out var l_existing))
             {
-                if (existing.Item1 is AmbiguousKmer || existing.Item1 == id)
+                if (l_existing.Item1 is 曖昧kmer番号 || l_existing.Item1 == p_id)
                 {
                     return;
                 }
-                dict[key] = (AmbiguousKmer, 0);
+                p_dict[p_key] = (曖昧kmer番号, 0);
                 return;
             }
-            dict[key] = (id, position);
+            p_dict[p_key] = (p_id, p_position);
         }
 
         /// <summary>
         /// どこも結合していない状態の結合表を作る
         /// </summary>
-        /// <param name="graph">対象のユニティググラフ</param>
+        /// <param name="p_graph">対象のユニティググラフ</param>
         /// <returns>結合表</returns>
-        private static int[] NoMerges(UnitigGraph graph)
+        private static int[] V_構築_未結合表(UnitigGraph p_graph)
         {
-            var merge = new int[graph.A_出辺.Count];
-            Array.Fill(merge, -1);
-            return merge;
+            var l_merge = new int[p_graph.A_出辺.Count];
+            Array.Fill(l_merge, -1);
+            return l_merge;
         }
 
+        /// <summary>
+        /// 証拠が 1 歩先にしか現れない分岐を、先読みによって解決できる
+        /// </summary>
         [Fact]
-        public void Extend_ResolvesABranch_WhenTheEvidenceOnlyAppearsOneStepLater()
+        public void 証拠が1歩先にしか現れない分岐を先読みで解決する()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
-            var b = ContigMaker.Get_頂点番号(2);
-            var d = ContigMaker.Get_頂点番号(4);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
+            var l_b = ContigMaker.Get_頂点番号(2);
+            var l_d = ContigMaker.Get_頂点番号(4);
 
             // 前提: A は B と C の両方へ伸びられる (1 歩だけでは決められない)
-            Assert.Equal(2, graph.A_出辺[a].Count);
+            Assert.Equal(2, l_graph.A_出辺[l_a].Count);
 
             // 証拠は A の直後 (B/C) ではなく、その次の D に現れる
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_d)] = 30 };
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var merge = NoMerges(graph);
-            var committed = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+            var l_merge = V_構築_未結合表(l_graph);
+            var l_committed = BeamSearchExtender.V_延長_先読み(
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
-            Assert.True(committed > 0, "lookahead should have resolved at least one junction");
-            Assert.Equal(b, merge[a]);
+            Assert.True(l_committed > 0, "lookahead should have resolved at least one junction");
+            Assert.Equal(l_b, l_merge[l_a]);
             // 逆鎖側も対称に設定されていること
-            Assert.Equal(a ^ 1, merge[b ^ 1]);
+            Assert.Equal(l_a ^ 1, l_merge[l_b ^ 1]);
         }
 
         /// <summary>
@@ -146,63 +153,63 @@ namespace Tsumiki.Tests.Core
         /// コミットする」ことにあり、五分五分の分岐で 1 本を選ぶことではない
         /// </remarks>
         [Fact]
-        public void Extend_DoesNothing_WhenBothBranchesAreEquallySupported()
+        public void 両方の枝に同程度の証拠がある場合は繋がない()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
-            var d = ContigMaker.Get_頂点番号(4);
-            var e = ContigMaker.Get_頂点番号(5);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
+            var l_d = ContigMaker.Get_頂点番号(4);
+            var l_e = ContigMaker.Get_頂点番号(5);
 
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 20, [(a, e)] = 19 };
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_d)] = 20, [(l_a, l_e)] = 19 };
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var merge = NoMerges(graph);
+            var l_merge = V_構築_未結合表(l_graph);
             _ = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(-1, l_merge[l_a]);
         }
 
         /// <summary>
         /// ペアエンドの証拠がまったく無ければ、根拠が無いので繋がない
         /// </summary>
         [Fact]
-        public void Extend_DoesNothing_WhenThereIsNoPairEvidenceAtAll()
+        public void ペア証拠が全く無い場合は繋がない()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
 
-            Dictionary<(int, int), ulong> pairLink = [];
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = [];
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var merge = NoMerges(graph);
+            var l_merge = V_構築_未結合表(l_graph);
             _ = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(-1, l_merge[l_a]);
         }
 
         /// <summary>
         /// 証拠はあるが少なすぎる場合、偶然の一致で繋いでしまわないよう見送る
         /// </summary>
         [Fact]
-        public void Extend_DoesNothing_WhenEvidenceIsBelowTheMinimum()
+        public void 証拠数が最小値未満の場合は繋がない()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
-            var d = ContigMaker.Get_頂点番号(4);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
+            var l_d = ContigMaker.Get_頂点番号(4);
 
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 2 };
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_d)] = 2 };
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var merge = NoMerges(graph);
+            var l_merge = V_構築_未結合表(l_graph);
             _ = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(-1, l_merge[l_a]);
         }
 
         /// <summary>
@@ -221,25 +228,25 @@ namespace Tsumiki.Tests.Core
         /// 飛ばした contig が出力されていた (真値照合で発覚)
         /// </remarks>
         [Fact]
-        public void Extend_DoesNothing_WhenStandingOnARepeatWithNoSingleCopyAnchor()
+        public void 単一コピーの足場が無い反復上では繋がない()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
-            var d = ContigMaker.Get_頂点番号(4);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
+            var l_d = ContigMaker.Get_頂点番号(4);
 
             // A 自身が 2 コピーの反復
             // 足場に使える単一コピーの unitig が無い
-            Dictionary<int, int> copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<int, int> l_copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
             // 片側にだけ強い (しかし信用してはいけない) 証拠を置く
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_d)] = 30 };
 
-            var merge = NoMerges(graph);
-            var committed = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+            var l_merge = V_構築_未結合表(l_graph);
+            var l_committed = BeamSearchExtender.V_延長_先読み(
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
-            Assert.Equal(0, committed);
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(0, l_committed);
+            Assert.Equal(-1, l_merge[l_a]);
         }
 
         /// <summary>
@@ -247,25 +254,25 @@ namespace Tsumiki.Tests.Core
         /// (相互一意性を保つ)
         /// </summary>
         [Fact]
-        public void Extend_DoesNotStealATargetThatAlreadyHasAnIncomingMerge()
+        public void 既に結合済みの行き先を奪って繋がない()
         {
-            var (unitigList, graph) = Build();
-            var a = ContigMaker.Get_頂点番号(1);
-            var b = ContigMaker.Get_頂点番号(2);
-            var d = ContigMaker.Get_頂点番号(4);
+            var (l_unitigList, l_graph) = V_構築();
+            var l_a = ContigMaker.Get_頂点番号(1);
+            var l_b = ContigMaker.Get_頂点番号(2);
+            var l_d = ContigMaker.Get_頂点番号(4);
 
-            Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_pairLink = new() { [(l_a, l_d)] = 30 };
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var merge = NoMerges(graph);
+            var l_merge = V_構築_未結合表(l_graph);
             // B には既に (別の経路からの) 結合が入っていることにする
-            merge[b ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
+            l_merge[l_b ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
 
             _ = BeamSearchExtender.V_延長_先読み(
-                graph, unitigList, merge, pairLink, copyNumber,
+                l_graph, l_unitigList, l_merge, l_pairLink, l_copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
-            Assert.Equal(-1, merge[a]);
+            Assert.Equal(-1, l_merge[l_a]);
         }
     }
 }

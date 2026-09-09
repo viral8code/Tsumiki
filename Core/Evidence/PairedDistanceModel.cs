@@ -85,8 +85,8 @@ namespace Tsumiki.Core.Evidence
         /// <returns>分位点</returns>
         private static int Get_分位(int[] p_昇順, double p_位置)
         {
-            var i = (int)(p_昇順.Length * p_位置);
-            return p_昇順[Math.Clamp(i, 0, p_昇順.Length - 1)];
+            var l_i = (int)(p_昇順.Length * p_位置);
+            return p_昇順[Math.Clamp(l_i, 0, p_昇順.Length - 1)];
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace Tsumiki.Core.Evidence
         /// </remarks>
         public double Get_期待位置数(long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
-            double l_合計 = 0D;
+            var l_合計 = 0D;
             foreach (var (l_長さ, l_確率) in this._分布)
             {
                 var l_下 = Math.Max(-p_長さ1, p_ギャップ長 + this._リード長 - l_長さ);
@@ -167,7 +167,7 @@ namespace Tsumiki.Core.Evidence
         /// </remarks>
         public double Get_期待位置数_単一(long p_長さ)
         {
-            double l_合計 = 0D;
+            var l_合計 = 0D;
             foreach (var (l_長さ, l_確率) in this._分布)
             {
                 var l_個数 = p_長さ - l_長さ + 1;

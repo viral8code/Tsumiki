@@ -107,11 +107,7 @@ namespace Tsumiki.Utility
         /// <returns>畳んだ値</returns>
         public static ulong Get_正規化ハッシュ_64(ReadOnlySpan<byte> p_kmer)
         {
-            if (p_kmer.Length <= 32)
-            {
-                return (ulong)Get_正規化パック(p_kmer);
-            }
-            return (ulong)Get_正規化ハッシュ(p_kmer);
+            return p_kmer.Length <= 32 ? (ulong)Get_正規化パック(p_kmer) : (ulong)Get_正規化ハッシュ(p_kmer);
         }
 
         /// <summary>

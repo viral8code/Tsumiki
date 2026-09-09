@@ -22,8 +22,11 @@ namespace Tsumiki.Tests.Core
         /// <returns>実行時引数</returns>
         private static Parameters Get_引数() => new();
 
+        /// <summary>
+        /// 一般的な Illumina リードでは、実測で最適だった範囲の両端を候補が含むことを確かめる
+        /// </summary>
         [Fact]
-        public void CandidateList_ForTypicalIlluminaReads_SpansTheRangeWhereOptimaWereObserved()
+        public void 候補一覧_一般的なIlluminaリードでは最適だった範囲の両端を含む()
         {
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: 150);
 
@@ -37,8 +40,11 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(Consts.マルチkで試す個数, l_候補.Count);
         }
 
+        /// <summary>
+        /// 候補一覧が重複なく昇順に並んでいることを確かめる
+        /// </summary>
         [Fact]
-        public void CandidateList_IsSortedAscendingWithoutDuplicates()
+        public void 候補一覧_昇順で重複なく並ぶ()
         {
             foreach (var l_リード長 in new[] { 50, 75, 100, 150, 250, 300 })
             {
@@ -56,7 +62,7 @@ namespace Tsumiki.Tests.Core
         /// どの候補も奇数であること
         /// </remarks>
         [Fact]
-        public void CandidateList_ContainsOnlyOddValues()
+        public void 候補一覧_奇数のみを含む()
         {
             for (var l_リード長 = 40; l_リード長 <= 300; l_リード長++)
             {
@@ -75,7 +81,7 @@ namespace Tsumiki.Tests.Core
         /// その k では k-mer が 1 つも取れない
         /// </remarks>
         [Fact]
-        public void CandidateList_StaysBelowTheReadLength()
+        public void 候補一覧_リード長より短い()
         {
             for (var l_リード長 = 40; l_リード長 <= 300; l_リード長++)
             {
@@ -93,7 +99,7 @@ namespace Tsumiki.Tests.Core
         /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない
         /// </remarks>
         [Fact]
-        public void CandidateList_WhenKmerLengthListWasGiven_UsesItVerbatim()
+        public void 候補一覧_k長一覧が指定されていればそのまま使う()
         {
             var l_引数 = new Parameters();
             l_引数.Set_k長一覧([95, 31, 63]);
@@ -107,7 +113,7 @@ namespace Tsumiki.Tests.Core
         /// -k を 1 つだけ指定した場合は、その 1 つだけを候補にすること
         /// </summary>
         [Fact]
-        public void CandidateList_WhenASingleKmerLengthWasGiven_UsesOnlyThatOne()
+        public void 候補一覧_k長を1つだけ指定すればそれだけを候補にする()
         {
             var l_引数 = new Parameters();
             l_引数.Set_k長一覧([41]);
@@ -122,7 +128,7 @@ namespace Tsumiki.Tests.Core
         /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる
         /// </remarks>
         [Fact]
-        public void PredictedCoverage_ShrinksWithTheNumberOfKmersPerRead()
+        public void 予測カバレッジ_1リードから取れるkmer数の比で縮む()
         {
             // リード長 150、k=31 で 25 x
             // k=135 なら 1 リードあたり 120 本から
@@ -141,7 +147,7 @@ namespace Tsumiki.Tests.Core
         /// k = リード長 のときは 1 本だけ取れるので 0 にはならない
         /// </remarks>
         [Fact]
-        public void PredictedCoverage_WhenKmerLengthExceedsTheReadLength_IsZero()
+        public void 予測カバレッジ_kがリード長を超えると0になる()
         {
             Assert.Equal(0, MultiKAssembler.Get_予測kmerカバレッジ(
                 p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 151, p_リード長: 150));
@@ -153,7 +159,7 @@ namespace Tsumiki.Tests.Core
         /// リード長が分からない場合でも一覧が作れること (既定値を上限に使う)
         /// </summary>
         [Fact]
-        public void CandidateList_WhenReadLengthIsUnknown_FallsBackToTheDefault()
+        public void 候補一覧_リード長が不明なら既定値を使う()
         {
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: null);
 
@@ -166,7 +172,7 @@ namespace Tsumiki.Tests.Core
         /// (無理に複数試しても意味がない)
         /// </summary>
         [Fact]
-        public void CandidateList_ForVeryShortReads_CollapsesToASingleValue()
+        public void 候補一覧_非常に短いリードでは1つに縮退する()
         {
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: 40);
 

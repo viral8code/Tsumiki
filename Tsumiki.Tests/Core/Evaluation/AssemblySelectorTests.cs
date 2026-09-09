@@ -18,6 +18,16 @@ namespace Tsumiki.Tests.Core
     /// </remarks>
     public class AssemblySelectorTests
     {
+        /// <summary>
+        /// 検証用のアセンブリ候補を組み立てる
+        /// </summary>
+        /// <param name="p_k長">候補の k 長</param>
+        /// <param name="p_NG50">候補の NG50</param>
+        /// <param name="p_完全性">候補の完全性</param>
+        /// <param name="p_正確性">候補の正確性</param>
+        /// <param name="p_環状本数">候補の環状本数</param>
+        /// <param name="p_環状化率">候補の環状化率</param>
+        /// <returns>実行結果と評価の組</returns>
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
             int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0D,
             int p_環状本数 = 0, double p_環状化率 = 0D)
@@ -39,21 +49,27 @@ namespace Tsumiki.Tests.Core
             return (l_実行結果, l_評価);
         }
 
+        /// <summary>
+        /// 候補が空なら null を返すことを確かめる
+        /// </summary>
         [Fact]
-        public void Select_EmptyCandidates_ReturnsNull()
+        public void 候補が空ならnullを返す()
         {
             Assert.Null(AssemblySelector.Get_最良([]));
         }
 
+        /// <summary>
+        /// 候補が 1 つならそれを返すことを確かめる
+        /// </summary>
         [Fact]
-        public void Select_SingleCandidate_ReturnsIt()
+        public void 候補が1つならそれを返す()
         {
-            var 候補 = Get_候補(31, 50_000, 0.97);
+            var l_候補 = Get_候補(31, 50_000, 0.97);
 
-            var 選択 = AssemblySelector.Get_最良([候補]);
+            var l_選択 = AssemblySelector.Get_最良([l_候補]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -63,16 +79,16 @@ namespace Tsumiki.Tests.Core
         /// Axy の実データ (どの k でも配列は落ちず、k=63 が最も繋がる) がこの形
         /// </remarks>
         [Fact]
-        public void Select_SimilarCompleteness_PicksTheMostContiguous()
+        public void 完全性が同程度なら最も連続性が高い候補を選ぶ()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 63_058, 0.980),
                 Get_候補(45, 151_085, 0.981),
                 Get_候補(63, 175_674, 0.979),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -83,17 +99,17 @@ namespace Tsumiki.Tests.Core
         /// 許容差に収まるため両方が残り、連続性で k=31 が選ばれる
         /// </remarks>
         [Fact]
-        public void Select_RealWorldSpread_PicksTheKnownBestK()
+        public void 実測値のばらつきでも既知の最良kを選ぶ()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 53_893, 0.9708),
                 Get_候補(45, 36_387, 0.9684),
                 Get_候補(55, 19_347, 0.9528),
                 Get_候補(63, 15_750, 0.9316),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -105,30 +121,30 @@ namespace Tsumiki.Tests.Core
         /// 掛け算で選んでいたらこちらが選ばれていた
         /// </remarks>
         [Fact]
-        public void Select_MuchMoreContiguousButIncomplete_IsRejected()
+        public void 連続性が高くても完全性が許容差を超えて落ちる候補は選ばれない()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 8_300, 0.933),
                 Get_候補(63, 16_300, 0.675),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
-        /// 同じ領域を重複して出している候補も、連続性が高くても採らない
+        /// 同じ領域を重複して出している候補も、連続性が高くても採らないことを確かめる
         /// </summary>
         [Fact]
-        public void Select_MoreContiguousButDuplicated_IsRejected()
+        public void 連続性が高くても重複した候補は選ばれない()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 50_000, 0.97, p_正確性: 0.99),
                 Get_候補(63, 90_000, 0.97, p_正確性: 0.60),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -143,15 +159,15 @@ namespace Tsumiki.Tests.Core
         /// 70 kbp に相当し、それは連続性と引き換えにしてよい量ではない
         /// </remarks>
         [Fact]
-        public void Select_CompletenessGapBeyondTheTieWidth_LosesBeforeContiguity()
+        public void 完全性の差が同点とみなす幅を超えていれば連続性より先に負ける()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 10_000, 0.99),
                 Get_候補(63, 90_000, 0.99 - AssemblySelector.同点とみなす差 - 0.001),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -161,27 +177,30 @@ namespace Tsumiki.Tests.Core
         /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界
         /// </remarks>
         [Fact]
-        public void Select_CompletenessGapWithinTheTieWidth_FallsThroughToContiguity()
+        public void 完全性の差が同点とみなす幅に収まれば連続性で決める()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 10_000, 0.99),
                 Get_候補(63, 90_000, 0.99 - AssemblySelector.同点とみなす差 + 0.001),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
 
+        /// <summary>
+        /// 完全性の差が許容差をわずかに超えると候補が選ばれないことを確かめる
+        /// </summary>
         [Fact]
-        public void Select_CompletenessGapJustOutsideTheTolerance_RejectsTheCandidate()
+        public void 完全性の差が許容差をわずかに超えると候補が選ばれない()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 10_000, 0.99),
                 Get_候補(63, 90_000, 0.99 - AssemblySelector.完全性の許容差 - 0.001),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -194,17 +213,17 @@ namespace Tsumiki.Tests.Core
         /// という目標関数そのものの検証
         /// </remarks>
         [Fact]
-        public void Select_MoreClosedReplicons_IsPreferredOverHigherNG50()
+        public void より多くの複製単位を環状に閉じた候補はNG50より優先される()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 // NG50 は高いが、環状に閉じた複製単位は無い
                 Get_候補(63, 200_000, 0.97, p_環状本数: 0, p_環状化率: 0.0),
                 // NG50 は低いが、2 本 (染色体+プラスミド) が環状に閉じている
                 Get_候補(31, 50_000, 0.97, p_環状本数: 2, p_環状化率: 0.98),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(31, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -212,15 +231,15 @@ namespace Tsumiki.Tests.Core
         /// (環状化率) で比べる
         /// </summary>
         [Fact]
-        public void Select_SameClosedReplicronCount_PicksTheHigherClosedFraction()
+        public void 環状本数が同じなら環状化率が高い候補を選ぶ()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 200_000, 0.97, p_環状本数: 1, p_環状化率: 0.30),
                 Get_候補(63, 50_000, 0.97, p_環状本数: 1, p_環状化率: 0.95),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
@@ -228,15 +247,15 @@ namespace Tsumiki.Tests.Core
         /// (既存の挙動を壊していないことの確認)
         /// </summary>
         [Fact]
-        public void Select_NoCandidateIsCircular_FallsBackToNG50()
+        public void どの候補も環状でなければNG50で決める()
         {
-            var 選択 = AssemblySelector.Get_最良([
+            var l_選択 = AssemblySelector.Get_最良([
                 Get_候補(31, 50_000, 0.97),
                 Get_候補(63, 90_000, 0.97),
             ]);
 
-            Assert.NotNull(選択);
-            Assert.Equal(63, 選択.Value.A_実行結果.A_k長);
+            Assert.NotNull(l_選択);
+            Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
     }
 }

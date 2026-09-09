@@ -24,6 +24,11 @@
         /// </summary>
         private readonly double _密度;
 
+        /// <summary>
+        /// モデルと密度から較正器を組み立てる
+        /// </summary>
+        /// <param name="p_モデル">距離モデル、使えない場合は null</param>
+        /// <param name="p_密度">観測密度</param>
         private 証拠較正器(PairedDistanceModel? p_モデル, double p_密度)
         {
             this._モデル = p_モデル;
@@ -50,7 +55,7 @@
         /// </remarks>
         public static double Get_飽和支持(double p_独立支持数)
         {
-            return p_独立支持数 <= 0 ? 0 : 1 - Math.Exp(-p_独立支持数 / 飽和の時定数);
+            return p_独立支持数 <= 0D ? 0D : 1D - Math.Exp(-p_独立支持数 / 飽和の時定数);
         }
 
         /// <summary>
@@ -107,7 +112,7 @@
                 return new 証拠較正器(null, 0);
             }
 
-            double l_期待位置数合計 = 0D;
+            var l_期待位置数合計 = 0D;
             foreach (var l_長さ in p_ユニティグ長一覧)
             {
                 l_期待位置数合計 += l_モデル.Get_期待位置数_単一(l_長さ);

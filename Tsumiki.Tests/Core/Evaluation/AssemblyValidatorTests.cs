@@ -50,85 +50,109 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る
         /// </summary>
-        /// <param name="length">作る長さ</param>
-        /// <param name="seed">乱数の種</param>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_シード">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int length, int seed)
+        private static string V_乱数配列(int p_長さ, int p_シード)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_rng = new Random(p_シード);
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_rng.Next(4)]));
         }
 
         /// <summary>
         /// 与えた配列から信頼できる k-mer 集合を組み立てる
         /// </summary>
-        /// <param name="depth">登録する深さ</param>
-        /// <param name="sequences">元になる配列</param>
+        /// <param name="p_深さ">登録する深さ</param>
+        /// <param name="p_配列群">元になる配列</param>
         /// <returns>信頼できる k-mer 集合</returns>
-        private TrustedKmerIndex BuildIndex(int depth, params string[] sequences)
+        private TrustedKmerIndex V_構築_索引(int p_深さ, params string[] p_配列群)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
-            var index = new TrustedKmerIndex(this._tempDir);
-            foreach (var seq in sequences)
+            var l_index = new TrustedKmerIndex(this._tempDir);
+            foreach (var l_seq in p_配列群)
             {
-                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + K <= bytes.Length; i++)
+                var l_bytes = l_seq.Select(Util.Get_塩基ID).ToArray();
+                for (var i = 0; i + K <= l_bytes.Length; i++)
                 {
-                    for (var rep = 0; rep < depth; rep++)
+                    for (var l_rep = 0; l_rep < p_深さ; l_rep++)
                     {
-                        index.V_登録(bytes.AsSpan(i, K), p_ワーカー番号: 0);
+                        l_index.V_登録(l_bytes.AsSpan(i, K), p_ワーカー番号: 0);
                     }
                 }
             }
-            _ = index.V_カットオフ(p_カットオフ: 2);
-            return index;
+            _ = l_index.V_カットオフ(p_カットオフ: 2);
+            return l_index;
         }
 
         /// <summary>
         /// 配列を FASTA として書き出す
         /// </summary>
-        /// <param name="name">ファイル名</param>
-        /// <param name="sequences">書き出す配列</param>
+        /// <param name="p_ファイル名">ファイル名</param>
+        /// <param name="p_配列群">書き出す配列</param>
         /// <returns>書き出したパス</returns>
-        private string WriteFasta(string name, params string[] sequences)
+        private string V_書き出し_Fasta(string p_ファイル名, params string[] p_配列群)
         {
-            var path = Path.Combine(this._tempDir, name);
-            using var writer = new FastaWriter(path);
-            var id = 1;
-            foreach (var seq in sequences)
+            var l_path = Path.Combine(this._tempDir, p_ファイル名);
+            using var l_writer = new FastaWriter(l_path);
+            var l_id = 1;
+            foreach (var l_seq in p_配列群)
             {
-                writer.V_書き込み($"NODE{id++}", seq);
+                l_writer.V_書き込み($"NODE{l_id++}", l_seq);
             }
-            return path;
+            return l_path;
         }
 
-        [Fact]
-        public void Validate_AssemblyThatExactlyReproducesTheInput_ReportsNoMissingAndNoExcess()
+        /// <summary>
+        /// 与えた深さで k-mer 集合へ配列を登録する
+        /// </summary>
+        /// <param name="p_index">登録先の k-mer 集合</param>
+        /// <param name="p_seq">登録する配列</param>
+        /// <param name="p_深さ">登録する深さ</param>
+        private static void V_登録_複数(TrustedKmerIndex p_index, string p_seq, int p_深さ)
         {
-            var truth = RandomSequence(600, seed: 101);
-            using var index = this.BuildIndex(depth: 20, truth);
-
-            var path = this.WriteFasta("perfect.fasta", truth);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
-
-            Assert.Equal(0, result.A_取りこぼし数);
-            Assert.Equal(0, result.A_余分な延べ数);
+            var l_bytes = p_seq.Select(Util.Get_塩基ID).ToArray();
+            for (var i = 0; i + K <= l_bytes.Length; i++)
+            {
+                for (var l_rep = 0; l_rep < p_深さ; l_rep++)
+                {
+                    p_index.V_登録(l_bytes.AsSpan(i, K), p_ワーカー番号: 0);
+                }
+            }
         }
 
+        /// <summary>
+        /// 入力を過不足なく再現したアセンブリは取りこぼしも出しすぎも報告しないことを確かめる
+        /// </summary>
         [Fact]
-        public void Validate_AssemblyMissingHalfTheSequence_ReportsTheMissingKmers()
+        public void 入力を過不足なく再現したアセンブリは取りこぼしも出しすぎも報告しない()
         {
-            var truth = RandomSequence(600, seed: 102);
-            using var index = this.BuildIndex(depth: 20, truth);
+            var l_truth = V_乱数配列(600, p_シード: 101);
+            using var l_index = this.V_構築_索引(p_深さ: 20, l_truth);
+
+            var l_path = this.V_書き出し_Fasta("perfect.fasta", l_truth);
+            var l_result = AssemblyValidator.Get_検査結果(l_path, l_index, K, p_単一コピー基準値: 20)!.Value;
+
+            Assert.Equal(0, l_result.A_取りこぼし数);
+            Assert.Equal(0, l_result.A_余分な延べ数);
+        }
+
+        /// <summary>
+        /// 配列の後半を欠いたアセンブリは取りこぼした kmer を報告することを確かめる
+        /// </summary>
+        [Fact]
+        public void 配列の後半を欠いたアセンブリは取りこぼしたkmerを報告する()
+        {
+            var l_truth = V_乱数配列(600, p_シード: 102);
+            using var l_index = this.V_構築_索引(p_深さ: 20, l_truth);
 
             // 後半を落としたアセンブリ
-            var path = this.WriteFasta("truncated.fasta", truth[..300]);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
+            var l_path = this.V_書き出し_Fasta("truncated.fasta", l_truth[..300]);
+            var l_result = AssemblyValidator.Get_検査結果(l_path, l_index, K, p_単一コピー基準値: 20)!.Value;
 
-            Assert.True(result.A_取りこぼし数 > 0, "truncated assembly should report missing k-mers");
+            Assert.True(l_result.A_取りこぼし数 > 0, "truncated assembly should report missing k-mers");
             // 600 bp の k-mer は 580 個、そのうち前半 300 bp に含まれるのは 280 個
-            Assert.Equal(580 - 280, result.A_取りこぼし数);
-            Assert.InRange(result.A_取りこぼし率, 45, 55);
+            Assert.Equal(580 - 280, l_result.A_取りこぼし数);
+            Assert.InRange(l_result.A_取りこぼし率, 45, 55);
         }
 
         /// <summary>
@@ -140,76 +164,64 @@ namespace Tsumiki.Tests.Core
         /// 総延長が水増しされていることに気付けない
         /// </remarks>
         [Fact]
-        public void Validate_SingleCopySequenceEmittedTwice_ReportsItAsExcess()
+        public void 単一コピーの配列を2回出力すると出しすぎとして検出される()
         {
-            var truth = RandomSequence(600, seed: 103);
-            using var index = this.BuildIndex(depth: 20, truth);
+            var l_truth = V_乱数配列(600, p_シード: 103);
+            using var l_index = this.V_構築_索引(p_深さ: 20, l_truth);
 
-            var path = this.WriteFasta("duplicated.fasta", truth, truth);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
+            var l_path = this.V_書き出し_Fasta("duplicated.fasta", l_truth, l_truth);
+            var l_result = AssemblyValidator.Get_検査結果(l_path, l_index, K, p_単一コピー基準値: 20)!.Value;
 
-            Assert.Equal(0, result.A_取りこぼし数);
+            Assert.Equal(0, l_result.A_取りこぼし数);
             // 各 k-mer が期待の 2 倍出ているので、延べ数の半分が余分
-            Assert.Equal(580, result.A_出しすぎkmer種類数);
-            Assert.Equal(580, result.A_余分な延べ数);
-            Assert.InRange(result.A_出しすぎ率, 45, 55);
+            Assert.Equal(580, l_result.A_出しすぎkmer種類数);
+            Assert.Equal(580, l_result.A_余分な延べ数);
+            Assert.InRange(l_result.A_出しすぎ率, 45, 55);
         }
 
         /// <summary>
-        /// 逆相補で出力されていても同じ配列とみなされること (正規化の確認)
+        /// 逆相補で出力されていても同じ配列とみなされること (正規化の確認) を確かめる
         /// </summary>
         /// <remarks>
         /// これが効いていないと、逆鎖側の contig がすべて「取りこぼし」に見えてしまう
         /// </remarks>
         [Fact]
-        public void Validate_ReverseComplementedAssembly_IsTreatedAsTheSameSequence()
+        public void 逆相補で出力しても同じ配列とみなされる()
         {
-            var truth = RandomSequence(600, seed: 104);
-            using var index = this.BuildIndex(depth: 20, truth);
+            var l_truth = V_乱数配列(600, p_シード: 104);
+            using var l_index = this.V_構築_索引(p_深さ: 20, l_truth);
 
-            var path = this.WriteFasta("revcomp.fasta", Util.V_逆相補(truth));
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
+            var l_path = this.V_書き出し_Fasta("revcomp.fasta", Util.V_逆相補(l_truth));
+            var l_result = AssemblyValidator.Get_検査結果(l_path, l_index, K, p_単一コピー基準値: 20)!.Value;
 
-            Assert.Equal(0, result.A_取りこぼし数);
-            Assert.Equal(0, result.A_余分な延べ数);
+            Assert.Equal(0, l_result.A_取りこぼし数);
+            Assert.Equal(0, l_result.A_余分な延べ数);
         }
 
         /// <summary>
-        /// 2 コピー分のカバレッジがある反復配列を 2 回出力するのは正しい
+        /// 2 コピー分のカバレッジがある反復配列を 2 回出力するのは正しいことを確かめる
         /// </summary>
         /// <remarks>
         /// これを「出しすぎ」と誤判定してはいけない
         /// </remarks>
         [Fact]
-        public void Validate_TwoCopyRepeatEmittedTwice_IsNotCountedAsExcess()
+        public void 二コピー分のカバレッジがある反復配列を2回出力しても出しすぎにならない()
         {
-            var single = RandomSequence(600, seed: 105);
-            var repeat = RandomSequence(200, seed: 106);
+            var l_single = V_乱数配列(600, p_シード: 105);
+            var l_repeat = V_乱数配列(200, p_シード: 106);
 
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
-            using var index = new TrustedKmerIndex(this._tempDir);
+            using var l_index = new TrustedKmerIndex(this._tempDir);
 
-            void Add(string seq, int depth)
-            {
-                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + K <= bytes.Length; i++)
-                {
-                    for (var rep = 0; rep < depth; rep++)
-                    {
-                        index.V_登録(bytes.AsSpan(i, K), p_ワーカー番号: 0);
-                    }
-                }
-            }
+            V_登録_複数(l_index, l_single, 20);
+            V_登録_複数(l_index, l_repeat, 40); // 2コピー相当のカバレッジ
+            _ = l_index.V_カットオフ(p_カットオフ: 2);
 
-            Add(single, 20);
-            Add(repeat, 40); // 2コピー相当のカバレッジ
-            _ = index.V_カットオフ(p_カットオフ: 2);
+            var l_path = this.V_書き出し_Fasta("repeat_twice.fasta", l_single, l_repeat, l_repeat);
+            var l_result = AssemblyValidator.Get_検査結果(l_path, l_index, K, p_単一コピー基準値: 20)!.Value;
 
-            var path = this.WriteFasta("repeat_twice.fasta", single, repeat, repeat);
-            var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
-
-            Assert.Equal(0, result.A_取りこぼし数);
-            Assert.Equal(0, result.A_余分な延べ数);
+            Assert.Equal(0, l_result.A_取りこぼし数);
+            Assert.Equal(0, l_result.A_余分な延べ数);
         }
     }
 }

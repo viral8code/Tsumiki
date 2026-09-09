@@ -50,11 +50,14 @@ namespace Tsumiki.Tests.Utility
             return [.. Enumerable.Range(0, p_長さ).Select(_ => (byte)(l_乱数.Next(4) + 1))];
         }
 
+        /// <summary>
+        /// 展開した塩基列をパックした結果と、読み替え_小の結果が一致する
+        /// </summary>
         [Theory]
         [InlineData(21)]
         [InlineData(31)]
         [InlineData(32)]
-        public void Get_読み替え_小_MatchesPackingTheExpandedBases(int p_k長)
+        public void 読み替え_小はパックした結果と一致する(int p_k長)
         {
             var l_塩基 = Get_塩基ID列(p_k長, 7 + p_k長);
             var l_パック = Get_パック済み(l_塩基);
@@ -65,12 +68,15 @@ namespace Tsumiki.Tests.Utility
                 TrustedKmerIndex.Get_読み替え_小(l_パック, l_余り));
         }
 
+        /// <summary>
+        /// 展開した塩基列をパックした結果と、読み替え_中の結果が一致する
+        /// </summary>
         [Theory]
         [InlineData(33)]
         [InlineData(41)]
         [InlineData(63)]
         [InlineData(64)]
-        public void Get_読み替え_中_MatchesPackingTheExpandedBases(int p_k長)
+        public void 読み替え_中はパックした結果と一致する(int p_k長)
         {
             var l_塩基 = Get_塩基ID列(p_k長, 11 + p_k長);
             var l_パック = Get_パック済み(l_塩基);

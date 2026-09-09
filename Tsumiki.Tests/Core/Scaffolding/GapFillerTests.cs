@@ -24,6 +24,9 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private readonly string _tempDir;
 
+        /// <summary>
+        /// 一時ディレクトリを作る
+        /// </summary>
         public GapFillerTests()
         {
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_gapfiller_tests_" + Guid.NewGuid().ToString("N"));
@@ -44,114 +47,120 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る
         /// </summary>
-        /// <param name="length">作る長さ</param>
-        /// <param name="seed">乱数の種</param>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_シード">乱数の種</param>
         /// <returns>塩基配列</returns>
-        private static string RandomSequence(int length, int seed)
+        private static string V_生成_ランダム配列(int p_長さ, int p_シード)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_乱数 = new Random(p_シード);
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
         /// <summary>
         /// 与えた配列から信頼できる k-mer 集合を組み立てる
         /// </summary>
-        /// <param name="kmerLength">k 長</param>
-        /// <param name="sequences">元になる配列</param>
+        /// <param name="p_kmer長">k 長</param>
+        /// <param name="p_配列群">元になる配列</param>
         /// <returns>信頼できる k-mer 集合</returns>
-        private TrustedKmerIndex BuildIndex(int kmerLength, params string[] sequences)
+        private TrustedKmerIndex V_構築_索引(int p_kmer長, params string[] p_配列群)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
-            var index = new TrustedKmerIndex(this._tempDir);
-            foreach (var seq in sequences)
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
+            var l_索引 = new TrustedKmerIndex(this._tempDir);
+            foreach (var l_配列 in p_配列群)
             {
-                var bytes = seq.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + kmerLength <= bytes.Length; i++)
+                var l_バイト列 = l_配列.Select(Util.Get_塩基ID).ToArray();
+                for (var i = 0; i + p_kmer長 <= l_バイト列.Length; i++)
                 {
-                    for (var rep = 0; rep < 3; rep++)
+                    for (var l_繰り返し = 0; l_繰り返し < 3; l_繰り返し++)
                     {
-                        index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);
+                        l_索引.V_登録(l_バイト列.AsSpan(i, p_kmer長), p_ワーカー番号: 0);
                     }
                 }
             }
-            _ = index.V_カットオフ(p_カットオフ: 2);
-            return index;
+            _ = l_索引.V_カットオフ(p_カットオフ: 2);
+            return l_索引;
         }
 
         /// <summary>
         /// スキャフォールドを FASTA として書き出す
         /// </summary>
-        /// <param name="name">ファイル名</param>
-        /// <param name="sequence">書き出す配列</param>
+        /// <param name="p_名前">ファイル名</param>
+        /// <param name="p_配列">書き出す配列</param>
         /// <returns>書き出したパス</returns>
-        private string WriteScaffold(string name, string sequence)
+        private string V_書き込み_スキャフォールド(string p_名前, string p_配列)
         {
-            var path = Path.Combine(this._tempDir, name);
-            using (var writer = new FastaWriter(path))
+            var l_パス = Path.Combine(this._tempDir, p_名前);
+            using (var l_ライター = new FastaWriter(l_パス))
             {
-                writer.V_書き込み("SCAFFOLD1", sequence);
+                l_ライター.V_書き込み("SCAFFOLD1", p_配列);
             }
-            return path;
+            return l_パス;
         }
 
         /// <summary>
         /// FASTA から 1 本だけの配列を読み込む
         /// </summary>
-        /// <param name="path">読み込むパス</param>
+        /// <param name="p_パス">読み込むパス</param>
         /// <returns>読み込んだ配列</returns>
-        private static string ReadSingleSequence(string path)
+        private static string V_読み込み_単一配列(string p_パス)
         {
-            using var reader = new FastaReader(path);
-            Assert.True(reader.Get_続きがあるか());
-            return reader.Get_次の配列().A_配列;
+            using var l_リーダー = new FastaReader(p_パス);
+            Assert.True(l_リーダー.Get_続きがあるか());
+            return l_リーダー.Get_次の配列().A_配列;
         }
 
+        /// <summary>
+        /// 唯一の経路がグラフ上にあれば真の配列に復元される
+        /// </summary>
         [Fact]
-        public void Run_UniquePathThroughTheGraph_RestoresTheTrueSequence()
+        public void 唯一経路の場合は真の配列に復元される()
         {
-            const int k = 21;
+            const int l_k長 = 21;
             // 200 bp の非反復的な配列
             // k=21 なので偶然の重複はまず起きない
-            var truth = RandomSequence(200, seed: 20260903);
+            var l_正解配列 = V_生成_ランダム配列(200, p_シード: 20260903);
 
-            using var index = this.BuildIndex(k, truth);
+            using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
 
             // 真ん中 40 bp を N に置き換えたスキャフォールドを作る
-            const int gapStart = 80;
-            const int gapLength = 40;
-            var withGap = truth[..gapStart] + new string('N', gapLength) + truth[(gapStart + gapLength)..];
-            var path = this.WriteScaffold("scaffolds.fasta", withGap);
+            const int l_ギャップ開始 = 80;
+            const int l_ギャップ長 = 40;
+            var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds.fasta", l_ギャップ入り配列);
 
-            var stats = GapFiller.V_充填_ギャップ(path, index, k);
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
-            Assert.Equal(1, stats.A_総ギャップ数);
-            Assert.Equal(1, stats.A_埋めたギャップ数);
-            Assert.Equal(gapLength, stats.A_埋めた塩基数);
+            Assert.Equal(1, l_統計.A_総ギャップ数);
+            Assert.Equal(1, l_統計.A_埋めたギャップ数);
+            Assert.Equal(l_ギャップ長, l_統計.A_埋めた塩基数);
 
             // 埋めた結果は元の配列そのものに戻っていなければならない
-            Assert.Equal(truth, ReadSingleSequence(path));
+            Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
 
+        /// <summary>
+        /// ギャップ長推定が多少ずれていてもマージンで埋まる
+        /// </summary>
         [Fact]
-        public void Run_GapLengthEstimateSlightlyOff_StillFillsUsingTheMargin()
+        public void ギャップ長推定が多少ずれていてもマージンで埋まる()
         {
-            const int k = 21;
-            var truth = RandomSequence(200, seed: 7);
+            const int l_k長 = 21;
+            var l_正解配列 = V_生成_ランダム配列(200, p_シード: 7);
 
-            using var index = this.BuildIndex(k, truth);
+            using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
 
             // 実際の欠損は 40 bp だが、推定を誤って 30 個の N になっている状況
             // ギャップ長推定はインサートサイズ推定のばらつきを引き継ぐため、
             // ぴったりの長さしか探さないと現実にはまず埋まらない
-            const int gapStart = 80;
-            const int actualMissing = 40;
-            var withGap = truth[..gapStart] + new string('N', 30) + truth[(gapStart + actualMissing)..];
-            var path = this.WriteScaffold("scaffolds_off.fasta", withGap);
+            const int l_ギャップ開始 = 80;
+            const int l_実際の欠損 = 40;
+            var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', 30) + l_正解配列[(l_ギャップ開始 + l_実際の欠損)..];
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_off.fasta", l_ギャップ入り配列);
 
-            var stats = GapFiller.V_充填_ギャップ(path, index, k);
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
-            Assert.Equal(1, stats.A_埋めたギャップ数);
-            Assert.Equal(truth, ReadSingleSequence(path));
+            Assert.Equal(1, l_統計.A_埋めたギャップ数);
+            Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
 
         /// <summary>
@@ -161,27 +170,27 @@ namespace Tsumiki.Tests.Core
         /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全
         /// </remarks>
         [Fact]
-        public void Run_MultiplePathsFitTheGap_LeavesItAsNRatherThanGuessing()
+        public void 経路が複数ある場合はNのまま残す()
         {
-            const int k = 21;
-            var prefix = RandomSequence(80, seed: 11);
-            var suffix = RandomSequence(80, seed: 12);
+            const int l_k長 = 21;
+            var l_前半 = V_生成_ランダム配列(80, p_シード: 11);
+            var l_後半 = V_生成_ランダム配列(80, p_シード: 12);
             // 同じ長さで中身だけ違う 2 通りの中間配列を、どちらも k-mer 集合に入れる
-            var middleA = RandomSequence(40, seed: 13);
-            var middleB = RandomSequence(40, seed: 14);
+            var l_中間A = V_生成_ランダム配列(40, p_シード: 13);
+            var l_中間B = V_生成_ランダム配列(40, p_シード: 14);
 
-            using var index = this.BuildIndex(k, prefix + middleA + suffix, prefix + middleB + suffix);
+            using var l_索引 = this.V_構築_索引(l_k長, l_前半 + l_中間A + l_後半, l_前半 + l_中間B + l_後半);
 
-            var withGap = prefix + new string('N', 40) + suffix;
-            var path = this.WriteScaffold("scaffolds_ambiguous.fasta", withGap);
+            var l_ギャップ入り配列 = l_前半 + new string('N', 40) + l_後半;
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_ambiguous.fasta", l_ギャップ入り配列);
 
-            var stats = GapFiller.V_充填_ギャップ(path, index, k);
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
-            Assert.Equal(1, stats.A_総ギャップ数);
-            Assert.Equal(0, stats.A_埋めたギャップ数);
-            Assert.Equal(1, stats.A_一意に定まらなかった数);
+            Assert.Equal(1, l_統計.A_総ギャップ数);
+            Assert.Equal(0, l_統計.A_埋めたギャップ数);
+            Assert.Equal(1, l_統計.A_一意に定まらなかった数);
             // N はそのまま残っていること
-            Assert.Contains('N', ReadSingleSequence(path));
+            Assert.Contains('N', V_読み込み_単一配列(l_パス));
         }
 
         /// <summary>
@@ -189,38 +198,41 @@ namespace Tsumiki.Tests.Core
         /// 当然埋められない
         /// </summary>
         [Fact]
-        public void Run_NoPathConnectsTheTwoSides_LeavesItAsN()
+        public void 経路が存在しない場合はNのまま残す()
         {
-            const int k = 21;
-            var left = RandomSequence(80, seed: 21);
-            var right = RandomSequence(80, seed: 22);
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(80, p_シード: 21);
+            var l_右 = V_生成_ランダム配列(80, p_シード: 22);
 
             // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない
-            using var index = this.BuildIndex(k, left, right);
+            using var l_索引 = this.V_構築_索引(l_k長, l_左, l_右);
 
-            var withGap = left + new string('N', 40) + right;
-            var path = this.WriteScaffold("scaffolds_unreachable.fasta", withGap);
+            var l_ギャップ入り配列 = l_左 + new string('N', 40) + l_右;
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_unreachable.fasta", l_ギャップ入り配列);
 
-            var stats = GapFiller.V_充填_ギャップ(path, index, k);
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
-            Assert.Equal(1, stats.A_総ギャップ数);
-            Assert.Equal(0, stats.A_埋めたギャップ数);
-            Assert.Equal(1, stats.A_到達できなかった数);
-            Assert.Contains('N', ReadSingleSequence(path));
+            Assert.Equal(1, l_統計.A_総ギャップ数);
+            Assert.Equal(0, l_統計.A_埋めたギャップ数);
+            Assert.Equal(1, l_統計.A_到達できなかった数);
+            Assert.Contains('N', V_読み込み_単一配列(l_パス));
         }
 
+        /// <summary>
+        /// ギャップが無ければ配列はそのまま保たれる
+        /// </summary>
         [Fact]
-        public void Run_NoGaps_LeavesTheSequenceUntouched()
+        public void ギャップが無ければ配列はそのまま()
         {
-            const int k = 21;
-            var truth = RandomSequence(150, seed: 31);
-            using var index = this.BuildIndex(k, truth);
+            const int l_k長 = 21;
+            var l_正解配列 = V_生成_ランダム配列(150, p_シード: 31);
+            using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
 
-            var path = this.WriteScaffold("scaffolds_nogap.fasta", truth);
-            var stats = GapFiller.V_充填_ギャップ(path, index, k);
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_nogap.fasta", l_正解配列);
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
-            Assert.Equal(0, stats.A_総ギャップ数);
-            Assert.Equal(truth, ReadSingleSequence(path));
+            Assert.Equal(0, l_統計.A_総ギャップ数);
+            Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
     }
 }

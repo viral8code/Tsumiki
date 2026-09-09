@@ -119,6 +119,9 @@ namespace Tsumiki.Tests.Core
             return l_スキャフォールドパス;
         }
 
+        /// <summary>
+        /// 単独で出た環状コンティグが、スキャフォールディング後も環状の目印を名前に保つことを検証する
+        /// </summary>
         [Fact]
         public void V_実行_単独で出た環状コンティグは環状のまま名前に残る()
         {
@@ -133,6 +136,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
         }
 
+        /// <summary>
+        /// コンティグ側の環状判定が、スキャフォールディング後もそのまま引き継がれることを検証する
+        /// </summary>
         [Fact]
         public void V_実行_コンティグ側の環状判定がそのまま引き継がれる()
         {

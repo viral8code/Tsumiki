@@ -26,6 +26,11 @@ namespace Tsumiki.Core.Scaffolding
     /// 適用済みだが、ここではローカルに集めたリードに対してカットオフ 1
     /// (=1 回でも読まれていれば信頼する) で再構築する
     /// </remarks>
+    /// <summary>
+    /// 局所アセンブリで埋める 1 箇所のギャップ
+    /// </summary>
+    internal readonly record struct 局所ギャップ(int A_足場番号, int A_開始, int A_長さ, string A_左アンカー, string A_右アンカー);
+
     internal static class LocalAssembler
     {
         /// <summary>
@@ -420,7 +425,7 @@ namespace Tsumiki.Core.Scaffolding
         {
             var l_scaffold別ギャップ = p_ギャップ一覧
                 .Select((l_ギャップ, l_番号) => (l_ギャップ, l_番号))
-                .GroupBy(x => x.l_ギャップ.A_Scaffold番号)
+                .GroupBy(x => x.l_ギャップ.A_足場番号)
                 .ToDictionary(x => x.Key, x => x.ToList());
 
             using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
@@ -461,11 +466,5 @@ namespace Tsumiki.Core.Scaffolding
             Logger.V_出力(
                 メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
-
-        /// <summary>
-        /// 局所アセンブリで埋める 1 箇所のギャップ
-        /// </summary>
-        private readonly record struct 局所ギャップ(
-            int A_Scaffold番号, int A_開始, int A_長さ, string A_左アンカー, string A_右アンカー);
     }
 }

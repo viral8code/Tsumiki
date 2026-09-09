@@ -10,12 +10,5 @@
     /// 前者と後者を分ける「谷」がカットオフの適正値であり、後者の山の位置が
     /// 1 コピーあたりの k-mer カバレッジになる
     /// </remarks>
-    internal record スペクトル解析結果(
-        ulong A_谷,
-        ulong A_ピーク出現回数,
-        long A_谷の頻度,
-        long A_ピークの頻度,
-        long A_ゲノム由来の延べ数,
-        long A_延べ数の総和,
-        long A_推定ゲノムサイズ);
+    internal record スペクトル解析結果(ulong A_谷, ulong A_ピーク出現回数, long A_谷の頻度, long A_ピークの頻度, long A_ゲノム由来の延べ数, long A_延べ数の総和, long A_推定ゲノムサイズ);
 }

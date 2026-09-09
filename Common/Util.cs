@@ -85,33 +85,33 @@ namespace Tsumiki.Common
             var l_二重化 = p_配列 + p_配列;
             var l_失敗関数 = new int[l_二重化.Length];
             Array.Fill(l_失敗関数, -1);
-            var k = 0;
+            var l_k = 0;
             for (var j = 1; j < l_二重化.Length; j++)
             {
                 var l_文字 = l_二重化[j];
-                var i = l_失敗関数[j - k - 1];
-                while (i != -1 && l_文字 != l_二重化[k + i + 1])
+                var l_i = l_失敗関数[j - l_k - 1];
+                while (l_i != -1 && l_文字 != l_二重化[l_k + l_i + 1])
                 {
-                    if (l_文字 < l_二重化[k + i + 1])
+                    if (l_文字 < l_二重化[l_k + l_i + 1])
                     {
-                        k = j - i - 1;
+                        l_k = j - l_i - 1;
                     }
-                    i = l_失敗関数[i];
+                    l_i = l_失敗関数[l_i];
                 }
-                if (l_文字 != l_二重化[k + i + 1])
+                if (l_文字 != l_二重化[l_k + l_i + 1])
                 {
-                    if (l_文字 < l_二重化[k])
+                    if (l_文字 < l_二重化[l_k])
                     {
-                        k = j;
+                        l_k = j;
                     }
-                    l_失敗関数[j - k] = -1;
+                    l_失敗関数[j - l_k] = -1;
                 }
                 else
                 {
-                    l_失敗関数[j - k] = i + 1;
+                    l_失敗関数[j - l_k] = l_i + 1;
                 }
             }
-            return k % l_長さ;
+            return l_k % l_長さ;
         }
 
         /// <summary>

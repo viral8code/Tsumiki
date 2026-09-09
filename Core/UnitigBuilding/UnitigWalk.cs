@@ -38,6 +38,11 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </summary>
         private readonly int _上位シフト;
 
+        /// <summary>
+        /// walk に使う kmer インデックスと k 長から状態を組み立てる
+        /// </summary>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_k長">k 長</param>
         public UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             this._kmerインデックス = p_kmerインデックス;
@@ -50,6 +55,8 @@ namespace Tsumiki.Core.UnitigBuilding
         /// <summary>
         /// この実装で扱える k かどうか
         /// </summary>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>扱えれば true</returns>
         public static bool Get_扱えるか(int p_k長)
         {
             return p_k長 <= 64;

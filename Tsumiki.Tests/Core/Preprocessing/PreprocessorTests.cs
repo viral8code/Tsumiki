@@ -51,10 +51,13 @@ namespace Tsumiki.Tests.Core
             return new string(l_文字);
         }
 
+        /// <summary>
+        /// フラグメント長がリード長を超える通常のペアは変更しないことを検証する
+        /// </summary>
         [Fact]
         public void Get_前処理結果_フラグメント長がリード長を超える通常のペアは変更しない()
         {
-            // 40 bp を大きく超える、互いに無関係な60bpの配列 (=重なりが存在しない、典型的なケース)
+            // 40 bp を大きく超える、互いに無関係な 60 bp の配列 (=重なりが存在しない、典型的なケース)
             const string 配列1 = "ACGTGCATTGCAGTCAGGCTAACGGTTCCAAGGTCATGCAGTACGGCTTA";
             const string 配列2 = "TTGGCACCGGATCCAAGTTGGCCAATGGCTTACGATCGTAGGCCTTAACG";
             var l_クオリティ1 = 高品質クオリティ(配列1.Length);
@@ -68,6 +71,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, l_結果.A_訂正塩基数);
         }
 
+        /// <summary>
+        /// アダプタリードスルーを検出し、フラグメント長までトリムすることを検証する
+        /// </summary>
         [Fact]
         public void Get_前処理結果_アダプタリードスルーを検出してフラグメント長までトリムする()
         {
@@ -76,11 +82,11 @@ namespace Tsumiki.Tests.Core
             // 状況を作る
             // 繰り返し配列だと周期性でオフセットが一意に定まらないため、
             // 非周期な配列を使う
-            const string 真の断片 = "TGACCTGAAGCTTAGGCATCGGTAACCTTGGACGTCAGTA"; // 40bp, non-repetitive
+            const string 真の断片 = "TGACCTGAAGCTTAGGCATCGGTAACCTTGGACGTCAGTA"; // 40 bp, non-repetitive
             const string アダプタ1 = "AGATCGGAAG";
             const string アダプタ2 = "TTTTTTTTTT";
-            var 配列1 = 真の断片 + アダプタ1; // 50bp
-            var 配列2 = Tsumiki.Common.Util.V_逆相補(真の断片) + アダプタ2; // 50bp
+            var 配列1 = 真の断片 + アダプタ1; // 50 bp
+            var 配列2 = Tsumiki.Common.Util.V_逆相補(真の断片) + アダプタ2; // 50 bp
 
             var l_クオリティ1 = 高品質クオリティ(配列1.Length);
             var l_クオリティ2 = 高品質クオリティ(配列2.Length);
@@ -94,10 +100,13 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(真の断片.Length, l_結果.A_クオリティ2.Length);
         }
 
+        /// <summary>
+        /// 一方が高信頼で他方が低信頼のときだけ、低信頼側を上書きすることを検証する
+        /// </summary>
         [Fact]
         public void Get_前処理結果_一方が高信頼で他方が低信頼のときだけ低信頼側を上書きする()
         {
-            const string 真の断片 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 48bp、自己RC対称
+            const string 真の断片 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 48 bp、自己 RC 対称
             const int エラー位置 = 5;
             var 誤った塩基 = 真の断片[エラー位置] == 'A' ? 'C' : 'A';
 
@@ -120,10 +129,13 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(配列2, l_結果.A_配列2);
         }
 
+        /// <summary>
+        /// 曖昧塩基を含む位置は書き換えないことを検証する
+        /// </summary>
         [Fact]
         public void Get_前処理結果_曖昧塩基を含む位置は書き換えない()
         {
-            const string 真の断片 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 48bp
+            const string 真の断片 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 48 bp
             const int N位置 = 5;
 
             var l_配列1 = 真の断片.ToCharArray();

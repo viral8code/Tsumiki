@@ -21,6 +21,14 @@ namespace Tsumiki.Core.Polishing
     /// 連結の裏付けが無い接合点はその前後で
     /// 深度が不連続になるため、完全長の判定にも使う
     /// </remarks>
+    /// <summary>
+    /// 種索引の 1 件
+    /// </summary>
+    /// <remarks>
+    /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
+    /// </remarks>
+    internal readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
+
     internal static class Polisher
     {
         /// <summary>
@@ -90,14 +98,6 @@ namespace Tsumiki.Core.Polishing
         /// これ以上は同じ枠に入れる
         /// </remarks>
         private const int 深度ヒストグラムの上限 = 65535;
-
-        /// <summary>
-        /// 種索引の 1 件
-        /// </summary>
-        /// <remarks>
-        /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
-        /// </remarks>
-        private readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
 
         /// <summary>
         /// 複数の位置に当たった種であることを示す番兵
@@ -380,7 +380,7 @@ namespace Tsumiki.Core.Polishing
         private static double Get_深度の中央値(List<char[]> p_配列群, int[][] p_得票)
         {
             var l_ヒストグラム = new long[深度ヒストグラムの上限 + 1];
-            long l_総数 = 0L;
+            var l_総数 = 0L;
             for (var i = 0; i < p_配列群.Count; i++)
             {
                 for (var l_位置 = 0; l_位置 < p_配列群[i].Length; l_位置++)
@@ -403,7 +403,7 @@ namespace Tsumiki.Core.Polishing
                 return 0;
             }
 
-            long l_累積 = 0L;
+            var l_累積 = 0L;
             for (var l_深度 = 0; l_深度 <= 深度ヒストグラムの上限; l_深度++)
             {
                 l_累積 += l_ヒストグラム[l_深度];
@@ -442,7 +442,7 @@ namespace Tsumiki.Core.Polishing
         {
             var l_深度不足の閾値 = p_深度の中央値 * 深度不足とみなす比;
 
-            long l_訂正数 = 0L;
+            var l_訂正数 = 0L;
             p_深度不足数 = 0;
             p_評価位置数 = 0;
 

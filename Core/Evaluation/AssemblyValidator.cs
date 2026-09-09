@@ -33,7 +33,7 @@ namespace Tsumiki.Core.Evaluation
             // キーは 2 bit パックした UInt128 で、k が 64 を超えるとパックが収まらないので正規形のハッシュに切り替える
             // 数えるだけで配列を戻さないので、ハッシュで足りる
             Dictionary<UInt128, int> l_観測 = [];
-            long l_延べ数 = 0L;
+            var l_延べ数 = 0L;
 
             using (var l_読み込み = new FastaReader(p_FASTAパス))
             {
@@ -52,10 +52,10 @@ namespace Tsumiki.Core.Evaluation
                 }
             }
 
-            long l_信頼kmer数 = 0L;
-            long l_取りこぼし数 = 0L;
-            long l_出しすぎ種類数 = 0L;
-            long l_余分な延べ数 = 0L;
+            var l_信頼kmer数 = 0L;
+            var l_取りこぼし数 = 0L;
+            var l_出しすぎ種類数 = 0L;
+            var l_余分な延べ数 = 0L;
 
             foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {

@@ -13,16 +13,22 @@ namespace Tsumiki.Tests.Common
     /// </remarks>
     public class UtilRotationTests
     {
+        /// <summary>
+        /// 空文字と1文字はそのまま返す
+        /// </summary>
         [Theory]
         [InlineData("")]
         [InlineData("A")]
-        public void Get_最小回転_TrivialInputs_ReturnsAsIs(string input)
+        public void 自明な入力はそのまま返す(string p_文字列)
         {
-            Assert.Equal(input, Util.Get_最小回転(input));
+            Assert.Equal(p_文字列, Util.Get_最小回転(p_文字列));
         }
 
+        /// <summary>
+        /// 辞書式最小の回転を求める
+        /// </summary>
         [Fact]
-        public void Get_最小回転_FindsTheLexicographicallySmallestRotation()
+        public void 辞書式最小の回転を求める()
         {
             // "BAAB" の回転は BAAB, AABB, ABBA, BBAA
             // 辞書式最小は AABB
@@ -38,30 +44,36 @@ namespace Tsumiki.Tests.Common
         [InlineData(5)]
         [InlineData(10)]
         [InlineData(19)]
-        public void Get_最小回転_IsInvariantAcrossAllRotationsOfTheSameSequence(int rotateBy)
+        public void どの回転から始めても結果は同じ(int p_回転量)
         {
-            const string original = "ACGTTGCAACGTAGGCTTAA"; // 20bp、非反復的
-            var rotated = original[rotateBy..] + original[..rotateBy];
+            const string l_元 = "ACGTTGCAACGTAGGCTTAA"; // 20bp、非反復的
+            var l_回転後 = l_元[p_回転量..] + l_元[..p_回転量];
 
-            Assert.Equal(Util.Get_最小回転(original), Util.Get_最小回転(rotated));
+            Assert.Equal(Util.Get_最小回転(l_元), Util.Get_最小回転(l_回転後));
         }
 
+        /// <summary>
+        /// 同じ文字の繰り返しでも結果を返す
+        /// </summary>
         [Fact]
-        public void Get_最小回転_HandlesRepetitiveSequences()
+        public void 反復配列も扱える()
         {
             // 全て同じ文字なら、どの回転でも結果は同じ文字列になる
-            const string repetitive = "AAAAAA";
-            Assert.Equal(repetitive, Util.Get_最小回転(repetitive));
+            const string l_反復配列 = "AAAAAA";
+            Assert.Equal(l_反復配列, Util.Get_最小回転(l_反復配列));
         }
 
+        /// <summary>
+        /// 結果は入力の回転のいずれかになっている
+        /// </summary>
         [Fact]
-        public void Get_最小回転_ResultIsAlwaysAValidRotationOfTheInput()
+        public void 結果は入力の有効な回転になっている()
         {
-            const string original = "TGGCAAGTCACTCTCGACCGA";
-            var result = Util.Get_最小回転(original);
+            const string l_元 = "TGGCAAGTCACTCTCGACCGA";
+            var l_結果 = Util.Get_最小回転(l_元);
 
-            Assert.Equal(original.Length, result.Length);
-            Assert.Contains(result, original + original);
+            Assert.Equal(l_元.Length, l_結果.Length);
+            Assert.Contains(l_結果, l_元 + l_元);
         }
     }
 }

@@ -51,7 +51,7 @@ namespace Tsumiki.Utility
         /// 二峰性がはっきりしない (カバレッジが低すぎる等) 場合は null を返す
         /// </remarks>
         public static スペクトル解析結果? Get_解析結果(
-            IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000)
+            IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {
             if (p_ヒストグラム.Count == 0)
             {
@@ -83,8 +83,8 @@ namespace Tsumiki.Utility
             }
 
             var l_加算上限 = Math.Min(l_最大キー, l_ピーク * ゲノムサイズ推定に含める倍率の上限);
-            long l_ゲノム由来の延べ数 = 0L;
-            long l_延べ数の総和 = 0L;
+            var l_ゲノム由来の延べ数 = 0L;
+            var l_延べ数の総和 = 0L;
             foreach (var (l_出現回数, l_頻度) in p_ヒストグラム)
             {
                 if (l_出現回数 > l_加算上限)
@@ -198,7 +198,7 @@ namespace Tsumiki.Utility
         /// k-mer が絶対数として増え、品質を落とさずメモリを減らせるため
         /// </remarks>
         public static ulong? Get_推奨カットオフ(
-            IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000)
+            IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {
             if (Get_解析結果(p_ヒストグラム, p_走査上限) is not { } l_解析)
             {

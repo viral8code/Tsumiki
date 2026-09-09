@@ -16,6 +16,14 @@ namespace Tsumiki.Tests.Core
     /// </remarks>
     public class AssemblySelectorTradeOffTests
     {
+        /// <summary>
+        /// 検証用のアセンブリ候補を組み立てる
+        /// </summary>
+        /// <param name="p_k長">候補の k 長</param>
+        /// <param name="p_NG50">候補の NG50</param>
+        /// <param name="p_完全性">候補の完全性</param>
+        /// <param name="p_正確性">候補の正確性</param>
+        /// <returns>実行結果と評価の組</returns>
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
             int p_k長, long p_NG50, double p_完全性, double p_正確性)
         {
@@ -53,6 +61,9 @@ namespace Tsumiki.Tests.Core
             ];
         }
 
+        /// <summary>
+        /// 完全性・正確性の差が揺らぎの範囲に収まるときは連続性で決めることを確かめる
+        /// </summary>
         [Fact]
         public void Get_最良_揺らぎの範囲の差では連続性で決める()
         {
@@ -65,6 +76,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(93, l_選択!.Value.A_実行結果.A_k長);
         }
 
+        /// <summary>
+        /// 正確性に実質的な差があれば連続性より正確性を優先することを確かめる
+        /// </summary>
         [Fact]
         public void Get_最良_正確性に実質的な差があればそちらを優先する()
         {
@@ -78,6 +92,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
         }
 
+        /// <summary>
+        /// 完全性で足切りされた候補は連続性がどれほど高くても選ばれないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_最良_完全性で足切りされた候補は連続性に関わらず選ばれない()
         {
@@ -91,6 +108,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
         }
 
+        /// <summary>
+        /// 統合で正確性が大きく落ちた候補は退けることを確かめる
+        /// </summary>
         [Fact]
         public void Get_最良_統合で正確性が大きく落ちた候補は退ける()
         {
@@ -104,6 +124,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(38_261, l_選択!.Value.A_評価.A_NG50);
         }
 
+        /// <summary>
+        /// 同点幅に収まる差は同じ段になることを確かめる
+        /// </summary>
         [Fact]
         public void Get_段_同点幅に収まる差は同じ段になる()
         {
@@ -115,6 +138,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(AssemblySelector.Get_段(0.9900, 0.9994) > 0);
         }
 
+        /// <summary>
+        /// 基準より良い値は 0 段のままにすることを確かめる
+        /// </summary>
         [Fact]
         public void Get_段_基準より良い値は0段のままにする()
         {

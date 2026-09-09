@@ -23,34 +23,43 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_支持数">支持したペアの数</param>
         /// <param name="p_期待比">理想本数に対する比</param>
         /// <returns>スキャフォールドの候補</returns>
-        private static スキャフォールド候補 候補(int p_行き先, ulong p_支持数, double p_期待比)
+        private static スキャフォールド候補 V_構築_スキャフォールド候補(int p_行き先, ulong p_支持数, double p_期待比)
         {
             return new スキャフォールド候補(p_行き先, p_支持数, 300, p_期待比);
         }
 
+        /// <summary>
+        /// 明確に優勢な候補を採用することを検証する
+        /// </summary>
         [Fact]
-        public void Get_優勢な候補_TakesTheDominantEdge()
+        public void Get_優勢な候補_明確に優勢な候補を採用する()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 100, 0.9), 候補(6, 12, 0.05)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
+                [V_構築_スキャフォールド候補(4, 100UL, 0.9D), V_構築_スキャフォールド候補(6, 12UL, 0.05D)], p_優勢閾値: 0.8M, p_最小証拠数: 10UL);
 
             Assert.NotNull(l_結果);
             Assert.Equal(4, l_結果!.Value.A_行き先);
         }
 
+        /// <summary>
+        /// 競合する候補が拮抗しているときは採用しないことを検証する
+        /// </summary>
         [Fact]
-        public void Get_優勢な候補_RejectsWhenRivalsAreComparable()
+        public void Get_優勢な候補_競合する候補が拮抗しているときは採用しない()
         {
-            var l_候補 = new List<スキャフォールド候補> { 候補(4, 20, 0.5), 候補(6, 18, 0.45) };
+            var l_候補 = new List<スキャフォールド候補> { V_構築_スキャフォールド候補(4, 20UL, 0.5D), V_構築_スキャフォールド候補(6, 18UL, 0.45D) };
 
-            Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 10));
+            Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 10UL));
         }
 
+        /// <summary>
+        /// どの候補も最小証拠数に満たないときは採用しないことを検証する
+        /// </summary>
         [Fact]
-        public void Get_優勢な候補_RejectsWhenNoCandidateMeetsTheSupportFloor()
+        public void Get_優勢な候補_最小証拠数に満たない候補は採用しない()
         {
             Assert.Null(Scaffolder.Get_優勢な候補(
-                [候補(4, 9, 0.9)], p_優勢閾値: 0.8M, p_最小証拠数: 10));
+                [V_構築_スキャフォールド候補(4, 9UL, 0.9D)], p_優勢閾値: 0.8M, p_最小証拠数: 10UL));
         }
 
         /// <summary>
@@ -61,10 +70,10 @@ namespace Tsumiki.Tests.Core
         /// 幾何的に有利なだけの辺が勝ってしまう
         /// </remarks>
         [Fact]
-        public void Get_優勢な候補_RanksByTheExpectedCountRatioNotTheRawCount()
+        public void Get_優勢な候補_生の本数ではなく期待本数に対する比で優劣を決める()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 200, 0.05), 候補(6, 12, 0.95)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
+                [V_構築_スキャフォールド候補(4, 200UL, 0.05D), V_構築_スキャフォールド候補(6, 12UL, 0.95D)], p_優勢閾値: 0.8M, p_最小証拠数: 10UL);
 
             Assert.NotNull(l_結果);
             Assert.Equal(6, l_結果!.Value.A_行き先);
@@ -77,10 +86,10 @@ namespace Tsumiki.Tests.Core
         /// 短い contig 同士や広いギャップでは、正しい隣接でも本数は少なくなる
         /// </remarks>
         [Fact]
-        public void Get_優勢な候補_AcceptsAFewPairsWhenThatIsAllThatIsExpected()
+        public void Get_優勢な候補_期待本数に見合っていれば本数が少なくても採用する()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 10, 0.95)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
+                [V_構築_スキャフォールド候補(4, 10UL, 0.95D)], p_優勢閾値: 0.8M, p_最小証拠数: 10UL);
 
             Assert.NotNull(l_結果);
             Assert.Equal(4, l_結果!.Value.A_行き先);

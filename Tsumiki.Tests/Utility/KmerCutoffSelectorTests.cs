@@ -42,7 +42,7 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int K = 21;
+        private const int k長 = 21;
 
         /// <summary>
         /// (出現回数, その回数を持たせる k-mer の種類数)
@@ -82,60 +82,63 @@ namespace Tsumiki.Tests.Utility
         /// <remarks>
         /// 乱数配列から取った連続する k-mer は k=21 なら実質すべて相異なる
         /// </remarks>
-        private TrustedKmerIndex BuildIndex()
+        private TrustedKmerIndex V_構築_索引()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 4 };
-            var index = new TrustedKmerIndex(this._tempDir);
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
+            var l_index = new TrustedKmerIndex(this._tempDir);
 
-            var 種類数の合計 = スペクトルの形.Sum(x => x.A_種類数);
-            var rng = new Random(20260904);
-            var bases = string.Concat(Enumerable.Range(0, 種類数の合計 + K - 1).Select(_ => "ACGT"[rng.Next(4)]))
+            var l_種類数の合計 = スペクトルの形.Sum(x => x.A_種類数);
+            var l_rng = new Random(20260904);
+            var l_bases = string.Concat(Enumerable.Range(0, l_種類数の合計 + k長 - 1).Select(_ => "ACGT"[l_rng.Next(4)]))
                 .Select(Util.Get_塩基ID).ToArray();
 
-            var position = 0;
-            foreach (var (出現回数, 種類数) in スペクトルの形)
+            var l_position = 0;
+            foreach (var (l_出現回数, l_種類数) in スペクトルの形)
             {
-                for (var i = 0; i < 種類数; i++, position++)
+                for (var i = 0; i < l_種類数; i++, l_position++)
                 {
-                    for (var t = 0UL; t < 出現回数; t++)
+                    for (var t = 0UL; t < l_出現回数; t++)
                     {
-                        index.V_登録(bases.AsSpan(position, K), p_ワーカー番号: (int)(t % 4));
+                        l_index.V_登録(l_bases.AsSpan(l_position, k長), p_ワーカー番号: (int)(t % 4));
                     }
                 }
             }
-            return index;
+            return l_index;
         }
 
+        /// <summary>
+        /// カットオフ未指定の場合、誤り由来の k-mer が支配しない最小のカットオフを選ぶ
+        /// </summary>
         [Fact]
-        public void Resolve_WhenCutoffWasNotGiven_PicksTheLowestCutoffThatKeepsErrorsFromDominating()
+        public void カットオフ未指定なら誤りが支配しない最小のカットオフを選ぶ()
         {
-            using var index = this.BuildIndex();
-            var param = new Parameters();
-            Assert.False(param.A_kmerカットオフが明示指定されたか);
+            using var l_index = this.V_構築_索引();
+            var l_param = new Parameters();
+            Assert.False(l_param.A_kmerカットオフが明示指定されたか);
 
-            KmerCutoffSelector.V_解決_kmerカットオフ(param, index);
+            KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_index);
 
-            Assert.Equal(選ばれるべきカットオフ, param.A_kmerカットオフ);
+            Assert.Equal(選ばれるべきカットオフ, l_param.A_kmerカットオフ);
             // 谷より上へは決して行かないこと
             // 谷で切ると本物の k-mer の左裾まで
             // 削れてグラフが切れる (実データで N50 が半分以下になった)
-            Assert.True(param.A_kmerカットオフ < 谷の位置);
+            Assert.True(l_param.A_kmerカットオフ < 谷の位置);
             // 自動適用は「明示指定された」扱いにしない
-            Assert.False(param.A_kmerカットオフが明示指定されたか);
+            Assert.False(l_param.A_kmerカットオフが明示指定されたか);
         }
 
         /// <summary>
         /// 明示指定はユーザーの判断なので、推定値で上書きしてはいけない
         /// </summary>
         [Fact]
-        public void Resolve_WhenCutoffWasGivenExplicitly_LeavesItAlone()
+        public void 明示指定されたカットオフはそのまま残す()
         {
-            using var index = this.BuildIndex();
-            var param = new Parameters { A_kmerカットオフ = 2 };
+            using var l_index = this.V_構築_索引();
+            var l_param = new Parameters { A_kmerカットオフ = 2 };
 
-            KmerCutoffSelector.V_解決_kmerカットオフ(param, index);
+            KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_index);
 
-            Assert.Equal(2UL, param.A_kmerカットオフ);
+            Assert.Equal(2UL, l_param.A_kmerカットオフ);
         }
 
         /// <summary>
@@ -144,19 +147,19 @@ namespace Tsumiki.Tests.Utility
         /// ヒストグラムを見ている、という一気通貫の確認)
         /// </summary>
         [Fact]
-        public void Resolve_ThenCutoff_KeepsExactlyTheKmersAtOrAboveTheSelectedCutoff()
+        public void 選択したカットオフ以上のkmerだけがそのまま残る()
         {
-            using var index = this.BuildIndex();
-            var param = new Parameters();
+            using var l_index = this.V_構築_索引();
+            var l_param = new Parameters();
 
-            KmerCutoffSelector.V_解決_kmerカットオフ(param, index);
-            _ = index.V_カットオフ(param.A_kmerカットオフ);
+            KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_index);
+            _ = l_index.V_カットオフ(l_param.A_kmerカットオフ);
 
-            var 残るはずの種類数 = スペクトルの形
-                .Where(x => x.A_出現回数 >= param.A_kmerカットオフ)
+            var l_残るはずの種類数 = スペクトルの形
+                .Where(x => x.A_出現回数 >= l_param.A_kmerカットオフ)
                 .Sum(x => x.A_種類数);
 
-            Assert.Equal(残るはずの種類数, index.Get_信頼kmer一覧().Count());
+            Assert.Equal(l_残るはずの種類数, l_index.Get_信頼kmer一覧().Count());
         }
     }
 }

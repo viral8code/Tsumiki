@@ -115,6 +115,10 @@ namespace Tsumiki.Utility
         /// </summary>
         private bool 中経路を使うか => this._k長 is > 32 and <= 64;
 
+        /// <summary>
+        /// シャードごとのカウンタを一時ディレクトリの下に用意する
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">カウンタの置き場</param>
         public TrustedKmerIndex(string p_一時ディレクトリ)
         {
             this._k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -660,8 +664,8 @@ namespace Tsumiki.Utility
             Dictionary<ulong, ulong>? l_信頼kmer_小;
             Dictionary<UInt128, ulong>? l_信頼kmer_中;
             {
-                ulong l_採用数 = 0UL;
-                ulong l_総種類数 = 0UL;
+                var l_採用数 = 0UL;
+                var l_総種類数 = 0UL;
                 // 出現回数 -> その回数を持つユニーク k-mer の種類数
                 // エラー由来の低頻度 k-mer と真のゲノム由来 k-mer を分ける「谷」を
                 // 推定するために、カットオフ判定と同じこのループで集計する

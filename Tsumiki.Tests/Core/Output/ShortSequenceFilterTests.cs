@@ -52,8 +52,11 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
+        /// <summary>
+        /// リードより短い配列だけを落とすことを確かめる
+        /// </summary>
         [Fact]
-        public void V_除外_短い配列_DropsOnlyWhatIsShorterThanTheRead()
+        public void V_除外_短い配列_リードより短い配列だけを落とす()
         {
             var l_パス = this.Get_書き出し(
                 ("SCAFFOLD1", new string('A', 300)),
@@ -69,8 +72,11 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(150, l_残り[1].A_配列.Length);
         }
 
+        /// <summary>
+        /// 短い配列が無ければファイルはそのままであることを確かめる
+        /// </summary>
         [Fact]
-        public void V_除外_短い配列_LeavesTheFileAloneWhenNothingIsShort()
+        public void V_除外_短い配列_短い配列が無ければファイルはそのまま()
         {
             var l_パス = this.Get_書き出し(
                 ("SCAFFOLD1", new string('A', 300)),
@@ -82,8 +88,11 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_元, File.ReadAllBytes(l_パス));
         }
 
+        /// <summary>
+        /// リード長が不明なら何もしないことを確かめる
+        /// </summary>
         [Fact]
-        public void V_除外_短い配列_DoesNothingWhenTheReadLengthIsUnknown()
+        public void V_除外_短い配列_リード長が不明なら何もしない()
         {
             var l_パス = this.Get_書き出し(("SCAFFOLD1", new string('A', 10)));
             var l_元 = File.ReadAllBytes(l_パス);
@@ -92,9 +101,12 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(l_元, File.ReadAllBytes(l_パス));
         }
-    
+
+        /// <summary>
+        /// 最終成果物とログだけを残し、中間ファイルを削除することを確かめる
+        /// </summary>
         [Fact]
-        public void V_削除_中間ファイル_KeepsTheFinalProductsAndTheLog()
+        public void V_削除_中間ファイル_最終成果物とログだけ残す()
         {
             foreach (var l_名前 in new[]
             {
@@ -120,5 +132,5 @@ namespace Tsumiki.Tests.Core
                 l_残り);
             Assert.Empty(Directory.EnumerateDirectories(this._tempDir));
         }
-}
+    }
 }

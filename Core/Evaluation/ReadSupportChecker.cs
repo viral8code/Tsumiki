@@ -120,36 +120,44 @@ namespace Tsumiki.Core.Evaluation
             var l_バッチ = new string[照合バッチサイズ];
             var l_件数 = 0;
 
-            void V_照合()
-            {
-                var l_今回 = l_件数;
-                _ = Parallel.For(0, l_今回, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
-                {
-                    var l_リード = l_バッチ[i];
-                    for (var p = 0; p + p_r長 <= l_リード.Length; p++)
-                    {
-                        if (KmerPacking.Get_正規化キー(l_リード, p, p_r長, out var l_正規形)
-                            && p_表.TryGetValue(l_正規形, out var l_番号))
-                        {
-                            p_見たか[l_番号] = 1;
-                        }
-                    }
-                });
-                l_件数 = 0;
-            }
-
             foreach (var l_リード in FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス))
             {
                 l_バッチ[l_件数++] = l_リード;
                 if (l_件数 == 照合バッチサイズ)
                 {
-                    V_照合();
+                    V_照合(p_表, p_見たか, l_バッチ, l_件数, p_r長, l_スレッド数);
+                    l_件数 = 0;
                 }
             }
             if (l_件数 > 0)
             {
-                V_照合();
+                V_照合(p_表, p_見たか, l_バッチ, l_件数, p_r長, l_スレッド数);
             }
+        }
+
+        /// <summary>
+        /// バッチに溜めたリードを並列に照合し、表にある r-mer に印を付ける
+        /// </summary>
+        /// <param name="p_表">r-mer から通し番号への表</param>
+        /// <param name="p_見たか">通し番号ごとの、リードで見たかどうか</param>
+        /// <param name="p_バッチ">照合対象のリードを溜めた配列</param>
+        /// <param name="p_件数">バッチに溜まっている件数</param>
+        /// <param name="p_r長">支持を問う r-mer の長さ</param>
+        /// <param name="p_スレッド数">並列度</param>
+        private static void V_照合(Dictionary<UInt128, int> p_表, byte[] p_見たか, string[] p_バッチ, int p_件数, int p_r長, int p_スレッド数)
+        {
+            _ = Parallel.For(0, p_件数, new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, i =>
+            {
+                var l_リード = p_バッチ[i];
+                for (var p = 0; p + p_r長 <= l_リード.Length; p++)
+                {
+                    if (KmerPacking.Get_正規化キー(l_リード, p, p_r長, out var l_正規形)
+                        && p_表.TryGetValue(l_正規形, out var l_番号))
+                    {
+                        p_見たか[l_番号] = 1;
+                    }
+                }
+            });
         }
 
         /// <summary>

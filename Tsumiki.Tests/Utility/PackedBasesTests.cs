@@ -18,7 +18,7 @@ namespace Tsumiki.Tests.Utility
         /// <param name="p_長さ">作る長さ</param>
         /// <param name="p_乱数">使う乱数</param>
         /// <returns>塩基 ID 列</returns>
-        private static byte[] RandomBases(int p_長さ, Random p_乱数)
+        private static byte[] V_生成_乱数塩基列(int p_長さ, Random p_乱数)
         {
             var l_列 = new byte[p_長さ];
             for (var i = 0; i < p_長さ; i++)
@@ -80,13 +80,13 @@ namespace Tsumiki.Tests.Utility
         /// 語の境界をまたぐ位置 (32 の倍数の前後) を必ず含むように総当たりする
         /// </remarks>
         [Fact]
-        public void Get_不一致数_MatchesTheNaiveCountAtEveryOffsetAndLength()
+        public void あらゆる開始位置と長さで語単位の不一致数が素朴な数え方と一致する()
         {
             var l_乱数 = new Random(20260925);
             for (var l_試行 = 0; l_試行 < 20; l_試行++)
             {
-                var l_列1 = RandomBases(150, l_乱数);
-                var l_列2 = RandomBases(150, l_乱数);
+                var l_列1 = V_生成_乱数塩基列(150, l_乱数);
+                var l_列2 = V_生成_乱数塩基列(150, l_乱数);
 
                 // 一部を一致させて、不一致 0 や少数の場合も通す
                 Array.Copy(l_列1, 20, l_列2, 20, 60);
@@ -112,16 +112,22 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
+        /// <summary>
+        /// 曖昧な塩基を含む列は作れない
+        /// </summary>
         [Fact]
-        public void Get_作る_RefusesAmbiguousBases()
+        public void 曖昧な塩基を含む列は作れない()
         {
             byte[] l_列 = [Consts.塩基ID.A, Consts.無効な塩基, Consts.塩基ID.T];
 
             Assert.Null(PackedBases.Get_作る(l_列));
         }
 
+        /// <summary>
+        /// 末尾を超えた範囲は 0 として読める
+        /// </summary>
         [Fact]
-        public void Get_窓_ReadsPastTheEndAsZero()
+        public void 末尾を超えた範囲は0として読める()
         {
             var l_詰め = PackedBases.Get_作る([Consts.塩基ID.T, Consts.塩基ID.T]);
 

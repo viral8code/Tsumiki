@@ -206,7 +206,7 @@ namespace Tsumiki.Core.Pipeline
         private static bool Get_薄すぎるか(
             アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
         {
-            p_予測 = 0;
+            p_予測 = 0D;
             if (p_直前 is null || p_リード長 is not { } l_リード長 || p_引数.A_k長一覧.Count > 0)
             {
                 return false;
@@ -247,12 +247,6 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 採用した k の生成物を接頭辞の無い名前へ複製する
-        /// </summary>
-        /// <remarks>
-        /// 各 k の生成物は、選択の妥当性を後から確かめられるよう残す
-        /// </remarks>
-        /// <summary>
         /// 試す k の一覧
         /// </summary>
         /// <remarks>
@@ -264,6 +258,9 @@ namespace Tsumiki.Core.Pipeline
         /// 上限をリード長近くまで取るのは、カバレッジが十分あれば
         /// リード長に近い k のほうが良い場合があるため
         /// </remarks>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_リード長">リード長、不明なら null</param>
+        /// <returns>試す k の一覧</returns>
         public static List<int> Get_k候補一覧(Parameters p_引数, int? p_リード長)
         {
             if (p_引数.A_k長一覧.Count > 0)
@@ -283,7 +280,7 @@ namespace Tsumiki.Core.Pipeline
                 return [Get_奇数(Math.Min(l_上限, l_リード長 - 1))];
             }
 
-            var l_比 = Math.Pow((double)l_上限 / l_下限, 1.0 / (Consts.マルチkで試す個数 - 1));
+            var l_比 = Math.Pow((double)l_上限 / l_下限, 1D / (Consts.マルチkで試す個数 - 1));
             var l_候補 = new SortedSet<int>();
             for (var i = 0; i < Consts.マルチkで試す個数; i++)
             {
@@ -326,7 +323,7 @@ namespace Tsumiki.Core.Pipeline
             var l_直前の本数 = p_リード長 - p_直前のk長 + 1;
             var l_次の本数 = p_リード長 - p_次のk長 + 1;
             return l_直前の本数 <= 0 || l_次の本数 <= 0
-                ? 0
+                ? 0D
                 : p_直前の基準値 * l_次の本数 / l_直前の本数;
         }
 

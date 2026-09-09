@@ -90,7 +90,7 @@ namespace Tsumiki.Core.Evaluation
             l_項目.Add(new 検査項目(
                 "coverage_continuity", メッセージID.検査項目_深度の連続性, l_深度,
                 p_ポリッシュ is { } l_ポリッシュ2
-                    ? $"{l_ポリッシュ2.A_深度不足率 * 100:F2}% <= {深度不足の許容率 * 100:F2}%"
+                    ? $"{l_ポリッシュ2.A_深度不足率 * 100D:F2}% <= {深度不足の許容率 * 100D:F2}%"
                     : string.Empty));
 
             var l_ギャップ = Get_判定(p_未解決ギャップ数 == 0, 未達理由.未解決のギャップが残る, l_理由);

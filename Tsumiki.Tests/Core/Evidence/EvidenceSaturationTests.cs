@@ -11,6 +11,9 @@ namespace Tsumiki.Tests.Core
     /// </remarks>
     public class EvidenceSaturationTests
     {
+        /// <summary>
+        /// 支持が無ければ飽和支持は0になること
+        /// </summary>
         [Fact]
         public void Get_飽和支持_支持が無ければ0になる()
         {
@@ -18,6 +21,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, 証拠較正器.Get_飽和支持(-5));
         }
 
+        /// <summary>
+        /// 飽和支持は本数の増加とともに単調に増えるが1を超えないこと
+        /// </summary>
         [Fact]
         public void Get_飽和支持_単調に増えるが1を超えない()
         {
@@ -34,6 +40,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(証拠較正器.Get_飽和支持(10000) <= 1.0);
         }
 
+        /// <summary>
+        /// 飽和支持は本数を増やすほど伸びが小さくなり頭打ちになること
+        /// </summary>
         [Fact]
         public void Get_飽和支持_本数を増やしても頭打ちになる()
         {
@@ -46,6 +55,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(証拠較正器.Get_飽和支持(10000) - 証拠較正器.Get_飽和支持(1000) < 0.001);
         }
 
+        /// <summary>
+        /// 同じ距離を示す観測はまとめて1つの独立支持として数えること
+        /// </summary>
         [Fact]
         public void Get_独立支持数_同じ距離を示す観測は1つに畳む()
         {
@@ -53,12 +65,18 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, 証拠較正器.Get_独立支持数([.. Enumerable.Repeat(300, 100)]));
         }
 
+        /// <summary>
+        /// 距離が散らばっていれば独立支持数はその種類数になること
+        /// </summary>
         [Fact]
         public void Get_独立支持数_距離が散らばっていればその数だけ数える()
         {
             Assert.Equal(4, 証拠較正器.Get_独立支持数([300, 305, 310, 305, 300, 320]));
         }
 
+        /// <summary>
+        /// 観測が無ければ独立支持数は0になること
+        /// </summary>
         [Fact]
         public void Get_独立支持数_観測が無ければ0になる()
         {

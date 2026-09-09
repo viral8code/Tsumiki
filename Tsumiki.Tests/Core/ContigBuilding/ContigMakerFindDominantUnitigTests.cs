@@ -62,51 +62,60 @@ namespace Tsumiki.Tests.Core
             return new ContigMaker(unitigsPath);
         }
 
+        /// <summary>
+        /// 順鎖一致では read の長さではなく unitig 内での終端位置が返る
+        /// </summary>
         [Fact]
-        public void FindDominantUnitig_ForwardMatch_ReturnsUnitigCoordinateEndOffset_NotReadCoordinate()
+        public void V_代表ユニティグ_順鎖一致はunitig内座標の終端位置を返す()
         {
-            var contigMaker = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
 
             // read = unitig の [40,70) 部分 (30 bp)
             // read自身の長さ (30) ではなく、
             // unitig内での終端位置 (70) が返るはず
-            var read = UnitigSeq.Substring(40, 30);
+            var l_read = UnitigSeq.Substring(40, 30);
 
-            var hit = contigMaker.Get_代表ユニティグ(read);
+            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
 
-            Assert.Equal(1, hit.A_ユニティグID); // 正の値 = 順鎖でのヒット
-            Assert.Equal(70, hit.A_最終一致終端位置);
-            Assert.Equal(UnitigSeq.Length, hit.A_ユニティグ長);
+            Assert.Equal(1, l_ヒット.A_ユニティグID); // 正の値 = 順鎖でのヒット
+            Assert.Equal(70, l_ヒット.A_最終一致終端位置);
+            Assert.Equal(UnitigSeq.Length, l_ヒット.A_ユニティグ長);
         }
 
+        /// <summary>
+        /// 逆相補一致では unitig を逆向きに見た座標系での終端位置が返る
+        /// </summary>
         [Fact]
-        public void FindDominantUnitig_ReverseComplementMatch_ReturnsReverseOrientedUnitigCoordinate()
+        public void V_代表ユニティグ_逆相補一致は逆向きunitig座標の終端位置を返す()
         {
-            var contigMaker = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
 
             // 元の [40,70) を逆相補した read
             // unitig 全体を逆相補した向きで見ると、
             // 元の区間 [40,70) は [100-70, 100-40) = [30,60) に写る
-            var read = Util.V_逆相補(UnitigSeq.Substring(40, 30));
+            var l_read = Util.V_逆相補(UnitigSeq.Substring(40, 30));
 
-            var hit = contigMaker.Get_代表ユニティグ(read);
+            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
 
-            Assert.Equal(-1, hit.A_ユニティグID); // 負の値 = 逆鎖でのヒット
-            Assert.Equal(60, hit.A_最終一致終端位置);
+            Assert.Equal(-1, l_ヒット.A_ユニティグID); // 負の値 = 逆鎖でのヒット
+            Assert.Equal(60, l_ヒット.A_最終一致終端位置);
         }
 
+        /// <summary>
+        /// unitig の末尾ちょうどで一致すると終端位置が unitig の全長になる
+        /// </summary>
         [Fact]
-        public void FindDominantUnitig_MatchAtVeryEndOfUnitig_ReturnsFullUnitigLength()
+        public void V_代表ユニティグ_unitig末尾での一致は終端位置がunitig全長になる()
         {
-            var contigMaker = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
 
-            var read = UnitigSeq[^20..]; // unitigの末尾20bp
+            var l_read = UnitigSeq[^20..]; // unitigの末尾20bp
 
-            var hit = contigMaker.Get_代表ユニティグ(read);
+            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
 
-            Assert.Equal(1, hit.A_ユニティグID);
-            Assert.Equal(UnitigSeq.Length, hit.A_最終一致終端位置);
-            Assert.Equal(0, hit.A_末尾までの残り長);
+            Assert.Equal(1, l_ヒット.A_ユニティグID);
+            Assert.Equal(UnitigSeq.Length, l_ヒット.A_最終一致終端位置);
+            Assert.Equal(0, l_ヒット.A_末尾までの残り長);
         }
     }
 }

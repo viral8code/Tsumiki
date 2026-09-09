@@ -1,5 +1,5 @@
 ﻿using Tsumiki.Common;
-using Tsumiki.Model.Foundation;
+using Tsumiki.Model.UnitigBuilding;
 using Tsumiki.Utility;
 
 namespace Tsumiki.Core.UnitigBuilding
@@ -147,72 +147,6 @@ namespace Tsumiki.Core.UnitigBuilding
                     return 正規形集合.Get_同じ座位か(l_次, p_開始kmer, p_k長);
                 }
                 l_次.CopyTo(l_現在, 0);
-            }
-        }
-
-        /// <summary>
-        /// 逆相補を同一視して k-mer を覚える集合
-        /// </summary>
-        /// <remarks>
-        /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが
-        /// UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
-        /// </remarks>
-        private sealed class 正規形集合(int p_k長)
-        {
-            /// <summary>
-            /// 小
-            /// </summary>
-            private readonly HashSet<UInt128>? _小 = p_k長 <= 64 ? [] : null;
-
-            /// <summary>
-            /// 大
-            /// </summary>
-            private readonly HashSet<KmerKey>? _大 = p_k長 > 64 ? [] : null;
-
-            /// <summary>
-            /// 訪問済みとして正規形を覚える
-            /// </summary>
-            /// <param name="p_正規形">k-mer の正規形</param>
-            public void V_追加(UInt128 p_正規形)
-            {
-                _ = this._小!.Add(p_正規形);
-            }
-
-            /// <summary>
-            /// 訪問済みとして k-mer を覚える
-            /// </summary>
-            /// <param name="p_kmer">塩基 ID 列</param>
-            public void V_追加(ReadOnlySpan<byte> p_kmer)
-            {
-                if (this._小 is { } l_小)
-                {
-                    _ = l_小.Add(KmerPacking.Get_正規化パック(p_kmer));
-                    return;
-                }
-                _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
-            }
-
-            /// <summary>
-            /// 既に訪問済みか
-            /// </summary>
-            /// <param name="p_kmer">塩基 ID 列</param>
-            /// <returns>訪問済みなら true</returns>
-            public bool Get_含まれるか(ReadOnlySpan<byte> p_kmer)
-            {
-                return this._小 is { } l_小
-                    ? l_小.Contains(KmerPacking.Get_正規化パック(p_kmer))
-                    : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
-            }
-
-            /// <summary>
-            /// 2 つの k-mer が、逆相補を同一視して同じ座位を指すか
-            /// </summary>
-            public static bool Get_同じ座位か(
-                ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
-            {
-                return p_k長 <= 64
-                    ? KmerPacking.Get_正規化パック(p_左) == KmerPacking.Get_正規化パック(p_右)
-                    : new KmerKey(p_左).Get_正規形().Equals(new KmerKey(p_右).Get_正規形());
             }
         }
     }

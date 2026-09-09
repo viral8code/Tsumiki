@@ -5,36 +5,36 @@
         /// <summary>
         /// バイト列を辞書式順序で比べる
         /// </summary>
-        /// <param name="x">比べるバイト列</param>
-        /// <param name="y">比べるバイト列</param>
-        /// <returns>x が小さければ負、大きければ正、等しければ 0</returns>
-        public int Compare(byte[]? x, byte[]? y)
+        /// <param name="p_x">比べるバイト列</param>
+        /// <param name="p_y">比べるバイト列</param>
+        /// <returns>p_x が小さければ負、大きければ正、等しければ 0</returns>
+        public int Compare(byte[]? p_x, byte[]? p_y)
         {
-            if (x == y)
+            if (p_x == p_y)
             {
                 return 0;
             }
 
-            if (x == null)
+            if (p_x == null)
             {
                 return -1;
             }
 
-            if (y == null)
+            if (p_y == null)
             {
                 return 1;
             }
 
-            var l_比較長 = Math.Min(x.Length, y.Length);
+            var l_比較長 = Math.Min(p_x.Length, p_y.Length);
             for (var i = 0; i < l_比較長; i++)
             {
-                if (x[i] != y[i])
+                if (p_x[i] != p_y[i])
                 {
-                    return x[i].CompareTo(y[i]);
+                    return p_x[i].CompareTo(p_y[i]);
                 }
             }
 
-            return x.Length.CompareTo(y.Length);
+            return p_x.Length.CompareTo(p_y.Length);
         }
     }
 }

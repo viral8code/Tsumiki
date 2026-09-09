@@ -123,6 +123,7 @@ namespace Tsumiki.Model.Foundation
         /// A_k長が明示指定されたか は立てないため、
         /// 「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
+        /// <param name="p_k長">推定して得られた k 長</param>
         public void Set_推定k長(int p_k長)
         {
             var l_明示指定済みか = this.A_k長が明示指定されたか;
@@ -167,6 +168,7 @@ namespace Tsumiki.Model.Foundation
         /// <remarks>
         /// A_kmerカットオフが明示指定されたか は立てない
         /// </remarks>
+        /// <param name="p_カットオフ">推定して得られたカットオフ</param>
         public void Set_推定kmerカットオフ(ulong p_カットオフ)
         {
             var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
@@ -213,6 +215,7 @@ namespace Tsumiki.Model.Foundation
         /// A_Phredが明示指定されたか は
         /// 立てないため、「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
+        /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
         public void Set_推定Phredオフセット(int p_オフセット)
         {
             var l_明示指定済みか = this.A_Phredが明示指定されたか;
@@ -288,6 +291,8 @@ namespace Tsumiki.Model.Foundation
         /// <remarks>
         /// 表示は CLI で指定する形に合わせる
         /// </remarks>
+        /// <param name="p_水準">綴りへ変換するログ水準</param>
+        /// <returns>-log に書く綴り</returns>
         private static string Get_ログ水準名(ログ水準 p_水準)
         {
             return p_水準 switch
@@ -304,6 +309,8 @@ namespace Tsumiki.Model.Foundation
         /// <remarks>
         /// 表示は CLI で指定する形に合わせる
         /// </remarks>
+        /// <param name="p_言語">綴りへ変換する言語</param>
+        /// <returns>-lang に書く綴り</returns>
         private static string Get_言語名(言語 p_言語)
         {
             return p_言語 switch
@@ -355,12 +362,12 @@ namespace Tsumiki.Model.Foundation
         public bool A_SuperReadを作るか { get; set; } = false;
 
         /// <summary>
-        /// 短い反復の解決 (V_解決_短い反復)で、対応付けを確定させる前に
-        /// r-mer(アセンブリの k とは独立の短い長さ) による接合点の検証を
+        /// 短い反復の解決 (V_解決_短い反復) で、対応付けを確定させる前に
+        /// r-mer (アセンブリの k とは独立の短い長さ) による接合点の検証を
         /// 課すか
         /// </summary>
         /// <remarks>
-        /// 生リードの追加走査が 1 回k毎に要る (既定は false)
+        /// 生リードの追加走査が 1 回 k 毎に要る (既定は false)
         /// </remarks>
         public bool A_反復をrMerで検証するか { get; set; } = false;
 
@@ -370,7 +377,7 @@ namespace Tsumiki.Model.Foundation
         /// (LocalAssembler) で埋めるか
         /// </summary>
         /// <remarks>
-        /// AssemblyMerger(-mg) の安全な代替
+        /// AssemblyMerger (-mg) の安全な代替
         /// </remarks>
         public bool A_局所アセンブリするか { get; set; } = false;
 

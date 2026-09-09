@@ -5,10 +5,19 @@
     /// </summary>
     internal enum 言語
     {
+        /// <summary>
+        /// 日本語
+        /// </summary>
         日本語,
 
+        /// <summary>
+        /// 英語
+        /// </summary>
         英語,
 
+        /// <summary>
+        /// 中国語
+        /// </summary>
         中国語,
     }
 }

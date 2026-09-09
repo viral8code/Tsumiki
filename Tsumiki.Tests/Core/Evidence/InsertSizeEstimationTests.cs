@@ -23,12 +23,12 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 一時ディレクトリのパス
         /// </summary>
-        private readonly string _tempDir;
+        private readonly string _一時ディレクトリ;
 
         public InsertSizeEstimationTests()
         {
-            this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_insertsize_tests_" + Guid.NewGuid().ToString("N"));
-            _ = Directory.CreateDirectory(this._tempDir);
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_insertsize_tests_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
         /// <summary>
@@ -36,9 +36,9 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public void Dispose()
         {
-            if (Directory.Exists(this._tempDir))
+            if (Directory.Exists(this._一時ディレクトリ))
             {
-                Directory.Delete(this._tempDir, recursive: true);
+                Directory.Delete(this._一時ディレクトリ, recursive: true);
             }
         }
 
@@ -49,27 +49,28 @@ namespace Tsumiki.Tests.Core
         /// k=21 では
         /// この長さの乱数配列に重複 k-mer が現れる確率は無視できる
         /// </remarks>
-        private static string RandomSequence(int length, int seed)
+        /// <param name="p_長さ">生成する配列長</param>
+        /// <param name="p_シード">乱数シード</param>
+        private static string V_生成_乱数配列(int p_長さ, int p_シード)
         {
-            var rng = new Random(seed);
-            return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
+            var l_乱数 = new Random(p_シード);
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
         /// <summary>
         /// リードを FASTQ として書き出す
         /// </summary>
-        /// <param name="reads">書き出すリード</param>
-        /// <param name="path">書き出し先</param>
-        /// <returns>書き出したパス</returns>
-        private static void WriteFastq(string path, IEnumerable<(string A_ID, string A_配列)> reads)
+        /// <param name="p_パス">書き出し先</param>
+        /// <param name="p_リード一覧">書き出すリード</param>
+        private static void V_書き込み_Fastq(string p_パス, IEnumerable<(string A_ID, string A_配列)> p_リード一覧)
         {
-            using var writer = new StreamWriter(path);
-            foreach (var (id, seq) in reads)
+            using var l_ライター = new StreamWriter(p_パス);
+            foreach (var (l_ID, l_配列) in p_リード一覧)
             {
-                writer.WriteLine($"@{id}");
-                writer.WriteLine(seq);
-                writer.WriteLine("+");
-                writer.WriteLine(new string('I', seq.Length)); // Q40相当
+                l_ライター.WriteLine($"@{l_ID}");
+                l_ライター.WriteLine(l_配列);
+                l_ライター.WriteLine("+");
+                l_ライター.WriteLine(new string('I', l_配列.Length)); // Q40相当
             }
         }
 
@@ -84,8 +85,8 @@ namespace Tsumiki.Tests.Core
 
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
-            var unitigSeq = RandomSequence(unitigLength, seed: 12345);
-            var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
+            var unitigSeq = V_生成_乱数配列(unitigLength, p_シード: 12345);
+            var unitigsPath = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
             // FR 配置: read1 はフラグメント左端から順鎖方向、
@@ -94,12 +95,12 @@ namespace Tsumiki.Tests.Core
             var read2 = Util.V_逆相補(
                 unitigSeq.Substring(fragmentStart + trueFragmentLength - readLength, readLength));
 
-            var path1 = Path.Combine(this._tempDir, "r1.fq");
-            var path2 = Path.Combine(this._tempDir, "r2.fq");
+            var path1 = Path.Combine(this._一時ディレクトリ, "r1.fq");
+            var path2 = Path.Combine(this._一時ディレクトリ, "r2.fq");
             // 中央値を安定させるため同一ペアを複数本入れる
             var pairs = Enumerable.Range(0, 5).ToList();
-            WriteFastq(path1, pairs.Select(i => ($"pair{i}/1", read1)));
-            WriteFastq(path2, pairs.Select(i => ($"pair{i}/2", read2)));
+            V_書き込み_Fastq(path1, pairs.Select(i => ($"pair{i}/1", read1)));
+            V_書き込み_Fastq(path2, pairs.Select(i => ($"pair{i}/2", read2)));
 
             var contigMaker = new ContigMaker(unitigsPath);
             contigMaker.V_マッピング_ペアリード(path1, path2);
@@ -129,18 +130,18 @@ namespace Tsumiki.Tests.Core
 
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
-            var unitigSeq = RandomSequence(unitigLength, seed: 777);
-            var unitigsPath = Path.Combine(this._tempDir, $"unitigs_{trueFragmentLength}.fasta");
+            var unitigSeq = V_生成_乱数配列(unitigLength, p_シード: 777);
+            var unitigsPath = Path.Combine(this._一時ディレクトリ, $"unitigs_{trueFragmentLength}.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
             var read1 = unitigSeq.Substring(fragmentStart, readLength);
             var read2 = Util.V_逆相補(
                 unitigSeq.Substring(fragmentStart + trueFragmentLength - readLength, readLength));
 
-            var path1 = Path.Combine(this._tempDir, $"r1_{trueFragmentLength}.fq");
-            var path2 = Path.Combine(this._tempDir, $"r2_{trueFragmentLength}.fq");
-            WriteFastq(path1, [("pair/1", read1)]);
-            WriteFastq(path2, [("pair/2", read2)]);
+            var path1 = Path.Combine(this._一時ディレクトリ, $"r1_{trueFragmentLength}.fq");
+            var path2 = Path.Combine(this._一時ディレクトリ, $"r2_{trueFragmentLength}.fq");
+            V_書き込み_Fastq(path1, [("pair/1", read1)]);
+            V_書き込み_Fastq(path2, [("pair/2", read2)]);
 
             var contigMaker = new ContigMaker(unitigsPath);
             contigMaker.V_マッピング_ペアリード(path1, path2);

@@ -116,6 +116,9 @@ namespace Tsumiki.Tests.Core
                 || l_二周.Contains(Util.V_逆相補(p_配列), StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// 分岐のない閉路は、通常の開始点判定 (開始 k-mer 一覧) では 1 つも拾えない
+        /// </summary>
         [Fact]
         public void Get_閉路の開始kmer_分岐のない閉路は通常の開始点判定では拾えない()
         {
@@ -126,6 +129,9 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(l_インデックス.Get_開始kmer一覧());
         }
 
+        /// <summary>
+        /// 分岐のない閉路を 1 つだけ回収し、1 周ぶんの配列に復元する
+        /// </summary>
         [Fact]
         public void Get_閉路の開始kmer_閉路を1つだけ回収して1周ぶんの配列にする()
         {
@@ -144,6 +150,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(Get_環の1周か(l_配列, l_環状), "環の1周になっていない");
         }
 
+        /// <summary>
+        /// 線状の配列だけなら、閉路の開始 k-mer は 1 つも返さない
+        /// </summary>
         [Fact]
         public void Get_閉路の開始kmer_線状の配列だけなら何も返さない()
         {
@@ -157,6 +166,9 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(CyclicUnitigFinder.Get_閉路の開始kmer(l_インデックス, l_通常の走査, k長));
         }
 
+        /// <summary>
+        /// 線状の配列と混ざっていても、閉路の開始 k-mer だけを拾う
+        /// </summary>
         [Fact]
         public void Get_閉路の開始kmer_線状の配列と混ざっていても閉路だけを拾う()
         {
@@ -174,6 +186,9 @@ namespace Tsumiki.Tests.Core
             Assert.True(Get_環の1周か(l_配列, l_環状), "拾ったのが環ではない");
         }
 
+        /// <summary>
+        /// 独立した閉路が 2 つあれば、それぞれ 1 つずつ開始 k-mer を返す
+        /// </summary>
         [Fact]
         public void Get_閉路の開始kmer_閉路が2つあればそれぞれ1つずつ返す()
         {

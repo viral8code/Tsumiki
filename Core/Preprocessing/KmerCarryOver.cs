@@ -75,7 +75,7 @@ namespace Tsumiki.Core.Preprocessing
         {
             var l_追加数 = 0;
             var l_処理数 = 0;
-            ulong l_出力済みの区切り = 0UL;
+            var l_出力済みの区切り = 0UL;
             foreach (var l_引き継ぎ in p_引き継ぎ配列)
             {
                 // -sr を使うと引き継ぎ配列はリードペアの数まで増える
@@ -151,7 +151,7 @@ namespace Tsumiki.Core.Preprocessing
 
             var l_前段の本数 = l_リード長 - p_引き継ぎ.A_k長 + 1;
             var l_今の本数 = l_リード長 - p_k長 + 1;
-            return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)l_最小 : (ulong)Math.Max(1, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
+            return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)l_最小 : (ulong)Math.Max(1L, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
         }
     }
 }

@@ -23,6 +23,12 @@ namespace Tsumiki.Core
     /// </remarks>
     internal partial class ContigMaker
     {
+        /// <summary>
+        /// unitig グラフから辺を選び結合を確定して、コンティグを FASTA へ書き出す
+        /// </summary>
+        /// <param name="p_コンティグパス">出力先の FASTA パス</param>
+        /// <param name="p_優勢閾値">分岐選択で優勢とみなす正規化支持の割合</param>
+        /// <param name="p_最小証拠数">分岐選択に必要な最小の証拠数</param>
         /// <param name="p_コピー数">
         /// unitig ID -> 推定コピー数<br/>
         /// 先読み探索で「この unitig を何回まで通ってよいか」の
@@ -303,7 +309,7 @@ namespace Tsumiki.Core
                 var l_最良 = -1;
                 var l_最良の生本数 = 0UL;
                 var l_最良の正規化 = double.NegativeInfinity;
-                var l_正規化合計 = 0.0;
+                var l_正規化合計 = 0D;
                 foreach (var w in l_出辺)
                 {
                     var l_件数 = p_支持.GetValueOrDefault((v, w));

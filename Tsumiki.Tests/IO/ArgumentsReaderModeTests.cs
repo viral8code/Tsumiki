@@ -12,11 +12,11 @@ namespace Tsumiki.Tests.IO
         /// <summary>
         /// 実在するだけのダミーのリードのパス
         /// </summary>
-        private readonly string _dummyReadPath;
+        private readonly string _ダミーリードパス;
 
         public ArgumentsReaderModeTests()
         {
-            this._dummyReadPath = Path.GetTempFileName();
+            this._ダミーリードパス = Path.GetTempFileName();
         }
 
         /// <summary>
@@ -24,37 +24,46 @@ namespace Tsumiki.Tests.IO
         /// </summary>
         public void Dispose()
         {
-            if (File.Exists(this._dummyReadPath))
+            if (File.Exists(this._ダミーリードパス))
             {
-                File.Delete(this._dummyReadPath);
+                File.Delete(this._ダミーリードパス);
             }
         }
 
+        /// <summary>
+        /// -mode に保守的を指定すると、両方の閾値が保守的モードの値へ引き上がることを検証する
+        /// </summary>
         [Fact]
-        public void Mode_Conservative_RaisesBothThresholds()
+        public void modeに保守的を指定すると両方の閾値が上がる()
         {
             var args = ArgumentsReader.Get_実行時引数(
-                ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.保守的]);
+                ["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.保守的]);
 
             Assert.Equal(Consts.保守的モードのペア結合閾値, args.A_ペア結合閾値);
             Assert.Equal(Consts.保守的モードのペア支持数閾値, args.A_ペア支持数閾値);
         }
 
+        /// <summary>
+        /// -mode に積極的を指定すると、両方の閾値が積極的モードの値へ引き下がることを検証する
+        /// </summary>
         [Fact]
-        public void Mode_Bold_LowersBothThresholds()
+        public void modeに積極的を指定すると両方の閾値が下がる()
         {
             var args = ArgumentsReader.Get_実行時引数(
-                ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.積極的]);
+                ["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.積極的]);
 
             Assert.Equal(Consts.積極的モードのペア結合閾値, args.A_ペア結合閾値);
             Assert.Equal(Consts.積極的モードのペア支持数閾値, args.A_ペア支持数閾値);
         }
 
+        /// <summary>
+        /// -mode に標準を指定すると、素の既定値と一致することを検証する
+        /// </summary>
         [Fact]
-        public void Mode_Normal_MatchesThePlainDefaults()
+        public void modeに標準を指定すると素の既定値と一致する()
         {
             var args = ArgumentsReader.Get_実行時引数(
-                ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.標準]);
+                ["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.標準]);
 
             Assert.Equal(Consts.ペア結合閾値の既定値, args.A_ペア結合閾値);
             Assert.Equal(Consts.ペア支持数閾値の既定値, args.A_ペア支持数閾値);
@@ -65,10 +74,10 @@ namespace Tsumiki.Tests.IO
         /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
         /// </summary>
         [Fact]
-        public void Mode_FollowedByExplicitThreshold_TheExplicitOneWins()
+        public void modeの後ろに書いた個別指定が優先される()
         {
             var args = ArgumentsReader.Get_実行時引数(
-                ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.保守的, "-pu", "0.5"]);
+                ["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.保守的, "-pu", "0.5"]);
 
             Assert.Equal(0.5M, args.A_ペア結合閾値);
             // -pc は指定していないので保守的モードの値のまま

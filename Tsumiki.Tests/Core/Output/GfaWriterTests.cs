@@ -20,7 +20,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 曖昧塩基を含む窓を表す番号
         /// </summary>
-        private const int AmbiguousKmer = int.MinValue;
+        private const int 曖昧kmer番号 = int.MinValue;
 
         /// <summary>
         /// この検証で使う k 長
@@ -32,17 +32,17 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 分岐元
         /// </summary>
-        private const string UnitigA = "TGGCAAGTCACTCTCGACCGA";
+        private const string ユニティグA = "TGGCAAGTCACTCTCGACCGA";
 
         /// <summary>
         /// 分岐先の片方
         /// </summary>
-        private const string UnitigB = "CGACCGAACGGCGCCGGATC";
+        private const string ユニティグB = "CGACCGAACGGCGCCGGATC";
 
         /// <summary>
         /// 分岐先のもう片方
         /// </summary>
-        private const string UnitigC = "CGACCGACTGTAATTCTACC";
+        private const string ユニティグC = "CGACCGACTGTAATTCTACC";
 
         /// <summary>
         /// 一時ディレクトリのパス
@@ -66,110 +66,126 @@ namespace Tsumiki.Tests.Core
             }
         }
 
-        private static (List<string> UnitigList, UnitigGraph Graph) Build()
+        /// <summary>
+        /// 分岐を持つ検証用のユニティググラフを組み立てる
+        /// </summary>
+        /// <returns>ユニティグ一覧とグラフ</returns>
+        private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
-            List<string> unitigList = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int UnitigId, int Position)> kmerDict = [];
+            List<string> l_ユニティグ一覧 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int UnitigId, int Position)> l_kmer辞書 = [];
 
-            var id = 1;
-            foreach (var seq in new[] { UnitigA, UnitigB, UnitigC })
+            var l_id = 1;
+            foreach (var l_seq in new[] { ユニティグA, ユニティグB, ユニティグC })
             {
-                unitigList.Add(seq);
-                unitigList.Add(Util.V_逆相補(seq));
-                for (var i = K; i <= seq.Length; i++)
+                l_ユニティグ一覧.Add(l_seq);
+                l_ユニティグ一覧.Add(Util.V_逆相補(l_seq));
+                for (var i = K; i <= l_seq.Length; i++)
                 {
-                    var startPos = i - K;
-                    var key = new KmerKey(seq.AsSpan(startPos, K));
-                    Register(kmerDict, key, id, startPos);
-                    Register(kmerDict, key.Get_逆相補(), -id, seq.Length - i);
+                    var l_開始位置 = i - K;
+                    var l_key = new KmerKey(l_seq.AsSpan(l_開始位置, K));
+                    V_登録(l_kmer辞書, l_key, l_id, l_開始位置);
+                    V_登録(l_kmer辞書, l_key.Get_逆相補(), -l_id, l_seq.Length - i);
                 }
-                id++;
+                l_id++;
             }
-            return (unitigList, UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer));
+            return (l_ユニティグ一覧, UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, K, 曖昧kmer番号));
         }
 
         /// <summary>
         /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
         /// </summary>
-        /// <param name="dict">登録先の辞書</param>
-        /// <param name="key">登録する k-mer</param>
-        /// <param name="id">ユニティグ ID</param>
-        /// <param name="position">ユニティグ内の開始位置</param>
-        private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
+        /// <param name="p_辞書">登録先の辞書</param>
+        /// <param name="p_key">登録する k-mer</param>
+        /// <param name="p_id">ユニティグ ID</param>
+        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_key, int p_id, int p_位置)
         {
-            if (dict.TryGetValue(key, out var existing))
+            if (p_辞書.TryGetValue(p_key, out var l_既存))
             {
-                if (existing.Item1 is AmbiguousKmer || existing.Item1 == id)
+                if (l_既存.Item1 is 曖昧kmer番号 || l_既存.Item1 == p_id)
                 {
                     return;
                 }
-                dict[key] = (AmbiguousKmer, 0);
+                p_辞書[p_key] = (曖昧kmer番号, 0);
                 return;
             }
-            dict[key] = (id, position);
+            p_辞書[p_key] = (p_id, p_位置);
         }
 
+        /// <summary>
+        /// ユニティグごとに順方向配列と長さを持つ S 行を 1 つ書くことを確かめる
+        /// </summary>
         [Fact]
-        public void V_出力_WritesOneSegmentPerUnitigWithItsForwardSequenceAndLength()
+        public void V_出力_ユニティグごとに順方向配列と長さを持つS行を1つ書く()
         {
-            var (unitigList, graph) = Build();
-            var path = Path.Combine(this._tempDir, "graph.gfa");
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_パス = Path.Combine(this._tempDir, "graph.gfa");
 
-            GfaWriter.V_出力(path, unitigList, graph, K);
+            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, K);
 
-            var lines = File.ReadAllLines(path);
-            Assert.Equal("H\tVN:Z:1.0", lines[0]);
+            var l_行 = File.ReadAllLines(l_パス);
+            Assert.Equal("H\tVN:Z:1.0", l_行[0]);
 
-            var sLines = lines.Where(l => l.StartsWith("S\t")).ToList();
-            Assert.Equal(3, sLines.Count);
-            Assert.Contains($"S\t1\t{UnitigA}\tLN:i:{UnitigA.Length}", sLines);
-            Assert.Contains($"S\t2\t{UnitigB}\tLN:i:{UnitigB.Length}", sLines);
-            Assert.Contains($"S\t3\t{UnitigC}\tLN:i:{UnitigC.Length}", sLines);
+            var l_S行 = l_行.Where(l => l.StartsWith("S\t")).ToList();
+            Assert.Equal(3, l_S行.Count);
+            Assert.Contains($"S\t1\t{ユニティグA}\tLN:i:{ユニティグA.Length}", l_S行);
+            Assert.Contains($"S\t2\t{ユニティグB}\tLN:i:{ユニティグB.Length}", l_S行);
+            Assert.Contains($"S\t3\t{ユニティグC}\tLN:i:{ユニティグC.Length}", l_S行);
         }
 
+        /// <summary>
+        /// 物理的な隣接ごとに L 行を 1 本だけ書くことを確かめる
+        /// </summary>
         [Fact]
-        public void V_出力_WritesOneLinkPerPhysicalAdjacency_NotOnePerDirectedTwinPair()
+        public void V_出力_物理的な隣接ごとにL行を1本だけ書く()
         {
-            var (unitigList, graph) = Build();
-            var path = Path.Combine(this._tempDir, "graph_links.gfa");
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_パス = Path.Combine(this._tempDir, "graph_links.gfa");
 
-            GfaWriter.V_出力(path, unitigList, graph, K);
+            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, K);
 
-            var lLines = File.ReadAllLines(path).Where(l => l.StartsWith("L\t")).ToList();
+            var l_L行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("L\t")).ToList();
 
             // A は B・C の両方へ分岐する (2 つの物理的な隣接)
             // 各隣接は v→w と w^1→v^1 の双子として内部的には 2 回現れるが、
             // GFA には 1 本ずつしか出ないこと
-            Assert.Equal(2, lLines.Count);
-            Assert.Contains(lLines, l => l == $"L\t1\t+\t2\t+\t{K - 1}M");
-            Assert.Contains(lLines, l => l == $"L\t1\t+\t3\t+\t{K - 1}M");
+            Assert.Equal(2, l_L行.Count);
+            Assert.Contains(l_L行, l => l == $"L\t1\t+\t2\t+\t{K - 1}M");
+            Assert.Contains(l_L行, l => l == $"L\t1\t+\t3\t+\t{K - 1}M");
         }
 
+        /// <summary>
+        /// コピー数を渡せば CN タグを含めることを確かめる
+        /// </summary>
         [Fact]
-        public void V_出力_IncludesCopyNumberTag_WhenProvided()
+        public void V_出力_コピー数を渡せばCNタグを含める()
         {
-            var (unitigList, graph) = Build();
-            var path = Path.Combine(this._tempDir, "graph_cn.gfa");
-            Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 2, [3] = 1 };
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_パス = Path.Combine(this._tempDir, "graph_cn.gfa");
+            Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 2, [3] = 1 };
 
-            GfaWriter.V_出力(path, unitigList, graph, K, copyNumber);
+            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, K, l_コピー数);
 
-            var sLines = File.ReadAllLines(path).Where(l => l.StartsWith("S\t")).ToList();
-            Assert.Contains(sLines, l => l.StartsWith("S\t2\t") && l.EndsWith("CN:i:2"));
-            Assert.Contains(sLines, l => l.StartsWith("S\t1\t") && l.EndsWith("CN:i:1"));
+            var l_S行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("S\t")).ToList();
+            Assert.Contains(l_S行, l => l.StartsWith("S\t2\t") && l.EndsWith("CN:i:2"));
+            Assert.Contains(l_S行, l => l.StartsWith("S\t1\t") && l.EndsWith("CN:i:1"));
         }
 
+        /// <summary>
+        /// コピー数を渡さなければ CN タグを省くことを確かめる
+        /// </summary>
         [Fact]
-        public void V_出力_OmitsCopyNumberTag_WhenNotProvided()
+        public void V_出力_コピー数を渡さなければCNタグを省く()
         {
-            var (unitigList, graph) = Build();
-            var path = Path.Combine(this._tempDir, "graph_nocn.gfa");
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_パス = Path.Combine(this._tempDir, "graph_nocn.gfa");
 
-            GfaWriter.V_出力(path, unitigList, graph, K);
+            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, K);
 
-            var sLines = File.ReadAllLines(path).Where(l => l.StartsWith("S\t")).ToList();
-            Assert.DoesNotContain(sLines, l => l.Contains("CN:i:"));
+            var l_S行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("S\t")).ToList();
+            Assert.DoesNotContain(l_S行, l => l.Contains("CN:i:"));
         }
     }
 }

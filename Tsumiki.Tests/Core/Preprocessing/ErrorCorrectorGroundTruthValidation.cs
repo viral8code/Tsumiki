@@ -27,78 +27,81 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 合成データを置くディレクトリ
         /// </summary>
-        private static readonly string SynthDir = Path.Combine(
+        private static readonly string _合成データディレクトリ = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "tsumiki_synth");
 
+        /// <summary>
+        /// 正解データに対してエラー訂正の recall と誤訂正率を測定する
+        /// </summary>
         [Fact]
-        public void MeasureCorrectionAccuracyAgainstGroundTruth()
+        public void 正解データに対して訂正精度を測定する()
         {
-            var refPath = Path.Combine(SynthDir, "reference.fasta");
-            var read1Path = Path.Combine(SynthDir, "reads.1.fq");
-            var read2Path = Path.Combine(SynthDir, "reads.2.fq");
-            var errorsPath = Path.Combine(SynthDir, "errors.tsv");
-            if (!File.Exists(refPath) || !File.Exists(read1Path) || !File.Exists(errorsPath))
+            var l_参照パス = Path.Combine(_合成データディレクトリ, "reference.fasta");
+            var l_リード1パス = Path.Combine(_合成データディレクトリ, "reads.1.fq");
+            var l_リード2パス = Path.Combine(_合成データディレクトリ, "reads.2.fq");
+            var l_エラーパス = Path.Combine(_合成データディレクトリ, "errors.tsv");
+            if (!File.Exists(l_参照パス) || !File.Exists(l_リード1パス) || !File.Exists(l_エラーパス))
             {
                 return; // 合成データ未生成、tools/simulate_reads.py --out-dir /tmp/tsumiki_synth で生成してから実行する
             }
 
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 31, A_kmerカットオフ = 2, A_スレッド数 = 8 };
 
-            var outDir = Path.Combine(Path.GetTempPath(), "tsumiki_ec_validation_" + Guid.NewGuid().ToString("N"));
-            _ = Directory.CreateDirectory(outDir);
-            var corrected1 = Path.Combine(outDir, "corrected.1.fq");
-            var corrected2 = Path.Combine(outDir, "corrected.2.fq");
+            var l_出力ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_ec_validation_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(l_出力ディレクトリ);
+            var l_訂正済み1 = Path.Combine(l_出力ディレクトリ, "corrected.1.fq");
+            var l_訂正済み2 = Path.Combine(l_出力ディレクトリ, "corrected.2.fq");
 
             try
             {
-                ErrorCorrector.V_訂正_リードファイル(read1Path, read2Path, outDir, corrected1, corrected2);
+                ErrorCorrector.V_訂正_リードファイル(l_リード1パス, l_リード2パス, l_出力ディレクトリ, l_訂正済み1, l_訂正済み2);
 
                 // read_id -> mate -> position -> true_base (注入されたエラーの正解)
-                var trueErrors = new Dictionary<(string ReadId, int Mate, int Position), char>();
-                foreach (var line in File.ReadLines(errorsPath).Skip(1))
+                var l_正解エラー = new Dictionary<(string ReadId, int Mate, int Position), char>();
+                foreach (var l_行 in File.ReadLines(l_エラーパス).Skip(1))
                 {
-                    var parts = line.Split('\t');
-                    var readId = parts[0];
-                    var mate = int.Parse(parts[1]);
-                    var position = int.Parse(parts[2]);
-                    var trueBase = parts[3][0];
-                    trueErrors[(readId, mate, position)] = trueBase;
+                    var l_列 = l_行.Split('\t');
+                    var l_リードID = l_列[0];
+                    var l_ペア番号 = int.Parse(l_列[1]);
+                    var l_位置 = int.Parse(l_列[2]);
+                    var l_正解塩基 = l_列[3][0];
+                    l_正解エラー[(l_リードID, l_ペア番号, l_位置)] = l_正解塩基;
                 }
 
-                var originalReads = LoadReadsById(read1Path, 1);
-                foreach (var kv in LoadReadsById(read2Path, 2))
+                var l_元のリード = V_読み込み_リードID別(l_リード1パス, 1);
+                foreach (var l_組 in V_読み込み_リードID別(l_リード2パス, 2))
                 {
-                    originalReads[kv.Key] = kv.Value;
+                    l_元のリード[l_組.Key] = l_組.Value;
                 }
 
-                var fixedCount = 0;
-                var stillWrongCount = 0;
-                var newlyWrongCount = 0; // 元々正しかった塩基を誤って書き換えてしまった数
-                var totalChangedPositions = 0;
+                var l_訂正数 = 0;
+                var l_未訂正数 = 0;
+                var l_誤訂正数 = 0; // 元々正しかった塩基を誤って書き換えてしまった数
+                var l_変更位置総数 = 0;
 
-                ValidateFile(corrected1, 1, originalReads, trueErrors, ref fixedCount, ref stillWrongCount, ref newlyWrongCount, ref totalChangedPositions);
-                ValidateFile(corrected2, 2, originalReads, trueErrors, ref fixedCount, ref stillWrongCount, ref newlyWrongCount, ref totalChangedPositions);
+                V_検証_ファイル(l_訂正済み1, 1, l_元のリード, l_正解エラー, ref l_訂正数, ref l_未訂正数, ref l_誤訂正数, ref l_変更位置総数);
+                V_検証_ファイル(l_訂正済み2, 2, l_元のリード, l_正解エラー, ref l_訂正数, ref l_未訂正数, ref l_誤訂正数, ref l_変更位置総数);
 
-                var totalInjectedErrors = trueErrors.Count;
-                var recall = totalInjectedErrors == 0 ? 0.0 : (double)fixedCount / totalInjectedErrors;
-                var falseCorrectionRate = totalChangedPositions == 0 ? 0.0 : (double)newlyWrongCount / totalChangedPositions;
+                var l_注入エラー総数 = l_正解エラー.Count;
+                var l_recall = l_注入エラー総数 == 0 ? 0.0 : (double)l_訂正数 / l_注入エラー総数;
+                var l_誤訂正率 = l_変更位置総数 == 0 ? 0.0 : (double)l_誤訂正数 / l_変更位置総数;
 
-                Console.WriteLine($"Injected errors: {totalInjectedErrors}");
-                Console.WriteLine($"Fixed back to true base (recall): {fixedCount} ({recall:P2})");
-                Console.WriteLine($"Still wrong (not fixed, or fixed to a different wrong base): {stillWrongCount}");
-                Console.WriteLine($"Total positions changed by corrector: {totalChangedPositions}");
-                Console.WriteLine($"Of those, changed a previously-CORRECT base to something wrong (false corrections): {newlyWrongCount} ({falseCorrectionRate:P2})");
+                Console.WriteLine($"Injected errors: {l_注入エラー総数}");
+                Console.WriteLine($"Fixed back to true base (recall): {l_訂正数} ({l_recall:P2})");
+                Console.WriteLine($"Still wrong (not fixed, or fixed to a different wrong base): {l_未訂正数}");
+                Console.WriteLine($"Total positions changed by corrector: {l_変更位置総数}");
+                Console.WriteLine($"Of those, changed a previously-CORRECT base to something wrong (false corrections): {l_誤訂正数} ({l_誤訂正率:P2})");
 
                 // 大まかな健全性チェック: recall は意味のある水準まで達し、
                 // 誤訂正率は低く抑えられているべき
-                Assert.True(recall > 0.5, $"Expected recall > 50%, got {recall:P2}");
-                Assert.True(falseCorrectionRate < 0.05, $"Expected false-correction rate < 5%, got {falseCorrectionRate:P2}");
+                Assert.True(l_recall > 0.5, $"Expected recall > 50%, got {l_recall:P2}");
+                Assert.True(l_誤訂正率 < 0.05, $"Expected false-correction rate < 5%, got {l_誤訂正率:P2}");
             }
             finally
             {
-                if (Directory.Exists(outDir))
+                if (Directory.Exists(l_出力ディレクトリ))
                 {
-                    Directory.Delete(outDir, recursive: true);
+                    Directory.Delete(l_出力ディレクトリ, recursive: true);
                 }
             }
         }
@@ -106,70 +109,74 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// リードを ID から引ける形で読み込む
         /// </summary>
-        /// <param name="path">読み込むパス</param>
-        /// <param name="mate">ペアのどちら側か</param>
+        /// <param name="p_パス">読み込むパス</param>
+        /// <param name="p_ペア番号">ペアのどちら側か</param>
         /// <returns>ID から引けるリード</returns>
-        private static Dictionary<(string, int), string> LoadReadsById(string path, int mate)
+        private static Dictionary<(string, int), string> V_読み込み_リードID別(string p_パス, int p_ペア番号)
         {
-            var result = new Dictionary<(string, int), string>();
-            using var reader = new 簡易FASTQ読み込み(path);
-            while (reader.Get_続きがあるか())
+            var l_結果 = new Dictionary<(string, int), string>();
+            using var l_リーダー = new 簡易FASTQ読み込み(p_パス);
+            while (l_リーダー.Get_続きがあるか())
             {
-                var (rawId, seq) = reader.Get_次のリード();
-                var id = rawId.TrimStart('@').Split('/')[0];
-                result[(id, mate)] = seq;
+                var (l_生ID, l_配列) = l_リーダー.Get_次のリード();
+                var l_ID = l_生ID.TrimStart('@').Split('/')[0];
+                l_結果[(l_ID, p_ペア番号)] = l_配列;
             }
-            return result;
+            return l_結果;
         }
 
         /// <summary>
         /// 訂正済みのリードが真の配列へ近づいているかを確かめる
         /// </summary>
-        /// <param name="correctedPath">訂正済みリードのパス</param>
-        /// <param name="mate">ペアのどちら側か</param>
-        /// <param name="originalReads">訂正前のリード</param>
-        /// <param name="truthReads">真の配列</param>
-        private static void ValidateFile(
-            string correctedPath, int mate,
-            Dictionary<(string, int), string> originalReads,
-            Dictionary<(string ReadId, int Mate, int Position), char> trueErrors,
-            ref int fixedCount, ref int stillWrongCount, ref int newlyWrongCount, ref int totalChangedPositions)
+        /// <param name="p_訂正済みパス">訂正済みリードのパス</param>
+        /// <param name="p_ペア番号">ペアのどちら側か</param>
+        /// <param name="p_元のリード">訂正前のリード</param>
+        /// <param name="p_正解エラー">真の配列</param>
+        /// <param name="p_訂正数">正しく訂正できた位置数の累計</param>
+        /// <param name="p_未訂正数">訂正できなかった位置数の累計</param>
+        /// <param name="p_誤訂正数">正しかった塩基を誤って書き換えた位置数の累計</param>
+        /// <param name="p_変更位置総数">訂正で書き換わった位置数の累計</param>
+        private static void V_検証_ファイル(
+            string p_訂正済みパス, int p_ペア番号,
+            Dictionary<(string, int), string> p_元のリード,
+            Dictionary<(string ReadId, int Mate, int Position), char> p_正解エラー,
+            ref int p_訂正数, ref int p_未訂正数, ref int p_誤訂正数, ref int p_変更位置総数)
         {
-            using var reader = new 簡易FASTQ読み込み(correctedPath);
-            while (reader.Get_続きがあるか())
+            using var l_リーダー = new 簡易FASTQ読み込み(p_訂正済みパス);
+            while (l_リーダー.Get_続きがあるか())
             {
-                var (rawId, correctedSeq) = reader.Get_次のリード();
-                var readId = rawId.TrimStart('@').Split('/')[0];
-                if (!originalReads.TryGetValue((readId, mate), out var originalSeq))
+                var (l_生ID, l_訂正済み配列) = l_リーダー.Get_次のリード();
+                var l_リードID = l_生ID.TrimStart('@').Split('/')[0];
+                if (!p_元のリード.TryGetValue((l_リードID, p_ペア番号), out var l_元の配列))
                 {
                     continue;
                 }
 
-                for (var pos = 0; pos < correctedSeq.Length && pos < originalSeq.Length; pos++)
+                for (var pos = 0; pos < l_訂正済み配列.Length && pos < l_元の配列.Length; pos++)
                 {
-                    var wasError = trueErrors.TryGetValue((readId, mate, pos), out var trueBase);
-                    var changed = correctedSeq[pos] != originalSeq[pos];
+                    var l_エラーだったか = p_正解エラー.TryGetValue((l_リードID, p_ペア番号, pos), out var l_正解塩基);
+                    var l_変更されたか = l_訂正済み配列[pos] != l_元の配列[pos];
 
-                    if (changed)
+                    if (l_変更されたか)
                     {
-                        totalChangedPositions++;
+                        p_変更位置総数++;
                     }
 
-                    if (wasError)
+                    if (l_エラーだったか)
                     {
-                        if (correctedSeq[pos] == trueBase)
+                        if (l_訂正済み配列[pos] == l_正解塩基)
                         {
-                            fixedCount++;
+                            p_訂正数++;
                         }
                         else
                         {
-                            stillWrongCount++;
+                            p_未訂正数++;
                         }
                     }
-                    else if (changed)
+                    else if (l_変更されたか)
                     {
                         // 元々エラーではなかった (=正しかった) 位置を書き換えてしまった
-                        newlyWrongCount++;
+                        p_誤訂正数++;
                     }
                 }
             }

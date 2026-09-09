@@ -464,7 +464,7 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 塩基 ID の2 bit 表現
+        /// 塩基 ID の 2 bit 表現
         /// </summary>
         /// <remarks>
         /// 曖昧塩基は 0 として詰める (判定は無効数で弾く)

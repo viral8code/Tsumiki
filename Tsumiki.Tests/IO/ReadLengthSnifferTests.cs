@@ -35,29 +35,31 @@ namespace Tsumiki.Tests.IO
         /// <summary>
         /// リードを FASTQ として書き出す
         /// </summary>
-        /// <param name="name">ファイル名</param>
-        /// <param name="path">書き出し先</param>
-        /// <param name="readLengths">書き出すリードの長さ</param>
+        /// <param name="p_ファイル名">ファイル名</param>
+        /// <param name="p_リード長群">書き出すリードの長さ</param>
         /// <returns>書き出したパス</returns>
-        private string WriteFastq(string name, params int[] readLengths)
+        private string V_書き出し_FASTQ(string p_ファイル名, params int[] p_リード長群)
         {
-            var path = Path.Combine(this._tempDir, name);
-            using var writer = new StreamWriter(path);
-            var id = 1;
-            foreach (var length in readLengths)
+            var l_パス = Path.Combine(this._tempDir, p_ファイル名);
+            using var l_writer = new StreamWriter(l_パス);
+            var l_id = 1;
+            foreach (var l_長さ in p_リード長群)
             {
-                writer.WriteLine($"@read{id++}");
-                writer.WriteLine(new string('A', length));
-                writer.WriteLine("+");
-                writer.WriteLine(new string('I', length));
+                l_writer.WriteLine($"@read{l_id++}");
+                l_writer.WriteLine(new string('A', l_長さ));
+                l_writer.WriteLine("+");
+                l_writer.WriteLine(new string('I', l_長さ));
             }
-            return path;
+            return l_パス;
         }
 
+        /// <summary>
+        /// すべて同じ長さのリードでは、その長さを代表リード長として返すことを検証する
+        /// </summary>
         [Fact]
-        public void GetReadLength_UniformReads_ReturnsThatLength()
+        public void GetReadLength_すべて同じ長さのリードではその長さを返す()
         {
-            var path = this.WriteFastq("uniform.fq", 150, 150, 150, 150);
+            var path = this.V_書き出し_FASTQ("uniform.fq", 150, 150, 150, 150);
 
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(path));
         }
@@ -70,26 +72,32 @@ namespace Tsumiki.Tests.IO
         /// 中央値を使うことで、少数の極端に短いリードに引きずられない
         /// </remarks>
         [Fact]
-        public void GetReadLength_TrimmedReads_ReturnsTheMedianRatherThanTheMeanOrMax()
+        public void GetReadLength_トリミング済みデータでは平均や最大ではなく中央値を返す()
         {
-            var path = this.WriteFastq("trimmed.fq", 35, 40, 148, 150, 150, 150, 151);
+            var path = this.V_書き出し_FASTQ("trimmed.fq", 35, 40, 148, 150, 150, 150, 151);
 
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(path));
         }
 
+        /// <summary>
+        /// 標本上限に達したらそこで読み取りを打ち切ることを検証する
+        /// </summary>
         [Fact]
-        public void GetReadLength_StopsAfterTheSampleLimit()
+        public void GetReadLength_標本上限に達したら打ち切る()
         {
             // 先頭 2 本だけを見れば 200 が中央値になる
             // ファイル全体を見ると 50
             var lengths = new[] { 200, 200 }.Concat(Enumerable.Repeat(50, 100)).ToArray();
-            var path = this.WriteFastq("limited.fq", lengths);
+            var path = this.V_書き出し_FASTQ("limited.fq", lengths);
 
             Assert.Equal(200, ReadLengthSniffer.Get_代表リード長(path, p_標本上限: 2));
         }
 
+        /// <summary>
+        /// 空のファイルでは null を返すことを検証する
+        /// </summary>
         [Fact]
-        public void GetReadLength_EmptyFile_ReturnsNull()
+        public void GetReadLength_空ファイルではnullを返す()
         {
             var path = Path.Combine(this._tempDir, "empty.fq");
             File.WriteAllText(path, string.Empty);
@@ -102,18 +110,21 @@ namespace Tsumiki.Tests.IO
         /// ペアで長さが違う場合は短いほうに合わせる
         /// </summary>
         [Fact]
-        public void GetReadLength_PairedFilesWithDifferentLengths_ReturnsTheShorterOne()
+        public void GetReadLength_ペアで長さが違う場合は短いほうを返す()
         {
-            var path1 = this.WriteFastq("pair.1.fq", 150, 150, 150);
-            var path2 = this.WriteFastq("pair.2.fq", 100, 100, 100);
+            var path1 = this.V_書き出し_FASTQ("pair.1.fq", 150, 150, 150);
+            var path2 = this.V_書き出し_FASTQ("pair.2.fq", 100, 100, 100);
 
             Assert.Equal(100, ReadLengthSniffer.Get_代表リード長(path1, path2));
         }
 
+        /// <summary>
+        /// シングルエンドでは、無い方のファイルを無視することを検証する
+        /// </summary>
         [Fact]
-        public void GetReadLength_SingleEnd_IgnoresTheMissingSecondFile()
+        public void GetReadLength_シングルエンドでは無い方のファイルを無視する()
         {
-            var path1 = this.WriteFastq("single.fq", 150, 150, 150);
+            var path1 = this.V_書き出し_FASTQ("single.fq", 150, 150, 150);
 
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(path1, null));
         }

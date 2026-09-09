@@ -16,8 +16,10 @@ namespace Tsumiki.Tests.Core
     /// </remarks>
     public class CompletenessValidatorTests
     {
-        /// <summary>リードに裏付けの無い位置が一つも無い検査結果<br/>
+        /// <summary>
+        /// リードに裏付けの無い位置が一つも無い検査結果
         /// </summary>
+        /// <returns>支持検査の結果</returns>
         private static 支持検査結果 Get_良好な支持()
         {
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
@@ -62,6 +64,9 @@ namespace Tsumiki.Tests.Core
             return p_判定.A_検査項目.Single(x => x.A_キー == p_キー).A_判定;
         }
 
+        /// <summary>
+        /// 全ての検査を通れば完全長になることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_全ての検査を通れば完全長になる()
         {
@@ -78,6 +83,9 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 閉じ目を検証していなければ完全長にはしないことを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_閉じ目を検証していなければ完全長にはしない()
         {
@@ -95,6 +103,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.環状閉鎖を検証していない, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 閉じ目に裏付けが無い場合は判定不能ではなく不合格として区別することを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_閉じ目に裏付けが無い場合は不合格として区別する()
         {
@@ -110,6 +121,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.閉じ目がリードで裏付けられない, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 環状の配列が 1 本も無ければ不合格になることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_環状の配列が1本も無ければ不合格になる()
         {
@@ -125,6 +139,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.環状に閉じていない, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 未解決のギャップが残っていればペア整合の段階で止まることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_未解決のギャップが残っていればペア整合で止まる()
         {
@@ -140,6 +157,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.未解決のギャップが残る, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 決めきれない分岐が残っていれば接合点の支持の段階で止まることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_決めきれない分岐が残っていれば接合点の支持で止まる()
         {
@@ -156,6 +176,9 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(検査判定.不合格, Get_判定(l_判定, "no_alternative_path"));
         }
 
+        /// <summary>
+        /// 深度を測っていなければグラフ整合の段階で止まることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_深度を測っていなければグラフ整合で止まる()
         {
@@ -172,6 +195,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.深度を測っていない, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 自己検査ができていなければ出力のみに留まることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_自己検査ができていなければ出力のみに留まる()
         {
@@ -188,6 +214,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.自己検査を行えなかった, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 取りこぼしが多ければグラフ被覆の検査で落ちることを確かめる
+        /// </summary>
         [Fact]
         public void Get_判定結果_取りこぼしが多ければグラフ被覆で落ちる()
         {
@@ -204,6 +233,9 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(未達理由.取りこぼしが多い, l_判定.A_未達理由);
         }
 
+        /// <summary>
+        /// 全ての未達理由に固有のコードが付くことを確かめる
+        /// </summary>
         [Fact]
         public void Get_理由コード_全ての理由に固有のコードが付く()
         {

@@ -62,7 +62,7 @@
             }
 
             var l_半分 = l_総延長 / 2.0;
-            long l_累積 = 0L;
+            var l_累積 = 0L;
             foreach (var (l_長さ, l_値) in l_整列済み)
             {
                 l_累積 += l_長さ;
@@ -90,7 +90,7 @@
 
             var l_降順 = p_長さ一覧.OrderByDescending(x => x).ToList();
             var l_半分 = l_降順.Sum() / 2.0;
-            long l_累積 = 0L;
+            var l_累積 = 0L;
             for (var i = 0; i < l_降順.Count; i++)
             {
                 l_累積 += l_降順[i];

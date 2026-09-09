@@ -67,7 +67,7 @@ namespace Tsumiki.Utility
         /// <param name="p_値">正準化した r-mer の値</param>
         private void V_登録(ulong p_値)
         {
-            this._rMer集合?.Add(p_値);
+            _ = (this._rMer集合?.Add(p_値));
             this._rMerふるい?.V_登録(p_値);
         }
 
@@ -102,7 +102,7 @@ namespace Tsumiki.Utility
                 .ToList();
 
             var l_検証器 = p_r長 <= 32
-                ? new RepeatRMerVerifier(new HashSet<ulong>(), null, p_r長)
+                ? new RepeatRMerVerifier([], null, p_r長)
                 : new RepeatRMerVerifier(null, Get_ふるい(l_パス群), p_r長);
 
             foreach (var l_パス in l_パス群)
