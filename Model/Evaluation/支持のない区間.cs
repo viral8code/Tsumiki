@@ -1,4 +1,4 @@
-namespace Tsumiki.Model.Evaluation
+﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
     /// アセンブリ上の、どのリードにも現れない r-mer が連なっている区間<br/>

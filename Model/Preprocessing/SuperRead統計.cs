@@ -1,4 +1,4 @@
-namespace Tsumiki.Model.Preprocessing
+﻿namespace Tsumiki.Model.Preprocessing
 {
     /// <summary>
     /// ペアを合成リードへ統合する処理 1 回分の集計
