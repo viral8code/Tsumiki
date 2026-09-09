@@ -8,8 +8,8 @@ namespace Tsumiki.Core.Evaluation
     internal static class AssemblyStatsReporter
     {
         /// <summary>
-        /// 他アセンブラとの比較で慣習的に使われる最小長(abyss-fac の既定)。
-        /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない。
+        /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)<br/>
+        /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない
         /// </summary>
         public const int 比較用の最小長 = 500;
 
@@ -40,20 +40,20 @@ namespace Tsumiki.Core.Evaluation
 
             if (l_長さ一覧.Count == 0)
             {
-                return new アセンブリ統計(0, 0, 0, 0, 0, 0, 0);
+                return new アセンブリ統計(0, 0, 0, 0, 0, 0, 0D);
             }
 
             var (l_N50, l_L50) = StatsUtil.Get_N50([.. l_長さ一覧.Select(x => (long)x)]);
-            var l_GC率 = l_塩基数 == 0 ? 0.0 : (100.0 * l_GC数 / l_塩基数);
+            var l_GC率 = l_塩基数 == 0D ? 0D : (100D * l_GC数 / l_塩基数);
 
             return new アセンブリ統計(
-                p_配列数: l_長さ一覧.Count,
-                p_総延長: l_総延長,
-                p_最大長: l_長さ一覧.Max(),
-                p_最小長: l_長さ一覧.Min(),
-                p_N50: (int)l_N50,
-                p_L50: l_L50,
-                p_GC率: l_GC率);
+                A_配列数: l_長さ一覧.Count,
+                A_総延長: l_総延長,
+                A_最大長: l_長さ一覧.Max(),
+                A_最小長: l_長さ一覧.Min(),
+                A_N50: (int)l_N50,
+                A_L50: l_L50,
+                A_GC率: l_GC率);
         }
 
         public static アセンブリ統計 Get_統計_FASTA(string p_FASTAパス)
@@ -71,9 +71,9 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する。
+        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する<br/>
         /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
-        /// 比較用の最小長 以上の配列だけに絞った統計も併記する。
+        /// 比較用の最小長以上の配列だけに絞った統計も併記する
         /// </summary>
         public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
         {

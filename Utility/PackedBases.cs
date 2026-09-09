@@ -4,28 +4,41 @@ using Tsumiki.Common;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// 塩基列を 2bit/塩基 で 64bit 語に詰めたもの。任意の位置から 32 塩基の
-    /// 窓を取り出せる。
-    ///
-    /// 重なりの探索は「ずらしながら2本を突き合わせる」形をしており、
-    /// 1塩基ずつ比べると1ペアあたり数万回の比較になる。語単位で XOR して
-    /// 不一致のレーンを数えれば、同じことが32塩基まとめて片付く。
-    ///
-    /// 曖昧塩基は 2bit に収まらないため、含む配列は作れない(null を返す)。
-    /// 呼び出し側は1塩基ずつ比べる経路へ落ちる。
+    /// 塩基列を 2 bit / 塩基 で 64 bit 語に詰めたもの
     /// </summary>
+    /// <remarks>
+    /// 重なりの探索はずらしながら 2 本を突き合わせる形をしており、
+    /// 1 塩基ずつ比べると 1 ペアあたり数万回の比較になる<br/>
+    /// 語単位で XOR して不一致のレーンを数えれば、同じことが 32 塩基まとめて片付く<br/>
+    /// 曖昧塩基は 2 bit に収まらないため、含む配列は作れない
+    /// </remarks>
     internal sealed class PackedBases
     {
-        /// <summary>1語に詰まる塩基数。</summary>
+        /// <summary>
+        /// 1 語に詰まる塩基数
+        /// </summary>
         public const int 語あたりの塩基数 = 32;
 
-        /// <summary>2bit レーンの下位ビットだけを立てたマスク。</summary>
+        /// <summary>
+        /// 2 bit レーンの下位ビットだけを立てたマスク
+        /// </summary>
         private const ulong 下位ビット = 0x5555555555555555UL;
 
+        /// <summary>
+        /// 詰めた語の並び
+        /// </summary>
         private readonly ulong[] _語;
 
+        /// <summary>
+        /// 詰めた塩基の数
+        /// </summary>
         public int A_長さ { get; }
 
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="p_語">詰めた語の並び</param>
+        /// <param name="p_長さ">詰めた塩基の数</param>
         private PackedBases(ulong[] p_語, int p_長さ)
         {
             this._語 = p_語;
@@ -33,9 +46,13 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 塩基ID列(A=1..T=4)を詰める。曖昧塩基を含む場合は null。
-        /// 窓の取り出しで次の語を無条件に読めるよう、末尾に空き語を1つ足す。
+        /// 塩基 ID 列を詰める
         /// </summary>
+        /// <remarks>
+        /// 窓の取り出しで次の語を無条件に読めるよう、末尾に空き語を 1 つ足す
+        /// </remarks>
+        /// <param name="p_塩基列">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <returns>詰めた結果、曖昧塩基を含む場合は null</returns>
         public static PackedBases? Get_作る(ReadOnlySpan<byte> p_塩基列)
         {
             var l_語 = new ulong[(p_塩基列.Length / 語あたりの塩基数) + 2];
@@ -54,8 +71,10 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// p_位置 から 32 塩基ぶんを1語として取り出す。配列の末尾を越える分は 0。
+        /// 指定位置から 32 塩基ぶんを 1 語として取り出す
         /// </summary>
+        /// <param name="p_位置">取り出しを始める塩基の位置</param>
+        /// <returns>取り出した語、配列の末尾を越える分は 0</returns>
         public ulong Get_窓(int p_位置)
         {
             var l_語番号 = p_位置 / 語あたりの塩基数;
@@ -67,13 +86,17 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 2つの窓の先頭 p_塩基数 塩基のうち、一致しない塩基の数。
+        /// 2 つの窓の先頭から数えて、一致しない塩基の数を返す
         /// </summary>
+        /// <param name="p_窓1">比べる語</param>
+        /// <param name="p_窓2">比べる語</param>
+        /// <param name="p_塩基数">先頭から何塩基を比べるか</param>
+        /// <returns>一致しない塩基の数</returns>
         public static int Get_不一致数(ulong p_窓1, ulong p_窓2, int p_塩基数)
         {
             var l_差 = p_窓1 ^ p_窓2;
 
-            // 2bit のどちらかが立っていれば不一致。レーンごとに1ビットへ畳む。
+            // 2 bit のどちらかが立っていれば不一致なので、レーンごとに 1 ビットへ畳む
             var l_レーン = (l_差 | (l_差 >> 1)) & 下位ビット;
 
             if (p_塩基数 < 語あたりの塩基数)
