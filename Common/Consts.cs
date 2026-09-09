@@ -86,9 +86,9 @@
         /// --mode {conservative, normal, bold} のようなプリセットのほうが
         /// 意図を素直に表せる。normal は既定値そのもの。
         /// </summary>
-        /// <summary>
+        /// <remarks>
         /// -lang に指定できる言語名。
-        /// </summary>
+        /// </remarks>
         public static class 言語名
         {
             public const string 英語 = "en";
@@ -287,7 +287,6 @@
         /// </summary>
         public const int r_mer接合点支持の閾値の既定値 = 4;
 
-
         public const string ユニティグファイル名 = "unitigs.fasta";
 
         public const string コンティグファイル名 = "contigs.fasta";
@@ -322,6 +321,21 @@
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
 
         /// <summary>
+        /// リードに裏付けの無い箇所の一覧。
+        /// </summary>
+        public const string 支持のない箇所ファイル名 = "assembly.unsupported.tsv";
+
+        /// <summary>
+        /// リードの支持を問うときの r-mer 長。
+        ///
+        /// アセンブリの k とは別に短く取る。k と同じにすると、その k で
+        /// 組んだ配列は定義上すべて支持されてしまい、後段(ギャップ充填・
+        /// 局所アセンブリ・ポリッシュ)が持ち込んだ配列だけを見逃す。
+        /// 31 なら偶然の一致がまず起きず、反復の内側でも支持を問える。
+        /// </summary>
+        public const int 支持検査のr長 = 31;
+
+        /// <summary>
         /// 作業ディレクトリに置く最終成果物のファイル名。
         /// 中間ファイルの削除で消してはいけないものの一覧でもある。
         /// </summary>
@@ -333,6 +347,7 @@
             GFAファイル名,
             レポートファイル名,
             曖昧箇所ファイル名,
+            支持のない箇所ファイル名,
             ログファイル名,
         ];
 

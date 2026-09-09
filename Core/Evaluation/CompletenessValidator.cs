@@ -33,6 +33,15 @@ namespace Tsumiki.Core.Evaluation
         private const double 深度不足の許容率 = 0.01;
 
         /// <summary>
+        /// リードに裏付けの無い位置として許す数。
+        ///
+        /// 割合ではなく数で見るのは、この検査が「そう繋いだ読みが一つも無い」
+        /// という白黒のはっきりした事実を数えているため。総延長で薄めると
+        /// 数箇所の捏造が見えなくなる。
+        /// </summary>
+        private const int 支持のない位置の許容数 = 0;
+
+        /// <summary>
         /// 集めた材料から完全長かどうかを判定する。
         /// p_閉鎖検証 が null なら閉じ目を調べていない、p_ポリッシュ が null なら
         /// 深度を測っていないことを意味し、いずれも判定不能として扱う。
@@ -42,7 +51,8 @@ namespace Tsumiki.Core.Evaluation
             整合性検査結果? p_整合性,
             IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証,
             ポリッシュ統計? p_ポリッシュ,
-            IReadOnlyList<曖昧箇所> p_曖昧箇所)
+            IReadOnlyList<曖昧箇所> p_曖昧箇所,
+            支持検査結果? p_支持検査)
         {
             var l_僅差の数 = p_曖昧箇所.Count(x => x.A_種別 == 曖昧箇所の種別.僅差);
 
@@ -93,6 +103,17 @@ namespace Tsumiki.Core.Evaluation
                 "no_alternative_path", メッセージID.検査項目_競合経路, l_代替経路,
                 l_僅差の数.ToString()));
 
+            var l_支持 = p_支持検査 is { } l_支持1
+                ? Get_判定(
+                    l_支持1.A_支持のない位置数 <= 支持のない位置の許容数,
+                    未達理由.リードに裏付けの無い箇所がある, l_理由)
+                : Get_判定不能(未達理由.リードの支持を調べていない, l_理由);
+            l_項目.Add(new 検査項目(
+                "read_support", メッセージID.検査項目_リードの支持, l_支持,
+                p_支持検査 is { } l_支持2
+                    ? $"{l_支持2.A_支持のない位置数} <= {支持のない位置の許容数} ({l_支持2.A_区間.Count} stretch(es))"
+                    : string.Empty));
+
             var (l_閉鎖, l_閉鎖の内訳) = Get_閉鎖の判定(p_閉鎖検証, l_理由);
             l_項目.Add(new 検査項目(
                 "circular_closure", メッセージID.検査項目_環状閉鎖, l_閉鎖, l_閉鎖の内訳));
@@ -140,6 +161,8 @@ namespace Tsumiki.Core.Evaluation
                 未達理由.取りこぼしが多い => "kmer-missing",
                 未達理由.出しすぎている => "kmer-excess",
                 未達理由.自己検査を行えなかった => "self-check-unavailable",
+                未達理由.リードに裏付けの無い箇所がある => "unsupported-sequence",
+                未達理由.リードの支持を調べていない => "read-support-unchecked",
                 未達理由.未解決のギャップが残る => "unresolved-gap",
                 未達理由.決めきれない分岐が残る => "ambiguous-junction",
                 未達理由.深度が不連続 => "depth-discontinuity",

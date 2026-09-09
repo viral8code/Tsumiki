@@ -32,6 +32,12 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>リードに裏付けの無い位置が一つも無い検査結果。</summary>
+        private static 支持検査結果 Get_良好な支持()
+        {
+            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
+        }
+
         private static アセンブリ統計 Get_統計()
         {
             return new アセンブリ統計(3, 5_000_000, 4_800_000, 900, 4_800_000, 1, 50.5);
@@ -59,7 +65,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: new 整合性検査結果(1000, 1000, 1000, 10, 0, 0),
                 p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)],
                 p_ポリッシュ: new ポリッシュ統計(3, 5_000_000, 1000, 0, 12, 0, 5_000_000, 90),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             var l_JSON = this.Get_書き出したJSON(
                 l_判定,
@@ -87,7 +94,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: new 整合性検査結果(1000, 1000, 1000, 10, 0, 0),
                 p_閉鎖検証: null,
                 p_ポリッシュ: null,
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             var l_JSON = this.Get_書き出したJSON(
                 l_判定, new 整合性検査結果(1000, 1000, 1000, 10, 0, 0));
@@ -108,7 +116,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_書き出し_レポート_引用符を含むIDでも壊れない()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(0, null, null, null, []);
+            var l_判定 = CompletenessValidator.Get_判定結果(0, null, null, null, [], null);
             var l_JSON = this.Get_書き出したJSON(
                 l_判定, null, [new 環状閉鎖検証結果("seq\"with\\quotes", 100, 1, 5)]);
 

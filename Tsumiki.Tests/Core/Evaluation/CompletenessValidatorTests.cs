@@ -14,6 +14,12 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CompletenessValidatorTests
     {
+        /// <summary>リードに裏付けの無い位置が一つも無い検査結果。</summary>
+        private static 支持検査結果 Get_良好な支持()
+        {
+            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
+        }
+
         private static 整合性検査結果 Get_良好な自己検査()
         {
             // 取りこぼし 1%、出しすぎ 0%。
@@ -43,7 +49,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.True(l_判定.A_完全長か);
             Assert.Equal(品質保証レベル.完全長, l_判定.A_品質保証レベル);
@@ -58,7 +65,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: null,
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.False(l_判定.A_完全長か);
             Assert.Equal(品質保証レベル.接合点が支持済み, l_判定.A_品質保証レベル);
@@ -74,7 +82,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 1000, 1, 5)],
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(検査判定.不合格, Get_判定(l_判定, "circular_closure"));
             Assert.Contains(未達理由.閉じ目がリードで裏付けられない, l_判定.A_未達理由);
@@ -88,7 +97,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: [],
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(検査判定.不合格, Get_判定(l_判定, "circular_closure"));
             Assert.Contains(未達理由.環状に閉じていない, l_判定.A_未達理由);
@@ -102,7 +112,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.マッピング整合, l_判定.A_品質保証レベル);
             Assert.Contains(未達理由.未解決のギャップが残る, l_判定.A_未達理由);
@@ -116,7 +127,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: [new 曖昧箇所(63, 曖昧箇所の種別.僅差, "unitig7+", 1.2, 1.1, 9, 0.95)]);
+                p_曖昧箇所: [new 曖昧箇所(63, 曖昧箇所の種別.僅差, "unitig7+", 1.2, 1.1, 9, 0.95)],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.ペア整合, l_判定.A_品質保証レベル);
             Assert.Equal(検査判定.不合格, Get_判定(l_判定, "junction_support"));
@@ -131,7 +143,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: Get_良好な自己検査(),
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: null,
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.グラフ整合, l_判定.A_品質保証レベル);
             Assert.Equal(検査判定.判定不能, Get_判定(l_判定, "coverage_continuity"));
@@ -146,7 +159,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: null,
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.出力のみ, l_判定.A_品質保証レベル);
             Assert.Equal(検査判定.判定不能, Get_判定(l_判定, "graph_coverage"));
@@ -162,7 +176,8 @@ namespace Tsumiki.Tests.Core
                 p_整合性: new 整合性検査結果(1000, 1000, 1000, 200, 0, 0),
                 p_閉鎖検証: Get_裏付けのある閉鎖(),
                 p_ポリッシュ: Get_良好な深度(),
-                p_曖昧箇所: []);
+                p_曖昧箇所: [],
+                p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.出力のみ, l_判定.A_品質保証レベル);
             Assert.Contains(未達理由.取りこぼしが多い, l_判定.A_未達理由);

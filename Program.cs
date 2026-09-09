@@ -232,8 +232,10 @@ namespace Tsumiki
 
             var l_ポリッシュ統計 = V_磨く(l_引数, l_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(l_引数, l_最終パス);
+            var l_支持検査 = V_検査_リードの支持(l_引数, l_最終パス);
 
-            V_出力_完全性レポート(l_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_一時ディレクトリ);
+            V_出力_完全性レポート(
+                l_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, l_一時ディレクトリ);
 
             Logger.V_出力(メッセージID.開発中);
 
@@ -271,6 +273,26 @@ namespace Tsumiki
                 }
             }
             Logger.V_出力(メッセージID.短い配列を除外, l_全件.Count - l_残す.Count, l_下限, l_落とした延長);
+        }
+
+        /// <summary>
+        /// 最終成果物の各位置がリードに裏付けられているかを調べる。
+        ///
+        /// ポリッシュの後に行う。ギャップ充填・局所アセンブリ・ポリッシュは
+        /// どれも組み立て後に配列を書き換えるので、それより前に調べても
+        /// 最後に手が入った箇所を見ないことになる。
+        ///
+        /// 突き合わせる相手はこの時点のリード、つまり前処理と訂正を通した
+        /// あとのもの。組み立てが実際に見た証拠と同じものを問うことになる。
+        /// </summary>
+        private static 支持検査結果? V_検査_リードの支持(Parameters p_引数, string p_最終パス)
+        {
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.支持検査の開始, Consts.支持検査のr長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(
+                p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, Consts.支持検査のr長);
+            ReadSupportChecker.V_出力_検査結果(l_結果);
+            return l_結果;
         }
 
         /// <summary>
@@ -339,6 +361,7 @@ namespace Tsumiki
             string p_最終パス,
             ポリッシュ統計? p_ポリッシュ統計,
             IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証,
+            支持検査結果? p_支持検査,
             string p_出力ディレクトリ)
         {
             var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
@@ -346,7 +369,8 @@ namespace Tsumiki
             var l_環状本数 = CompletenessValidator.Get_環状本数(p_最終パス);
 
             var l_判定 = CompletenessValidator.Get_判定結果(
-                l_未解決ギャップ数, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所);
+                l_未解決ギャップ数, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所,
+                p_支持検査);
             CompletenessValidator.V_出力_判定結果(l_判定);
 
             var l_レポートパス = Path.Combine(p_出力ディレクトリ, Consts.レポートファイル名);
@@ -367,6 +391,15 @@ namespace Tsumiki
 
             ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);
             Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, l_曖昧箇所パス);
+
+            if (p_支持検査 is { } l_支持検査)
+            {
+                var l_支持パス = Path.Combine(p_出力ディレクトリ, Consts.支持のない箇所ファイル名);
+                ReportWriter.V_書き出し_支持のない箇所(
+                    l_支持パス, l_支持検査.A_区間, l_支持検査.A_r長);
+                Logger.V_出力(
+                    メッセージID.支持のない箇所を書き出した, l_支持検査.A_区間.Count, l_支持パス);
+            }
         }
     }
 }

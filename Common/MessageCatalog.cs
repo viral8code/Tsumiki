@@ -262,6 +262,14 @@ namespace Tsumiki.Common
                 "[Info] Results and intermediates are kept in {0} (use {1} to delete the intermediates).",
             [メッセージID.中間ファイルを削除した] =
                 "[Info] Deleted the intermediates under {0}; the final products and the log remain.",
+            [メッセージID.支持検査の開始] =
+                "[Check] Asking the reads whether every {0}-mer of the final assembly was actually read.",
+            [メッセージID.支持検査の結果] =
+                "[Check] read support ({0}-mer): {1} of {2} positions ({3}%) appear in no read, in {4} stretch(es) -- joins nothing was read across.",
+            [メッセージID.支持のない箇所を書き出した] =
+                "[Check] Wrote {0} unsupported stretch(es) to {1}.",
+            [メッセージID.検査項目_リードの支持] =
+                "read support",
             [メッセージID.リード長の観測値] =
                 "[Info] Read length (median of sampled reads): {0} bp",
             [メッセージID.一時ディレクトリが既にある] =
@@ -708,6 +716,14 @@ namespace Tsumiki.Common
                 "[Info] 成果物と中間ファイルを {0} に保持 ({1} を付けると中間ファイルを削除)",
             [メッセージID.中間ファイルを削除した] =
                 "[Info] {0} の中間ファイルを削除 -- 最終成果物とログは残した",
+            [メッセージID.支持検査の開始] =
+                "[Check] 最終成果物の {0}-mer が実際に読まれたものかをリードに問い合わせ中",
+            [メッセージID.支持検査の結果] =
+                "[Check] リードの支持 ({0}-mer): {2} 箇所のうち {1} 箇所 ({3}%) がどのリードにも現れない、連なりは {4} 本 -- そう繋いだ読みが一つも無い接合",
+            [メッセージID.支持のない箇所を書き出した] =
+                "[Check] 支持の無い {0} 箇所を {1} に書き出し",
+            [メッセージID.検査項目_リードの支持] =
+                "リードの支持",
             [メッセージID.リード長の観測値] =
                 "[Info] リード長 (標本の中央値): {0} bp",
             [メッセージID.一時ディレクトリが既にある] =
@@ -1154,6 +1170,14 @@ namespace Tsumiki.Common
                 "[Info] 结果与中间文件保留在 {0}（加上 {1} 可删除中间文件）",
             [メッセージID.中間ファイルを削除した] =
                 "[Info] 已删除 {0} 中的中间文件 —— 最终结果与日志保留",
+            [メッセージID.支持検査の開始] =
+                "[Check] 正在向 reads 询问最终结果的每个 {0}-mer 是否真的被读到过",
+            [メッセージID.支持検査の結果] =
+                "[Check] reads 的支持 ({0}-mer)：{2} 个位置中有 {1} 个（{3}%）未出现在任何 read 中，连续段 {4} 处 —— 没有任何读段跨过的连接",
+            [メッセージID.支持のない箇所を書き出した] =
+                "[Check] 已将 {0} 处无支持区间写入 {1}",
+            [メッセージID.検査項目_リードの支持] =
+                "reads 的支持",
             [メッセージID.リード長の観測値] =
                 "[Info] read 长度（采样中位数）：{0} bp",
             [メッセージID.一時ディレクトリが既にある] =

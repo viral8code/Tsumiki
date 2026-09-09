@@ -78,6 +78,23 @@ namespace Tsumiki.Core.Output
         /// 決めきれなかった箇所を TSV で残す。FASTA に N を出すだけでは
         /// 「どちらとも言えなかった」のか「配列が無かった」のかが区別できない。
         /// </summary>
+        /// <summary>
+        /// リードに裏付けの無い区間を TSV で書き出す。
+        /// 位置は 1 始まり・両端を含む。
+        /// </summary>
+        public static void V_書き出し_支持のない箇所(
+            string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
+        {
+            var l_文 = new StringBuilder();
+            _ = l_文.AppendLine(string.Join('\t', "sequence", "start", "end", "length", "r"));
+            foreach (var l_区間 in p_区間)
+            {
+                _ = l_文.AppendLine(string.Join(
+                    '\t', l_区間.A_配列ID, l_区間.A_開始, l_区間.A_終了, l_区間.A_長さ, p_r長));
+            }
+            File.WriteAllText(p_出力パス, l_文.ToString());
+        }
+
         public static void V_書き出し_曖昧箇所(string p_出力パス, IReadOnlyList<曖昧箇所> p_曖昧箇所)
         {
             var l_文 = new StringBuilder();
