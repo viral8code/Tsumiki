@@ -479,7 +479,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "rescue below-cutoff k-mers that sit between trusted ones inside a read (default: false)",
             [メッセージID.ヘルプ_再開] =
-                "reuse the per-k results left in the temp directory and continue (default: false)",
+                "reuse what is left in the working directory and continue (default: false)",
+            [メッセージID.ヘルプ_チェックポイント保存] =
+                "keep the per-k carry-over so that {0} can skip a finished k; costs hundreds of MB per k (default: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} and {1} are always written alongside the assembly.",
             [メッセージID.分岐のない閉路] =
@@ -933,7 +935,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "リード内で信頼できる k-mer に挟まれた、カットオフ未満の k-mer を救済する (既定: false)",
             [メッセージID.ヘルプ_再開] =
-                "一時ディレクトリに残った k ごとの結果を再利用して続きから実行する (既定: false)",
+                "作業ディレクトリに残ったものを再利用して続きから実行する (既定: false)",
+            [メッセージID.ヘルプ_チェックポイント保存] =
+                "{0} で組み終わった k を飛ばせるように控えを残す。k ごとに数百MB要る (既定: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} と {1} は常にアセンブリと同じ場所へ書き出す",
             [メッセージID.分岐のない閉路] =
@@ -1387,7 +1391,9 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "救回 read 内位于可信 k-mer 之间、低于截断值的 k-mer（默认：false）",
             [メッセージID.ヘルプ_再開] =
-                "复用临时目录中各 k 的结果并继续执行（默认：false）",
+                "复用工作目录中已有的内容并继续执行（默认：false）",
+            [メッセージID.ヘルプ_チェックポイント保存] =
+                "保留各 k 的接力数据，使 {0} 能跳过已完成的 k；每个 k 需要数百 MB（默认：false）",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} 与 {1} 始终与组装结果写在同一位置",
             [メッセージID.分岐のない閉路] =

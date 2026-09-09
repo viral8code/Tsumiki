@@ -249,15 +249,22 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// この k を作り終えたことを記録する。決めきれなかった箇所の控えも
-        /// 一緒に残す(再開でこの k を飛ばしたときに、レポートから消えないように)。
+        /// この k を作り終えたことを記録する。決めきれなかった箇所の控えは
+        /// 常に残す(再開でこの k を飛ばしたときに、レポートから消えないように)。
+        ///
+        /// k を飛ばすための控えのほうは -cp があるときだけ残す。中身の大半は
+        /// 次の k へ渡す合成リードで、k ごとに数百MBになるうえ、飛ばせて嬉しい
+        /// のは同じ条件で組み直すときに限られる。
         /// </summary>
         private static void V_保存_チェックポイント(
             string p_作業ディレクトリ, string p_署名, アセンブリ実行結果 p_結果,
             IReadOnlyList<引き継ぎ配列>? p_次への引き継ぎ, int p_k長)
         {
             AmbiguityRecorder.V_保存(p_作業ディレクトリ, p_k長);
-            CheckpointStore.V_保存(p_作業ディレクトリ, p_署名, p_結果, p_次への引き継ぎ);
+            if (ConfigurationManager.A_実行時引数.A_チェックポイントを保存するか)
+            {
+                CheckpointStore.V_保存(p_作業ディレクトリ, p_署名, p_結果, p_次への引き継ぎ);
+            }
         }
 
         /// <summary>

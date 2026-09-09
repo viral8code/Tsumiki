@@ -138,6 +138,10 @@ namespace Tsumiki.IO
                             l_引数.A_救済kmerを使うか = true;
                             break;
 
+                        case Consts.引数キー.チェックポイント保存:
+                            l_引数.A_チェックポイントを保存するか = true;
+                            break;
+
                         case Consts.引数キー.再開:
                             l_引数.A_再開するか = true;
                             break;
