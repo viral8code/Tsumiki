@@ -66,7 +66,7 @@ namespace Tsumiki.Tests.Core
 
         private static int[] NoMerges(UnitigGraph graph)
         {
-            var-merge = new int[graph.A_出辺.Count];
+            var merge = new int[graph.A_出辺.Count];
             Array.Fill(merge, -1);
             return merge;
         }
@@ -86,7 +86,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
@@ -113,7 +113,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 20, [(a, e)] = 19 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
@@ -133,7 +133,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = [];
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
@@ -154,7 +154,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 2 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 10);
@@ -188,7 +188,7 @@ namespace Tsumiki.Tests.Core
             // 片側にだけ強い (しかし信用してはいけない) 証拠を置く
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
@@ -212,7 +212,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
-            var-merge = NoMerges(graph);
+            var merge = NoMerges(graph);
             // B には既に (別の経路からの) 結合が入っていることにする
             merge[b ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
 
