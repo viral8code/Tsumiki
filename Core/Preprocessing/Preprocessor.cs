@@ -2,6 +2,7 @@
 using Tsumiki.IO;
 using Tsumiki.Model.Foundation;
 using Tsumiki.Model.Preprocessing;
+using Tsumiki.Utility;
 
 namespace Tsumiki.Core.Preprocessing
 {
@@ -219,6 +220,11 @@ namespace Tsumiki.Core.Preprocessing
             var l_n1 = p_塩基列1.Length;
             var l_n2 = p_塩基列2RC.Length;
 
+            // 語単位で比べるための詰め直し。曖昧塩基を含む配列は詰められないので、
+            // その場合だけ1塩基ずつ比べる経路へ落ちる。
+            var l_詰め1 = PackedBases.Get_作る(p_塩基列1);
+            var l_詰め2 = PackedBases.Get_作る(p_塩基列2RC);
+
             オーバーラップ結果? l_最良 = null;
             for (var l_offset = -(l_n2 - p_最小重なり長); l_offset <= l_n1 - p_最小重なり長; l_offset++)
             {
@@ -232,20 +238,12 @@ namespace Tsumiki.Core.Preprocessing
                 var l_開始2 = Math.Max(0, -l_offset);
                 var l_許容不一致数 = (int)(l_重なり長 * p_許容不一致率);
 
-                var l_不一致数 = 0;
-                for (var i = 0; i < l_重なり長; i++)
-                {
-                    if (p_塩基列1[l_開始1 + i] != p_塩基列2RC[l_開始2 + i])
-                    {
-                        l_不一致数++;
-                        if (l_不一致数 > l_許容不一致数)
-                        {
-                            // 早期打ち切り: 大半のオフセットは無関係な配列同士の比較になるため、
-                            // 閾値を超えた時点でやめないと全ペア×全オフセットが O(read長) のままになる。
-                            break;
-                        }
-                    }
-                }
+                // 早期打ち切り: 大半のオフセットは無関係な配列同士の比較になるため、
+                // 閾値を超えた時点でやめないと全ペア×全オフセットが O(read長) のままになる。
+                var l_不一致数 = l_詰め1 is { } l_詰めA && l_詰め2 is { } l_詰めB
+                    ? Get_不一致数_語単位(l_詰めA, l_詰めB, l_開始1, l_開始2, l_重なり長, l_許容不一致数)
+                    : Get_不一致数_1塩基ずつ(
+                        p_塩基列1, p_塩基列2RC, l_開始1, l_開始2, l_重なり長, l_許容不一致数);
                 if (l_不一致数 > l_許容不一致数)
                 {
                     continue;
@@ -266,6 +264,51 @@ namespace Tsumiki.Core.Preprocessing
             }
 
             return l_最良;
+        }
+
+        /// <summary>
+        /// 重なり区間の不一致数を32塩基ずつ数える。許容数を超えた時点で打ち切り、
+        /// その場合は許容数より大きい値を返す(正確な数は要らない)。
+        /// </summary>
+        private static int Get_不一致数_語単位(
+            PackedBases p_詰め1, PackedBases p_詰め2,
+            int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
+        {
+            var l_不一致数 = 0;
+            for (var i = 0; i < p_重なり長; i += PackedBases.語あたりの塩基数)
+            {
+                var l_今回 = Math.Min(PackedBases.語あたりの塩基数, p_重なり長 - i);
+                l_不一致数 += PackedBases.Get_不一致数(
+                    p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
+                if (l_不一致数 > p_許容不一致数)
+                {
+                    return l_不一致数;
+                }
+            }
+            return l_不一致数;
+        }
+
+        /// <summary>
+        /// 曖昧塩基を含んで詰められない場合の経路。曖昧塩基同士は一致として扱う
+        /// (2bit に落とすとこの区別ができないため、詰められる場合と結果が変わりうる)。
+        /// </summary>
+        private static int Get_不一致数_1塩基ずつ(
+            byte[] p_塩基列1, byte[] p_塩基列2RC,
+            int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
+        {
+            var l_不一致数 = 0;
+            for (var i = 0; i < p_重なり長; i++)
+            {
+                if (p_塩基列1[p_開始1 + i] != p_塩基列2RC[p_開始2 + i])
+                {
+                    l_不一致数++;
+                    if (l_不一致数 > p_許容不一致数)
+                    {
+                        return l_不一致数;
+                    }
+                }
+            }
+            return l_不一致数;
         }
 
         private static char Get_相補文字(char p_塩基)
