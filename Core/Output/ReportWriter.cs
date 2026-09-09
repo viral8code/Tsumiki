@@ -18,6 +18,19 @@ namespace Tsumiki.Core.Output
     /// </summary>
     internal static class ReportWriter
     {
+        /// <summary>
+        /// 完全性レポートを JSON で書き出す
+        /// </summary>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_k長">採用した k の長さ</param>
+        /// <param name="p_統計">アセンブリ統計</param>
+        /// <param name="p_未解決ギャップ数">埋まらなかったギャップの数</param>
+        /// <param name="p_環状本数">環状に閉じた配列の本数</param>
+        /// <param name="p_判定">完全長の判定結果</param>
+        /// <param name="p_整合性">自己検査の結果</param>
+        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
+        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
+        /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
         public static void V_書き出し_レポート(
             string p_出力パス,
             int p_k長,
@@ -95,6 +108,11 @@ namespace Tsumiki.Core.Output
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
+        /// <summary>
+        /// 決めきれなかった箇所を TSV で書き出す
+        /// </summary>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
         public static void V_書き出し_曖昧箇所(string p_出力パス, IReadOnlyList<曖昧箇所> p_曖昧箇所)
         {
             var l_文 = new StringBuilder();
@@ -134,6 +152,11 @@ namespace Tsumiki.Core.Output
             };
         }
 
+        /// <summary>
+        /// 自己検査の結果をレポートへ足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_整合性">自己検査の結果</param>
         private static void V_追加_自己検査(StringBuilder p_文, 整合性検査結果? p_整合性)
         {
             if (p_整合性 is not { } l_整合性)
@@ -149,6 +172,11 @@ namespace Tsumiki.Core.Output
             _ = p_文.AppendLine("  },");
         }
 
+        /// <summary>
+        /// ポリッシュの結果をレポートへ足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
         private static void V_追加_ポリッシュ(StringBuilder p_文, ポリッシュ統計? p_ポリッシュ)
         {
             if (p_ポリッシュ is not { } l_ポリッシュ)
@@ -165,6 +193,11 @@ namespace Tsumiki.Core.Output
             _ = p_文.AppendLine("  },");
         }
 
+        /// <summary>
+        /// 環状閉鎖の検証結果をレポートへ足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
         private static void V_追加_閉鎖検証(
             StringBuilder p_文, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証)
         {
@@ -192,11 +225,22 @@ namespace Tsumiki.Core.Output
             _ = p_文.AppendLine("  ],");
         }
 
+        /// <summary>
+        /// レポートへ 1 行足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_書式">行の書式</param>
+        /// <param name="p_引数">書式へ埋める値</param>
         private static void V_追加(StringBuilder p_文, string p_書式, params object?[] p_引数)
         {
             _ = p_文.AppendLine(string.Format(CultureInfo.InvariantCulture, p_書式, p_引数));
         }
 
+        /// <summary>
+        /// JSON へ書ける形の数値にして返す
+        /// </summary>
+        /// <param name="p_値">元の値</param>
+        /// <returns>JSON へ書ける文字列</returns>
         private static string Get_数値(double p_値)
         {
             return p_値.ToString("0.####", CultureInfo.InvariantCulture);

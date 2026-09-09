@@ -5,6 +5,10 @@ using Tsumiki.Utility;
 
 namespace Tsumiki.Core.UnitigBuilding
 {
+    /// <summary>
+    /// 信頼できる k-mer 集合の中を walk して、分岐を持たない 1 本の配列を作る
+    /// </summary>
+    /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
     internal class UnitigMaker(TrustedKmerIndex p_kmerインデックス)
     {
         /// <summary>
@@ -96,6 +100,11 @@ namespace Tsumiki.Core.UnitigBuilding
             /// </summary>
             private readonly HashSet<UInt128> _訪問済み = [];
 
+            /// <summary>
+            /// 開始 k-mer から walk して配列を返す
+            /// </summary>
+            /// <param name="p_開始kmer">walk を始める k-mer</param>
+            /// <returns>組み上がった配列</returns>
             public string Get_配列(byte[] p_開始kmer)
             {
                 if (this._転がし is not { } l_転がし)
@@ -114,6 +123,11 @@ namespace Tsumiki.Core.UnitigBuilding
             }
         }
 
+        /// <summary>
+        /// 開始 k-mer から walk してユニティグを返す
+        /// </summary>
+        /// <param name="p_開始kmer">walk を始める k-mer</param>
+        /// <returns>組み上がったユニティグ</returns>
         public ユニティグ Get_ユニティグ(Span<byte> p_開始kmer)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;

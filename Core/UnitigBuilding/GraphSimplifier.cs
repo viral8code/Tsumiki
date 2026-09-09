@@ -127,6 +127,12 @@ namespace Tsumiki.Core.UnitigBuilding
             return l_開始kmer;
         }
 
+        /// <summary>
+        /// 開始 k-mer から walk して、いまのユニティグを列挙する
+        /// </summary>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_開始kmer">walk を始める k-mer</param>
+        /// <returns>ユニティグの配列</returns>
         private static List<string> Get_ユニティグ群(
             TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
         {
@@ -238,6 +244,12 @@ namespace Tsumiki.Core.UnitigBuilding
                 p_ユニティグ群.Select(x => ((long)x.A_塩基列.Length, x.A_平均カバレッジ)));
         }
 
+        /// <summary>
+        /// ユニティグを構成する k-mer をすべて集合から外す
+        /// </summary>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_塩基列">ユニティグの塩基 ID 列</param>
+        /// <param name="p_k長">k 長</param>
         private static void V_除去_ユニティグ全体(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
             for (var i = 0; i + p_k長 <= p_塩基列.Length; i++)

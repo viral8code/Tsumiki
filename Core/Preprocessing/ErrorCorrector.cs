@@ -68,6 +68,14 @@ namespace Tsumiki.Core.Preprocessing
             Directory.Delete(l_訂正用一時ディレクトリ, recursive: true);
         }
 
+        /// <summary>
+        /// 1 ファイルぶんのリードを訂正して書き出し、その集計を返す
+        /// </summary>
+        /// <param name="p_入力パス">訂正するリードのパス</param>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>訂正の集計</returns>
         private static ファイル訂正統計 Get_訂正統計_ファイル(
             string p_入力パス, string p_出力パス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
@@ -429,6 +437,11 @@ namespace Tsumiki.Core.Preprocessing
                 : p_kmerインデックス.Get_含まれるか_中(l_正規形);
         }
 
+        /// <summary>
+        /// k 塩基ぶんだけを残すマスクを返す
+        /// </summary>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>マスク</returns>
         private static UInt128 Get_マスク(int p_k長)
         {
             return p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
@@ -443,11 +456,23 @@ namespace Tsumiki.Core.Preprocessing
             return p_塩基ID == Consts.無効な塩基 ? 0 : (UInt128)(p_塩基ID - 1);
         }
 
+        /// <summary>
+        /// 塩基 ID に対応する相補の 2 bit を返す
+        /// </summary>
+        /// <param name="p_塩基ID">塩基 ID</param>
+        /// <returns>相補の 2 bit</returns>
         private static UInt128 Get_相補コドン(byte p_塩基ID)
         {
             return p_塩基ID == Consts.無効な塩基 ? 3 : (UInt128)(3 - (p_塩基ID - 1));
         }
 
+        /// <summary>
+        /// リード上の各窓が信頼できる k-mer かを返す
+        /// </summary>
+        /// <param name="p_塩基列">リードの塩基 ID 列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <returns>窓ごとに信頼できるか</returns>
         private static bool[] Get_窓ごとの信頼状況(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス)
         {
             var l_窓数 = p_塩基列.Length - p_k長 + 1;
@@ -459,6 +484,14 @@ namespace Tsumiki.Core.Preprocessing
             return l_信頼状況;
         }
 
+        /// <summary>
+        /// その窓の k-mer が信頼できる集合にあるか
+        /// </summary>
+        /// <param name="p_塩基列">リードの塩基 ID 列</param>
+        /// <param name="p_窓開始">窓の開始位置</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <returns>信頼できれば true</returns>
         private static bool Get_窓が信頼できるか(
             byte[] p_塩基列, int p_窓開始, int p_k長, TrustedKmerIndex p_kmerインデックス)
         {

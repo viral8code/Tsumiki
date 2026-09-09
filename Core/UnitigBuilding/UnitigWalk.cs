@@ -53,6 +53,12 @@ namespace Tsumiki.Core.UnitigBuilding
             return p_k長 <= 64;
         }
 
+        /// <summary>
+        /// 既に通った k-mer か
+        /// </summary>
+        /// <param name="p_順鎖">順鎖のパック値</param>
+        /// <param name="p_逆鎖">逆鎖のパック値</param>
+        /// <returns>通っていれば true</returns>
         private bool Get_含まれるか(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_正規形 = p_順鎖 < p_逆鎖 ? p_順鎖 : p_逆鎖;

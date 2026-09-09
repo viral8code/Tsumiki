@@ -92,6 +92,10 @@ namespace Tsumiki.Core.Evaluation
             return l_結果;
         }
 
+        /// <summary>
+        /// 環状閉鎖の検証結果をログへ出力する
+        /// </summary>
+        /// <param name="p_結果群">配列ごとの検証結果</param>
         public static void V_出力_検証結果(IReadOnlyList<環状閉鎖検証結果> p_結果群)
         {
             if (p_結果群.Count == 0)

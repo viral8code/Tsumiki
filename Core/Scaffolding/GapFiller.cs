@@ -155,6 +155,10 @@ namespace Tsumiki.Core.Scaffolding
             return l_経路;
         }
 
+        /// <summary>
+        /// ギャップ充填の結果をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">ギャップ充填の結果</param>
         public static void V_出力_充填統計(ギャップ充填統計 p_統計)
         {
             if (p_統計.A_総ギャップ数 == 0)

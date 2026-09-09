@@ -159,11 +159,19 @@ namespace Tsumiki.Core.UnitigBuilding
             /// </summary>
             private readonly HashSet<KmerKey>? _大 = p_k長 > 64 ? [] : null;
 
+            /// <summary>
+            /// 訪問済みとして正規形を覚える
+            /// </summary>
+            /// <param name="p_正規形">k-mer の正規形</param>
             public void V_追加(UInt128 p_正規形)
             {
                 _ = this._小!.Add(p_正規形);
             }
 
+            /// <summary>
+            /// 訪問済みとして k-mer を覚える
+            /// </summary>
+            /// <param name="p_kmer">塩基 ID 列</param>
             public void V_追加(ReadOnlySpan<byte> p_kmer)
             {
                 if (this._小 is { } l_小)
@@ -174,6 +182,11 @@ namespace Tsumiki.Core.UnitigBuilding
                 _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
             }
 
+            /// <summary>
+            /// 既に訪問済みか
+            /// </summary>
+            /// <param name="p_kmer">塩基 ID 列</param>
+            /// <returns>訪問済みなら true</returns>
             public bool Get_含まれるか(ReadOnlySpan<byte> p_kmer)
             {
                 return this._小 is { } l_小

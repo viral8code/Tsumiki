@@ -483,6 +483,13 @@ namespace Tsumiki.Core.UnitigBuilding
             }
         }
 
+        /// <summary>
+        /// 経路が表す 1 本の配列を組み立てて返す
+        /// </summary>
+        /// <param name="p_ユニティグ配列">ユニティグ ID 順の配列</param>
+        /// <param name="p_経路">辿る頂点の並び</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>組み立てた配列</returns>
         private static string Get_経路配列(List<string> p_ユニティグ配列, List<int> p_経路, int p_k長)
         {
             var l_重なり長 = p_k長 - 1;
@@ -495,12 +502,24 @@ namespace Tsumiki.Core.UnitigBuilding
             return l_出力.ToString();
         }
 
+        /// <summary>
+        /// 2 本の配列の類似度を返す
+        /// </summary>
+        /// <param name="p_a">比べる配列</param>
+        /// <param name="p_b">比べる配列</param>
+        /// <returns>0 から 1 の類似度</returns>
         private static double Get_類似度(string p_a, string p_b)
         {
             var l_最大長 = Math.Max(p_a.Length, p_b.Length);
             return l_最大長 == 0 ? 1.0 : 1.0 - ((double)Get_編集距離(p_a, p_b) / l_最大長);
         }
 
+        /// <summary>
+        /// 2 本の配列の編集距離を返す
+        /// </summary>
+        /// <param name="p_a">比べる配列</param>
+        /// <param name="p_b">比べる配列</param>
+        /// <returns>編集距離</returns>
         private static int Get_編集距離(string p_a, string p_b)
         {
             var l_前行 = new int[p_b.Length + 1];

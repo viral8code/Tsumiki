@@ -286,6 +286,11 @@ namespace Tsumiki.Core.Pipeline
             return l_最終パス;
         }
 
+        /// <summary>
+        /// ファイルを複製する
+        /// </summary>
+        /// <param name="p_元">複製元</param>
+        /// <param name="p_先">複製先</param>
         private static void V_複製(string p_元, string p_先)
         {
             if (p_元 != p_先 && File.Exists(p_元))

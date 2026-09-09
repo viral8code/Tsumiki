@@ -5,6 +5,9 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Core.Evaluation
 {
+    /// <summary>
+    /// アセンブリの長さの統計を求めて出力する
+    /// </summary>
     internal static class AssemblyStatsReporter
     {
         /// <summary>
@@ -13,6 +16,11 @@ namespace Tsumiki.Core.Evaluation
         /// </summary>
         public const int 比較用の最小長 = 500;
 
+        /// <summary>
+        /// 配列群から統計を求めて返す
+        /// </summary>
+        /// <param name="p_配列群">対象の配列</param>
+        /// <returns>アセンブリ統計</returns>
         public static アセンブリ統計 Get_統計(IEnumerable<string> p_配列群)
         {
             var l_長さ一覧 = new List<int>();
@@ -56,11 +64,21 @@ namespace Tsumiki.Core.Evaluation
                 A_GC率: l_GC率);
         }
 
+        /// <summary>
+        /// FASTA から統計を求めて返す
+        /// </summary>
+        /// <param name="p_FASTAパス">対象の FASTA のパス</param>
+        /// <returns>アセンブリ統計</returns>
         public static アセンブリ統計 Get_統計_FASTA(string p_FASTAパス)
         {
             return Get_統計(Get_配列群(p_FASTAパス));
         }
 
+        /// <summary>
+        /// FASTA から配列だけを取り出して返す
+        /// </summary>
+        /// <param name="p_FASTAパス">対象の FASTA のパス</param>
+        /// <returns>配列</returns>
         private static IEnumerable<string> Get_配列群(string p_FASTAパス)
         {
             using var l_読み込み = new FastaReader(p_FASTAパス);

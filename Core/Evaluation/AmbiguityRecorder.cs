@@ -26,6 +26,9 @@ namespace Tsumiki.Core.Evaluation
         /// </summary>
         private static readonly Dictionary<int, List<曖昧箇所>> _k長ごとの記録 = [];
 
+        /// <summary>
+        /// いま記録している k の長さ
+        /// </summary>
         private static int _現在のk長;
 
         /// <summary>

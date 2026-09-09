@@ -28,6 +28,9 @@ namespace Tsumiki.Core
         // 位置情報は代表ユニティグの判定が
         // 「read 内での最後のヒット位置」ではなく「unitig 内での最後のヒット
         // 位置」を正しく求めるために必要 (ギャップ長・インサートサイズ推定に使う)
+        /// <summary>
+        /// k-mer から、それが載るユニティグと開始位置を引く辞書
+        /// </summary>
         private readonly Dictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> _kmer辞書;
 
         // unitig ID(1 始まり) -> unitig の塩基長
@@ -45,6 +48,9 @@ namespace Tsumiki.Core
 
         // 単一リード内で直接検出された隣接 (=k-1 塩基のオーバーラップで
         // 実際に結合できる可能性が高い辺)
+        /// <summary>
+        /// リードが跨いだユニティグの組と、その本数
+        /// </summary>
         private readonly Dictionary<(int, int), ulong> _リード隣接;
 
         // ペアエンド情報 (read1/read2 がそれぞれ別 unitig にマップされたこと) 由来の
@@ -52,6 +58,9 @@ namespace Tsumiki.Core
         // キーは リード隣接 と同じ (始点, 終点) 形式 (符号が unitig の向きを表す)
         // 値は「観測されたペアの一覧」で、各観測ごとの既知長を保持し、
         // Scaffolder 側で代表値 (中央値) を計算できるようにする
+        /// <summary>
+        /// ペアが跨いだユニティグの組と、その間に通った頂点
+        /// </summary>
         private readonly Dictionary<(int, int), List<int>> _ペア経路;
 
         // unitig ID(1 始まり) -> その unitig が最終的にどの contig の
@@ -160,6 +169,10 @@ namespace Tsumiki.Core
             return UnitigGraph.Get_グラフ(l_ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
         }
 
+        /// <summary>
+        /// リードをユニティグへ貼り付け、隣接とペアの支持を集める
+        /// </summary>
+        /// <param name="p_リードパス">貼り付けるリードのパス</param>
         public void V_マッピング_リード(string p_リードパス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -454,6 +467,11 @@ namespace Tsumiki.Core
             }
         }
 
+        /// <summary>
+        /// 1 本のリードを貼り付ける
+        /// </summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_ローカル隣接">このワーカーが集めた隣接</param>
         private void V_マッピング_1リード(string p_リード, Dictionary<(int, int), ulong> p_ローカル隣接)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;

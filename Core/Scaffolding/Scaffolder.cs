@@ -374,6 +374,9 @@ namespace Tsumiki.Core.Scaffolding
             return StatsUtil.Get_N50([.. p_ユニティグ長.Values.Select(x => (long)x)]).A_N50;
         }
 
+        /// <summary>
+        /// コンティグを読み込んで、長さと配列を手元に持つ
+        /// </summary>
         private void V_読込_コンティグ()
         {
             using var l_読み込み = new FastaReader(p_コンティグファイルパス);
@@ -434,6 +437,14 @@ namespace Tsumiki.Core.Scaffolding
             return true;
         }
 
+        /// <summary>
+        /// 候補のなかで優勢なものを、その頂点のスキャフォールド辺として確定する
+        /// </summary>
+        /// <param name="p_隣接">頂点ごとの候補</param>
+        /// <param name="p_頂点">確定させる頂点</param>
+        /// <param name="p_優勢閾値">優勢とみなす比</param>
+        /// <param name="p_最小証拠数">確定に要求する支持数</param>
+        /// <param name="p_確定">確定した辺の書き留め先</param>
         private static void V_確定_スキャフォールド辺(
             List<スキャフォールド候補>[] p_隣接,
             int p_頂点,
@@ -474,6 +485,11 @@ namespace Tsumiki.Core.Scaffolding
             return l_合計 <= 0 || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値 ? null : l_最良;
         }
 
+        /// <summary>
+        /// 頂点に対応するコンティグの長さを返す
+        /// </summary>
+        /// <param name="p_頂点">向き付きの頂点番号</param>
+        /// <returns>コンティグの長さ</returns>
         private long Get_コンティグ長(int p_頂点)
         {
             return this._コンティグ配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;

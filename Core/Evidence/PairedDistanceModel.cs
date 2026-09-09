@@ -73,6 +73,12 @@ namespace Tsumiki.Core.Evidence
         /// </summary>
         public bool A_使えるか => this._分布.Length > 0;
 
+        /// <summary>
+        /// 昇順に並んだ値から分位点を返す
+        /// </summary>
+        /// <param name="p_昇順">昇順に並んだ値</param>
+        /// <param name="p_位置">求める分位 (0 から 1)</param>
+        /// <returns>分位点</returns>
         private static int Get_分位(int[] p_昇順, double p_位置)
         {
             var i = (int)(p_昇順.Length * p_位置);

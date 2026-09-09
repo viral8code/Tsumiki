@@ -136,6 +136,12 @@ namespace Tsumiki.Core.Evaluation
             return l_索引;
         }
 
+        /// <summary>
+        /// 配列の両端で、アンカーを取る位置を返す
+        /// </summary>
+        /// <param name="p_配列長">配列の長さ</param>
+        /// <param name="p_アンカーk長">アンカーの k 長</param>
+        /// <returns>アンカーを取る位置</returns>
         private static IEnumerable<int> Get_末端の位置範囲(int p_配列長, int p_アンカーk長)
         {
             var l_最終位置 = p_配列長 - p_アンカーk長;
@@ -155,6 +161,13 @@ namespace Tsumiki.Core.Evaluation
             }
         }
 
+        /// <summary>
+        /// その位置の k-mer が順鎖のまま正規形になるか
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_位置">k-mer の開始位置</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>順鎖なら true</returns>
         private static bool Get_順鎖か(string p_配列, int p_位置, int p_k長)
         {
             _ = KmerPacking.Get_正規化パック(p_配列, p_位置, p_k長, out var l_正規形);
@@ -254,6 +267,13 @@ namespace Tsumiki.Core.Evaluation
             return p_当たり.A_同じ向きか ? l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
+        /// <summary>
+        /// アンカーの当たりから、骨格側で入っていく頂点を返す
+        /// </summary>
+        /// <param name="p_当たり">アンカーが当たった位置と向き</param>
+        /// <param name="p_骨格配列">骨格の配列</param>
+        /// <param name="p_アンカーk長">アンカーの k 長</param>
+        /// <returns>入口の頂点、決められなければ null</returns>
         private static int? Get_入口頂点(
             (int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか) p_当たり,
             List<string> p_骨格配列, int p_アンカーk長)
@@ -323,6 +343,12 @@ namespace Tsumiki.Core.Evaluation
             return l_確定;
         }
 
+        /// <summary>
+        /// 辺を支持した k を書き留める
+        /// </summary>
+        /// <param name="p_支持したk">辺ごとに支持した k</param>
+        /// <param name="p_辺">支持された辺</param>
+        /// <param name="p_k長">支持した k</param>
         private static void V_数える(
             Dictionary<(int, int), HashSet<int>> p_支持したk, (int, int) p_辺, int p_k長)
         {
@@ -334,6 +360,12 @@ namespace Tsumiki.Core.Evaluation
             _ = l_集合.Add(p_k長);
         }
 
+        /// <summary>
+        /// 橋渡しの候補を、行き先と代表の両方へ書き留める
+        /// </summary>
+        /// <param name="p_行き先">頂点ごとの行き先</param>
+        /// <param name="p_代表">辺ごとの代表となる候補</param>
+        /// <param name="p_候補">書き留める候補</param>
         private static void V_登録(
             Dictionary<int, HashSet<int>> p_行き先,
             Dictionary<(int, int), 橋渡し候補> p_代表,
@@ -385,6 +417,13 @@ namespace Tsumiki.Core.Evaluation
             }
         }
 
+        /// <summary>
+        /// 統合後の配列に付ける名前を返す
+        /// </summary>
+        /// <param name="p_骨格名一覧">骨格側の名前</param>
+        /// <param name="p_番号">骨格の番号</param>
+        /// <param name="p_ID">通し番号</param>
+        /// <returns>付ける名前</returns>
         private static string Get_名前(List<string> p_骨格名一覧, int p_番号, int p_ID)
         {
             return p_番号 < p_骨格名一覧.Count ? p_骨格名一覧[p_番号] : $"MERGED{p_ID}";
@@ -400,6 +439,15 @@ namespace Tsumiki.Core.Evaluation
             return p_確定.ContainsKey((p_番号 << 1) | 1);
         }
 
+        /// <summary>
+        /// 確定した橋渡しを辿って、繋がった 1 本の配列を返す
+        /// </summary>
+        /// <param name="p_開始頂点">辿り始める頂点</param>
+        /// <param name="p_骨格配列">骨格の配列</param>
+        /// <param name="p_確定">頂点ごとに確定した橋渡し</param>
+        /// <param name="p_訪問済み">既に辿った頂点</param>
+        /// <param name="p_アンカーk長">アンカーの k 長</param>
+        /// <returns>繋がった配列</returns>
         private static string Get_連結配列(
             int p_開始頂点,
             List<string> p_骨格配列,

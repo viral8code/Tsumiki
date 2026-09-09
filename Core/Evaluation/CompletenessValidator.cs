@@ -129,6 +129,10 @@ namespace Tsumiki.Core.Evaluation
                 A_未達理由: [.. l_理由.Distinct()]);
         }
 
+        /// <summary>
+        /// 完全長の判定結果をログへ出力する
+        /// </summary>
+        /// <param name="p_判定">完全長の判定結果</param>
         public static void V_出力_判定結果(完全性判定結果 p_判定)
         {
             Logger.V_出力_空行();
@@ -189,6 +193,11 @@ namespace Tsumiki.Core.Evaluation
             };
         }
 
+        /// <summary>
+        /// 検査判定に対応する見出しの文言を返す
+        /// </summary>
+        /// <param name="p_判定">検査判定</param>
+        /// <returns>見出しの文言</returns>
         private static メッセージID Get_判定の見出し(検査判定 p_判定)
         {
             return p_判定 switch
@@ -199,6 +208,13 @@ namespace Tsumiki.Core.Evaluation
             };
         }
 
+        /// <summary>
+        /// 合否から検査判定を作り、不合格なら理由を書き留める
+        /// </summary>
+        /// <param name="p_合格か">合格したか</param>
+        /// <param name="p_理由">不合格のときの理由</param>
+        /// <param name="p_理由一覧">書き留める先</param>
+        /// <returns>検査判定</returns>
         private static 検査判定 Get_判定(bool p_合格か, 未達理由 p_理由, List<未達理由> p_理由一覧)
         {
             if (p_合格か)
@@ -209,6 +225,12 @@ namespace Tsumiki.Core.Evaluation
             return 検査判定.不合格;
         }
 
+        /// <summary>
+        /// 判定不能を返し、その理由を書き留める
+        /// </summary>
+        /// <param name="p_理由">判定できない理由</param>
+        /// <param name="p_理由一覧">書き留める先</param>
+        /// <returns>判定不能</returns>
         private static 検査判定 Get_判定不能(未達理由 p_理由, List<未達理由> p_理由一覧)
         {
             p_理由一覧.Add(p_理由);

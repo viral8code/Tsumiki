@@ -133,6 +133,10 @@ namespace Tsumiki.Core
             this.V_walk実行してFASTA書き出し(l_グラフ, l_ユニティグ配列, l_結合, l_重なり長, p_コンティグパス);
         }
 
+        /// <summary>
+        /// ユニティグの配列を読み込んで返す
+        /// </summary>
+        /// <returns>ユニティグ ID 順の配列</returns>
         private List<string> Get_ユニティグ配列読み込み()
         {
             List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
@@ -399,6 +403,14 @@ namespace Tsumiki.Core
             return l_結合;
         }
 
+        /// <summary>
+        /// 確定した結合を辿ってコンティグを組み立て、FASTA へ書き出す
+        /// </summary>
+        /// <param name="p_グラフ">ユニティググラフ</param>
+        /// <param name="p_ユニティグ配列">ユニティグ ID 順の配列</param>
+        /// <param name="p_結合">頂点ごとの結合先</param>
+        /// <param name="p_重なり長">隣り合うユニティグが共有する長さ</param>
+        /// <param name="p_コンティグパス">書き出し先</param>
         private void V_walk実行してFASTA書き出し(
             UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int[] p_結合, int p_重なり長, string p_コンティグパス)
         {

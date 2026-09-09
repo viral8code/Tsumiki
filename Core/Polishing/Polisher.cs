@@ -162,6 +162,10 @@ namespace Tsumiki.Core.Polishing
                 A_深度の中央値: l_中央値);
         }
 
+        /// <summary>
+        /// ポリッシュの結果をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">ポリッシュの結果</param>
         public static void V_出力_統計(ポリッシュ統計? p_統計)
         {
             if (p_統計 is not { } l_統計)
@@ -204,6 +208,12 @@ namespace Tsumiki.Core.Polishing
             return l_索引;
         }
 
+        /// <summary>
+        /// リードの貼り付け位置を探す種を索引へ登録する
+        /// </summary>
+        /// <param name="p_索引">登録先の索引</param>
+        /// <param name="p_キー">種の k-mer</param>
+        /// <param name="p_値">その種が指す位置</param>
         private static void V_登録_種(
             Dictionary<UInt128, 種の位置> p_索引, UInt128 p_キー, 種の位置 p_値)
         {
@@ -379,6 +389,12 @@ namespace Tsumiki.Core.Polishing
             return 0;
         }
 
+        /// <summary>
+        /// その位置に載ったリードの本数を返す
+        /// </summary>
+        /// <param name="p_得票">位置と塩基ごとの得票</param>
+        /// <param name="p_位置">調べる位置</param>
+        /// <returns>載ったリードの本数</returns>
         private static int Get_深度(int[] p_得票, int p_位置)
         {
             var l_起点 = p_位置 * 4;

@@ -44,6 +44,15 @@ namespace Tsumiki.Core.Scaffolding
         /// </summary>
         private const ulong 局所カットオフ = 1UL;
 
+        /// <summary>
+        /// 残ったギャップを、その両端に付いたリードだけで組み直して埋める
+        /// </summary>
+        /// <param name="p_スキャフォールドパス">対象のスキャフォールドのパス</param>
+        /// <param name="p_リード1のパス">リード 1 のパス</param>
+        /// <param name="p_リード2のパス">リード 2 のパス</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_インサートサイズ">インサートサイズ</param>
+        /// <returns>局所アセンブリの集計</returns>
         public static 局所アセンブリ統計 V_充填_ギャップ(
             string p_スキャフォールドパス,
             string p_リード1のパス,
@@ -101,6 +110,12 @@ namespace Tsumiki.Core.Scaffolding
                 l_ギャップ一覧.Count, l_埋めた数, l_埋めた塩基数, l_リード無し数, l_一意でない数, l_到達不能数);
         }
 
+        /// <summary>
+        /// 埋める対象になるギャップを集めて返す
+        /// </summary>
+        /// <param name="p_スキャフォールド群">対象のスキャフォールド</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>対象のギャップ</returns>
         private static List<局所ギャップ> Get_対象ギャップ一覧(
             List<(string A_ID, string A_配列)> p_スキャフォールド群, int p_k長)
         {
@@ -152,6 +167,13 @@ namespace Tsumiki.Core.Scaffolding
             return l_索引;
         }
 
+        /// <summary>
+        /// 配列の k-mer を、どのギャップの端かと一緒に索引へ登録する
+        /// </summary>
+        /// <param name="p_索引">登録先の索引</param>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_ギャップ番号">ギャップの番号</param>
         private static void V_登録_kmer列(Dictionary<KmerKey, List<int>> p_索引, string p_配列, int p_k長, int p_ギャップ番号)
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
@@ -173,6 +195,13 @@ namespace Tsumiki.Core.Scaffolding
             }
         }
 
+        /// <summary>
+        /// 指定した範囲に曖昧塩基が含まれるか
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_開始">調べ始める位置</param>
+        /// <param name="p_長さ">調べる長さ</param>
+        /// <returns>含まれれば true</returns>
         private static bool Get_曖昧塩基を含むか(string p_配列, int p_開始, int p_長さ)
         {
             for (var j = 0; j < p_長さ; j++)
@@ -226,6 +255,13 @@ namespace Tsumiki.Core.Scaffolding
             return l_局所リード;
         }
 
+        /// <summary>
+        /// そのリードが端に当たるギャップの番号を返す
+        /// </summary>
+        /// <param name="p_索引">ギャップの端の k-mer 索引</param>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>当たったギャップの番号</returns>
         private static HashSet<int> Get_一致するギャップ(
             Dictionary<KmerKey, List<int>> p_索引, string p_リード, int p_k長)
         {
@@ -309,6 +345,12 @@ namespace Tsumiki.Core.Scaffolding
             }
         }
 
+        /// <summary>
+        /// 配列のすべての k-mer を索引へ登録する
+        /// </summary>
+        /// <param name="p_索引">登録先の索引</param>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_k長">k 長</param>
         private static void V_登録_全kmer(TrustedKmerIndex p_索引, string p_配列, int p_k長)
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
@@ -325,6 +367,13 @@ namespace Tsumiki.Core.Scaffolding
             }
         }
 
+        /// <summary>
+        /// 指定した位置の k-mer を塩基 ID 列にして返す
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_開始">k-mer の開始位置</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>塩基 ID 列、曖昧塩基を含む場合は null</returns>
         private static byte[]? Get_kmerバイト列(string p_配列, int p_開始, int p_k長)
         {
             if (p_開始 < 0 || p_開始 + p_k長 > p_配列.Length)
@@ -344,6 +393,13 @@ namespace Tsumiki.Core.Scaffolding
             return l_kmer;
         }
 
+        /// <summary>
+        /// 埋まったギャップを反映してスキャフォールドを書き直す
+        /// </summary>
+        /// <param name="p_スキャフォールドパス">書き出し先</param>
+        /// <param name="p_スキャフォールド群">対象のスキャフォールド</param>
+        /// <param name="p_ギャップ一覧">埋めたギャップ</param>
+        /// <param name="p_k長">k 長</param>
         private static void V_書き戻し(
             string p_スキャフォールドパス,
             List<(string A_ID, string A_配列)> p_スキャフォールド群,
@@ -379,6 +435,10 @@ namespace Tsumiki.Core.Scaffolding
             }
         }
 
+        /// <summary>
+        /// 局所アセンブリの結果をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">局所アセンブリの結果</param>
         public static void V_出力_統計(局所アセンブリ統計 p_統計)
         {
             if (p_統計.A_対象ギャップ数 == 0)
@@ -390,6 +450,9 @@ namespace Tsumiki.Core.Scaffolding
                 メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
 
+        /// <summary>
+        /// 局所アセンブリで埋める 1 箇所のギャップ
+        /// </summary>
         private readonly record struct 局所ギャップ(
             int A_Scaffold番号, int A_開始, int A_長さ, string A_左アンカー, string A_右アンカー);
     }

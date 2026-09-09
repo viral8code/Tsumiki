@@ -83,6 +83,12 @@ namespace Tsumiki.Core.Preprocessing
             V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
         }
 
+        /// <summary>
+        /// 1 ファイルを読み込んで k-mer を数える
+        /// </summary>
+        /// <param name="p_パス">読み込むリードのパス</param>
+        /// <param name="p_曖昧塩基を許容するか">曖昧塩基を展開して数えるか</param>
+        /// <param name="p_kmerインデックス">数え上げ先</param>
         private static void V_読込_1ファイル(string p_パス, bool p_曖昧塩基を許容するか, TrustedKmerIndex p_kmerインデックス)
         {
             if (p_曖昧塩基を許容するか)
