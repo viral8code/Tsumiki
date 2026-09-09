@@ -307,16 +307,6 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_再開するか { get; set; } = false;
 
-        /// <summary>
-        /// 組み終わった k を次回そのまま飛ばせるように、控えを残すか。
-        ///
-        /// 控えの大半は次の k へ渡す合成リードで、リード数ぶんの配列と
-        /// 位置ごとのカバレッジを持つため k ごとに数百MBになる。飛ばせて
-        /// 嬉しいのは同じ条件で組み直すときだけなので、既定では残さない。
-        /// 前処理と訂正の済んだリードの再利用は控えとは無関係に効く。
-        /// </summary>
-        public bool A_チェックポイントを保存するか { get; set; } = false;
-
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         /// <summary>
@@ -395,7 +385,6 @@ namespace Tsumiki.Model.Foundation
                 polish final assembly with reads : {this.A_ポリッシュするか}
                 verify circular closure with reads : {this.A_環状閉鎖を検証するか}
                 resume from temp directory : {this.A_再開するか}
-                save per-k checkpoints : {this.A_チェックポイントを保存するか}
                 temp directory : {this.A_一時ディレクトリ}
                 delete temp directory when finished : {this.A_一時ディレクトリを削除するか}
                 thread count : {this.A_スレッド数}

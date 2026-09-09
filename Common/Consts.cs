@@ -76,8 +76,6 @@
 
             public const string 再開 = "-rs";
 
-            public const string チェックポイント保存 = "-cp";
-
             public const string ログ水準 = "-log";
         }
 

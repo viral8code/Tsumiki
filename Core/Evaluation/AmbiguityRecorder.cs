@@ -90,40 +90,6 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 作業ディレクトリに残っている記録を読み直す。
-        /// </summary>
-        public static void V_読み込み(string p_作業ディレクトリ, int p_k長)
-        {
-            var l_パス = Path.Combine(p_作業ディレクトリ, 保存ファイル名);
-            if (!File.Exists(l_パス))
-            {
-                return;
-            }
-            List<曖昧箇所> l_一覧 = [];
-            foreach (var l_行 in File.ReadLines(l_パス))
-            {
-                var l_列 = l_行.Split('	');
-                if (l_列.Length != 6)
-                {
-                    continue;
-                }
-                l_一覧.Add(new 曖昧箇所(
-                    p_k長,
-                    (曖昧箇所の種別)int.Parse(l_列[0], CultureInfo.InvariantCulture),
-                    l_列[1],
-                    double.Parse(l_列[2], CultureInfo.InvariantCulture),
-                    double.Parse(l_列[3], CultureInfo.InvariantCulture),
-                    long.Parse(l_列[4], CultureInfo.InvariantCulture),
-                    double.Parse(l_列[5], CultureInfo.InvariantCulture)));
-            }
-            lock (_錠)
-            {
-                _現在のk長 = p_k長;
-                _k長ごとの記録[p_k長] = l_一覧;
-            }
-        }
-
-        /// <summary>
         /// その k で書き留めた箇所の一覧。記録が無ければ空。
         /// </summary>
         public static IReadOnlyList<曖昧箇所> Get_記録(int p_k長)

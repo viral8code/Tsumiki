@@ -466,8 +466,6 @@ namespace Tsumiki.Common
                 "[Report] Wrote {0}",
             [メッセージID.曖昧箇所を書き出した] =
                 "[Report] Wrote {0:N0} ambiguous site(s) to {1}",
-            [メッセージID.再開_kを飛ばした] =
-                "[Resume] k={0} is already finished under the same settings, reusing it",
             [メッセージID.再開_中間ファイルを再利用] =
                 "[Resume] Reusing {0}",
             [メッセージID.ヘルプ節_完全性の検証] =
@@ -479,9 +477,7 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "rescue below-cutoff k-mers that sit between trusted ones inside a read (default: false)",
             [メッセージID.ヘルプ_再開] =
-                "reuse what is left in the working directory and continue (default: false)",
-            [メッセージID.ヘルプ_チェックポイント保存] =
-                "keep the per-k carry-over so that {0} can skip a finished k; costs hundreds of MB per k (default: false)",
+                "reuse the preprocessed and corrected reads left in the working directory (default: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} and {1} are always written alongside the assembly.",
             [メッセージID.分岐のない閉路] =
@@ -922,8 +918,6 @@ namespace Tsumiki.Common
                 "[Report] {0} を書き出し",
             [メッセージID.曖昧箇所を書き出した] =
                 "[Report] 決めきれなかった {0:N0} 箇所を {1} に書き出し",
-            [メッセージID.再開_kを飛ばした] =
-                "[Resume] k={0} は同じ条件で完了済みのため再利用",
             [メッセージID.再開_中間ファイルを再利用] =
                 "[Resume] {0} を再利用",
             [メッセージID.ヘルプ節_完全性の検証] =
@@ -935,9 +929,7 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "リード内で信頼できる k-mer に挟まれた、カットオフ未満の k-mer を救済する (既定: false)",
             [メッセージID.ヘルプ_再開] =
-                "作業ディレクトリに残ったものを再利用して続きから実行する (既定: false)",
-            [メッセージID.ヘルプ_チェックポイント保存] =
-                "{0} で組み終わった k を飛ばせるように控えを残す。k ごとに数百MB要る (既定: false)",
+                "作業ディレクトリに残った前処理済み・訂正済みのリードを再利用する (既定: false)",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} と {1} は常にアセンブリと同じ場所へ書き出す",
             [メッセージID.分岐のない閉路] =
@@ -1378,8 +1370,6 @@ namespace Tsumiki.Common
                 "[Report] 已写出 {0}",
             [メッセージID.曖昧箇所を書き出した] =
                 "[Report] 已将 {0:N0} 处无法确定的位置写入 {1}",
-            [メッセージID.再開_kを飛ばした] =
-                "[Resume] k={0} 已在相同条件下完成，直接复用",
             [メッセージID.再開_中間ファイルを再利用] =
                 "[Resume] 复用 {0}",
             [メッセージID.ヘルプ節_完全性の検証] =
@@ -1391,9 +1381,7 @@ namespace Tsumiki.Common
             [メッセージID.ヘルプ_救済kmer] =
                 "救回 read 内位于可信 k-mer 之间、低于截断值的 k-mer（默认：false）",
             [メッセージID.ヘルプ_再開] =
-                "复用工作目录中已有的内容并继续执行（默认：false）",
-            [メッセージID.ヘルプ_チェックポイント保存] =
-                "保留各 k 的接力数据，使 {0} 能跳过已完成的 k；每个 k 需要数百 MB（默认：false）",
+                "复用工作目录中已有的预处理与纠错后的 reads（默认：false）",
             [メッセージID.ヘルプ_レポートの説明] =
                 "{0} 与 {1} 始终与组装结果写在同一位置",
             [メッセージID.分岐のない閉路] =

@@ -37,16 +37,6 @@ namespace Tsumiki.Core.Pipeline
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
 
-            // 同じ条件で作り終えているなら、この k は丸ごと飛ばす。
-            var l_署名 = CheckpointStore.Get_署名(p_引数, p_k長);
-            if (p_引数.A_再開するか
-                && CheckpointStore.Get_再開結果(l_作業ディレクトリ, l_署名, p_次への引き継ぎ) is { } l_再開結果)
-            {
-                Logger.V_出力(メッセージID.再開_kを飛ばした, p_k長);
-                AmbiguityRecorder.V_読み込み(l_作業ディレクトリ, p_k長);
-                return l_再開結果;
-            }
-
             AmbiguityRecorder.V_開始(p_k長);
 
             var l_ユニティグパス = Path.Combine(l_作業ディレクトリ, Consts.ユニティグファイル名);
@@ -200,8 +190,7 @@ namespace Tsumiki.Core.Pipeline
                     p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
                     p_引数.A_GFAを出力するか ? l_GFAパス : null,
                     l_コンティグの検査);
-                V_保存_チェックポイント(
-                    l_作業ディレクトリ, l_署名, l_コンティグのみの結果, p_次への引き継ぎ, p_k長);
+                V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_コンティグのみの結果;
             }
 
@@ -244,27 +233,16 @@ namespace Tsumiki.Core.Pipeline
                 p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
                 p_引数.A_GFAを出力するか ? l_GFAパス : null,
                 l_スキャフォールドの検査);
-            V_保存_チェックポイント(l_作業ディレクトリ, l_署名, l_結果, p_次への引き継ぎ, p_k長);
+            V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
         }
 
         /// <summary>
-        /// この k を作り終えたことを記録する。決めきれなかった箇所の控えは
-        /// 常に残す(再開でこの k を飛ばしたときに、レポートから消えないように)。
-        ///
-        /// k を飛ばすための控えのほうは -cp があるときだけ残す。中身の大半は
-        /// 次の k へ渡す合成リードで、k ごとに数百MBになるうえ、飛ばせて嬉しい
-        /// のは同じ条件で組み直すときに限られる。
+        /// この k で決めきれなかった箇所を残す。
         /// </summary>
-        private static void V_保存_チェックポイント(
-            string p_作業ディレクトリ, string p_署名, アセンブリ実行結果 p_結果,
-            IReadOnlyList<引き継ぎ配列>? p_次への引き継ぎ, int p_k長)
+        private static void V_保存_チェックポイント(string p_作業ディレクトリ, int p_k長)
         {
             AmbiguityRecorder.V_保存(p_作業ディレクトリ, p_k長);
-            if (ConfigurationManager.A_実行時引数.A_チェックポイントを保存するか)
-            {
-                CheckpointStore.V_保存(p_作業ディレクトリ, p_署名, p_結果, p_次への引き継ぎ);
-            }
         }
 
         /// <summary>
