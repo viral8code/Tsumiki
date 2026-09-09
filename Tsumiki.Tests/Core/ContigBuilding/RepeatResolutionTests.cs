@@ -95,7 +95,7 @@ namespace Tsumiki.Tests.Core
             var vertexCountBefore = graph.A_出辺.Count;
 
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(1, resolved);
 
@@ -160,7 +160,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> support = [];
 
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(1, resolved);
             // 交差した対応付け: A は D へ、B は C へ繋がる
@@ -194,7 +194,7 @@ namespace Tsumiki.Tests.Core
             var vertexCountBefore = graph.A_出辺.Count;
 
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(0, resolved);
             Assert.Equal(vertexCountBefore, graph.A_出辺.Count);
@@ -227,7 +227,7 @@ namespace Tsumiki.Tests.Core
 
             // R は24 bp なので、上限を10 bp にすれば対象外になる
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 10, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                unitigList, support, pairLink, p_反復長の上限: 10, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(0, resolved);
             Assert.Equal(vertexCountBefore, graph.A_出辺.Count);
@@ -250,7 +250,7 @@ namespace Tsumiki.Tests.Core
             var vertexCountBefore = graph.A_出辺.Count;
 
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.Equal(0, resolved);
             Assert.Equal(vertexCountBefore, graph.A_出辺.Count);

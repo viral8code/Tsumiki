@@ -346,9 +346,9 @@ namespace Tsumiki.Core.UnitigBuilding
             IReadOnlyDictionary<(int, int), ulong> p_支持,
             int p_k長,
             List<string>? p_敗者への引き継ぎ先 = null,
-            double p_長さ帯の割合 = 0.1,
+            double p_長さ帯の割合 = 0.1D,
             int p_長さ帯の下限 = 3,
-            double p_類似度の下限 = 0.7,
+            double p_類似度の下限 = 0.7D,
             int p_経路長の上限 = 2000)
         {
             var l_除去数 = 0;

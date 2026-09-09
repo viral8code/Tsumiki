@@ -185,11 +185,11 @@ namespace Tsumiki.Utility
         /// </summary>
         private static uint Get_ハッシュ(byte[] p_パック済みkmer)
         {
-            var l_ハッシュ = 2166136261u;
+            var l_ハッシュ = 2166136261U;
             foreach (var l_バイト in p_パック済みkmer)
             {
                 l_ハッシュ ^= l_バイト;
-                l_ハッシュ *= 16777619u;
+                l_ハッシュ *= 16777619U;
             }
             return l_ハッシュ;
         }
@@ -556,8 +556,8 @@ namespace Tsumiki.Utility
             Dictionary<ulong, ulong>? l_信頼kmer_小;
             Dictionary<UInt128, ulong>? l_信頼kmer_中;
             {
-                ulong l_採用数 = 0;
-                ulong l_総種類数 = 0;
+                ulong l_採用数 = 0UL;
+                ulong l_総種類数 = 0UL;
                 // 出現回数 -> その回数を持つユニーク k-mer の種類数
                 // エラー由来の低頻度 k-mer と真のゲノム由来 k-mer を分ける「谷」を
                 // 推定するために、カットオフ判定と同じこのループで集計する

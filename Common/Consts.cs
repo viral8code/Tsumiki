@@ -239,7 +239,7 @@
         /// 最初の k の結果から
         /// 各 k のカバレッジを予測し、これを下回るものは実行前に捨てる
         /// </summary>
-        public const double マルチkの最小kmerカバレッジ = 10.0;
+        public const double マルチkの最小kmerカバレッジ = 10.0D;
 
         /// <summary>
         /// -kc も、k-mer スペクトルの解析も当てにできなかった場合の最後の拠り所<br/>
@@ -261,9 +261,9 @@
 
         public static readonly int[] 許容Phredオフセット = [33, 64];
 
-        public const decimal ペア結合閾値の既定値 = 0.8m;
+        public const decimal ペア結合閾値の既定値 = 0.8M;
 
-        public const ulong ペア支持数閾値の既定値 = 10;
+        public const ulong ペア支持数閾値の既定値 = 10UL;
 
         /// <summary>
         /// フラグメント長の経験分布を刻むビン幅
@@ -280,7 +280,7 @@
         /// スキャフォールド辺を認めるのに必要な、距離が揃っているペアの本数<br/>
         /// 反復解決が使う -pc とは数える対象が違うので別に持つ
         /// </summary>
-        public const ulong スキャフォールド支持数の下限 = 3;
+        public const ulong スキャフォールド支持数の下限 = 3UL;
 
         /// <summary>
         /// 短い反復解決の拒否権 (-rv) で使う r-mer 長を、その k でのアセンブリの

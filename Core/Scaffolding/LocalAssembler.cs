@@ -42,7 +42,7 @@ namespace Tsumiki.Core.Scaffolding
         /// 局所アセンブリで使う k-mer カットオフ<br/>
         /// 1 回読まれていれば信頼する
         /// </summary>
-        private const ulong 局所カットオフ = 1;
+        private const ulong 局所カットオフ = 1UL;
 
         public static 局所アセンブリ統計 V_充填_ギャップ(
             string p_スキャフォールドパス,

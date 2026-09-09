@@ -292,7 +292,7 @@ namespace Tsumiki.Core.Scaffolding
 
             using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
             var l_スキャフォールドID = 1;
-            long l_総延長 = 0;
+            long l_総延長 = 0L;
             foreach (var (l_配列, l_環状か) in l_スキャフォールド群)
             {
                 var l_名前 = l_環状か

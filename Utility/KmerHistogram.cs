@@ -14,14 +14,14 @@ namespace Tsumiki.Utility
         /// 出現回数 1 の k-mer はほぼ全てエラー由来で、
         /// 残すとメモリを食ったうえでグラフが偽の枝だらけになる
         /// </summary>
-        public const ulong 推奨カットオフの下限 = 2;
+        public const ulong 推奨カットオフの下限 = 2UL;
 
         /// <summary>
         /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか<br/>
         /// ゲノム由来の種類数はゲノムサイズをやや下回る (反復が 1 種類に潰れる) ため、
         /// この比を超えたぶんはほぼエラー由来の混入とみなせる
         /// </summary>
-        private const double 許容するエラー混入比 = 1.2;
+        private const double 許容するエラー混入比 = 1.2D;
 
         /// <summary>
         /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)<br/>
@@ -34,7 +34,7 @@ namespace Tsumiki.Utility
         /// 「山」と認めるために必要な、谷の頻度に対する比<br/>
         /// これを下回る場合は二峰性がはっきりしないとみなして推定を諦める
         /// </summary>
-        private const double 山とみなす頻度比 = 1.5;
+        private const double 山とみなす頻度比 = 1.5D;
 
         /// <summary>
         /// ヒストグラムを解析して、谷・山・推定ゲノムサイズを求める<br/>
@@ -73,8 +73,8 @@ namespace Tsumiki.Utility
             }
 
             var l_加算上限 = Math.Min(l_最大キー, l_ピーク * ゲノムサイズ推定に含める倍率の上限);
-            long l_ゲノム由来の延べ数 = 0;
-            long l_延べ数の総和 = 0;
+            long l_ゲノム由来の延べ数 = 0L;
+            long l_延べ数の総和 = 0L;
             foreach (var (l_出現回数, l_頻度) in p_ヒストグラム)
             {
                 if (l_出現回数 > l_加算上限)
@@ -240,7 +240,7 @@ namespace Tsumiki.Utility
         /// 出現回数 1 から上限までのヒストグラムを 1 行にまとめた要約文字列を作る
         /// (ログ表示用)
         /// </summary>
-        public static string Get_要約(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_表示上限 = 20)
+        public static string Get_要約(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_表示上限 = 20UL)
         {
             var l_項目 = new List<string>();
             var l_上限 = Math.Min(p_表示上限, p_ヒストグラム.Count == 0 ? 0 : p_ヒストグラム.Keys.Max());

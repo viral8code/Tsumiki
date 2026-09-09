@@ -64,7 +64,7 @@ namespace Tsumiki.Tests.IO
             var args = ArgumentsReader.Get_実行時引数(
                 ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.保守的, "-pu", "0.5"]);
 
-            Assert.Equal(0.5m, args.A_ペア結合閾値);
+            Assert.Equal(0.5M, args.A_ペア結合閾値);
             // -pc は指定していないので保守的モードの値のまま
             Assert.Equal(Consts.保守的モードのペア支持数閾値, args.A_ペア支持数閾値);
         }

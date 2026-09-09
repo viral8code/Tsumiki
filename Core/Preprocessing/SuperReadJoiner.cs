@@ -76,7 +76,7 @@ namespace Tsumiki.Core.Preprocessing
             var l_統合数 = 0;
             var l_重なり結合数 = 0;
             var l_曖昧で捨てた数 = 0;
-            ulong l_出力済みの区切り = 0;
+            ulong l_出力済みの区切り = 0UL;
             List<引き継ぎ配列> l_結果 = [];
 
             Logger.V_出力(メッセージID.SuperRead橋渡し開始);

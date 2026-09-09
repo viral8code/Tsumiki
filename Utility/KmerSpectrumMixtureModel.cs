@@ -35,7 +35,7 @@ namespace Tsumiki.Utility
         /// <summary>
         /// 事後誤り確率がこれを下回ったら「誤りではない」と判定する有意水準
         /// </summary>
-        private const double 有意水準 = 0.5;
+        private const double 有意水準 = 0.5D;
 
         /// <summary>
         /// これに満たない走査範囲では、単一コピーの山とその整数倍の山を
@@ -47,7 +47,7 @@ namespace Tsumiki.Utility
         /// 単一コピー平均がこれを下回る場合、誤り成分 (平均カバレッジが低い) との
         /// 分離が実質的にできていないとみなし、その初期値・結果を採用しない
         /// </summary>
-        private const double 単一コピー平均の下限 = 3.0;
+        private const double 単一コピー平均の下限 = 3.0D;
 
         /// <summary>
         /// 局所極大から拾う初期値候補の上限数<br/>

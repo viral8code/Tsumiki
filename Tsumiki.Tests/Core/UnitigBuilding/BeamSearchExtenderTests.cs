@@ -89,7 +89,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.True(committed > 0, "lookahead should have resolved at least one junction");
             Assert.Equal(b, merge[a]);
@@ -116,7 +116,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -136,7 +136,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -157,7 +157,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -191,7 +191,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(0, committed);
             Assert.Equal(-1, merge[a]);
@@ -218,7 +218,7 @@ namespace Tsumiki.Tests.Core
 
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(-1, merge[a]);
         }

@@ -21,17 +21,17 @@ namespace Tsumiki.Core.Evaluation
         /// <summary>
         /// 信頼できる k-mer の取りこぼしとして許す割合 (%)
         /// </summary>
-        private const double 取りこぼしの許容率 = 5.0;
+        private const double 取りこぼしの許容率 = 5.0D;
 
         /// <summary>
         /// コピー数の推定を超えて出している延べ数として許す割合 (%)
         /// </summary>
-        private const double 出しすぎの許容率 = 1.0;
+        private const double 出しすぎの許容率 = 1.0D;
 
         /// <summary>
         /// 深度が落ち込んだ位置として許す割合
         /// </summary>
-        private const double 深度不足の許容率 = 0.01;
+        private const double 深度不足の許容率 = 0.01D;
 
         /// <summary>
         /// リードに裏付けの無い位置として許す数<br/>

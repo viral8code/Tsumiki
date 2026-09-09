@@ -106,7 +106,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 3, p_較正器: null);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: null);
 
             Assert.Equal(-1, merge[a]);
         }
@@ -136,7 +136,7 @@ namespace Tsumiki.Tests.Core
             var merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
-                p_インサートサイズ: 400, p_優勢閾値: 0.8m, p_最小証拠数: 3, p_較正器: 較正器);
+                p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: 較正器);
 
             Assert.True(committed > 0, "calibrated lookahead should have resolved the junction toward the short flank");
             Assert.Equal(b, merge[a]);

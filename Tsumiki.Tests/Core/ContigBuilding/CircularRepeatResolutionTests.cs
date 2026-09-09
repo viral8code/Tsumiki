@@ -109,7 +109,7 @@ namespace Tsumiki.Tests.Core
 
             var l_解決数 = l_グラフ.V_解決_短い反復(
                 l_ユニティグ配列, [], l_ペア連結,
-                p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(1, l_解決数);
             Assert.Equal(l_頂点数 + 2, l_グラフ.A_出辺.Count);
@@ -139,7 +139,7 @@ namespace Tsumiki.Tests.Core
 
             var l_解決数 = l_グラフ.V_解決_短い反復(
                 l_ユニティグ配列, [], l_ペア連結,
-                p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(1, l_解決数);
 
@@ -167,7 +167,7 @@ namespace Tsumiki.Tests.Core
             var l_頂点数 = l_グラフ.A_出辺.Count;
             var l_解決数 = l_グラフ.V_解決_短い反復(
                 l_ユニティグ配列, [], l_ペア連結,
-                p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(0, l_解決数);
             Assert.Equal(l_頂点数, l_グラフ.A_出辺.Count);
@@ -187,7 +187,7 @@ namespace Tsumiki.Tests.Core
 
             var l_解決数 = l_グラフ.V_解決_短い反復(
                 l_ユニティグ配列, [], l_ペア連結,
-                p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.Equal(0, l_解決数);
             Assert.Equal(2, l_グラフ.A_出辺[l_r].Count);
@@ -206,7 +206,7 @@ namespace Tsumiki.Tests.Core
 
             var l_解決数 = l_グラフ.V_解決_短い反復(
                 l_ユニティグ配列, [], l_ペア連結,
-                p_反復長の上限: ユニティグR.Length - 1, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                p_反復長の上限: ユニティグR.Length - 1, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(0, l_解決数);
             Assert.Equal(2, l_グラフ.A_出辺[l_r].Count);

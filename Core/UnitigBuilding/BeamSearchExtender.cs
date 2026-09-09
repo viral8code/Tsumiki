@@ -318,8 +318,8 @@ namespace Tsumiki.Core.UnitigBuilding
             List<int> p_足場, int p_候補, List<string> p_ユニティグ配列,
             IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器)
         {
-            long l_生スコア = 0;
-            double l_正規化スコア = 0;
+            long l_生スコア = 0L;
+            double l_正規化スコア = 0D;
             var l_候補長 = p_ユニティグ配列[p_候補].Length;
             foreach (var l_足場頂点 in p_足場)
             {

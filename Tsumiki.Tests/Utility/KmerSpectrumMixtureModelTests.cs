@@ -52,7 +52,7 @@ namespace Tsumiki.Tests.Utility
         private static double[] Get_コピー数別混合比_単一コピー優勢()
         {
             // モデル (π_k ∝ r^(k-1))と同じ形の生成分布
-            const double r = 0.15;
+            const double r = 0.15D;
             var l_比 = new double[10];
             var l_合計 = 0.0;
             for (var k = 0; k < 10; k++)
@@ -85,9 +85,9 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Get_解析結果_RecoversSingleCopyMeanFromATheoreticalMixture()
         {
-            const double 真のλ = 30.0;
-            const double 真の誤り平均 = 3.0;
-            const double 真の誤り混合比 = 0.35;
+            const double 真のλ = 30.0D;
+            const double 真の誤り平均 = 3.0D;
+            const double 真の誤り混合比 = 0.35D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
 
             var l_ヒストグラム = Get_理論ヒストグラム(
@@ -109,9 +109,9 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Get_解析結果_SeparatesComponentsEvenAtLowCoverage()
         {
-            const double 真のλ = 12.0;
-            const double 真の誤り平均 = 2.0;
-            const double 真の誤り混合比 = 0.5;
+            const double 真のλ = 12.0D;
+            const double 真の誤り平均 = 2.0D;
+            const double 真の誤り混合比 = 0.5D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
 
             var l_ヒストグラム = Get_理論ヒストグラム(

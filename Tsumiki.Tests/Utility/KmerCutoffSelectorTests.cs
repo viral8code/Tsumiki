@@ -45,7 +45,7 @@ namespace Tsumiki.Tests.Utility
             (16, 800), (17, 600), (18, 400), (19, 220), (20, 120),
         ];
 
-        private const ulong 谷の位置 = 8;
+        private const ulong 谷の位置 = 8UL;
 
         /// <summary>
         /// このスペクトルに対して選ばれるべきカットオフ<br/>
@@ -56,7 +56,7 @@ namespace Tsumiki.Tests.Utility
         /// (事後誤り確率が有意水準を下回る最小の出現回数)<br/>
         /// どちらの経路でも「谷までは上げない」という結論は変わらない
         /// </summary>
-        private const ulong 選ばれるべきカットオフ = 6;
+        private const ulong 選ばれるべきカットオフ = 6UL;
 
         /// <summary>
         /// 上のスペクトルの形どおりに k-mer を登録したインデックスを作る<br/>

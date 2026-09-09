@@ -123,7 +123,7 @@ namespace Tsumiki.Core.Evidence
         /// </summary>
         public double Get_期待位置数(long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
-            double l_合計 = 0;
+            double l_合計 = 0D;
             foreach (var (l_長さ, l_確率) in this._分布)
             {
                 var l_下 = Math.Max(-p_長さ1, p_ギャップ長 + this._リード長 - l_長さ);
@@ -142,7 +142,7 @@ namespace Tsumiki.Core.Evidence
         /// </summary>
         public double Get_期待位置数_単一(long p_長さ)
         {
-            double l_合計 = 0;
+            double l_合計 = 0D;
             foreach (var (l_長さ, l_確率) in this._分布)
             {
                 var l_個数 = p_長さ - l_長さ + 1;

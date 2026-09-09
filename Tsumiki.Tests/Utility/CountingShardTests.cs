@@ -78,7 +78,7 @@ namespace Tsumiki.Tests.Utility
             {
                 var times = (ulong)((i % 5) + 2);
                 expected[i] = times;
-                for (ulong t = 0; t < times; t++)
+                for (ulong t = 0UL; t < times; t++)
                 {
                     index.V_登録(bytes.AsSpan(i, k), p_ワーカー番号: (int)(t % (ulong)threadCount));
                 }

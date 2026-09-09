@@ -22,7 +22,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// これを下回るカバレッジ比の unitig は、コピー数を推定できるだけの
         /// 根拠が無いとみなして 1 として扱う (0 コピーにはしない)
         /// </summary>
-        private const double 多コピーとみなす比の下限 = 1.5;
+        private const double 多コピーとみなす比の下限 = 1.5D;
 
         /// <summary>
         /// コピー数の上限<br/>
@@ -62,7 +62,7 @@ namespace Tsumiki.Core.UnitigBuilding
 
                 var l_塩基列 = Util.V_変換_塩基列(l_配列);
 
-                ulong l_合計 = 0;
+                ulong l_合計 = 0UL;
                 var l_件数 = 0;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
                 {

@@ -74,7 +74,7 @@ namespace Tsumiki.Tests.Core
 
             var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8m, p_最小証拠数: 1);
+            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1);
 
             var l_スキャフォールドパス = Path.Combine(this._一時ディレクトリ, "scaffolds.fasta");
             new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長: 30)

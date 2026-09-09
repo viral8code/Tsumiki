@@ -48,7 +48,7 @@ namespace Tsumiki.Core.Evaluation
         /// </summary>
         public static void V_記録(
             曖昧箇所の種別 p_種別, string p_場所,
-            double p_首位の支持 = 0, double p_次点の支持 = 0, long p_首位の生支持数 = 0)
+            double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L)
         {
             lock (_錠)
             {

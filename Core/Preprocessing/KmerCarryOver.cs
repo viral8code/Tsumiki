@@ -67,7 +67,7 @@ namespace Tsumiki.Core.Preprocessing
         {
             var l_追加数 = 0;
             var l_処理数 = 0;
-            ulong l_出力済みの区切り = 0;
+            ulong l_出力済みの区切り = 0UL;
             foreach (var l_引き継ぎ in p_引き継ぎ配列)
             {
                 // -sr を使うと引き継ぎ配列はリードペアの数まで増える

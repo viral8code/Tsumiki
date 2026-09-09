@@ -17,8 +17,8 @@ namespace Tsumiki.Tests.Core
     public class AssemblySelectorTests
     {
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
-            int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0,
-            int p_環状本数 = 0, double p_環状化率 = 0)
+            int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0D,
+            int p_環状本数 = 0, double p_環状化率 = 0D)
         {
             // 期待延べ数を固定し、そこから逆算して欠損・過剰を決める
             const long l_期待延べ数 = 1_000_000;

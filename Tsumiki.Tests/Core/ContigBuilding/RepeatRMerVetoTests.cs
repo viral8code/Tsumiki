@@ -98,7 +98,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> support = [];
 
             var resolved = graph.V_解決_短い反復(
-                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5);
+                unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5);
 
             Assert.Equal(1, resolved);
         }
@@ -147,7 +147,7 @@ namespace Tsumiki.Tests.Core
                 var verifier = RepeatRMerVerifier.V_構築([emptyPath, string.Empty], R);
 
                 var resolved = graph.V_解決_短い反復(
-                    unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5,
+                    unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5,
                     p_r_mer検証器: verifier);
 
                 Assert.Equal(0, resolved);
@@ -213,7 +213,7 @@ namespace Tsumiki.Tests.Core
                 var verifier = RepeatRMerVerifier.V_構築([path, string.Empty], R);
 
                 var resolved = graph.V_解決_短い反復(
-                    unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8m, p_最小証拠数: 5,
+                    unitigList, support, pairLink, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5,
                     p_r_mer検証器: verifier);
 
                 Assert.Equal(1, resolved);

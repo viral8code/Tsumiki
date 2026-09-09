@@ -47,7 +47,7 @@ namespace Tsumiki.Core.Polishing
         /// 照合を認める不一致の割合<br/>
         /// これを超えたら別の場所とみなす
         /// </summary>
-        private const double 許容不一致率 = 0.1;
+        private const double 許容不一致率 = 0.1D;
 
         /// <summary>
         /// ungapped 照合として意味を持つ最小の重なり長
@@ -64,12 +64,12 @@ namespace Tsumiki.Core.Polishing
         /// 元の塩基が少数派というだけでは足りず、対立塩基が明確に
         /// 多数派でなければ動かさない
         /// </summary>
-        private const double 訂正に必要な占有率 = 0.7;
+        private const double 訂正に必要な占有率 = 0.7D;
 
         /// <summary>
         /// 深度が不足しているとみなす、中央値に対する比
         /// </summary>
-        private const double 深度不足とみなす比 = 0.2;
+        private const double 深度不足とみなす比 = 0.2D;
 
         /// <summary>
         /// 深度のヒストグラムを取る上限<br/>
@@ -344,7 +344,7 @@ namespace Tsumiki.Core.Polishing
         private static double Get_深度の中央値(List<char[]> p_配列群, int[][] p_得票)
         {
             var l_ヒストグラム = new long[深度ヒストグラムの上限 + 1];
-            long l_総数 = 0;
+            long l_総数 = 0L;
             for (var i = 0; i < p_配列群.Count; i++)
             {
                 for (var l_位置 = 0; l_位置 < p_配列群[i].Length; l_位置++)
@@ -367,7 +367,7 @@ namespace Tsumiki.Core.Polishing
                 return 0;
             }
 
-            long l_累積 = 0;
+            long l_累積 = 0L;
             for (var l_深度 = 0; l_深度 <= 深度ヒストグラムの上限; l_深度++)
             {
                 l_累積 += l_ヒストグラム[l_深度];
@@ -398,7 +398,7 @@ namespace Tsumiki.Core.Polishing
         {
             var l_深度不足の閾値 = p_深度の中央値 * 深度不足とみなす比;
 
-            long l_訂正数 = 0;
+            long l_訂正数 = 0L;
             p_深度不足数 = 0;
             p_評価位置数 = 0;
 

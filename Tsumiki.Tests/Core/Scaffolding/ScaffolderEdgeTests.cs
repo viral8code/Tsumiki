@@ -23,7 +23,7 @@ namespace Tsumiki.Tests.Core
         public void Get_優勢な候補_TakesTheDominantEdge()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 100, 0.9), 候補(6, 12, 0.05)], p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                [候補(4, 100, 0.9), 候補(6, 12, 0.05)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.NotNull(l_結果);
             Assert.Equal(4, l_結果!.Value.A_行き先);
@@ -34,14 +34,14 @@ namespace Tsumiki.Tests.Core
         {
             var l_候補 = new List<スキャフォールド候補> { 候補(4, 20, 0.5), 候補(6, 18, 0.45) };
 
-            Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8m, p_最小証拠数: 10));
+            Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 10));
         }
 
         [Fact]
         public void Get_優勢な候補_RejectsWhenNoCandidateMeetsTheSupportFloor()
         {
             Assert.Null(Scaffolder.Get_優勢な候補(
-                [候補(4, 9, 0.9)], p_優勢閾値: 0.8m, p_最小証拠数: 10));
+                [候補(4, 9, 0.9)], p_優勢閾値: 0.8M, p_最小証拠数: 10));
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Tsumiki.Tests.Core
         public void Get_優勢な候補_RanksByTheExpectedCountRatioNotTheRawCount()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 200, 0.05), 候補(6, 12, 0.95)], p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                [候補(4, 200, 0.05), 候補(6, 12, 0.95)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.NotNull(l_結果);
             Assert.Equal(6, l_結果!.Value.A_行き先);
@@ -67,7 +67,7 @@ namespace Tsumiki.Tests.Core
         public void Get_優勢な候補_AcceptsAFewPairsWhenThatIsAllThatIsExpected()
         {
             var l_結果 = Scaffolder.Get_優勢な候補(
-                [候補(4, 10, 0.95)], p_優勢閾値: 0.8m, p_最小証拠数: 10);
+                [候補(4, 10, 0.95)], p_優勢閾値: 0.8M, p_最小証拠数: 10);
 
             Assert.NotNull(l_結果);
             Assert.Equal(4, l_結果!.Value.A_行き先);

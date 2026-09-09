@@ -47,14 +47,14 @@ namespace Tsumiki.Core.Evaluation
         /// 取りこぼしはそのままゲノムの欠落なので、
         /// 正確性より厳しく見る (7 Mbp 級なら 1% で 70 kbp に相当する)
         /// </summary>
-        public const double 完全性の許容差 = 0.01;
+        public const double 完全性の許容差 = 0.01D;
 
         /// <summary>
         /// 足切りに使う正確性の許容差<br/>
         /// 統合で誤結合を持ち込んだ場合はこれを
         /// 大きく超えて落ちる (実データでは 13 ポイント落ちた例がある)
         /// </summary>
-        public const double 正確性の許容差 = 0.05;
+        public const double 正確性の許容差 = 0.05D;
 
         /// <summary>
         /// 完全性・正確性で同点とみなす差<br/>
@@ -63,7 +63,7 @@ namespace Tsumiki.Core.Evaluation
         /// 特に正確性は、反復を正しく複製したときにも
         /// (丸めが 1 つ下に落ちれば) 下がる向きに動く
         /// </summary>
-        public const double 同点とみなす差 = 0.005;
+        public const double 同点とみなす差 = 0.005D;
 
         /// <summary>
         /// 候補から最良のものを選ぶ<br/>

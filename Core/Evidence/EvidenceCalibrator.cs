@@ -26,7 +26,7 @@
         /// この本数あたりで
         /// 6 割強に達し、以降は増やしてもほとんど動かなくなる
         /// </summary>
-        public const double 飽和の時定数 = 3.0;
+        public const double 飽和の時定数 = 3.0D;
 
         /// <summary>
         /// 独立な支持本数を 0〜1 の確信度に変換する<br/>
@@ -88,7 +88,7 @@
                 return new 証拠較正器(null, 0);
             }
 
-            double l_期待位置数合計 = 0;
+            double l_期待位置数合計 = 0D;
             foreach (var l_長さ in p_ユニティグ長一覧)
             {
                 l_期待位置数合計 += l_モデル.Get_期待位置数_単一(l_長さ);

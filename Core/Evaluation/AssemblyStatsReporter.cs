@@ -16,9 +16,9 @@ namespace Tsumiki.Core.Evaluation
         public static アセンブリ統計 Get_統計(IEnumerable<string> p_配列群)
         {
             var l_長さ一覧 = new List<int>();
-            long l_総延長 = 0;
-            long l_GC数 = 0;
-            long l_塩基数 = 0;
+            long l_総延長 = 0L;
+            long l_GC数 = 0L;
+            long l_塩基数 = 0L;
 
             foreach (var l_配列 in p_配列群)
             {

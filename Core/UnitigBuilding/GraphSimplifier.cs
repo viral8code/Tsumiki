@@ -36,7 +36,7 @@ namespace Tsumiki.Core.UnitigBuilding
             int? p_リード長 = null,
             int? p_tip長閾値 = null,
             int p_最大反復数 = 30,
-            double p_低カバレッジ比 = 0.2,
+            double p_低カバレッジ比 = 0.2D,
             double p_tipカバレッジ比 = Consts.tipとみなすカバレッジ比)
         {
             // k がリード長の半分を超えると、k を基準にした閾値は実配列まで
@@ -193,7 +193,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </summary>
         private static double Get_平均カバレッジ(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
-            ulong l_合計 = 0;
+            ulong l_合計 = 0UL;
             var l_件数 = 0;
             for (var i = 0; i + p_k長 <= p_塩基列.Length; i++)
             {
