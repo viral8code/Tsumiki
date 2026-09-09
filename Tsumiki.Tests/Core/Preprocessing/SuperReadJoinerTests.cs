@@ -219,5 +219,48 @@ namespace Tsumiki.Tests.Core
 
             Assert.Null(SuperReadJoiner.Get_合成配列(read1, read2, index, k));
         }
+
+        /// <summary>
+        /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う。
+        /// どれか一つに決められないので、重なりでは繋がない。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_OverlapThatFitsAtSeveralOffsets_IsNotJoined()
+        {
+            const int k = 21;
+            var l_単位 = RandomSequence(30, seed: 20260918);
+            var l_左 = RandomSequence(40, seed: 20260919);
+            var l_右 = RandomSequence(30, seed: 20260920);
+            var truth = l_左 + string.Concat(Enumerable.Repeat(l_単位, 5)) + l_右;
+
+            using var index = this.BuildIndex(k, truth);
+
+            var read1 = truth[..150];
+            var read2 = Util.V_逆相補(truth[70..220]);
+
+            var (_, l_重なりで結合したか, l_曖昧で捨てた数) =
+                SuperReadJoiner.Get_合成配列_内訳つき(read1, read2, index, k, null);
+
+            Assert.False(l_重なりで結合したか);
+            Assert.Equal(1, l_曖昧で捨てた数);
+        }
+
+        /// <summary>
+        /// 重なりが最小長に満たないときも、偶然の一致と区別できないので繋がない。
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_OverlapBelowTheRaisedMinimum_IsNotJoined()
+        {
+            const int k = 121;
+            var truth = RandomSequence(260, seed: 20260921);
+
+            // 重なりは 40bp。Consts.ペア結合の最小重なり長 (60) に届かない。
+            var read1 = truth[..150];
+            var read2 = Util.V_逆相補(truth[110..260]);
+
+            using var index = this.BuildIndex(k, truth);
+
+            Assert.Null(SuperReadJoiner.Get_合成配列(read1, read2, index, k));
+        }
 }
 }

@@ -135,7 +135,8 @@ namespace Tsumiki.Core.Preprocessing
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
             var l_塩基列2RC = Util.V_変換_塩基列(l_RC配列2);
 
-            var l_オーバーラップ = Get_最適オーバーラップ(l_塩基列1, l_塩基列2RC);
+            var l_オーバーラップ = Get_最適オーバーラップ(
+                l_塩基列1, l_塩基列2RC, 最小オーバーラップ長, 許容不一致率, out _);
             if (l_オーバーラップ is not { } l_重なり)
             {
                 return new ペア前処理結果(p_配列1, p_クオリティ1, p_配列2, p_クオリティ2, false, 0);
@@ -201,27 +202,35 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// R1 と RC(R2) の最良の重なり位置を探す。全オフセットのうち、
-        /// 最小オーバーラップ長以上・不一致率が閾値以下のもののなかで、
-        /// 重なりが最長のもの(同点なら不一致数が少ないもの)を返す。
-        /// 見つからなければ null(=通常の、フラグメント長がリード長を超える場合)。
+        /// 条件を満たすもののなかで重なりが最長のもの(同点なら不一致数が
+        /// 少ないもの)を返す。見つからなければ null(=通常の、フラグメント長が
+        /// リード長を超える場合)。
+        ///
+        /// p_対抗馬があるか には、条件を満たすオフセットが2つ以上あったかを返す。
+        /// 反復配列の中では周期のぶんだけずれた位置が同じくらい良く合うため、
+        /// 最良を1つ選ぶだけでは取り違えに気づけない。重ねた結果を1本の配列として
+        /// 下流へ渡す用途では、この曖昧さを見て捨てる必要がある。
         /// </summary>
-        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC)
+        internal static オーバーラップ結果? Get_最適オーバーラップ(
+            byte[] p_塩基列1, byte[] p_塩基列2RC,
+            int p_最小重なり長, double p_許容不一致率, out bool p_対抗馬があるか)
         {
+            p_対抗馬があるか = false;
             var l_n1 = p_塩基列1.Length;
             var l_n2 = p_塩基列2RC.Length;
 
             オーバーラップ結果? l_最良 = null;
-            for (var l_offset = -(l_n2 - 最小オーバーラップ長); l_offset <= l_n1 - 最小オーバーラップ長; l_offset++)
+            for (var l_offset = -(l_n2 - p_最小重なり長); l_offset <= l_n1 - p_最小重なり長; l_offset++)
             {
                 var l_重なり長 = l_offset >= 0 ? Math.Min(l_n1 - l_offset, l_n2) : Math.Min(l_n1, l_n2 + l_offset);
-                if (l_重なり長 < 最小オーバーラップ長)
+                if (l_重なり長 < p_最小重なり長)
                 {
                     continue;
                 }
 
                 var l_開始1 = Math.Max(0, l_offset);
                 var l_開始2 = Math.Max(0, -l_offset);
-                var l_許容不一致数 = (int)(l_重なり長 * 許容不一致率);
+                var l_許容不一致数 = (int)(l_重なり長 * p_許容不一致率);
 
                 var l_不一致数 = 0;
                 for (var i = 0; i < l_重なり長; i++)
@@ -242,8 +251,14 @@ namespace Tsumiki.Core.Preprocessing
                     continue;
                 }
 
-                if (l_最良 is not { } l_現在最良
-                    || l_重なり長 > l_現在最良.A_重なり長
+                if (l_最良 is not { } l_現在最良)
+                {
+                    l_最良 = new オーバーラップ結果(l_offset, l_重なり長, l_不一致数);
+                    continue;
+                }
+
+                p_対抗馬があるか = true;
+                if (l_重なり長 > l_現在最良.A_重なり長
                     || (l_重なり長 == l_現在最良.A_重なり長 && l_不一致数 < l_現在最良.A_不一致数))
                 {
                     l_最良 = new オーバーラップ結果(l_offset, l_重なり長, l_不一致数);

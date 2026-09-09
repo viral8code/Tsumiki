@@ -63,6 +63,7 @@ namespace Tsumiki.Core.Preprocessing
             var l_総ペア数 = 0;
             var l_統合数 = 0;
             var l_重なり結合数 = 0;
+            var l_曖昧で捨てた数 = 0;
             ulong l_出力済みの区切り = 0;
             List<引き継ぎ配列> l_結果 = [];
 
@@ -73,7 +74,7 @@ namespace Tsumiki.Core.Preprocessing
 
             var l_配列1群 = new string[バッチサイズ];
             var l_配列2群 = new string[バッチサイズ];
-            var l_統合結果群 = new (string? A_配列, bool A_重なりで結合したか)[バッチサイズ];
+            var l_統合結果群 = new (string? A_配列, bool A_重なりで結合したか, int A_曖昧で捨てた数)[バッチサイズ];
 
             while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
             {
@@ -95,6 +96,7 @@ namespace Tsumiki.Core.Preprocessing
 
                 for (var i = 0; i < l_件数; i++)
                 {
+                    l_曖昧で捨てた数 += l_統合結果群[i].A_曖昧で捨てた数;
                     if (l_統合結果群[i].A_配列 is not { } l_配列)
                     {
                         continue;
@@ -117,7 +119,7 @@ namespace Tsumiki.Core.Preprocessing
                 }
             }
 
-            p_統計 = new SuperRead統計(l_総ペア数, l_統合数, l_重なり結合数);
+            p_統計 = new SuperRead統計(l_総ペア数, l_統合数, l_重なり結合数, l_曖昧で捨てた数);
             return l_結果;
         }
 
@@ -141,15 +143,16 @@ namespace Tsumiki.Core.Preprocessing
         /// 重なりは同じ断片を両端から2回読んだという直接の証拠なので、
         /// 経路の一意性を問う必要もない。
         /// </summary>
-        private static (string? A_配列, bool A_重なりで結合したか) Get_合成配列_内訳つき(
+        internal static (string? A_配列, bool A_重なりで結合したか, int A_曖昧で捨てた数) Get_合成配列_内訳つき(
             string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長,
             int? p_インサートサイズ)
         {
-            if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長) is { } l_重なり結合)
+            var l_曖昧 = 0;
+            if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, ref l_曖昧) is { } l_重なり結合)
             {
-                return (l_重なり結合, true);
+                return (l_重なり結合, true, 0);
             }
-            return (Get_橋渡しで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ), false);
+            return (Get_橋渡しで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ), false, l_曖昧);
         }
 
         /// <summary>
@@ -157,19 +160,26 @@ namespace Tsumiki.Core.Preprocessing
         /// (=断片がリード長の2倍を超える) 場合と、繋いでも伸びない場合は null。
         /// </summary>
         private static string? Get_重なりで結合(
-            string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長)
+            string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長,
+            ref int p_曖昧で捨てた数)
         {
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
             var l_重なり = Preprocessor.Get_最適オーバーラップ(
-                Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2));
+                Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2),
+                Consts.ペア結合の最小重なり長, Consts.ペア結合の許容不一致率,
+                out var l_対抗馬があるか);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
             }
 
-            if (l_位置合わせ.A_重なり長 < Consts.ペア結合の最小重なり長
-                || l_位置合わせ.A_不一致数 > l_位置合わせ.A_重なり長 * Consts.ペア結合の許容不一致率)
+            // 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う。
+            // 最良を1つ選べてしまうため、対抗馬の有無を見ないと別コピーを
+            // 掴んだことに気づけない。断片長が変わる以上どれか一つに
+            // 決められないので、繋がずにグラフ探索へ回す。
+            if (l_対抗馬があるか)
             {
+                p_曖昧で捨てた数++;
                 return null;
             }
 
@@ -293,6 +303,10 @@ namespace Tsumiki.Core.Preprocessing
         {
             Logger.V_出力(メッセージID.SuperRead統計, p_統計.A_統合数, p_統計.A_総ペア数);
             Logger.V_出力(メッセージID.SuperRead統計_重なり, p_統計.A_重なり結合数, p_統計.A_橋渡し数);
+            if (p_統計.A_曖昧で捨てた数 > 0)
+            {
+                Logger.V_出力(メッセージID.SuperRead統計_曖昧, p_統計.A_曖昧で捨てた数);
+            }
         }
     }
 }

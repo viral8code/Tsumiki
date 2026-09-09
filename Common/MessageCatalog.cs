@@ -176,8 +176,12 @@ namespace Tsumiki.Common
                 "[SuperRead] {0}/{1} pair(s) bridged into a single synthetic read and carried into the next k.",
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] Of those, {0} pair(s) were joined by direct mate overlap and {1} by a path through the graph.",
+            [メッセージID.SuperRead統計_曖昧] =
+                "[SuperRead] {0} pair(s) had more than one plausible overlap and were left to the graph search (a repeat would fit at several offsets).",
             [メッセージID.短い配列を除外] =
                 "[Info] Dropped {0} sequence(s) shorter than {1} bp ({2} bp in total) from the final output; they remain in the per-k results under the working directory.",
+            [メッセージID.最終成果物] =
+                "[Info] Final assembly: {0} -- unitigs/contigs/scaffolds are the stages before merging, short-sequence removal and polishing.",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] Gap filling: no gaps to fill.",
             [メッセージID.ギャップ充填統計] =
@@ -628,8 +632,12 @@ namespace Tsumiki.Common
                 "[SuperRead] {1} 組のうち {0} 組を1本の合成リードに連結し、次の k へ引き継ぎ",
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] うち {0} 組はペアの重なりで直接結合、{1} 組はグラフ上の経路で橋渡し",
+            [メッセージID.SuperRead統計_曖昧] =
+                "[SuperRead] {0} 組は重なりの位置が一つに定まらずグラフ探索へ回した (反復配列では複数の位置が同じくらい良く合う)",
             [メッセージID.短い配列を除外] =
                 "[Info] 最終成果物から {1}bp 未満の配列 {0} 本 (計 {2}bp) を除外 -- k ごとの成果物には残る",
+            [メッセージID.最終成果物] =
+                "[Info] 最終成果物: {0} -- unitigs/contigs/scaffolds は統合・短い配列の除外・ポリッシュより前の各段階",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] ギャップ充填: 埋めるギャップなし",
             [メッセージID.ギャップ充填統計] =
@@ -1080,8 +1088,12 @@ namespace Tsumiki.Common
                 "[SuperRead] {1} 对中有 {0} 对桥接为单条合成 read 并传递到下一个 k",
             [メッセージID.SuperRead統計_重なり] =
                 "[SuperRead] 其中 {0} 对通过配对重叠直接连接，{1} 对通过图上路径桥接",
+            [メッセージID.SuperRead統計_曖昧] =
+                "[SuperRead] {0} 对的重叠位置无法唯一确定，交由图搜索处理（重复序列在多个位置都能对上）",
             [メッセージID.短い配列を除外] =
                 "[Info] 从最终结果中剔除了 {0} 条短于 {1}bp 的序列 (共 {2}bp) -- 各 k 的结果中仍保留",
+            [メッセージID.最終成果物] =
+                "[Info] 最终结果：{0} —— unitigs/contigs/scaffolds 是合并、剔除短序列与打磨之前的各阶段输出",
             [メッセージID.ギャップ充填_対象なし] =
                 "[Info] 空缺填补：没有需要填补的空缺",
             [メッセージID.ギャップ充填統計] =

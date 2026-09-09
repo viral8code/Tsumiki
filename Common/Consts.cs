@@ -293,6 +293,13 @@
 
         public const string スキャフォールドファイル名 = "scaffolds.fasta";
 
+        /// <summary>
+        /// 利用者が受け取る最終成果物。unitigs/contigs/scaffolds が採用した k の
+        /// 各段階の出力であるのに対し、こちらは統合・短い配列の除外・ポリッシュまで
+        /// 通したもの。どれを使えばよいかがファイル名だけで分かるようにする。
+        /// </summary>
+        public const string 最終アセンブリファイル名 = "assembly.fasta";
+
         public const string GFAファイル名 = "assembly.gfa";
 
         /// <summary>
@@ -344,6 +351,7 @@
             ユニティグファイル名,
             コンティグファイル名,
             スキャフォールドファイル名,
+            最終アセンブリファイル名,
             GFAファイル名,
             レポートファイル名,
             曖昧箇所ファイル名,
@@ -413,7 +421,7 @@
         /// 1本の配列として下流へ渡すため、偶然の一致で繋ぐと存在しない
         /// 接合をグラフへ持ち込んでしまうため。
         /// </summary>
-        public const int ペア結合の最小重なり長 = 40;
+        public const int ペア結合の最小重なり長 = 60;
 
         /// <summary>
         /// ペアの重なりで合成リードを作るときに許す不一致率。

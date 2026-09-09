@@ -248,8 +248,11 @@ namespace Tsumiki.Core.Pipeline
         /// <summary>
         /// 採用した結果を作業ディレクトリの直下へ複製する。k ごとの成果物は
         /// k のサブディレクトリに残したまま、利用者が受け取る1組だけを上へ出す。
+        ///
+        /// unitigs/contigs/scaffolds はここまでの各段階の出力で、最後に手が
+        /// 入る前の姿。利用者が使うべき1本は assembly.fasta のほうになる。
         /// </summary>
-        public static void V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
+        public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
             V_複製(p_結果.A_ユニティグパス, Path.Combine(p_出力ディレクトリ, Consts.ユニティグファイル名));
             V_複製(p_結果.A_コンティグパス, Path.Combine(p_出力ディレクトリ, Consts.コンティグファイル名));
@@ -261,6 +264,10 @@ namespace Tsumiki.Core.Pipeline
             {
                 V_複製(l_GFAパス, Path.Combine(p_出力ディレクトリ, Consts.GFAファイル名));
             }
+
+            var l_最終パス = Path.Combine(p_出力ディレクトリ, Consts.最終アセンブリファイル名);
+            V_複製(p_結果.A_最終パス, l_最終パス);
+            return l_最終パス;
         }
 
         private static void V_複製(string p_元, string p_先)
