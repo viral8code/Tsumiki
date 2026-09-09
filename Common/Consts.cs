@@ -133,6 +133,9 @@
             /// </summary>
             public const string 引き継ぎなし = "-nc";
 
+            /// <summary>
+            /// 合成リードを作る
+            /// </summary>
             public const string SuperRead = "-sr";
 
             /// <summary>
@@ -257,6 +260,9 @@
             public const string レポート = "[Report]";
         }
 
+        /// <summary>
+        /// -mode に指定できるモード名
+        /// </summary>
         public static class 積極性モード名
         {
             /// <summary>
@@ -594,9 +600,21 @@
         /// </summary>
         public static class 塩基ID
         {
+            /// <summary>
+            /// アデニン
+            /// </summary>
             public const byte A = 1;
+            /// <summary>
+            /// シトシン
+            /// </summary>
             public const byte C = 2;
+            /// <summary>
+            /// グアニン
+            /// </summary>
             public const byte G = 3;
+            /// <summary>
+            /// チミン
+            /// </summary>
             public const byte T = 4;
         }
 

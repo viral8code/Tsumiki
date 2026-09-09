@@ -2,6 +2,12 @@
 {
     internal class ByteArrayComparer : IComparer<byte[]>
     {
+        /// <summary>
+        /// バイト列を辞書式順序で比べる
+        /// </summary>
+        /// <param name="x">比べるバイト列</param>
+        /// <param name="y">比べるバイト列</param>
+        /// <returns>x が小さければ負、大きければ正、等しければ 0</returns>
         public int Compare(byte[]? x, byte[]? y)
         {
             if (x == y)

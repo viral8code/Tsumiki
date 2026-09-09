@@ -5,6 +5,9 @@
     /// </summary>
     internal readonly struct 配列エントリ(string p_ID, string p_配列)
     {
+        /// <summary>
+        /// 配列 ID
+        /// </summary>
         public readonly string A_ID = p_ID;
         /// <summary>
         /// 配列

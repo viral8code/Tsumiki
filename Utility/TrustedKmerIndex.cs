@@ -21,6 +21,9 @@ namespace Tsumiki.Utility
         // k-mer カウント用のシャード
         // k-mer 自身のハッシュで振り分けるため、
         // ある k-mer は必ず 1 つのシャードにしか載らない
+        /// <summary>
+        /// ワーカーごとの k-mer カウンタ
+        /// </summary>
         private CountingDB[]? _カウンタ群;
 
         // シャードごとのロック
@@ -39,24 +42,39 @@ namespace Tsumiki.Utility
         // KmerKey は毎回 ulong[] を確保し、1 リードあたり
         // 数百〜数千回呼ばれる所属判定では実データ規模で致命的に効く
         // k>64 のときだけ KmerKey へフォールバックする
+        /// <summary>
+        /// 信頼できる k-mer と出現回数 (k &gt; 64)
+        /// </summary>
         private Dictionary<KmerKey, ulong>? _信頼kmer_大;
 
+        /// <summary>
+        /// 信頼できる k-mer と出現回数 (k &lt;= 32)
+        /// </summary>
         private Dictionary<ulong, ulong>? _信頼kmer_小;
 
         // 33 <= k <= 64 用
         // 150 bp リードで k=31 のままだと 31 bp 以上の反復配列が
         // すべて潰れてしまい contig N50 が伸びないため、k を 63 前後まで上げられる
         // ことが品質上きわめて重要になる
+        /// <summary>
+        /// 信頼できる k-mer と出現回数 (33 &lt;= k &lt;= 64)
+        /// </summary>
         private Dictionary<UInt128, ulong>? _信頼kmer_中;
 
         // 全シャードを 1 本にマージしたソート済みファイル
         // 統合は高くつくため
         // 一度だけ行い、ヒストグラムの集計とカットオフの適用で使い回す
+        /// <summary>
+        /// ワーカーごとのカウントを 1 本へ統合したファイルのパス
+        /// </summary>
         private string? _統合ファイルパス;
 
         // 最終マージの書き出し中に集計したヒストグラム
         // シャードが 1 つで
         // マージが走らなかった場合は null になり、そのときだけ読み直す
+        /// <summary>
+        /// 統合の際に数えた、出現回数ごとの k-mer 種類数
+        /// </summary>
         private Dictionary<ulong, long>? _統合時のヒストグラム;
 
         /// <summary>
@@ -116,6 +134,13 @@ namespace Tsumiki.Utility
             this.V_登録_組み合わせ展開(p_塩基候補列, 0, l_kmer, p_ワーカー番号);
         }
 
+        /// <summary>
+        /// 曖昧塩基の候補をすべて展開して登録する
+        /// </summary>
+        /// <param name="p_塩基候補列">位置ごとの塩基候補</param>
+        /// <param name="p_位置">いま決めている位置</param>
+        /// <param name="p_kmer">組み立て中の k-mer</param>
+        /// <param name="p_ワーカー番号">登録先のワーカー</param>
         private void V_登録_組み合わせ展開(Span<byte[]> p_塩基候補列, int p_位置, byte[] p_kmer, int p_ワーカー番号)
         {
             if (p_位置 == p_塩基候補列.Length)
@@ -284,6 +309,11 @@ namespace Tsumiki.Utility
             return l_結果;
         }
 
+        /// <summary>
+        /// k-mer の正規形を返す (k &lt;= 32)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <returns>正規形</returns>
         private static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_パック済み = Get_パック_小(p_kmer);
@@ -379,6 +409,11 @@ namespace Tsumiki.Utility
             return l_結果;
         }
 
+        /// <summary>
+        /// k-mer の正規形を返す (33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <returns>正規形</returns>
         private static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
         {
             var l_パック済み = Get_パック_中(p_kmer);
@@ -560,6 +595,11 @@ namespace Tsumiki.Utility
             return l_ヒストグラム;
         }
 
+        /// <summary>
+        /// 出現回数がカットオフに満たない k-mer を落とし、残ったものを信頼できる集合にする
+        /// </summary>
+        /// <param name="p_カットオフ">残すために必要な出現回数</param>
+        /// <returns>walk の開始点になりうる k-mer</returns>
         public List<byte[]> V_カットオフ(ulong p_カットオフ)
         {
             var l_ファイルパス = this.Get_統合済みファイル();
@@ -743,6 +783,9 @@ namespace Tsumiki.Utility
             return l_件数;
         }
 
+        /// <summary>
+        /// 保持している資源を解放する
+        /// </summary>
         public void Dispose()
         {
             if (this._カウンタ群 != null)

@@ -2,6 +2,12 @@
 {
     internal class ByteArrayEqualityComparer : IEqualityComparer<byte[]>
     {
+        /// <summary>
+        /// 同じ中身のバイト列か
+        /// </summary>
+        /// <param name="x">比べるバイト列</param>
+        /// <param name="y">比べるバイト列</param>
+        /// <returns>同じなら true</returns>
         public bool Equals(byte[]? x, byte[]? y)
         {
             if (x == y)
@@ -35,6 +41,11 @@
             return true;
         }
 
+        /// <summary>
+        /// バイト列のハッシュ値を返す
+        /// </summary>
+        /// <param name="obj">対象のバイト列</param>
+        /// <returns>ハッシュ値</returns>
         public int GetHashCode(byte[] obj)
         {
             var l_ハッシュ = 17;

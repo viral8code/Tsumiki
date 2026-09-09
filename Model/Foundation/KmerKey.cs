@@ -63,6 +63,12 @@ namespace Tsumiki.Model.Foundation
             return Get_比較結果(this.A_パック済みデータ, l_逆相補.A_パック済みデータ) <= 0 ? this : l_逆相補;
         }
 
+        /// <summary>
+        /// パック済みデータを辞書式順序で比べる
+        /// </summary>
+        /// <param name="p_左">比べるパック済みデータ</param>
+        /// <param name="p_右">比べるパック済みデータ</param>
+        /// <returns>左が小さければ -1、大きければ 1、等しければ 0</returns>
         private static int Get_比較結果(ulong[] p_左, ulong[] p_右)
         {
             for (var i = 0; i < p_左.Length; i++)
@@ -104,6 +110,11 @@ namespace Tsumiki.Model.Foundation
             return l_塩基列;
         }
 
+        /// <summary>
+        /// 同じ k-mer か
+        /// </summary>
+        /// <param name="other">比べる k-mer</param>
+        /// <returns>同じなら true</returns>
         public bool Equals(KmerKey other)
         {
             if (this.A_パック済みデータ.Length != other.A_パック済みデータ.Length)
@@ -121,11 +132,20 @@ namespace Tsumiki.Model.Foundation
             return true;
         }
 
+        /// <summary>
+        /// (オーバーライド) 同じ k-mer か
+        /// </summary>
+        /// <param name="obj">比べる対象</param>
+        /// <returns></returns>
         public override bool Equals(object? obj)
         {
             return obj is KmerKey other && this.Equals(other);
         }
 
+        /// <summary>
+        /// (オーバーライド) ハッシュ値を返す
+        /// </summary>
+        /// <returns></returns>
         public override int GetHashCode()
         {
             var l_ハッシュ = 1469598103934665603UL;

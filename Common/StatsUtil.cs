@@ -8,6 +8,11 @@
     /// </summary>
     internal static class StatsUtil
     {
+        /// <summary>
+        /// 中央値を返す
+        /// </summary>
+        /// <param name="p_値一覧">元の値</param>
+        /// <returns>中央値、値が無ければ 0</returns>
         public static int Get_中央値(IReadOnlyCollection<int> p_値一覧)
         {
             var l_整列済み = p_値一覧.Order().ToList();
@@ -15,6 +20,11 @@
             return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2 : l_整列済み[l_中央];
         }
 
+        /// <summary>
+        /// 中央値を返す
+        /// </summary>
+        /// <param name="p_値一覧">元の値</param>
+        /// <returns>中央値、値が無ければ 0</returns>
         public static double Get_中央値(IReadOnlyCollection<double> p_値一覧)
         {
             var l_整列済み = p_値一覧.Order().ToList();

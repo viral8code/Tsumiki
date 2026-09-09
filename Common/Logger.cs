@@ -3,6 +3,12 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Common
 {
+    /// <summary>
+    /// 進行状況と結果を、画面とファイルへ書き出す
+    /// </summary>
+    /// <remarks>
+    /// 画面へ出す量は水準で絞れるが、ファイルへは常に全量を残す
+    /// </remarks>
     internal class Logger
     {
         /// <summary>
@@ -16,6 +22,9 @@ namespace Tsumiki.Common
         /// </summary>
         public static ログ水準 A_水準 { get; set; } = ログ水準.標準;
 
+        /// <summary>
+        /// 全量を残す書き出し先、まだ開いていなければ null
+        /// </summary>
         private static StreamWriter? _ファイル;
 
         /// <summary>
@@ -38,6 +47,11 @@ namespace Tsumiki.Common
         /// </summary>
         private const int 控えの上限 = 10_000;
 
+        /// <summary>
+        /// 呼び出し元のメソッド名を返す
+        /// </summary>
+        /// <param name="p_メソッド名">呼び出し元のメソッド名、コンパイラが埋める</param>
+        /// <returns>呼び出し元のメソッド名</returns>
         public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = "")
         {
             return p_メソッド名;
@@ -96,6 +110,11 @@ namespace Tsumiki.Common
             V_書き出し(p_文, p_標準エラーか: false);
         }
 
+        /// <summary>
+        /// 警告を出力する
+        /// </summary>
+        /// <param name="p_メソッド名">警告を出した場所</param>
+        /// <param name="p_例外">警告の元になった例外</param>
         public static void V_出力_警告(string p_メソッド名, Exception p_例外)
         {
             V_出力_標準エラー(メッセージID.例外を無視_見出し);
@@ -105,6 +124,11 @@ namespace Tsumiki.Common
             V_書き出し(p_例外.ToString(), p_標準エラーか: true);
         }
 
+        /// <summary>
+        /// エラーを出力する
+        /// </summary>
+        /// <param name="p_メソッド名">エラーを出した場所</param>
+        /// <param name="p_例外">エラーの元になった例外</param>
         public static void V_出力_エラー(string p_メソッド名, Exception p_例外)
         {
             V_出力_標準エラー(メッセージID.停止_見出し);
@@ -112,6 +136,9 @@ namespace Tsumiki.Common
             V_書き出し(p_例外.ToString(), p_標準エラーか: true);
         }
 
+        /// <summary>
+        /// 現在時刻を出力する
+        /// </summary>
         public static void V_出力_タイムスタンプ()
         {
             V_出力(メッセージID.タイムスタンプ, DateTime.Now);
@@ -196,6 +223,9 @@ namespace Tsumiki.Common
                 }
             }
 
+            /// <summary>
+            /// 保持している資源を解放する
+            /// </summary>
             public void Dispose()
             {
                 lock (_錠)

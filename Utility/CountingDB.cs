@@ -52,8 +52,14 @@ namespace Tsumiki.Utility
         /// </summary>
         private readonly int _フラッシュ閾値;
 
+        /// <summary>
+        /// 次に書き出す一時ファイルの連番
+        /// </summary>
         private int _ファイル連番;
 
+        /// <summary>
+        /// まだディスクへ書き出していない k-mer と出現回数
+        /// </summary>
         private Dictionary<byte[], ulong> _バッファ;
 
         /// <summary>
@@ -79,6 +85,11 @@ namespace Tsumiki.Utility
             this._ファイル連番 = 0;
         }
 
+        /// <summary>
+        /// 書き込み用のストリームを開いて返す
+        /// </summary>
+        /// <param name="p_ファイル名">開くファイル名</param>
+        /// <returns>書き込み用のストリーム</returns>
         private static FileStream Get_書き込みストリーム(string p_ファイル名)
         {
             return new FileStream(
@@ -90,6 +101,11 @@ namespace Tsumiki.Utility
                 FileOptions.SequentialScan);
         }
 
+        /// <summary>
+        /// 読み込み用のストリームを開いて返す
+        /// </summary>
+        /// <param name="p_ファイル名">開くファイル名</param>
+        /// <returns>読み込み用のストリーム</returns>
         private static FileStream Get_読み込みストリーム(string p_ファイル名)
         {
             return new FileStream(
@@ -101,6 +117,10 @@ namespace Tsumiki.Utility
                 FileOptions.SequentialScan);
         }
 
+        /// <summary>
+        /// k-mer を 1 件数える
+        /// </summary>
+        /// <param name="p_kmer">数える k-mer</param>
         public void V_登録(Span<byte> p_kmer)
         {
             var l_パック済み = new byte[(p_kmer.Length + 3) / 4];
@@ -301,6 +321,9 @@ namespace Tsumiki.Utility
             return l_最終ファイル;
         }
 
+        /// <summary>
+        /// 保持している資源を解放する
+        /// </summary>
         public void Dispose()
         {
             // 未フラッシュのデータは統合側で処理される想定だが、

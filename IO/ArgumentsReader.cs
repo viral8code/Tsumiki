@@ -3,8 +3,16 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
+    /// <summary>
+    /// コマンドライン引数を読み取る
+    /// </summary>
     internal class ArgumentsReader
     {
+        /// <summary>
+        /// コマンドライン引数を実行時引数へ組み立てて返す
+        /// </summary>
+        /// <param name="p_引数列">コマンドライン引数</param>
+        /// <returns>実行時引数</returns>
         public static Parameters Get_実行時引数(string[] p_引数列)
         {
             var l_引数 = new Parameters();

@@ -119,6 +119,13 @@ namespace Tsumiki.Utility
             return null;
         }
 
+        /// <summary>
+        /// 単一コピーに相当する山の位置を返す
+        /// </summary>
+        /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
+        /// <param name="p_谷">誤りとゲノムを分ける谷の位置</param>
+        /// <param name="p_上限">探す範囲の上限</param>
+        /// <returns>山の位置</returns>
         private static ulong Get_ピーク(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_開始, ulong p_終了)
         {

@@ -13,8 +13,15 @@ using Tsumiki.Utility;
 
 namespace Tsumiki
 {
+    /// <summary>
+    /// 実行の入口
+    /// </summary>
     internal class Program
     {
+        /// <summary>
+        /// エントリポイント
+        /// </summary>
+        /// <param name="args">コマンドライン引数</param>
         private static void Main(string[] args)
         {
             try
@@ -75,6 +82,10 @@ namespace Tsumiki
             }
         }
 
+        /// <summary>
+        /// 引数を解釈してアセンブリを最後まで走らせる
+        /// </summary>
+        /// <param name="p_引数列">コマンドライン引数</param>
         private static void V_実行(string[] p_引数列)
         {
             // 日本語・中国語の文言をそのまま出せるようにする

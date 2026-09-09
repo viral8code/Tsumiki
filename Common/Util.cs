@@ -2,8 +2,16 @@
 
 namespace Tsumiki.Common
 {
+    /// <summary>
+    /// 塩基の変換など、どこからでも使う小さな処理
+    /// </summary>
     internal class Util
     {
+        /// <summary>
+        /// 塩基 ID 列の逆相補を返す
+        /// </summary>
+        /// <param name="p_塩基列">元の塩基 ID 列</param>
+        /// <returns>逆相補の塩基 ID 列</returns>
         public static Span<byte> V_逆相補(Span<byte> p_塩基列)
         {
             var l_結果 = new byte[p_塩基列.Length];
@@ -21,6 +29,11 @@ namespace Tsumiki.Common
             return l_結果.AsSpan();
         }
 
+        /// <summary>
+        /// 配列の逆相補を返す
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <returns>逆相補の配列</returns>
         public static string V_逆相補(string p_配列)
         {
             StringBuilder l_結果 = new();
@@ -121,6 +134,11 @@ namespace Tsumiki.Common
             return string.Join(string.Empty, l_結果.ToString().Reverse());
         }
 
+        /// <summary>
+        /// 位置ごとの塩基候補列の逆相補を返す
+        /// </summary>
+        /// <param name="p_塩基候補列">元の塩基候補列</param>
+        /// <returns>逆相補の塩基候補列</returns>
         public static Span<byte[]> V_逆相補(Span<byte[]> p_塩基候補列)
         {
             var l_結果 = new byte[p_塩基候補列.Length][];
@@ -158,6 +176,11 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// 塩基文字が表しうる塩基 ID を返す
+        /// </summary>
+        /// <param name="p_塩基文字">塩基文字</param>
+        /// <returns>その文字が表しうる塩基 ID、曖昧塩基なら複数返る</returns>
         public static List<int> Get_塩基ID候補(char p_塩基文字)
         {
             return p_塩基文字 switch
@@ -198,6 +221,11 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// パック済みの 1 バイトを 4 塩基の ID 列へ戻す
+        /// </summary>
+        /// <param name="p_パック済みバイト">2 bit ずつ 4 塩基を詰めたバイト</param>
+        /// <returns>塩基 ID 列</returns>
         public static byte[] V_変換_塩基列(byte p_パック済みバイト)
         {
             return [.. new[] { (p_パック済みバイト >>> 6) & 3, (p_パック済みバイト >>> 4) & 3, (p_パック済みバイト >>> 2) & 3, p_パック済みバイト & 3 }
@@ -211,6 +239,11 @@ namespace Tsumiki.Common
                 })];
         }
 
+        /// <summary>
+        /// 塩基 ID を塩基文字へ変換する
+        /// </summary>
+        /// <param name="p_塩基ID">塩基 ID</param>
+        /// <returns>塩基文字</returns>
         public static string V_変換_塩基文字(byte p_塩基ID)
         {
             return p_塩基ID switch
@@ -240,6 +273,11 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// リードを位置ごとの塩基候補列へ変換する
+        /// </summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <returns>位置ごとの塩基候補列</returns>
         public static List<byte[]> V_変換_塩基候補列(string p_リード)
         {
             return [.. p_リード.Select<char, byte[]>(x => x switch
@@ -280,6 +318,12 @@ namespace Tsumiki.Common
             return l_結果;
         }
 
+        /// <summary>
+        /// 累乗を返す
+        /// </summary>
+        /// <param name="p_底">底</param>
+        /// <param name="p_指数">指数</param>
+        /// <returns>累乗した値</returns>
         public static ulong V_累乗(ulong p_底, long p_指数)
         {
             var l_結果 = 1UL;
@@ -295,6 +339,11 @@ namespace Tsumiki.Common
             return l_結果;
         }
 
+        /// <summary>
+        /// ストリームにまだ読める中身があるか
+        /// </summary>
+        /// <param name="p_ストリーム">読み込み中のストリーム</param>
+        /// <returns>続きがあれば true</returns>
         public static bool Get_続きがあるか(BinaryReader p_ストリーム)
         {
             return p_ストリーム.BaseStream.Position < p_ストリーム.BaseStream.Length;

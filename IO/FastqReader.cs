@@ -3,6 +3,9 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
+    /// <summary>
+    /// FASTQ を 1 リードずつ読み込む
+    /// </summary>
     internal class FastqReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         /// <summary>
@@ -70,6 +73,10 @@ namespace Tsumiki.IO
             }
         }
 
+        /// <summary>
+        /// 次の 1 リードを読み込んで返す
+        /// </summary>
+        /// <returns>読み込んだリード</returns>
         public リードデータ Get_次のリード()
         {
             try

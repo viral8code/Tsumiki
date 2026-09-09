@@ -3,6 +3,9 @@ using Tsumiki.Utility;
 
 namespace Tsumiki.Common
 {
+    /// <summary>
+    /// 実行中どこからでも参照する設定の置き場
+    /// </summary>
     internal static class ConfigurationManager
     {
         /// <summary>

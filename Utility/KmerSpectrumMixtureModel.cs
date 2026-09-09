@@ -85,6 +85,12 @@ namespace Tsumiki.Utility
             return l_重み;
         }
 
+        /// <summary>
+        /// k-mer スペクトルへ 2 成分の混合モデルを当てはめて返す
+        /// </summary>
+        /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
+        /// <param name="p_上限">当てはめに使う出現回数の上限</param>
+        /// <returns>当てはめた結果、収束しなければ null</returns>
         public static 混合スペクトル解析結果? Get_解析結果(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000)
         {
@@ -173,6 +179,9 @@ namespace Tsumiki.Utility
                 A_反復回数: l_採用.A_反復回数);
         }
 
+        /// <summary>
+        /// 初期値を変えて当てはめた 1 回ぶんの結果
+        /// </summary>
         private readonly record struct 試行結果(
             double A_λ, double A_誤り平均, double A_誤り混合比, double A_r,
             double A_対数尤度, int A_反復回数);
@@ -426,6 +435,14 @@ namespace Tsumiki.Utility
             return l_結果;
         }
 
+        /// <summary>
+        /// 対数のまま和を取る
+        /// </summary>
+        /// <remarks>
+        /// そのまま指数へ戻すと桁が溢れるため、最大値を括り出してから足す
+        /// </remarks>
+        /// <param name="p_対数値">足し合わせる対数値</param>
+        /// <returns>和の対数</returns>
         private static double Get_LogSumExp(double[] p_対数値)
         {
             var l_最大 = p_対数値.Max();

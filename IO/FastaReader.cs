@@ -3,6 +3,9 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.IO
 {
+    /// <summary>
+    /// FASTA を 1 配列ずつ読み込む
+    /// </summary>
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         /// <summary>
@@ -21,6 +24,10 @@ namespace Tsumiki.IO
             return l_結果;
         }
 
+        /// <summary>
+        /// 次の 1 配列を読み込んで返す
+        /// </summary>
+        /// <returns>読み込んだ配列</returns>
         public 配列エントリ Get_次の配列()
         {
             try

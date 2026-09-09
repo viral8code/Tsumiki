@@ -1,7 +1,13 @@
 ﻿namespace Tsumiki.Model.Foundation
 {
+    /// <summary>
+    /// FASTQ の 1 リード
+    /// </summary>
     internal class リードデータ
     {
+        /// <summary>
+        /// リード ID
+        /// </summary>
         public required string A_ID { get; set; }
 
         /// <summary>
@@ -28,6 +34,10 @@
         /// </summary>
         public required string A_クオリティ { get; set; }
 
+        /// <summary>
+        /// (オーバーライド) リードを FASTQ の 4 行として返す
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return $"""

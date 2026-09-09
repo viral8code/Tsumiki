@@ -33,11 +33,19 @@ namespace Tsumiki.IO
                 : new StreamReader(l_入力ストリーム, bufferSize: バッファサイズ);
         }
 
+        /// <summary>
+        /// まだ読める行があるか
+        /// </summary>
+        /// <returns>続きがあれば true</returns>
         public bool Get_続きがあるか()
         {
             return !this._読み込み.EndOfStream;
         }
 
+        /// <summary>
+        /// 次の 1 行を読み込んで返す
+        /// </summary>
+        /// <returns>読み込んだ行</returns>
         protected virtual string Get_次の行()
         {
             var l_行 = this._読み込み.ReadLine();
@@ -57,6 +65,9 @@ namespace Tsumiki.IO
             return this._読み込み.ReadLine();
         }
 
+        /// <summary>
+        /// 保持している資源を解放する
+        /// </summary>
         public void Dispose()
         {
             this._読み込み.Dispose();

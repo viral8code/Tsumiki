@@ -32,6 +32,10 @@ namespace Tsumiki.Common
             return l_文.ToString();
         }
 
+        /// <summary>
+        /// ヘルプの全文を組み立てて返す
+        /// </summary>
+        /// <returns>ヘルプの全文</returns>
         public static string Get_ヘルプ()
         {
             var l_文 = new StringBuilder();
@@ -117,6 +121,11 @@ namespace Tsumiki.Common
             return l_文.ToString();
         }
 
+        /// <summary>
+        /// 節の見出しを 1 行足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のヘルプ</param>
+        /// <param name="p_見出し">見出しの文言</param>
         private static void V_追加_節(StringBuilder p_文, メッセージID p_見出し)
         {
             _ = p_文.AppendLine();
@@ -133,6 +142,13 @@ namespace Tsumiki.Common
                 new string(' ', 説明の開始桁) + Messages.Get_文言(p_説明, p_引数));
         }
 
+        /// <summary>
+        /// オプション 1 つぶんの説明を足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のヘルプ</param>
+        /// <param name="p_キー">オプションの綴り</param>
+        /// <param name="p_説明">説明の文言</param>
+        /// <param name="p_引数">説明へ埋め込む値</param>
         private static void V_追加_行(
             StringBuilder p_文, string p_オプション, メッセージID p_説明, params object?[] p_引数)
         {

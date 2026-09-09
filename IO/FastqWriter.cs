@@ -1,5 +1,8 @@
 ﻿namespace Tsumiki.IO
 {
+    /// <summary>
+    /// FASTQ を 1 リードずつ書き出す
+    /// </summary>
     internal class FastqWriter(string p_ファイル名) : IDisposable
     {
         /// <summary>
@@ -19,6 +22,9 @@
             this._書き込み.WriteLine(p_クオリティ);
         }
 
+        /// <summary>
+        /// 保持している資源を解放する
+        /// </summary>
         public void Dispose()
         {
             this._書き込み?.Dispose();

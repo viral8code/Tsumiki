@@ -19,6 +19,12 @@ namespace Tsumiki.IO
         /// </summary>
         private const int 現実的なQ上限 = 45;
 
+        /// <summary>
+        /// クオリティ行から、オフセットを見分けるための標本を集めて返す
+        /// </summary>
+        /// <param name="p_クオリティ行">クオリティ行</param>
+        /// <param name="p_標本上限">見る行数の上限</param>
+        /// <returns>集めた標本</returns>
         public static Phred標本 Get_標本(IEnumerable<string> p_クオリティ行, int p_標本上限 = 20_000)
         {
             var l_最小ASCII = int.MaxValue;
@@ -130,6 +136,16 @@ namespace Tsumiki.IO
             return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);
         }
 
+        /// <summary>
+        /// クオリティ文字から Phred オフセットを推定し、実行時引数へ反映する
+        /// </summary>
+        /// <remarks>
+        /// -p で明示指定されている場合は、利用者の判断を優先して推定結果で上書きしない
+        /// </remarks>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_リード1のパス">リード 1 のパス</param>
+        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
+        /// <param name="p_標本上限">見る行数の上限</param>
         public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
@@ -183,6 +199,12 @@ namespace Tsumiki.IO
             }
         }
 
+        /// <summary>
+        /// FASTQ からクオリティ行だけを取り出して返す
+        /// </summary>
+        /// <param name="p_ファイルパス">FASTQ のパス</param>
+        /// <param name="p_標本上限">取り出す行数の上限</param>
+        /// <returns>クオリティ行</returns>
         private static IEnumerable<string> Get_クオリティ行(string p_ファイルパス, int p_標本上限)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);

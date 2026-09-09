@@ -2,9 +2,18 @@
 
 namespace Tsumiki.Model.Foundation
 {
+    /// <summary>
+    /// 実行時引数
+    /// </summary>
     internal class Parameters
     {
+        /// <summary>
+        /// リード 1 のパス
+        /// </summary>
         private string _リード1のパス = string.Empty;
+        /// <summary>
+        /// リード 1 のパス
+        /// </summary>
         public string A_リード1のパス
         {
             get => this._リード1のパス;
@@ -18,7 +27,13 @@ namespace Tsumiki.Model.Foundation
             }
         }
 
+        /// <summary>
+        /// リード 2 のパス
+        /// </summary>
         private string _リード2のパス = string.Empty;
+        /// <summary>
+        /// リード 2 のパス
+        /// </summary>
         public string A_リード2のパス
         {
             get => this._リード2のパス;
@@ -39,7 +54,13 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_k長が明示指定されたか { get; private set; }
 
+        /// <summary>
+        /// k 長
+        /// </summary>
         private int _k長 = Consts.k長の既定値;
+        /// <summary>
+        /// k 長
+        /// </summary>
         public int A_k長
         {
             get => this._k長;
@@ -54,6 +75,9 @@ namespace Tsumiki.Model.Foundation
             }
         }
 
+        /// <summary>
+        /// -k に指定された k の一覧
+        /// </summary>
         private List<int> _k長一覧 = [];
 
         /// <summary>
@@ -63,6 +87,10 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
 
+        /// <summary>
+        /// k の一覧を設定する
+        /// </summary>
+        /// <param name="p_k長一覧">設定する k の一覧</param>
         public void Set_k長一覧(IEnumerable<int> p_k長一覧)
         {
             var l_一覧 = p_k長一覧.Distinct().OrderBy(x => x).ToList();
@@ -100,7 +128,13 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_kmerカットオフが明示指定されたか { get; private set; }
 
+        /// <summary>
+        /// k-mer カットオフ
+        /// </summary>
         private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
+        /// <summary>
+        /// k-mer カットオフ
+        /// </summary>
         public ulong A_kmerカットオフ
         {
             get => this._kmerカットオフ;
@@ -134,7 +168,13 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_Phredが明示指定されたか { get; private set; }
 
+        /// <summary>
+        /// Phred オフセット
+        /// </summary>
         private int _Phredオフセット = Consts.Phredオフセットの既定値;
+        /// <summary>
+        /// Phred オフセット
+        /// </summary>
         public int A_Phredオフセット
         {
             get => this._Phredオフセット;
@@ -348,7 +388,13 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_一時ディレクトリを削除するか { get; set; } = false;
 
+        /// <summary>
+        /// 並列に使うスレッド数
+        /// </summary>
         private int _スレッド数 = Environment.ProcessorCount;
+        /// <summary>
+        /// 並列に使うスレッド数
+        /// </summary>
         public int A_スレッド数
         {
             get => this._スレッド数;
@@ -362,7 +408,13 @@ namespace Tsumiki.Model.Foundation
             }
         }
 
+        /// <summary>
+        /// ペアの支持で結合を確定させる優勢の閾値
+        /// </summary>
         private decimal _ペア結合閾値 = Consts.ペア結合閾値の既定値;
+        /// <summary>
+        /// ペアの支持で結合を確定させる優勢の閾値
+        /// </summary>
         public decimal A_ペア結合閾値
         {
             get => this._ペア結合閾値;
@@ -376,7 +428,13 @@ namespace Tsumiki.Model.Foundation
             }
         }
 
+        /// <summary>
+        /// 結合を確定させるために要求するペアの支持数
+        /// </summary>
         private ulong _ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
+        /// <summary>
+        /// 結合を確定させるために要求するペアの支持数
+        /// </summary>
         public ulong A_ペア支持数閾値
         {
             get => this._ペア支持数閾値;
@@ -390,6 +448,10 @@ namespace Tsumiki.Model.Foundation
             }
         }
 
+        /// <summary>
+        /// (オーバーライド) 実行時引数を表す文字列を返す
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return $"""
