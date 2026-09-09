@@ -145,7 +145,13 @@ namespace Tsumiki.Core.Pipeline
             if (p_引数.A_反復をrMerで検証するか)
             {
                 var l_r長 = p_k長 + Consts.rMer長のk超過分の既定値;
-                if (l_r長 <= 32)
+
+                // r は k より長くないと拒否権として働かない(窓が k-1 の共有区間に
+                // 収まってしまい常に真になる)。一方でリードから取れる窓の数は
+                // リード長 - r + 1 なので、r がリード長に近づくと r-mer の
+                // カバレッジが痩せて正しい経路まで棄却しはじめる。
+                var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
+                if (l_窓数 >= Consts.rMer検証に必要な窓数)
                 {
                     l_r_mer検証器 = RepeatRMerVerifier.V_構築(
                         [p_引数.A_リード1のパス, p_引数.A_リード2のパス], l_r長);

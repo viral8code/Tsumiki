@@ -15,6 +15,10 @@ namespace Tsumiki.Utility
     /// 接合点を跨がない(=どちらか一方の配列の内部だけに収まる)窓は、
     /// 経路の正しさに関わらず必ず真になる(そのunitig自身が既に実在の
     /// 配列である以上、内部のk-merは常に読まれている)ため、判定対象から除く。
+    /// 跨いでいても、踏み込みが k-1 塩基以内の窓は同じ理由で必ず真になる
+    /// (repeat の先頭 k-1 塩基は head 末尾のコピーなので、その窓は head の
+    /// 部分文字列そのもの)。数えてよいのは共有区間を越えた窓だけで、
+    /// その本数は接合点ごとに r - k 本になる。
     ///
     /// 重要: head/repeat/tail は de Bruijn グラフの辺である以上、隣接する
     /// もの同士は必ずアセンブリの k-1 塩基を共有しており、この共有区間は
@@ -26,18 +30,34 @@ namespace Tsumiki.Utility
     /// (AssemblyPipeline は k + rMer長のk超過分の既定値 で決めている)。
     ///
     /// r-mer は存在確認だけに使うため、TrustedKmerIndex のような外部ソート付き
-    /// カウンタは不要で、単純な HashSet で足りる。r 長は 32 塩基以下
-    /// (ulong に 2bit パック可能な上限)。
+    /// カウンタは不要。32 塩基までは 2bit パックが ulong に収まるので厳密な
+    /// HashSet を使い、それを超える長さでは正規形のハッシュをブルームフィルタへ
+    /// 入れる。長い r-mer は誤り由来の種類数が膨らんで厳密な集合が数GBになる
+    /// 一方、偽陽性は「棄却し損ねる」方向にしか働かないため安全側に倒れる
+    /// (調べないという以前の扱いは、偽陽性率100%と同じことだった)。
     /// </summary>
     internal sealed class RepeatRMerVerifier
     {
-        private readonly HashSet<ulong> _rMer集合;
+        private readonly HashSet<ulong>? _rMer集合;
+        private readonly BloomFilter? _rMerふるい;
         private readonly int _r長;
 
-        private RepeatRMerVerifier(HashSet<ulong> p_rMer集合, int p_r長)
+        private RepeatRMerVerifier(HashSet<ulong>? p_rMer集合, BloomFilter? p_rMerふるい, int p_r長)
         {
             this._rMer集合 = p_rMer集合;
+            this._rMerふるい = p_rMerふるい;
             this._r長 = p_r長;
+        }
+
+        private void V_登録(ulong p_値)
+        {
+            this._rMer集合?.Add(p_値);
+            this._rMerふるい?.V_登録(p_値);
+        }
+
+        private bool Get_見たか(ulong p_値)
+        {
+            return this._rMer集合?.Contains(p_値) ?? this._rMerふるい!.Get_含まれるか(p_値);
         }
 
         /// <summary>
@@ -46,32 +66,48 @@ namespace Tsumiki.Utility
         /// </summary>
         public static RepeatRMerVerifier V_構築(IEnumerable<string> p_リードパス一覧, int p_r長)
         {
-            if (p_r長 is <= 0 or > 32)
+            if (p_r長 <= 0)
             {
-                throw new ArgumentException("r-mer length must be between 1 and 32 to pack into a ulong");
+                throw new ArgumentException("r-mer length must be positive");
             }
 
-            var l_集合 = new HashSet<ulong>();
-            foreach (var l_パス in p_リードパス一覧)
+            var l_パス群 = p_リードパス一覧
+                .Where(x => !string.IsNullOrWhiteSpace(x) && File.Exists(x))
+                .ToList();
+
+            var l_検証器 = p_r長 <= 32
+                ? new RepeatRMerVerifier(new HashSet<ulong>(), null, p_r長)
+                : new RepeatRMerVerifier(null, Get_ふるい(l_パス群), p_r長);
+
+            foreach (var l_パス in l_パス群)
             {
-                if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
-                {
-                    continue;
-                }
                 using var l_読み込み = new FastqReader(l_パス);
                 while (l_読み込み.Get_続きがあるか())
                 {
                     var l_リード = l_読み込み.Get_次のリード().A_生リード;
                     if (l_リード is not null)
                     {
-                        V_登録_rMer(l_集合, l_リード, p_r長);
+                        l_検証器.V_登録_rMer(l_リード, p_r長);
                     }
                 }
             }
-            return new RepeatRMerVerifier(l_集合, p_r長);
+            return l_検証器;
         }
 
-        private static void V_登録_rMer(HashSet<ulong> p_集合, string p_リード, int p_r長)
+        /// <summary>
+        /// ふるいの大きさをリードファイルの総量から決める。
+        /// 実際の種類数は数え終わるまで分からないので、塩基数を上限とみなして
+        /// 1件あたり4ビットを見込み、確保量に上限を設ける。
+        /// </summary>
+        private static BloomFilter Get_ふるい(IEnumerable<string> p_パス群)
+        {
+            // FASTQ は塩基とクオリティで1塩基あたり約2バイト。
+            var l_見込み塩基数 = p_パス群.Sum(x => new FileInfo(x).Length) / 2;
+            var l_ビット数 = Math.Clamp(4 * l_見込み塩基数, 1L << 20, Consts.rMerふるいのビット数上限);
+            return new BloomFilter(l_ビット数, Consts.rMerふるいのハッシュ数);
+        }
+
+        private void V_登録_rMer(string p_リード, int p_r長)
         {
             for (var i = 0; i + p_r長 <= p_リード.Length; i++)
             {
@@ -86,7 +122,7 @@ namespace Tsumiki.Utility
                 }
                 if (!l_曖昧か)
                 {
-                    _ = p_集合.Add(Get_正準値(p_リード.AsSpan(i, p_r長)));
+                    this.V_登録(Get_正準値(p_リード.AsSpan(i, p_r長)));
                 }
             }
         }
@@ -121,11 +157,15 @@ namespace Tsumiki.Utility
             for (var i = 0; i + this._r長 <= l_テスト配列.Length; i++)
             {
                 var l_窓終端 = i + this._r長; // exclusive
-                var l_接合点1を跨ぐ = i < l_接合点1 && l_接合点1 < l_窓終端;
-                var l_接合点2を跨ぐ = i < l_接合点2 && l_接合点2 < l_窓終端;
+
+                // 接合点を跨ぐだけでは足りない。repeat の先頭 k-1 塩基は head の
+                // 末尾のコピーなので、そこまでしか踏み込まない窓は head の
+                // 部分文字列そのもので、head を読んだだけのリードでも必ず真になる。
+                // tail 側も同じ。共有区間を1塩基でも越えた窓だけを数える。
+                var l_接合点1を跨ぐ = i < l_接合点1 && l_窓終端 > l_接合点1 + l_重なり長;
+                var l_接合点2を跨ぐ = l_接合点2 < l_窓終端 && i < l_接合点2 - l_重なり長;
                 if (!l_接合点1を跨ぐ && !l_接合点2を跨ぐ)
                 {
-                    // 接合点を跨がない窓はどちらの経路でも必ず真になるため無視する。
                     continue;
                 }
 
@@ -138,7 +178,7 @@ namespace Tsumiki.Utility
                         break;
                     }
                 }
-                if (!l_曖昧か && this._rMer集合.Contains(Get_正準値(l_テスト配列.AsSpan(i, this._r長))))
+                if (!l_曖昧か && this.Get_見たか(Get_正準値(l_テスト配列.AsSpan(i, this._r長))))
                 {
                     l_支持数++;
                 }
@@ -165,7 +205,7 @@ namespace Tsumiki.Utility
             {
                 l_塩基ID列[i] = Util.Get_塩基ID(p_配列[i]);
             }
-            return (ulong)KmerPacking.Get_正規化パック(l_塩基ID列);
+            return KmerPacking.Get_正規化ハッシュ_64(l_塩基ID列);
         }
     }
 }

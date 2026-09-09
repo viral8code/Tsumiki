@@ -99,7 +99,9 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Get_接合点の支持数_StaysBelowThreshold_WhenReadsNeverCrossEitherJunction()
         {
-            List<string> reads = [.. SlidingReads(Head, 15), .. SlidingReads(Repeat, 15), .. SlidingReads(Tail, 15)];
+            // 各配列を丸ごと読んだリードを与える。r より短いリードだと r-mer が
+            // 1つも作られず、何を数えても0になって検定にならない。
+            List<string> reads = [Head, Repeat, Tail];
             var path = this.WriteFastq("internal_only.fq", reads);
 
             var verifier = RepeatRMerVerifier.V_構築([path, string.Empty], R);
@@ -159,10 +161,42 @@ namespace Tsumiki.Tests.Utility
         }
 
         [Fact]
-        public void V_構築_RejectsOutOfRangeRLength()
+        public void V_構築_RejectsNonPositiveRLength()
         {
             _ = Assert.Throws<ArgumentException>(() => RepeatRMerVerifier.V_構築([], 0));
-            _ = Assert.Throws<ArgumentException>(() => RepeatRMerVerifier.V_構築([], 33));
+            _ = Assert.Throws<ArgumentException>(() => RepeatRMerVerifier.V_構築([], -1));
+        }
+
+        /// <summary>
+        /// 2bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ
+        /// 切り替えて同じ判定ができること。跨いだリードがあれば支持が出て、
+        /// 無ければ出ない。
+        /// </summary>
+        [Fact]
+        public void Get_接合点の支持数_WorksBeyondThePackableRLength()
+        {
+            const int l_長いR = 40;
+            var l_head = RandomSequence(120, seed: 20260922);
+            var l_repeat = l_head[^(AssemblyK - 1)..] + RandomSequence(120, seed: 20260923);
+            var l_tail = l_repeat[^(AssemblyK - 1)..] + RandomSequence(120, seed: 20260924);
+
+            var l_跨ぐ = l_head + l_repeat[(AssemblyK - 1)..] + l_tail[(AssemblyK - 1)..];
+            var l_跨ぐパス = this.WriteFastq("long_cross.fq", SlidingReads(l_跨ぐ, 100));
+            var l_跨がないパス = this.WriteFastq(
+                "long_apart.fq", SlidingReads(l_head, 100).Concat(SlidingReads(l_tail, 100)));
+
+            var l_跨ぐ検証器 = RepeatRMerVerifier.V_構築([l_跨ぐパス, string.Empty], l_長いR);
+            var l_跨がない検証器 = RepeatRMerVerifier.V_構築([l_跨がないパス, string.Empty], l_長いR);
+
+            Assert.True(l_跨ぐ検証器.Get_接合点に支持があるか(
+                l_head, l_repeat, l_tail, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_head, l_repeat, l_tail));
+        }
+
+        private static string RandomSequence(int p_長さ, int seed)
+        {
+            var l_乱数 = new Random(seed);
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
     }
 }

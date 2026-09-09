@@ -36,21 +36,16 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// 落ちた k-mer を救済し、実際に足した件数を返す。
-        /// k が 64 を超える場合は 2bit パックが UInt128 に収まらないため
-        /// 何もせず 0 を返す。
         /// </summary>
         public static int Get_救済数(
             Parameters p_引数, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
-            if (p_k長 > 64)
-            {
-                Logger.V_出力(メッセージID.救済_対象外のk長, p_k長);
-                return 0;
-            }
-
             // 候補は数百万件になりうる。ワーカーごとに辞書を持つと
             // その本数だけ複製することになるため、1つを共有する。
-            ConcurrentDictionary<UInt128, int> l_候補 = [];
+            //
+            // 値に塩基列そのものを持つのは、キーが k > 64 でハッシュになり
+            // 配列を戻せなくなるため。救済は集合へ足す処理なので実体が要る。
+            ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             ReadPipeline.V_実行(
@@ -60,15 +55,13 @@ namespace Tsumiki.Core.Preprocessing
                 (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
 
             var l_追加数 = 0;
-            var l_kmer = new byte[p_k長];
-            foreach (var (l_正規形, l_観測数) in l_候補)
+            foreach (var (_, l_候補中身) in l_候補)
             {
-                if (l_観測数 < 救済に必要な観測数)
+                if (l_候補中身.A_観測数 < 救済に必要な観測数)
                 {
                     continue;
                 }
-                V_復元_塩基列(l_正規形, p_k長, l_kmer);
-                if (p_kmerインデックス.V_追加_信頼kmer(l_kmer, (ulong)l_観測数))
+                if (p_kmerインデックス.V_追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
                 {
                     l_追加数++;
                 }
@@ -84,7 +77,7 @@ namespace Tsumiki.Core.Preprocessing
         /// </summary>
         private static void V_集める_1リード(
             string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長,
-            ConcurrentDictionary<UInt128, int> p_候補)
+            ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> p_候補)
         {
             if (p_リード.Length < p_k長 + 2)
             {
@@ -141,23 +134,16 @@ namespace Tsumiki.Core.Preprocessing
                 {
                     for (var j = i; j < l_終わり; j++)
                     {
-                        var l_正規形 = KmerPacking.Get_正規化パック(l_塩基列.AsSpan(j, p_k長));
-                        _ = p_候補.AddOrUpdate(l_正規形, 1, (_, l_既存) => l_既存 + 1);
+                        var l_窓 = l_塩基列.AsSpan(j, p_k長);
+                        var l_キー = KmerPacking.Get_正規化キー(l_窓);
+                        var l_控え = l_窓.ToArray();
+                        _ = p_候補.AddOrUpdate(
+                            l_キー,
+                            _ => (1, l_控え),
+                            (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
                     }
                 }
                 i = l_終わり;
-            }
-        }
-
-        /// <summary>
-        /// パック済みの正規形を塩基ID列へ戻す。
-        /// </summary>
-        private static void V_復元_塩基列(UInt128 p_パック済み, int p_k長, byte[] p_出力)
-        {
-            for (var i = 0; i < p_k長; i++)
-            {
-                var l_コドン = (int)((p_パック済み >> (2 * (p_k長 - 1 - i))) & 3);
-                p_出力[i] = (byte)(l_コドン + 1);
             }
         }
     }

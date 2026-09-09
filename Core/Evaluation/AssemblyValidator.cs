@@ -26,14 +26,9 @@ namespace Tsumiki.Core.Evaluation
         public static 整合性検査結果? Get_検査結果(
             string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
         {
-            // 逆相補は同一視して数える。キーは 2bit パックした UInt128 で、
-            // 文字列キーだとアセンブリ規模で 1GB を超え、同時に生きている
-            // k-mer インデックスと合わせてメモリが厳しくなる。
-            if (p_k長 > 64)
-            {
-                return null;
-            }
-
+            // 逆相補は同一視して数える。キーは 2bit パックした UInt128、
+            // k が 64 を超えるとパックが収まらないので正規形のハッシュに切り替える。
+            // 数えるだけで配列を戻さないので、ハッシュで足りる。
             Dictionary<UInt128, int> l_観測 = [];
             long l_延べ数 = 0;
 
@@ -44,7 +39,7 @@ namespace Tsumiki.Core.Evaluation
                     var l_配列 = l_読み込み.Get_次の配列().A_配列;
                     for (var i = 0; i + p_k長 <= l_配列.Length; i++)
                     {
-                        if (!KmerPacking.Get_正規化パック(l_配列, i, p_k長, out var l_正規形))
+                        if (!KmerPacking.Get_正規化キー(l_配列, i, p_k長, out var l_正規形))
                         {
                             continue;
                         }
@@ -62,7 +57,7 @@ namespace Tsumiki.Core.Evaluation
             foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {
                 l_信頼kmer数++;
-                var l_正規形 = KmerPacking.Get_正規化パック(l_kmer);
+                var l_正規形 = KmerPacking.Get_正規化キー(l_kmer);
 
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
                 if (l_出現数 == 0)
