@@ -5,7 +5,7 @@ namespace Tsumiki.Tests.IO
 {
     /// <summary>
     /// -mode(積極性のプリセット)が -pu/-pc を正しく束ねること、
-    /// および後ろに書いた個別指定で上書きできることの検証。
+    /// および後ろに書いた個別指定で上書きできることの検証
     /// </summary>
     public class ArgumentsReaderModeTests : IDisposable
     {
@@ -56,7 +56,7 @@ namespace Tsumiki.Tests.IO
 
         /// <summary>
         /// -mode の後ろに個別の -pu/-pc を書けば、そちらで上書きできる
-        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)。
+        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
         /// </summary>
         [Fact]
         public void Mode_FollowedByExplicitThreshold_TheExplicitOneWins()
@@ -65,7 +65,7 @@ namespace Tsumiki.Tests.IO
                 ["-1", this._dummyReadPath, "-mode", Consts.積極性モード名.保守的, "-pu", "0.5"]);
 
             Assert.Equal(0.5m, args.A_ペア結合閾値);
-            // -pc は指定していないので保守的モードの値のまま。
+            // -pc は指定していないので保守的モードの値のまま
             Assert.Equal(Consts.保守的モードのペア支持数閾値, args.A_ペア支持数閾値);
         }
     }

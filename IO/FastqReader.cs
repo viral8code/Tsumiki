@@ -6,8 +6,8 @@ namespace Tsumiki.IO
     internal class FastqReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         /// <summary>
-        /// FASTQ は4行1組の固定構造なので、空行に見えても実は EOF という
-        /// ケースを区別しないと4行の途中で切れたファイルで無限に回り続ける。
+        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF という
+        /// ケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
         /// </summary>
         protected override string Get_次の行()
         {
@@ -26,7 +26,8 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
-        /// 品質判定が配列の範囲外を触って落ちる。どのリードが不正かを言って止める。
+        /// 品質判定が配列の範囲外を触って落ちる<br/>
+        /// どのリードが不正かを言って止める
         /// </summary>
         private void V_検査(string p_ID, string p_配列, string p_クオリティ)
         {
@@ -49,9 +50,9 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す。
+        /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す<br/>
         /// 最終成果物へリードを貼り直す処理(ポリッシュ・閉じ目の検証)のように、
-        /// ID もクオリティも要らない全走査のための入口。
+        /// ID もクオリティも要らない全走査のための入口
         /// </summary>
         public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)
         {
@@ -90,9 +91,10 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版。A_塩基候補列(List&lt;byte[]&gt;)の
-        /// 代わりに A_塩基列(byte[])のみを構築する。
-        /// KmerCounting.V_読込_リードファイル から使用する。
+        /// 曖昧塩基を無視する経路向けの軽量版<br/>
+        /// A_塩基候補列(List&lt;byte[]&gt;)の
+        /// 代わりに A_塩基列(byte[])のみを構築する<br/>
+        /// KmerCounting.V_読込_リードファイル から使用する
         /// </summary>
         public リードデータ Get_次のリード_軽量()
         {

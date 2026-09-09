@@ -67,8 +67,8 @@
         /// <returns>立てる、あるいは調べるビットの位置</returns>
         private IEnumerable<long> Get_位置列(ulong p_値)
         {
-            var l_ハッシュ1 = Get_混ぜる(p_値);
-            var l_ハッシュ2 = Get_混ぜる(p_値 ^ 0x9E3779B97F4A7C15UL) | 1UL;
+            var l_ハッシュ1 = Get_ハッシュ値(p_値);
+            var l_ハッシュ2 = Get_ハッシュ値(p_値 ^ 0x9E3779B97F4A7C15UL) | 1UL;
             for (var i = 0; i < this._ハッシュ数; i++)
             {
                 yield return (long)((l_ハッシュ1 + ((ulong)i * l_ハッシュ2)) % (ulong)this._ビット数);
@@ -80,7 +80,7 @@
         /// </summary>
         /// <param name="p_値">元の値</param>
         /// <returns>かき混ぜた値</returns>
-        private static ulong Get_混ぜる(ulong p_値)
+        private static ulong Get_ハッシュ値(ulong p_値)
         {
             var l_値 = p_値;
             l_値 ^= l_値 >> 33;

@@ -6,15 +6,15 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// ペアエンドから推定される「インサートサイズ」が、リードに挟まれた内側の
-    /// 未読区間ではなく、真のフラグメント長(左リードの5'端から右リードの
-    /// 3'端まで)の単位になっていることを検証する。
-    ///
+    /// 未読区間ではなく、真のフラグメント長(左リードの 5'端から右リードの
+    /// 3'端まで)の単位になっていることを検証する<br/>
     /// 実データ(150bpリード・IS350ライブラリ)で同一unitig由来サンプルの
-    /// 中央値が58と報告されていた。リード長150bpより短いフラグメントは
-    /// physically ありえないため、これは単位の取り違えを示していた。
-    /// 内側距離58に両リード長を足すと358となりライブラリ名と一致する。
+    /// 中央値が 58 と報告されていた<br/>
+    /// リード長150bpより短いフラグメントは
+    /// physically ありえないため、これは単位の取り違えを示していた<br/>
+    /// 内側距離 58 に両リード長を足すと 358 となりライブラリ名と一致する<br/>
     /// この取り違えはギャップ長推定(ギャップ = インサートサイズ - 既知長)にも
-    /// そのまま伝播するため、単位を明示的に固定しておく。
+    /// そのまま伝播するため、単位を明示的に固定しておく
     /// </summary>
     public class InsertSizeEstimationTests : IDisposable
     {
@@ -35,8 +35,9 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 決定的な擬似乱数で非反復的な塩基配列を作る。k=21 では
-        /// この長さの乱数配列に重複k-merが現れる確率は無視できる。
+        /// 決定的な擬似乱数で非反復的な塩基配列を作る<br/>
+        /// k=21 では
+        /// この長さの乱数配列に重複k-merが現れる確率は無視できる
         /// </summary>
         private static string RandomSequence(int length, int seed)
         {
@@ -72,14 +73,14 @@ namespace Tsumiki.Tests.Core
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
             // FR配置: read1 はフラグメント左端から順鎖方向、
-            // read2 はフラグメント右端から逆鎖方向に読まれる。
+            // read2 はフラグメント右端から逆鎖方向に読まれる
             var read1 = unitigSeq.Substring(fragmentStart, readLength);
             var read2 = Util.V_逆相補(
                 unitigSeq.Substring(fragmentStart + trueFragmentLength - readLength, readLength));
 
             var path1 = Path.Combine(this._tempDir, "r1.fq");
             var path2 = Path.Combine(this._tempDir, "r2.fq");
-            // 中央値を安定させるため同一ペアを複数本入れる。
+            // 中央値を安定させるため同一ペアを複数本入れる
             var pairs = Enumerable.Range(0, 5).ToList();
             WriteFastq(path1, pairs.Select(i => ($"pair{i}/1", read1)));
             WriteFastq(path2, pairs.Select(i => ($"pair{i}/2", read2)));
@@ -89,7 +90,7 @@ namespace Tsumiki.Tests.Core
 
             Assert.NotEmpty(contigMaker.A_同一ユニティグ標本);
             // 内側距離(= 350 - 50 - 50 = 250)ではなく、フラグメント長 350 が
-            // 得られなければならない。
+            // 得られなければならない
             Assert.All(
                 contigMaker.A_同一ユニティグ標本,
                 sample => Assert.Equal(trueFragmentLength, sample));
@@ -97,7 +98,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// フラグメント長を変えたときに推定値が同じだけ動くこと(定数ぶんの
-        /// ずれではなく、単位そのものが一致していること)を確認する。
+        /// ずれではなく、単位そのものが一致していること)を確認する
         /// </summary>
         [Theory]
         [InlineData(200)]

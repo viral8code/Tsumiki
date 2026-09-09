@@ -4,11 +4,10 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// unitig の walk を、パック値を転がしながら進める実装(k &lt;= 64 用)。
-    ///
-    /// walk は1塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる。
-    /// Span から毎回詰め直すと、1歩あたり O(k) の詰め直しが所属判定と
-    /// 入次数判定の回数だけ走る。
+    /// unitig の walk を、パック値を転がしながら進める実装(k &lt;= 64 用)<br/>
+    /// walk は 1 塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる<br/>
+    /// Span から毎回詰め直すと、1 歩あたり O(k) の詰め直しが所属判定と
+    /// 入次数判定の回数だけ走る
     /// </summary>
     internal sealed class UnitigWalk
     {
@@ -32,7 +31,7 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// この実装で扱える k かどうか。
+        /// この実装で扱える k かどうか
         /// </summary>
         public static bool Get_扱えるか(int p_k長)
         {
@@ -48,7 +47,7 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 末尾に塩基を足した k-mer の順鎖・逆鎖パック値。
+        /// 末尾に塩基を足した k-mer の順鎖・逆鎖パック値
         /// </summary>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_後続(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
@@ -59,7 +58,7 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 先頭に塩基を足した(末尾を落とした)k-mer の順鎖・逆鎖パック値。
+        /// 先頭に塩基を足した(末尾を落とした)k-mer の順鎖・逆鎖パック値
         /// </summary>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
@@ -70,9 +69,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 入次数がちょうど1かどうか。
+        /// 入次数がちょうど 1 かどうか<br/>
         /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと
-        /// 予測元は c + kmer[..^1] になる。
+        /// 予測元は c + kmer[..^1] になる
         /// </summary>
         private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
@@ -89,8 +88,8 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 開始 k-mer から前進 walk して unitig の塩基列を返す。
-        /// 循環を検出したら打ち切る。
+        /// 開始 k-mer から前進 walk して unitig の塩基列を返す<br/>
+        /// 循環を検出したら打ち切る
         /// </summary>
         public List<byte> Get_塩基列(ReadOnlySpan<byte> p_開始kmer, HashSet<UInt128> p_訪問済み)
         {
@@ -108,7 +107,8 @@ namespace Tsumiki.Core.UnitigBuilding
             {
                 if (!p_訪問済み.Add(l_順鎖))
                 {
-                    // 循環。1塩基前で打ち切った場合と同じ配列になるよう末尾を外す。
+                    // 循環
+                    // 1 塩基前で打ち切った場合と同じ配列になるよう末尾を外す
                     l_配列.RemoveAt(l_配列.Count - 1);
                     return l_配列;
                 }
@@ -132,9 +132,9 @@ namespace Tsumiki.Core.UnitigBuilding
                     (l_次順, l_次逆) = (l_順, l_逆);
                 }
 
-                // 出次数が1でなければ、ここが unitig の終端。
-                // 次の k-mer の入次数が2以上なら別の経路が合流しており、
-                // そこからは別の unitig が始まるのでやはり終端になる。
+                // 出次数が 1 でなければ、ここが unitig の終端
+                // 次の k-mer の入次数が 2 以上なら別の経路が合流しており、
+                // そこからは別の unitig が始まるのでやはり終端になる
                 if (l_候補数 != 1 || !this.Get_入次数が1か(l_次順, l_次逆))
                 {
                     return l_配列;

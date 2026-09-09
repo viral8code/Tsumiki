@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
-    /// FASTA の1エントリ(ヘッダ行のIDと塩基配列)。
+    /// FASTA の1エントリ(ヘッダ行のIDと塩基配列)
     /// </summary>
     internal readonly struct 配列エントリ(string p_ID, string p_配列)
     {

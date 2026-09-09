@@ -5,21 +5,20 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// リード長からの k 長自動選択の検証。
-    ///
+    /// リード長からの k 長自動選択の検証<br/>
     /// 既定の k=31 は 150bp リードに対して明確に短すぎ、実データで
-    /// unitig の N50 が k=63 の場合の 1/5 にしかならなかった。
+    /// unitig の N50 が k=63 の場合の 1/5 にしかならなかった<br/>
     /// リード長は 75bp から 300bp まで大きく変わるため、固定値ではなく
-    /// 実際のリード長から決める。
+    /// 実際のリード長から決める
     /// </summary>
     public class KmerLengthSelectorTests
     {
         [Theory]
-        [InlineData(150, 63)] // 現在の標準。0.6倍は上限を超えるので頭打ち。
-        [InlineData(250, 63)] // MiSeq。同じく頭打ち。
-        [InlineData(100, 59)] // 0.6倍=60。偶数なので1つ落とす。
+        [InlineData(150, 63)] // 現在の標準、0.6 倍は上限を超えるので頭打ち
+        [InlineData(250, 63)] // MiSeq、同じく頭打ち
+        [InlineData(100, 59)] // 0.6 倍 = 60、偶数なので 1 つ落とす
         [InlineData(75, 45)]
-        [InlineData(50, 29)]  // 0.6倍=30。偶数なので1つ落とす。
+        [InlineData(50, 29)]  // 0.6 倍 = 30、偶数なので 1 つ落とす
         [InlineData(32, 19)]
         public void SuggestKmerLength_ScalesWithReadLength_AndIsCappedAtTheFastPathLimit(int readLength, int expected)
         {
@@ -28,7 +27,8 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// k が偶数だと k-mer 自身がその逆相補と一致しうる(回文)ため、
-        /// 正規形が縮退して隣接判定が壊れる。どのリード長でも奇数を返すこと。
+        /// 正規形が縮退して隣接判定が壊れる<br/>
+        /// どのリード長でも奇数を返すこと
         /// </summary>
         [Fact]
         public void SuggestKmerLength_IsAlwaysOddAndShorterThanTheRead()
@@ -58,12 +58,12 @@ namespace Tsumiki.Tests.Utility
             KmerLengthSelector.V_解決_k長(param, 150);
 
             Assert.Equal(63, param.A_k長);
-            // 自動適用は「明示指定された」扱いにしない。
+            // 自動適用は「明示指定された」扱いにしない
             Assert.False(param.A_k長が明示指定されたか);
         }
 
         /// <summary>
-        /// 明示指定はユーザーの判断なので、推定値で上書きしてはいけない。
+        /// 明示指定はユーザーの判断なので、推定値で上書きしてはいけない
         /// </summary>
         [Fact]
         public void Resolve_WhenKmerLengthWasGivenExplicitly_LeavesItAlone()

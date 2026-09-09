@@ -4,9 +4,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// 塩基列を 2bit/塩基 で詰め、語単位で突き合わせる部品の検証。
-    /// 重なりの探索がこれに置き換わるので、1塩基ずつ比べた場合と
-    /// 完全に同じ数を返すことが要件になる。
+    /// 塩基列を 2bit/塩基 で詰め、語単位で突き合わせる部品の検証<br/>
+    /// 重なりの探索がこれに置き換わるので、1 塩基ずつ比べた場合と
+    /// 完全に同じ数を返すことが要件になる
     /// </summary>
     public class PackedBasesTests
     {
@@ -48,8 +48,8 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 開始位置・長さのあらゆる組み合わせで、1塩基ずつ数えた結果と一致すること。
-        /// 語の境界をまたぐ位置(32の倍数の前後)を必ず含むように総当たりする。
+        /// 開始位置・長さのあらゆる組み合わせで、1 塩基ずつ数えた結果と一致すること<br/>
+        /// 語の境界をまたぐ位置(32 の倍数の前後)を必ず含むように総当たりする
         /// </summary>
         [Fact]
         public void Get_不一致数_MatchesTheNaiveCountAtEveryOffsetAndLength()
@@ -60,7 +60,7 @@ namespace Tsumiki.Tests.Utility
                 var l_列1 = RandomBases(150, l_乱数);
                 var l_列2 = RandomBases(150, l_乱数);
 
-                // 一部を一致させて、不一致0や少数の場合も通す。
+                // 一部を一致させて、不一致 0 や少数の場合も通す
                 Array.Copy(l_列1, 20, l_列2, 20, 60);
 
                 var l_詰め1 = PackedBases.Get_作る(l_列1);
@@ -99,7 +99,8 @@ namespace Tsumiki.Tests.Utility
 
             Assert.NotNull(l_詰め);
 
-            // 3塩基目以降は空き。先頭2塩基だけを見れば不一致は無い。
+            // 3 塩基目以降は空き
+            // 先頭 2 塩基だけを見れば不一致は無い
             Assert.Equal(0, PackedBases.Get_不一致数(l_詰め!.Get_窓(0), l_詰め.Get_窓(0), 2));
         }
     }

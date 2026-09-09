@@ -8,11 +8,11 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 前段の k の配列を次の k へ引き継ぐ処理の検証。
-    ///
-    /// 引き継ぎで最も壊れやすいのはカバレッジである。名目値で埋めると
-    /// コピー数推定・低カバレッジ端のトリミング・自己検査がまとめて狂う。
-    /// 連結が保たれることと同じくらい、カバレッジが保たれることを固定する。
+    /// 前段の k の配列を次の k へ引き継ぐ処理の検証<br/>
+    /// 引き継ぎで最も壊れやすいのはカバレッジである<br/>
+    /// 名目値で埋めると
+    /// コピー数推定・低カバレッジ端のトリミング・自己検査がまとめて狂う<br/>
+    /// 連結が保たれることと同じくらい、カバレッジが保たれることを固定する
     /// </summary>
     public class KmerCarryOverTests : IDisposable
     {
@@ -42,7 +42,7 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
             // インデックスごとに作業ディレクトリを分ける(同じ場所を使うと
-            // 一時ファイルの後始末が互いに干渉する)。
+            // 一時ファイルの後始末が互いに干渉する)
             var l_作業 = Path.Combine(this._tempDir, Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(l_作業);
             var index = new TrustedKmerIndex(l_作業);
@@ -91,16 +91,16 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継いだ k-mer のカバレッジが、k の差ぶんスケールされること。
+        /// 引き継いだ k-mer のカバレッジが、k の差ぶんスケールされること<br/>
         /// スケールしないと、引き継いだ領域だけカバレッジが高く見えて
-        /// コピー数を過大に推定する。
+        /// コピー数を過大に推定する
         /// </summary>
         [Fact]
         public void CarriedCoverage_IsScaledByTheNumberOfKmersPerRead()
         {
-            // 前段 k=21 でカバレッジ 100、リード長 150。
-            // 次段 k=101 では 1リードあたり 130 本から 50 本へ減るので、
-            // 100 * 50 / 130 = 38。
+            // 前段 k=21 でカバレッジ 100、リード長 150
+            // 次段 k=101 では 1 リードあたり 130 本から 50 本へ減るので、
+            // 100 * 50 / 130 = 38
             var l_引き継ぎ = new 引き継ぎ配列(
                 RandomSequence(300, seed: 702), [.. Enumerable.Repeat(100, 280)], 21);
 
@@ -111,8 +111,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継ぐ k-mer は、それを構成する前段の k-mer の最小値を超えないこと。
-        /// 長い k-mer は短い k-mer をすべて含むので、最も弱い部分より強くはなれない。
+        /// 引き継ぐ k-mer は、それを構成する前段の k-mer の最小値を超えないこと<br/>
+        /// 長い k-mer は短い k-mer をすべて含むので、最も弱い部分より強くはなれない
         /// </summary>
         [Fact]
         public void CarriedCoverage_TakesTheWeakestConstituentKmer()
@@ -123,10 +123,10 @@ namespace Tsumiki.Tests.Core
 
             var l_引き継ぎ = new 引き継ぎ配列(RandomSequence(300, seed: 703), l_カバレッジ, 21);
 
-            // 位置 0 から k=41 の窓は前段の位置 0..20 を含むので、7 が効く。
+            // 位置 0 から k=41 の窓は前段の位置 0..20 を含むので、7 が効く
             var l_弱い部分を含む = KmerCarryOver.Get_引き継ぐカバレッジ(
                 l_引き継ぎ, p_位置: 0, p_k長: 41, p_リード長: null);
-            // 位置 30 の窓は 30..50 なので 7 を含まない。
+            // 位置 30 の窓は 30..50 なので 7 を含まない
             var l_含まない = KmerCarryOver.Get_引き継ぐカバレッジ(
                 l_引き継ぎ, p_位置: 30, p_k長: 41, p_リード長: null);
 
@@ -135,8 +135,9 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継ぎの本題。カバレッジが薄くて次の k では観測されなかった領域が、
-        /// 前段の配列から復元されること。
+        /// 引き継ぎの本題<br/>
+        /// カバレッジが薄くて次の k では観測されなかった領域が、
+        /// 前段の配列から復元されること
         /// </summary>
         [Fact]
         public void CarryOver_RestoresKmersThatTheLargerKDidNotObserve()
@@ -145,12 +146,12 @@ namespace Tsumiki.Tests.Core
             const int 次のk = 41;
             var truth = RandomSequence(3_000, seed: 711);
 
-            // 次の k では中央の領域が観測されていない状況を作る。
+            // 次の k では中央の領域が観測されていない状況を作る
             var l_左 = truth[..1_200];
             var l_右 = truth[1_800..];
             using var l_次段 = this.BuildIndex(次のk, depth: 20, l_左, l_右);
 
-            // 前段は全体を観測している。
+            // 前段は全体を観測している
             using var l_前段 = this.BuildIndex(前段のk, depth: 20, truth);
             var l_パス = this.WriteFasta("carry.fasta", truth);
             var l_引き継ぎ = KmerCarryOver.Get_引き継ぎ配列(l_パス, l_前段, 前段のk);
@@ -167,8 +168,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 既に観測されている k-mer のカバレッジは書き換えないこと。
-        /// 実際のリードによる観測のほうが、前段からの推定より確かである。
+        /// 既に観測されている k-mer のカバレッジは書き換えないこと<br/>
+        /// 実際のリードによる観測のほうが、前段からの推定より確かである
         /// </summary>
         [Fact]
         public void CarryOver_DoesNotOverwriteCoverageThatWasActuallyObserved()
@@ -192,8 +193,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 2コピーの反復配列は、引き継いでも2コピー相当のカバレッジを保つこと。
-        /// ここが崩れるとコピー数推定が壊れ、反復配列の扱いが総崩れになる。
+        /// 2 コピーの反復配列は、引き継いでも 2 コピー相当のカバレッジを保つこと<br/>
+        /// ここが崩れるとコピー数推定が壊れ、反復配列の扱いが総崩れになる
         /// </summary>
         [Fact]
         public void CarryOver_PreservesTheRelativeCoverageOfRepeats()
@@ -203,7 +204,7 @@ namespace Tsumiki.Tests.Core
             var 単一 = RandomSequence(1_500, seed: 731);
             var 反復 = RandomSequence(1_500, seed: 732);
 
-            // 反復側だけ倍の深さで観測されている状況。
+            // 反復側だけ倍の深さで観測されている状況
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 前段のk, A_スレッド数 = 1 };
             var l_前段の作業 = Path.Combine(this._tempDir, Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(l_前段の作業);
@@ -221,7 +222,7 @@ namespace Tsumiki.Tests.Core
             }
             _ = l_前段.V_カットオフ(p_カットオフ: 2);
 
-            // 次の k は何も観測していない。
+            // 次の k は何も観測していない
             using var l_次段 = this.BuildIndex(次のk, depth: 20, RandomSequence(2_000, seed: 733));
 
             var l_パス = this.WriteFasta("repeat_carry.fasta", 単一, 反復);
@@ -231,13 +232,14 @@ namespace Tsumiki.Tests.Core
             var l_単一の位置 = 単一.Select(Util.Get_塩基ID).ToArray().AsSpan(50, 次のk);
             var l_反復の位置 = 反復.Select(Util.Get_塩基ID).ToArray().AsSpan(50, 次のk);
 
-            // 2倍の関係が保たれていること。
+            // 2 倍の関係が保たれていること
             Assert.Equal(2 * l_次段.Get_カバレッジ(l_単一の位置), l_次段.Get_カバレッジ(l_反復の位置));
         }
 
         /// <summary>
-        /// 短い断片は引き継がないこと。連結の役に立たないうえ、
-        /// エラー由来の残骸である可能性が相対的に高い。
+        /// 短い断片は引き継がないこと<br/>
+        /// 連結の役に立たないうえ、
+        /// エラー由来の残骸である可能性が相対的に高い
         /// </summary>
         [Fact]
         public void Prepare_SkipsShortSequences()

@@ -8,14 +8,14 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// 提案D: BeamSearchExtender のスコアを生カウントではなく期待本数との比で
-    /// 測ることの検証。
-    ///
-    /// 分岐元 A から、短い unitig B と長い unitig C へ分岐する構成を作る。
+    /// 測ることの検証<br/>
+    /// 分岐元 A から、短い unitig B と長い unitig C へ分岐する構成を作る<br/>
     /// C は B よりずっと長いため、同じフラグメント長分布のもとでは
     /// 「両端が収まる開始位置」の窓が B よりずっと広い(=同じ観測本数でも
-    /// 期待本数は C のほうが大きい)。生カウントでは C がわずかに優勢に
+    /// 期待本数は C のほうが大きい)<br/>
+    /// 生カウントでは C がわずかに優勢に
     /// 見えても優勢閾値を超えないケースで、期待本数との比を取ると
-    /// 実際には B のほうが強い証拠であるとして正しく選ばれることを確認する。
+    /// 実際には B のほうが強い証拠であるとして正しく選ばれることを確認する
     /// </summary>
     public class BeamSearchExtenderCalibrationTests
     {
@@ -44,8 +44,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// A(250bp) が分岐元、B(35bp, 短い)と C(2020bp, 長い)がその行き先。
-        /// A の末尾20塩基(=k-1)を B・C 両方の先頭が共有することで分岐にする。
+        /// A(250bp) が分岐元、B(35bp, 短い)と C(2020bp, 長い)がその行き先<br/>
+        /// A の末尾 20 塩基(=k-1)を B・C 両方の先頭が共有することで分岐にする
         /// </summary>
         private static (List<string> UnitigList, UnitigGraph Graph, int A, int B, int C) Build()
         {
@@ -86,7 +86,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 中央 150 のフラグメント長標本(密度較正に使う)。
+        /// 中央 150 のフラグメント長標本(密度較正に使う)
         /// </summary>
         private static List<int> Get_同一ユニティグ標本(int p_件数 = 300) => [.. Enumerable.Repeat(150, p_件数)];
 
@@ -99,7 +99,7 @@ namespace Tsumiki.Tests.Core
             var c = ContigMaker.Get_頂点番号(cId);
 
             // 生カウントでは C(4) が B(3) よりわずかに多いが、
-            // 優勢比 4/7=0.571 は閾値0.8を超えない。
+            // 優勢比 4/7=0.571 は閾値 0.8 を超えない
             Dictionary<(int, int), ulong> pairLink = new() { [(a, b)] = 3, [(a, c)] = 4 };
             Dictionary<int, int> copyNumber = new() { [aId] = 1, [bId] = 1, [cId] = 1 };
 
@@ -113,8 +113,9 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 同じ観測本数(3 vs 4)でも、C は B よりずっと長いぶん期待本数も
-        /// 大きい。期待本数との比を取ると B(短い)のほうが実際には強い証拠で
-        /// あるとわかり、優勢閾値を超えて A→B が選ばれるはず。
+        /// 大きい<br/>
+        /// 期待本数との比を取ると B(短い)のほうが実際には強い証拠で
+        /// あるとわかり、優勢閾値を超えて A→B が選ばれるはず
         /// </summary>
         [Fact]
         public void Extend_WithCalibration_PrefersTheShortFlank_ThatRawCountsCouldNotDecide()

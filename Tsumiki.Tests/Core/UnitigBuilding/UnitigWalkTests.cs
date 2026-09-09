@@ -7,11 +7,10 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// パック値を転がしながら進める walk が、従来の実装と同じ結果を返すことを固定する。
-    ///
+    /// パック値を転がしながら進める walk が、従来の実装と同じ結果を返すことを固定する<br/>
     /// 転がし更新は unitig 構築の時間のほとんどを占めていた O(k) の詰め直しを
-    /// 省くためのもので、結果は1塩基たりとも変わってはいけない。
-    /// 2つの実装が並存する以上、等価性の確認は必須になる。
+    /// 省くためのもので、結果は 1 塩基たりとも変わってはいけない<br/>
+    /// 2 つの実装が並存する以上、等価性の確認は必須になる
     /// </summary>
     public class UnitigWalkTests : IDisposable
     {
@@ -59,7 +58,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 従来実装と転がし実装が、すべての開始点で同じ配列を返すこと。
+        /// 従来実装と転がし実装が、すべての開始点で同じ配列を返すこと
         /// </summary>
         private void V_両実装が一致する(int p_k長, params string[] p_配列)
         {
@@ -91,8 +90,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k=32 と k=33 は内部表現(ulong と UInt128)の境界。
-        /// 転がしのマスクとシフトがここで壊れやすい。
+        /// k=32 と k=33 は内部表現(ulong と UInt128)の境界<br/>
+        /// 転がしのマスクとシフトがここで壊れやすい
         /// </summary>
         [Theory]
         [InlineData(31)]
@@ -105,7 +104,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 分岐がある場合、両実装が同じ位置で walk を止めること。
+        /// 分岐がある場合、両実装が同じ位置で walk を止めること
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_WithBranches()
@@ -118,7 +117,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列を含む場合。合流点の入次数判定が両実装で一致すること。
+        /// 反復配列を含む場合<br/>
+        /// 合流点の入次数判定が両実装で一致すること
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_WithARepeat()
@@ -132,10 +132,10 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 環状配列。循環検出の打ち切り位置が両実装で一致すること。
-        ///
-        /// 完全な環には開始 k-mer が存在しない(どの k-mer も入次数1で、
-        /// その予測元の出次数も1)ため、任意の k-mer から walk して比べる。
+        /// 環状配列<br/>
+        /// 循環検出の打ち切り位置が両実装で一致すること<br/>
+        /// 完全な環には開始 k-mer が存在しない(どの k-mer も入次数 1 で、
+        /// その予測元の出次数も 1)ため、任意の k-mer から walk して比べる
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_OnACircularSequence()
@@ -156,7 +156,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 逆相補側から始めても一致すること(正規形の判定が転がしでも正しいこと)。
+        /// 逆相補側から始めても一致すること(正規形の判定が転がしでも正しいこと)
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_FromTheReverseStrand()

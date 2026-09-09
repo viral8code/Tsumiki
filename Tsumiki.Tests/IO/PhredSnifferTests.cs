@@ -45,7 +45,7 @@ namespace Tsumiki.Tests.IO
         public void BuildWarning_RealisticPhred33Data_NoWarning()
         {
             // 典型的なPhred33品質文字('#'=Q2 〜 'J'=Q41相当)を模した、
-            // ばらつきのあるサンプル。
+            // ばらつきのあるサンプル
             var sample = PhredSniffer.Get_標本(["#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"]);
 
             var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 33);
@@ -56,7 +56,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void BuildWarning_Phred33WithAsciiImplausiblyHigh_WarnsToTryPhred64()
         {
-            // 'h' = ASCII 104。Phred33なら Q=71 となり非現実的。
+            // 'h' = ASCII 104
+            // Phred33なら Q=71 となり非現実的
             var sample = PhredSniffer.Get_標本(["hhhh"]);
 
             var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 33);
@@ -68,8 +69,9 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void BuildWarning_Phred64WithSameData_DecodesToPlausibleQ_ButStillFlagsUniformity()
         {
-            // 'h' = ASCII 104。Phred64なら Q=40 で妥当な範囲だが、
-            // 全く同一の値しか出ていない点は別途警告する。
+            // 'h' = ASCII 104
+            // Phred64なら Q=40 で妥当な範囲だが、
+            // 全く同一の値しか出ていない点は別途警告する
             var sample = PhredSniffer.Get_標本(["hhhh", "hhhh", "hhhh"]);
 
             var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 64);
@@ -82,7 +84,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void BuildWarning_NegativeQ_WarnsRegardlessOfUniformity()
         {
-            // '!' = ASCII 33。Phred64なら Q=-31 となり明らかに不正。
+            // '!' = ASCII 33
+            // Phred64なら Q=-31 となり明らかに不正
             var sample = PhredSniffer.Get_標本(["!!!!"]);
 
             var warning = PhredSniffer.Get_警告文(sample, p_有効オフセット: 64);
@@ -101,10 +104,12 @@ namespace Tsumiki.Tests.IO
 
         /// <summary>
         /// 実データ(Achromobacter の IS350 ライブラリ)で観測された ASCII 範囲
-        /// [64, 104]。Phred33 と解釈すると Q[31, 71] となり上限がありえないが、
-        /// Phred64 なら Q[0, 40] で完全に妥当。この判別ができないと、
+        /// [64, 104]<br/>
+        /// Phred33 と解釈すると Q[31, 71] となり上限がありえないが、
+        /// Phred64 なら Q[0, 40] で完全に妥当<br/>
+        /// この判別ができないと、
         /// 「quality - Phred - QualityCutoff が負なら捨てる」という品質フィルタが
-        /// 事実上まったく効かなくなる(Q0 の塩基が Q31 に見えるため)。
+        /// 事実上まったく効かなくなる(Q0 の塩基が Q31 に見えるため)
         /// </summary>
         [Fact]
         public void InferOffset_RealWorldPhred64Range_InfersPhred64()
@@ -117,8 +122,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void InferOffset_TypicalPhred33Range_InfersPhred33()
         {
-            // '!'(ASCII 33, Q0)から 'I'(ASCII 73, Q40)までの一般的な Phred33 範囲。
-            // Phred64 と解釈すると Q が負になるため、33 side のみが妥当。
+            // '!'(ASCII 33, Q0)から 'I'(ASCII 73, Q40)までの一般的な Phred33 範囲
+            // Phred64 と解釈すると Q が負になるため、33 side のみが妥当
             var sample = PhredSniffer.Get_標本(["!!!!IIII"]);
 
             Assert.Equal(33, PhredSniffer.Get_推定オフセット(sample));
@@ -127,8 +132,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void InferOffset_AmbiguousRange_ReturnsNull()
         {
-            // ASCII 66-70 は Phred33 なら Q[33,37]、Phred64 なら Q[2,6]。
-            // どちらの解釈でも現実的な範囲に収まるため判別できない。
+            // ASCII 66-70 は Phred33 なら Q[33,37]、Phred64 なら Q[2,6]
+            // どちらの解釈でも現実的な範囲に収まるため判別できない
             var sample = PhredSniffer.Get_標本(["BCDEF"]);
 
             Assert.Null(PhredSniffer.Get_推定オフセット(sample));

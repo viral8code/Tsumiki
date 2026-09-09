@@ -5,17 +5,18 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する。
-    ///
-    /// トリミング済みのデータではリード長がばらつく。GAGE-B の
+    /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する<br/>
+    /// トリミング済みのデータではリード長がばらつく<br/>
+    /// GAGE-B の
     /// R. sphaeroides MiSeq(trimmed)では 755,847 本のうち 8% 以上が
-    /// k=63 未満で、最短は 19bp だった。マッピング側に長さの判定が無く、
-    /// 19bp のリードに対して添字 62 までアクセスして例外になっていた。
-    ///
+    /// k=63 未満で、最短は 19bp だった<br/>
+    /// マッピング側に長さの判定が無く、
+    /// 19bp のリードに対して添字 62 までアクセスして例外になっていた<br/>
     /// しかもその例外はワーカースレッドの中で起き、キューが満杯になった
     /// プロデューサーが永久に待ち続けたため、ログも例外も出ないまま
-    /// 2時間以上プロセスが停止した。長さの判定と、
-    /// ワーカーの例外を伝える仕組み(ReadPipelineTests)の両方が要る。
+    /// 2 時間以上プロセスが停止した<br/>
+    /// 長さの判定と、
+    /// ワーカーの例外を伝える仕組み(ReadPipelineTests)の両方が要る
     /// </summary>
     public class VariableLengthReadTests : IDisposable
     {
@@ -58,8 +59,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k より短いリードと十分長いリードが混ざったペアエンド入力。
-        /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること。
+        /// k より短いリードと十分長いリードが混ざったペアエンド入力<br/>
+        /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること
         /// </summary>
         [Fact]
         public void MapPairedReads_ReadsShorterThanK_AreSkippedWithoutFailing()
@@ -70,7 +71,7 @@ namespace Tsumiki.Tests.Core
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
-            // 19bp(最短の実例と同じ長さ)から 200bp まで、k をまたぐ長さを混ぜる。
+            // 19bp(最短の実例と同じ長さ)から 200bp まで、k をまたぐ長さを混ぜる
             var lengths = new[] { 19, 30, K - 1, K, K + 1, 120, 200 };
             var reads1 = new List<(string, string)>();
             var reads2 = new List<(string, string)>();
@@ -86,13 +87,14 @@ namespace Tsumiki.Tests.Core
 
             var contigMaker = new ContigMaker(unitigsPath);
 
-            // 例外を投げずに完走すること。対策前はここで
+            // 例外を投げずに完走すること
+            // 対策前はここで
             // IndexOutOfRangeException がワーカー内で起き、
-            // そのままハングしていた。
+            // そのままハングしていた
             contigMaker.V_マッピング_ペアリード(path1, path2);
 
             // k 以上のリードからは標本が取れていること
-            // (短いリードのせいで全部落ちてしまっていないことの確認)。
+            // (短いリードのせいで全部落ちてしまっていないことの確認)
             Assert.NotEmpty(contigMaker.A_インサートサイズ標本);
         }
 
@@ -108,7 +110,7 @@ namespace Tsumiki.Tests.Core
             var reads = new List<(string, string)>();
             for (var i = 0; i < 50; i++)
             {
-                // 半分を k 未満にする。
+                // 半分を k 未満にする
                 var length = i % 2 == 0 ? 19 : 150;
                 reads.Add(($"read{i}", unitigSeq[..length]));
             }
@@ -119,7 +121,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// すべてのリードが k 未満でも、例外にならず単に何も得られないこと。
+        /// すべてのリードが k 未満でも、例外にならず単に何も得られないこと
         /// </summary>
         [Fact]
         public void MapPairedReads_EveryReadShorterThanK_CompletesWithNoSamples()

@@ -8,14 +8,15 @@ namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理
-    /// (曖昧塩基を無視する既定経路)。本パイプラインと ErrorCorrector の
-    /// 事前カウントパスの両方から呼べるよう切り出したもの。
+    /// (曖昧塩基を無視する既定経路)<br/>
+    /// 本パイプラインと ErrorCorrector の
+    /// 事前カウントパスの両方から呼べるよう切り出したもの
     /// </summary>
     internal static class KmerCounting
     {
         /// <summary>
-        /// FASTQ を1本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する。
-        /// 読み取りを1本に保つのはディスクI/Oをシーケンシャルなままにするため。
+        /// FASTQ を 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する<br/>
+        /// 読み取りを 1 本に保つのはディスクI/Oをシーケンシャルなままにするため
         /// </summary>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
@@ -54,10 +55,11 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// リード1(・指定があればリード2)を、-ab の有無に応じた経路で
-        /// TrustedKmerIndex へ読み込む。AssemblyPipeline と MultiKAssembler の
+        /// リード 1(・指定があればリード 2)を、-ab の有無に応じた経路で
+        /// TrustedKmerIndex へ読み込む<br/>
+        /// AssemblyPipeline と MultiKAssembler の
         /// どちらも(単一k・複数kの違いだけで)同じ読み込み手順を必要とするため
-        /// ここにまとめる。
+        /// ここにまとめる
         /// </summary>
         public static void V_読込_リードペア(
             Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
@@ -94,7 +96,8 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 曖昧塩基を許容する経路。呼ばれる頻度が低い想定のため未並列。
+        /// 曖昧塩基を許容する経路<br/>
+        /// 呼ばれる頻度が低い想定のため未並列
         /// </summary>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
@@ -134,7 +137,7 @@ namespace Tsumiki.Core.Preprocessing
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
         /// <summary>
-        /// FASTQ を順に読み進めてリードを返す。
+        /// FASTQ を順に読み進めてリードを返す
         /// </summary>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
@@ -146,9 +149,10 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 1リード分の k-mer 抽出・品質フィルタリング・登録。
-        /// 逆相補側を別途登録してはいけない。TrustedKmerIndex.V_登録 が
-        /// 正規形へ寄せて数えるため、二重計上になる。
+        /// 1 リード分の k-mer 抽出・品質フィルタリング・登録<br/>
+        /// 逆相補側を別途登録してはいけない<br/>
+        /// TrustedKmerIndex.V_登録 が
+        /// 正規形へ寄せて数えるため、二重計上になる
         /// </summary>
         private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス, int p_ワーカー番号)
         {

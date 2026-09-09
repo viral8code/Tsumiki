@@ -7,9 +7,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 出した配列の各位置がリードに裏付けられているかの検査。
+    /// 出した配列の各位置がリードに裏付けられているかの検査<br/>
     /// 誤って繋いだ接合は両側それぞれが正しい配列なので局所の量では
-    /// 見えず、繋ぎ目を跨ぐ r-mer の不在だけがそれを示す。
+    /// 見えず、繋ぎ目を跨ぐ r-mer の不在だけがそれを示す
     /// </summary>
     public class ReadSupportCheckerTests : IDisposable
     {
@@ -39,7 +39,8 @@ namespace Tsumiki.Tests.Core
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
-        /// <summary>元の配列を 100bp のリードで隙間なく覆った FASTQ を作る。</summary>
+        /// <summary>元の配列を 100bp のリードで隙間なく覆った FASTQ を作る<br/>
+        /// </summary>
         private string Get_リード(string p_名前, params string[] p_元)
         {
             var l_パス = Path.Combine(this._tempDir, p_名前);
@@ -86,7 +87,8 @@ namespace Tsumiki.Tests.Core
             var l_左 = RandomSequence(1000, p_種: 20260914);
             var l_右 = RandomSequence(1000, p_種: 20260915);
 
-            // リードは左右それぞれからしか出ない。繋いだ接合を読んだリードは無い。
+            // リードは左右それぞれからしか出ない
+            // 繋いだ接合を読んだリードは無い
             var l_リード = this.Get_リード("reads.fq", l_左, l_右);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_左 + l_右));
 
@@ -96,7 +98,8 @@ namespace Tsumiki.Tests.Core
             var l_区間 = Assert.Single(l_結果!.Value.A_区間);
             Assert.Equal("SEQ1", l_区間.A_配列ID);
 
-            // 接合を跨ぐ r-mer は R-1 個。覆う塩基は接合の両側 R-1 塩基ぶん。
+            // 接合を跨ぐ r-mer は R-1 個
+            // 覆う塩基は接合の両側 R-1 塩基ぶん
             Assert.Equal(R - 1, l_結果.Value.A_支持のない位置数);
             Assert.Equal(l_左.Length - R + 2, l_区間.A_開始);
             Assert.Equal(l_左.Length + R - 1, l_区間.A_終了);

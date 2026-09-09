@@ -6,17 +6,17 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状の複製単位に同じ反復が2回現れる形の解きほぐしを固定する。
-    ///
-    /// 環状のゲノムに反復 R が2回あると、その間に挟まれる領域は必ず2つ
-    /// (A と B)になり、ゲノムは A R B R を1周する形になる。このとき R へ
+    /// 環状の複製単位に同じ反復が 2 回現れる形の解きほぐしを固定する<br/>
+    /// 環状のゲノムに反復 R が 2 回あると、その間に挟まれる領域は必ず 2 つ
+    /// (A と B)になり、ゲノムは A R B R を 1 周する形になる<br/>
+    /// このとき R へ
     /// 入ってくるのも A と B、R から出ていくのも A と B で、同じ unitig が
-    /// 入口と出口の両方に立つ。
-    ///
-    /// これは退化した構造ではなく、細菌のゲノムで最もありふれた反復の形。
+    /// 入口と出口の両方に立つ<br/>
+    /// これは退化した構造ではなく、細菌のゲノムで最もありふれた反復の形<br/>
     /// 「A の次は B」なのか「A の次は A」なのかはペアエンドで区別でき、
-    /// 前者なら1本の環、後者なら2本の環になる。同じ unitig が2つの役回りに
-    /// 立つことだけを理由に触らずにいると、証拠が揃っていても解けない。
+    /// 前者なら 1 本の環、後者なら 2 本の環になる<br/>
+    /// 同じ unitig が 2 つの役回りに
+    /// 立つことだけを理由に触らずにいると、証拠が揃っていても解けない
     /// </summary>
     public class CircularRepeatResolutionTests
     {
@@ -24,8 +24,9 @@ namespace Tsumiki.Tests.Core
 
         private const int k長 = 8;
 
-        // 反復。A と B はどちらも R の先頭 k-1 塩基で終わり、
-        // R の末尾 k-1 塩基で始まる(= R が入次数2・出次数2になる)。
+        // 反復
+        // A と B はどちらも R の先頭 k-1 塩基で終わり、
+        // R の末尾 k-1 塩基で始まる(= R が入次数 2 ・出次数 2 になる)
         private const string ユニティグR = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
         private const string ユニティグA = "GAGCAGAGTCGTTCTGCGAGGACAGTTCGCGAGCCCTCCGTC";
@@ -70,7 +71,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// A R B R の環を組み、R が入次数2・出次数2になっていることまで確かめる。
+        /// A R B R の環を組み、R が入次数 2 ・出次数 2 になっていることまで確かめる
         /// </summary>
         private static (UnitigGraph A_グラフ, List<string> A_ユニティグ配列, int A_a, int A_b, int A_r) Get_環()
         {
@@ -81,11 +82,11 @@ namespace Tsumiki.Tests.Core
             var l_b = ContigMaker.Get_頂点番号(2);
             var l_r = ContigMaker.Get_頂点番号(3);
 
-            // この前提が崩れたら以降の検証は意味を持たない。
+            // この前提が崩れたら以降の検証は意味を持たない
             Assert.Equal(2, l_グラフ.A_出辺[l_r].Count);
             Assert.Equal(2, l_グラフ.Get_入次数(l_r));
 
-            // 入口も出口も A と B の2つ、というのがこの形の要点。
+            // 入口も出口も A と B の 2 つ、というのがこの形の要点
             Assert.Equal(
                 new HashSet<int> { l_a, l_b },
                 [.. l_グラフ.A_出辺[l_r]]);
@@ -99,7 +100,7 @@ namespace Tsumiki.Tests.Core
             var (l_グラフ, l_ユニティグ配列, l_a, l_b, _) = Get_環();
             var l_頂点数 = l_グラフ.A_出辺.Count;
 
-            // A の次は B、B の次は A(= 1本の環)という証拠だけを与える。
+            // A の次は B、B の次は A(= 1 本の環)という証拠だけを与える
             Dictionary<(int, int), ulong> l_ペア連結 = new()
             {
                 [(l_a, l_b)] = 30,
@@ -114,7 +115,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_頂点数 + 2, l_グラフ.A_出辺.Count);
             Assert.Equal(ユニティグR, l_ユニティグ配列[l_頂点数]);
 
-            // A →(コピー1)→ B →(コピー2)→ A の一本道になっていること。
+            // A →(コピー 1)→ B →(コピー 2)→ A の一本道になっていること
             var l_Aの次 = Assert.Single(l_グラフ.A_出辺[l_a]);
             var l_Bの次 = Assert.Single(l_グラフ.A_出辺[l_b]);
             Assert.NotEqual(l_Aの次, l_Bの次);
@@ -129,7 +130,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_グラフ, l_ユニティグ配列, l_a, l_b, _) = Get_環();
 
-            // A の次は A、B の次は B(= 2本の独立した環)という証拠。
+            // A の次は A、B の次は B(= 2 本の独立した環)という証拠
             Dictionary<(int, int), ulong> l_ペア連結 = new()
             {
                 [(l_a, l_a)] = 30,
@@ -154,7 +155,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_グラフ, l_ユニティグ配列, l_a, l_b, l_r) = Get_環();
 
-            // 1本の環と2本の環がほぼ拮抗している。
+            // 1 本の環と 2 本の環がほぼ拮抗している
             Dictionary<(int, int), ulong> l_ペア連結 = new()
             {
                 [(l_a, l_b)] = 15,

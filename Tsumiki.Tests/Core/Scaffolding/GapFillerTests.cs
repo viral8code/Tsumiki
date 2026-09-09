@@ -9,11 +9,11 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// スキャフォールドのギャップ(N の連続)を、de Bruijn グラフ上で
-    /// 両端を繋ぐ経路を探して実配列に置き換える処理の検証。
-    ///
+    /// 両端を繋ぐ経路を探して実配列に置き換える処理の検証<br/>
     /// contig が途切れるのは配列が存在しないからではなく、分岐でどちらへ
-    /// 進むか決められなかったからであることが多い。その場合ギャップを埋める
-    /// 配列は k-mer 集合の中に実在しており、両端から辿れば復元できる。
+    /// 進むか決められなかったからであることが多い<br/>
+    /// その場合ギャップを埋める
+    /// 配列は k-mer 集合の中に実在しており、両端から辿れば復元できる
     /// </summary>
     public class GapFillerTests : IDisposable
     {
@@ -79,12 +79,13 @@ namespace Tsumiki.Tests.Core
         public void Run_UniquePathThroughTheGraph_RestoresTheTrueSequence()
         {
             const int k = 21;
-            // 200bp の非反復的な配列。k=21 なので偶然の重複はまず起きない。
+            // 200bp の非反復的な配列
+            // k=21 なので偶然の重複はまず起きない
             var truth = RandomSequence(200, seed: 20260903);
 
             using var index = this.BuildIndex(k, truth);
 
-            // 真ん中 40bp を N に置き換えたスキャフォールドを作る。
+            // 真ん中 40bp を N に置き換えたスキャフォールドを作る
             const int gapStart = 80;
             const int gapLength = 40;
             var withGap = truth[..gapStart] + new string('N', gapLength) + truth[(gapStart + gapLength)..];
@@ -96,7 +97,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, stats.A_埋めたギャップ数);
             Assert.Equal(gapLength, stats.A_埋めた塩基数);
 
-            // 埋めた結果は元の配列そのものに戻っていなければならない。
+            // 埋めた結果は元の配列そのものに戻っていなければならない
             Assert.Equal(truth, ReadSingleSequence(path));
         }
 
@@ -108,9 +109,9 @@ namespace Tsumiki.Tests.Core
 
             using var index = this.BuildIndex(k, truth);
 
-            // 実際の欠損は 40bp だが、推定を誤って 30 個の N になっている状況。
+            // 実際の欠損は 40bp だが、推定を誤って 30 個の N になっている状況
             // ギャップ長推定はインサートサイズ推定のばらつきを引き継ぐため、
-            // ぴったりの長さしか探さないと現実にはまず埋まらない。
+            // ぴったりの長さしか探さないと現実にはまず埋まらない
             const int gapStart = 80;
             const int actualMissing = 40;
             var withGap = truth[..gapStart] + new string('N', 30) + truth[(gapStart + actualMissing)..];
@@ -123,8 +124,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// ギャップを埋める経路が複数ある場合、どれが正しいか決められない。
-        /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全。
+        /// ギャップを埋める経路が複数ある場合、どれが正しいか決められない<br/>
+        /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全
         /// </summary>
         [Fact]
         public void Run_MultiplePathsFitTheGap_LeavesItAsNRatherThanGuessing()
@@ -132,7 +133,7 @@ namespace Tsumiki.Tests.Core
             const int k = 21;
             var prefix = RandomSequence(80, seed: 11);
             var suffix = RandomSequence(80, seed: 12);
-            // 同じ長さで中身だけ違う2通りの中間配列を、どちらも k-mer 集合に入れる。
+            // 同じ長さで中身だけ違う 2 通りの中間配列を、どちらも k-mer 集合に入れる
             var middleA = RandomSequence(40, seed: 13);
             var middleB = RandomSequence(40, seed: 14);
 
@@ -146,13 +147,13 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, stats.A_総ギャップ数);
             Assert.Equal(0, stats.A_埋めたギャップ数);
             Assert.Equal(1, stats.A_一意に定まらなかった数);
-            // N はそのまま残っていること。
+            // N はそのまま残っていること
             Assert.Contains('N', ReadSingleSequence(path));
         }
 
         /// <summary>
         /// 両端を繋ぐ経路がグラフ上に存在しない(本当に配列が無い)場合は、
-        /// 当然埋められない。
+        /// 当然埋められない
         /// </summary>
         [Fact]
         public void Run_NoPathConnectsTheTwoSides_LeavesItAsN()
@@ -161,7 +162,7 @@ namespace Tsumiki.Tests.Core
             var left = RandomSequence(80, seed: 21);
             var right = RandomSequence(80, seed: 22);
 
-            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない。
+            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない
             using var index = this.BuildIndex(k, left, right);
 
             var withGap = left + new string('N', 40) + right;

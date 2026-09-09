@@ -4,17 +4,17 @@ using Tsumiki.Core;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペア証拠を生カウントではなく期待本数との比で測るための較正器の検証。
-    ///
+    /// ペア証拠を生カウントではなく期待本数との比で測るための較正器の検証<br/>
     /// Scaffolder・ContigMaker(分岐選択)・BeamSearchExtender(先読みスコア)が
-    /// 同じ較正を共有するために括り出したもの。ここでは較正器そのものの
+    /// 同じ較正を共有するために括り出したもの<br/>
+    /// ここでは較正器そのものの
     /// フォールバック規則と、「短い辺には厳しく、長い辺には緩く」という
-    /// 固定閾値の偏りが正規化で解消されることを検証する。
+    /// 固定閾値の偏りが正規化で解消されることを検証する
     /// </summary>
     public class EvidenceCalibratorTests
     {
         /// <summary>
-        /// 中央 400 付近に集まるフラグメント長の標本。
+        /// 中央 400 付近に集まるフラグメント長の標本
         /// </summary>
         private static List<int> Get_同一ユニティグ標本(int p_件数 = 2000)
         {
@@ -42,7 +42,7 @@ namespace Tsumiki.Tests.Core
         public void Get_較正器_IsUnusable_WhenEveryUnitigIsShorterThanTheFragment()
         {
             // すべての unitig がフラグメントより短いと、期待位置数の合計が 0 になり
-            // 密度を較正できない(0 除算を避けて安全にフォールバックする)。
+            // 密度を較正できない(0 除算を避けて安全にフォールバックする)
             var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 100, [50L, 80L]);
 
             Assert.False(l_較正器.A_使えるか);
@@ -58,15 +58,15 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 較正器の核心: 同じ観測本数でも、短い unitig への辺は正規化後の値が
-        /// 大きくなる(=期待が小さいので少ない観測でも強い支持とみなされる)。
-        /// これが「固定閾値10は短い辺には厳しく、長い辺には緩すぎる」という
-        /// 提案Dの問題意識そのものへの解答になっている。
+        /// 大きくなる(=期待が小さいので少ない観測でも強い支持とみなされる)<br/>
+        /// これが「固定閾値 10 は短い辺には厳しく、長い辺には緩すぎる」という
+        /// 提案Dの問題意識そのものへの解答になっている
         /// </summary>
         [Fact]
         public void Get_正規化済み支持_IsHigherForTheSameRawCount_WhenTheFlankingUnitigIsShorter()
         {
             // 分岐元(片側)の長さは固定し、行き先側の長さだけを短い/長いで変える
-            // (現実の分岐選択でも、変わるのは行き先の unitig 長のほうである)。
+            // (現実の分岐選択でも、変わるのは行き先の unitig 長のほうである)
             var l_標本 = Get_同一ユニティグ標本();
             var l_較正器 = 証拠較正器.Get_較正器(l_標本, p_リード長: 100, [100_000L, 150L, 50_000L]);
 
@@ -79,7 +79,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 観測本数がちょうど期待本数どおりなら比はおよそ 1.0 になること。
+        /// 観測本数がちょうど期待本数どおりなら比はおよそ 1.0 になること
         /// </summary>
         [Fact]
         public void Get_正規化済み支持_IsAboutOne_WhenObservedMatchesIdeal()
@@ -89,7 +89,7 @@ namespace Tsumiki.Tests.Core
             var l_較正器 = 証拠較正器.Get_較正器(l_標本, p_リード長: 100, l_ユニティグ長一覧);
 
             // 密度較正に使ったのと同じ長さの unitig 同士の辺なら、
-            // 「観測本数 = 密度 x 期待位置数」を代入すれば比はちょうど1になる。
+            // 「観測本数 = 密度 x 期待位置数」を代入すれば比はちょうど 1 になる
             var l_モデル = new PairedDistanceModel(l_標本, p_リード長: 100);
             var l_期待位置数 = l_モデル.Get_期待位置数(50_000, 50_000, 0);
             var l_密度相当の観測本数 = (ulong)Math.Round(l_標本.Count / (3 * l_モデル.Get_期待位置数_単一(50_000)) * l_期待位置数);

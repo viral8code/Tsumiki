@@ -7,18 +7,18 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// unitig グラフの GFA1 出力の検証。
-    ///
+    /// unitig グラフの GFA1 出力の検証<br/>
     /// 決められない分岐は今まで打ち切り点になるだけで理由が出力に残らな
-    /// かった。GFA として書き出せば、Bandage 等のビューアでグラフの形が
-    /// 直接見えるようになる。
+    /// かった<br/>
+    /// GFA として書き出せば、Bandage 等のビューアでグラフの形が
+    /// 直接見えるようになる
     /// </summary>
     public class GfaWriterTests : IDisposable
     {
         private const int AmbiguousKmer = int.MinValue;
         private const int K = 8;
 
-        // BeamSearchExtenderTests と同じ構成: A が B/C へ分岐する。
+        // BeamSearchExtenderTests と同じ構成: A が B/C へ分岐する
         private const string UnitigA = "TGGCAAGTCACTCTCGACCGA";
         private const string UnitigB = "CGACCGAACGGCGCCGGATC";
         private const string UnitigC = "CGACCGACTGTAATTCTACC";
@@ -104,9 +104,9 @@ namespace Tsumiki.Tests.Core
 
             var lLines = File.ReadAllLines(path).Where(l => l.StartsWith("L\t")).ToList();
 
-            // A は B・C の両方へ分岐する(2つの物理的な隣接)。
-            // 各隣接は v→w と w^1→v^1 の双子として内部的には2回現れるが、
-            // GFA には1本ずつしか出ないこと。
+            // A は B・C の両方へ分岐する(2 つの物理的な隣接)
+            // 各隣接は v→w と w^1→v^1 の双子として内部的には 2 回現れるが、
+            // GFA には 1 本ずつしか出ないこと
             Assert.Equal(2, lLines.Count);
             Assert.Contains(lLines, l => l == $"L\t1\t+\t2\t+\t{K - 1}M");
             Assert.Contains(lLines, l => l == $"L\t1\t+\t3\t+\t{K - 1}M");

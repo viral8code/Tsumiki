@@ -5,14 +5,14 @@ using Tsumiki.Model.Evaluation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 複数のアセンブリ候補から1つを選ぶ規則の検証。
-    ///
-    /// 単一のスコアに畳む方式を採らなかった経緯がそのままここの主題になる。
+    /// 複数のアセンブリ候補から 1 つを選ぶ規則の検証<br/>
+    /// 単一のスコアに畳む方式を採らなかった経緯がそのままここの主題になる<br/>
     /// 「NG50 × 完全性 × 正確性」で選ぶ実装を試したところ、反復配列を飛ばして
     /// 中間を落としたキメラ(完全性 0.675、NG50 16,300)が、正直に途切れた答え
-    /// (完全性 0.933、NG50 8,300)より高い点になった。連続性の利得が
+    /// (完全性 0.933、NG50 8,300)より高い点になった<br/>
+    /// 連続性の利得が
     /// 完全性の損失を上回るためで、指数を調整して隠すのではなく
-    /// 「まず完全性で足切りしてから連続性を見る」という順序にした。
+    /// 「まず完全性で足切りしてから連続性を見る」という順序にした
     /// </summary>
     public class AssemblySelectorTests
     {
@@ -20,7 +20,7 @@ namespace Tsumiki.Tests.Core
             int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0,
             int p_環状本数 = 0, double p_環状化率 = 0)
         {
-            // 期待延べ数を固定し、そこから逆算して欠損・過剰を決める。
+            // 期待延べ数を固定し、そこから逆算して欠損・過剰を決める
             const long l_期待延べ数 = 1_000_000;
             var l_実行結果 = new アセンブリ実行結果(
                 p_k長, $"k{p_k長}_unitigs.fasta", $"k{p_k長}_contigs.fasta",
@@ -55,8 +55,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 完全性が同程度なら、連続性が高いほうを採る。
-        /// Axy の実データ(どの k でも配列は落ちず、k=63 が最も繋がる)がこの形。
+        /// 完全性が同程度なら、連続性が高いほうを採る<br/>
+        /// Axy の実データ(どの k でも配列は落ちず、k=63 が最も繋がる)がこの形
         /// </summary>
         [Fact]
         public void Select_SimilarCompleteness_PicksTheMostContiguous()
@@ -72,8 +72,9 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// R. sphaeroides の実測値そのもの。完全性の差(97.1% と 93.2%)は
-        /// 許容差に収まるため両方が残り、連続性で k=31 が選ばれる。
+        /// R. sphaeroides の実測値そのもの<br/>
+        /// 完全性の差(97.1% と 93.2%)は
+        /// 許容差に収まるため両方が残り、連続性で k=31 が選ばれる
         /// </summary>
         [Fact]
         public void Select_RealWorldSpread_PicksTheKnownBestK()
@@ -90,9 +91,10 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// これが二段階にした理由。連続性では圧倒的に上でも、
-        /// 完全性が許容差を超えて落ちている候補は採らない。
-        /// 掛け算で選んでいたらこちらが選ばれていた。
+        /// これが二段階にした理由<br/>
+        /// 連続性では圧倒的に上でも、
+        /// 完全性が許容差を超えて落ちている候補は採らない<br/>
+        /// 掛け算で選んでいたらこちらが選ばれていた
         /// </summary>
         [Fact]
         public void Select_MuchMoreContiguousButIncomplete_IsRejected()
@@ -107,7 +109,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 同じ領域を重複して出している候補も、連続性が高くても採らない。
+        /// 同じ領域を重複して出している候補も、連続性が高くても採らない
         /// </summary>
         [Fact]
         public void Select_MoreContiguousButDuplicated_IsRejected()
@@ -122,12 +124,13 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 完全性には2つの段階がある。足切り(許容差)を通っても、同点とみなす幅を
-        /// 超えて劣っていれば、連続性を見るより前に負ける。
-        ///
+        /// 完全性には 2 つの段階がある<br/>
+        /// 足切り(許容差)を通っても、同点とみなす幅を
+        /// 超えて劣っていれば、連続性を見るより前に負ける<br/>
         /// 足切りだけを唯一の関門にすると、「足切りぎりぎりまで配列を落として
-        /// 連続性を買う」取引が常に通ってしまう。7Mbp級では 1 ポイントが
-        /// 70kbp に相当し、それは連続性と引き換えにしてよい量ではない。
+        /// 連続性を買う」取引が常に通ってしまう<br/>
+        /// 7Mbp級では 1 ポイントが
+        /// 70kbp に相当し、それは連続性と引き換えにしてよい量ではない
         /// </summary>
         [Fact]
         public void Select_CompletenessGapBeyondTheTieWidth_LosesBeforeContiguity()
@@ -142,8 +145,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める。
-        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界。
+        /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める<br/>
+        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界
         /// </summary>
         [Fact]
         public void Select_CompletenessGapWithinTheTieWidth_FallsThroughToContiguity()
@@ -171,18 +174,18 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 提案H: 完全性・正確性が同程度でも、より多くの複製単位を
-        /// 環状に閉じられた候補を、NG50 より優先して選ぶこと。
-        /// 「4.5Mbが1本に閉じプラスミドを取りこぼした」候補より
-        /// 「染色体は2本に割れたがプラスミドも含め2本閉じた」候補を選ぶ、
-        /// という目標関数そのものの検証。
+        /// 環状に閉じられた候補を、NG50 より優先して選ぶこと<br/>
+        /// 「4.5Mbが 1 本に閉じプラスミドを取りこぼした」候補より
+        /// 「染色体は 2 本に割れたがプラスミドも含め 2 本閉じた」候補を選ぶ、
+        /// という目標関数そのものの検証
         /// </summary>
         [Fact]
         public void Select_MoreClosedReplicons_IsPreferredOverHigherNG50()
         {
             var 選択 = AssemblySelector.Get_最良([
-                // NG50 は高いが、環状に閉じた複製単位は無い。
+                // NG50 は高いが、環状に閉じた複製単位は無い
                 Get_候補(63, 200_000, 0.97, p_環状本数: 0, p_環状化率: 0.0),
-                // NG50 は低いが、2本(染色体+プラスミド)が環状に閉じている。
+                // NG50 は低いが、2 本(染色体+プラスミド)が環状に閉じている
                 Get_候補(31, 50_000, 0.97, p_環状本数: 2, p_環状化率: 0.98),
             ]);
 
@@ -192,7 +195,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 環状本数が同じなら、閉じた総塩基がゲノム推定サイズに占める割合
-        /// (環状化率)で比べる。
+        /// (環状化率)で比べる
         /// </summary>
         [Fact]
         public void Select_SameClosedReplicronCount_PicksTheHigherClosedFraction()
@@ -207,8 +210,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 環状化の状況が全く同じ(両方0)なら、これまでどおり NG50 で決める
-        /// (既存の挙動を壊していないことの確認)。
+        /// 環状化の状況が全く同じ(両方 0)なら、これまでどおり NG50 で決める
+        /// (既存の挙動を壊していないことの確認)
         /// </summary>
         [Fact]
         public void Select_NoCandidateIsCircular_FallsBackToNG50()

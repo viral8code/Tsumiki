@@ -3,14 +3,14 @@
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// ContigMaker のうち、確定した結合を辿って contig 配列を組み立てる部分。
+    /// ContigMaker のうち、確定した結合を辿って contig 配列を組み立てる部分<br/>
     /// (unitig へのマッピングは ContigMaker.Mapping.cs、辺の選択・結合の確定は
     /// ContigMaker.cs の V_結合_コンティグ を参照)
     /// </summary>
     internal partial class ContigMaker
     {
         /// <summary>
-        /// 符号付き unitig ID(正=順鎖、負=逆鎖)をグラフの頂点番号に変換する。
+        /// 符号付き unitig ID(正=順鎖、負=逆鎖)をグラフの頂点番号に変換する
         /// </summary>
         internal static int Get_頂点番号(int p_符号付きユニティグID)
         {
@@ -18,7 +18,7 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 始点から結合を辿って1本の contig を組み立て、結果を各一覧へ追加する。
+        /// 始点から結合を辿って 1 本の contig を組み立て、結果を各一覧へ追加する
         /// </summary>
         private static void V_実行_walk(
             List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点,
@@ -32,8 +32,9 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 始点から結合を辿って配列を組み立てる。経路が始点へ戻ってきた場合は
-        /// 環状として報告する。
+        /// 始点から結合を辿って配列を組み立てる<br/>
+        /// 経路が始点へ戻ってきた場合は
+        /// 環状として報告する
         /// </summary>
         private static (string A_配列, bool A_環状か) Get_walk結果(
             List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点,
@@ -53,9 +54,10 @@ namespace Tsumiki.Core
                 }
                 if (p_訪問済み[l_次 >> 1])
                 {
-                    // 始点へ戻ってきた = 経路が閉じている。細菌の染色体と
+                    // 始点へ戻ってきた = 経路が閉じている
+                    // 細菌の染色体と
                     // プラスミドは環状なので、これは「その複製単位を
-                    // 完全に1周組み上げられた」ことを意味する。
+                    // 完全に 1 周組み上げられた」ことを意味する
                     l_環状か = l_次 == p_始点;
                     break;
                 }
@@ -65,7 +67,7 @@ namespace Tsumiki.Core
                     break;
                 }
                 // 構築方法より k-1 のオーバーラップは保証されているが、
-                // 万一崩れていた場合に誤った配列を作らないよう検証する。
+                // 万一崩れていた場合に誤った配列を作らないよう検証する
                 if (!Get_重なりが一致するか(l_出力, l_配列, p_重なり長))
                 {
                     break;
@@ -77,8 +79,9 @@ namespace Tsumiki.Core
             }
 
             // 環状では末尾 unitig が始点との重なり k-1 塩基を含んでおり、
-            // それは配列の先頭にも現れる。線状の連結では次の unitig 側から
-            // 取り除くが、環状では「次」が出力済みの始点なので末尾から取り除く。
+            // それは配列の先頭にも現れる
+            // 線状の連結では次の unitig 側から
+            // 取り除くが、環状では「次」が出力済みの始点なので末尾から取り除く
             if (l_環状か && l_出力.Length > p_重なり長)
             {
                 _ = l_出力.Remove(l_出力.Length - p_重なり長, p_重なり長);
@@ -89,7 +92,7 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// 出力の末尾 p_重なり長 文字と unitig の先頭 p_重なり長 文字が
-        /// 一致するかどうかを判定する。
+        /// 一致するかどうかを判定する
         /// </summary>
         private static bool Get_重なりが一致するか(StringBuilder p_出力, string p_ユニティグ, int p_重なり長)
         {

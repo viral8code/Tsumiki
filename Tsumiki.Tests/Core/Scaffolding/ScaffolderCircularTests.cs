@@ -8,11 +8,11 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状であることの目印がスキャフォールドまで残ることを固定する。
-    ///
+    /// 環状であることの目印がスキャフォールドまで残ることを固定する<br/>
     /// 環状かどうかは ContigMaker が名前に書き込み、AssemblyScorer と
-    /// 閉じ目の検証がその名前を根拠に数える。間のスキャフォールディングで
-    /// 名前を付け替えて目印を落とすと、下流は黙って「環状は0本」と答える。
+    /// 閉じ目の検証がその名前を根拠に数える<br/>
+    /// 間のスキャフォールディングで
+    /// 名前を付け替えて目印を落とすと、下流は黙って「環状は 0 本」と答える
     /// </summary>
     public class ScaffolderCircularTests : IDisposable
     {
@@ -38,10 +38,11 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
-        // 環をちょうど1周する3本。隣り合う unitig が k-1 塩基ずつ重なり、
-        // 末尾の k-1 塩基が先頭の k-1 塩基と一致する。
+        // 環をちょうど 1 周する 3 本
+        // 隣り合う unitig が k-1 塩基ずつ重なり、
+        // 末尾の k-1 塩基が先頭の k-1 塩基と一致する
         // 複製単位として数えてもらえる長さ(Consts.環状として数える最小長)を
-        // 超えるようにしないと、環状の目印が付かない。
+        // 超えるようにしないと、環状の目印が付かない
         private static readonly string 環 = Get_乱数配列(円周, p_種: 20250908);
 
         private static readonly string ユニティグA = 環[..(400 + k長 - 1)];
@@ -91,7 +92,7 @@ namespace Tsumiki.Tests.Core
             var l_エントリ = Assert.Single(FastaReader.Get_全エントリ(l_スキャフォールドパス));
             Assert.Contains(Consts.環状の目印, l_エントリ.A_ID, StringComparison.OrdinalIgnoreCase);
 
-            // 環状の目印を落とすと、ここが 0 になって完全長の判定が通らなくなる。
+            // 環状の目印を落とすと、ここが 0 になって完全長の判定が通らなくなる
             Assert.Equal(1, CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
         }
 

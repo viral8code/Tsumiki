@@ -9,8 +9,9 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// レポートの書き出しを固定する。JSON は手で組み立てているので、
-    /// 実際に構文として通ることと、判定の要点が載っていることを確かめる。
+    /// レポートの書き出しを固定する<br/>
+    /// JSON は手で組み立てているので、
+    /// 実際に構文として通ることと、判定の要点が載っていることを確かめる
     /// </summary>
     public class ReportWriterTests : IDisposable
     {
@@ -32,7 +33,8 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>リードに裏付けの無い位置が一つも無い検査結果。</summary>
+        /// <summary>リードに裏付けの無い位置が一つも無い検査結果<br/>
+        /// </summary>
         private static 支持検査結果 Get_良好な支持()
         {
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
@@ -108,7 +110,7 @@ namespace Tsumiki.Tests.Core
             Assert.Contains("depth-unmeasured", l_理由);
             Assert.Contains("closure-unverified", l_理由);
 
-            // 測っていない項目は null として区別できる形で出す。
+            // 測っていない項目は null として区別できる形で出す
             Assert.Equal(JsonValueKind.Null, l_JSON.GetProperty("polish").ValueKind);
             Assert.Equal(JsonValueKind.Null, l_JSON.GetProperty("circular_closure").ValueKind);
         }
@@ -143,7 +145,7 @@ namespace Tsumiki.Tests.Core
             Assert.Contains("unitig7+", l_行[1]);
             Assert.Contains("unreachable", l_行[2]);
 
-            // 列数は見出しと一致していなければ表として読めない。
+            // 列数は見出しと一致していなければ表として読めない
             var l_列数 = l_行[0].Split('\t').Length;
             Assert.All(l_行, x => Assert.Equal(l_列数, x.Split('\t').Length));
         }

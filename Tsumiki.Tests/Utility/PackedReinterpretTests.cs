@@ -5,14 +5,16 @@ namespace Tsumiki.Tests.Utility
 {
     /// <summary>
     /// ディスク上のパック済みバイト列を、塩基列へ展開せずそのままパック値として
-    /// 読み替えられることを固定する。並びの規約が同じなので余りビット分の
-    /// シフトだけで一致するはずで、ここがずれると信頼 k-mer 集合が丸ごと変わる。
+    /// 読み替えられることを固定する<br/>
+    /// 並びの規約が同じなので余りビット分の
+    /// シフトだけで一致するはずで、ここがずれると信頼 k-mer 集合が丸ごと変わる
     /// </summary>
     public class PackedReinterpretTests
     {
         private static byte[] Get_パック済み(byte[] p_塩基ID列)
         {
-            // CountingDB.V_登録 と同じ手順。端数は A で埋める。
+            // CountingDB.V_登録 と同じ手順
+            // 端数は A で埋める
             var l_パック = new byte[(p_塩基ID列.Length + 3) / 4];
             var l_位置 = 0;
             for (var i = 0; i < p_塩基ID列.Length; i += 4)

@@ -7,12 +7,12 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 分岐を1つも持たない閉路の回収を固定する。
-    ///
-    /// unitig の開始点は「入次数が1でない、または唯一の予測元が分岐している」
-    /// k-mer として選ぶため、全頂点が入次数1・出次数1の閉路は開始点を1つも
-    /// 持たない。そのままだと、きれいな環状染色体や小さなプラスミドが
-    /// 出力から丸ごと消える。
+    /// 分岐を 1 つも持たない閉路の回収を固定する<br/>
+    /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」
+    /// k-mer として選ぶため、全頂点が入次数 1 ・出次数 1 の閉路は開始点を 1 つも
+    /// 持たない<br/>
+    /// そのままだと、きれいな環状染色体や小さなプラスミドが
+    /// 出力から丸ごと消える
     /// </summary>
     public class CyclicUnitigFinderTests : IDisposable
     {
@@ -45,8 +45,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 環状配列と線状配列から k-mer インデックスを作る。
-        /// 環状側は末尾から先頭へ回り込む窓まで登録し、閉路そのものにする。
+        /// 環状配列と線状配列から k-mer インデックスを作る<br/>
+        /// 環状側は末尾から先頭へ回り込む窓まで登録し、閉路そのものにする
         /// </summary>
         private TrustedKmerIndex Get_インデックス(string? p_環状配列, string? p_線状配列)
         {
@@ -83,7 +83,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 配列が環状配列の回転(順鎖・逆鎖のいずれか)になっているか。
+        /// 配列が環状配列の回転(順鎖・逆鎖のいずれか)になっているか
         /// </summary>
         private static bool Get_環の1周か(string p_配列, string p_環状配列)
         {
@@ -98,7 +98,7 @@ namespace Tsumiki.Tests.Core
             var l_環状 = Get_乱数配列(300, 31);
             using var l_インデックス = this.Get_インデックス(l_環状, null);
 
-            // この前提が崩れたら、以降のテストは意味を失う。
+            // この前提が崩れたら、以降のテストは意味を失う
             Assert.Empty(l_インデックス.Get_開始kmer一覧());
         }
 
@@ -115,7 +115,7 @@ namespace Tsumiki.Tests.Core
 
             var l_配列 = Assert.Single(UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer));
 
-            // 環を1周し、次の k-mer で出発点に戻る手前まで伸びる。
+            // 環を 1 周し、次の k-mer で出発点に戻る手前まで伸びる
             Assert.Equal(l_環状.Length + k長 - 1, l_配列.Length);
             Assert.True(Get_環の1周か(l_配列, l_環状), "環の1周になっていない");
         }

@@ -33,8 +33,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Compute_KnownN50Example()
         {
-            // 長さ: 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 (合計550)。
-            // 半分(275)に達するのは 100+90+80+70=340 の時点(4本目)なので N50=70, L50=4。
+            // 長さ: 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 (合計 550)
+            // 半分(275)に達するのは 100+90+80+70=340 の時点(4 本目)なので N50=70, L50=4
             List<string> sequences =
             [
                 new string('A', 100),
@@ -62,7 +62,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Compute_GcPercent_IgnoresNRunsAndIsCaseInsensitive()
         {
-            // G/C: 4, A/T: 4, N: 2 -> GC% は N を除いた8塩基中4塩基 = 50%。
+            // G/C: 4, A/T: 4, N: 2 -> GC% は N を除いた 8 塩基中 4 塩基 = 50%
             var stats = AssemblyStatsReporter.Get_統計(["ggccaattNN"]);
 
             Assert.Equal(50.0, stats.A_GC率, precision: 6);

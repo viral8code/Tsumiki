@@ -7,10 +7,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 最終配列へのリード再マッピングと多数決による置換訂正を固定する。
-    ///
+    /// 最終配列へのリード再マッピングと多数決による置換訂正を固定する<br/>
     /// 直すべきものを直すことと同じくらい、根拠が無い位置を動かさないことが
-    /// 重要なので、両方を確かめる。
+    /// 重要なので、両方を確かめる
     /// </summary>
     public class PolisherTests : IDisposable
     {
@@ -50,7 +49,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 真の配列から等間隔にリードを切り出して FASTQ にする。
+        /// 真の配列から等間隔にリードを切り出して FASTQ にする
         /// </summary>
         private string V_書き出し_FASTQ(
             string p_真の配列, int p_リード長, int p_刻み, int p_開始 = 0, int? p_終了 = null)
@@ -64,7 +63,7 @@ namespace Tsumiki.Tests.Core
             {
                 var l_配列 = p_真の配列.Substring(i, p_リード長);
 
-                // 逆鎖側の経路も通るよう、1本おきに逆相補で出す。
+                // 逆鎖側の経路も通るよう、1 本おきに逆相補で出す
                 if (l_番号 % 2 == 1)
                 {
                     l_配列 = Util.V_逆相補(l_配列);
@@ -104,7 +103,7 @@ namespace Tsumiki.Tests.Core
         public void Get_磨いた結果_リードが届かない位置は動かさない()
         {
             var l_真の配列 = Get_乱数配列(2000, 2);
-            // 後半に誤りを置き、前半にしかリードを与えない。
+            // 後半に誤りを置き、前半にしかリードを与えない
             var l_誤り位置 = 1600;
             var l_文字 = l_真の配列.ToCharArray();
             l_文字[l_誤り位置] = l_文字[l_誤り位置] == 'G' ? 'T' : 'G';
@@ -138,7 +137,7 @@ namespace Tsumiki.Tests.Core
             Assert.NotNull(l_統計);
             Assert.Equal(2000, l_統計!.Value.A_評価できた位置数);
 
-            // 覆われていない後半のぶんが深度不足として出る。
+            // 覆われていない後半のぶんが深度不足として出る
             Assert.True(l_統計.Value.A_深度不足率 > 0.4, $"深度不足率={l_統計.Value.A_深度不足率}");
         }
     }

@@ -6,7 +6,7 @@
 
         /// <summary>
         /// p_ID は先頭の "@" を含む形で渡すこと
-        /// (FastqReader.Get_次のリード().A_ID がそのまま使える)。
+        /// (FastqReader.Get_次のリード().A_ID がそのまま使える)
         /// </summary>
         public void V_書き込み(string p_ID, string p_配列, string p_クオリティ)
         {

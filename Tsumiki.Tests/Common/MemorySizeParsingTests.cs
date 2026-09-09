@@ -4,9 +4,11 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Common
 {
     /// <summary>
-    /// -mem のサイズ指定("2G" など)の解釈を固定する。
-    /// 接尾辞は2進接頭辞(1K = 1024)。メモリ量の指定なので 1000 刻みより
-    /// 1024 刻みのほうが直感に合う。接尾辞が無い場合は MB とみなす。
+    /// -mem のサイズ指定("2G" など)の解釈を固定する<br/>
+    /// 接尾辞は 2 進接頭辞(1K = 1024)<br/>
+    /// メモリ量の指定なので 1000 刻みより
+    /// 1024 刻みのほうが直感に合う<br/>
+    /// 接尾辞が無い場合は MB とみなす
     /// </summary>
     public class MemorySizeParsingTests
     {
@@ -26,8 +28,9 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 接尾辞なしは MB。単なる数値で指定したときに「バイト」と解釈すると
-        /// 現実的にありえない小ささになるため。
+        /// 接尾辞なしは MB<br/>
+        /// 単なる数値で指定したときに「バイト」と解釈すると
+        /// 現実的にありえない小ささになるため
         /// </summary>
         [Theory]
         [InlineData("768", 768L * 1024 * 1024)]
@@ -57,7 +60,7 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 表示は読みやすい形に戻ること(パラメータの一覧表示で使う)。
+        /// 表示は読みやすい形に戻ること(パラメータの一覧表示で使う)
         /// </summary>
         [Theory]
         [InlineData(2L * 1024 * 1024 * 1024, "2 GB")]

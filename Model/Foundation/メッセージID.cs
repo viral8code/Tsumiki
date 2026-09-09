@@ -1,8 +1,10 @@
 ﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
-    /// 画面に出す文言の識別子。文言そのものは <see cref="Common.MessageCatalog"/> が
-    /// 言語ごとに持つ。呼び出し側はこの ID だけを指す。
+    /// 画面に出す文言の識別子<br/>
+    /// 文言そのものは <see cref="Common.MessageCatalog"/> が
+    /// 言語ごとに持つ<br/>
+    /// 呼び出し側はこの ID だけを指す
     /// </summary>
     internal enum メッセージID
     {

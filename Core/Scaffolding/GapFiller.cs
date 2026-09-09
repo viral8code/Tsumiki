@@ -10,19 +10,19 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
-    /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える。
-    ///
+    /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える<br/>
     /// contig が途切れる原因は配列の不在ではなく分岐の未解決であることが多く、
-    /// その場合ギャップを埋める配列は k-mer 集合の中に実在する。
-    ///
-    /// 経路がちょうど1本に定まったときだけ埋める。複数見つかった場合は
-    /// どれが正しいか決められないため N のまま残す。誤った配列で埋めるより、
-    /// 分からないことが分かる状態のほうが下流の解析にとって安全。
+    /// その場合ギャップを埋める配列は k-mer 集合の中に実在する<br/>
+    /// 経路がちょうど 1 本に定まったときだけ埋める<br/>
+    /// 複数見つかった場合は
+    /// どれが正しいか決められないため N のまま残す<br/>
+    /// 誤った配列で埋めるより、
+    /// 分からないことが分かる状態のほうが下流の解析にとって安全
     /// </summary>
     internal static class GapFiller
     {
         /// <summary>
-        /// スキャフォールドを読み込み、埋められるギャップを埋めて同じパスへ書き戻す。
+        /// スキャフォールドを読み込み、埋められるギャップを埋めて同じパスへ書き戻す
         /// </summary>
         public static ギャップ充填統計 V_充填_ギャップ(
             string p_スキャフォールドパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
@@ -49,7 +49,7 @@ namespace Tsumiki.Core.Scaffolding
                         continue;
                     }
 
-                    // N の連続区間 = 1つのギャップ。
+                    // N の連続区間 = 1 つのギャップ
                     var l_ギャップ開始 = l_位置;
                     while (l_位置 < l_配列.Length && l_配列[l_位置] == 'N')
                     {
@@ -99,8 +99,8 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// ギャップの左右の足場から、その間を埋める配列を探す。
-        /// 見つからない/一意に定まらない場合は null を返す。
+        /// ギャップの左右の足場から、その間を埋める配列を探す<br/>
+        /// 見つからない/一意に定まらない場合は null を返す
         /// </summary>
         private static string? Get_ギャップを埋める配列(
             StringBuilder p_左側の出力,
@@ -122,14 +122,15 @@ namespace Tsumiki.Core.Scaffolding
                 return null;
             }
 
-            // 左側の足場: 既に書き出した配列の末尾 k-mer。
+            // 左側の足場: 既に書き出した配列の末尾 k-mer
             var l_左のkmer = new byte[p_k長];
             for (var i = 0; i < p_k長; i++)
             {
                 l_左のkmer[i] = Util.Get_塩基ID(p_左側の出力[p_左側の出力.Length - p_k長 + i]);
             }
 
-            // 右側の足場: ギャップ直後の k-mer。ここへ到達できれば繋がったことになる。
+            // 右側の足場: ギャップ直後の k-mer
+            // ここへ到達できれば繋がったことになる
             var l_目標kmer = new byte[p_k長];
             for (var i = 0; i < p_k長; i++)
             {
@@ -142,7 +143,7 @@ namespace Tsumiki.Core.Scaffolding
             }
             if (!p_kmerインデックス.Get_含まれるか(l_左のkmer) || !p_kmerインデックス.Get_含まれるか(l_目標kmer))
             {
-                // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない。
+                // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない
                 return null;
             }
 

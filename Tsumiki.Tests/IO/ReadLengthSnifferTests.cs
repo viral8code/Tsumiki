@@ -3,7 +3,8 @@
 namespace Tsumiki.Tests.IO
 {
     /// <summary>
-    /// リードファイルからの代表リード長の抽出。k 長の自動選択の入力になる。
+    /// リードファイルからの代表リード長の抽出<br/>
+    /// k 長の自動選択の入力になる
     /// </summary>
     public class ReadLengthSnifferTests : IDisposable
     {
@@ -47,8 +48,9 @@ namespace Tsumiki.Tests.IO
         }
 
         /// <summary>
-        /// トリミング済みのデータではリード長がばらつく。平均や最大ではなく
-        /// 中央値を使うことで、少数の極端に短いリードに引きずられない。
+        /// トリミング済みのデータではリード長がばらつく<br/>
+        /// 平均や最大ではなく
+        /// 中央値を使うことで、少数の極端に短いリードに引きずられない
         /// </summary>
         [Fact]
         public void GetReadLength_TrimmedReads_ReturnsTheMedianRatherThanTheMeanOrMax()
@@ -61,7 +63,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void GetReadLength_StopsAfterTheSampleLimit()
         {
-            // 先頭2本だけを見れば 200 が中央値になる。ファイル全体を見ると 50。
+            // 先頭 2 本だけを見れば 200 が中央値になる
+            // ファイル全体を見ると 50
             var lengths = new[] { 200, 200 }.Concat(Enumerable.Repeat(50, 100)).ToArray();
             var path = this.WriteFastq("limited.fq", lengths);
 
@@ -79,7 +82,7 @@ namespace Tsumiki.Tests.IO
 
         /// <summary>
         /// k は「どちらのリードからも k-mer が取れる」必要があるため、
-        /// ペアで長さが違う場合は短いほうに合わせる。
+        /// ペアで長さが違う場合は短いほうに合わせる
         /// </summary>
         [Fact]
         public void GetReadLength_PairedFilesWithDifferentLengths_ReturnsTheShorterOne()

@@ -44,7 +44,7 @@ namespace Tsumiki.Tests.Utility
             var revComp = ToBytes(Util.V_逆相補("ACGTACGT"));
             var neverInserted = ToBytes("TTTTTTTT");
 
-            // カットオフ(2)を超えるよう複数回登録する。
+            // カットオフ(2)を超えるよう複数回登録する
             for (var i = 0; i < 5; i++)
             {
                 index.V_登録(inserted.AsSpan(), p_ワーカー番号: 0);
@@ -81,8 +81,9 @@ namespace Tsumiki.Tests.Utility
             var forward = ToBytes("ACGTACGT");
             var revComp = ToBytes(Util.V_逆相補("ACGTACGT"));
 
-            // 順鎖を3回、逆鎖を2回登録する。カウント段階では別キー扱いだが、
-            // カットオフ後の正規化されたエントリでは合算されているはず。
+            // 順鎖を 3 回、逆鎖を 2 回登録する
+            // カウント段階では別キー扱いだが、
+            // カットオフ後の正規化されたエントリでは合算されているはず
             for (var i = 0; i < 3; i++)
             {
                 index.V_登録(forward.AsSpan(), p_ワーカー番号: 0);
@@ -116,10 +117,9 @@ namespace Tsumiki.Tests.Utility
         /// k が 32 を超え 64 以下のとき使われる UInt128 経路(_trustedKmersMid)と、
         /// 64 を超えたときの KmerKey フォールバック経路のそれぞれで、
         /// 正規化(順鎖・逆鎖のどちらから問い合わせても同じ結果)と
-        /// カバレッジ合算が正しく行われることを確認する。
-        ///
+        /// カバレッジ合算が正しく行われることを確認する<br/>
         /// 150bp リードでは k=31 のままだと 31bp 以上の反復配列がすべて潰れ
-        /// contig N50 が伸びないため、k=63 前後で正しく動くことは品質上重要。
+        /// contig N50 が伸びないため、k=63 前後で正しく動くことは品質上重要
         /// </summary>
         [Theory]
         [InlineData(33)] // UInt128 経路の下限
@@ -131,7 +131,7 @@ namespace Tsumiki.Tests.Utility
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
             using var index = new TrustedKmerIndex(this._tempDir);
-            // 逆相補と自己一致しないよう、非周期的な塩基列を決定的に生成する。
+            // 逆相補と自己一致しないよう、非周期的な塩基列を決定的に生成する
             var seq = string.Concat(Enumerable.Range(0, k).Select(i => "ACGGTCATTGAC"[(i * 7) % 12]));
             var inserted = ToBytes(seq);
             var revComp = ToBytes(Util.V_逆相補(seq));
@@ -152,7 +152,7 @@ namespace Tsumiki.Tests.Utility
             Assert.True(index.Get_含まれるか(revComp));
             Assert.False(index.Get_含まれるか(neverInserted));
 
-            // 順鎖3回 + 逆鎖2回 が同一の正規化キーへ合算されているはず。
+            // 順鎖 3 回 + 逆鎖 2 回 が同一の正規化キーへ合算されているはず
             Assert.Equal(5UL, index.Get_カバレッジ(inserted));
             Assert.Equal(5UL, index.Get_カバレッジ(revComp));
         }
@@ -160,14 +160,15 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// k=63 の直鎖配列で、EnumerateTrustedKmers が UInt128 経路でも
         /// 正しく塩基列へ復元でき(UnpackMid)、隣接判定(CountOutEdges)が
-        /// 成立することを確認する。パック/アンパックの往復が壊れていると
-        /// unitig 構築が丸ごと機能しなくなるため、経路ごとに固定しておく。
+        /// 成立することを確認する<br/>
+        /// パック/アンパックの往復が壊れていると
+        /// unitig 構築が丸ごと機能しなくなるため、経路ごとに固定しておく
         /// </summary>
         [Fact]
         public void EnumerateAndDegrees_RoundTripThroughUInt128Path()
         {
             const int k = 63;
-            // 70塩基の非周期的な配列(k=63のk-merが8個取れる)。
+            // 70 塩基の非周期的な配列(k=63 のk-merが 8 個取れる)
             var seq = string.Concat(Enumerable.Range(0, 70).Select(i => "ACGGTCATTGACCTA"[(i * 11) % 15]));
 
             using var index = this.BuildLinearIndex(seq, k);
@@ -175,7 +176,7 @@ namespace Tsumiki.Tests.Utility
             var kmers = index.Get_信頼kmer一覧().ToList();
             Assert.NotEmpty(kmers);
             Assert.All(kmers, km => Assert.Equal(k, km.Length));
-            // 復元した k-mer は必ず集合に含まれていなければならない。
+            // 復元した k-mer は必ず集合に含まれていなければならない
             Assert.All(kmers, km => Assert.True(index.Get_含まれるか(km)));
 
             var bytes = ToBytes(seq);
@@ -185,8 +186,8 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 長さ len の直鎖配列(分岐なし)の全k-merをカットオフ以上登録する。
-        /// GraphSimplifierのテストとも共通で使える小さなヘルパー。
+        /// 長さ len の直鎖配列(分岐なし)の全k-merをカットオフ以上登録する<br/>
+        /// GraphSimplifierのテストとも共通で使える小さなヘルパー
         /// </summary>
         private TrustedKmerIndex BuildLinearIndex(string seq, int kmerLength)
         {
@@ -212,10 +213,10 @@ namespace Tsumiki.Tests.Utility
             using var index = this.BuildLinearIndex(seq, k);
             var bytes = ToBytes(seq);
 
-            // 途中のk-mer: ちょうど1通りだけ後続がある。
+            // 途中のk-mer: ちょうど 1 通りだけ後続がある
             Assert.Equal(1, index.Get_出次数(bytes.AsSpan(0, k)));
 
-            // 配列の末尾k-mer: これ以上後続がない(out-degree 0)。
+            // 配列の末尾k-mer: これ以上後続がない(out-degree 0)
             Assert.Equal(0, index.Get_出次数(bytes.AsSpan(bytes.Length - k, k)));
         }
 
@@ -256,7 +257,7 @@ namespace Tsumiki.Tests.Utility
 
             // 24bp・k=8 の非周期的な直鎖配列は 24-8+1=17 個のユニークk-mer位置を持ち、
             // 内部に重複(自己一致・逆相補との一致)がないよう検証済みの配列なので、
-            // 正規化後もちょうど17件になるはず。
+            // 正規化後もちょうど 17 件になるはず
             var count = index.Get_信頼kmer一覧().Count();
             Assert.Equal(17, count);
         }
@@ -265,7 +266,7 @@ namespace Tsumiki.Tests.Utility
         public void FindFirstKmers_FindsTheSingleStartOfALinearSequence()
         {
             // "ACGT"の繰り返しだと逆相補と自己一致してしまい分岐点が
-            // 複雑になるため、非周期的な配列を使う。
+            // 複雑になるため、非周期的な配列を使う
             const string seq = "GCTAAAGACAATTACATAACATAC"; // 非周期的
             const int k = 8;
             using var index = this.BuildLinearIndex(seq, k);
@@ -274,7 +275,7 @@ namespace Tsumiki.Tests.Utility
             var firstKmers = index.Get_開始kmer一覧();
 
             // 開始k-merとして、配列の先頭(またはその正規化された逆鎖)が
-            // 含まれているはず。
+            // 含まれているはず
             var startKmer = bytes.AsSpan(0, k).ToArray();
             var startRevComp = ToBytes(Util.V_逆相補(seq[..k]));
             Assert.Contains(firstKmers, fk => fk.SequenceEqual(startKmer) || fk.SequenceEqual(startRevComp));

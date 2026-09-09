@@ -4,29 +4,29 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// k-mer スペクトルから k-mer カットオフ(-kc)を自動選択する。
-    /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」。
-    ///
-    /// まず2成分混合モデル(<see cref="KmerSpectrumMixtureModel"/>)の適合を試みる。
+    /// k-mer スペクトルから k-mer カットオフ(-kc)を自動選択する<br/>
+    /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」<br/>
+    /// まず 2 成分混合モデル(<see cref="KmerSpectrumMixtureModel"/>)の適合を試みる<br/>
     /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど
-    /// 谷が視認できないデータでも働く。適合に失敗した場合のみ、谷検出
-    /// (<see cref="KmerHistogram.Get_推奨カットオフ"/>)にフォールバックする。
-    ///
+    /// 谷が視認できないデータでも働く<br/>
+    /// 適合に失敗した場合のみ、谷検出
+    /// (<see cref="KmerHistogram.Get_推奨カットオフ"/>)にフォールバックする<br/>
     /// 混合モデルが適合できた場合、その単一コピー平均・信頼下限を
     /// ConfigurationManager.A_スペクトルモデル に公開し、CopyNumberEstimator の
-    /// 単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする。
+    /// 単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする
     /// </summary>
     internal static class KmerCutoffSelector
     {
         /// <summary>
-        /// -kc が未指定の場合に限り、スペクトルから求めた値を適用する。
+        /// -kc が未指定の場合に限り、スペクトルから求めた値を適用する<br/>
         /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルを
-        /// もう一度走査するが、明示指定時はこの走査自体を行わない。
+        /// もう一度走査するが、明示指定時はこの走査自体を行わない
         /// </summary>
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
             // 前回(別のk、あるいはErrorCorrector用の一時インデックス)の適合結果を
-            // 持ち越さない。適合に成功した場合のみ、この下で改めて設定し直す。
+            // 持ち越さない
+            // 適合に成功した場合のみ、この下で改めて設定し直す
             ConfigurationManager.A_スペクトルモデル = null;
 
             if (p_引数.A_kmerカットオフが明示指定されたか)
@@ -48,9 +48,10 @@ namespace Tsumiki.Utility
                 return;
             }
 
-            // フォールバック: 谷検出。混合モデルの適合に失敗するのは、データがこの
-            // 2成分モデルにうまく当てはまらない(EMが収束しない、あるいは単一コピー
-            // 成分と誤り成分を分離できない)場合。
+            // フォールバック: 谷検出
+            // 混合モデルの適合に失敗するのは、データがこの
+            // 2 成分モデルにうまく当てはまらない(EMが収束しない、あるいは単一コピー
+            // 成分と誤り成分を分離できない)場合
             if (KmerHistogram.Get_推奨カットオフ(l_ヒストグラム) is not { } l_推奨値)
             {
                 Logger.V_出力(メッセージID.kmerカットオフ_谷が不明, p_引数.A_kmerカットオフ);

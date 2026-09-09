@@ -7,10 +7,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// カットオフで落ちた k-mer の救済を固定する。
-    ///
+    /// カットオフで落ちた k-mer の救済を固定する<br/>
     /// 救うべきもの(信頼できる k-mer に挟まれた低頻度)と、救ってはいけないもの
-    /// (端に生えているだけの低頻度)の線引きが要点。
+    /// (端に生えているだけの低頻度)の線引きが要点
     /// </summary>
     public class MercyKmerRescuerTests : IDisposable
     {
@@ -58,8 +57,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 指定した窓だけ観測回数を1にし、残りを5にした k-mer インデックスを作る。
-        /// カットオフ2で、その窓だけが落ちた状態になる。
+        /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る<br/>
+        /// カットオフ 2 で、その窓だけが落ちた状態になる
         /// </summary>
         private TrustedKmerIndex Get_穴のあるインデックス(string p_配列, int p_穴の開始, int p_穴の長さ)
         {
@@ -94,7 +93,7 @@ namespace Tsumiki.Tests.Core
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 穴の開始, 穴の長さ);
             Assert.False(Get_含まれるか(l_インデックス, l_配列, 穴の開始));
 
-            // 穴を跨いで両側の信頼できる窓まで届くリードを2本与える。
+            // 穴を跨いで両側の信頼できる窓まで届くリードを 2 本与える
             var l_リード = l_配列.Substring(穴の開始 - 30, 100);
             var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
             var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
@@ -130,7 +129,7 @@ namespace Tsumiki.Tests.Core
             var l_配列 = Get_乱数配列(300, 23);
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 100, 3);
 
-            // 穴の左側だけを含み、右側の信頼できる窓まで届かないリード。
+            // 穴の左側だけを含み、右側の信頼できる窓まで届かないリード
             var l_リード = l_配列.Substring(80, k長 + 22);
             var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
             var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };

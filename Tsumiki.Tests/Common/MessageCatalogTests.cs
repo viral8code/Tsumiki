@@ -9,8 +9,9 @@ using Xunit;
 namespace Tsumiki.Tests.Common
 {
     /// <summary>
-    /// 文言カタログの検査。ID を増やしたときに訳を入れ忘れる、あるいは
-    /// 訳の差し込み位置が原文とずれる、といった取りこぼしを防ぐ。
+    /// 文言カタログの検査<br/>
+    /// ID を増やしたときに訳を入れ忘れる、あるいは
+    /// 訳の差し込み位置が原文とずれる、といった取りこぼしを防ぐ
     /// </summary>
     public class MessageCatalogTests
     {
@@ -20,7 +21,8 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 差し込み位置({0} など)の並び。書式指定は無視する。
+        /// 差し込み位置({0} など)の並び<br/>
+        /// 書式指定は無視する
         /// </summary>
         private static List<int> Get_差し込み位置(string p_書式)
         {

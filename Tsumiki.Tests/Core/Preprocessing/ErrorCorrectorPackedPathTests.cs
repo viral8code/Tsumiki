@@ -7,9 +7,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// パック経路(k &lt;= 64)と逐次経路が、同じリードに対して同じ訂正を返すことの確認。
+    /// パック経路(k &lt;= 64)と逐次経路が、同じリードに対して同じ訂正を返すことの確認<br/>
     /// パック経路は窓の評価を 2bit 演算に置き換えた最適化なので、
-    /// 結果が1文字でも違えば最適化が壊れている。
+    /// 結果が 1 文字でも違えば最適化が壊れている
     /// </summary>
     public class ErrorCorrectorPackedPathTests : IDisposable
     {

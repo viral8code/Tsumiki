@@ -4,7 +4,7 @@ namespace Tsumiki.Tests.IO
 {
     /// <summary>
     /// 壊れた FASTQ で範囲外アクセスや無限ループにせず、
-    /// どこが不正かを言って止まることを固定する。
+    /// どこが不正かを言って止まることを固定する
     /// </summary>
     public class FastqReaderTests : IDisposable
     {

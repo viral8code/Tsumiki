@@ -4,14 +4,14 @@ using Tsumiki.Core;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペアの隣接証拠を期待本数との比で測るためのモデル。
+    /// ペアの隣接証拠を期待本数との比で測るためのモデル<br/>
     /// 観測本数をそのまま固定の下限と比べると幾何的な偏りを拾うため、
-    /// 期待位置数の算出と、裾に強いギャップ長推定を固定する。
+    /// 期待位置数の算出と、裾に強いギャップ長推定を固定する
     /// </summary>
     public class PairedDistanceModelTests
     {
         /// <summary>
-        /// 中央 400、おおよそ 350-450 に広がるフラグメント長分布。
+        /// 中央 400、おおよそ 350-450 に広がるフラグメント長分布
         /// </summary>
         private static List<int> Get_分布(int p_件数 = 2000)
         {
@@ -25,7 +25,7 @@ namespace Tsumiki.Tests.Core
         public void Get_一貫した支持_FindsTheGapFromACleanCluster()
         {
             var l_モデル = Get_モデル();
-            // ギャップ 100 なら既知長は 400-100 = 300 付近に集まる。
+            // ギャップ 100 なら既知長は 400-100 = 300 付近に集まる
             List<int> l_標本 = [295, 300, 302, 298, 305, 300];
 
             var (l_本数, l_ギャップ) = l_モデル.Get_一貫した支持(l_標本);
@@ -36,7 +36,8 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 誤マップ由来の裾が過半を占めても、峰から出るギャップ長と本数が
-        /// 変わらないこと。中央値で測るとここが壊れる。
+        /// 変わらないこと<br/>
+        /// 中央値で測るとここが壊れる
         /// </summary>
         [Fact]
         public void Get_一貫した支持_IsNotMovedByAHeavyTailOfMismappedPairs()
@@ -58,8 +59,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 期待位置数は、接合点の両側が短いほど、ギャップが広いほど小さくなること。
-        /// 観測本数を固定の下限と比べてはいけない理由そのもの。
+        /// 期待位置数は、接合点の両側が短いほど、ギャップが広いほど小さくなること<br/>
+        /// 観測本数を固定の下限と比べてはいけない理由そのもの
         /// </summary>
         [Fact]
         public void Get_期待位置数_ShrinksWithShortFlanksAndWideGaps()
@@ -75,8 +76,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 接合点から1フラグメント長ぶんの窓しか寄与しないので、それより長い
-        /// 配列では期待位置数は増えない。
+        /// 接合点から 1 フラグメント長ぶんの窓しか寄与しないので、それより長い
+        /// 配列では期待位置数は増えない
         /// </summary>
         [Fact]
         public void Get_期待位置数_SaturatesBeyondTheFragmentLength()
@@ -90,7 +91,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// フラグメント長を超えるギャップは跨げないので期待は 0 になること。
+        /// フラグメント長を超えるギャップは跨げないので期待は 0 になること
         /// </summary>
         [Fact]
         public void Get_期待位置数_IsZeroBeyondTheFragmentLength()

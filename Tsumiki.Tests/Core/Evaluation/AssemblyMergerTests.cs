@@ -7,10 +7,9 @@ using Tsumiki.Model.Evaluation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 複数の k のアセンブリを統合する処理の検証。
-    ///
+    /// 複数の k のアセンブリを統合する処理の検証<br/>
     /// 統合は誤った連結を持ち込みうる操作なので、繋ぐべきときに繋ぐことと
-    /// 同じくらい、根拠が無いときに繋がないことを固定しておく必要がある。
+    /// 同じくらい、根拠が無いときに繋がないことを固定しておく必要がある
     /// </summary>
     public class AssemblyMergerTests : IDisposable
     {
@@ -32,9 +31,10 @@ namespace Tsumiki.Tests.Core
 
         private const int アンカーk長 = 31;
 
-        // 既定では2つ以上の k による裏付けを求める。以下の多くのテストは
-        // 証拠源が1つの状況を見たいので、明示的に1を渡している。
-        // 照合そのものは専用のテストで確かめる。
+        // 既定では 2 つ以上の k による裏付けを求める
+        // 以下の多くのテストは
+        // 証拠源が 1 つの状況を見たいので、明示的に 1 を渡している
+        // 照合そのものは専用のテストで確かめる
 
         private static string RandomSequence(int length, int seed)
         {
@@ -68,8 +68,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合。
-        /// 繋いだ結果が元のゲノムそのものに戻ること。
+        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合<br/>
+        /// 繋いだ結果が元のゲノムそのものに戻ること
         /// </summary>
         [Fact]
         public void Merge_OtherKSpansABackboneJunction_JoinsThemBackIntoTheTruth()
@@ -79,9 +79,9 @@ namespace Tsumiki.Tests.Core
             var 右 = RandomSequence(5_000, seed: 603);
             var truth = 左 + 中間 + 右;
 
-            // 骨格は中間で切れている。
+            // 骨格は中間で切れている
             var 骨格 = this.WriteAssembly("backbone.fasta", 63, 左, 右);
-            // 別の k は切れ目を跨いでいる(両端に十分なアンカーを持つ)。
+            // 別の k は切れ目を跨いでいる(両端に十分なアンカーを持つ)
             var 他 = this.WriteAssembly("other.fasta", 31, truth);
 
             var 出力 = Path.Combine(this._tempDir, "merged.fasta");
@@ -94,7 +94,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 骨格側の片方が逆向きに出力されていても、向きを揃えて繋げること。
+        /// 骨格側の片方が逆向きに出力されていても、向きを揃えて繋げること
         /// </summary>
         [Fact]
         public void Merge_BackbonePieceIsReverseComplemented_StillJoinsCorrectly()
@@ -118,8 +118,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 跨いでいる配列が無ければ何もしないこと。
-        /// 根拠が無いのに繋ぐのが最も避けたい失敗。
+        /// 跨いでいる配列が無ければ何もしないこと<br/>
+        /// 根拠が無いのに繋ぐのが最も避けたい失敗
         /// </summary>
         [Fact]
         public void Merge_NoOtherAssemblySpansAnything_DoesNothing()
@@ -128,7 +128,7 @@ namespace Tsumiki.Tests.Core
             var 右 = RandomSequence(5_000, seed: 622);
 
             var 骨格 = this.WriteAssembly("backbone_none.fasta", 63, 左, 右);
-            // 別の k も同じところで切れている。
+            // 別の k も同じところで切れている
             var 他 = this.WriteAssembly("other_none.fasta", 31, 左, 右);
 
             var 出力 = Path.Combine(this._tempDir, "merged_none.fasta");
@@ -139,8 +139,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列のせいで行き先が2つある場合は繋がないこと。
-        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる。
+        /// 反復配列のせいで行き先が 2 つある場合は繋がないこと<br/>
+        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる
         /// </summary>
         [Fact]
         public void Merge_AmbiguousDestination_RefusesToJoin()
@@ -151,7 +151,7 @@ namespace Tsumiki.Tests.Core
             var 中間 = RandomSequence(200, seed: 634);
 
             var 骨格 = this.WriteAssembly("backbone_amb.fasta", 63, 共通の左, 右候補1, 右候補2);
-            // 同じ左から2つの異なる右へ繋がる証拠が両方ある。
+            // 同じ左から 2 つの異なる右へ繋がる証拠が両方ある
             var 他 = this.WriteAssembly("other_amb.fasta", 31,
                 共通の左 + 中間 + 右候補1,
                 共通の左 + 中間 + 右候補2);
@@ -163,7 +163,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 3本を2箇所で繋ぐ連鎖。1回の統合で最後まで繋がること。
+        /// 3 本を 2 箇所で繋ぐ連鎖<br/>
+        /// 1 回の統合で最後まで繋がること
         /// </summary>
         [Fact]
         public void Merge_ChainOfThreePieces_JoinsAllOfThem()
@@ -188,7 +189,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 繋がらなかった骨格配列も、統合結果から失われないこと。
+        /// 繋がらなかった骨格配列も、統合結果から失われないこと
         /// </summary>
         [Fact]
         public void Merge_UnjoinedBackbonePieces_AreStillEmitted()
@@ -212,12 +213,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 既定では、1つの k だけが主張する隣接は採らないこと。
-        ///
+        /// 既定では、1 つの k だけが主張する隣接は採らないこと<br/>
         /// 骨格が途切れているのは繋ぐ根拠が足りないと判断した結果であることが多く、
-        /// それを1本の配列で覆すと、その配列自身が誤アセンブリだった場合に
-        /// そのまま持ち込む。実データでは、証拠に使ったアセンブリ由来の
-        /// 誤アセンブリが骨格の21箇所から60箇所へ増えた。
+        /// それを 1 本の配列で覆すと、その配列自身が誤アセンブリだった場合に
+        /// そのまま持ち込む<br/>
+        /// 実データでは、証拠に使ったアセンブリ由来の
+        /// 誤アセンブリが骨格の 21 箇所から 60 箇所へ増えた
         /// </summary>
         [Fact]
         public void Merge_OnlyOneKSupportsTheJoin_IsNotAcceptedByDefault()
@@ -235,7 +236,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 2つの k が同じ隣接を主張していれば採ること。
+        /// 2 つの k が同じ隣接を主張していれば採ること
         /// </summary>
         [Fact]
         public void Merge_TwoIndependentKsAgree_IsAccepted()
@@ -256,8 +257,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 統合の総延長が、骨格の総延長を下回らないこと。
-        /// 配列を落とすなら統合しないほうがましなので、これは不変条件。
+        /// 統合の総延長が、骨格の総延長を下回らないこと<br/>
+        /// 配列を落とすなら統合しないほうがましなので、これは不変条件
         /// </summary>
         [Fact]
         public void Merge_NeverLosesSequence()

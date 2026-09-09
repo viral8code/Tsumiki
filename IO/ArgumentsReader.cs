@@ -158,7 +158,7 @@ namespace Tsumiki.IO
                 Environment.Exit(1);
             }
 
-            // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない。
+            // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない
             // (以前は -h のみを指定してもここで「Please set read path」エラーになり
             //  ヘルプが表示できなかった)
             if (l_引数.A_ヘルプモードか || l_引数.A_バージョンモードか)
@@ -182,7 +182,7 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// -lang に渡された言語名を解釈する。
+        /// -lang に渡された言語名を解釈する
         /// </summary>
         private static 言語 Get_言語(string p_言語名)
         {
@@ -198,7 +198,7 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// -log に渡された水準名を解釈する。
+        /// -log に渡された水準名を解釈する
         /// </summary>
         private static ログ水準 Get_ログ水準(string p_水準名)
         {
@@ -215,8 +215,9 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// -pu(優勢閾値)と-pc(支持数閾値)を、完全性/正確性のどちらに倒すかの
-        /// 1軸で束ねて適用する。個別に -pu/-pc を後ろに書けばそちらで上書きできる
-        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)。
+        /// 1 軸で束ねて適用する<br/>
+        /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる
+        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
         /// </summary>
         private static void V_適用_積極性モード(Parameters p_引数, string p_モード名)
         {

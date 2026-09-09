@@ -5,7 +5,7 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// R1 と RC(R2) の重なり解析による、アダプタリードスルーのトリムと
-    /// ペア相互訂正(fastp 型の前処理)を固定する。
+    /// ペア相互訂正(fastp 型の前処理)を固定する
     /// </summary>
     public class PreprocessorTests
     {
@@ -31,7 +31,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_前処理結果_フラグメント長がリード長を超える通常のペアは変更しない()
         {
-            // 40bp を大きく超える、互いに無関係な60bpの配列(=重なりが存在しない、典型的なケース)。
+            // 40bp を大きく超える、互いに無関係な60bpの配列(=重なりが存在しない、典型的なケース)
             const string 配列1 = "ACGTGCATTGCAGTCAGGCTAACGGTTCCAAGGTCATGCAGTACGGCTTA";
             const string 配列2 = "TTGGCACCGGATCCAAGTTGGCCAATGGCTTACGATCGTAGGCCTTAACG";
             var l_クオリティ1 = 高品質クオリティ(配列1.Length);
@@ -50,8 +50,9 @@ namespace Tsumiki.Tests.Core
         {
             // read1 = 真の断片 + アダプタ、read2 = RC(真の断片) + 別のアダプタ、という
             // 構成で「フラグメント長がリード長より短く、両端から重なって読んだ」
-            // 状況を作る。繰り返し配列だと周期性でオフセットが一意に定まらないため、
-            // 非周期な配列を使う。
+            // 状況を作る
+            // 繰り返し配列だと周期性でオフセットが一意に定まらないため、
+            // 非周期な配列を使う
             const string 真の断片 = "TGACCTGAAGCTTAGGCATCGGTAACCTTGGACGTCAGTA"; // 40bp, non-repetitive
             const string アダプタ1 = "AGATCGGAAG";
             const string アダプタ2 = "TTTTTTTTTT";
@@ -82,8 +83,8 @@ namespace Tsumiki.Tests.Core
             var 配列1 = new string(l_配列1);
             var 配列2 = 真の断片; // read2 は誤りなし
 
-            // read1 のエラー位置だけ低信頼、read2 は対応する位置(逆向きなので末尾側)だけ高信頼にする。
-            // 他は両方とも高信頼にしておき、他の位置で誤訂正が起きないことも確認する。
+            // read1 のエラー位置だけ低信頼、read2 は対応する位置(逆向きなので末尾側)だけ高信頼にする
+            // 他は両方とも高信頼にしておき、他の位置で誤訂正が起きないことも確認する
             var l_クオリティ1 = 位置だけ変更したクオリティ(配列1.Length, p_基本スコア: 35, エラー位置, p_その位置のスコア: 5);
             var l_対応する読み2の位置 = 配列2.Length - 1 - エラー位置;
             var l_クオリティ2 = 位置だけ変更したクオリティ(配列2.Length, p_基本スコア: 35, l_対応する読み2の位置, p_その位置のスコア: 35);

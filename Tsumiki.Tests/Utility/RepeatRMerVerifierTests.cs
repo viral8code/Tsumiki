@@ -5,24 +5,23 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// 短い反復解決の拒否権(-rv)が使う r-mer 検証器そのものの検証。
-    ///
+    /// 短い反復解決の拒否権(-rv)が使う r-mer 検証器そのものの検証<br/>
     /// head→repeat→tail の接合点を実際に跨いだリードが無ければ支持は
     /// 得られず、跨ぐリードがあれば支持が得られること、接合点を跨がない
-    /// (=各配列の内部だけに収まる)リードだけでは支持にならないことを確認する。
-    ///
+    /// (=各配列の内部だけに収まる)リードだけでは支持にならないことを確認する<br/>
     /// フィクスチャの head/repeat/tail は(このアセンブリの)k=8 で
-    /// 隣接する unitig 同士なので k-1=7 塩基を共有している。r をこの
+    /// 隣接する unitig 同士なので k-1=7 塩基を共有している<br/>
+    /// r をこの
     /// 重なりより確実に長く取らないと、跨ぐ窓も共有区間の内側に収まって
     /// しまい判定にならない(RepeatRMerVerifier のクラスコメント参照)ため、
-    /// ここでは r=18(=k+10、AssemblyPipeline の既定の決め方と同じ)を使う。
+    /// ここでは r=18(=k+10、AssemblyPipeline の既定の決め方と同じ)を使う
     /// </summary>
     public class RepeatRMerVerifierTests : IDisposable
     {
         private const int R = 18;
 
         /// <summary>
-        /// アセンブリ側の k(=head/repeat/tail が共有する重なりの長さ+1)。
+        /// アセンブリ側の k(=head/repeat/tail が共有する重なりの長さ+1)
         /// </summary>
         private const int AssemblyK = 8;
 
@@ -32,9 +31,9 @@ namespace Tsumiki.Tests.Utility
         {
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_rmer_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
-            // Get_接合点の支持数 は head/tail から共有重なり(k-1塩基)を除くのに
+            // Get_接合点の支持数 は head/tail から共有重なり(k-1 塩基)を除くのに
             // 現在の実行時引数の k 長を参照するため、フィクスチャの重なり長
-            // (AssemblyK-1=7)に合わせておく。
+            // (AssemblyK-1=7)に合わせておく
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = AssemblyK, A_スレッド数 = 1 };
         }
 
@@ -94,13 +93,14 @@ namespace Tsumiki.Tests.Utility
         /// リードが Head・Repeat・Tail それぞれの内部だけに収まり、
         /// どちらの接合点も跨がない場合、支持は既定の閾値に届かないはず
         /// (各配列は単独でも実在する配列なので、接合点を跨がない限り
-        /// 「その組み合わせが正しい」証拠にはならない)。
+        /// 「その組み合わせが正しい」証拠にはならない)
         /// </summary>
         [Fact]
         public void Get_接合点の支持数_StaysBelowThreshold_WhenReadsNeverCrossEitherJunction()
         {
-            // 各配列を丸ごと読んだリードを与える。r より短いリードだと r-mer が
-            // 1つも作られず、何を数えても0になって検定にならない。
+            // 各配列を丸ごと読んだリードを与える
+            // r より短いリードだと r-mer が
+            // 1 つも作られず、何を数えても 0 になって検定にならない
             List<string> reads = [Head, Repeat, Tail];
             var path = this.WriteFastq("internal_only.fq", reads);
 
@@ -116,9 +116,9 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// Head-Repeat 接合点は本物のリードに跨がれているが、
         /// Repeat-Tail 側は無関係な配列(OtherTail)であり跨ぐリードが無い場合でも
-        /// 支持は得られる(Head-Repeat側の支持だけでカウントされるため)。
+        /// 支持は得られる(Head-Repeat側の支持だけでカウントされるため)<br/>
         /// この支持数は、両方の接合点が本物のリードに跨がれている場合の
-        /// 支持数を超えないはず。
+        /// 支持数を超えないはず
         /// </summary>
         [Fact]
         public void Get_接合点の支持数_CountsOnlyTheJunctionThatIsActuallyCrossed()
@@ -169,8 +169,9 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 2bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ
-        /// 切り替えて同じ判定ができること。跨いだリードがあれば支持が出て、
-        /// 無ければ出ない。
+        /// 切り替えて同じ判定ができること<br/>
+        /// 跨いだリードがあれば支持が出て、
+        /// 無ければ出ない
         /// </summary>
         [Fact]
         public void Get_接合点の支持数_WorksBeyondThePackableRLength()

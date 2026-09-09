@@ -4,9 +4,10 @@ namespace Tsumiki.Tests.Common
 {
     /// <summary>
     /// 環状配列の開始位置を辞書式順序で最小の回転へ正規化する処理(Booth の
-    /// アルゴリズム)の検証。環状 contig は開始位置が walk の起点という
+    /// アルゴリズム)の検証<br/>
+    /// 環状 contig は開始位置が walk の起点という
     /// 偶然の産物でしかないため、同じ環状配列ならどの回転から出発しても
-    /// 同じ正規化結果になることが下流の比較・再現性の前提になる。
+    /// 同じ正規化結果になることが下流の比較・再現性の前提になる
     /// </summary>
     public class UtilRotationTests
     {
@@ -21,12 +22,13 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void Get_最小回転_FindsTheLexicographicallySmallestRotation()
         {
-            // "BAAB" の回転は BAAB, AABB, ABBA, BBAA。辞書式最小は AABB。
+            // "BAAB" の回転は BAAB, AABB, ABBA, BBAA
+            // 辞書式最小は AABB
             Assert.Equal("AABB", Util.Get_最小回転("BAAB"));
         }
 
         /// <summary>
-        /// 核心の性質: 同じ環状配列のどの回転から始めても、正規化結果は同一。
+        /// 核心の性質: 同じ環状配列のどの回転から始めても、正規化結果は同一
         /// </summary>
         [Theory]
         [InlineData(0)]
@@ -45,7 +47,7 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void Get_最小回転_HandlesRepetitiveSequences()
         {
-            // 全て同じ文字なら、どの回転でも結果は同じ文字列になる。
+            // 全て同じ文字なら、どの回転でも結果は同じ文字列になる
             const string repetitive = "AAAAAA";
             Assert.Equal(repetitive, Util.Get_最小回転(repetitive));
         }

@@ -44,7 +44,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// "true"配列の全k-mer(順鎖・逆鎖)をカットオフ以上登録した
-        /// TrustedKmerIndex を構築する。
+        /// TrustedKmerIndex を構築する
         /// </summary>
         private TrustedKmerIndex BuildTrustedIndex(string trueSeq, int kmerLength, int threadCount = 1)
         {
@@ -53,7 +53,7 @@ namespace Tsumiki.Tests.Core
             var bytes = ToBytes(trueSeq);
             for (var i = 0; i + kmerLength <= bytes.Length; i++)
             {
-                // カットオフ(2)を超えるよう複数回登録する。
+                // カットオフ(2)を超えるよう複数回登録する
                 for (var rep = 0; rep < 3; rep++)
                 {
                     index.V_登録(bytes.AsSpan(i, kmerLength), p_ワーカー番号: 0);

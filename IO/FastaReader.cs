@@ -6,7 +6,8 @@ namespace Tsumiki.IO
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         /// <summary>
-        /// FASTA を1回で全件読み込む。ID の先頭 '>' は取り除く。
+        /// FASTA を 1 回で全件読み込む<br/>
+        /// ID の先頭 '>' は取り除く
         /// </summary>
         public static List<(string A_ID, string A_配列)> Get_全エントリ(string p_パス)
         {

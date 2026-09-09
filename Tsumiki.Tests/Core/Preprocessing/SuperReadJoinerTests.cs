@@ -7,9 +7,10 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペアエンドの2本を、間の未読区間ごと1本の合成リード(SuperRead)へ
-    /// 統合する処理の検証。read1 の末尾 k-mer から RC(read2) の先頭 k-mer まで、
-    /// 信頼できる k-mer 集合の中で経路がちょうど1本に定まったときだけ統合する。
+    /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード(SuperRead)へ
+    /// 統合する処理の検証<br/>
+    /// read1 の末尾 k-mer から RC(read2) の先頭 k-mer まで、
+    /// 信頼できる k-mer 集合の中で経路がちょうど 1 本に定まったときだけ統合する
     /// </summary>
     public class SuperReadJoinerTests : IDisposable
     {
@@ -71,8 +72,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 橋渡しする経路が複数ある場合、どれが正しいか決められない。
-        /// 誤った配列で繋ぐより、統合を諦めて元のペアのまま残すほうが安全。
+        /// 橋渡しする経路が複数ある場合、どれが正しいか決められない<br/>
+        /// 誤った配列で繋ぐより、統合を諦めて元のペアのまま残すほうが安全
         /// </summary>
         [Fact]
         public void Get_合成配列_MultiplePathsFitTheBridge_ReturnsNullRatherThanGuessing()
@@ -100,7 +101,7 @@ namespace Tsumiki.Tests.Core
             var left = RandomSequence(80, seed: 21);
             var right = RandomSequence(80, seed: 22);
 
-            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない。
+            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない
             using var index = this.BuildIndex(k, left, right);
 
             var read1 = left;
@@ -125,7 +126,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// read1 と RC(read2) がそのまま隣接する(橋渡しの長さが 0 の)ケースも、
-        /// 特別扱いなく正しく1本に統合できること。
+        /// 特別扱いなく正しく 1 本に統合できること
         /// </summary>
         [Fact]
         public void Get_合成配列_MatesMeetWithNoGap_JoinsWithoutInsertingExtraSequence()
@@ -143,9 +144,9 @@ namespace Tsumiki.Tests.Core
         }
     
         /// <summary>
-        /// 断片がリード長の2倍を下回るライブラリでは read1 と RC(read2) が重なる。
+        /// 断片がリード長の 2 倍を下回るライブラリでは read1 と RC(read2) が重なる<br/>
         /// 橋渡しに必要な長さが負になり経路探索では解けないが、重なりそのものが
-        /// 断片を決めるので統合できる。
+        /// 断片を決めるので統合できる
         /// </summary>
         [Fact]
         public void Get_合成配列_OverlappingMates_RestoresTheTrueFragment()
@@ -165,7 +166,8 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列の継ぎ目には
-        /// どのリードにも無い k-mer が生まれる。そこで弾く。
+        /// どのリードにも無い k-mer が生まれる<br/>
+        /// そこで弾く
         /// </summary>
         [Fact]
         public void Get_合成配列_OverlapWithAnUnseenSeam_IsRejected()
@@ -185,7 +187,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 断片が read1 に収まっている(アダプタ読み抜け)場合は、繋いでも
-        /// 長さが伸びないので重なりでは統合しない。
+        /// 長さが伸びないので重なりでは統合しない
         /// </summary>
         [Fact]
         public void Get_合成配列_FragmentShorterThanTheRead_IsNotJoinedByOverlap()
@@ -202,7 +204,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 重なりが最小長に満たないときは、偶然の一致と区別できないので繋がない。
+        /// 重なりが最小長に満たないときは、偶然の一致と区別できないので繋がない
         /// </summary>
         [Fact]
         public void Get_合成配列_OverlapShorterThanTheMinimum_IsNotJoinedByOverlap()
@@ -210,8 +212,8 @@ namespace Tsumiki.Tests.Core
             const int k = 121;
             var truth = RandomSequence(280, seed: 20260912);
 
-            // 重なりは 20bp (Consts.ペア結合の最小重なり長 = 40 未満)。
-            // k を read1 より長くして、経路探索の側も走らないようにする。
+            // 重なりは 20bp (Consts.ペア結合の最小重なり長 = 40 未満)
+            // k を read1 より長くして、経路探索の側も走らないようにする
             var read1 = truth[..150];
             var read2 = Util.V_逆相補(truth[130..280]);
 
@@ -221,8 +223,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う。
-        /// どれか一つに決められないので、重なりでは繋がない。
+        /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う<br/>
+        /// どれか一つに決められないので、重なりでは繋がない
         /// </summary>
         [Fact]
         public void Get_合成配列_OverlapThatFitsAtSeveralOffsets_IsNotJoined()
@@ -246,7 +248,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 重なりが最小長に満たないときも、偶然の一致と区別できないので繋がない。
+        /// 重なりが最小長に満たないときも、偶然の一致と区別できないので繋がない
         /// </summary>
         [Fact]
         public void Get_合成配列_OverlapBelowTheRaisedMinimum_IsNotJoined()
@@ -254,7 +256,8 @@ namespace Tsumiki.Tests.Core
             const int k = 121;
             var truth = RandomSequence(260, seed: 20260921);
 
-            // 重なりは 40bp。Consts.ペア結合の最小重なり長 (60) に届かない。
+            // 重なりは 40bp
+            // Consts.ペア結合の最小重なり長 (60) に届かない
             var read1 = truth[..150];
             var read2 = Util.V_逆相補(truth[110..260]);
 

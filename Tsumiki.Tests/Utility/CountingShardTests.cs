@@ -5,12 +5,11 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// k-mer のカウントが、シャード数(スレッド数)に依らず正確であることを確認する。
-    ///
+    /// k-mer のカウントが、シャード数(スレッド数)に依らず正確であることを確認する<br/>
     /// k-mer をワーカー単位ではなくハッシュ値でシャードへ振り分けるようにした際、
-    /// 実データでカウントがちょうど2倍になる不具合が出た(ヒストグラムが
-    /// 偶数のカウントしか持たない、という形で表面化した)。
-    /// スレッド数を変えて同じ答えになることを固定しておく。
+    /// 実データでカウントがちょうど 2 倍になる不具合が出た(ヒストグラムが
+    /// 偶数のカウントしか持たない、という形で表面化した)<br/>
+    /// スレッド数を変えて同じ答えになることを固定しておく
     /// </summary>
     public class CountingShardTests : IDisposable
     {
@@ -44,7 +43,7 @@ namespace Tsumiki.Tests.Utility
             var seq = "ACGGTCATTGACCTAGGATCA"; // 21塩基
             var kmer = seq.Select(Util.Get_塩基ID).ToArray();
 
-            // ちょうど7回登録する(奇数にして「2倍になっていないか」を確実に見る)。
+            // ちょうど 7 回登録する(奇数にして「2 倍になっていないか」を確実に見る)
             for (var i = 0; i < 7; i++)
             {
                 index.V_登録(kmer.AsSpan(), p_ワーカー番号: i % threadCount);
@@ -57,7 +56,7 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 多数の異なる k-mer を、それぞれ異なる回数だけ登録しても
-        /// 正確に数えられること(シャード分割とマージの整合性)。
+        /// 正確に数えられること(シャード分割とマージの整合性)
         /// </summary>
         [Theory]
         [InlineData(1)]
@@ -73,7 +72,7 @@ namespace Tsumiki.Tests.Utility
             var sequence = string.Concat(Enumerable.Range(0, 500).Select(_ => "ACGT"[rng.Next(4)]));
             var bytes = sequence.Select(Util.Get_塩基ID).ToArray();
 
-            // 位置 i の k-mer を (i % 5) + 2 回登録する。
+            // 位置 i の k-mer を (i % 5) + 2 回登録する
             var expected = new Dictionary<int, ulong>();
             for (var i = 0; i + k <= bytes.Length; i++)
             {

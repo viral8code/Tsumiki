@@ -5,22 +5,22 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// 分岐を1つも持たない閉路を拾い、そこからの走査の開始点を返す。
-    ///
-    /// unitig の開始点は「入次数が1でない、または唯一の予測元が分岐している」
-    /// k-mer として選ぶ。閉路の全頂点が入次数1・出次数1で、予測元も分岐して
-    /// いない場合、この条件を満たす k-mer が1つも存在せず、閉路が丸ごと
-    /// 走査対象から外れる。エラーの少ない小さなプラスミドや、きれいな
-    /// 環状染色体がそのまま出力から消える。
-    ///
-    /// 閉路には始点が無いので、どの頂点から始めても同じ環を1周する。
-    /// 覆われずに残った k-mer を1つ選んで開始点にすればよい。
+    /// 分岐を 1 つも持たない閉路を拾い、そこからの走査の開始点を返す<br/>
+    /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」
+    /// k-mer として選ぶ<br/>
+    /// 閉路の全頂点が入次数 1 ・出次数 1 で、予測元も分岐して
+    /// いない場合、この条件を満たす k-mer が 1 つも存在せず、閉路が丸ごと
+    /// 走査対象から外れる<br/>
+    /// エラーの少ない小さなプラスミドや、きれいな
+    /// 環状染色体がそのまま出力から消える<br/>
+    /// 閉路には始点が無いので、どの頂点から始めても同じ環を 1 周する<br/>
+    /// 覆われずに残った k-mer を 1 つ選んで開始点にすればよい
     /// </summary>
     internal static class CyclicUnitigFinder
     {
         /// <summary>
-        /// p_walk結果 が覆えなかった閉路それぞれについて、開始点を1つずつ返す。
-        /// 覆い残しが無ければ空。
+        /// p_walk結果 が覆えなかった閉路それぞれについて、開始点を 1 つずつ返す<br/>
+        /// 覆い残しが無ければ空
         /// </summary>
         public static List<byte[]> Get_閉路の開始kmer(
             TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
@@ -47,9 +47,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 走査で得た配列が覆った k-mer を記録する。
+        /// 走査で得た配列が覆った k-mer を記録する<br/>
         /// k &lt;= 64 ではパック値を転がして作る(位置ごとに詰め直すと
-        /// 総延長 x k の手間になる)。
+        /// 総延長 x k の手間になる)
         /// </summary>
         private static void V_記録_覆った範囲(正規形集合 p_覆済み, string p_配列, int p_k長)
         {
@@ -95,14 +95,14 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 開始 k-mer から前進し、元へ戻ってくれば閉路として true を返す。
+        /// 開始 k-mer から前進し、元へ戻ってくれば閉路として true を返す<br/>
         /// 通った k-mer は覆済みに入れ、同じ閉路の別の k-mer から二度目の
-        /// 走査が始まらないようにする。
-        ///
+        /// 走査が始まらないようにする<br/>
         /// 覆われずに残る k-mer は、どの開始点からも到達されない
         /// = 予測元を遡ると必ず輪になる、という性質を満たすものだけなので、
-        /// 途中で出次数が1でなくなることは無い。それでも念のため見るのは、
-        /// 上流の判定が変わったときに無限に回り続けないようにするため。
+        /// 途中で出次数が 1 でなくなることは無い<br/>
+        /// それでも念のため見るのは、
+        /// 上流の判定が変わったときに無限に回り続けないようにするため
         /// </summary>
         private static bool V_辿る_閉路(
             TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
@@ -134,7 +134,8 @@ namespace Tsumiki.Core.UnitigBuilding
                 l_次[^1] = l_次の塩基;
                 if (p_覆済み.Get_含まれるか(l_次))
                 {
-                    // 既に通った所へ戻った。それが出発点なら1周できている。
+                    // 既に通った所へ戻った
+                    // それが出発点なら 1 周できている
                     return 正規形集合.Get_同じ座位か(l_次, p_開始kmer, p_k長);
                 }
                 l_次.CopyTo(l_現在, 0);
@@ -142,9 +143,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 逆相補を同一視して k-mer を覚える集合。
+        /// 逆相補を同一視して k-mer を覚える集合<br/>
         /// k で表現を切り替えるのは、k &lt;= 64 なら 2bit パックが
-        /// UInt128 に収まり、鍵1つあたりの大きさが半分以下になるため。
+        /// UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
         /// </summary>
         private sealed class 正規形集合(int p_k長)
         {
@@ -175,7 +176,7 @@ namespace Tsumiki.Core.UnitigBuilding
             }
 
             /// <summary>
-            /// 2つの k-mer が、逆相補を同一視して同じ座位を指すか。
+            /// 2 つの k-mer が、逆相補を同一視して同じ座位を指すか
             /// </summary>
             public static bool Get_同じ座位か(
                 ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)

@@ -6,11 +6,11 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// multi-k で試す k の一覧の決め方。
-    ///
+    /// multi-k で試す k の一覧の決め方<br/>
     /// 実測では最適な k が範囲の両端に現れている(反復が少ない検体では上限の
-    /// k=63、反復が 11% を占める検体では下限側の k=31)。したがって候補は
-    /// 片側に寄せず、上限とその半分あたりの両方を含んでいる必要がある。
+    /// k=63、反復が 11% を占める検体では下限側の k=31)<br/>
+    /// したがって候補は
+    /// 片側に寄せず、上限とその半分あたりの両方を含んでいる必要がある
     /// </summary>
     public class MultiKAssemblerTests
     {
@@ -21,11 +21,12 @@ namespace Tsumiki.Tests.Core
         {
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: 150);
 
-            // 実測で最適だった 63 と 31 付近の両方が射程に入っていること。
+            // 実測で最適だった 63 と 31 付近の両方が射程に入っていること
             Assert.True(l_候補[0] <= 33, $"lower end was {l_候補[0]}, too high to reach the repeat-rich optimum");
             Assert.Contains(l_候補, l_k => l_k is >= 55 and <= 71);
-            // リード長に近い k まで届いていること。カバレッジが十分あれば
-            // そちらのほうが良い場合があり、試さないと分からない。
+            // リード長に近い k まで届いていること
+            // カバレッジが十分あれば
+            // そちらのほうが良い場合があり、試さないと分からない
             Assert.True(l_候補[^1] >= 120, $"upper end was {l_候補[^1]}, too low to reach the high-k regime");
             Assert.Equal(Consts.マルチkで試す個数, l_候補.Count);
         }
@@ -43,7 +44,8 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// k が偶数だと k-mer 自身がその逆相補と一致しうる(回文)ため、
-        /// 正規形が縮退して隣接判定が壊れる。どの候補も奇数であること。
+        /// 正規形が縮退して隣接判定が壊れる<br/>
+        /// どの候補も奇数であること
         /// </summary>
         [Fact]
         public void CandidateList_ContainsOnlyOddValues()
@@ -58,8 +60,9 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 候補はリード長より短くなければならない。そうでないと
-        /// その k では k-mer が1つも取れない。
+        /// 候補はリード長より短くなければならない<br/>
+        /// そうでないと
+        /// その k では k-mer が 1 つも取れない
         /// </summary>
         [Fact]
         public void CandidateList_StaysBelowTheReadLength()
@@ -74,8 +77,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// -k に一覧が指定された場合は、それをそのまま使うこと。
-        /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない。
+        /// -k に一覧が指定された場合は、それをそのまま使うこと<br/>
+        /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない
         /// </summary>
         [Fact]
         public void CandidateList_WhenKmerLengthListWasGiven_UsesItVerbatim()
@@ -89,7 +92,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// -k を1つだけ指定した場合は、その1つだけを候補にすること。
+        /// -k を 1 つだけ指定した場合は、その 1 つだけを候補にすること
         /// </summary>
         [Fact]
         public void CandidateList_WhenASingleKmerLengthWasGiven_UsesOnlyThatOne()
@@ -101,14 +104,15 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 予測 k-mer カバレッジは、1リードから取れる k-mer の本数の比で縮むこと。
-        /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる。
+        /// 予測 k-mer カバレッジは、1 リードから取れる k-mer の本数の比で縮むこと<br/>
+        /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる
         /// </summary>
         [Fact]
         public void PredictedCoverage_ShrinksWithTheNumberOfKmersPerRead()
         {
-            // リード長150、k=31 で 25x。k=135 なら 1リードあたり 120 本から
-            // 16 本へ減るので、25 * 16 / 120 = 3.33x。
+            // リード長 150、k=31 で 25x
+            // k=135 なら 1 リードあたり 120 本から
+            // 16 本へ減るので、25 * 16 / 120 = 3.33x
             var l_予測 = MultiKAssembler.Get_予測kmerカバレッジ(
                 p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 135, p_リード長: 150);
 
@@ -117,8 +121,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k がリード長を超えると k-mer が1本も取れないので 0 になること。
-        /// k = リード長 のときは1本だけ取れるので 0 にはならない。
+        /// k がリード長を超えると k-mer が 1 本も取れないので 0 になること<br/>
+        /// k = リード長 のときは 1 本だけ取れるので 0 にはならない
         /// </summary>
         [Fact]
         public void PredictedCoverage_WhenKmerLengthExceedsTheReadLength_IsZero()
@@ -130,7 +134,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// リード長が分からない場合でも一覧が作れること(既定値を上限に使う)。
+        /// リード長が分からない場合でも一覧が作れること(既定値を上限に使う)
         /// </summary>
         [Fact]
         public void CandidateList_WhenReadLengthIsUnknown_FallsBackToTheDefault()
@@ -142,8 +146,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 上限と下限が重なるほど短いリードでは、候補が1つに縮退すること
-        /// (無理に複数試しても意味がない)。
+        /// 上限と下限が重なるほど短いリードでは、候補が 1 つに縮退すること
+        /// (無理に複数試しても意味がない)
         /// </summary>
         [Fact]
         public void CandidateList_ForVeryShortReads_CollapsesToASingleValue()

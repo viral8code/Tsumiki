@@ -5,11 +5,11 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// カットオフを掛ける前に出現回数ヒストグラムだけを取り出せること。
-    /// -kc を自動決定するには、カットオフを決める前にスペクトルを見る必要がある。
-    ///
-    /// 事前走査と本体の走査は同じ統合ファイルを使い回す。統合をやり直すと
-    /// マージソートのディスク I/O が丸ごと二重になるため。
+    /// カットオフを掛ける前に出現回数ヒストグラムだけを取り出せること<br/>
+    /// -kc を自動決定するには、カットオフを決める前にスペクトルを見る必要がある<br/>
+    /// 事前走査と本体の走査は同じ統合ファイルを使い回す<br/>
+    /// 統合をやり直すと
+    /// マージソートのディスク I/O が丸ごと二重になるため
     /// </summary>
     public class TrustedKmerIndexHistogramTests : IDisposable
     {
@@ -39,7 +39,7 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 位置 i の k-mer を (i % 4) + 1 回登録し、その分布がそのまま
-        /// ヒストグラムに現れることを確かめる。
+        /// ヒストグラムに現れることを確かめる
         /// </summary>
         private TrustedKmerIndex BuildIndex(out Dictionary<ulong, long> p_期待ヒストグラム)
         {
@@ -71,9 +71,9 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 事前走査でヒストグラムを取っても、その後のカットオフが正しく動くこと。
+        /// 事前走査でヒストグラムを取っても、その後のカットオフが正しく動くこと<br/>
         /// 統合ファイルを使い回す実装なので、事前走査がファイルを消費・削除して
-        /// しまうと本体が壊れる。
+        /// しまうと本体が壊れる
         /// </summary>
         [Fact]
         public void GetHistogram_DoesNotConsumeTheMergedFile_CutoffStillWorks()
@@ -83,14 +83,14 @@ namespace Tsumiki.Tests.Utility
             var 事前 = index.Get_出現回数ヒストグラム();
             _ = index.V_カットオフ(p_カットオフ: 3);
 
-            // カットオフ本体が集計したヒストグラムも同じでなければならない。
+            // カットオフ本体が集計したヒストグラムも同じでなければならない
             Assert.Equal(事前, index.A_出現回数ヒストグラム);
             Assert.Equal(expected, index.A_出現回数ヒストグラム);
         }
 
         /// <summary>
         /// 事前走査を挟まなかった場合も A_出現回数ヒストグラム は埋まること
-        /// (-kc 明示指定時はこちらの経路しか通らない)。
+        /// (-kc 明示指定時はこちらの経路しか通らない)
         /// </summary>
         [Fact]
         public void Cutoff_WithoutAPriorScan_StillRecordsTheHistogram()

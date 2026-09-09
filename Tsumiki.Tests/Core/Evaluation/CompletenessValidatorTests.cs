@@ -7,14 +7,15 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 完全長の判定を固定する。
-    ///
+    /// 完全長の判定を固定する<br/>
     /// 要点は「材料が無いことを合格にしない」ことと「不合格と判定不能を
-    /// 混同しない」こと。どちらを崩しても、根拠の無い完全長が通ってしまう。
+    /// 混同しない」こと<br/>
+    /// どちらを崩しても、根拠の無い完全長が通ってしまう
     /// </summary>
     public class CompletenessValidatorTests
     {
-        /// <summary>リードに裏付けの無い位置が一つも無い検査結果。</summary>
+        /// <summary>リードに裏付けの無い位置が一つも無い検査結果<br/>
+        /// </summary>
         private static 支持検査結果 Get_良好な支持()
         {
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
@@ -22,7 +23,7 @@ namespace Tsumiki.Tests.Core
 
         private static 整合性検査結果 Get_良好な自己検査()
         {
-            // 取りこぼし 1%、出しすぎ 0%。
+            // 取りこぼし 1%、出しすぎ 0%
             return new 整合性検査結果(1000, 1000, 1000, 10, 0, 0);
         }
 
@@ -170,7 +171,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_判定結果_取りこぼしが多ければグラフ被覆で落ちる()
         {
-            // 取りこぼし 20%。
+            // 取りこぼし 20%
             var l_判定 = CompletenessValidator.Get_判定結果(
                 p_未解決ギャップ数: 0,
                 p_整合性: new 整合性検査結果(1000, 1000, 1000, 200, 0, 0),
