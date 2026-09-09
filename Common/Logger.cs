@@ -5,6 +5,9 @@ namespace Tsumiki.Common
 {
     internal class Logger
     {
+        /// <summary>
+        /// 錠
+        /// </summary>
         private static readonly object _錠 = new();
 
         /// <summary>

@@ -2,6 +2,9 @@
 {
     internal class FastqWriter(string p_ファイル名) : IDisposable
     {
+        /// <summary>
+        /// 書き込み
+        /// </summary>
         private readonly StreamWriter _書き込み = new(p_ファイル名);
 
         /// <summary>

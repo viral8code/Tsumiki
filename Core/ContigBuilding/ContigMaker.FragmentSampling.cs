@@ -46,6 +46,9 @@ namespace Tsumiki.Core
         /// </summary>
         public IReadOnlyDictionary<int, int> A_ユニティグ長 => this._ユニティグ長;
 
+        /// <summary>
+        /// ユニティグ配置
+        /// </summary>
         public IReadOnlyDictionary<int, ユニティグ配置> A_ユニティグ配置 => this._ユニティグ配置;
 
         /// <summary>

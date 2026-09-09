@@ -25,6 +25,9 @@ namespace Tsumiki.Utility
         /// </summary>
         private const int コピー数の上限 = 10;
 
+        /// <summary>
+        /// 最大反復数
+        /// </summary>
         private const int 最大反復数 = 500;
 
         /// <summary>

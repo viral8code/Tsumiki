@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Model.Preprocessing
 {
     /// <summary>
-    /// 1ペア分の前処理結果<br/>
+    /// 1 ペア分の前処理結果<br/>
     /// 副作用のない純粋関数の戻り値
     /// </summary>
     internal readonly record struct ペア前処理結果(

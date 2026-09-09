@@ -41,7 +41,7 @@ namespace Tsumiki.Model.Reporting
     }
 
     /// <summary>
-    /// 1つの検査項目の結果<br/>
+    /// 1 つの検査項目の結果<br/>
     /// 材料が無い場合は不合格と区別する
     /// </summary>
     internal enum 検査判定
@@ -88,7 +88,7 @@ namespace Tsumiki.Model.Reporting
     }
 
     /// <summary>
-    /// 検査1項目<br/>
+    /// 検査 1 項目<br/>
     /// A_キー はレポートに出す固定の英語キー、
     /// A_見出し はログに出す訳語
     /// </summary>

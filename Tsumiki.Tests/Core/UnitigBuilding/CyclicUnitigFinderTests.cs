@@ -16,8 +16,14 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CyclicUnitigFinderTests : IDisposable
     {
+        /// <summary>
+        /// k 長
+        /// </summary>
         private const int k長 = 21;
 
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
         public CyclicUnitigFinderTests()

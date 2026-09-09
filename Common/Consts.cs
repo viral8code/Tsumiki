@@ -23,68 +23,161 @@
         /// </summary>
         public static class 引数キー
         {
+            /// <summary>
+            /// リード 1 のパス
+            /// </summary>
             public const string リード1のパス = "-1";
 
+            /// <summary>
+            /// リード 2 のパス
+            /// </summary>
             public const string リード2のパス = "-2";
 
+            /// <summary>
+            /// k 長
+            /// </summary>
             public const string k長 = "-k";
 
+            /// <summary>
+            /// kmer カットオフ
+            /// </summary>
             public const string kmerカットオフ = "-kc";
 
+            /// <summary>
+            /// Phred オフセット
+            /// </summary>
             public const string Phredオフセット = "-p";
 
+            /// <summary>
+            /// クオリティカットオフ
+            /// </summary>
             public const string クオリティカットオフ = "-q";
 
+            /// <summary>
+            /// インサートサイズ
+            /// </summary>
             public const string インサートサイズ = "-i";
 
+            /// <summary>
+            /// 曖昧塩基を許容
+            /// </summary>
             public const string 曖昧塩基を許容 = "-ab";
 
+            /// <summary>
+            /// ヘルプ
+            /// </summary>
             public const string ヘルプ = "-h";
 
+            /// <summary>
+            /// 一時ディレクトリ
+            /// </summary>
             public const string 一時ディレクトリ = "-t";
 
+            /// <summary>
+            /// 一時ディレクトリ削除
+            /// </summary>
             public const string 一時ディレクトリ削除 = "-rt";
 
+            /// <summary>
+            /// 言語
+            /// </summary>
             public const string 言語 = "-lang";
 
+            /// <summary>
+            /// バージョン
+            /// </summary>
             public const string バージョン = "-v";
 
+            /// <summary>
+            /// スレッド数
+            /// </summary>
             public const string スレッド数 = "-th";
 
+            /// <summary>
+            /// ペア結合閾値
+            /// </summary>
             public const string ペア結合閾値 = "-pu";
 
+            /// <summary>
+            /// ペア支持数閾値
+            /// </summary>
             public const string ペア支持数閾値 = "-pc";
 
+            /// <summary>
+            /// エラー訂正
+            /// </summary>
             public const string エラー訂正 = "-ec";
 
+            /// <summary>
+            /// 前処理
+            /// </summary>
             public const string 前処理 = "-pp";
 
+            /// <summary>
+            /// メモリ予算
+            /// </summary>
             public const string メモリ予算 = "-mem";
 
+            /// <summary>
+            /// マルチ k
+            /// </summary>
             public const string マルチk = "-mk";
 
+            /// <summary>
+            /// マージ
+            /// </summary>
             public const string マージ = "-mg";
 
+            /// <summary>
+            /// 引き継ぎなし
+            /// </summary>
             public const string 引き継ぎなし = "-nc";
 
             public const string SuperRead = "-sr";
 
+            /// <summary>
+            /// 反復の r-mer 検証
+            /// </summary>
             public const string 反復r_mer検証 = "-rv";
 
+            /// <summary>
+            /// 局所アセンブリ
+            /// </summary>
             public const string 局所アセンブリ = "-la";
 
+            /// <summary>
+            /// 積極性モード
+            /// </summary>
             public const string 積極性モード = "-mode";
 
+            /// <summary>
+            /// GFA 出力
+            /// </summary>
             public const string GFA出力 = "-gfa";
 
+            /// <summary>
+            /// ポリッシュ
+            /// </summary>
             public const string ポリッシュ = "-po";
 
+            /// <summary>
+            /// 環状閉鎖検証
+            /// </summary>
             public const string 環状閉鎖検証 = "-cc";
 
+            /// <summary>
+            /// 救済 kmer
+            /// </summary>
             public const string 救済kmer = "-my";
 
+            /// <summary>
+            /// 再開
+            /// </summary>
             public const string 再開 = "-rs";
 
+            /// <summary>
+            /// ログ水準
+            /// </summary>
             public const string ログ水準 = "-log";
         }
 
@@ -101,10 +194,19 @@
         /// </remarks>
         public static class 言語名
         {
+            /// <summary>
+            /// 英語
+            /// </summary>
             public const string 英語 = "en";
 
+            /// <summary>
+            /// 日本語
+            /// </summary>
             public const string 日本語 = "ja";
 
+            /// <summary>
+            /// 中国語
+            /// </summary>
             public const string 中国語 = "zh";
         }
 
@@ -113,10 +215,19 @@
         /// </summary>
         public static class ログ水準名
         {
+            /// <summary>
+            /// 最小
+            /// </summary>
             public const string 最小 = "quiet";
 
+            /// <summary>
+            /// 標準
+            /// </summary>
             public const string 標準 = "normal";
 
+            /// <summary>
+            /// 詳細
+            /// </summary>
             public const string 詳細 = "verbose";
         }
 
@@ -148,21 +259,45 @@
 
         public static class 積極性モード名
         {
+            /// <summary>
+            /// 保守的
+            /// </summary>
             public const string 保守的 = "conservative";
 
+            /// <summary>
+            /// 標準
+            /// </summary>
             public const string 標準 = "normal";
 
+            /// <summary>
+            /// 積極的
+            /// </summary>
             public const string 積極的 = "bold";
         }
 
+        /// <summary>
+        /// 保守的モードのペア結合閾値
+        /// </summary>
         public const decimal 保守的モードのペア結合閾値 = 0.9M;
 
+        /// <summary>
+        /// 保守的モードのペア支持数閾値
+        /// </summary>
         public const ulong 保守的モードのペア支持数閾値 = 15UL;
 
+        /// <summary>
+        /// 積極的モードのペア結合閾値
+        /// </summary>
         public const decimal 積極的モードのペア結合閾値 = 0.65M;
 
+        /// <summary>
+        /// 積極的モードのペア支持数閾値
+        /// </summary>
         public const ulong 積極的モードのペア支持数閾値 = 5UL;
 
+        /// <summary>
+        /// インサートサイズ未指定表示
+        /// </summary>
         public const string インサートサイズ未指定表示 = "unspecified";
 
         /// <summary>
@@ -253,16 +388,34 @@
         /// </summary>
         public const long メモリ予算の既定値 = 768L * 1024 * 1024;
 
+        /// <summary>
+        /// Phred オフセットの既定値
+        /// </summary>
         public const int Phredオフセットの既定値 = 33;
 
+        /// <summary>
+        /// クオリティカットオフの既定値
+        /// </summary>
         public const int クオリティカットオフの既定値 = 1;
 
+        /// <summary>
+        /// 一時ディレクトリの既定値
+        /// </summary>
         public const string 一時ディレクトリの既定値 = "temp";
 
+        /// <summary>
+        /// 許容 Phred オフセット
+        /// </summary>
         public static readonly int[] 許容Phredオフセット = [33, 64];
 
+        /// <summary>
+        /// ペア結合閾値の既定値
+        /// </summary>
         public const decimal ペア結合閾値の既定値 = 0.8M;
 
+        /// <summary>
+        /// ペア支持数閾値の既定値
+        /// </summary>
         public const ulong ペア支持数閾値の既定値 = 10UL;
 
         /// <summary>
@@ -325,10 +478,19 @@
         /// </summary>
         public const int r_mer接合点支持の閾値の既定値 = 4;
 
+        /// <summary>
+        /// ユニティグファイル名
+        /// </summary>
         public const string ユニティグファイル名 = "unitigs.fasta";
 
+        /// <summary>
+        /// コンティグファイル名
+        /// </summary>
         public const string コンティグファイル名 = "contigs.fasta";
 
+        /// <summary>
+        /// スキャフォールドファイル名
+        /// </summary>
         public const string スキャフォールドファイル名 = "scaffolds.fasta";
 
         /// <summary>
@@ -341,6 +503,9 @@
         /// </remarks>
         public const string 最終アセンブリファイル名 = "assembly.fasta";
 
+        /// <summary>
+        /// GFA ファイル名
+        /// </summary>
         public const string GFAファイル名 = "assembly.gfa";
 
         /// <summary>
@@ -364,8 +529,14 @@
         /// </summary>
         public const int 環状として数える最小長 = 1000;
 
+        /// <summary>
+        /// レポートファイル名
+        /// </summary>
         public const string レポートファイル名 = "assembly.report.json";
 
+        /// <summary>
+        /// 曖昧箇所ファイル名
+        /// </summary>
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
 
         /// <summary>
@@ -429,10 +600,19 @@
             public const byte T = 4;
         }
 
+        /// <summary>
+        /// 進捗ログ間隔
+        /// </summary>
         public const ulong 進捗ログ間隔 = 100_000;
 
+        /// <summary>
+        /// 無効な塩基
+        /// </summary>
         public const byte 無効な塩基 = 5;
 
+        /// <summary>
+        /// ユニティグ数の上限
+        /// </summary>
         public const int ユニティグ数の上限 = 100_000;
 
         /// <summary>

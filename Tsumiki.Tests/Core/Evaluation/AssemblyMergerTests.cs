@@ -29,6 +29,9 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// アンカー k 長
+        /// </summary>
         private const int アンカーk長 = 31;
 
         // 既定では 2 つ以上の k による裏付けを求める

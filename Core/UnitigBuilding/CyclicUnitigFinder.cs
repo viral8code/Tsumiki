@@ -149,8 +149,14 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </summary>
         private sealed class 正規形集合(int p_k長)
         {
+            /// <summary>
+            /// 小
+            /// </summary>
             private readonly HashSet<UInt128>? _小 = p_k長 <= 64 ? [] : null;
 
+            /// <summary>
+            /// 大
+            /// </summary>
             private readonly HashSet<KmerKey>? _大 = p_k長 > 64 ? [] : null;
 
             public void V_追加(UInt128 p_正規形)

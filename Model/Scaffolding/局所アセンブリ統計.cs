@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Model.Scaffolding
 {
     /// <summary>
-    /// スキャフォールドの局所アセンブリ(-la)によるギャップ充填の集計
+    /// スキャフォールドの局所アセンブリ (-la) によるギャップ充填の集計
     /// </summary>
     internal readonly record struct 局所アセンブリ統計(
         int A_対象ギャップ数,

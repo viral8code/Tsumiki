@@ -80,7 +80,7 @@ namespace Tsumiki.Tests.Core
 
         private static int[] NoMerges(UnitigGraph graph)
         {
-            var merge = new int[graph.A_出辺.Count];
+            var-merge = new int[graph.A_出辺.Count];
             Array.Fill(merge, -1);
             return merge;
         }
@@ -103,7 +103,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> pairLink = new() { [(a, b)] = 3, [(a, c)] = 4 };
             Dictionary<int, int> copyNumber = new() { [aId] = 1, [bId] = 1, [cId] = 1 };
 
-            var merge = NoMerges(graph);
+            var-merge = NoMerges(graph);
             _ = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: null);
@@ -133,7 +133,7 @@ namespace Tsumiki.Tests.Core
                 [(long)unitigList[a].Length, (long)unitigList[b].Length, (long)unitigList[c].Length]);
             Assert.True(較正器.A_使えるか);
 
-            var merge = NoMerges(graph);
+            var-merge = NoMerges(graph);
             var committed = BeamSearchExtender.V_延長_先読み(
                 graph, unitigList, merge, pairLink, copyNumber,
                 p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3, p_較正器: 較正器);

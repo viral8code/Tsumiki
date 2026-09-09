@@ -2,6 +2,9 @@
 {
     internal class FastaWriter(string p_ファイル名) : IDisposable
     {
+        /// <summary>
+        /// 書き込み
+        /// </summary>
         private readonly StreamWriter _書き込み = new(p_ファイル名);
 
         public void V_書き込み(object p_配列ID, string p_配列)

@@ -13,6 +13,9 @@ namespace Tsumiki.Utility
     /// </summary>
     internal class TrustedKmerIndex : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
         // k-mer カウント用のシャード
@@ -23,6 +26,9 @@ namespace Tsumiki.Utility
         // シャードごとのロック
         // k-mer をワーカー単位ではなくハッシュ値で
         // 振り分けるようにしたため、複数スレッドが同じシャードへ書きうる
+        /// <summary>
+        /// シャードロック
+        /// </summary>
         private readonly object[]? _シャードロック;
 
         // カットオフを通過した k-mer の厳密な集合 (常に正規形)
@@ -65,10 +71,19 @@ namespace Tsumiki.Utility
         // グローバルから毎回読むと、別の k を使う処理が
         // 走った後にこのインデックスへ問い合わせたとき、内部表現と食い違う経路を
         // 選んで破綻する (multi-k のように k が切り替わる場面で実際に起きる)
+        /// <summary>
+        /// k 長
+        /// </summary>
         private readonly int _k長;
 
+        /// <summary>
+        /// 小経路を使うか
+        /// </summary>
         private bool 小経路を使うか => this._k長 <= 32;
 
+        /// <summary>
+        /// 中経路を使うか
+        /// </summary>
         private bool 中経路を使うか => this._k長 is > 32 and <= 64;
 
         public TrustedKmerIndex(string p_一時ディレクトリ)

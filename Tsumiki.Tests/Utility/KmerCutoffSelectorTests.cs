@@ -45,6 +45,9 @@ namespace Tsumiki.Tests.Utility
             (16, 800), (17, 600), (18, 400), (19, 220), (20, 120),
         ];
 
+        /// <summary>
+        /// 谷の位置
+        /// </summary>
         private const ulong 谷の位置 = 8UL;
 
         /// <summary>

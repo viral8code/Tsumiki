@@ -12,7 +12,13 @@
     /// </summary>
     internal sealed class 証拠較正器
     {
+        /// <summary>
+        /// モデル
+        /// </summary>
         private readonly PairedDistanceModel? _モデル;
+        /// <summary>
+        /// 密度
+        /// </summary>
         private readonly double _密度;
 
         private 証拠較正器(PairedDistanceModel? p_モデル, double p_密度)

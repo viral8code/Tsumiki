@@ -20,17 +20,32 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CircularRepeatResolutionTests
     {
+        /// <summary>
+        /// 曖昧 kmer
+        /// </summary>
         private const int 曖昧kmer = int.MinValue;
 
+        /// <summary>
+        /// k 長
+        /// </summary>
         private const int k長 = 8;
 
         // 反復
         // A と B はどちらも R の先頭 k-1 塩基で終わり、
         // R の末尾 k-1 塩基で始まる (= R が入次数 2・出次数 2 になる)
+        /// <summary>
+        /// ユニティグ R
+        /// </summary>
         private const string ユニティグR = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
+        /// <summary>
+        /// ユニティグ A
+        /// </summary>
         private const string ユニティグA = "GAGCAGAGTCGTTCTGCGAGGACAGTTCGCGAGCCCTCCGTC";
 
+        /// <summary>
+        /// ユニティグ B
+        /// </summary>
         private const string ユニティグB = "GAGCAGACCGTCTGTAACAGCTGTATTGAGGTCGTCTCCGTC";
 
         private static (List<string> A_ユニティグ配列, Dictionary<KmerKey, (int, int)> A_kmer辞書) Get_構成()

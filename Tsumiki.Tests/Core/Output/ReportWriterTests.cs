@@ -15,6 +15,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ReportWriterTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
         public ReportWriterTests()

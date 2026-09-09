@@ -18,6 +18,9 @@ namespace Tsumiki.Core
         // 同一 k-mer が複数の unitig にまたがって出現した (=反復配列等に
         // 由来する曖昧な k-mer である) ことを示す番兵値
         // unitig ID は 1 始まりの正数、逆鎖側はその負数を使うため int.MinValue と衝突しない
+        /// <summary>
+        /// 曖昧 kmer の番兵
+        /// </summary>
         private const int 曖昧kmerの番兵 = int.MinValue;
 
         // 値は (符号付き unitig ID, その unitig 内での k-mer開始位置 (0 始まり、
@@ -30,8 +33,14 @@ namespace Tsumiki.Core
         // unitig ID(1 始まり) -> unitig の塩基長
         // ギャップ長推定で
         // 「unitig の末尾からリードのヒット位置までの残り長」を求めるのに使う
+        /// <summary>
+        /// ユニティグ長
+        /// </summary>
         private readonly Dictionary<int, int> _ユニティグ長;
 
+        /// <summary>
+        /// ユニティグファイルパス
+        /// </summary>
         private readonly string _ユニティグファイルパス;
 
         // 単一リード内で直接検出された隣接 (=k-1 塩基のオーバーラップで
@@ -48,6 +57,9 @@ namespace Tsumiki.Core
         // unitig ID(1 始まり) -> その unitig が最終的にどの contig の
         // どの位置に配置されたか
         // contig 結合の実行後、Scaffolder から参照される
+        /// <summary>
+        /// ユニティグ配置
+        /// </summary>
         private readonly Dictionary<int, ユニティグ配置> _ユニティグ配置 = [];
 
         public ContigMaker(string p_ユニティグファイルパス)

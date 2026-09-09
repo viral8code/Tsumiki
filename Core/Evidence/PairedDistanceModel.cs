@@ -17,6 +17,9 @@ namespace Tsumiki.Core.Evidence
         /// </summary>
         private readonly (int A_長さ, double A_確率)[] _分布;
 
+        /// <summary>
+        /// リード長
+        /// </summary>
         private readonly int _リード長;
 
         /// <summary>
@@ -24,6 +27,9 @@ namespace Tsumiki.Core.Evidence
         /// </summary>
         private readonly int _窓幅;
 
+        /// <summary>
+        /// 中央フラグメント長
+        /// </summary>
         private readonly int _中央フラグメント長;
 
         public PairedDistanceModel(IReadOnlyList<int> p_フラグメント長標本, int p_リード長)
@@ -62,6 +68,9 @@ namespace Tsumiki.Core.Evidence
                 : [.. l_件数.OrderBy(x => x.Key).Select(x => (x.Key, (double)x.Value / l_総数))];
         }
 
+        /// <summary>
+        /// 使えるか
+        /// </summary>
         public bool A_使えるか => this._分布.Length > 0;
 
         private static int Get_分位(int[] p_昇順, double p_位置)

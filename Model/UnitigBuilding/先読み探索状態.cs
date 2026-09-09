@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Model.UnitigBuilding
 {
     /// <summary>
-    /// ビームサーチの部分経路1本ぶんの状態
+    /// ビームサーチの部分経路 1 本ぶんの状態
     /// </summary>
     internal sealed class 先読み探索状態
     {
@@ -11,12 +11,12 @@
         public required int A_現在の頂点 { get; init; }
 
         /// <summary>
-        /// この経路が分岐点から最初に踏んだ頂点(どの枝を選んだか)
+        /// この経路が分岐点から最初に踏んだ頂点 (どの枝を選んだか)
         /// </summary>
         public required int A_最初の1歩 { get; init; }
 
         /// <summary>
-        /// ここまでに積算したペアエンドの支持(期待本数との比、較正器が
+        /// ここまでに積算したペアエンドの支持 (期待本数との比、較正器が
         /// 使えない場合は生カウントそのもの)<br/>
         /// ビームの絞り込み・最終的な
         /// 優勢判定に使う

@@ -47,6 +47,9 @@ namespace Tsumiki.Common
             };
         }
 
+        /// <summary>
+        /// 英語
+        /// </summary>
         private static readonly Dictionary<メッセージID, string> _英語 = new()
         {
             [メッセージID.デブルーイングラフの要約] =
@@ -503,6 +506,9 @@ namespace Tsumiki.Common
                 "[SuperRead] Reusing the {0:N0} synthetic read(s) built at the first k",
         };
 
+        /// <summary>
+        /// 日本語
+        /// </summary>
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
         {
             [メッセージID.デブルーイングラフの要約] =
@@ -959,6 +965,9 @@ namespace Tsumiki.Common
                 "[SuperRead] 最初の k で作った合成リード {0:N0} 本を再利用",
         };
 
+        /// <summary>
+        /// 中国語
+        /// </summary>
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
         {
             [メッセージID.デブルーイングラフの要約] =

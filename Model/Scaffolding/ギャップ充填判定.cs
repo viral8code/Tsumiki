@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Model.Scaffolding
 {
     /// <summary>
-    /// 1つのギャップを埋めようとした結果の区分
+    /// 1 つのギャップを埋めようとした結果の区分
     /// </summary>
     internal enum ギャップ充填判定
     {

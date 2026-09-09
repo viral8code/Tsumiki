@@ -9,29 +9,56 @@ namespace Tsumiki.Utility
         // Dictionary のエントリ構造体を合わせて概ね 80 B
         // 予算は全シャードで分け合う総量として扱う (1 シャードあたりにすると
         // スレッド数倍に膨らむ)
+        /// <summary>
+        /// エントリあたりの推定バイト数
+        /// </summary>
         private const int エントリあたりの推定バイト数 = 80;
 
         // FileStream に渡すバッファサイズ
         // 8 バイト単位の細かい書き込みでも
         // システムコールが頻発しないよう大きめに確保する
+        /// <summary>
+        /// IO バッファサイズ
+        /// </summary>
         private const int IOバッファサイズ = 1 << 20; // 1MB
 
+        /// <summary>
+        /// 比較器
+        /// </summary>
         private readonly ByteArrayComparer _比較器;
 
+        /// <summary>
+        /// 等価比較器
+        /// </summary>
         private readonly ByteArrayEqualityComparer _等価比較器;
 
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
+        /// <summary>
+        /// ファイル接頭辞
+        /// </summary>
         private readonly string _ファイル接頭辞;
 
+        /// <summary>
+        /// パック長
+        /// </summary>
         private readonly int _パック長;
 
+        /// <summary>
+        /// フラッシュ閾値
+        /// </summary>
         private readonly int _フラッシュ閾値;
 
         private int _ファイル連番;
 
         private Dictionary<byte[], ulong> _バッファ;
 
+        /// <summary>
+        /// フラッシュ済みファイル
+        /// </summary>
         private readonly List<string> _フラッシュ済みファイル = [];
 
         /// <summary>

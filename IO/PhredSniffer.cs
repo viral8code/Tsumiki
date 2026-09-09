@@ -14,6 +14,9 @@ namespace Tsumiki.IO
         // 通常は 40 強が上限)
         // これを大きく超えるスコアが観測された場合は、
         // オフセットの取り違えを疑う
+        /// <summary>
+        /// 現実的な Q 上限
+        /// </summary>
         private const int 現実的なQ上限 = 45;
 
         public static Phred標本 Get_標本(IEnumerable<string> p_クオリティ行, int p_標本上限 = 20_000)

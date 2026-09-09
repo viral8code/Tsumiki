@@ -9,6 +9,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class PreprocessorTests
     {
+        /// <summary>
+        /// Phred オフセット
+        /// </summary>
         private const int Phredオフセット = 33;
 
         private static string 高品質クオリティ(int p_長さ, int p_スコア = 35)

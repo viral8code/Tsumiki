@@ -34,6 +34,9 @@ namespace Tsumiki.Tests.Core
         }
 
         private const int K = 21;
+        /// <summary>
+        /// 深さ
+        /// </summary>
         private const int 深さ = 20;
 
         private static string RandomSequence(int length, int seed)

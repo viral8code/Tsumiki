@@ -16,8 +16,14 @@ namespace Tsumiki.Core.Evaluation
     /// </summary>
     internal static class AmbiguityRecorder
     {
+        /// <summary>
+        /// 錠
+        /// </summary>
         private static readonly object _錠 = new();
 
+        /// <summary>
+        /// k 長ごとの記録
+        /// </summary>
         private static readonly Dictionary<int, List<曖昧箇所>> _k長ごとの記録 = [];
 
         private static int _現在のk長;

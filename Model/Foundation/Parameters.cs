@@ -161,6 +161,9 @@ namespace Tsumiki.Model.Foundation
             this.A_Phredが明示指定されたか = l_明示指定済みか;
         }
 
+        /// <summary>
+        /// クオリティカットオフ
+        /// </summary>
         public int A_クオリティカットオフ { get; set; } = Consts.クオリティカットオフの既定値;
 
         /// <summary>
@@ -190,6 +193,9 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public int? A_インサートサイズ { get; set; } = null;
 
+        /// <summary>
+        /// ヘルプモードか
+        /// </summary>
         public bool A_ヘルプモードか { get; set; } = false;
 
         /// <summary>
@@ -237,8 +243,14 @@ namespace Tsumiki.Model.Foundation
             };
         }
 
+        /// <summary>
+        /// 曖昧塩基を許容するか
+        /// </summary>
         public bool A_曖昧塩基を許容するか { get; set; } = false;
 
+        /// <summary>
+        /// エラー訂正するか
+        /// </summary>
         public bool A_エラー訂正するか { get; set; } = false;
 
         /// <summary>
@@ -324,6 +336,9 @@ namespace Tsumiki.Model.Foundation
         /// </summary>
         public bool A_再開するか { get; set; } = false;
 
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         /// <summary>

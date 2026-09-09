@@ -5,6 +5,9 @@ namespace Tsumiki.Model.UnitigBuilding
     internal class ユニティグ(object p_ID, string p_配列)
     {
         public readonly string A_ID = p_ID?.ToString() ?? string.Empty;
+        /// <summary>
+        /// 配列
+        /// </summary>
         public readonly string A_配列 = p_配列;
 
         public override string ToString()

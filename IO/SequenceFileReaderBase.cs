@@ -9,10 +9,19 @@ namespace Tsumiki.IO
     /// </summary>
     internal abstract class SequenceFileReaderBase : IDisposable
     {
+        /// <summary>
+        /// ファイルパス
+        /// </summary>
         public string A_ファイルパス { get; }
 
+        /// <summary>
+        /// 読み込み
+        /// </summary>
         private readonly StreamReader _読み込み;
 
+        /// <summary>
+        /// バッファサイズ
+        /// </summary>
         private const int バッファサイズ = 1 << 25;
 
         protected SequenceFileReaderBase(string p_パス)

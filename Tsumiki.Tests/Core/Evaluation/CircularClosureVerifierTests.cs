@@ -13,6 +13,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CircularClosureVerifierTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
         public CircularClosureVerifierTests()

@@ -4,6 +4,9 @@ namespace Tsumiki.Model.Foundation
 {
     internal readonly struct KmerKey : IEquatable<KmerKey>
     {
+        /// <summary>
+        /// パック済みデータ
+        /// </summary>
         public readonly ulong[] A_パック済みデータ;
 
         public KmerKey(ReadOnlySpan<char> p_kmer)

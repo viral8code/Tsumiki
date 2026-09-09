@@ -17,6 +17,9 @@ namespace Tsumiki.Core.Pipeline
     /// </summary>
     internal static class MultiKAssembler
     {
+        /// <summary>
+        /// 試す k 長の下限
+        /// </summary>
         private const int 試すk長の下限 = 21;
 
         /// <summary>

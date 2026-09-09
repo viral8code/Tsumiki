@@ -42,6 +42,9 @@ namespace Tsumiki.Tests.Core
         // 環状の目印が付かない
         private const int k = 21;
 
+        /// <summary>
+        /// 円周
+        /// </summary>
         private const int 円周 = 1200;
 
         // k=21 なら 1200 塩基の乱数列に重複する正規化 k-mer は事実上現れない

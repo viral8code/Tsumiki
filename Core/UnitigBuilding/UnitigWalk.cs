@@ -11,14 +11,29 @@ namespace Tsumiki.Core.UnitigBuilding
     /// </summary>
     internal sealed class UnitigWalk
     {
+        /// <summary>
+        /// kmer インデックス
+        /// </summary>
         private readonly TrustedKmerIndex _kmerインデックス;
 
+        /// <summary>
+        /// k 長
+        /// </summary>
         private readonly int _k長;
 
+        /// <summary>
+        /// 小経路か
+        /// </summary>
         private readonly bool _小経路か;
 
+        /// <summary>
+        /// マスク
+        /// </summary>
         private readonly UInt128 _マスク;
 
+        /// <summary>
+        /// 上位シフト
+        /// </summary>
         private readonly int _上位シフト;
 
         public UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)

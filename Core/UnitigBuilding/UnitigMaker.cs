@@ -7,6 +7,9 @@ namespace Tsumiki.Core.UnitigBuilding
 {
     internal class UnitigMaker(TrustedKmerIndex p_kmerインデックス)
     {
+        /// <summary>
+        /// kmer インデックス
+        /// </summary>
         private readonly TrustedKmerIndex _kmerインデックス = p_kmerインデックス;
 
         // 循環検出用
@@ -14,8 +17,14 @@ namespace Tsumiki.Core.UnitigBuilding
         // k<=64 では UInt128 をキーにして 1 歩ごとの文字列生成を避ける
         // 呼び出しごとに作り直さず使い回すのは、この処理が 1 回の実行で
         // 数百万回呼ばれるため
+        /// <summary>
+        /// 訪問済み パック
+        /// </summary>
         private readonly HashSet<UInt128> _訪問済み_パック = [];
 
+        /// <summary>
+        /// 訪問済み 文字列
+        /// </summary>
         private readonly HashSet<string> _訪問済み_文字列 = [];
 
         /// <summary>
@@ -71,11 +80,20 @@ namespace Tsumiki.Core.UnitigBuilding
         /// </summary>
         private sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)
         {
+            /// <summary>
+            /// 転がし
+            /// </summary>
             private readonly UnitigWalk? _転がし =
                 UnitigWalk.Get_扱えるか(ConfigurationManager.A_実行時引数.A_k長)
                     ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長)
                     : null;
+            /// <summary>
+            /// 従来
+            /// </summary>
             private readonly UnitigMaker _従来 = new(p_kmerインデックス);
+            /// <summary>
+            /// 訪問済み
+            /// </summary>
             private readonly HashSet<UInt128> _訪問済み = [];
 
             public string Get_配列(byte[] p_開始kmer)

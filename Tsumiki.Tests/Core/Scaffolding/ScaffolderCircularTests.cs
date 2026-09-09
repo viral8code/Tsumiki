@@ -16,10 +16,19 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ScaffolderCircularTests : IDisposable
     {
+        /// <summary>
+        /// k 長
+        /// </summary>
         private const int k長 = 21;
 
+        /// <summary>
+        /// 円周
+        /// </summary>
         private const int 円周 = 1200;
 
+        /// <summary>
+        /// 一時ディレクトリ
+        /// </summary>
         private readonly string _一時ディレクトリ;
 
         public ScaffolderCircularTests()
@@ -43,12 +52,24 @@ namespace Tsumiki.Tests.Core
         // 末尾の k-1 塩基が先頭の k-1 塩基と一致する
         // 複製単位として数えてもらえる長さ (Consts.環状として数える最小長) を
         // 超えるようにしないと、環状の目印が付かない
+        /// <summary>
+        /// 環
+        /// </summary>
         private static readonly string 環 = Get_乱数配列(円周, p_種: 20250908);
 
+        /// <summary>
+        /// ユニティグ A
+        /// </summary>
         private static readonly string ユニティグA = 環[..(400 + k長 - 1)];
 
+        /// <summary>
+        /// ユニティグ B
+        /// </summary>
         private static readonly string ユニティグB = 環[400..(800 + k長 - 1)];
 
+        /// <summary>
+        /// ユニティグ C
+        /// </summary>
         private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
 
         private static string Get_乱数配列(int p_長さ, int p_種)
