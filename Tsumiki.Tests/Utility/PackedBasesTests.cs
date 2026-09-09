@@ -10,6 +10,12 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class PackedBasesTests
     {
+        /// <summary>
+        /// 乱数から塩基 ID 列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_乱数">使う乱数</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] RandomBases(int p_長さ, Random p_乱数)
         {
             var l_列 = new byte[p_長さ];
@@ -20,6 +26,15 @@ namespace Tsumiki.Tests.Utility
             return l_列;
         }
 
+        /// <summary>
+        /// 1 塩基ずつ比べて不一致の数を数える
+        /// </summary>
+        /// <param name="p_列1">比べる塩基 ID 列</param>
+        /// <param name="p_列2">比べる塩基 ID 列</param>
+        /// <param name="p_開始1">片方で比べ始める位置</param>
+        /// <param name="p_開始2">もう片方で比べ始める位置</param>
+        /// <param name="p_長さ">比べる長さ</param>
+        /// <returns>不一致の数</returns>
         private static int Get_不一致数_素朴(
             byte[] p_列1, byte[] p_列2, int p_開始1, int p_開始2, int p_長さ)
         {
@@ -34,6 +49,15 @@ namespace Tsumiki.Tests.Utility
             return l_数;
         }
 
+        /// <summary>
+        /// 語単位で比べて不一致の数を数える
+        /// </summary>
+        /// <param name="p_詰め1">比べる詰めた塩基列</param>
+        /// <param name="p_詰め2">比べる詰めた塩基列</param>
+        /// <param name="p_開始1">片方で比べ始める位置</param>
+        /// <param name="p_開始2">もう片方で比べ始める位置</param>
+        /// <param name="p_長さ">比べる長さ</param>
+        /// <returns>不一致の数</returns>
         private static int Get_不一致数_語単位(
             PackedBases p_詰め1, PackedBases p_詰め2, int p_開始1, int p_開始2, int p_長さ)
         {

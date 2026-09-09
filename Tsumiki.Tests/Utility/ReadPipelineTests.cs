@@ -93,6 +93,10 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal("broken input", 例外.Message);
         }
 
+        /// <summary>
+        /// 途中で例外を投げる入力を返す
+        /// </summary>
+        /// <returns>途中で壊れる入力</returns>
         private static IEnumerable<int> Get_途中で壊れる入力()
         {
             for (var i = 0; i < 100; i++)

@@ -43,10 +43,30 @@ namespace Tsumiki.Tests.Core
         // RepeatResolutionTests と同じ構成: A/B が R の先頭 k-1 塩基を、
         // C/D が R の末尾 k-1 塩基を共有する
         // 真の文脈は A→R→C, B→R→D
+
+        /// <summary>
+        /// 反復の手前にある片方の入口
+        /// </summary>
         private const string UnitigA = "ACAGTTCGCGAGCCCTCCGTC";
+
+        /// <summary>
+        /// 反復の手前にあるもう片方の入口
+        /// </summary>
         private const string UnitigB = "TGTATTGAGGTCGTCTCCGTC";
+
+        /// <summary>
+        /// 入口と出口に挟まれた反復配列
+        /// </summary>
         private const string UnitigR = "CTCCGTCAGCTTGTTTGGAGCAGA";
+
+        /// <summary>
+        /// 反復の先にある片方の出口
+        /// </summary>
         private const string UnitigC = "GAGCAGAGTCGTTCTGCGAGG";
+
+        /// <summary>
+        /// 反復の先にあるもう片方の出口
+        /// </summary>
         private const string UnitigD = "GAGCAGACCGTCTGTAACAGC";
 
         private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build()

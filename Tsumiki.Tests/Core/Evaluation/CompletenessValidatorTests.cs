@@ -21,22 +21,40 @@ namespace Tsumiki.Tests.Core
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
         }
 
+        /// <summary>
+        /// 取りこぼしも出しすぎも許容内に収まる自己検査の結果
+        /// </summary>
+        /// <returns>自己検査の結果</returns>
         private static 整合性検査結果 Get_良好な自己検査()
         {
             // 取りこぼし 1%、出しすぎ 0%
             return new 整合性検査結果(1000, 1000, 1000, 10, 0, 0);
         }
 
+        /// <summary>
+        /// 深度の落ち込みが許容内に収まるポリッシュの結果
+        /// </summary>
+        /// <returns>ポリッシュの結果</returns>
         private static ポリッシュ統計 Get_良好な深度()
         {
             return new ポリッシュ統計(1, 1000, 1000, 0, 0, 0, 1000, 80);
         }
 
+        /// <summary>
+        /// 閉じ目をリードが跨いでいる環状閉鎖の検証結果
+        /// </summary>
+        /// <returns>環状閉鎖の検証結果</returns>
         private static IReadOnlyList<環状閉鎖検証結果> Get_裏付けのある閉鎖()
         {
             return [new 環状閉鎖検証結果("scaffold1_circular", 1000, 12, 5)];
         }
 
+        /// <summary>
+        /// 完全長の判定から、指定した検査項目の判定を取り出す
+        /// </summary>
+        /// <param name="p_判定">完全長の判定結果</param>
+        /// <param name="p_キー">取り出す検査項目のキー</param>
+        /// <returns>その項目の判定</returns>
         private static 検査判定 Get_判定(完全性判定結果 p_判定, string p_キー)
         {
             return p_判定.A_検査項目.Single(x => x.A_キー == p_キー).A_判定;

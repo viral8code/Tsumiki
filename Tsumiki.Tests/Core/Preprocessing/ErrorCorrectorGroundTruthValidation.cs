@@ -19,6 +19,10 @@ namespace Tsumiki.Tests.Core
         // Bash tool経由 (Git Bash/MSYS) で python tools/simulate_reads.py --out-dir /tmp/tsumiki_synth
         // を実行した場合の実際の出力先 (MSYS が/tmp をこの Windows パスへ解決する)
         // .NET のファイル API は MSYS のパス変換を経由しないため、Windows 形式で直接指定する
+
+        /// <summary>
+        /// 合成データを置くディレクトリ
+        /// </summary>
         private static readonly string SynthDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "tsumiki_synth");
 
@@ -95,6 +99,12 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// リードを ID から引ける形で読み込む
+        /// </summary>
+        /// <param name="path">読み込むパス</param>
+        /// <param name="mate">ペアのどちら側か</param>
+        /// <returns>ID から引けるリード</returns>
         private static Dictionary<(string, int), string> LoadReadsById(string path, int mate)
         {
             var result = new Dictionary<(string, int), string>();
@@ -108,6 +118,13 @@ namespace Tsumiki.Tests.Core
             return result;
         }
 
+        /// <summary>
+        /// 訂正済みのリードが真の配列へ近づいているかを確かめる
+        /// </summary>
+        /// <param name="correctedPath">訂正済みリードのパス</param>
+        /// <param name="mate">ペアのどちら側か</param>
+        /// <param name="originalReads">訂正前のリード</param>
+        /// <param name="truthReads">真の配列</param>
         private static void ValidateFile(
             string correctedPath, int mate,
             Dictionary<(string, int), string> originalReads,
@@ -159,8 +176,15 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private sealed class 簡易FASTQ読み込み(string p_パス) : IDisposable
         {
+            /// <summary>
+            /// 読み込み中のストリーム
+            /// </summary>
             private readonly StreamReader _reader = new(p_パス);
 
+            /// <summary>
+            /// まだ読めるリードがあるか
+            /// </summary>
+            /// <returns>続きがあれば true</returns>
             public bool Get_続きがあるか() => !this._reader.EndOfStream;
 
             public (string A_ID, string A_配列) Get_次のリード()

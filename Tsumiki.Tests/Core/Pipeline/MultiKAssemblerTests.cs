@@ -14,6 +14,10 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class MultiKAssemblerTests
     {
+        /// <summary>
+        /// 既定のままの実行時引数
+        /// </summary>
+        /// <returns>実行時引数</returns>
         private static Parameters Get_引数() => new();
 
         [Fact]

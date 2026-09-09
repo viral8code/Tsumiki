@@ -46,11 +46,23 @@ namespace Tsumiki.Tests.Core
             return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
         }
 
+        /// <summary>
+        /// 検証に使うアセンブリ統計
+        /// </summary>
+        /// <returns>アセンブリ統計</returns>
         private static アセンブリ統計 Get_統計()
         {
             return new アセンブリ統計(3, 5_000_000, 4_800_000, 900, 4_800_000, 1, 50.5);
         }
 
+        /// <summary>
+        /// レポートを書き出し、その JSON を読み直して返す
+        /// </summary>
+        /// <param name="p_判定">完全長の判定結果</param>
+        /// <param name="p_整合性">自己検査の結果</param>
+        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
+        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
+        /// <returns>書き出した JSON</returns>
         private JsonElement Get_書き出したJSON(
             完全性判定結果 p_判定,
             整合性検査結果? p_整合性 = null,

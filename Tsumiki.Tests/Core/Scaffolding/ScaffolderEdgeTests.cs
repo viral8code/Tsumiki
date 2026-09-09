@@ -14,6 +14,13 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ScaffolderEdgeTests
     {
+        /// <summary>
+        /// スキャフォールドの候補を組み立てる
+        /// </summary>
+        /// <param name="p_行き先">繋ぐ先の頂点</param>
+        /// <param name="p_支持数">支持したペアの数</param>
+        /// <param name="p_期待比">理想本数に対する比</param>
+        /// <returns>スキャフォールドの候補</returns>
         private static スキャフォールド候補 候補(int p_行き先, ulong p_支持数, double p_期待比)
         {
             return new スキャフォールド候補(p_行き先, p_支持数, 300, p_期待比);

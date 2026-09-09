@@ -32,10 +32,30 @@ namespace Tsumiki.Tests.Core
         // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
         // A と B はどちらも R の先頭 k-1 塩基で終わり、C と D はどちらも
         // R の末尾 k-1 塩基で始まる (= R が入次数 2・出次数 2 の反復になる)
+
+        /// <summary>
+        /// 反復の手前にある片方の入口
+        /// </summary>
         private const string UnitigA = "ACAGTTCGCGAGCCCTCCGTC";
+
+        /// <summary>
+        /// 反復の手前にあるもう片方の入口
+        /// </summary>
         private const string UnitigB = "TGTATTGAGGTCGTCTCCGTC";
+
+        /// <summary>
+        /// 入口と出口に挟まれた反復配列
+        /// </summary>
         private const string UnitigR = "CTCCGTCAGCTTGTTTGGAGCAGA";
+
+        /// <summary>
+        /// 反復の先にある片方の出口
+        /// </summary>
         private const string UnitigC = "GAGCAGAGTCGTTCTGCGAGG";
+
+        /// <summary>
+        /// 反復の先にあるもう片方の出口
+        /// </summary>
         private const string UnitigD = "GAGCAGACCGTCTGTAACAGC";
 
         private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build(

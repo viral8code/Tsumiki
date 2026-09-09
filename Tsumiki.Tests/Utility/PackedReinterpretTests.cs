@@ -11,6 +11,11 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class PackedReinterpretTests
     {
+        /// <summary>
+        /// 塩基 ID 列を、ディスク上と同じ並びのバイト列へ詰める
+        /// </summary>
+        /// <param name="p_塩基ID列">元の塩基 ID 列</param>
+        /// <returns>詰めたバイト列</returns>
         private static byte[] Get_パック済み(byte[] p_塩基ID列)
         {
             // CountingDB.V_登録 と同じ手順
@@ -31,6 +36,12 @@ namespace Tsumiki.Tests.Utility
             return l_パック;
         }
 
+        /// <summary>
+        /// 乱数から塩基 ID 列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] Get_塩基ID列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);

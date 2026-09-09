@@ -41,8 +41,17 @@ namespace Tsumiki.Tests.Core
         }
 
         // k=8 で内部に k-mer 重複のないことを確認済みの100 bp 配列
+
+        /// <summary>
+        /// 検証に使う唯一のユニティグ
+        /// </summary>
         private const string UnitigSeq = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
 
+        /// <summary>
+        /// ユニティグ 1 本だけを持つコンティグ構築を組み立てる
+        /// </summary>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>組み立てたコンティグ構築</returns>
         private ContigMaker Get_コンティグ構築_単一ユニティグ(int p_k長)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };

@@ -28,10 +28,30 @@ namespace Tsumiki.Tests.Core
         private const int K = 8;
 
         // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
+
+        /// <summary>
+        /// 分岐元
+        /// </summary>
         private const string UnitigA = "TGGCAAGTCACTCTCGACCGA";
+
+        /// <summary>
+        /// 分岐先の片方
+        /// </summary>
         private const string UnitigB = "CGACCGAACGGCGCCGGATC";
+
+        /// <summary>
+        /// 分岐先のもう片方
+        /// </summary>
         private const string UnitigC = "CGACCGACTGTAATTCTACC";
+
+        /// <summary>
+        /// B の先へ続く配列
+        /// </summary>
         private const string UnitigD = "CCGGATCAAAGCCACGGCTAG";
+
+        /// <summary>
+        /// C の先へ続く配列
+        /// </summary>
         private const string UnitigE = "TTCTACCAAAGGCTAGTATGA";
 
         private static (List<string> UnitigList, UnitigGraph Graph) Build()

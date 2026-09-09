@@ -90,6 +90,10 @@ namespace Tsumiki.Tests.Core
                 Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
         }
 
+        /// <summary>
+        /// スキャフォールディングまで通して、その出力を返す
+        /// </summary>
+        /// <returns>スキャフォールドの配列</returns>
         private string Get_スキャフォールド出力()
         {
             ConfigurationManager.A_実行時引数 = new Parameters

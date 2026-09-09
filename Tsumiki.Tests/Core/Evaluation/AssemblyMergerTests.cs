@@ -57,6 +57,13 @@ namespace Tsumiki.Tests.Core
             return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出し、アセンブリの実行結果として返す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="kmerLength">k 長</param>
+        /// <param name="sequences">書き出す配列</param>
+        /// <returns>アセンブリの実行結果</returns>
         private アセンブリ実行結果 WriteAssembly(string name, int kmerLength, params string[] sequences)
         {
             var path = Path.Combine(this._tempDir, name);

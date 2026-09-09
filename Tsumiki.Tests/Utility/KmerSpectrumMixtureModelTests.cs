@@ -11,12 +11,24 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class KmerSpectrumMixtureModelTests
     {
+        /// <summary>
+        /// 幾何分布の確率を返す
+        /// </summary>
+        /// <param name="p_出現回数">出現回数</param>
+        /// <param name="p_平均">分布の平均</param>
+        /// <returns>確率</returns>
         private static double Get_幾何分布確率(double p_出現回数, double p_平均)
         {
             var l_p = 1.0 / p_平均;
             return Math.Pow(1 - l_p, p_出現回数 - 1) * l_p;
         }
 
+        /// <summary>
+        /// ポアソン分布の確率を返す
+        /// </summary>
+        /// <param name="p_出現回数">出現回数</param>
+        /// <param name="p_μ">分布の平均</param>
+        /// <returns>確率</returns>
         private static double Get_ポアソン確率(double p_出現回数, double p_μ)
         {
             var l_log階乗 = 0.0;
@@ -49,6 +61,10 @@ namespace Tsumiki.Tests.Utility
             return l_ヒストグラム;
         }
 
+        /// <summary>
+        /// 単一コピーが優勢なコピー数ごとの混合比を返す
+        /// </summary>
+        /// <returns>コピー数ごとの混合比</returns>
         private static double[] Get_コピー数別混合比_単一コピー優勢()
         {
             // モデル (π_k ∝ r^(k-1))と同じ形の生成分布

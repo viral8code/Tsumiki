@@ -98,6 +98,13 @@ namespace Tsumiki.Tests.Core
             return l_インデックス;
         }
 
+        /// <summary>
+        /// 指定した位置の k-mer が信頼できる集合にあるか
+        /// </summary>
+        /// <param name="p_インデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_位置">k-mer の開始位置</param>
+        /// <returns>集合にあれば true</returns>
         private static bool Get_含まれるか(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
         {
             var l_kmer = p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID).ToArray();

@@ -14,16 +14,36 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int Phredオフセット = 33;
 
+        /// <summary>
+        /// 全体が高品質なクオリティ文字列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_スコア">与える Phred スコア</param>
+        /// <returns>クオリティ文字列</returns>
         private static string 高品質クオリティ(int p_長さ, int p_スコア = 35)
         {
             return new string((char)(p_スコア + Phredオフセット), p_長さ);
         }
 
+        /// <summary>
+        /// 全体が同じスコアのクオリティ文字列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_スコア">与える Phred スコア</param>
+        /// <returns>クオリティ文字列</returns>
         private static string 一様クオリティ(int p_長さ, int p_スコア)
         {
             return new string((char)(p_スコア + Phredオフセット), p_長さ);
         }
 
+        /// <summary>
+        /// 1 箇所だけスコアを変えたクオリティ文字列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_基本スコア">全体に与える Phred スコア</param>
+        /// <param name="p_位置">変える位置</param>
+        /// <param name="p_その位置のスコア">その位置に与える Phred スコア</param>
+        /// <returns>クオリティ文字列</returns>
         private static string 位置だけ変更したクオリティ(int p_長さ, int p_基本スコア, int p_位置, int p_その位置のスコア)
         {
             var l_文字 = 一様クオリティ(p_長さ, p_基本スコア).ToCharArray();

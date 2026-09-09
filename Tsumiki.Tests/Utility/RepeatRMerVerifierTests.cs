@@ -54,10 +54,24 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
-        private const string Head = "ACAGTTCGCGAGCCCTCCGTC"; // 21bp
-        private const string Repeat = "CTCCGTCAGCTTGTTTGGAGCAGA"; // 24bp
-        private const string Tail = "GAGCAGAGTCGTTCTGCGAGG"; // 21bp
-        private const string OtherTail = "TTTTTTTTTTTTTTTTTTTTT"; // 21bp、Repeatと接合しない無関係な配列
+        /// <summary>
+        /// 反復の手前にある配列
+        /// </summary>
+        private const string Head = "ACAGTTCGCGAGCCCTCCGTC";
+
+        /// <summary>
+        /// 手前と先に挟まれた反復配列
+        /// </summary>
+        private const string Repeat = "CTCCGTCAGCTTGTTTGGAGCAGA";
+
+        /// <summary>
+        /// 反復の先にある配列
+        /// </summary>
+        private const string Tail = "GAGCAGAGTCGTTCTGCGAGG";
+        /// <summary>
+        /// Repeat と接合しない無関係な配列
+        /// </summary>
+        private const string OtherTail = "TTTTTTTTTTTTTTTTTTTTT";
 
         /// <summary>
         /// リードを FASTQ として書き出す

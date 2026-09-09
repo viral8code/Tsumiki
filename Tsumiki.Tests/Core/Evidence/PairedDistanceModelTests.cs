@@ -19,6 +19,10 @@ namespace Tsumiki.Tests.Core
             return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
         }
 
+        /// <summary>
+        /// 検証に使う断片長のモデル
+        /// </summary>
+        /// <returns>断片長のモデル</returns>
         private static PairedDistanceModel Get_モデル() => new(Get_分布(), p_リード長: 100);
 
         [Fact]

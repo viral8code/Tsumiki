@@ -26,8 +26,20 @@ namespace Tsumiki.Tests.Core
         private const int K = 8;
 
         // BeamSearchExtenderTests と同じ構成: A が B/C へ分岐する
+
+        /// <summary>
+        /// 分岐元
+        /// </summary>
         private const string UnitigA = "TGGCAAGTCACTCTCGACCGA";
+
+        /// <summary>
+        /// 分岐先の片方
+        /// </summary>
         private const string UnitigB = "CGACCGAACGGCGCCGGATC";
+
+        /// <summary>
+        /// 分岐先のもう片方
+        /// </summary>
         private const string UnitigC = "CGACCGACTGTAATTCTACC";
 
         /// <summary>

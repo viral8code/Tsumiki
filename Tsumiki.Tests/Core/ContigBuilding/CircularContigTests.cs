@@ -62,14 +62,40 @@ namespace Tsumiki.Tests.Core
         private const int 円周 = 1200;
 
         // k=21 なら 1200 塩基の乱数列に重複する正規化 k-mer は事実上現れない
+
+        /// <summary>
+        /// 環状の複製単位そのもの
+        /// </summary>
+        /// <summary>
+        /// 環状の複製単位そのもの
+        /// </summary>
         private static readonly string Circle = Get_乱数配列(円周, p_種: 20250908);
 
         // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
         // 先頭 unitig の先頭 k-1 塩基と一致する (= 環が閉じる) ように切り分ける
+
+        /// <summary>
+        /// 環を 3 分割したうちの 1 本目
+        /// </summary>
+        /// <summary>
+        /// 環を 3 分割したうちの 1 本目
+        /// </summary>
         private static readonly string UnitigA = Circle[..(400 + k - 1)];
 
+        /// <summary>
+        /// 環を 3 分割したうちの 2 本目
+        /// </summary>
+        /// <summary>
+        /// 環を 3 分割したうちの 2 本目
+        /// </summary>
         private static readonly string UnitigB = Circle[400..(800 + k - 1)];
 
+        /// <summary>
+        /// 環を 3 分割したうちの 3 本目、先頭へ戻る重なりを含む
+        /// </summary>
+        /// <summary>
+        /// 環を 3 分割したうちの 3 本目、先頭へ戻る重なりを含む
+        /// </summary>
         private static readonly string UnitigC = Circle[800..] + Circle[..(k - 1)];
 
         /// <summary>

@@ -71,6 +71,11 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="p_全件">書き出す名前と配列</param>
+        /// <returns>書き出したパス</returns>
         private string Get_FASTA(params (string A_ID, string A_配列)[] p_全件)
         {
             var l_パス = Path.Combine(this._tempDir, "asm.fasta");
