@@ -5,7 +5,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する<br/>
+    /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する
+    /// </summary>
+    /// <remarks>
     /// トリミング済みのデータではリード長がばらつく<br/>
     /// GAGE-B の
     /// R. sphaeroides MiSeq(trimmed) では 755,847 本のうち 8% 以上が
@@ -17,7 +19,7 @@ namespace Tsumiki.Tests.Core
     /// 2 時間以上プロセスが停止した<br/>
     /// 長さの判定と、
     /// ワーカーの例外を伝える仕組み (ReadPipelineTests) の両方が要る
-    /// </summary>
+    /// </remarks>
     public class VariableLengthReadTests : IDisposable
     {
         /// <summary>
@@ -81,9 +83,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k より短いリードと十分長いリードが混ざったペアエンド入力<br/>
-        /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること
+        /// k より短いリードと十分長いリードが混ざったペアエンド入力
         /// </summary>
+        /// <remarks>
+        /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること
+        /// </remarks>
         [Fact]
         public void MapPairedReads_ReadsShorterThanK_AreSkippedWithoutFailing()
         {

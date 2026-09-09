@@ -7,7 +7,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 提案 F: 短い反復解決に対する r-mer 拒否権 (ABySS RResolver 型) の検証<br/>
+    /// 提案 F: 短い反復解決に対する r-mer 拒否権 (ABySS RResolver 型) の検証
+    /// </summary>
+    /// <remarks>
     /// 反復配列 R が A→R→C, B→R→D という文脈を持つ場合 (RepeatResolutionTests
     /// と同じ構造)、A-R・R-D(逆に言えば B-R・R-C も) はどちらの対応付けを
     /// 検証する場合でも de Bruijn グラフ上の本物の辺であり、正しい方の
@@ -22,7 +24,7 @@ namespace Tsumiki.Tests.Core
     /// 個々の接合点すら生リードに一切裏付けられない (=そもそもその
     /// unitig 同士が隣接している根拠が生データに無い、破損したデータや
     /// 完全に的外れなペア支持を想定) 場合である
-    /// </summary>
+    /// </remarks>
     public class RepeatRMerVetoTests
     {
         /// <summary>
@@ -142,12 +144,15 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 拒否権の実際の効き目には限界がある: head-repeat・repeat-tail は
-        /// どちらのペアリングでも de Bruijn グラフ上の本物の辺であるため、
-        /// 「A-R が存在する」「R-D が存在する」という個々の接合点の確認は
-        /// A-R-C / B-R-D という (こちらが正しい) 組み合わせのリードだけからも
-        /// 満たされてしまう (A-R は A-R-C 由来のリードで、R-D は B-R-D 由来の
-        /// リードで、それぞれ独立に確認できてしまうため)<br/>
+        /// 拒否権の効き目には限界がある
+        /// </summary>
+        /// <remarks>
+        /// head-repeat と repeat-tail はどちらのペアリングでも de Bruijn グラフ上の本物の辺なので、
+        /// A-R が存在する、R-D が存在するという個々の接合点の確認は、
+        /// 正しい組み合わせである A-R-C と B-R-D のリードだけからも満たされてしまう<br/>
+        /// A-R は A-R-C 由来のリードで、R-D は B-R-D 由来のリードで、それぞれ独立に確認できるため
+        /// </remarks>
+        /// <remarks>
         /// 個々の接合点の
         /// 存在確認だけでは、どちらの対応付けが正しいかを区別する情報には
         /// ならない -- これは実装の欠陥ではなく、反復配列がまさに
@@ -157,7 +162,7 @@ namespace Tsumiki.Tests.Core
         /// その unitig 同士が本当に隣接している根拠が生データに無い) 場合<br/>
         /// ここでは生リードを一切与えず、ペア支持だけで対応付けようとしても
         /// 拒否されることを確認する
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void WithVerifier_VetoesTheWinningPairing_WhenNoRawReadDataConfirmsEitherJunctionAtAll()
         {

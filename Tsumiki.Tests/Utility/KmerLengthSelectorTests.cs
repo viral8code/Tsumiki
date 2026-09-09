@@ -5,12 +5,14 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// リード長からの k 長自動選択の検証<br/>
+    /// リード長からの k 長自動選択の検証
+    /// </summary>
+    /// <remarks>
     /// 既定の k=31 は 150 bp リードに対して明確に短すぎ、実データで
     /// unitig の N50 が k=63 の場合の 1/5 にしかならなかった<br/>
     /// リード長は 75 bp から 300 bp まで大きく変わるため、固定値ではなく
     /// 実際のリード長から決める
-    /// </summary>
+    /// </remarks>
     public class KmerLengthSelectorTests
     {
         [Theory]
@@ -27,9 +29,11 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// k が偶数だと k-mer 自身がその逆相補と一致しうる (回文) ため、
-        /// 正規形が縮退して隣接判定が壊れる<br/>
-        /// どのリード長でも奇数を返すこと
+        /// 正規形が縮退して隣接判定が壊れる
         /// </summary>
+        /// <remarks>
+        /// どのリード長でも奇数を返すこと
+        /// </remarks>
         [Fact]
         public void SuggestKmerLength_IsAlwaysOddAndShorterThanTheRead()
         {

@@ -50,10 +50,12 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// -k が明示的に指定されたかどうか<br/>
+        /// -k が明示的に指定されたかどうか
+        /// </summary>
+        /// <remarks>
         /// 指定されていない場合に限り、
         /// 実際のリード長から求めた k を自動採用する
-        /// </summary>
+        /// </remarks>
         public bool A_k長が明示指定されたか { get; private set; }
 
         /// <summary>
@@ -84,10 +86,12 @@ namespace Tsumiki.Model.Foundation
         private List<int> _k長一覧 = [];
 
         /// <summary>
-        /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)<br/>
+        /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)
+        /// </summary>
+        /// <remarks>
         /// 未指定なら空<br/>
         /// 2 個以上あれば multi-k として扱う
-        /// </summary>
+        /// </remarks>
         public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
 
         /// <summary>
@@ -113,10 +117,12 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 推定結果から k 長を設定する<br/>
+        /// 推定結果から k 長を設定する
+        /// </summary>
+        /// <remarks>
         /// A_k長が明示指定されたか は立てないため、
         /// 「ユーザーが明示指定した」扱いにはならない
-        /// </summary>
+        /// </remarks>
         public void Set_推定k長(int p_k長)
         {
             var l_明示指定済みか = this.A_k長が明示指定されたか;
@@ -125,10 +131,12 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// -kc が明示的に指定されたかどうか<br/>
+        /// -kc が明示的に指定されたかどうか
+        /// </summary>
+        /// <remarks>
         /// 指定されていない場合に限り、
         /// k-mer スペクトルの谷から求めたカットオフを自動採用する
-        /// </summary>
+        /// </remarks>
         public bool A_kmerカットオフが明示指定されたか { get; private set; }
 
         /// <summary>
@@ -154,9 +162,11 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 推定結果から k-mer カットオフを設定する<br/>
-        /// A_kmerカットオフが明示指定されたか は立てない
+        /// 推定結果から k-mer カットオフを設定する
         /// </summary>
+        /// <remarks>
+        /// A_kmerカットオフが明示指定されたか は立てない
+        /// </remarks>
         public void Set_推定kmerカットオフ(ulong p_カットオフ)
         {
             var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
@@ -165,11 +175,13 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// -p が明示的に指定されたかどうか<br/>
+        /// -p が明示的に指定されたかどうか
+        /// </summary>
+        /// <remarks>
         /// 指定されていない場合に限り、
         /// FASTQ のクオリティ文字列から推定したオフセットを自動採用する<br/>
         /// 明示指定はユーザーの判断なので、推定結果で上書きはしない
-        /// </summary>
+        /// </remarks>
         public bool A_Phredが明示指定されたか { get; private set; }
 
         /// <summary>
@@ -195,10 +207,12 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 推定結果から Phred オフセットを設定する<br/>
+        /// 推定結果から Phred オフセットを設定する
+        /// </summary>
+        /// <remarks>
         /// A_Phredが明示指定されたか は
         /// 立てないため、「ユーザーが明示指定した」扱いにはならない
-        /// </summary>
+        /// </remarks>
         public void Set_推定Phredオフセット(int p_オフセット)
         {
             var l_明示指定済みか = this.A_Phredが明示指定されたか;
@@ -212,16 +226,20 @@ namespace Tsumiki.Model.Foundation
         public int A_クオリティカットオフ { get; set; } = Consts.クオリティカットオフの既定値;
 
         /// <summary>
-        /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)<br/>
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)
+        /// </summary>
+        /// <remarks>
         /// メモリとディスク I/O のトレードオフを環境に合わせて調整するためのもの<br/>
         /// 増やすとフラッシュ回数が減って I/O が軽くなり、減らすとメモリが軽くなる
-        /// </summary>
+        /// </remarks>
         public long A_メモリ予算バイト数 { get; private set; } = Consts.メモリ予算の既定値;
 
         /// <summary>
-        /// メモリ量の指定<br/>
-        /// "2G" / "512M" / "1024"(接尾辞なしは MB) を受け付ける
+        /// メモリ量の指定
         /// </summary>
+        /// <remarks>
+        /// "2G" / "512M" / "1024"(接尾辞なしは MB) を受け付ける
+        /// </remarks>
         public string A_メモリ予算
         {
             get => Util.Get_表示用メモリサイズ(this.A_メモリ予算バイト数);
@@ -229,13 +247,15 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 期待インサートサイズ<br/>
+        /// 期待インサートサイズ
+        /// </summary>
+        /// <remarks>
         /// CLI で明示指定されなかった場合は null のままとし、
         /// スキャフォールディング実行時にマップ済みペアから標本推定を試みる<br/>
         /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で
         /// 別途保持する<br/>
         /// CLI 指定値と自動推定値を区別するため)
-        /// </summary>
+        /// </remarks>
         public int? A_インサートサイズ { get; set; } = null;
 
         /// <summary>
@@ -254,16 +274,20 @@ namespace Tsumiki.Model.Foundation
         public 言語 A_言語 { get; set; } = 言語.日本語;
 
         /// <summary>
-        /// 画面へ出す量<br/>
+        /// 画面へ出す量
+        /// </summary>
+        /// <remarks>
         /// ファイルへの記録はこれに関わらず全量を残すので、
         /// 静かにしても後から原因を追う手掛かりは失われない
-        /// </summary>
+        /// </remarks>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
 
         /// <summary>
-        /// -log に書く綴り<br/>
-        /// 表示は CLI で指定する形に合わせる
+        /// -log に書く綴り
         /// </summary>
+        /// <remarks>
+        /// 表示は CLI で指定する形に合わせる
+        /// </remarks>
         private static string Get_ログ水準名(ログ水準 p_水準)
         {
             return p_水準 switch
@@ -275,9 +299,11 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// -lang に書く綴り<br/>
-        /// 表示は CLI で指定する形に合わせる
+        /// -lang に書く綴り
         /// </summary>
+        /// <remarks>
+        /// 表示は CLI で指定する形に合わせる
+        /// </remarks>
         private static string Get_言語名(言語 p_言語)
         {
             return p_言語 switch
@@ -305,17 +331,21 @@ namespace Tsumiki.Model.Foundation
         public bool A_前処理するか { get; set; } = false;
 
         /// <summary>
-        /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか<br/>
+        /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか
+        /// </summary>
+        /// <remarks>
         /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、
         /// 精度を求めるなら試すしかない<br/>
         /// 実行時間と引き換えになるので既定は false
-        /// </summary>
+        /// </remarks>
         public bool A_マルチkか { get; set; } = false;
 
         /// <summary>
-        /// multi-k で、前段の k の配列を次の k へ引き継ぐか<br/>
-        /// 引き継ぐのは配列だけで、繋ぐという決定は引き継がない
+        /// multi-k で、前段の k の配列を次の k へ引き継ぐか
         /// </summary>
+        /// <remarks>
+        /// 引き継ぐのは配列だけで、繋ぐという決定は引き継がない
+        /// </remarks>
         public bool A_引き継ぐか { get; set; } = true;
 
         /// <summary>
@@ -327,46 +357,58 @@ namespace Tsumiki.Model.Foundation
         /// <summary>
         /// 短い反復の解決 (V_解決_短い反復)で、対応付けを確定させる前に
         /// r-mer(アセンブリの k とは独立の短い長さ) による接合点の検証を
-        /// 課すか<br/>
-        /// 生リードの追加走査が 1 回k毎に要る (既定は false)
+        /// 課すか
         /// </summary>
+        /// <remarks>
+        /// 生リードの追加走査が 1 回k毎に要る (既定は false)
+        /// </remarks>
         public bool A_反復をrMerで検証するか { get; set; } = false;
 
         /// <summary>
         /// GapFiller が埋められなかったスキャフォールドのギャップを、
         /// その両端に実際にマップされた局所リードだけを使う局所アセンブリ
-        /// (LocalAssembler) で埋めるか<br/>
-        /// AssemblyMerger(-mg) の安全な代替
+        /// (LocalAssembler) で埋めるか
         /// </summary>
+        /// <remarks>
+        /// AssemblyMerger(-mg) の安全な代替
+        /// </remarks>
         public bool A_局所アセンブリするか { get; set; } = false;
 
         /// <summary>
-        /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか<br/>
+        /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか
+        /// </summary>
+        /// <remarks>
         /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等の
         /// ビューアで直接確認できるようにする
-        /// </summary>
+        /// </remarks>
         public bool A_GFAを出力するか { get; set; } = false;
 
         /// <summary>
-        /// multi-k の結果を統合するか<br/>
+        /// multi-k の結果を統合するか
+        /// </summary>
+        /// <remarks>
         /// 既定は false<br/>
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
         /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる
-        /// </summary>
+        /// </remarks>
         public bool A_マージするか { get; set; } = false;
 
         /// <summary>
-        /// 最終成果物に元リードを貼り直し、多数決で置換を直すか<br/>
-        /// リードを 1 回余分に走査するぶん時間がかかるため既定は false
+        /// 最終成果物に元リードを貼り直し、多数決で置換を直すか
         /// </summary>
+        /// <remarks>
+        /// リードを 1 回余分に走査するぶん時間がかかるため既定は false
+        /// </remarks>
         public bool A_ポリッシュするか { get; set; } = false;
 
         /// <summary>
         /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが
-        /// 実在するかを確かめるか<br/>
+        /// 実在するかを確かめるか
+        /// </summary>
+        /// <remarks>
         /// 完全長を名乗るには必須の検査だが、
         /// リードの追加走査が要るため既定は false
-        /// </summary>
+        /// </remarks>
         public bool A_環状閉鎖を検証するか { get; set; } = false;
 
         /// <summary>
@@ -376,9 +418,11 @@ namespace Tsumiki.Model.Foundation
         public bool A_救済kmerを使うか { get; set; } = false;
 
         /// <summary>
-        /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか<br/>
-        /// 同じ入力・同じオプションで作り終えた k だけを飛ばす
+        /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか
         /// </summary>
+        /// <remarks>
+        /// 同じ入力・同じオプションで作り終えた k だけを飛ばす
+        /// </remarks>
         public bool A_再開するか { get; set; } = false;
 
         /// <summary>
@@ -387,10 +431,12 @@ namespace Tsumiki.Model.Foundation
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
 
         /// <summary>
-        /// 実行後に一時ディレクトリを消すか<br/>
+        /// 実行後に一時ディレクトリを消すか
+        /// </summary>
+        /// <remarks>
         /// k ごとの成果物が入っており
         /// 後から見比べたくなるため、既定では残す
-        /// </summary>
+        /// </remarks>
         public bool A_一時ディレクトリを削除するか { get; set; } = false;
 
         /// <summary>

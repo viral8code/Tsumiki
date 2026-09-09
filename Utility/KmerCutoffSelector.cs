@@ -4,7 +4,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// k-mer スペクトルから k-mer カットオフ (-kc) を自動選択する<br/>
+    /// k-mer スペクトルから k-mer カットオフ (-kc) を自動選択する
+    /// </summary>
+    /// <remarks>
     /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」<br/>
     /// まず 2 成分混合モデル (<see cref="KmerSpectrumMixtureModel"/>) の適合を試みる<br/>
     /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど
@@ -14,14 +16,16 @@ namespace Tsumiki.Utility
     /// 混合モデルが適合できた場合、その単一コピー平均・信頼下限を
     /// ConfigurationManager.A_スペクトルモデル に公開し、CopyNumberEstimator の
     /// 単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする
-    /// </summary>
+    /// </remarks>
     internal static class KmerCutoffSelector
     {
         /// <summary>
-        /// -kc が未指定の場合に限り、スペクトルから求めた値を適用する<br/>
+        /// -kc が未指定の場合に限り、スペクトルから求めた値を適用する
+        /// </summary>
+        /// <remarks>
         /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルを
         /// もう一度走査するが、明示指定時はこの走査自体を行わない
-        /// </summary>
+        /// </remarks>
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
             // 前回 (別の k、あるいは ErrorCorrector 用の一時インデックス) の適合結果を

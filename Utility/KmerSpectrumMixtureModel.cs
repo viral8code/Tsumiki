@@ -5,7 +5,9 @@ namespace Tsumiki.Utility
     /// <summary>
     /// k-mer 出現回数ヒストグラムを「誤り成分 (幾何分布、裾が重い) ＋
     /// 真の k-mer成分 (単一コピー平均 λ の整数倍に山を持つ、コピー数上限までの
-    /// ポアソン混合)」の 2 成分混合モデルとして EM で推定する<br/>
+    /// ポアソン混合)」の 2 成分混合モデルとして EM で推定する
+    /// </summary>
+    /// <remarks>
     /// KmerHistogram の谷検出は、低カバレッジなど二峰性が視認できないデータで
     /// 壊れる (「the spectrum may not be bimodal」に落ちる)<br/>
     /// 混合モデルは谷の
@@ -16,13 +18,15 @@ namespace Tsumiki.Utility
     /// k-mer カットオフ・単一コピー基準値・tip 判定の「無条件に信頼する下限」を、
     /// 別々のヒューリスティックではなくこの 1 つのモデルから導出できるようにする
     /// (ConfigurationManager.A_スペクトルモデル として公開する)
-    /// </summary>
+    /// </remarks>
     internal static class KmerSpectrumMixtureModel
     {
         /// <summary>
-        /// 混合する真の k-mer 成分のコピー数上限<br/>
-        /// これを超える倍率は稀な高コピー反復と見分けがつかない
+        /// 混合する真の k-mer 成分のコピー数上限
         /// </summary>
+        /// <remarks>
+        /// これを超える倍率は稀な高コピー反復と見分けがつかない
+        /// </remarks>
         private const int コピー数の上限 = 10;
 
         /// <summary>
@@ -53,14 +57,18 @@ namespace Tsumiki.Utility
         private const double 単一コピー平均の下限 = 3.0D;
 
         /// <summary>
-        /// 局所極大から拾う初期値候補の上限数<br/>
-        /// 頻度上位のものだけを試す
+        /// 局所極大から拾う初期値候補の上限数
         /// </summary>
+        /// <remarks>
+        /// 頻度上位のものだけを試す
+        /// </remarks>
         private const int 局所極大候補の上限数 = 20;
 
         /// <summary>
         /// コピー数別の混合比 π_k は自由な10 パラメータにせず、
-        /// π_k ∝ r^(k-1) という単一の減衰率 r で表す (k=1 が最大、以降単調減少)<br/>
+        /// π_k ∝ r^(k-1) という単一の減衰率 r で表す (k=1 が最大、以降単調減少)
+        /// </summary>
+        /// <remarks>
         /// 自由な 10 パラメータのままだと、λ' = λ/d (d は 2 以上の約数) にして
         /// k'=d, 2 d, 3 d... にだけ重みを乗せれば、真のピーク位置 (dλ', 2 dλ', ...) を
         /// そっくりそのまま再現できてしまう「調波エイリアシング」の別解に EM が
@@ -68,7 +76,7 @@ namespace Tsumiki.Utility
         /// 単調減少という 1 パラメータの制約は、真のゲノムで高コピー
         /// 配列ほど少ないという実態にも合致し、この別解 (低い k を飛ばして高い k にだけ
         /// 重みが乗る形) を作れなくする
-        /// </summary>
+        /// </remarks>
         private static double[] Get_コピー数別混合比(double p_r)
         {
             var l_重み = new double[コピー数の上限];
@@ -187,10 +195,12 @@ namespace Tsumiki.Utility
             double A_対数尤度, int A_反復回数);
 
         /// <summary>
-        /// 1 つの初期値から EM を収束 (または反復上限) まで回す<br/>
+        /// 1 つの初期値から EM を収束 (または反復上限) まで回す
+        /// </summary>
+        /// <remarks>
         /// どちらかの成分が完全に空になる、または最終的な λ が下限未満になる
         /// (誤り成分と分離できていない) 場合は null を返す
-        /// </summary>
+        /// </remarks>
         private static 試行結果? Get_単一試行(
             double[] p_出現回数, double[] p_頻度, double[] p_log階乗, double p_総数, double p_初期λ)
         {
@@ -240,13 +250,15 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 誤り成分の初期平均<br/>
+        /// 誤り成分の初期平均
+        /// </summary>
+        /// <remarks>
         /// 出現回数 1..20 の頻度加重平均を使う
         /// (低頻度域の大まかな水準を見るだけの粗い初期値で、EM が精密化する)<br/>
         /// 定数 1 で初期化すると、幾何分布が c=1 にのみ質量を持つ退化点になり、
         /// そこでは c&gt;=2 の責任度が最初から実質ゼロになって動けなくなる
         /// (EM が抜け出せない自明な吸収点に落ちる)
-        /// </summary>
+        /// </remarks>
         private static double Get_初期誤り平均(double[] p_出現回数, double[] p_頻度)
         {
             var l_上限 = Math.Min(20, p_出現回数.Length);
@@ -261,11 +273,13 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// EM の初期値候補<br/>
+        /// EM の初期値候補
+        /// </summary>
+        /// <remarks>
         /// 頻度の高い局所極大 (データが実際に示す山) と、
         /// 対数間隔のグリッド (局所極大が谷に埋もれて見えない場合の保険) を併用する<br/>
         /// 谷の目視判定には依存しない
-        /// </summary>
+        /// </remarks>
         private static List<double> Get_初期λ候補(double[] p_出現回数, double[] p_頻度, int p_走査上限)
         {
             var l_極大インデックス = new List<int>();
@@ -292,10 +306,12 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// E-step<br/>
+        /// E-step
+        /// </summary>
+        /// <remarks>
         /// 各出現回数について、誤り成分・コピー数 1..上限の各成分への
         /// 事後責任 (責任度) を計算し、対数尤度を返す
-        /// </summary>
+        /// </remarks>
         private static double Get_Estep(
             double[] p_出現回数, double[] p_頻度, double[] p_log階乗,
             double p_誤り平均, double p_誤り混合比, double p_λ, double[] p_コピー数別混合比,
@@ -342,14 +358,16 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// M-step<br/>
+        /// M-step
+        /// </summary>
+        /// <remarks>
         /// 責任度で重み付けした最尤推定でパラメータを更新する<br/>
         /// どちらかの成分が完全に空 (重みの総和が 0) になった場合は false を返す<br/>
         /// r(コピー数の減衰率) は、コピー数の重み付き平均 m から
         /// (幾何分布の平均 = 1/(1-r) の関係を使って) r = 1 - 1/m として更新する<br/>
         /// 打ち切り (コピー数上限 10) の影響を無視した近似だが、r が極端に 1 に
         /// 近くない限り無視できる誤差であり、閉形式で軽量に更新できる
-        /// </summary>
+        /// </remarks>
         private static bool Get_Mstep(
             double[] p_出現回数, double[] p_頻度, double[] p_r誤り, double[][] p_rコピー, double p_総数,
             ref double p_誤り平均, ref double p_誤り混合比, ref double p_λ, ref double p_r)
@@ -459,9 +477,11 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// c=0..p_上限 の log(c!) の表<br/>
-        /// ポアソン対数尤度の計算に使う
+        /// c=0..p_上限 の log(c!) の表
         /// </summary>
+        /// <remarks>
+        /// ポアソン対数尤度の計算に使う
+        /// </remarks>
         private static double[] Get_log階乗テーブル(int p_上限)
         {
             var l_表 = new double[p_上限 + 1];

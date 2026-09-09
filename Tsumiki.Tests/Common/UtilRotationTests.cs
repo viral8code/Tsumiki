@@ -4,11 +4,13 @@ namespace Tsumiki.Tests.Common
 {
     /// <summary>
     /// 環状配列の開始位置を辞書式順序で最小の回転へ正規化する処理 (Booth の
-    /// アルゴリズム) の検証<br/>
+    /// アルゴリズム) の検証
+    /// </summary>
+    /// <remarks>
     /// 環状 contig は開始位置が walk の起点という
     /// 偶然の産物でしかないため、同じ環状配列ならどの回転から出発しても
     /// 同じ正規化結果になることが下流の比較・再現性の前提になる
-    /// </summary>
+    /// </remarks>
     public class UtilRotationTests
     {
         [Theory]

@@ -5,10 +5,12 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// k-mer スペクトルの 2 成分混合モデル (誤り=幾何分布、真の k-mer=単一コピー平均の
     /// 整数倍に山を持つポアソン混合) の EM 推定を、理論分布そのものから作った
-    /// ヒストグラムで固定する<br/>
+    /// ヒストグラムで固定する
+    /// </summary>
+    /// <remarks>
     /// 理論分布を使うことで、サンプリング由来のノイズを
     /// 排して「モデルが正しいパラメータへ収束するか」だけを検証できる
-    /// </summary>
+    /// </remarks>
     public class KmerSpectrumMixtureModelTests
     {
         /// <summary>
@@ -41,9 +43,11 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 指定したパラメータ通りの理論混合分布から、その通りのヒストグラムを作る
-        /// (サンプリングはしない<br/>
-        /// EM が真のパラメータへ収束するかだけを見るため)
+        /// (サンプリングはしない
         /// </summary>
+        /// <remarks>
+        /// EM が真のパラメータへ収束するかだけを見るため)
+        /// </remarks>
         private static Dictionary<ulong, long> Get_理論ヒストグラム(
             double p_λ, double p_誤り混合比, double p_誤り平均, double[] p_コピー数別混合比,
             int p_上限, long p_総数)

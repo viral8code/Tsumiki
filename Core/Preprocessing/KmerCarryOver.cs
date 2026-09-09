@@ -6,7 +6,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
-    /// 前段の k で組み上がった配列を、次の k の k-mer 集合へ引き継ぐ<br/>
+    /// 前段の k で組み上がった配列を、次の k の k-mer 集合へ引き継ぐ
+    /// </summary>
+    /// <remarks>
     /// k を上げるとカバレッジが痩せてグラフが千切れるが、前段の配列は
     /// その領域を既に通っている<br/>
     /// 配列を渡せば連結が保たれる<br/>
@@ -14,20 +16,24 @@ namespace Tsumiki.Core.Preprocessing
     /// 決定を渡すと前段の
     /// 誤アセンブリをそのまま継承するが、配列を渡すだけなら次の k が
     /// 自分の証拠で経路を決め直せる
-    /// </summary>
+    /// </remarks>
     internal static class KmerCarryOver
     {
         /// <summary>
-        /// 引き継ぐ配列の最小長<br/>
+        /// 引き継ぐ配列の最小長
+        /// </summary>
+        /// <remarks>
         /// 前段で短く切れた断片は連結の役に立たないうえ、
         /// エラー由来の残骸である可能性が相対的に高い
-        /// </summary>
+        /// </remarks>
         private const int 引き継ぐ配列の最小長 = 500;
 
         /// <summary>
-        /// 引き継ぎ元の配列とカバレッジを、その k の成果物から作る<br/>
-        /// k-mer インデックスが生きているうちにしか作れない
+        /// 引き継ぎ元の配列とカバレッジを、その k の成果物から作る
         /// </summary>
+        /// <remarks>
+        /// k-mer インデックスが生きているうちにしか作れない
+        /// </remarks>
         public static List<引き継ぎ配列> Get_引き継ぎ配列(
             string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
@@ -55,10 +61,12 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 引き継ぎ配列のうち、この k の集合に無い k-mer を足す<br/>
+        /// 引き継ぎ配列のうち、この k の集合に無い k-mer を足す
+        /// </summary>
+        /// <remarks>
         /// 既にある k-mer は触らない (実際のリード由来の観測を優先する)<br/>
         /// 戻り値は足した k-mer の数
-        /// </summary>
+        /// </remarks>
         public static int V_引き継ぎ(
             IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列,
             TrustedKmerIndex p_kmerインデックス,
@@ -104,7 +112,9 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// この k-mer に与えるカバレッジ<br/>
+        /// この k-mer に与えるカバレッジ
+        /// </summary>
+        /// <remarks>
         /// 前段の k-mer のうちこの窓に重なるものの最小値を取る<br/>
         /// 長い k-mer は
         /// 構成する短い k-mer すべてを含むので、最も弱い部分より強くはなれない<br/>
@@ -114,7 +124,7 @@ namespace Tsumiki.Core.Preprocessing
         /// その比で下がる<br/>
         /// スケールしないと、引き継いだ領域だけカバレッジが
         /// 高く見えてコピー数を過大に推定する
-        /// </summary>
+        /// </remarks>
         public static ulong Get_引き継ぐカバレッジ(
             引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
         {

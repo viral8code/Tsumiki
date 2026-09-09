@@ -53,13 +53,15 @@ namespace Tsumiki.Common
 
         /// <summary>
         /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する
-        /// (Booth のアルゴリズム、O(n))<br/>
+        /// (Booth のアルゴリズム、O(n))
+        /// </summary>
+        /// <remarks>
         /// 環状に閉じた contig は開始位置が任意 (walk がどこから始まったかの
         /// 産物でしかない)<br/>
         /// 決定的な基準を置かないと、同じ環状配列でも
         /// 実行のたびに (あるいは同じ実行内でも walk の起点が変われば)
         /// 別の文字列として出力され、下流の比較や再現性を損なう
-        /// </summary>
+        /// </remarks>
         public static string Get_最小回転(string p_配列)
         {
             if (p_配列.Length <= 1)
@@ -71,10 +73,12 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// Booth のアルゴリズム<br/>
+        /// Booth のアルゴリズム
+        /// </summary>
+        /// <remarks>
         /// p_配列 を2つ繋げた仮想文字列の上で
         /// KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める
-        /// </summary>
+        /// </remarks>
         private static int Get_最小回転の開始位置(string p_配列)
         {
             var l_長さ = p_配列.Length;
@@ -111,12 +115,14 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 曖昧塩基が混入しうる文字列向けの逆相補<br/>
+        /// 曖昧塩基が混入しうる文字列向けの逆相補
+        /// </summary>
+        /// <remarks>
         /// A/C/G/T 以外は位置だけ反転して通す<br/>
         /// unitig/contig には使わないこと<br/>
         /// そちらは V_逆相補(string) を使い、
         /// 想定外の文字を例外で早期検知する
-        /// </summary>
+        /// </remarks>
         public static string V_逆相補_曖昧塩基あり(string p_配列)
         {
             StringBuilder l_結果 = new();
@@ -163,9 +169,11 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか<br/>
-        /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
+        /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか
         /// </summary>
+        /// <remarks>
+        /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
+        /// </remarks>
         public static bool Get_曖昧塩基か(char p_塩基文字)
         {
             return p_塩基文字 switch
@@ -205,10 +213,12 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 単一の塩基文字を ID に変換する軽量版<br/>
+        /// 単一の塩基文字を ID に変換する軽量版
+        /// </summary>
+        /// <remarks>
         /// 曖昧塩基は一律 Consts.無効な塩基<br/>
         /// List 確保を伴わないため、曖昧塩基を無視する経路ではこちらを使う
-        /// </summary>
+        /// </remarks>
         public static byte Get_塩基ID(char p_塩基文字)
         {
             return p_塩基文字 switch
@@ -257,10 +267,12 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 塩基 ID を 1 文字へ変換する<br/>
+        /// 塩基 ID を 1 文字へ変換する
+        /// </summary>
+        /// <remarks>
         /// 文字列を返す版は連結のたびに確保が起きるため、
         /// 塩基列をまとめて文字列にする場面ではこちらを使う
-        /// </summary>
+        /// </remarks>
         public static char Get_塩基文字(byte p_塩基ID)
         {
             return p_塩基ID switch
@@ -302,12 +314,14 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版<br/>
+        /// 曖昧塩基を無視する経路向けの軽量版
+        /// </summary>
+        /// <remarks>
         /// リードの各文字を 1 バイト ID に変換する<br/>
         /// A/C/G/T 以外は Consts.無効な塩基 になる<br/>
         /// V_変換_塩基候補列 と異なり
         /// LINQ・per-char の byte[] アロケーションを行わないため大幅に高速
-        /// </summary>
+        /// </remarks>
         public static byte[] V_変換_塩基列(string p_リード)
         {
             var l_結果 = new byte[p_リード.Length];
@@ -350,9 +364,11 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// "2G" / "512M" / "2048" のようなサイズ指定をバイト数に変換する<br/>
-        /// 接尾辞は 2 進接頭辞 (1 K = 1024)、接尾辞が無い場合は MB とみなす
+        /// "2G" / "512M" / "2048" のようなサイズ指定をバイト数に変換する
         /// </summary>
+        /// <remarks>
+        /// 接尾辞は 2 進接頭辞 (1 K = 1024)、接尾辞が無い場合は MB とみなす
+        /// </remarks>
         public static long V_変換_メモリサイズ(string p_表記)
         {
             if (string.IsNullOrWhiteSpace(p_表記))
@@ -417,15 +433,17 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す<br/>
+        /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す
+        /// </summary>
+        /// <remarks>
         /// 対応する例:
-        ///   "@READ001/1"                       -> "@READ001"
-        ///   "@READ001/2"                       -> "@READ001"
-        ///   "@INST:RUN:FLOWCELL:1:1:1:1 1:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
-        ///   "@INST:RUN:FLOWCELL:1:1:1:1 2:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
+        /// "@READ001/1"                       -> "@READ001"
+        /// "@READ001/2"                       -> "@READ001"
+        /// "@INST:RUN:FLOWCELL:1:1:1:1 1:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
+        /// "@INST:RUN:FLOWCELL:1:1:1:1 2:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"
         /// 上記どちらの記法にも当てはまらない場合は ID をそのまま返す
         /// (この場合、呼び出し側で「ペアかどうか」の確証が得られないことに注意)
-        /// </summary>
+        /// </remarks>
         public static string Get_ペア共通ID(string p_ID)
         {
             // Casava 1.8+ 形式: 空白区切りの後半が "1:..." または "2:..." で始まる

@@ -6,15 +6,17 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 先読み (ビームサーチ) による分岐解決の検証<br/>
+    /// 先読み (ビームサーチ) による分岐解決の検証
+    /// </summary>
+    /// <remarks>
     /// 相互一意性の判定は「その 1 歩だけ」を見るため、分岐の直後だけを見ると
     /// 五分五分に見えるが、2〜3 本先まで進めると片方だけがペアエンドの証拠と
     /// 整合する、という状況を取りこぼす<br/>
     /// ここでは
-    ///   A →(B or C)、B → D、C → E
+    /// A →(B or C)、B → D、C → E
     /// という形で、A の直後には証拠が無く D の位置に初めて証拠が現れる構成を作り、
     /// 先読みによって A → B が選ばれることを確認する
-    /// </summary>
+    /// </remarks>
     public class BeamSearchExtenderTests
     {
         /// <summary>
@@ -137,10 +139,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// どちらの枝にも同程度の証拠がある場合は、僅差で選ばずに繋がない<br/>
+        /// どちらの枝にも同程度の証拠がある場合は、僅差で選ばずに繋がない
+        /// </summary>
+        /// <remarks>
         /// ビームサーチの利点は「広く探して有力な仮説が一致する部分にだけ
         /// コミットする」ことにあり、五分五分の分岐で 1 本を選ぶことではない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Extend_DoesNothing_WhenBothBranchesAreEquallySupported()
         {
@@ -203,7 +207,9 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// いま反復配列 (多コピー) の上にいて、単一コピーの足場が 1 つも取れない
-        /// 場合は、どのコピーにいるのか分からないので進む方向を選べない<br/>
+        /// 場合は、どのコピーにいるのか分からないので進む方向を選べない
+        /// </summary>
+        /// <remarks>
         /// 反復の内部から読まれたリードはどのコピー由来か区別できない<br/>
         /// それが
         /// 反復が解けない理由そのものなので、そこを起点にしたペアの証拠は
@@ -213,7 +219,7 @@ namespace Tsumiki.Tests.Core
         /// これは実際に起きた: 反復入りの合成ゲノム (A-R-B-R-C、R は150 bp の
         /// 2 コピー反復) で、R 自身を足場にしたために A-R-C という中間の B を
         /// 飛ばした contig が出力されていた (真値照合で発覚)
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Extend_DoesNothing_WhenStandingOnARepeatWithNoSingleCopyAnchor()
         {

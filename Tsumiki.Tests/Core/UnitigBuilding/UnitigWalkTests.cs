@@ -7,11 +7,13 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// パック値を転がしながら進める walk が、従来の実装と同じ結果を返すことを固定する<br/>
+    /// パック値を転がしながら進める walk が、従来の実装と同じ結果を返すことを固定する
+    /// </summary>
+    /// <remarks>
     /// 転がし更新は unitig 構築の時間のほとんどを占めていた O(k) の詰め直しを
     /// 省くためのもので、結果は 1 塩基たりとも変わってはいけない<br/>
     /// 2 つの実装が並存する以上、等価性の確認は必須になる
-    /// </summary>
+    /// </remarks>
     public class UnitigWalkTests : IDisposable
     {
         /// <summary>
@@ -108,9 +110,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k=32 と k=33 は内部表現 (ulong と UInt128) の境界<br/>
-        /// 転がしのマスクとシフトがここで壊れやすい
+        /// k=32 と k=33 は内部表現 (ulong と UInt128) の境界
         /// </summary>
+        /// <remarks>
+        /// 転がしのマスクとシフトがここで壊れやすい
+        /// </remarks>
         [Theory]
         [InlineData(31)]
         [InlineData(32)]
@@ -135,9 +139,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列を含む場合<br/>
-        /// 合流点の入次数判定が両実装で一致すること
+        /// 反復配列を含む場合
         /// </summary>
+        /// <remarks>
+        /// 合流点の入次数判定が両実装で一致すること
+        /// </remarks>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_WithARepeat()
         {
@@ -150,11 +156,13 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 環状配列<br/>
+        /// 環状配列
+        /// </summary>
+        /// <remarks>
         /// 循環検出の打ち切り位置が両実装で一致すること<br/>
         /// 完全な環には開始 k-mer が存在しない (どの k-mer も入次数 1 で、
         /// その予測元の出次数も 1) ため、任意の k-mer から walk して比べる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_OnACircularSequence()
         {

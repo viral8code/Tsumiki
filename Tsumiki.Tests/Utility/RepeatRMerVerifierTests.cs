@@ -5,7 +5,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// 短い反復解決の拒否権 (-rv) が使う r-mer 検証器そのものの検証<br/>
+    /// 短い反復解決の拒否権 (-rv) が使う r-mer 検証器そのものの検証
+    /// </summary>
+    /// <remarks>
     /// head→repeat→tail の接合点を実際に跨いだリードが無ければ支持は
     /// 得られず、跨ぐリードがあれば支持が得られること、接合点を跨がない
     /// (=各配列の内部だけに収まる) リードだけでは支持にならないことを確認する<br/>
@@ -15,7 +17,7 @@ namespace Tsumiki.Tests.Utility
     /// 重なりより確実に長く取らないと、跨ぐ窓も共有区間の内側に収まって
     /// しまい判定にならない (RepeatRMerVerifier のクラスコメント参照) ため、
     /// ここでは r=18(=k+10、AssemblyPipeline の既定の決め方と同じ) を使う
-    /// </summary>
+    /// </remarks>
     public class RepeatRMerVerifierTests : IDisposable
     {
         /// <summary>
@@ -126,11 +128,12 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// リードが Head・Repeat・Tail それぞれの内部だけに収まり、
-        /// どちらの接合点も跨がない場合、支持は既定の閾値に届かないはず
-        /// (各配列は単独でも実在する配列なので、接合点を跨がない限り
-        /// 「その組み合わせが正しい」証拠にはならない)
+        /// どちらの接合点も跨がないリードだけでは、支持が既定の閾値に届かないこと
         /// </summary>
+        /// <remarks>
+        /// 各配列は単独でも実在する配列なので、接合点を跨がない限り
+        /// その組み合わせが正しい証拠にはならない
+        /// </remarks>
         [Fact]
         public void Get_接合点の支持数_StaysBelowThreshold_WhenReadsNeverCrossEitherJunction()
         {
@@ -152,10 +155,12 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// Head-Repeat 接合点は本物のリードに跨がれているが、
         /// Repeat-Tail 側は無関係な配列 (OtherTail) であり跨ぐリードが無い場合でも
-        /// 支持は得られる (Head-Repeat 側の支持だけでカウントされるため)<br/>
+        /// 支持は得られる (Head-Repeat 側の支持だけでカウントされるため)
+        /// </summary>
+        /// <remarks>
         /// この支持数は、両方の接合点が本物のリードに跨がれている場合の
         /// 支持数を超えないはず
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Get_接合点の支持数_CountsOnlyTheJunctionThatIsActuallyCrossed()
         {
@@ -205,10 +210,12 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 2 bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ
-        /// 切り替えて同じ判定ができること<br/>
+        /// 切り替えて同じ判定ができること
+        /// </summary>
+        /// <remarks>
         /// 跨いだリードがあれば支持が出て、
         /// 無ければ出ない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Get_接合点の支持数_WorksBeyondThePackableRLength()
         {

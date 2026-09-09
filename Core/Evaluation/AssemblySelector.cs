@@ -5,7 +5,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
-    /// 複数のアセンブリ候補から 1 つを選ぶ<br/>
+    /// 複数のアセンブリ候補から 1 つを選ぶ
+    /// </summary>
+    /// <remarks>
     /// 連続性・完全性・正確性を掛け合わせた単一のスコアでは選べない<br/>
     /// 連続性の利得が完全性の損失を上回りうるため、配列を大きく落とした
     /// 誤アセンブリのほうが高い点になる<br/>
@@ -39,36 +41,44 @@ namespace Tsumiki.Core.Evaluation
     /// 先に見るなら偏りの無いほうにする<br/>
     /// 本当に危険な重複 (統合が誤結合を持ち込んだ場合など) は
     /// 正確性の足切りが捕まえる
-    /// </summary>
+    /// </remarks>
     internal static class AssemblySelector
     {
         /// <summary>
-        /// 足切りに使う完全性の許容差<br/>
+        /// 足切りに使う完全性の許容差
+        /// </summary>
+        /// <remarks>
         /// 取りこぼしはそのままゲノムの欠落なので、
         /// 正確性より厳しく見る (7 Mbp 級なら 1% で 70 kbp に相当する)
-        /// </summary>
+        /// </remarks>
         public const double 完全性の許容差 = 0.01D;
 
         /// <summary>
-        /// 足切りに使う正確性の許容差<br/>
+        /// 足切りに使う正確性の許容差
+        /// </summary>
+        /// <remarks>
         /// 統合で誤結合を持ち込んだ場合はこれを
         /// 大きく超えて落ちる (実データでは 13 ポイント落ちた例がある)
-        /// </summary>
+        /// </remarks>
         public const double 正確性の許容差 = 0.05D;
 
         /// <summary>
-        /// 完全性・正確性で同点とみなす差<br/>
+        /// 完全性・正確性で同点とみなす差
+        /// </summary>
+        /// <remarks>
         /// どちらもカバレッジからの期待コピー数の丸めに依存するため、
         /// この程度の差は候補の優劣ではなく推定の揺らぎとみなす<br/>
         /// 特に正確性は、反復を正しく複製したときにも
         /// (丸めが 1 つ下に落ちれば) 下がる向きに動く
-        /// </summary>
+        /// </remarks>
         public const double 同点とみなす差 = 0.005D;
 
         /// <summary>
-        /// 候補から最良のものを選ぶ<br/>
-        /// 候補が空なら null
+        /// 候補から最良のものを選ぶ
         /// </summary>
+        /// <remarks>
+        /// 候補が空なら null
+        /// </remarks>
         public static (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)? Get_最良(
             IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補)
         {
@@ -115,18 +125,22 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 基準値からどれだけ離れているかを、同点とみなす幅で刻んだ段<br/>
-        /// 0 が基準と同等で、大きいほど劣る
+        /// 基準値からどれだけ離れているかを、同点とみなす幅で刻んだ段
         /// </summary>
+        /// <remarks>
+        /// 0 が基準と同等で、大きいほど劣る
+        /// </remarks>
         public static int Get_段(double p_値, double p_基準値)
         {
             return (int)Math.Floor(Math.Max(0, p_基準値 - p_値) / 同点とみなす差);
         }
 
         /// <summary>
-        /// 候補の一覧を出力する<br/>
-        /// 自動選択の妥当性を利用者が確かめられるようにする
+        /// 候補の一覧を出力する
         /// </summary>
+        /// <remarks>
+        /// 自動選択の妥当性を利用者が確かめられるようにする
+        /// </remarks>
         public static void V_出力_候補一覧(
             IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
             アセンブリ実行結果 p_採用したもの)

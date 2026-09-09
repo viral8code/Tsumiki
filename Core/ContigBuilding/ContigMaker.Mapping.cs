@@ -9,10 +9,12 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// ContigMaker のうち、unitig への k-mer 索引構築とリードマッピングを担う部分<br/>
+    /// ContigMaker のうち、unitig への k-mer 索引構築とリードマッピングを担う部分
+    /// </summary>
+    /// <remarks>
     /// (contig 結合そのものは ContigMaker.cs、walk 構築は ContigMaker.Walk.cs、
     /// フラグメント長標本の収集は ContigMaker.FragmentSampling.cs を参照)
-    /// </summary>
+    /// </remarks>
     internal partial class ContigMaker
     {
         // 同一 k-mer が複数の unitig にまたがって出現した (=反復配列等に
@@ -128,12 +130,14 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// k-mer 辞書へ 1 件登録する<br/>
+        /// k-mer 辞書へ 1 件登録する
+        /// </summary>
+        /// <remarks>
         /// 衝突した k-mer は後勝ちで上書きすると
         /// 別 unitig 由来のリードが同じ ID に見え、偽の隣接を作る<br/>
         /// そのため曖昧としてマークし、マッピング時のヒットから除く<br/>
         /// 戻り値は新たに曖昧マークを付けた件数 (0 か 1)
-        /// </summary>
+        /// </remarks>
         private static int V_登録_kmer(
             Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
@@ -151,12 +155,14 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// unitig 間の隣接を de Bruijn グラフから厳密に構築する<br/>
+        /// unitig 間の隣接を de Bruijn グラフから厳密に構築する
+        /// </summary>
+        /// <remarks>
         /// V_結合_コンティグ を呼ぶ前 (コピー数推定の接続伝播など)でも独立に
         /// 呼べるよう公開している<br/>
         /// 呼ぶたびに FASTA を読み直して新しい
         /// グラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
-        /// </summary>
+        /// </remarks>
         public UnitigGraph Get_グラフ()
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -210,10 +216,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// ペアエンドから unitig 間の隣接を検出する<br/>
+        /// ペアエンドから unitig 間の隣接を検出する
+        /// </summary>
+        /// <remarks>
         /// 単一リードでは unitig 境界を跨げない場合でも、フラグメント長ぶん
         /// 離れた 2 つの unitig の隣接なら検出できる
-        /// </summary>
+        /// </remarks>
         public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -316,9 +324,11 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 1 本のリードが代表としてどの unitig にマップされるかを判定する<br/>
-        /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
+        /// 1 本のリードが代表としてどの unitig にマップされるかを判定する
         /// </summary>
+        /// <remarks>
+        /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
+        /// </remarks>
         internal 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
         {
             if (string.IsNullOrEmpty(p_リード))
@@ -383,10 +393,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// read1/read2 を同時に読み進めて対応するペアを返す<br/>
+        /// read1/read2 を同時に読み進めて対応するペアを返す
+        /// </summary>
+        /// <remarks>
         /// ID の対応が取れないものと片側だけ残ったものは A_リード2 を空文字にし、
         /// 単一リード内の隣接検出だけは通常どおり行えるようにする
-        /// </summary>
+        /// </remarks>
         private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(
             string p_リード1のパス, string p_リード2のパス)
         {
@@ -427,10 +439,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// ペア 1 組を処理する<br/>
+        /// ペア 1 組を処理する
+        /// </summary>
+        /// <remarks>
         /// ペアエンド由来の隣接は直接のオーバーラップを
         /// 保証しない弱い証拠なので、リード隣接とは分けて集計する
-        /// </summary>
+        /// </remarks>
         private void V_処理_1ペア(
             string p_リード1,
             string p_リード2,

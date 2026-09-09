@@ -5,7 +5,9 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
-    /// 決めきれずに打ち切った箇所を、その場で書き留めておくための収集器<br/>
+    /// 決めきれずに打ち切った箇所を、その場で書き留めておくための収集器
+    /// </summary>
+    /// <remarks>
     /// 打ち切った事実は「N を入れた」「繋がなかった」という結果にしか残らず、
     /// なぜそこで止めたのかは失われる<br/>
     /// 後から人や別のツールが再解析できるよう、
@@ -13,7 +15,7 @@ namespace Tsumiki.Core.Evaluation
     /// k ごとに分けて持つのは、multi-k では採用しなかった k の記録まで
     /// 混ざるため<br/>
     /// レポートには採用した k のぶんだけを出す
-    /// </summary>
+    /// </remarks>
     internal static class AmbiguityRecorder
     {
         /// <summary>
@@ -32,15 +34,19 @@ namespace Tsumiki.Core.Evaluation
         private static int _現在のk長;
 
         /// <summary>
-        /// k ごとの作業ディレクトリに残す控え<br/>
-        /// 再開時に読み直す
+        /// k ごとの作業ディレクトリに残す控え
         /// </summary>
+        /// <remarks>
+        /// 再開時に読み直す
+        /// </remarks>
         private const string 保存ファイル名 = "ambiguous.tsv";
 
         /// <summary>
-        /// この k の記録を集め直す<br/>
-        /// 同じ k を再実行した場合は上書きする
+        /// この k の記録を集め直す
         /// </summary>
+        /// <remarks>
+        /// 同じ k を再実行した場合は上書きする
+        /// </remarks>
         public static void V_開始(int p_k長)
         {
             lock (_錠)
@@ -51,10 +57,12 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 1 箇所ぶん書き留める<br/>
+        /// 1 箇所ぶん書き留める
+        /// </summary>
+        /// <remarks>
         /// 確信度は独立な支持本数を飽和関数に通した値で、
         /// 同じ種類の証拠がいくら積み上がっても 1 に近づくだけになる
-        /// </summary>
+        /// </remarks>
         public static void V_記録(
             曖昧箇所の種別 p_種別, string p_場所,
             double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L)
@@ -81,10 +89,12 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// その k の記録を作業ディレクトリへ残す<br/>
+        /// その k の記録を作業ディレクトリへ残す
+        /// </summary>
+        /// <remarks>
         /// 再開でこの k を飛ばしたときに、
         /// 決めきれなかった箇所だけが失われてレポートが実態より綺麗に見えるのを防ぐ
-        /// </summary>
+        /// </remarks>
         public static void V_保存(string p_作業ディレクトリ, int p_k長)
         {
             var l_文 = new System.Text.StringBuilder();
@@ -103,9 +113,11 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// その k で書き留めた箇所の一覧<br/>
-        /// 記録が無ければ空
+        /// その k で書き留めた箇所の一覧
         /// </summary>
+        /// <remarks>
+        /// 記録が無ければ空
+        /// </remarks>
         public static IReadOnlyList<曖昧箇所> Get_記録(int p_k長)
         {
             lock (_錠)

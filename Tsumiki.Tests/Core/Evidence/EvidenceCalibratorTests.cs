@@ -4,13 +4,15 @@ using Tsumiki.Core;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペア証拠を生カウントではなく期待本数との比で測るための較正器の検証<br/>
+    /// ペア証拠を生カウントではなく期待本数との比で測るための較正器の検証
+    /// </summary>
+    /// <remarks>
     /// Scaffolder・ContigMaker(分岐選択)・BeamSearchExtender(先読みスコア) が
     /// 同じ較正を共有するために括り出したもの<br/>
     /// ここでは較正器そのものの
     /// フォールバック規則と、「短い辺には厳しく、長い辺には緩く」という
     /// 固定閾値の偏りが正規化で解消されることを検証する
-    /// </summary>
+    /// </remarks>
     public class EvidenceCalibratorTests
     {
         /// <summary>
@@ -58,10 +60,12 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 較正器の核心: 同じ観測本数でも、短い unitig への辺は正規化後の値が
-        /// 大きくなる (=期待が小さいので少ない観測でも強い支持とみなされる)<br/>
+        /// 大きくなる (=期待が小さいので少ない観測でも強い支持とみなされる)
+        /// </summary>
+        /// <remarks>
         /// これが「固定閾値 10 は短い辺には厳しく、長い辺には緩すぎる」という
         /// 提案 D の問題意識そのものへの解答になっている
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Get_正規化済み支持_IsHigherForTheSameRawCount_WhenTheFlankingUnitigIsShorter()
         {

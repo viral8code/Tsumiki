@@ -4,14 +4,16 @@ namespace Tsumiki.Tests.Utility
 {
     /// <summary>
     /// プロデューサー/コンシューマが、ワーカーの例外で無言のハングに
-    /// 陥らないことを固定する<br/>
+    /// 陥らないことを固定する
+    /// </summary>
+    /// <remarks>
     /// 素朴に書くとこうなる: キューには容量上限があるため、ワーカーが例外で
     /// 落ちるとキューを引き取る者がいなくなり、プロデューサーは Add で永久に
     /// 待ち続ける<br/>
     /// Task.WaitAll に到達しないのでワーカーの例外は誰にも
     /// 観測されず、ログも例外も出ないままプロセスが CPU 0% で止まる<br/>
     /// 実際に GAGE-B のデータで 2 時間以上まったく無言でハングした
-    /// </summary>
+    /// </remarks>
     public class ReadPipelineTests
     {
         [Fact]
@@ -38,10 +40,12 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// ワーカーが例外を投げたら、供給が残っていても呼び出し元へ伝わること<br/>
+        /// ワーカーが例外を投げたら、供給が残っていても呼び出し元へ伝わること
+        /// </summary>
+        /// <remarks>
         /// 入力数はキュー容量よりずっと多くしてあり、対策が無ければ
         /// プロデューサーが満杯のキューで待ち続けてこのテストはタイムアウトする
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Run_WorkerThrows_SurfacesTheExceptionInsteadOfHanging()
         {
@@ -59,10 +63,12 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 一部のワーカーだけが落ちた場合も、放置せずに伝えること<br/>
+        /// 一部のワーカーだけが落ちた場合も、放置せずに伝えること
+        /// </summary>
+        /// <remarks>
         /// 残ったワーカーが処理を続けられてしまうと、結果が中途半端なまま
         /// 「成功」として先へ進んでしまう
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Run_OneWorkerThrows_StillSurfacesTheException()
         {

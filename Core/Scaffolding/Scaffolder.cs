@@ -11,16 +11,20 @@ using Tsumiki.Model.Scaffolding;
 namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
-    /// 確定した contig を読み直し、ペアエンド由来の隣接で N 埋め連結する<br/>
-    /// 出力は新規ファイルで、contigs.fasta 自体は変更しない
+    /// 確定した contig を読み直し、ペアエンド由来の隣接で N 埋め連結する
     /// </summary>
+    /// <remarks>
+    /// 出力は新規ファイルで、contigs.fasta 自体は変更しない
+    /// </remarks>
     internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
     {
         /// <summary>
-        /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比<br/>
+        /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比
+        /// </summary>
+        /// <remarks>
         /// unitig がフラグメントより短いと両端が収まるペアしか観測できず
         /// 短い側へ偏るが、この倍率以上に長ければ打ち切りは事実上起きない
-        /// </summary>
+        /// </remarks>
         private const int 偏りが無いとみなす長さ比 = 10;
 
         // contig ID(FastaWriter が振った 1 始まりの ID) -> 配列本体
@@ -40,17 +44,21 @@ namespace Tsumiki.Core.Scaffolding
         private readonly Dictionary<int, string> _コンティグ名 = [];
 
         /// <summary>
-        /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ<br/>
+        /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ
+        /// </summary>
+        /// <remarks>
         /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは
         /// 行われない
-        /// </summary>
+        /// </remarks>
         public int? A_有効インサートサイズ { get; private set; }
 
         /// <summary>
-        /// スキャフォールディングを実行し、指定パスに結果を書き出す<br/>
+        /// スキャフォールディングを実行し、指定パスに結果を書き出す
+        /// </summary>
+        /// <remarks>
         /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、
         /// その旨をログに出力して何もせずに戻る (ファイルは作成されない)
-        /// </summary>
+        /// </remarks>
         public void V_実行(string p_スキャフォールドパス)
         {
             if (!this.Get_インサートサイズ(out var l_インサートサイズ))
@@ -315,14 +323,16 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// インサートサイズを確定する<br/>
+        /// インサートサイズを確定する
+        /// </summary>
+        /// <remarks>
         /// 明示指定があればそれを使う<br/>
         /// 未指定なら 2 種類の標本群から選ぶ<br/>
         /// 同一 unitig 内標本は打ち切りバイアスを
         /// 持つが unitig が十分長ければ起きず、標本数が桁違いに多い<br/>
         /// 確定辺由来は unitig 長に縛られない代わりに標本数が極端に少なく、
         /// 誤結合や誤マッピングの影響を受けやすい
-        /// </summary>
+        /// </remarks>
         private bool Get_インサートサイズ(out int p_インサートサイズ)
         {
             if (ConfigurationManager.A_実行時引数.A_インサートサイズ is { } l_指定値)
@@ -366,11 +376,13 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// unitig の N50<br/>
+        /// unitig の N50
+        /// </summary>
+        /// <remarks>
         /// 打ち切りバイアスの有無の判断に使う<br/>
         /// 平均ではなく N50 を使うのは、本数では短い断片が多くても
         /// ペアが実際に観測される場所は長い unitig に偏るため
-        /// </summary>
+        /// </remarks>
         private static long Get_ユニティグN50(IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
             return StatsUtil.Get_N50([.. p_ユニティグ長.Values.Select(x => (long)x)]).A_N50;
@@ -394,12 +406,14 @@ namespace Tsumiki.Core.Scaffolding
 
         /// <summary>
         /// 符号付き unitig ID が contig の末端に配置されているかを判定し、
-        /// 配置されていれば対応する contig 頂点を返す<br/>
+        /// 配置されていれば対応する contig 頂点を返す
+        /// </summary>
+        /// <remarks>
         /// 出口側 (読み進める起点) として有効なのは「順鎖かつ contig 内で末尾」
         /// または「逆鎖かつ先頭」、入口側はその逆<br/>
         /// contig が正規化で逆相補化されていると walk 順の先頭/末尾の意味が
         /// 反転するため、その分も考慮して向きを決める
-        /// </summary>
+        /// </remarks>
         private static bool Get_コンティグ末端頂点(
             IReadOnlyDictionary<int, ユニティグ配置> p_配置,
             int p_符号付きユニティグID,
@@ -465,12 +479,14 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す<br/>
+        /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す
+        /// </summary>
+        /// <remarks>
         /// 期待本数と比べるのは、辺が長く距離が近いほど多く観測されるという
         /// 幾何的な偏りを外すため<br/>
         /// 観測本数だけを固定の下限と比べると、
         /// 期待が数本の場所と数百本の場所を同じ物差しで測ることになる
-        /// </summary>
+        /// </remarks>
         internal static スキャフォールド候補? Get_優勢な候補(
             IReadOnlyList<スキャフォールド候補> p_候補,
             decimal p_優勢閾値,
@@ -498,13 +514,15 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// 標本群から挿入する N の数を決める<br/>
+        /// 標本群から挿入する N の数を決める
+        /// </summary>
+        /// <remarks>
         /// 各標本は既知長で、
         /// フラグメント長 = 標本 + ギャップ長 が成り立つため、
         /// ギャップ長 = インサートサイズ - 標本 の中央値を採る<br/>
         /// 推定が負や 0 でも隣接の事実自体には証拠があるので、下限で丸めて
         /// 少なくとも 1 つの N を残す
-        /// </summary>
+        /// </remarks>
         private int Get_推定ギャップ長(List<int> p_既知長標本)
         {
             var l_インサートサイズ = this.A_有効インサートサイズ ?? 0;
@@ -518,10 +536,12 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// contig を 1 本のスキャフォールドへ連ねる<br/>
+        /// contig を 1 本のスキャフォールドへ連ねる
+        /// </summary>
+        /// <remarks>
         /// p_連結したコンティグ数 は
         /// 実際に繋いだ本数で、1 なら元の contig がそのまま出ていることを意味する
-        /// </summary>
+        /// </remarks>
         private string? Get_スキャフォールド配列(
             (int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み,
             out int p_連結したコンティグ数)

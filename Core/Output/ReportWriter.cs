@@ -9,13 +9,15 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Core.Output
 {
     /// <summary>
-    /// 完全長の判定と、その根拠になった数値をファイルへ書き出す<br/>
+    /// 完全長の判定と、その根拠になった数値をファイルへ書き出す
+    /// </summary>
+    /// <remarks>
     /// ログは流れて消えるが、レポートは後から読み返せる<br/>
     /// 特に
     /// 「なぜ完全長ではないのか」は、次に何を足せば解けるのかを決める材料になる<br/>
     /// JSON は項目が固定なので直接組み立てる<br/>
     /// 反射に頼るシリアライザは AOT で落ちる可能性があり、この程度の構造のために持ち込む価値がない
-    /// </summary>
+    /// </remarks>
     internal static class ReportWriter
     {
         /// <summary>
@@ -87,14 +89,18 @@ namespace Tsumiki.Core.Output
         }
 
         /// <summary>
-        /// 決めきれなかった箇所を TSV で残す<br/>
+        /// 決めきれなかった箇所を TSV で残す
+        /// </summary>
+        /// <remarks>
         /// FASTA に N を出すだけでは
         /// 「どちらとも言えなかった」のか「配列が無かった」のかが区別できない
-        /// </summary>
+        /// </remarks>
         /// <summary>
-        /// リードに裏付けの無い区間を TSV で書き出す<br/>
-        /// 位置は 1 始まり・両端を含む
+        /// リードに裏付けの無い区間を TSV で書き出す
         /// </summary>
+        /// <remarks>
+        /// 位置は 1 始まり・両端を含む
+        /// </remarks>
         public static void V_書き出し_支持のない箇所(
             string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
         {
@@ -137,9 +143,11 @@ namespace Tsumiki.Core.Output
         }
 
         /// <summary>
-        /// TSV に出す固定の種別名<br/>
-        /// 訳さない
+        /// TSV に出す固定の種別名
         /// </summary>
+        /// <remarks>
+        /// 訳さない
+        /// </remarks>
         private static string Get_種別コード(曖昧箇所の種別 p_種別)
         {
             return p_種別 switch
@@ -247,9 +255,11 @@ namespace Tsumiki.Core.Output
         }
 
         /// <summary>
-        /// JSON の文字列リテラル<br/>
-        /// ID には引用符も含まれうる
+        /// JSON の文字列リテラル
         /// </summary>
+        /// <remarks>
+        /// ID には引用符も含まれうる
+        /// </remarks>
         private static string Get_文字列(string? p_値)
         {
             if (p_値 is null)

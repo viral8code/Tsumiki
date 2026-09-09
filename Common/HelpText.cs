@@ -4,24 +4,30 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Common
 {
     /// <summary>
-    /// 概要表示 (引数なし・-v) とヘルプ (-h) の本文を組み立てる<br/>
+    /// 概要表示 (引数なし・-v) とヘルプ (-h) の本文を組み立てる
+    /// </summary>
+    /// <remarks>
     /// 1 つの大きな文字列として持たせると言語ごとに全文を複製することになり、
     /// 既定値やオプション名の変更が全言語に波及する<br/>
     /// ここでは「オプション名と
     /// 既定値はコード側、説明文だけカタログ側」に分けて、行ごとに組み立てる
-    /// </summary>
+    /// </remarks>
     internal static class HelpText
     {
         /// <summary>
-        /// 説明を書き始める桁<br/>
-        /// オプション名がこれを超える行は説明を次行へ送る
+        /// 説明を書き始める桁
         /// </summary>
+        /// <remarks>
+        /// オプション名がこれを超える行は説明を次行へ送る
+        /// </remarks>
         private const int 説明の開始桁 = 20;
 
         /// <summary>
-        /// 名前・作者・バージョン<br/>
-        /// 引数なしの起動と -v で出す
+        /// 名前・作者・バージョン
         /// </summary>
+        /// <remarks>
+        /// 引数なしの起動と -v で出す
+        /// </remarks>
         public static string Get_概要()
         {
             var l_文 = new StringBuilder();

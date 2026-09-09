@@ -7,13 +7,15 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 分岐を 1 つも持たない閉路の回収を固定する<br/>
+    /// 分岐を 1 つも持たない閉路の回収を固定する
+    /// </summary>
+    /// <remarks>
     /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」
     /// k-mer として選ぶため、全頂点が入次数 1・出次数 1 の閉路は開始点を 1 つも
     /// 持たない<br/>
     /// そのままだと、きれいな環状染色体や小さなプラスミドが
     /// 出力から丸ごと消える
-    /// </summary>
+    /// </remarks>
     public class CyclicUnitigFinderTests : IDisposable
     {
         /// <summary>
@@ -60,9 +62,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 環状配列と線状配列から k-mer インデックスを作る<br/>
-        /// 環状側は末尾から先頭へ回り込む窓まで登録し、閉路そのものにする
+        /// 環状配列と線状配列から k-mer インデックスを作る
         /// </summary>
+        /// <remarks>
+        /// 環状側は末尾から先頭へ回り込む窓まで登録し、閉路そのものにする
+        /// </remarks>
         private TrustedKmerIndex Get_インデックス(string? p_環状配列, string? p_線状配列)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };

@@ -6,7 +6,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 短い反復配列の解きほぐし (repeat resolution) の検証<br/>
+    /// 短い反復配列の解きほぐし (repeat resolution) の検証
+    /// </summary>
+    /// <remarks>
     /// 反復配列 R がゲノム中に 2 回現れ、それぞれ A→R→C と B→R→D という文脈を
     /// 持つ場合、de Bruijn グラフ上では R は 1 個の頂点に潰れて入次数 2・出次数 2 に
     /// なる<br/>
@@ -16,7 +18,7 @@ namespace Tsumiki.Tests.Core
     /// 跨いだフラグメントだけが手がかりになる<br/>
     /// 実データ (k=63) ではこの形の unitig が 151 本あり、うち 143 本が
     /// フラグメント長の中央値 (245 bp) より短かった
-    /// </summary>
+    /// </remarks>
     public class RepeatResolutionTests
     {
         /// <summary>
@@ -202,9 +204,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 両方の対応付けが同程度に支持されている場合、どちらが正しいか判断できない<br/>
-        /// 誤った繋ぎ方は誤アセンブリを生むため、繋がずに残すのが正しい
+        /// 両方の対応付けが同程度に支持されている場合、どちらが正しいか判断できない
         /// </summary>
+        /// <remarks>
+        /// 誤った繋ぎ方は誤アセンブリを生むため、繋がずに残すのが正しい
+        /// </remarks>
         [Fact]
         public void ResolveShortRepeats_LeavesTheRepeatAlone_WhenPairsDoNotFavourEitherPairing()
         {
@@ -237,9 +241,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// フラグメントで跨げない長さの反復は、そもそも証拠が得られないので対象外<br/>
-        /// (跨げていないのに偶然の対応付けで繋ぐと誤アセンブリになる)
+        /// フラグメントで跨げない長さの反復は、そもそも証拠が得られないので対象外
         /// </summary>
+        /// <remarks>
+        /// (跨げていないのに偶然の対応付けで繋ぐと誤アセンブリになる)
+        /// </remarks>
         [Fact]
         public void ResolveShortRepeats_SkipsRepeatsLongerThanTheFragmentCanSpan()
         {

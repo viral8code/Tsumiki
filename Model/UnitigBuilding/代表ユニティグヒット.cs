@@ -1,7 +1,9 @@
 ﻿namespace Tsumiki.Model.UnitigBuilding
 {
     /// <summary>
-    /// ContigMaker.Get_代表ユニティグ の結果<br/>
+    /// ContigMaker.Get_代表ユニティグ の結果
+    /// </summary>
+    /// <remarks>
     /// リードが代表としてマップされた
     /// unitig の ID(符号は向きを表す<br/>
     /// 正=順鎖、負=逆鎖として一致) に加え、
@@ -14,14 +16,16 @@
     /// これにより「read が unitig の末尾からどれだけ内側で止まっているか」を
     /// 双方について計算し、ギャップ長 = インサートサイズ - 内側距離 1 - 内側距離 2 という
     /// 見積りに使える
-    /// </summary>
+    /// </remarks>
     internal readonly struct 代表ユニティグヒット(int p_ユニティグID, int p_一致kmer数, int p_最終一致終端位置, int p_ユニティグ長)
     {
         /// <summary>
-        /// マップ先 unitig ID<br/>
+        /// マップ先 unitig ID
+        /// </summary>
+        /// <remarks>
         /// 正=unitig の順鎖として一致、負=逆鎖として一致<br/>
         /// 0 はヒットなしを表す
-        /// </summary>
+        /// </remarks>
         public readonly int A_ユニティグID = p_ユニティグID;
 
         /// <summary>
@@ -32,9 +36,11 @@
         /// <summary>
         /// unitig を A_ユニティグID の符号が示す向きに揃えたときの座標系で、
         /// リードが最後にヒットした k-merの終端位置 (0-based, 末尾側の
-        /// インデックス+1<br/>
-        /// つまりこの値がそのまま「先頭からの既知長」になる)
+        /// インデックス+1
         /// </summary>
+        /// <remarks>
+        /// つまりこの値がそのまま「先頭からの既知長」になる)
+        /// </remarks>
         public readonly int A_最終一致終端位置 = p_最終一致終端位置;
 
         /// <summary>
@@ -48,10 +54,12 @@
         public static readonly 代表ユニティグヒット A_ヒットなし = new(0, 0, 0, 0);
 
         /// <summary>
-        /// unitig の末尾から、リードが最後にヒットした位置までの残り塩基数<br/>
+        /// unitig の末尾から、リードが最後にヒットした位置までの残り塩基数
+        /// </summary>
+        /// <remarks>
         /// この値が小さいほど、リードは unitig の末端近くまで到達している
         /// (＝ペアのもう一方までの未知区間が長くなる可能性が高い) ことを示す
-        /// </summary>
+        /// </remarks>
         public int A_末尾までの残り長 => Math.Max(0, this.A_ユニティグ長 - this.A_最終一致終端位置);
     }
 }

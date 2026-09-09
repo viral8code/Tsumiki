@@ -5,12 +5,14 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// カットオフを掛ける前に出現回数ヒストグラムだけを取り出せること<br/>
+    /// カットオフを掛ける前に出現回数ヒストグラムだけを取り出せること
+    /// </summary>
+    /// <remarks>
     /// -kc を自動決定するには、カットオフを決める前にスペクトルを見る必要がある<br/>
     /// 事前走査と本体の走査は同じ統合ファイルを使い回す<br/>
     /// 統合をやり直すと
     /// マージソートのディスク I/O が丸ごと二重になるため
-    /// </summary>
+    /// </remarks>
     public class TrustedKmerIndexHistogramTests : IDisposable
     {
         /// <summary>
@@ -86,10 +88,12 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 事前走査でヒストグラムを取っても、その後のカットオフが正しく動くこと<br/>
+        /// 事前走査でヒストグラムを取っても、その後のカットオフが正しく動くこと
+        /// </summary>
+        /// <remarks>
         /// 統合ファイルを使い回す実装なので、事前走査がファイルを消費・削除して
         /// しまうと本体が壊れる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void GetHistogram_DoesNotConsumeTheMergedFile_CutoffStillWorks()
         {

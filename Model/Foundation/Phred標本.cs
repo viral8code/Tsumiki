@@ -1,9 +1,11 @@
 ﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
-    /// FASTQ のクオリティ文字列を一定数サンプリングした結果<br/>
-    /// Phred オフセット (33 or 64) の推定に使う
+    /// FASTQ のクオリティ文字列を一定数サンプリングした結果
     /// </summary>
+    /// <remarks>
+    /// Phred オフセット (33 or 64) の推定に使う
+    /// </remarks>
     internal readonly record struct Phred標本(int A_最小ASCII, int A_最大ASCII, int A_標本リード数, int A_標本文字数)
     {
         /// <summary>

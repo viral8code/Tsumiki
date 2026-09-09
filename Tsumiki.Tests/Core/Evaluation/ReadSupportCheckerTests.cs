@@ -7,10 +7,12 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 出した配列の各位置がリードに裏付けられているかの検査<br/>
+    /// 出した配列の各位置がリードに裏付けられているかの検査
+    /// </summary>
+    /// <remarks>
     /// 誤って繋いだ接合は両側それぞれが正しい配列なので局所の量では
     /// 見えず、繋ぎ目を跨ぐ r-mer の不在だけがそれを示す
-    /// </summary>
+    /// </remarks>
     public class ReadSupportCheckerTests : IDisposable
     {
         /// <summary>

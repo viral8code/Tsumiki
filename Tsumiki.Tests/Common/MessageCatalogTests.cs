@@ -9,10 +9,12 @@ using Xunit;
 namespace Tsumiki.Tests.Common
 {
     /// <summary>
-    /// 文言カタログの検査<br/>
+    /// 文言カタログの検査
+    /// </summary>
+    /// <remarks>
     /// ID を増やしたときに訳を入れ忘れる、あるいは
     /// 訳の差し込み位置が原文とずれる、といった取りこぼしを防ぐ
-    /// </summary>
+    /// </remarks>
     public class MessageCatalogTests
     {
         /// <summary>
@@ -25,9 +27,11 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 差し込み位置 ({0} など) の並び<br/>
-        /// 書式指定は無視する
+        /// 差し込み位置 ({0} など) の並び
         /// </summary>
+        /// <remarks>
+        /// 書式指定は無視する
+        /// </remarks>
         private static List<int> Get_差し込み位置(string p_書式)
         {
             return [.. Regex.Matches(p_書式, @"(?<!\{)\{(\d+)[^}]*\}")

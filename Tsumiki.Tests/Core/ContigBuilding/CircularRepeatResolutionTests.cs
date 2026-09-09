@@ -6,7 +6,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状の複製単位に同じ反復が 2 回現れる形の解きほぐしを固定する<br/>
+    /// 環状の複製単位に同じ反復が 2 回現れる形の解きほぐしを固定する
+    /// </summary>
+    /// <remarks>
     /// 環状のゲノムに反復 R が 2 回あると、その間に挟まれる領域は必ず 2 つ
     /// (A と B) になり、ゲノムは A R B R を 1 周する形になる<br/>
     /// このとき R へ
@@ -17,7 +19,7 @@ namespace Tsumiki.Tests.Core
     /// 前者なら 1 本の環、後者なら 2 本の環になる<br/>
     /// 同じ unitig が 2 つの役回りに
     /// 立つことだけを理由に触らずにいると、証拠が揃っていても解けない
-    /// </summary>
+    /// </remarks>
     public class CircularRepeatResolutionTests
     {
         /// <summary>

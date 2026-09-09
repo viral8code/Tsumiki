@@ -48,11 +48,13 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// mainSeq(主経路) の k-mer 群に加えて、その途中の 1 点から分岐する
-        /// 短いtip配列 (tipSeq) の k-mer 群も登録した TrustedKmerIndex を作る<br/>
+        /// 短いtip配列 (tipSeq) の k-mer 群も登録した TrustedKmerIndex を作る
+        /// </summary>
+        /// <remarks>
         /// tipSeq は mainSeq の位置 branchPoint から始まる長さ kmerLength-1 の
         /// 「本来の続き」をコピーした上で、最後の 1 塩基だけ変えることで
         /// 主経路と k-1 塩基だけ重なる分岐を作る単純な構成にする
-        /// </summary>
+        /// </remarks>
         private TrustedKmerIndex BuildIndexWithTip(
             string mainSeq, int kmerLength, int branchPoint, int tipLength,
             int mainRepetitions = 10, int tipRepetitions = 2)
@@ -125,10 +127,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 行き止まりでも、カバレッジが主経路並みなら除去しないこと<br/>
+        /// 行き止まりでも、カバレッジが主経路並みなら除去しないこと
+        /// </summary>
+        /// <remarks>
         /// カバレッジの切れ目で孤立した実配列がこの形になるため、
         /// 行き止まりというだけで消すとゲノム被覆率を落とす
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void ClipTips_KeepsAShortDeadEndBranchWithMainPathCoverage()
         {
@@ -240,13 +244,15 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 2 つの異なる経路が同じ配列へ合流する構造 (reverse bubble) で、
-        /// 合流後の共有配列が複数の unitig に重複して現れないことを確認する<br/>
+        /// 合流後の共有配列が複数の unitig に重複して現れないことを確認する
+        /// </summary>
+        /// <remarks>
         /// unitig の定義は「内部の全節点が入次数 1 かつ出次数 1 の極大パス」であり、
         /// 合流点 (入次数 2) からは別の unitig が始まらなければならない<br/>
         /// この規則が無いと、両方の経路の walk が共有配列を走り抜けてしまい、
         /// 同じ配列を 2 度出力する (実データで k-mer 延べ数が実内容の 1.43 倍に
         /// 膨らんでいた原因)
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void MakeUnitig_StopsAtMergePoint_SoSharedSuffixIsNotDuplicated()
         {

@@ -60,13 +60,15 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 作業ディレクトリから中間ファイルだけを消す<br/>
+        /// 作業ディレクトリから中間ファイルだけを消す
+        /// </summary>
+        /// <remarks>
         /// 最終成果物とログは残す<br/>
         /// 作業ディレクトリは利用者が受け取る成果物の置き場でもあるので、
         /// 消してよいのは k ごとの途中経過や訂正済みリードのほうだけになる<br/>
         /// ログを残すのは、消す指定をした実行こそ後から確かめる手段が
         /// それしかなくなるため
-        /// </summary>
+        /// </remarks>
         internal static void V_削除_中間ファイル(string p_作業ディレクトリ)
         {
             foreach (var l_ディレクトリ in Directory.EnumerateDirectories(p_作業ディレクトリ))
@@ -254,13 +256,15 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 最終成果物から、リード長より短い配列を落とす<br/>
+        /// 最終成果物から、リード長より短い配列を落とす
+        /// </summary>
+        /// <remarks>
         /// リード 1 本に収まる長さの配列は、リードそのものが既に持っている以上の
         /// 情報を運ばない<br/>
         /// 加えてこの帯にはタンデムリピートのコピー数を誤って
         /// 繋いだ断片が集まりやすく、下流の注釈ツールも同種の閾値で捨てる<br/>
         /// 落とした分は一時ディレクトリの k ごとの成果物にそのまま残る
-        /// </summary>
+        /// </remarks>
         internal static void V_除外_短い配列(string p_パス, int? p_リード長)
         {
             if (p_リード長 is not { } l_下限 || l_下限 <= 0 || !File.Exists(p_パス))
@@ -287,7 +291,9 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 最終成果物の各位置がリードに裏付けられているかを調べる<br/>
+        /// 最終成果物の各位置がリードに裏付けられているかを調べる
+        /// </summary>
+        /// <remarks>
         /// ポリッシュの後に行う<br/>
         /// ギャップ充填・局所アセンブリ・ポリッシュは
         /// どれも組み立て後に配列を書き換えるので、それより前に調べても
@@ -295,7 +301,7 @@ namespace Tsumiki
         /// 突き合わせる相手はこの時点のリード、つまり前処理と訂正を通した
         /// あとのもの<br/>
         /// 組み立てが実際に見た証拠と同じものを問うことになる
-        /// </summary>
+        /// </remarks>
         private static 支持検査結果? V_検査_リードの支持(Parameters p_引数, string p_最終パス)
         {
             Logger.V_出力_空行();
@@ -307,9 +313,11 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 再開が指定されていて、その工程の出力が既に揃っているか<br/>
-        /// 揃っていれば作り直さずそのまま使う
+        /// 再開が指定されていて、その工程の出力が既に揃っているか
         /// </summary>
+        /// <remarks>
+        /// 揃っていれば作り直さずそのまま使う
+        /// </remarks>
         private static bool Get_再利用できるか(Parameters p_引数, string p_出力1, string? p_出力2)
         {
             return p_引数.A_再開するか
@@ -318,10 +326,12 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 最終成果物にリードを貼り直して磨く<br/>
+        /// 最終成果物にリードを貼り直して磨く
+        /// </summary>
+        /// <remarks>
         /// -po が無ければ何もしない<br/>
         /// 磨いた結果は同じファイル名へ被せ、利用者が受け取るものを 1 つに保つ
-        /// </summary>
+        /// </remarks>
         private static ポリッシュ統計? V_磨く(
             Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
         {
@@ -345,11 +355,13 @@ namespace Tsumiki
         }
 
         /// <summary>
-        /// 環状の閉じ目を元リードで確かめる<br/>
+        /// 環状の閉じ目を元リードで確かめる
+        /// </summary>
+        /// <remarks>
         /// -cc が無ければ何もしない<br/>
         /// 検証していないことと、検証して支持が無かったことは別なので、
         /// 前者は null を返して判定不能として扱わせる
-        /// </summary>
+        /// </remarks>
         private static IReadOnlyList<環状閉鎖検証結果>? V_検証_環状閉鎖(
             Parameters p_引数, string p_最終パス)
         {

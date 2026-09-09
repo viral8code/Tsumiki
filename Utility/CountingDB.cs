@@ -70,9 +70,11 @@ namespace Tsumiki.Utility
         private readonly List<string> _フラッシュ済みファイル = [];
 
         /// <summary>
-        /// p_シャード数 には、同時に生きている CountingDB の総数を渡す<br/>
-        /// メモリ予算を等分するために使う
+        /// p_シャード数 には、同時に生きている CountingDB の総数を渡す
         /// </summary>
+        /// <remarks>
+        /// メモリ予算を等分するために使う
+        /// </remarks>
         public CountingDB(string p_一時ディレクトリ, int p_シャード数 = 1)
         {
             this._ファイル接頭辞 = Guid.NewGuid().ToString("N");
@@ -143,12 +145,14 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// k-mer を 1 件登録する<br/>
+        /// k-mer を 1 件登録する
+        /// </summary>
+        /// <remarks>
         /// 従来はここで即ディスクに書き込んでいたが、
         /// メモリ上の Dictionary でカウントを集約することで、同一 k-mer の
         /// 再出現をディスク書き込みに変換しないようにする<br/>
         /// 閾値に達したら整列済みの状態でディスクへフラッシュする
-        /// </summary>
+        /// </remarks>
         public void V_登録_パック済み(byte[] p_パック済みkmer)
         {
             if (this._バッファ.TryGetValue(p_パック済みkmer, out var l_出現回数))
@@ -166,10 +170,12 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す<br/>
+        /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す
+        /// </summary>
+        /// <remarks>
         /// フラッシュ後のファイルは常にソート済み・集約済みであるため、
         /// 統合側では再集計 (Dictionary への読み直し) が不要になる
-        /// </summary>
+        /// </remarks>
         private void V_フラッシュ()
         {
             if (this._バッファ.Count == 0)
@@ -197,11 +203,13 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// ソート済み・集約済みの 2 ファイルを 1 本にマージする<br/>
+        /// ソート済み・集約済みの 2 ファイルを 1 本にマージする
+        /// </summary>
+        /// <remarks>
         /// 同じキーが両方に現れた場合はカウントを合算する<br/>
         /// シャード内統合とシャード間統合で共有する (二重に持つと
         /// 片方だけ直したときに静かに食い違う)
-        /// </summary>
+        /// </remarks>
         private static void V_マージ_2ファイル(
             string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器,
             Dictionary<ulong, long>? p_ヒストグラム = null)
@@ -264,10 +272,12 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 出現回数を書き出し、ヒストグラムが渡されていれば同時に集計する<br/>
+        /// 出現回数を書き出し、ヒストグラムが渡されていれば同時に集計する
+        /// </summary>
+        /// <remarks>
         /// 最終マージの書き出しで集計しておけば、-kc の自動決定のために
         /// 統合ファイルをもう一度読む必要がなくなる
-        /// </summary>
+        /// </remarks>
         private static void V_書き込み_出現回数(
             BinaryWriter p_書き込み, ulong p_出現回数, Dictionary<ulong, long>? p_ヒストグラム)
         {
@@ -276,9 +286,11 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 空のソート済みファイルを作って、そのパスを返す<br/>
-        /// 登録が 1 件も無かったシャードでも、統合処理に渡せる形を保つために使う
+        /// 空のソート済みファイルを作って、そのパスを返す
         /// </summary>
+        /// <remarks>
+        /// 登録が 1 件も無かったシャードでも、統合処理に渡せる形を保つために使う
+        /// </remarks>
         private static string Get_空ファイル(string p_一時ディレクトリ, string p_接頭辞)
         {
             var l_ファイル名 = Path.Combine(p_一時ディレクトリ, $"{p_接頭辞}_empty");

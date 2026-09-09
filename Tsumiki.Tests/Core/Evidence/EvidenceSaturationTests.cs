@@ -4,9 +4,11 @@ using Tsumiki.Core;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 証拠の飽和と独立性の数え方を固定する<br/>
-    /// 狙いは、同じ話を何度も聞いたことが別の裏付けを得たことに化けないようにすること
+    /// 証拠の飽和と独立性の数え方を固定する
     /// </summary>
+    /// <remarks>
+    /// 狙いは、同じ話を何度も聞いたことが別の裏付けを得たことに化けないようにすること
+    /// </remarks>
     public class EvidenceSaturationTests
     {
         [Fact]

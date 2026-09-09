@@ -223,10 +223,12 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// -pu(優勢閾値) と-pc(支持数閾値) を、完全性/正確性のどちらに倒すかの
-        /// 1 軸で束ねて適用する<br/>
+        /// 1 軸で束ねて適用する
+        /// </summary>
+        /// <remarks>
         /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる
         /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
-        /// </summary>
+        /// </remarks>
         private static void V_適用_積極性モード(Parameters p_引数, string p_モード名)
         {
             switch (p_モード名)

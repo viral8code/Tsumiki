@@ -7,7 +7,9 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// ContigMaker.FindDominantUnitig が返す LastMatchEndOffset が、
     /// 「read 内での位置」ではなく「unitig 内での正しい位置」を指すことを
-    /// 直接検証する<br/>
+    /// 直接検証する
+    /// </summary>
+    /// <remarks>
     /// 以前は kmerDict が (unitigId のみ) しか保持しておらず、
     /// FindDominantUnitig は read 内の最終ヒット k-merの終端位置 (read 基準) を
     /// そのまま unitig 内終端位置として誤用していた<br/>
@@ -15,7 +17,7 @@ namespace Tsumiki.Tests.Core
     /// 十分短い間は両者がたまたま近い値になり問題が表面化しなかったが、
     /// tip clipping 導入後に unitig が大幅に長くなり、インサートサイズ自動推定
     /// (この値を使う) が明後日の値 (中央値30 bp 等) を返すようになったことで発覚した
-    /// </summary>
+    /// </remarks>
     public class ContigMakerFindDominantUnitigTests : IDisposable
     {
         /// <summary>

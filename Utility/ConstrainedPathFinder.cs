@@ -4,22 +4,26 @@ using Tsumiki.Model.Scaffolding;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// 信頼できる k-mer 集合の中で、2 つの k-mer を繋ぐ経路を幅優先探索で探す<br/>
+    /// 信頼できる k-mer 集合の中で、2 つの k-mer を繋ぐ経路を幅優先探索で探す
+    /// </summary>
+    /// <remarks>
     /// 経路がちょうど 1 本、かつ追加した塩基数が指定範囲に収まるときだけ結果を返す<br/>
     /// 複数見つかった、あるいは 1 本も見つからない場合はどれが正しいか決められない
     /// ため null を返す<br/>
     /// 誤った配列で埋めるより、分からないことが分かる状態のほうが
     /// 下流の解析にとって安全、という方針そのものは呼び出し側の目的 (ギャップ充填/
     /// リードペアの橋渡し) によらず共通なので、探索エンジンをここへ切り出している
-    /// </summary>
+    /// </remarks>
     internal static class ConstrainedPathFinder
     {
         /// <summary>
-        /// 展開してよい探索状態の上限<br/>
+        /// 展開してよい探索状態の上限
+        /// </summary>
+        /// <remarks>
         /// 分岐の多い領域では経路数が指数的に
         /// 増えるため、上限を超えたら「解けなかった」として諦める
         /// (時間をかけても曖昧なままのことが多い)
-        /// </summary>
+        /// </remarks>
         public const int 既定状態数上限 = 200_000;
 
         /// <summary>
@@ -182,9 +186,11 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 親を辿って、継ぎ足した塩基列のうち先頭 p_埋める長さ 塩基を復元する<br/>
-        /// 末尾側 (目標 k-mer と重なる分) は捨てる
+        /// 親を辿って、継ぎ足した塩基列のうち先頭 p_埋める長さ 塩基を復元する
         /// </summary>
+        /// <remarks>
+        /// 末尾側 (目標 k-mer と重なる分) は捨てる
+        /// </remarks>
         private static string Get_復元経路(List<(int A_親, byte A_塩基)> p_節点, int p_末端, int p_埋める長さ)
         {
             List<byte> l_逆順 = [];

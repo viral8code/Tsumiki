@@ -1,11 +1,13 @@
 ﻿namespace Tsumiki.Model.Foundation
 {
     /// <summary>
-    /// 画面に出す文言の識別子<br/>
+    /// 画面に出す文言の識別子
+    /// </summary>
+    /// <remarks>
     /// 文言そのものは <see cref="Common.MessageCatalog"/> が
     /// 言語ごとに持つ<br/>
     /// 呼び出し側はこの ID だけを指す
-    /// </summary>
+    /// </remarks>
     internal enum メッセージID
     {
         デブルーイングラフの要約,

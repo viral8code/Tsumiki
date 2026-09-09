@@ -5,13 +5,15 @@ using Tsumiki.Model.Scaffolding;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// スキャフォールド辺の採用条件<br/>
+    /// スキャフォールド辺の採用条件
+    /// </summary>
+    /// <remarks>
     /// 観測本数ではなく期待本数に対する比で
     /// 測ることを固定する<br/>
     /// 辺が長く距離が近いほど多く観測されるという幾何的な
     /// 偏りがあるため、固定の下限では期待が数本の場所と数百本の場所を
     /// 同じ物差しで測ってしまう
-    /// </summary>
+    /// </remarks>
     public class ScaffolderEdgeTests
     {
         /// <summary>
@@ -52,10 +54,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 優劣は生の本数ではなく期待本数に対する比で決めること<br/>
+        /// 優劣は生の本数ではなく期待本数に対する比で決めること
+        /// </summary>
+        /// <remarks>
         /// 本数は辺が長く距離が近いほど多くなるので、そのまま比べると
         /// 幾何的に有利なだけの辺が勝ってしまう
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Get_優勢な候補_RanksByTheExpectedCountRatioNotTheRawCount()
         {
@@ -67,9 +71,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 本数が少なくても、その場所で期待される本数に見合っていれば採ること<br/>
-        /// 短い contig 同士や広いギャップでは、正しい隣接でも本数は少なくなる
+        /// 本数が少なくても、その場所で期待される本数に見合っていれば採ること
         /// </summary>
+        /// <remarks>
+        /// 短い contig 同士や広いギャップでは、正しい隣接でも本数は少なくなる
+        /// </remarks>
         [Fact]
         public void Get_優勢な候補_AcceptsAFewPairsWhenThatIsAllThatIsExpected()
         {

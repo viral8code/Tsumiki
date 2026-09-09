@@ -29,9 +29,11 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
-        /// 品質判定が配列の範囲外を触って落ちる<br/>
-        /// どのリードが不正かを言って止める
+        /// 品質判定が配列の範囲外を触って落ちる
         /// </summary>
+        /// <remarks>
+        /// どのリードが不正かを言って止める
+        /// </remarks>
         private void V_検査(string p_ID, string p_配列, string p_クオリティ)
         {
             if (p_配列.Length != p_クオリティ.Length)
@@ -53,10 +55,12 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す<br/>
+        /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す
+        /// </summary>
+        /// <remarks>
         /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、
         /// ID もクオリティも要らない全走査のための入口
-        /// </summary>
+        /// </remarks>
         public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)
         {
             foreach (var l_パス in p_パス群)
@@ -98,11 +102,13 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版<br/>
+        /// 曖昧塩基を無視する経路向けの軽量版
+        /// </summary>
+        /// <remarks>
         /// A_塩基候補列(List&lt;byte[]&gt;)の
         /// 代わりに A_塩基列(byte[])のみを構築する<br/>
         /// KmerCounting.V_読込_リードファイル から使用する
-        /// </summary>
+        /// </remarks>
         public リードデータ Get_次のリード_軽量()
         {
             try

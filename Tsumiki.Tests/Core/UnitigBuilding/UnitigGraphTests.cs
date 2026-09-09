@@ -6,11 +6,13 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// unitig 間の隣接を de Bruijn グラフから厳密に構築する UnitigGraph の検証<br/>
+    /// unitig 間の隣接を de Bruijn グラフから厳密に構築する UnitigGraph の検証
+    /// </summary>
+    /// <remarks>
     /// 旧実装 (リードマッピング由来の隣接候補 + 任意長オーバーラップ探索) は
     /// 実データで平均 2.96 塩基という偶然の一致で unitig を接着していたため、
     /// 「辺が張られる条件」そのものをここで固定する
-    /// </summary>
+    /// </remarks>
     public class UnitigGraphTests
     {
         /// <summary>
@@ -19,9 +21,11 @@ namespace Tsumiki.Tests.Core
         private const int AmbiguousKmer = int.MinValue;
 
         /// <summary>
-        /// ContigMaker のコンストラクタと同じ規則で kmerDict を組み立てる<br/>
-        /// 添字 2 u が unitig u の順鎖、2 u+1 が逆鎖
+        /// ContigMaker のコンストラクタと同じ規則で kmerDict を組み立てる
         /// </summary>
+        /// <remarks>
+        /// 添字 2 u が unitig u の順鎖、2 u+1 が逆鎖
+        /// </remarks>
         private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build(
             int kmerLength,
             params string[] unitigs)
@@ -159,11 +163,13 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 単純バブル (u から 2 本に分かれ、それぞれ 1 本の unitig を経て
         /// 同じ w へ再合流する) で、リード支持の高い枝だけが経路として
-        /// 残ることを確認する<br/>
+        /// 残ることを確認する
+        /// </summary>
+        /// <remarks>
         /// 結合の採用条件を相互一意にした結果、再合流点 w の入次数が
         /// 2 のままだと u から w へ至る経路が一切結合されなくなるため、
         /// この処理が無いとバブルのたびに contig が千切れる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void PopSimpleBubbles_KeepsTheBestSupportedBranch_AndRemovesTheOtherSymmetrically()
         {
@@ -254,10 +260,12 @@ namespace Tsumiki.Tests.Core
 
 
         /// <summary>
-        /// バブルの枝が単一 unitig とは限らない<br/>
+        /// バブルの枝が単一 unitig とは限らない
+        /// </summary>
+        /// <remarks>
         /// 分岐の無い (排他的な) 2 本の
         /// unitig をまたぐ枝同士でも、1 本の経路として検出・比較できること
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void PopSimpleBubbles_TreatsAChainOfTwoUnitigsAsOneBranch()
         {
@@ -319,10 +327,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// careful_bubble: 除去された側の経路の配列を、引き継ぎ先へ集められること<br/>
+        /// careful_bubble: 除去された側の経路の配列を、引き継ぎ先へ集められること
+        /// </summary>
+        /// <remarks>
         /// 「この k では敗者と判断したが、次の k は自分の証拠で判断し直せる」ため、
         /// 配列自体は捨てない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void PopSimpleBubbles_CollectsTheLosingSequence_WhenCarryOverTargetIsGiven()
         {

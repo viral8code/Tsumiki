@@ -8,14 +8,16 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// カバレッジから unitig のコピー数を推定する処理の検証<br/>
+    /// カバレッジから unitig のコピー数を推定する処理の検証
+    /// </summary>
+    /// <remarks>
     /// ゲノム中に 1 回しか現れない領域のカバレッジを基準値とすると、n 回現れる
     /// 反復配列にはリードが n 倍集まる<br/>
     /// したがってカバレッジ比を丸めれば
     /// コピー数になる<br/>
     /// これが分かると、反復配列かどうかをグラフの形ではなく
     /// 量的な根拠で判定でき、経路探索では「何回まで使ってよいか」の予算になる
-    /// </summary>
+    /// </remarks>
     public class CopyNumberEstimatorTests : IDisposable
     {
         /// <summary>
@@ -113,10 +115,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// カバレッジがわずかに高いだけの配列を反復と誤判定してはいけない<br/>
+        /// カバレッジがわずかに高いだけの配列を反復と誤判定してはいけない
+        /// </summary>
+        /// <remarks>
         /// 実データのカバレッジは領域ごとにかなりばらつくため、
         /// 1.5 倍未満は単一コピーとして扱う
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Estimate_TreatsMildlyElevatedCoverageAsSingleCopy()
         {
@@ -190,12 +194,14 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// プラスミドのように染色体とは異なるカバレッジ水準を持つ領域は、
-        /// 大域基準値との比だけで見ると多コピーの反復に見える<br/>
+        /// 大域基準値との比だけで見ると多コピーの反復に見える
+        /// </summary>
+        /// <remarks>
         /// しかし
         /// その単一コピー領域同士は分岐の無い (排他的な) 鎖で繋がっているため、
         /// 接続構造を使えば「大域とは水準が違うだけの単一コピー」だと分かる<br/>
         /// unicycler の copy depth propagation が解決する問題そのもの
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Estimate_WithGraph_RecognisesAHighCoveragePlasmidBackboneAsSingleCopy()
         {
@@ -288,11 +294,13 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 小さなプラスミドが分岐無しの 1 本の unitig にきれいに閉じた、
-        /// もっとも典型的なケース<br/>
+        /// もっとも典型的なケース
+        /// </summary>
+        /// <remarks>
         /// 染色体側の成分とは一切繋がりが無い、
         /// 十分な長さを持つ「島」なので、大域基準値との比が高くても
         /// 単一コピーとみなしてよい (高コピープラスミド自身の水準で 1 コピー)
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Estimate_WithGraph_RecognisesAnIsolatedLongUnitigAsItsOwnSingleCopyReplicon()
         {

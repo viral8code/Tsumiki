@@ -8,13 +8,15 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// リファレンス無しでアセンブリの良さを測る評価器の検証<br/>
+    /// リファレンス無しでアセンブリの良さを測る評価器の検証
+    /// </summary>
+    /// <remarks>
     /// multi-k で複数のアセンブリから 1 つを選ぶには、リファレンスを使わずに
     /// 良し悪しを決められなければならない<br/>
     /// 連続性 (N50) だけで選ぶと
     /// 誤って繋いだものほど高く出るため、完全性と正確性を併せて見る必要がある<br/>
     /// ここではその「誤って繋いだものが落ちる」ことを主に固定する
-    /// </summary>
+    /// </remarks>
     public class AssemblyScorerTests : IDisposable
     {
         /// <summary>
@@ -62,10 +64,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 与えた配列群から k-mer インデックスを作る<br/>
+        /// 与えた配列群から k-mer インデックスを作る
+        /// </summary>
+        /// <remarks>
         /// 深さは一律なので
         /// 単一コピー基準値は 深さ そのものになる
-        /// </summary>
+        /// </remarks>
         private TrustedKmerIndex BuildIndex(params string[] sequences)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 1 };
@@ -137,10 +141,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 断片化しているが取りこぼしの無いアセンブリ<br/>
+        /// 断片化しているが取りこぼしの無いアセンブリ
+        /// </summary>
+        /// <remarks>
         /// 完全性は満点のまま、
         /// 連続性だけが落ちること
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Score_FragmentedButComplete_LosesContiguityOnly()
         {
@@ -168,7 +174,9 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// これが評価器の存在意義<br/>
+        /// これが評価器の存在意義
+        /// </summary>
+        /// <remarks>
         /// 反復配列を通り抜けて中間を飛ばした
         /// 誤アセンブリは、素の連続性では「改善」に見える (実際、過去に
         /// N50 が 99,974 から 199,945 へ伸びた誤アセンブリがあった)<br/>
@@ -176,7 +184,7 @@ namespace Tsumiki.Tests.Core
         /// 重要なのは、連続性ではこのキメラのほうが上だという点である<br/>
         /// だからこそ選択規則は「まず完全性で足切りし、そのあとで連続性を見る」
         /// という順序でなければならない (掛け算にすると連続性の利得が勝ってしまう)
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Score_ChimeraThatSkipsSequence_ScoresBelowTheFragmentedButHonestAssembly()
         {
@@ -214,9 +222,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 同じ配列を 2 回出した水増しは、正確性が落ちて総合点が下がること<br/>
-        /// 連続性 (NG50) はむしろ上がるため、この判定が無いと選んでしまう
+        /// 同じ配列を 2 回出した水増しは、正確性が落ちて総合点が下がること
         /// </summary>
+        /// <remarks>
+        /// 連続性 (NG50) はむしろ上がるため、この判定が無いと選んでしまう
+        /// </remarks>
         [Fact]
         public void Score_DuplicatedSequence_IsPenalisedByAccuracy()
         {
@@ -236,9 +246,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 2 コピーの反復配列を 2 回出すのは正しい<br/>
-        /// 水増しと誤判定しないこと
+        /// 2 コピーの反復配列を 2 回出すのは正しい
         /// </summary>
+        /// <remarks>
+        /// 水増しと誤判定しないこと
+        /// </remarks>
         [Fact]
         public void Score_TwoCopyRepeatEmittedTwice_IsNotPenalised()
         {
@@ -258,10 +270,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// NG50 は自分の総延長ではなく推定ゲノムサイズを分母にすること<br/>
+        /// NG50 は自分の総延長ではなく推定ゲノムサイズを分母にすること
+        /// </summary>
+        /// <remarks>
         /// 素の N50 だと「配列を落として短くなったアセンブリ」ほど有利になり、
         /// k を跨いだ比較に使えない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Score_NG50_UsesTheGenomeSizeAsDenominator_NotTheAssemblyLength()
         {
@@ -314,11 +328,13 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 染色体よりはるかに小さいプラスミドでも、複製単位として数えられる
-        /// 長さがあれば環状化率に反映されること<br/>
+        /// 長さがあれば環状化率に反映されること
+        /// </summary>
+        /// <remarks>
         /// 閉じた複製単位は
         /// 「完全長を組み上げられた」ことの核心なので、連続性向けの物差しで
         /// 落としてはいけない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Score_SmallCircularPlasmid_CountsTowardCircularFraction()
         {
@@ -338,13 +354,15 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 評価に含める最小長 (500 bp) を下回る配列は、環状の目印が付いていても
-        /// 数えない<br/>
+        /// 数えない
+        /// </summary>
+        /// <remarks>
         /// de Bruijn グラフにはホモポリマーや短いタンデム反復に由来する
         /// 極小の閉路が多数あり、実データではこれが k あたり 10 本前後現れて
         /// 環状本数を埋め尽くした<br/>
         /// 環状本数は候補選択の最優先キーなので、
         /// 数えてしまうと k の選択がその雑音で決まる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Score_TooShortSequences_AreNotCountedAtAll()
         {

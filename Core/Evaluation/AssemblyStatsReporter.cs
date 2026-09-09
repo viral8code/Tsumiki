@@ -11,9 +11,11 @@ namespace Tsumiki.Core.Evaluation
     internal static class AssemblyStatsReporter
     {
         /// <summary>
-        /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)<br/>
-        /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない
+        /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)
         /// </summary>
+        /// <remarks>
+        /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない
+        /// </remarks>
         public const int 比較用の最小長 = 500;
 
         /// <summary>
@@ -89,10 +91,12 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する<br/>
+        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する
+        /// </summary>
+        /// <remarks>
         /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
         /// 比較用の最小長以上の配列だけに絞った統計も併記する
-        /// </summary>
+        /// </remarks>
         public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
         {
             if (!File.Exists(p_FASTAパス))

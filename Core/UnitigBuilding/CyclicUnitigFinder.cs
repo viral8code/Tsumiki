@@ -5,7 +5,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// 分岐を 1 つも持たない閉路を拾い、そこからの走査の開始点を返す<br/>
+    /// 分岐を 1 つも持たない閉路を拾い、そこからの走査の開始点を返す
+    /// </summary>
+    /// <remarks>
     /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」
     /// k-mer として選ぶ<br/>
     /// 閉路の全頂点が入次数 1・出次数 1 で、予測元も分岐して
@@ -15,13 +17,15 @@ namespace Tsumiki.Core.UnitigBuilding
     /// 環状染色体がそのまま出力から消える<br/>
     /// 閉路には始点が無いので、どの頂点から始めても同じ環を 1 周する<br/>
     /// 覆われずに残った k-mer を 1 つ選んで開始点にすればよい
-    /// </summary>
+    /// </remarks>
     internal static class CyclicUnitigFinder
     {
         /// <summary>
-        /// p_walk結果 が覆えなかった閉路それぞれについて、開始点を 1 つずつ返す<br/>
-        /// 覆い残しが無ければ空
+        /// p_walk結果 が覆えなかった閉路それぞれについて、開始点を 1 つずつ返す
         /// </summary>
+        /// <remarks>
+        /// 覆い残しが無ければ空
+        /// </remarks>
         public static List<byte[]> Get_閉路の開始kmer(
             TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
         {
@@ -47,10 +51,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 走査で得た配列が覆った k-mer を記録する<br/>
+        /// 走査で得た配列が覆った k-mer を記録する
+        /// </summary>
+        /// <remarks>
         /// k &lt;= 64 ではパック値を転がして作る (位置ごとに詰め直すと
         /// 総延長 x k の手間になる)
-        /// </summary>
+        /// </remarks>
         private static void V_記録_覆った範囲(正規形集合 p_覆済み, string p_配列, int p_k長)
         {
             if (p_配列.Length < p_k長)
@@ -95,7 +101,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 開始 k-mer から前進し、元へ戻ってくれば閉路として true を返す<br/>
+        /// 開始 k-mer から前進し、元へ戻ってくれば閉路として true を返す
+        /// </summary>
+        /// <remarks>
         /// 通った k-mer は覆済みに入れ、同じ閉路の別の k-mer から二度目の
         /// 走査が始まらないようにする<br/>
         /// 覆われずに残る k-mer は、どの開始点からも到達されない
@@ -103,7 +111,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// 途中で出次数が 1 でなくなることは無い<br/>
         /// それでも念のため見るのは、
         /// 上流の判定が変わったときに無限に回り続けないようにするため
-        /// </summary>
+        /// </remarks>
         private static bool V_辿る_閉路(
             TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
         {
@@ -143,10 +151,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 逆相補を同一視して k-mer を覚える集合<br/>
+        /// 逆相補を同一視して k-mer を覚える集合
+        /// </summary>
+        /// <remarks>
         /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが
         /// UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
-        /// </summary>
+        /// </remarks>
         private sealed class 正規形集合(int p_k長)
         {
             /// <summary>

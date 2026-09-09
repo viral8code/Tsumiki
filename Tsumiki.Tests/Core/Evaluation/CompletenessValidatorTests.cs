@@ -7,11 +7,13 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 完全長の判定を固定する<br/>
+    /// 完全長の判定を固定する
+    /// </summary>
+    /// <remarks>
     /// 要点は「材料が無いことを合格にしない」ことと「不合格と判定不能を
     /// 混同しない」こと<br/>
     /// どちらを崩しても、根拠の無い完全長が通ってしまう
-    /// </summary>
+    /// </remarks>
     public class CompletenessValidatorTests
     {
         /// <summary>リードに裏付けの無い位置が一つも無い検査結果<br/>

@@ -3,10 +3,12 @@
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// ContigMaker のうち、確定した結合を辿って contig 配列を組み立てる部分<br/>
+    /// ContigMaker のうち、確定した結合を辿って contig 配列を組み立てる部分
+    /// </summary>
+    /// <remarks>
     /// (unitig へのマッピングは ContigMaker.Mapping.cs、辺の選択・結合の確定は
     /// ContigMaker.cs の V_結合_コンティグ を参照)
-    /// </summary>
+    /// </remarks>
     internal partial class ContigMaker
     {
         /// <summary>
@@ -32,10 +34,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 始点から結合を辿って配列を組み立てる<br/>
+        /// 始点から結合を辿って配列を組み立てる
+        /// </summary>
+        /// <remarks>
         /// 経路が始点へ戻ってきた場合は
         /// 環状として報告する
-        /// </summary>
+        /// </remarks>
         private static (string A_配列, bool A_環状か) Get_walk結果(
             List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点,
             List<int> p_walk順)

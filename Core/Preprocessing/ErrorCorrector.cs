@@ -7,27 +7,33 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
-    /// k-mer スペクトラムに基づく、Quake/BayesHammer 類似の簡易リードエラー訂正<br/>
+    /// k-mer スペクトラムに基づく、Quake/BayesHammer 類似の簡易リードエラー訂正
+    /// </summary>
+    /// <remarks>
     /// 信頼できない k-mer 窓を最も多く信頼状態へ変える 1 塩基置換を貪欲に選び、
     /// 改善が見込めなくなるまで反復する<br/>
     /// 曖昧塩基の位置は書き換えず、それを含む窓は評価からも除外する
-    /// </summary>
+    /// </remarks>
     internal static class ErrorCorrector
     {
         /// <summary>
-        /// 1 バッチあたりのリード数<br/>
+        /// 1 バッチあたりのリード数
+        /// </summary>
+        /// <remarks>
         /// 訂正自体は独立に並列化できるが、出力の行順は
         /// ペアの対応付けを保つため入力と厳密に一致させる必要があり、
         /// 「まとめて読む → 並列に訂正 → 順番通りに書く」形にしている
-        /// </summary>
+        /// </remarks>
         private const int 訂正バッチサイズ = 20000;
 
         /// <summary>
-        /// リードファイルを読み込んでエラー訂正を行い、結果を出力先へ書き出す<br/>
+        /// リードファイルを読み込んでエラー訂正を行い、結果を出力先へ書き出す
+        /// </summary>
+        /// <remarks>
         /// 「信頼できる k-mer」の判定には、本アセンブリと同じ -kc のカットオフ値を
         /// 使って構築した専用の k-mer インデックス (このメソッド内で完結し、
         /// 本パイプライン用のインデックスとは独立) を用いる
-        /// </summary>
+        /// </remarks>
         public static void V_訂正_リードファイル(
             string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ,
             string p_出力先1, string? p_出力先2)
@@ -135,13 +141,15 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// 1 リード (塩基 ID 空間のバイト列、曖昧塩基は Consts.無効な塩基) を
-        /// 貪欲法で訂正する<br/>
+        /// 貪欲法で訂正する
+        /// </summary>
+        /// <remarks>
         /// 副作用のない純粋関数 (入力は変更しない)<br/>
         /// k が 64 以下なら、窓を 2 bit パックして転がす経路を使う<br/>
         /// 判定内容も
         /// 選ぶ置換も逐次経路と同じで、1 窓あたりの手間だけが O(k) から O(1) に
         /// 変わる (逐次経路は窓を見るたびにパックと逆相補を取り直していた)
-        /// </summary>
+        /// </remarks>
         public static 訂正結果 Get_訂正結果(
             ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10)
         {
@@ -153,9 +161,11 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// k が 64 を超える場合の経路<br/>
-        /// パックできないので窓ごとに評価する
+        /// k が 64 を超える場合の経路
         /// </summary>
+        /// <remarks>
+        /// パックできないので窓ごとに評価する
+        /// </remarks>
         internal static 訂正結果 Get_訂正結果_逐次(
             byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
@@ -233,10 +243,12 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// パック経路の訂正本体<br/>
+        /// パック経路の訂正本体
+        /// </summary>
+        /// <remarks>
         /// 逐次経路と同じ貪欲法で、窓の評価だけを
         /// パック値の更新で済ませる
-        /// </summary>
+        /// </remarks>
         private static 訂正結果 Get_訂正結果_パック(
             byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
@@ -317,10 +329,12 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// 全窓のパック値・逆相補・曖昧塩基の数・信頼状況を、隣の窓から
-        /// 転がして求める<br/>
+        /// 転がして求める
+        /// </summary>
+        /// <remarks>
         /// 曖昧塩基はコドン 0 として詰めておき、判定では
         /// 曖昧塩基の数で弾く (窓から出れば残りのコドンはそのまま正しい)
-        /// </summary>
+        /// </remarks>
         private static void V_計算_窓の状態(
             byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス,
             UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
@@ -368,14 +382,16 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// p_位置 を p_候補 に置換したときの、信頼できる窓の純増数<br/>
+        /// p_位置 を p_候補 に置換したときの、信頼できる窓の純増数
+        /// </summary>
+        /// <remarks>
         /// 置換で変わるのは各窓のうち 1 コドンだけなので、窓ごとにパック値を
         /// 詰め直さず、その 1 コドンを差し替えて引く<br/>
         /// 残りの窓が全て改善に
         /// 転じても現在の最良に届かないと分かった時点で打ち切る (打ち切っても
         /// 選ばれる置換は変わらない<br/>
         /// 改善数が同じ候補は元から採用されない)
-        /// </summary>
+        /// </remarks>
         private static int Get_置換の改善数_パック(
             int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長,
             TrustedKmerIndex p_kmerインデックス,
@@ -448,9 +464,11 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 塩基 ID の2 bit 表現<br/>
-        /// 曖昧塩基は 0 として詰める (判定は無効数で弾く)
+        /// 塩基 ID の2 bit 表現
         /// </summary>
+        /// <remarks>
+        /// 曖昧塩基は 0 として詰める (判定は無効数で弾く)
+        /// </remarks>
         private static UInt128 Get_コドン(byte p_塩基ID)
         {
             return p_塩基ID == Consts.無効な塩基 ? 0 : (UInt128)(p_塩基ID - 1);
@@ -508,10 +526,12 @@ namespace Tsumiki.Core.Preprocessing
         /// <summary>
         /// p_位置 を p_候補 に置換した場合の「信頼できる窓の純増数」を計算する
         /// (p_窓開始..p_窓終了 の範囲、すなわち その位置を含みうる窓のみが
-        /// 影響を受けるため、その範囲だけを再評価すれば十分)<br/>
+        /// 影響を受けるため、その範囲だけを再評価すれば十分)
+        /// </summary>
+        /// <remarks>
         /// 塩基列は評価後、
         /// 呼び出し前の状態に戻す (副作用を残さない)
-        /// </summary>
+        /// </remarks>
         private static int Get_置換の改善数(
             byte[] p_塩基列, int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長,
             bool[] p_置換前の信頼状況, TrustedKmerIndex p_kmerインデックス)

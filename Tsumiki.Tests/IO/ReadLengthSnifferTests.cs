@@ -3,9 +3,11 @@
 namespace Tsumiki.Tests.IO
 {
     /// <summary>
-    /// リードファイルからの代表リード長の抽出<br/>
-    /// k 長の自動選択の入力になる
+    /// リードファイルからの代表リード長の抽出
     /// </summary>
+    /// <remarks>
+    /// k 長の自動選択の入力になる
+    /// </remarks>
     public class ReadLengthSnifferTests : IDisposable
     {
         /// <summary>
@@ -61,10 +63,12 @@ namespace Tsumiki.Tests.IO
         }
 
         /// <summary>
-        /// トリミング済みのデータではリード長がばらつく<br/>
+        /// トリミング済みのデータではリード長がばらつく
+        /// </summary>
+        /// <remarks>
         /// 平均や最大ではなく
         /// 中央値を使うことで、少数の極端に短いリードに引きずられない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void GetReadLength_TrimmedReads_ReturnsTheMedianRatherThanTheMeanOrMax()
         {

@@ -5,10 +5,12 @@ namespace Tsumiki.Tests.Utility
 {
     /// <summary>
     /// ディスク上のパック済みバイト列を、塩基列へ展開せずそのままパック値として
-    /// 読み替えられることを固定する<br/>
+    /// 読み替えられることを固定する
+    /// </summary>
+    /// <remarks>
     /// 並びの規約が同じなので余りビット分の
     /// シフトだけで一致するはずで、ここがずれると信頼 k-mer 集合が丸ごと変わる
-    /// </summary>
+    /// </remarks>
     public class PackedReinterpretTests
     {
         /// <summary>

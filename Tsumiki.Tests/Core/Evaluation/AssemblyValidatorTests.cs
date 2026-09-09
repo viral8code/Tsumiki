@@ -9,13 +9,15 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかを
-    /// 確かめる自己検査の検証<br/>
+    /// 確かめる自己検査の検証
+    /// </summary>
+    /// <remarks>
     /// リファレンス配列なしで「取りこぼし」と
     /// 「出しすぎ」を検出できることを固定する<br/>
     /// 「出しすぎ」の検出は特に重要で、総延長が実際のゲノムサイズより大きく
     /// なる原因はほぼこれ (実際、修正前は同じ配列を順鎖と逆鎖の両方で出力して
     /// いて総長がちょうど 2.009 倍に膨れていた)
-    /// </summary>
+    /// </remarks>
     public class AssemblyValidatorTests : IDisposable
     {
         /// <summary>
@@ -131,10 +133,12 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 単一コピーの配列を 2 回出力してしまった場合、カバレッジは 1 コピー分しか
-        /// 無いので「出しすぎ」として検出されなければならない<br/>
+        /// 無いので「出しすぎ」として検出されなければならない
+        /// </summary>
+        /// <remarks>
         /// これが検出できないと、
         /// 総延長が水増しされていることに気付けない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Validate_SingleCopySequenceEmittedTwice_ReportsItAsExcess()
         {
@@ -152,9 +156,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 逆相補で出力されていても同じ配列とみなされること (正規化の確認)<br/>
-        /// これが効いていないと、逆鎖側の contig がすべて「取りこぼし」に見えてしまう
+        /// 逆相補で出力されていても同じ配列とみなされること (正規化の確認)
         /// </summary>
+        /// <remarks>
+        /// これが効いていないと、逆鎖側の contig がすべて「取りこぼし」に見えてしまう
+        /// </remarks>
         [Fact]
         public void Validate_ReverseComplementedAssembly_IsTreatedAsTheSameSequence()
         {
@@ -169,9 +175,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 2 コピー分のカバレッジがある反復配列を 2 回出力するのは正しい<br/>
-        /// これを「出しすぎ」と誤判定してはいけない
+        /// 2 コピー分のカバレッジがある反復配列を 2 回出力するのは正しい
         /// </summary>
+        /// <remarks>
+        /// これを「出しすぎ」と誤判定してはいけない
+        /// </remarks>
         [Fact]
         public void Validate_TwoCopyRepeatEmittedTwice_IsNotCountedAsExcess()
         {

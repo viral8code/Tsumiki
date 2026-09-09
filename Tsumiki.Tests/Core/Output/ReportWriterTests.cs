@@ -9,10 +9,12 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// レポートの書き出しを固定する<br/>
+    /// レポートの書き出しを固定する
+    /// </summary>
+    /// <remarks>
     /// JSON は手で組み立てているので、
     /// 実際に構文として通ることと、判定の要点が載っていることを確かめる
-    /// </summary>
+    /// </remarks>
     public class ReportWriterTests : IDisposable
     {
         /// <summary>

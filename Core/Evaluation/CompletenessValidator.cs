@@ -8,14 +8,16 @@ using Tsumiki.Model.Reporting;
 namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
-    /// 最終成果物が完全長を名乗れるかを判定する<br/>
+    /// 最終成果物が完全長を名乗れるかを判定する
+    /// </summary>
+    /// <remarks>
     /// 完全長は「最長の配列がゲノムサイズに近い」ことではない<br/>
     /// 必要な検査を
     /// すべて通ったことを指し、材料が足りない項目は不合格ではなく判定不能として
     /// 区別する<br/>
     /// 情報が足りないところを推測で埋めて完全長を名乗らせないための
     /// 仕組みであり、判定できないことが分かる状態のほうが下流にとって安全
-    /// </summary>
+    /// </remarks>
     internal static class CompletenessValidator
     {
         /// <summary>
@@ -34,19 +36,23 @@ namespace Tsumiki.Core.Evaluation
         private const double 深度不足の許容率 = 0.01D;
 
         /// <summary>
-        /// リードに裏付けの無い位置として許す数<br/>
+        /// リードに裏付けの無い位置として許す数
+        /// </summary>
+        /// <remarks>
         /// 割合ではなく数で見るのは、この検査が「そう繋いだ読みが一つも無い」
         /// という白黒のはっきりした事実を数えているため<br/>
         /// 総延長で薄めると
         /// 数箇所の捏造が見えなくなる
-        /// </summary>
+        /// </remarks>
         private const int 支持のない位置の許容数 = 0;
 
         /// <summary>
-        /// 集めた材料から完全長かどうかを判定する<br/>
+        /// 集めた材料から完全長かどうかを判定する
+        /// </summary>
+        /// <remarks>
         /// p_閉鎖検証 が null なら閉じ目を調べていない、p_ポリッシュ が null なら
         /// 深度を測っていないことを意味し、いずれも判定不能として扱う
-        /// </summary>
+        /// </remarks>
         public static 完全性判定結果 Get_判定結果(
             int p_未解決ギャップ数,
             整合性検査結果? p_整合性,
@@ -157,9 +163,11 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// レポートに出す固定の理由コード<br/>
-        /// 訳さない
+        /// レポートに出す固定の理由コード
         /// </summary>
+        /// <remarks>
+        /// 訳さない
+        /// </remarks>
         public static string Get_理由コード(未達理由 p_理由)
         {
             return p_理由 switch
@@ -180,9 +188,11 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// レポートに出す固定の判定名<br/>
-        /// 訳さない
+        /// レポートに出す固定の判定名
         /// </summary>
+        /// <remarks>
+        /// 訳さない
+        /// </remarks>
         public static string Get_判定コード(検査判定 p_判定)
         {
             return p_判定 switch
@@ -260,9 +270,11 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 検査の合否を段階に畳む<br/>
-        /// 下の段が通っていない限り上の段は名乗れない
+        /// 検査の合否を段階に畳む
         /// </summary>
+        /// <remarks>
+        /// 下の段が通っていない限り上の段は名乗れない
+        /// </remarks>
         private static 品質保証レベル Get_品質保証レベル(
             検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度,
             検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
@@ -298,10 +310,12 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 埋まらずに残った N の連続区間の数<br/>
+        /// 埋まらずに残った N の連続区間の数
+        /// </summary>
+        /// <remarks>
         /// 埋められなかったギャップは
         /// 「そこを繋いだ根拠が無い」ことをそのまま表している
-        /// </summary>
+        /// </remarks>
         public static int Get_未解決ギャップ数(string p_FASTAパス)
         {
             var l_数 = 0;

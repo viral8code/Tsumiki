@@ -8,12 +8,14 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状であることの目印がスキャフォールドまで残ることを固定する<br/>
+    /// 環状であることの目印がスキャフォールドまで残ることを固定する
+    /// </summary>
+    /// <remarks>
     /// 環状かどうかは ContigMaker が名前に書き込み、AssemblyScorer と
     /// 閉じ目の検証がその名前を根拠に数える<br/>
     /// 間のスキャフォールディングで
     /// 名前を付け替えて目印を落とすと、下流は黙って「環状は 0 本」と答える
-    /// </summary>
+    /// </remarks>
     public class ScaffolderCircularTests : IDisposable
     {
         /// <summary>

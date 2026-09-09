@@ -36,7 +36,9 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 推奨カットオフは谷そのものではない<br/>
+        /// 推奨カットオフは谷そのものではない
+        /// </summary>
+        /// <remarks>
         /// 谷はエラー由来の曲線と
         /// ゲノム由来の曲線が交わる点なので、そこで切るとゲノム側の左裾を
         /// 削ってしまう<br/>
@@ -44,7 +46,7 @@ namespace Tsumiki.Tests.Utility
         /// 上のスペクトルなら、出現回数 2 以上を残せば 48,300 種類で
         /// 推定ゲノムサイズ 40,623 の 1.19 倍に収まるため、谷 (3) まで
         /// 上げる必要はない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void SuggestCutoff_StopsBelowTheValley_WhenErrorsAlreadyDoNotDominate()
         {
@@ -64,9 +66,11 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// エラー由来の k-mer が桁違いに多い (高カバレッジ) 場合は、
-        /// 集合がエラーに埋め尽くされないところまでカットオフを上げること<br/>
-        /// 品質は変わらないがメモリが減る
+        /// 集合がエラーに埋め尽くされないところまでカットオフを上げること
         /// </summary>
+        /// <remarks>
+        /// 品質は変わらないがメモリが減る
+        /// </remarks>
         [Fact]
         public void SuggestCutoff_RaisesTheCutoff_WhenLowCountErrorsDominateTheSet()
         {
@@ -102,10 +106,12 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 出現回数が 2 までしか無いヒストグラムはスペクトルとして成立しておらず、
-        /// 谷も山も判定できない<br/>
+        /// 谷も山も判定できない
+        /// </summary>
+        /// <remarks>
         /// 推測で値を返すより、判定不能を返して
         /// 既定値を維持させるほうが安全
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void SuggestCutoff_DegenerateTwoBucketHistogram_ReturnsNull()
         {
@@ -119,10 +125,12 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 解析上の谷が 1 でも、推奨値としては 2 を下回らないこと<br/>
+        /// 解析上の谷が 1 でも、推奨値としては 2 を下回らないこと
+        /// </summary>
+        /// <remarks>
         /// 出現回数 1 の k-mer はどのカバレッジ帯でもほぼ全てエラー由来であり、
         /// 残すとメモリを食ったうえでグラフが偽の枝だらけになる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void SuggestCutoff_ValleyAtCountOne_IsRaisedToTheFloor()
         {
@@ -148,13 +156,15 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// エラー由来の裾と単一コピーの山が重なった、実データに近い連続的な
-        /// スペクトル<br/>
+        /// スペクトル
+        /// </summary>
+        /// <remarks>
         /// 谷・山・ゲノムサイズがまとめて取れること<br/>
         /// 素朴な「最初に頻度が増えた位置」だけを見る実装は、谷の底が平らな
         /// 実データでノイズに引きずられて答えがぶれた (同じ検体の 100 x で
         /// 6 と 11 の両方が出た)<br/>
         /// 底の最小値を取り直すことで安定させている
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Analyse_ContinuousBimodalSpectrum_ReportsValleyPeakAndGenomeSize()
         {
@@ -175,10 +185,12 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// アダプタ配列やコンタミ由来の、桁違いに出現回数の多い k-mer が
-        /// 混ざっていてもゲノムサイズ推定が壊れないこと<br/>
+        /// 混ざっていてもゲノムサイズ推定が壊れないこと
+        /// </summary>
+        /// <remarks>
         /// 素直に延べ数へ
         /// 足し込むと、たった数十種類でゲノムサイズが何倍にも膨れる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Analyse_ExtremeOutlierCounts_DoNotInflateTheGenomeSizeEstimate()
         {

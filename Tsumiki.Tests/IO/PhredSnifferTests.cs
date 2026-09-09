@@ -107,13 +107,15 @@ namespace Tsumiki.Tests.IO
 
         /// <summary>
         /// 実データ (Achromobacter の IS350 ライブラリ) で観測された ASCII 範囲
-        /// [64, 104]<br/>
+        /// [64, 104]
+        /// </summary>
+        /// <remarks>
         /// Phred33 と解釈すると Q[31, 71] となり上限がありえないが、
         /// Phred64 なら Q[0, 40] で完全に妥当<br/>
         /// この判別ができないと、
         /// 「quality - Phred - QualityCutoff が負なら捨てる」という品質フィルタが
         /// 事実上まったく効かなくなる (Q0 の塩基が Q31 に見えるため)
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void InferOffset_RealWorldPhred64Range_InfersPhred64()
         {

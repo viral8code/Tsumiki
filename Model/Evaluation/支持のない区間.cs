@@ -1,9 +1,11 @@
 ﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
-    /// アセンブリ上の、どのリードにも現れない r-mer が連なっている区間<br/>
-    /// 位置は 1 始まり・両端を含む
+    /// アセンブリ上の、どのリードにも現れない r-mer が連なっている区間
     /// </summary>
+    /// <remarks>
+    /// 位置は 1 始まり・両端を含む
+    /// </remarks>
     internal readonly record struct 支持のない区間(string A_配列ID, int A_開始, int A_終了)
     {
         #region カスタムプロパティ

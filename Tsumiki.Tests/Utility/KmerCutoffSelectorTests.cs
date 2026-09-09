@@ -6,13 +6,15 @@ namespace Tsumiki.Tests.Utility
 {
     /// <summary>
     /// k-mer スペクトルの谷からの -kc 自動選択を、実際に数えた k-mer から
-    /// 一気通貫で検証する<br/>
+    /// 一気通貫で検証する
+    /// </summary>
+    /// <remarks>
     /// 既定値の 2 はどのカバレッジ帯にも合わない<br/>
     /// 実測では同じ検体でも
     /// 35 x で 4、100 x で 6〜11 が谷であり、2 のままだとエラー由来の k-mer が
     /// 大量に残る (35 x の実データで「良い k-mer」が 12.9 M と、ゲノムサイズの
     /// 倍に膨れていた)
-    /// </summary>
+    /// </remarks>
     public class KmerCutoffSelectorTests : IDisposable
     {
         /// <summary>
@@ -43,10 +45,12 @@ namespace Tsumiki.Tests.Utility
         private const int K = 21;
 
         /// <summary>
-        /// (出現回数, その回数を持たせる k-mer の種類数)<br/>
+        /// (出現回数, その回数を持たせる k-mer の種類数)
+        /// </summary>
+        /// <remarks>
         /// 出現回数 8 を底とする谷と、15 を頂点とする単一コピーの山を持つ、
         /// 連続した二峰性スペクトルになるように組んである
-        /// </summary>
+        /// </remarks>
         private static readonly (ulong A_出現回数, int A_種類数)[] スペクトルの形 = [
             (1, 2000), (2, 700), (3, 300), (4, 150), (5, 90),
             (6, 70), (7, 60), (8, 58), (9, 70), (10, 120),
@@ -60,20 +64,24 @@ namespace Tsumiki.Tests.Utility
         private const ulong 谷の位置 = 8UL;
 
         /// <summary>
-        /// このスペクトルに対して選ばれるべきカットオフ<br/>
+        /// このスペクトルに対して選ばれるべきカットオフ
+        /// </summary>
+        /// <remarks>
         /// 谷 (8) ではない<br/>
         /// V_解決_kmerカットオフ はまず 2 成分混合モデル
         /// (KmerSpectrumMixtureModel) の適合を試み、この形のスペクトルなら
         /// 適合に成功して谷検出 (KmerHistogram) より低い 6 を返す
         /// (事後誤り確率が有意水準を下回る最小の出現回数)<br/>
         /// どちらの経路でも「谷までは上げない」という結論は変わらない
-        /// </summary>
+        /// </remarks>
         private const ulong 選ばれるべきカットオフ = 6UL;
 
         /// <summary>
-        /// 上のスペクトルの形どおりに k-mer を登録したインデックスを作る<br/>
-        /// 乱数配列から取った連続する k-mer は k=21 なら実質すべて相異なる
+        /// 上のスペクトルの形どおりに k-mer を登録したインデックスを作る
         /// </summary>
+        /// <remarks>
+        /// 乱数配列から取った連続する k-mer は k=21 なら実質すべて相異なる
+        /// </remarks>
         private TrustedKmerIndex BuildIndex()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = K, A_スレッド数 = 4 };

@@ -7,7 +7,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Polishing
 {
     /// <summary>
-    /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す<br/>
+    /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す
+    /// </summary>
+    /// <remarks>
     /// グラフから組み立てた配列の塩基は k-mer 集合が根拠であり、カットオフを
     /// 通り抜けたエラー k-mer がそのまま残ることがある<br/>
     /// リードそのものの
@@ -18,35 +20,43 @@ namespace Tsumiki.Core.Polishing
     /// 併せて位置ごとの深度が得られる<br/>
     /// 連結の裏付けが無い接合点はその前後で
     /// 深度が不連続になるため、完全長の判定にも使う
-    /// </summary>
+    /// </remarks>
     internal static class Polisher
     {
         /// <summary>
-        /// リードの置き場所を探す種にする長さ<br/>
+        /// リードの置き場所を探す種にする長さ
+        /// </summary>
+        /// <remarks>
         /// 短いほど反復配列で曖昧になり、
         /// 長いほどエラーを 1 つ含んだだけで種が潰れる
-        /// </summary>
+        /// </remarks>
         private const int シード長 = 31;
 
         /// <summary>
-        /// 参照側で種を登録する間隔<br/>
+        /// 参照側で種を登録する間隔
+        /// </summary>
+        /// <remarks>
         /// リード長はこれよりはるかに長いため、
         /// 間引いてもリードのどこかは必ず登録済みの位置に重なる<br/>
         /// 全位置を持つと索引がゲノムサイズそのものの規模になる
-        /// </summary>
+        /// </remarks>
         private const int シード間隔 = 8;
 
         /// <summary>
-        /// 1 本のリードにつき試す種ヒットの数<br/>
+        /// 1 本のリードにつき試す種ヒットの数
+        /// </summary>
+        /// <remarks>
         /// 反復配列では種が当たっても
         /// 照合に落ちることが続くため、諦める上限を決める
-        /// </summary>
+        /// </remarks>
         private const int 試すヒット数 = 4;
 
         /// <summary>
-        /// 照合を認める不一致の割合<br/>
-        /// これを超えたら別の場所とみなす
+        /// 照合を認める不一致の割合
         /// </summary>
+        /// <remarks>
+        /// これを超えたら別の場所とみなす
+        /// </remarks>
         private const double 許容不一致率 = 0.1D;
 
         /// <summary>
@@ -60,10 +70,12 @@ namespace Tsumiki.Core.Polishing
         private const int 訂正に必要な深度 = 5;
 
         /// <summary>
-        /// 置換を認めるのに必要な、対立塩基の占有率<br/>
+        /// 置換を認めるのに必要な、対立塩基の占有率
+        /// </summary>
+        /// <remarks>
         /// 元の塩基が少数派というだけでは足りず、対立塩基が明確に
         /// 多数派でなければ動かさない
-        /// </summary>
+        /// </remarks>
         private const double 訂正に必要な占有率 = 0.7D;
 
         /// <summary>
@@ -72,15 +84,19 @@ namespace Tsumiki.Core.Polishing
         private const double 深度不足とみなす比 = 0.2D;
 
         /// <summary>
-        /// 深度のヒストグラムを取る上限<br/>
-        /// これ以上は同じ枠に入れる
+        /// 深度のヒストグラムを取る上限
         /// </summary>
+        /// <remarks>
+        /// これ以上は同じ枠に入れる
+        /// </remarks>
         private const int 深度ヒストグラムの上限 = 65535;
 
         /// <summary>
-        /// 種索引の 1 件<br/>
-        /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
+        /// 種索引の 1 件
         /// </summary>
+        /// <remarks>
+        /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
+        /// </remarks>
         private readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
 
         /// <summary>
@@ -89,9 +105,11 @@ namespace Tsumiki.Core.Polishing
         private const int 曖昧な種の番兵 = -1;
 
         /// <summary>
-        /// p_FASTAパス を磨いて p_出力パス へ書き出す<br/>
-        /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
+        /// p_FASTAパス を磨いて p_出力パス へ書き出す
         /// </summary>
+        /// <remarks>
+        /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
+        /// </remarks>
         public static ポリッシュ統計? Get_磨いた結果(
             string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス)
         {
@@ -183,11 +201,13 @@ namespace Tsumiki.Core.Polishing
         }
 
         /// <summary>
-        /// 参照配列から種索引を作る<br/>
+        /// 参照配列から種索引を作る
+        /// </summary>
+        /// <remarks>
         /// 順鎖と逆相補を別のキーで登録し、
         /// リードがどちらの向きで載ったかを引けるようにする<br/>
         /// 複数の位置に当たる種は反復配列由来なので、曖昧として使わない
-        /// </summary>
+        /// </remarks>
         private static Dictionary<UInt128, 種の位置> Get_種索引(List<char[]> p_配列群)
         {
             Dictionary<UInt128, 種の位置> l_索引 = [];
@@ -229,11 +249,13 @@ namespace Tsumiki.Core.Polishing
         }
 
         /// <summary>
-        /// 1 本のリードを置ける場所へ置き、各位置の得票を加算する<br/>
+        /// 1 本のリードを置ける場所へ置き、各位置の得票を加算する
+        /// </summary>
+        /// <remarks>
         /// 置けたら true<br/>
         /// 得票は複数のワーカーが同じ配列を触るため Interlocked で足す<br/>
         /// 加算は順序に依らないので、並列でも結果は毎回同じになる
-        /// </summary>
+        /// </remarks>
         private static bool V_貼り付け_1リード(
             string p_リード,
             Dictionary<UInt128, 種の位置> p_種索引,
@@ -300,9 +322,11 @@ namespace Tsumiki.Core.Polishing
         }
 
         /// <summary>
-        /// リードを参照の指定位置へ ungapped に重ね、不一致が許容内なら得票を加算する<br/>
-        /// 参照からはみ出す部分は切り詰める
+        /// リードを参照の指定位置へ ungapped に重ね、不一致が許容内なら得票を加算する
         /// </summary>
+        /// <remarks>
+        /// 参照からはみ出す部分は切り詰める
+        /// </remarks>
         private static bool V_照合(
             string p_リード, char[] p_参照, int p_参照開始, int[] p_得票)
         {
@@ -342,7 +366,9 @@ namespace Tsumiki.Core.Polishing
         }
 
         /// <summary>
-        /// リードが載っている位置での深度の中央値<br/>
+        /// リードが載っている位置での深度の中央値
+        /// </summary>
+        /// <remarks>
         /// ヒストグラムから求めるのは、
         /// 位置ごとの値をすべて並べるとゲノムサイズぶんの配列をもう 1 本
         /// 持つことになるため<br/>
@@ -350,7 +376,7 @@ namespace Tsumiki.Core.Polishing
         /// 混ぜると、覆われていない範囲が
         /// 広いアセンブリほど中央値が 0 へ引き寄せられ、本来そこを咎めるはずの
         /// 深度不足の判定が何も引っ掛けなくなる
-        /// </summary>
+        /// </remarks>
         private static double Get_深度の中央値(List<char[]> p_配列群, int[][] p_得票)
         {
             var l_ヒストグラム = new long[深度ヒストグラムの上限 + 1];
@@ -402,12 +428,14 @@ namespace Tsumiki.Core.Polishing
         }
 
         /// <summary>
-        /// 得票の多数決で置換を適用する<br/>
+        /// 得票の多数決で置換を適用する
+        /// </summary>
+        /// <remarks>
         /// 併せて深度不足の位置を数える<br/>
         /// N の位置は触らない<br/>
         /// ギャップの長さは推定値であり、
         /// そこを塩基で埋めるのは多数決の仕事ではない
-        /// </summary>
+        /// </remarks>
         private static long V_訂正_多数決(
             List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値,
             out long p_深度不足数, out long p_評価位置数)

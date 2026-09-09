@@ -10,7 +10,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
-    /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える<br/>
+    /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える
+    /// </summary>
+    /// <remarks>
     /// contig が途切れる原因は配列の不在ではなく分岐の未解決であることが多く、
     /// その場合ギャップを埋める配列は k-mer 集合の中に実在する<br/>
     /// 経路がちょうど 1 本に定まったときだけ埋める<br/>
@@ -18,7 +20,7 @@ namespace Tsumiki.Core.Scaffolding
     /// どれが正しいか決められないため N のまま残す<br/>
     /// 誤った配列で埋めるより、
     /// 分からないことが分かる状態のほうが下流の解析にとって安全
-    /// </summary>
+    /// </remarks>
     internal static class GapFiller
     {
         /// <summary>
@@ -99,9 +101,11 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// ギャップの左右の足場から、その間を埋める配列を探す<br/>
-        /// 見つからない/一意に定まらない場合は null を返す
+        /// ギャップの左右の足場から、その間を埋める配列を探す
         /// </summary>
+        /// <remarks>
+        /// 見つからない/一意に定まらない場合は null を返す
+        /// </remarks>
         private static string? Get_ギャップを埋める配列(
             StringBuilder p_左側の出力,
             string p_配列,

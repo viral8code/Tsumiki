@@ -19,10 +19,12 @@ namespace Tsumiki.Core.Preprocessing
     internal static class MercyKmerRescuer
     {
         /// <summary>
-        /// 救済の対象とする、信頼できない窓の連続長の上限<br/>
+        /// 救済の対象とする、信頼できない窓の連続長の上限
+        /// </summary>
+        /// <remarks>
         /// 長く途切れている箇所は、カバレッジが薄いのではなく
         /// そもそも別の配列を読んでいる可能性が高くなる
-        /// </summary>
+        /// </remarks>
         private const int 救済する連の上限 = 8;
 
         /// <summary>

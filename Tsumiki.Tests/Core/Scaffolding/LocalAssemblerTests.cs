@@ -8,13 +8,15 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// GapFiller が埋められなかったスキャフォールドのギャップを、その両端に
-    /// 実際にマップされた局所リードだけで再アセンブリして埋める処理の検証<br/>
+    /// 実際にマップされた局所リードだけで再アセンブリして埋める処理の検証
+    /// </summary>
+    /// <remarks>
     /// AssemblyMerger(-mg) と違い、他の k の「既に確定した結論」を持ち込むの
     /// ではなく、生リードから新しく証拠を集める<br/>
     /// ここでは生の FASTQ を
     /// 直接与えて、局所アセンブリだけでギャップが埋まる/埋まらないことを
     /// 検証する (GapFiller 側は経由しない)
-    /// </summary>
+    /// </remarks>
     public class LocalAssemblerTests : IDisposable
     {
         /// <summary>

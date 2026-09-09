@@ -8,13 +8,15 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Pipeline
 {
     /// <summary>
-    /// 複数の k 長でアセンブリし、リファレンス無しの評価で最良のものを選ぶ<br/>
+    /// 複数の k 長でアセンブリし、リファレンス無しの評価で最良のものを選ぶ
+    /// </summary>
+    /// <remarks>
     /// 最適な k はゲノムの反復配列の量で決まる<br/>
     /// 反復が短ければ k を上げるほど
     /// 跨げて有利になり、長ければ跨げないまま k-mer カバレッジとゲノム被覆を
     /// 失うだけになる<br/>
     /// 反復の量はリードからは事前に分からないため、試すしかない
-    /// </summary>
+    /// </remarks>
     internal static class MultiKAssembler
     {
         /// <summary>
@@ -23,9 +25,11 @@ namespace Tsumiki.Core.Pipeline
         private const int 試すk長の下限 = 21;
 
         /// <summary>
-        /// 複数の k で実行し、最良の結果を返す<br/>
-        /// どの k でもアセンブリできなかった場合は null
+        /// 複数の k で実行し、最良の結果を返す
         /// </summary>
+        /// <remarks>
+        /// どの k でもアセンブリできなかった場合は null
+        /// </remarks>
         public static アセンブリ実行結果? Get_実行結果(
             Parameters p_引数, string p_一時ディレクトリ, int? p_リード長)
         {
@@ -131,12 +135,14 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 骨格に他の k の配列を統合し、良くなっていれば統合結果を返す<br/>
+        /// 骨格に他の k の配列を統合し、良くなっていれば統合結果を返す
+        /// </summary>
+        /// <remarks>
         /// 良くならなければ null を返して骨格をそのまま使う<br/>
         /// 統合は誤った連結を持ち込みうるので、必ず同じ物差しで測り直して
         /// 骨格に勝ったときだけ採る<br/>
         /// 勝敗の判定は候補選びと同じ規則に任せる
-        /// </summary>
+        /// </remarks>
         private static アセンブリ実行結果? Get_統合結果(
             (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良,
             List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
@@ -191,10 +197,12 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// この k ではカバレッジが薄すぎて試すだけ無駄か<br/>
+        /// この k ではカバレッジが薄すぎて試すだけ無駄か
+        /// </summary>
+        /// <remarks>
         /// 判断できる材料が無い (まだ 1 つも走っていない、リード長が不明、
         /// -k で明示指定された) 場合は捨てない
-        /// </summary>
+        /// </remarks>
         private static bool Get_薄すぎるか(
             アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
         {
@@ -210,12 +218,14 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 全候補を、共通のアンカー k-mer 集合に対して評価する<br/>
+        /// 全候補を、共通のアンカー k-mer 集合に対して評価する
+        /// </summary>
+        /// <remarks>
         /// k が違えば k-mer 集合の大きさも意味も変わるため、各アセンブリを
         /// 自身の k で測ったのでは比較にならない<br/>
         /// アンカーは呼び出し側が
         /// 既に構築済みのものを渡す (-mg 指定時の統合評価とも共有するため)
-        /// </summary>
+        /// </remarks>
         private static List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> Get_評価済み候補(
             List<アセンブリ実行結果> p_実行結果一覧,
             TrustedKmerIndex p_アンカー,
@@ -237,11 +247,15 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 採用した k の生成物を接頭辞の無い名前へ複製する<br/>
-        /// 各 k の生成物は、選択の妥当性を後から確かめられるよう残す
+        /// 採用した k の生成物を接頭辞の無い名前へ複製する
         /// </summary>
+        /// <remarks>
+        /// 各 k の生成物は、選択の妥当性を後から確かめられるよう残す
+        /// </remarks>
         /// <summary>
-        /// 試す k の一覧<br/>
+        /// 試す k の一覧
+        /// </summary>
+        /// <remarks>
         /// -k にカンマ区切りで指定されていればそれをそのまま使う<br/>
         /// 自動の場合は 21 からリード長の <see cref="Consts.マルチk上限のリード長比"/> 倍までを
         /// 等比で刻む<br/>
@@ -249,7 +263,7 @@ namespace Tsumiki.Core.Pipeline
         /// 上げたときでは、跨げるようになる反復配列の範囲が桁で違うため<br/>
         /// 上限をリード長近くまで取るのは、カバレッジが十分あれば
         /// リード長に近い k のほうが良い場合があるため
-        /// </summary>
+        /// </remarks>
         public static List<int> Get_k候補一覧(Parameters p_引数, int? p_リード長)
         {
             if (p_引数.A_k長一覧.Count > 0)
@@ -279,13 +293,15 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 候補を評価する物差しの k<br/>
+        /// 候補を評価する物差しの k
+        /// </summary>
+        /// <remarks>
         /// 候補のどれとも一致しない値にする<br/>
         /// 候補と同じ k を使うと、その候補だけが自分と同じ k・同じカットオフで
         /// 作った k-mer 集合を物差しに測られ、他の k の候補と条件が揃わない<br/>
         /// 候補より小さく取るのは、短い k-mer ほど断片化の影響を受けにくく、
         /// 「ゲノムのどこを出せているか」を測る物差しとして素直なため
-        /// </summary>
+        /// </remarks>
         public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
         {
             var l_k長 = p_k候補[0] - Consts.アンカーk長の候補からの差;
@@ -299,9 +315,11 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 直前の k での単一コピーカバレッジから、次の k でのカバレッジを予測する<br/>
-        /// 1 リードから取れる k-mer は リード長 - k + 1 本なので、その比で縮む
+        /// 直前の k での単一コピーカバレッジから、次の k でのカバレッジを予測する
         /// </summary>
+        /// <remarks>
+        /// 1 リードから取れる k-mer は リード長 - k + 1 本なので、その比で縮む
+        /// </remarks>
         public static double Get_予測kmerカバレッジ(
             double p_直前の基準値, int p_直前のk長, int p_次のk長, int p_リード長)
         {
@@ -313,10 +331,12 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 奇数へ切り下げる<br/>
+        /// 奇数へ切り下げる
+        /// </summary>
+        /// <remarks>
         /// 偶数の k は k-mer 自身がその逆相補と一致しうるため、
         /// 正規形が縮退して隣接判定が壊れる
-        /// </summary>
+        /// </remarks>
         private static int Get_奇数(int p_値)
         {
             return p_値 % 2 == 0 ? p_値 - 1 : p_値;

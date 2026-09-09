@@ -8,12 +8,14 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 前段の k の配列を次の k へ引き継ぐ処理の検証<br/>
+    /// 前段の k の配列を次の k へ引き継ぐ処理の検証
+    /// </summary>
+    /// <remarks>
     /// 引き継ぎで最も壊れやすいのはカバレッジである<br/>
     /// 名目値で埋めると
     /// コピー数推定・低カバレッジ端のトリミング・自己検査がまとめて狂う<br/>
     /// 連結が保たれることと同じくらい、カバレッジが保たれることを固定する
-    /// </summary>
+    /// </remarks>
     public class KmerCarryOverTests : IDisposable
     {
         /// <summary>
@@ -116,10 +118,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継いだ k-mer のカバレッジが、k の差ぶんスケールされること<br/>
+        /// 引き継いだ k-mer のカバレッジが、k の差ぶんスケールされること
+        /// </summary>
+        /// <remarks>
         /// スケールしないと、引き継いだ領域だけカバレッジが高く見えて
         /// コピー数を過大に推定する
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void CarriedCoverage_IsScaledByTheNumberOfKmersPerRead()
         {
@@ -136,9 +140,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継ぐ k-mer は、それを構成する前段の k-mer の最小値を超えないこと<br/>
-        /// 長い k-mer は短い k-mer をすべて含むので、最も弱い部分より強くはなれない
+        /// 引き継ぐ k-mer は、それを構成する前段の k-mer の最小値を超えないこと
         /// </summary>
+        /// <remarks>
+        /// 長い k-mer は短い k-mer をすべて含むので、最も弱い部分より強くはなれない
+        /// </remarks>
         [Fact]
         public void CarriedCoverage_TakesTheWeakestConstituentKmer()
         {
@@ -160,10 +166,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 引き継ぎの本題<br/>
+        /// 引き継ぎの本題
+        /// </summary>
+        /// <remarks>
         /// カバレッジが薄くて次の k では観測されなかった領域が、
         /// 前段の配列から復元されること
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void CarryOver_RestoresKmersThatTheLargerKDidNotObserve()
         {
@@ -193,9 +201,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 既に観測されている k-mer のカバレッジは書き換えないこと<br/>
-        /// 実際のリードによる観測のほうが、前段からの推定より確かである
+        /// 既に観測されている k-mer のカバレッジは書き換えないこと
         /// </summary>
+        /// <remarks>
+        /// 実際のリードによる観測のほうが、前段からの推定より確かである
+        /// </remarks>
         [Fact]
         public void CarryOver_DoesNotOverwriteCoverageThatWasActuallyObserved()
         {
@@ -218,9 +228,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 2 コピーの反復配列は、引き継いでも 2 コピー相当のカバレッジを保つこと<br/>
-        /// ここが崩れるとコピー数推定が壊れ、反復配列の扱いが総崩れになる
+        /// 2 コピーの反復配列は、引き継いでも 2 コピー相当のカバレッジを保つこと
         /// </summary>
+        /// <remarks>
+        /// ここが崩れるとコピー数推定が壊れ、反復配列の扱いが総崩れになる
+        /// </remarks>
         [Fact]
         public void CarryOver_PreservesTheRelativeCoverageOfRepeats()
         {
@@ -262,10 +274,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 短い断片は引き継がないこと<br/>
+        /// 短い断片は引き継がないこと
+        /// </summary>
+        /// <remarks>
         /// 連結の役に立たないうえ、
         /// エラー由来の残骸である可能性が相対的に高い
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Prepare_SkipsShortSequences()
         {

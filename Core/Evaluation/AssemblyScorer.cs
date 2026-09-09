@@ -6,14 +6,18 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
-    /// リファレンス無しでアセンブリの良さを測る<br/>
+    /// リファレンス無しでアセンブリの良さを測る
+    /// </summary>
+    /// <remarks>
     /// k が違えば k-mer 集合の意味も変わるため、比較には固定した
     /// アンカー k の集合を物差しとして使う
-    /// </summary>
+    /// </remarks>
     internal static class AssemblyScorer
     {
         /// <summary>
-        /// 評価に含める配列の最小長<br/>
+        /// 評価に含める配列の最小長
+        /// </summary>
+        /// <remarks>
         /// abyss-fac の既定と同じ 500 bp<br/>
         /// これより短い断片は、そこに配列が入っていても下流で使いようがない<br/>
         /// k-mer の集計にも掛けるのが要点で、掛けないと「短い破片を大量に
@@ -21,14 +25,16 @@ namespace Tsumiki.Core.Evaluation
         /// 実データでは
         /// k=21 の 3,421 本のうち 500 bp 以上は 322 本しかなく、残りが
         /// 完全性を底上げして低い k を有利にしていた
-        /// </summary>
+        /// </remarks>
         private const int 評価に含める最小長 = 500;
 
         /// <summary>
-        /// p_FASTAパス のアセンブリを、アンカー k-mer 集合に対して評価する<br/>
+        /// p_FASTAパス のアセンブリを、アンカー k-mer 集合に対して評価する
+        /// </summary>
+        /// <remarks>
         /// アンカー k が 64 を超える場合 (2 bit パックが UInt128 に収まらない) は
         /// 評価できないため null を返す
-        /// </summary>
+        /// </remarks>
         public static アセンブリ評価? Get_評価(
             string p_FASTAパス,
             TrustedKmerIndex p_アンカーインデックス,
@@ -81,14 +87,16 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// アセンブリ中に各アンカー k-mer が何回現れるかを数える<br/>
+        /// アセンブリ中に各アンカー k-mer が何回現れるかを数える
+        /// </summary>
+        /// <remarks>
         /// 逆相補は同一視する<br/>
         /// 併せて、環状に閉じた配列 (名前に環状の目印が付いたもの) の
         /// 本数と総延長も集計する<br/>
         /// 短すぎる配列は数えない<br/>
         /// 環状の目印は既にそれより長い閉路にしか
         /// 付かないため、環状の集計がこの足切りで漏れることはない
-        /// </summary>
+        /// </remarks>
         private static Dictionary<UInt128, int> Get_出現回数(
             string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長,
             out int p_環状本数, out long p_環状延長)
@@ -129,11 +137,13 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// NG50<br/>
+        /// NG50
+        /// </summary>
+        /// <remarks>
         /// 素の N50 は自分の総延長を分母にするため、配列を落として
         /// 短くなったアセンブリほど有利になり k を跨いだ比較に使えない<br/>
         /// ゲノムサイズが分からない場合は総延長で代用する (=素の N50)
-        /// </summary>
+        /// </remarks>
         private static long Get_NG50(List<int> p_長さ一覧, long p_推定ゲノムサイズ, long p_総延長)
         {
             var l_分母 = p_推定ゲノムサイズ > 0 ? p_推定ゲノムサイズ : p_総延長;

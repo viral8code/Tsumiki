@@ -8,16 +8,20 @@ namespace Tsumiki.Core.Preprocessing
 {
     /// <summary>
     /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理
-    /// (曖昧塩基を無視する既定経路)<br/>
+    /// (曖昧塩基を無視する既定経路)
+    /// </summary>
+    /// <remarks>
     /// 本パイプラインと ErrorCorrector の
     /// 事前カウントパスの両方から呼べるよう切り出したもの
-    /// </summary>
+    /// </remarks>
     internal static class KmerCounting
     {
         /// <summary>
-        /// FASTQ を 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する<br/>
-        /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
+        /// FASTQ を 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する
         /// </summary>
+        /// <remarks>
+        /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
+        /// </remarks>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -56,11 +60,13 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// リード 1(・指定があればリード 2) を、-ab の有無に応じた経路で
-        /// TrustedKmerIndex へ読み込む<br/>
+        /// TrustedKmerIndex へ読み込む
+        /// </summary>
+        /// <remarks>
         /// AssemblyPipeline と MultiKAssembler の
         /// どちらも (単一 k・複数 k の違いだけで) 同じ読み込み手順を必要とするため
         /// ここにまとめる
-        /// </summary>
+        /// </remarks>
         public static void V_読込_リードペア(
             Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
         {
@@ -102,9 +108,11 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 曖昧塩基を許容する経路<br/>
-        /// 呼ばれる頻度が低い想定のため未並列
+        /// 曖昧塩基を許容する経路
         /// </summary>
+        /// <remarks>
+        /// 呼ばれる頻度が低い想定のため未並列
+        /// </remarks>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
             ulong l_件数 = 0UL;
@@ -156,11 +164,13 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// 1 リード分の k-mer 抽出・品質フィルタリング・登録<br/>
+        /// 1 リード分の k-mer 抽出・品質フィルタリング・登録
+        /// </summary>
+        /// <remarks>
         /// 逆相補側を別途登録してはいけない<br/>
         /// TrustedKmerIndex.V_登録 が
         /// 正規形へ寄せて数えるため、二重計上になる
-        /// </summary>
+        /// </remarks>
         private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス, int p_ワーカー番号)
         {
             var l_塩基列 = p_リード.A_塩基列!;

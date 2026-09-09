@@ -10,36 +10,46 @@ namespace Tsumiki.Utility
     internal static class KmerHistogram
     {
         /// <summary>
-        /// 推奨カットオフの下限<br/>
+        /// 推奨カットオフの下限
+        /// </summary>
+        /// <remarks>
         /// 出現回数 1 の k-mer はほぼ全てエラー由来で、
         /// 残すとメモリを食ったうえでグラフが偽の枝だらけになる
-        /// </summary>
+        /// </remarks>
         public const ulong 推奨カットオフの下限 = 2UL;
 
         /// <summary>
-        /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか<br/>
+        /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか
+        /// </summary>
+        /// <remarks>
         /// ゲノム由来の種類数はゲノムサイズをやや下回る (反復が 1 種類に潰れる) ため、
         /// この比を超えたぶんはほぼエラー由来の混入とみなせる
-        /// </summary>
+        /// </remarks>
         private const double 許容するエラー混入比 = 1.2D;
 
         /// <summary>
-        /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)<br/>
+        /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)
+        /// </summary>
+        /// <remarks>
         /// これを超えるものはアダプタやコンタミ由来である公算が高く、
         /// 足し込むとゲノムサイズが大きく水増しされる
-        /// </summary>
+        /// </remarks>
         private const int ゲノムサイズ推定に含める倍率の上限 = 100;
 
         /// <summary>
-        /// 「山」と認めるために必要な、谷の頻度に対する比<br/>
-        /// これを下回る場合は二峰性がはっきりしないとみなして推定を諦める
+        /// 「山」と認めるために必要な、谷の頻度に対する比
         /// </summary>
+        /// <remarks>
+        /// これを下回る場合は二峰性がはっきりしないとみなして推定を諦める
+        /// </remarks>
         private const double 山とみなす頻度比 = 1.5D;
 
         /// <summary>
-        /// ヒストグラムを解析して、谷・山・推定ゲノムサイズを求める<br/>
-        /// 二峰性がはっきりしない (カバレッジが低すぎる等) 場合は null を返す
+        /// ヒストグラムを解析して、谷・山・推定ゲノムサイズを求める
         /// </summary>
+        /// <remarks>
+        /// 二峰性がはっきりしない (カバレッジが低すぎる等) 場合は null を返す
+        /// </remarks>
         public static スペクトル解析結果? Get_解析結果(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000)
         {
@@ -100,10 +110,12 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 頻度が下げ止まって上がり始めた最初の位置<br/>
+        /// 頻度が下げ止まって上がり始めた最初の位置
+        /// </summary>
+        /// <remarks>
         /// 単調減少のままなら null<br/>
         /// 1 段だけの増加はノイズでも起きるため、2 つ先まで見て上昇の継続を確かめる
-        /// </summary>
+        /// </remarks>
         private static ulong? Get_粗い谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限)
         {
             for (var l_出現回数 = 1UL; l_出現回数 + 2 <= p_走査上限; l_出現回数++)
@@ -144,11 +156,13 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// 1 から山までで頻度が最小になる出現回数<br/>
+        /// 1 から山までで頻度が最小になる出現回数
+        /// </summary>
+        /// <remarks>
         /// 観測された出現回数だけを
         /// 候補にする (疎なヒストグラムでは「データが無いだけ」の穴が
         /// 最小値として選ばれ、谷が山の直前まで押し上げられるため)
-        /// </summary>
+        /// </remarks>
         private static ulong Get_谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_ピーク)
         {
             var l_谷 = 1UL;
@@ -169,7 +183,9 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// エラー由来の k-mer が集合を支配しない範囲で、できるだけ低いカットオフを返す<br/>
+        /// エラー由来の k-mer が集合を支配しない範囲で、できるだけ低いカットオフを返す
+        /// </summary>
+        /// <remarks>
         /// 判定できない場合は null<br/>
         /// 谷をそのまま使ってはいけない<br/>
         /// 谷はエラー由来とゲノム由来の曲線が
@@ -180,7 +196,7 @@ namespace Tsumiki.Utility
         /// 両者は対称ではないので低く切るのが原則<br/>
         /// それでも下限に貼り付けにしないのは、高カバレッジではエラー由来の
         /// k-mer が絶対数として増え、品質を落とさずメモリを減らせるため
-        /// </summary>
+        /// </remarks>
         public static ulong? Get_推奨カットオフ(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000)
         {
@@ -210,10 +226,12 @@ namespace Tsumiki.Utility
         }
 
         /// <summary>
-        /// k-mer スペクトルの解析結果を出力する<br/>
+        /// k-mer スペクトルの解析結果を出力する
+        /// </summary>
+        /// <remarks>
         /// 推定ゲノムサイズとカバレッジは、
         /// 自動選択された k と -kc の妥当性を利用者が確かめる材料になる
-        /// </summary>
+        /// </remarks>
         public static void V_出力_スペクトル(
             IReadOnlyDictionary<ulong, long> p_ヒストグラム, int p_k長, int? p_リード長)
         {

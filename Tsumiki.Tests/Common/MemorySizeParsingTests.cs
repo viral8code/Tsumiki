@@ -4,12 +4,14 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Common
 {
     /// <summary>
-    /// -mem のサイズ指定 ("2G" など) の解釈を固定する<br/>
+    /// -mem のサイズ指定 ("2G" など) の解釈を固定する
+    /// </summary>
+    /// <remarks>
     /// 接尾辞は 2 進接頭辞 (1 K = 1024)<br/>
     /// メモリ量の指定なので 1000 刻みより
     /// 1024 刻みのほうが直感に合う<br/>
     /// 接尾辞が無い場合は MB とみなす
-    /// </summary>
+    /// </remarks>
     public class MemorySizeParsingTests
     {
         [Theory]
@@ -28,10 +30,12 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 接尾辞なしは MB<br/>
+        /// 接尾辞なしは MB
+        /// </summary>
+        /// <remarks>
         /// 単なる数値で指定したときに「バイト」と解釈すると
         /// 現実的にありえない小ささになるため
-        /// </summary>
+        /// </remarks>
         [Theory]
         [InlineData("768", 768L * 1024 * 1024)]
         [InlineData("2048", 2048L * 1024 * 1024)]

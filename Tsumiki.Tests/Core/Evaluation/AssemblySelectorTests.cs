@@ -5,7 +5,9 @@ using Tsumiki.Model.Evaluation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 複数のアセンブリ候補から 1 つを選ぶ規則の検証<br/>
+    /// 複数のアセンブリ候補から 1 つを選ぶ規則の検証
+    /// </summary>
+    /// <remarks>
     /// 単一のスコアに畳む方式を採らなかった経緯がそのままここの主題になる<br/>
     /// 「NG50 × 完全性 × 正確性」で選ぶ実装を試したところ、反復配列を飛ばして
     /// 中間を落としたキメラ (完全性 0.675、NG50 16,300) が、正直に途切れた答え
@@ -13,7 +15,7 @@ namespace Tsumiki.Tests.Core
     /// 連続性の利得が
     /// 完全性の損失を上回るためで、指数を調整して隠すのではなく
     /// 「まず完全性で足切りしてから連続性を見る」という順序にした
-    /// </summary>
+    /// </remarks>
     public class AssemblySelectorTests
     {
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(
@@ -55,9 +57,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 完全性が同程度なら、連続性が高いほうを採る<br/>
-        /// Axy の実データ (どの k でも配列は落ちず、k=63 が最も繋がる) がこの形
+        /// 完全性が同程度なら、連続性が高いほうを採る
         /// </summary>
+        /// <remarks>
+        /// Axy の実データ (どの k でも配列は落ちず、k=63 が最も繋がる) がこの形
+        /// </remarks>
         [Fact]
         public void Select_SimilarCompleteness_PicksTheMostContiguous()
         {
@@ -72,10 +76,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// R. sphaeroides の実測値そのもの<br/>
+        /// R. sphaeroides の実測値そのもの
+        /// </summary>
+        /// <remarks>
         /// 完全性の差 (97.1% と 93.2%) は
         /// 許容差に収まるため両方が残り、連続性で k=31 が選ばれる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Select_RealWorldSpread_PicksTheKnownBestK()
         {
@@ -91,11 +97,13 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// これが二段階にした理由<br/>
+        /// これが二段階にした理由
+        /// </summary>
+        /// <remarks>
         /// 連続性では圧倒的に上でも、
         /// 完全性が許容差を超えて落ちている候補は採らない<br/>
         /// 掛け算で選んでいたらこちらが選ばれていた
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Select_MuchMoreContiguousButIncomplete_IsRejected()
         {
@@ -124,14 +132,16 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 完全性には 2 つの段階がある<br/>
+        /// 完全性には 2 つの段階がある
+        /// </summary>
+        /// <remarks>
         /// 足切り (許容差) を通っても、同点とみなす幅を
         /// 超えて劣っていれば、連続性を見るより前に負ける<br/>
         /// 足切りだけを唯一の関門にすると、「足切りぎりぎりまで配列を落として
         /// 連続性を買う」取引が常に通ってしまう<br/>
         /// 7 Mbp 級では 1 ポイントが
         /// 70 kbp に相当し、それは連続性と引き換えにしてよい量ではない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Select_CompletenessGapBeyondTheTieWidth_LosesBeforeContiguity()
         {
@@ -145,9 +155,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める<br/>
-        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界
+        /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める
         /// </summary>
+        /// <remarks>
+        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界
+        /// </remarks>
         [Fact]
         public void Select_CompletenessGapWithinTheTieWidth_FallsThroughToContiguity()
         {
@@ -174,11 +186,13 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 提案 H: 完全性・正確性が同程度でも、より多くの複製単位を
-        /// 環状に閉じられた候補を、NG50 より優先して選ぶこと<br/>
+        /// 環状に閉じられた候補を、NG50 より優先して選ぶこと
+        /// </summary>
+        /// <remarks>
         /// 「4.5 Mb が 1 本に閉じプラスミドを取りこぼした」候補より
         /// 「染色体は 2 本に割れたがプラスミドも含め 2 本閉じた」候補を選ぶ、
         /// という目標関数そのものの検証
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Select_MoreClosedReplicons_IsPreferredOverHigherNG50()
         {

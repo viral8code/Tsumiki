@@ -7,10 +7,12 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 最終配列へのリード再マッピングと多数決による置換訂正を固定する<br/>
+    /// 最終配列へのリード再マッピングと多数決による置換訂正を固定する
+    /// </summary>
+    /// <remarks>
     /// 直すべきものを直すことと同じくらい、根拠が無い位置を動かさないことが
     /// 重要なので、両方を確かめる
-    /// </summary>
+    /// </remarks>
     public class PolisherTests : IDisposable
     {
         /// <summary>

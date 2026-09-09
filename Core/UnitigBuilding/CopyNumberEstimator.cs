@@ -6,7 +6,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// 各 unitig のコピー数をカバレッジから推定する<br/>
+    /// 各 unitig のコピー数をカバレッジから推定する
+    /// </summary>
+    /// <remarks>
     /// n 回現れる配列にはリードが n 倍集まるので、平均カバレッジ / 基準値 を丸める<br/>
     /// 反復かどうかをグラフの形ではなく量的な根拠で判定できる点が要点<br/>
     /// 入次数 2・出次数 2 でも単一コピー (バブルの残骸) でありうるし、
@@ -15,7 +17,7 @@ namespace Tsumiki.Core.UnitigBuilding
     /// 基準値は長さ加重中央値<br/>
     /// 単純平均や単純中央値だと本数の多い短い断片に
     /// 引きずられ、ゲノムの大部分を占める単一コピー領域の水準から外れる
-    /// </summary>
+    /// </remarks>
     internal static class CopyNumberEstimator
     {
         /// <summary>
@@ -25,22 +27,26 @@ namespace Tsumiki.Core.UnitigBuilding
         private const double 多コピーとみなす比の下限 = 1.5D;
 
         /// <summary>
-        /// コピー数の上限<br/>
+        /// コピー数の上限
+        /// </summary>
+        /// <remarks>
         /// これを超える比が出た場合、rRNA オペロンのような
         /// 高コピー反復か、あるいはカバレッジ異常のどちらかで区別がつかない<br/>
         /// 経路探索の予算としては大きすぎると探索が発散するため頭打ちにする
-        /// </summary>
+        /// </remarks>
         private const int コピー数の上限 = 12;
 
         /// <summary>
         /// 「染色体側の確定成分と繋がりが無い、独立した島」を単一の複製単位
-        /// (プラスミド等) とみなすために要求する、島の合計長の下限<br/>
+        /// (プラスミド等) とみなすために要求する、島の合計長の下限
+        /// </summary>
+        /// <remarks>
         /// AssemblyStatsReporter の「比較可能」しきい値と同じ 500 bp を使う<br/>
         /// 短い島は偶然の孤立 (flanking 配列が trim で消えた等) や短い反復配列との
         /// 区別がつきにくいため、この下限より短い場合は判定しない
         /// (Unicycler が短いセグメントの単一コピー確定に厳しい条件を課している
         /// のと同じ理由)
-        /// </summary>
+        /// </remarks>
         private const int 孤立複製単位とみなす最小合計長 = 500;
 
         /// <summary>
@@ -75,7 +81,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// カバレッジからコピー数を推定する<br/>
+        /// カバレッジからコピー数を推定する
+        /// </summary>
+        /// <remarks>
         /// p_グラフ を渡すと、大域基準値との比だけでは「多コピー」に見える
         /// unitig を、排他的な鎖 (分岐の無い一続きの隣接) で繋がった近傍の
         /// カバレッジと比較し直す (Get_修正_接続による単一コピー再判定 参照)<br/>
@@ -83,7 +91,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// 単一コピー領域を、反復と誤判定しにくくなる<br/>
         /// 渡さない場合は
         /// 従来どおり大域基準値との比だけで判定する
-        /// </summary>
+        /// </remarks>
         public static コピー数推定結果 Get_推定結果(
             IReadOnlyDictionary<int, double> p_カバレッジ,
             IReadOnlyDictionary<int, int> p_ユニティグ長,
@@ -133,17 +141,21 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 大域基準値との比では多コピーに見える unitig 群のうち、染色体側の
-        /// (大域基準値と一致する、確定済みの) 成分とグラフ上まったく繋がりが
-        /// 無い「島」を成すものを、独立した複製単位 (高コピープラスミド等) の
-        /// 単一コピー領域とみなす<br/>
+        /// 染色体側と繋がりの無い「島」を、独立した複製単位の単一コピー領域とみなす
+        /// </summary>
+        /// <remarks>
+        /// 大域基準値との比では多コピーに見える unitig 群のうち、
+        /// 大域基準値と一致する確定済みの成分とグラフ上まったく繋がりが無いものが対象になる<br/>
+        /// 高コピープラスミドなどがこれにあたる
+        /// </remarks>
+        /// <remarks>
         /// 分散型の反復配列 (rRNA オペロン等) は複数の異なるゲノム上の文脈を
         /// 前後に持つため、通常は染色体側の成分と繋がった分岐点になる
         /// (孤立した島にはならない)<br/>
         /// したがって「染色体と繋がりが無い、
         /// 内部でカバレッジが一貫した島」という条件は、反復の誤判定を
         /// 招きにくい
-        /// </summary>
+        /// </remarks>
         private static void V_修正_孤立した複製単位を単一コピーとみなす(
             UnitigGraph p_グラフ,
             IReadOnlyDictionary<int, double> p_カバレッジ,
@@ -205,11 +217,13 @@ namespace Tsumiki.Core.UnitigBuilding
 
         /// <summary>
         /// unitig をグラフ上の連結成分に分ける (向きは無視し、辺があれば
-        /// 繋がっているとみなす)<br/>
+        /// 繋がっているとみなす)
+        /// </summary>
+        /// <remarks>
         /// 辺 v→w があれば逆鎖対称性より w^1→v^1 も
         /// あるため、各 unitig の両頂点 (順鎖・逆鎖) の出辺だけを辿れば
         /// 入ってくる辺も含めて全方向を辿ったことになる
-        /// </summary>
+        /// </remarks>
         private static Dictionary<int, int> Get_連結成分(UnitigGraph p_グラフ, IEnumerable<int> p_ユニティグID一覧)
         {
             Dictionary<int, int> l_成分ID = [];
@@ -248,7 +262,9 @@ namespace Tsumiki.Core.UnitigBuilding
 
         /// <summary>
         /// 大域基準値との比では多コピーに見える unitig を、接続構造を使って
-        /// 再判定する (Unicycler の copy depth propagation の簡略版)<br/>
+        /// 再判定する (Unicycler の copy depth propagation の簡略版)
+        /// </summary>
+        /// <remarks>
         /// 対象の unitig から、分岐の無い (出次数 1 かつ行き先の入次数も 1 という
         /// 意味で排他的な) 辺だけを辿って両方向に伸ばせるだけ伸ばし、
         /// 到達できた unitig 群を「排他的成分」とする<br/>
@@ -262,7 +278,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// したがって成分内のカバレッジが
         /// 実際に反復を含んでいれば、その反復自身は今回の対象にならない限り
         /// 誤って巻き込まれない
-        /// </summary>
+        /// </remarks>
         private static void V_修正_接続による単一コピー再判定(
             UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, Dictionary<int, int> p_コピー数)
         {
@@ -309,9 +325,11 @@ namespace Tsumiki.Core.UnitigBuilding
 
         /// <summary>
         /// 指定した unitig から、排他的な辺 (出次数 1 かつ行き先の入次数も 1) だけを
-        /// 両方向へ辿って到達できる unitig ID の集合 (自分自身を含む) を返す<br/>
-        /// 両方の頂点 (順鎖・逆鎖) から辿ることで、鎖を両方向に伸ばす
+        /// 両方向へ辿って到達できる unitig ID の集合 (自分自身を含む) を返す
         /// </summary>
+        /// <remarks>
+        /// 両方の頂点 (順鎖・逆鎖) から辿ることで、鎖を両方向に伸ばす
+        /// </remarks>
         private static HashSet<int> Get_排他的成分(UnitigGraph p_グラフ, int p_ユニティグID)
         {
             var l_開始1 = 2 * p_ユニティグID;
@@ -348,10 +366,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 長さで重み付けしたカバレッジの中央値<br/>
+        /// 長さで重み付けしたカバレッジの中央値
+        /// </summary>
+        /// <remarks>
         /// ゲノムの大部分を占める
         /// 単一コピー領域の水準を推定するために使う
-        /// </summary>
+        /// </remarks>
         private static double Get_長さ加重中央値(
             IReadOnlyDictionary<int, double> p_カバレッジ,
             IReadOnlyDictionary<int, int> p_ユニティグ長)
@@ -363,10 +383,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 推定結果の要約をコンソールへ出力する<br/>
+        /// 推定結果の要約をコンソールへ出力する
+        /// </summary>
+        /// <remarks>
         /// 「単一コピーが何本・何 bp、2 コピー以上が何本・何 bp」が分かると、
         /// 反復配列がアセンブリのどれだけを占めているかが把握できる
-        /// </summary>
+        /// </remarks>
         public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_ユニティグ長)
         {
             Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);

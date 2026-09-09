@@ -5,7 +5,9 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// de Bruijn グラフの簡略化<br/>
+    /// de Bruijn グラフの簡略化
+    /// </summary>
+    /// <remarks>
     /// 2 種類のアーティファクトを除去する<br/>
     /// 1. tip 除去: 短い行き止まりの unitig を丸ごと除去する<br/>
     /// 行き止まりは
@@ -17,11 +19,13 @@ namespace Tsumiki.Core.UnitigBuilding
     /// 高カバレッジに平均が引きずられて検出できず、仮に検出できても unitig 全体を
     /// 除去すると合流後の共有配列まで消して別の経路を壊す<br/>
     /// エラー由来の分岐は合流点までの区間だけが低カバレッジなので、そこだけ剥がす
-    /// </summary>
+    /// </remarks>
     internal static class GraphSimplifier
     {
         /// <summary>
-        /// tip 除去と低カバレッジ端のトリミングを反復し、簡略化後の unitig 開始点を返す<br/>
+        /// tip 除去と低カバレッジ端のトリミングを反復し、簡略化後の unitig 開始点を返す
+        /// </summary>
+        /// <remarks>
         /// 除去のたびに unitig を再構築して次数とカバレッジを評価し直すため反復する<br/>
         /// 長さ閾値は tip 除去にのみ適用する<br/>
         /// 低カバレッジ端のトリミングは
@@ -29,7 +33,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// カバレッジの基準値は長さ加重中央値を使う<br/>
         /// 単純平均や単純中央値だと
         /// 本数の多い短い断片に引きずられ、主経路の水準から外れる
-        /// </summary>
+        /// </remarks>
         public static List<byte[]> V_除去_tip(
             TrustedKmerIndex p_kmerインデックス,
             int p_k長,
@@ -154,9 +158,11 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// unitig の両端から、カバレッジが閾値未満の k-mer が続く間だけ除去する<br/>
-        /// 先頭側と末尾側で除去範囲が重ならないよう互いの残り長で制限する
+        /// unitig の両端から、カバレッジが閾値未満の k-mer が続く間だけ除去する
         /// </summary>
+        /// <remarks>
+        /// 先頭側と末尾側で除去範囲が重ならないよう互いの残り長で制限する
+        /// </remarks>
         private static int Get_剥がした数_低カバレッジ端(
             TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長, double p_閾値)
         {
@@ -210,12 +216,14 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 各 unitig の塩基列と平均カバレッジ<br/>
+        /// 各 unitig の塩基列と平均カバレッジ
+        /// </summary>
+        /// <remarks>
         /// 基準値の算出と tip 判定の
         /// 両方が同じ値を使うため、まとめて 1 回だけ求める<br/>
         /// 全 unitig の全 k-mer を引くので反復のたびに数百万回のハッシュ引きになる<br/>
         /// 読み取りのみなので並列に行う
-        /// </summary>
+        /// </remarks>
         private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_ユニティグ情報(
             TrustedKmerIndex p_kmerインデックス, List<string> p_ユニティグ群, int p_k長)
         {
@@ -231,12 +239,14 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 全 unitig の平均カバレッジの長さ加重中央値<br/>
+        /// 全 unitig の平均カバレッジの長さ加重中央値
+        /// </summary>
+        /// <remarks>
         /// 多数を占めうる短い
         /// 断片 (エラー由来の tip/バブル候補そのもの) に引きずられず、
         /// ゲノムの大部分を占める正しい主経路のカバレッジ水準を推定するため、
         /// 単純平均・単純中央値ではなく塩基数で重み付けした中央値を使う
-        /// </summary>
+        /// </remarks>
         private static double Get_長さ加重中央カバレッジ(
             (byte[] A_塩基列, double A_平均カバレッジ)[] p_ユニティグ群)
         {

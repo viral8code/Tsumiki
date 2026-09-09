@@ -7,10 +7,12 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// カットオフで落ちた k-mer の救済を固定する<br/>
+    /// カットオフで落ちた k-mer の救済を固定する
+    /// </summary>
+    /// <remarks>
     /// 救うべきもの (信頼できる k-mer に挟まれた低頻度) と、救ってはいけないもの
     /// (端に生えているだけの低頻度) の線引きが要点
-    /// </summary>
+    /// </remarks>
     public class MercyKmerRescuerTests : IDisposable
     {
         /// <summary>
@@ -78,9 +80,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る<br/>
-        /// カットオフ 2 で、その窓だけが落ちた状態になる
+        /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る
         /// </summary>
+        /// <remarks>
+        /// カットオフ 2 で、その窓だけが落ちた状態になる
+        /// </remarks>
         private TrustedKmerIndex Get_穴のあるインデックス(string p_配列, int p_穴の開始, int p_穴の長さ)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };

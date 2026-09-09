@@ -6,12 +6,14 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// multi-k で試す k の一覧の決め方<br/>
+    /// multi-k で試す k の一覧の決め方
+    /// </summary>
+    /// <remarks>
     /// 実測では最適な k が範囲の両端に現れている (反復が少ない検体では上限の
     /// k=63、反復が 11% を占める検体では下限側の k=31)<br/>
     /// したがって候補は
     /// 片側に寄せず、上限とその半分あたりの両方を含んでいる必要がある
-    /// </summary>
+    /// </remarks>
     public class MultiKAssemblerTests
     {
         /// <summary>
@@ -48,9 +50,11 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// k が偶数だと k-mer 自身がその逆相補と一致しうる (回文) ため、
-        /// 正規形が縮退して隣接判定が壊れる<br/>
-        /// どの候補も奇数であること
+        /// 正規形が縮退して隣接判定が壊れる
         /// </summary>
+        /// <remarks>
+        /// どの候補も奇数であること
+        /// </remarks>
         [Fact]
         public void CandidateList_ContainsOnlyOddValues()
         {
@@ -64,10 +68,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 候補はリード長より短くなければならない<br/>
+        /// 候補はリード長より短くなければならない
+        /// </summary>
+        /// <remarks>
         /// そうでないと
         /// その k では k-mer が 1 つも取れない
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void CandidateList_StaysBelowTheReadLength()
         {
@@ -81,9 +87,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// -k に一覧が指定された場合は、それをそのまま使うこと<br/>
-        /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない
+        /// -k に一覧が指定された場合は、それをそのまま使うこと
         /// </summary>
+        /// <remarks>
+        /// 利用者が試す値を選んだのに、自動の刻みで置き換えてはいけない
+        /// </remarks>
         [Fact]
         public void CandidateList_WhenKmerLengthListWasGiven_UsesItVerbatim()
         {
@@ -108,9 +116,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 予測 k-mer カバレッジは、1 リードから取れる k-mer の本数の比で縮むこと<br/>
-        /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる
+        /// 予測 k-mer カバレッジは、1 リードから取れる k-mer の本数の比で縮むこと
         /// </summary>
+        /// <remarks>
+        /// カバレッジの薄いデータで高い k を試すのは時間を捨てるだけになる
+        /// </remarks>
         [Fact]
         public void PredictedCoverage_ShrinksWithTheNumberOfKmersPerRead()
         {
@@ -125,9 +135,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k がリード長を超えると k-mer が 1 本も取れないので 0 になること<br/>
-        /// k = リード長 のときは 1 本だけ取れるので 0 にはならない
+        /// k がリード長を超えると k-mer が 1 本も取れないので 0 になること
         /// </summary>
+        /// <remarks>
+        /// k = リード長 のときは 1 本だけ取れるので 0 にはならない
+        /// </remarks>
         [Fact]
         public void PredictedCoverage_WhenKmerLengthExceedsTheReadLength_IsZero()
         {

@@ -3,18 +3,22 @@
 namespace Tsumiki.Core.Evidence
 {
     /// <summary>
-    /// ペアエンドの隣接証拠を、観測本数ではなく期待本数との比で測るためのモデル<br/>
+    /// ペアエンドの隣接証拠を、観測本数ではなく期待本数との比で測るためのモデル
+    /// </summary>
+    /// <remarks>
     /// 観測本数をそのまま固定の下限と比べると、辺が長く距離が近いほど多く
     /// 観測されるという幾何的な偏りをそのまま拾う<br/>
     /// 期待本数が数本しかない場所と
     /// 数百本ある場所に同じ下限を課しても、どこに線を引いても正しくならない
-    /// </summary>
+    /// </remarks>
     internal sealed class PairedDistanceModel
     {
         /// <summary>
-        /// フラグメント長の経験分布<br/>
-        /// 裾は誤マップなので両端を落とす
+        /// フラグメント長の経験分布
         /// </summary>
+        /// <remarks>
+        /// 裾は誤マップなので両端を落とす
+        /// </remarks>
         private readonly (int A_長さ, double A_確率)[] _分布;
 
         /// <summary>
@@ -87,12 +91,14 @@ namespace Tsumiki.Core.Evidence
 
         /// <summary>
         /// 既知長標本の中で最も密集した窓を選び、その本数と、そこから導かれる
-        /// ギャップ長を返す<br/>
+        /// ギャップ長を返す
+        /// </summary>
+        /// <remarks>
         /// 中央値ではなく密集した窓を採るのは、反復の別コピーへ誤マップした
         /// ペアが長い裾を作るため<br/>
         /// 裾が過半を占めても、同じ隣接から出た
         /// ペアは狭い範囲に集まるので峰は残る
-        /// </summary>
+        /// </remarks>
         public (int A_本数, int A_ギャップ長) Get_一貫した支持(IReadOnlyList<int> p_既知長標本)
         {
             if (p_既知長標本.Count == 0)
@@ -128,14 +134,16 @@ namespace Tsumiki.Core.Evidence
 
         /// <summary>
         /// ギャップ長 p_ギャップ長 で隣り合う長さ p_長さ1・p_長さ2 の配列に跨がりうる
-        /// フラグメントの開始位置の総数<br/>
+        /// フラグメントの開始位置の総数
+        /// </summary>
+        /// <remarks>
         /// フラグメント開始位置の密度を掛けると
         /// 期待ペア数になる<br/>
         /// 接合点を原点とし、フラグメント長 x の開始位置 s について
         /// 左リードが左側に収まる条件 s &lt;= -リード長 かつ s &gt;= -長さ 1、
         /// 右リードが右側に収まる条件 s &gt;= ギャップ長 + リード長 - x かつ
         /// s &lt;= ギャップ長 + 長さ 2 - x を満たす s の個数を数える
-        /// </summary>
+        /// </remarks>
         public double Get_期待位置数(long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
             double l_合計 = 0D;
@@ -152,9 +160,11 @@ namespace Tsumiki.Core.Evidence
         }
 
         /// <summary>
-        /// 1 本の配列の内側に両端が収まるフラグメントの開始位置の総数<br/>
-        /// 同一 unitig 内の観測数からフラグメント開始位置の密度を較正するのに使う
+        /// 1 本の配列の内側に両端が収まるフラグメントの開始位置の総数
         /// </summary>
+        /// <remarks>
+        /// 同一 unitig 内の観測数からフラグメント開始位置の密度を較正するのに使う
+        /// </remarks>
         public double Get_期待位置数_単一(long p_長さ)
         {
             double l_合計 = 0D;

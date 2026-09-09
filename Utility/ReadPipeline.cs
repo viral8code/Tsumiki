@@ -4,20 +4,24 @@ using System.Runtime.ExceptionServices;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// リードを 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に処理する<br/>
+    /// リードを 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に処理する
+    /// </summary>
+    /// <remarks>
     /// 素朴に書くと、ワーカーが例外で落ちたときキューを引き取る者がいなくなり、
     /// プロデューサーが満杯のキューへの Add で永久に待つ<br/>
     /// Task.WaitAll に
     /// 到達しないため例外も観測されず、無言のハングになる<br/>
     /// それを防ぐ
-    /// </summary>
+    /// </remarks>
     internal static class ReadPipeline
     {
         /// <summary>
-        /// p_供給元 の各要素を p_処理 へ並列に配る<br/>
+        /// p_供給元 の各要素を p_処理 へ並列に配る
+        /// </summary>
+        /// <remarks>
         /// p_処理 の第2引数はワーカー番号で、ワーカーごとのローカル集計用配列の
         /// 添字として使うことを想定している
-        /// </summary>
+        /// </remarks>
         public static void V_実行<T>(
             int p_スレッド数, int p_キュー容量, IEnumerable<T> p_供給元, Action<T, int> p_処理)
         {

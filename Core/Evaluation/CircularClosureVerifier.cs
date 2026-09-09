@@ -8,7 +8,9 @@ namespace Tsumiki.Core.Evaluation
 {
     /// <summary>
     /// 環状に閉じたと判定された配列について、その閉じ目を元リードが
-    /// 実際に読んでいるかを確かめる<br/>
+    /// 実際に読んでいるかを確かめる
+    /// </summary>
+    /// <remarks>
     /// グラフ上で始点へ戻れたことは、閉じ目に k-mer が 1 つ通っていることしか
     /// 意味しない<br/>
     /// それは de Bruijn グラフの辺があるという主張と同じで、
@@ -16,13 +18,15 @@ namespace Tsumiki.Core.Evaluation
     /// ここでは k より長い窓を取り、
     /// 閉じ目の両側へ十分踏み込んだリードだけを支持として数える<br/>
     /// この一点を間違えると、見かけ上の完全長が実際には線状の断片になる
-    /// </summary>
+    /// </remarks>
     internal static class CircularClosureVerifier
     {
         /// <summary>
-        /// 閉じ目の左右それぞれに要求する踏み込みの長さ<br/>
-        /// 窓はこの 2 倍になる (2 bit パックが UInt128 に収まる範囲に収める)
+        /// 閉じ目の左右それぞれに要求する踏み込みの長さ
         /// </summary>
+        /// <remarks>
+        /// 窓はこの 2 倍になる (2 bit パックが UInt128 に収まる範囲に収める)
+        /// </remarks>
         private const int 接合フランク長 = 30;
 
         /// <summary>
@@ -31,17 +35,21 @@ namespace Tsumiki.Core.Evaluation
         private const int 接合窓長 = 接合フランク長 * 2;
 
         /// <summary>
-        /// 閉じ目を支持されたとみなすのに必要なリード本数<br/>
+        /// 閉じ目を支持されたとみなすのに必要なリード本数
+        /// </summary>
+        /// <remarks>
         /// 通常の接合点より高く取る<br/>
         /// ここが誤っていると、アセンブリ全体の
         /// 見え方が「完全長」から「1 本の線状断片」へ変わってしまうため
-        /// </summary>
+        /// </remarks>
         private const int 閉じ目に必要なリード数 = 5;
 
         /// <summary>
-        /// p_FASTAパス の環状配列それぞれについて、閉じ目を跨ぐリードを数える<br/>
-        /// 環状の配列が 1 本も無ければ空を返す
+        /// p_FASTAパス の環状配列それぞれについて、閉じ目を跨ぐリードを数える
         /// </summary>
+        /// <remarks>
+        /// 環状の配列が 1 本も無ければ空を返す
+        /// </remarks>
         public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(
             string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス)
         {
@@ -112,9 +120,11 @@ namespace Tsumiki.Core.Evaluation
         }
 
         /// <summary>
-        /// 1 本のリードが閉じ目の窓を含むかを調べ、含めばその配列の支持を 1 つ増やす<br/>
-        /// 同じリードが同じ配列を何度支持しても 1 本と数える
+        /// 1 本のリードが閉じ目の窓を含むかを調べ、含めばその配列の支持を 1 つ増やす
         /// </summary>
+        /// <remarks>
+        /// 同じリードが同じ配列を何度支持しても 1 本と数える
+        /// </remarks>
         private static void V_数える_1リード(
             string p_リード, IReadOnlyDictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {

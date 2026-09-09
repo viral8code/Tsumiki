@@ -8,10 +8,12 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード (SuperRead) へ
-    /// 統合する処理の検証<br/>
+    /// 統合する処理の検証
+    /// </summary>
+    /// <remarks>
     /// read1 の末尾 k-mer から RC(read2) の先頭 k-mer まで、
     /// 信頼できる k-mer 集合の中で経路がちょうど 1 本に定まったときだけ統合する
-    /// </summary>
+    /// </remarks>
     public class SuperReadJoinerTests : IDisposable
     {
         /// <summary>
@@ -90,9 +92,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 橋渡しする経路が複数ある場合、どれが正しいか決められない<br/>
-        /// 誤った配列で繋ぐより、統合を諦めて元のペアのまま残すほうが安全
+        /// 橋渡しする経路が複数ある場合、どれが正しいか決められない
         /// </summary>
+        /// <remarks>
+        /// 誤った配列で繋ぐより、統合を諦めて元のペアのまま残すほうが安全
+        /// </remarks>
         [Fact]
         public void Get_合成配列_MultiplePathsFitTheBridge_ReturnsNullRatherThanGuessing()
         {
@@ -162,10 +166,12 @@ namespace Tsumiki.Tests.Core
         }
     
         /// <summary>
-        /// 断片がリード長の 2 倍を下回るライブラリでは read1 と RC(read2) が重なる<br/>
+        /// 断片がリード長の 2 倍を下回るライブラリでは read1 と RC(read2) が重なる
+        /// </summary>
+        /// <remarks>
         /// 橋渡しに必要な長さが負になり経路探索では解けないが、重なりそのものが
         /// 断片を決めるので統合できる
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Get_合成配列_OverlappingMates_RestoresTheTrueFragment()
         {
@@ -184,9 +190,11 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列の継ぎ目には
-        /// どのリードにも無い k-mer が生まれる<br/>
-        /// そこで弾く
+        /// どのリードにも無い k-mer が生まれる
         /// </summary>
+        /// <remarks>
+        /// そこで弾く
+        /// </remarks>
         [Fact]
         public void Get_合成配列_OverlapWithAnUnseenSeam_IsRejected()
         {
@@ -241,9 +249,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う<br/>
-        /// どれか一つに決められないので、重なりでは繋がない
+        /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う
         /// </summary>
+        /// <remarks>
+        /// どれか一つに決められないので、重なりでは繋がない
+        /// </remarks>
         [Fact]
         public void Get_合成配列_OverlapThatFitsAtSeveralOffsets_IsNotJoined()
         {

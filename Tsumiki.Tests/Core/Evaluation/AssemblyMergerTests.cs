@@ -7,10 +7,12 @@ using Tsumiki.Model.Evaluation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 複数の k のアセンブリを統合する処理の検証<br/>
+    /// 複数の k のアセンブリを統合する処理の検証
+    /// </summary>
+    /// <remarks>
     /// 統合は誤った連結を持ち込みうる操作なので、繋ぐべきときに繋ぐことと
     /// 同じくらい、根拠が無いときに繋がないことを固定しておく必要がある
-    /// </summary>
+    /// </remarks>
     public class AssemblyMergerTests : IDisposable
     {
         /// <summary>
@@ -95,9 +97,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合<br/>
-        /// 繋いだ結果が元のゲノムそのものに戻ること
+        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合
         /// </summary>
+        /// <remarks>
+        /// 繋いだ結果が元のゲノムそのものに戻ること
+        /// </remarks>
         [Fact]
         public void Merge_OtherKSpansABackboneJunction_JoinsThemBackIntoTheTruth()
         {
@@ -145,9 +149,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 跨いでいる配列が無ければ何もしないこと<br/>
-        /// 根拠が無いのに繋ぐのが最も避けたい失敗
+        /// 跨いでいる配列が無ければ何もしないこと
         /// </summary>
+        /// <remarks>
+        /// 根拠が無いのに繋ぐのが最も避けたい失敗
+        /// </remarks>
         [Fact]
         public void Merge_NoOtherAssemblySpansAnything_DoesNothing()
         {
@@ -166,9 +172,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 反復配列のせいで行き先が 2 つある場合は繋がないこと<br/>
-        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる
+        /// 反復配列のせいで行き先が 2 つある場合は繋がないこと
         /// </summary>
+        /// <remarks>
+        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる
+        /// </remarks>
         [Fact]
         public void Merge_AmbiguousDestination_RefusesToJoin()
         {
@@ -190,9 +198,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 3 本を 2 箇所で繋ぐ連鎖<br/>
-        /// 1 回の統合で最後まで繋がること
+        /// 3 本を 2 箇所で繋ぐ連鎖
         /// </summary>
+        /// <remarks>
+        /// 1 回の統合で最後まで繋がること
+        /// </remarks>
         [Fact]
         public void Merge_ChainOfThreePieces_JoinsAllOfThem()
         {
@@ -240,13 +250,15 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 既定では、1 つの k だけが主張する隣接は採らないこと<br/>
+        /// 既定では、1 つの k だけが主張する隣接は採らないこと
+        /// </summary>
+        /// <remarks>
         /// 骨格が途切れているのは繋ぐ根拠が足りないと判断した結果であることが多く、
         /// それを 1 本の配列で覆すと、その配列自身が誤アセンブリだった場合に
         /// そのまま持ち込む<br/>
         /// 実データでは、証拠に使ったアセンブリ由来の
         /// 誤アセンブリが骨格の 21 箇所から 60 箇所へ増えた
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void Merge_OnlyOneKSupportsTheJoin_IsNotAcceptedByDefault()
         {
@@ -284,9 +296,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 統合の総延長が、骨格の総延長を下回らないこと<br/>
-        /// 配列を落とすなら統合しないほうがましなので、これは不変条件
+        /// 統合の総延長が、骨格の総延長を下回らないこと
         /// </summary>
+        /// <remarks>
+        /// 配列を落とすなら統合しないほうがましなので、これは不変条件
+        /// </remarks>
         [Fact]
         public void Merge_NeverLosesSequence()
         {

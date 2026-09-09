@@ -7,7 +7,9 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// ペアエンドから推定される「インサートサイズ」が、リードに挟まれた内側の
     /// 未読区間ではなく、真のフラグメント長 (左リードの 5'端から右リードの
-    /// 3'端まで) の単位になっていることを検証する<br/>
+    /// 3'端まで) の単位になっていることを検証する
+    /// </summary>
+    /// <remarks>
     /// 実データ (150 bp リード・IS350ライブラリ) で同一 unitig 由来サンプルの
     /// 中央値が 58 と報告されていた<br/>
     /// リード長150 bp より短いフラグメントは
@@ -15,7 +17,7 @@ namespace Tsumiki.Tests.Core
     /// 内側距離 58 に両リード長を足すと 358 となりライブラリ名と一致する<br/>
     /// この取り違えはギャップ長推定 (ギャップ = インサートサイズ - 既知長) にも
     /// そのまま伝播するため、単位を明示的に固定しておく
-    /// </summary>
+    /// </remarks>
     public class InsertSizeEstimationTests : IDisposable
     {
         /// <summary>
@@ -41,10 +43,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 決定的な擬似乱数で非反復的な塩基配列を作る<br/>
+        /// 決定的な擬似乱数で非反復的な塩基配列を作る
+        /// </summary>
+        /// <remarks>
         /// k=21 では
         /// この長さの乱数配列に重複 k-mer が現れる確率は無視できる
-        /// </summary>
+        /// </remarks>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);

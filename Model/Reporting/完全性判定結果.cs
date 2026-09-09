@@ -3,10 +3,12 @@
 namespace Tsumiki.Model.Reporting
 {
     /// <summary>
-    /// 品質保証の段階<br/>
+    /// 品質保証の段階
+    /// </summary>
+    /// <remarks>
     /// 完全長を名乗れるのは最上位だけとし、
     /// それ以外は「どこまでは言えるのか」を段階で示す
-    /// </summary>
+    /// </remarks>
     internal enum 品質保証レベル
     {
         /// <summary>
@@ -41,9 +43,11 @@ namespace Tsumiki.Model.Reporting
     }
 
     /// <summary>
-    /// 1 つの検査項目の結果<br/>
-    /// 材料が無い場合は不合格と区別する
+    /// 1 つの検査項目の結果
     /// </summary>
+    /// <remarks>
+    /// 材料が無い場合は不合格と区別する
+    /// </remarks>
     internal enum 検査判定
     {
         合格,
@@ -57,9 +61,11 @@ namespace Tsumiki.Model.Reporting
     }
 
     /// <summary>
-    /// 完全長に届かなかった理由<br/>
-    /// レポートの reason_codes になる
+    /// 完全長に届かなかった理由
     /// </summary>
+    /// <remarks>
+    /// レポートの reason_codes になる
+    /// </remarks>
     internal enum 未達理由
     {
         取りこぼしが多い,
@@ -88,10 +94,12 @@ namespace Tsumiki.Model.Reporting
     }
 
     /// <summary>
-    /// 検査 1 項目<br/>
+    /// 検査 1 項目
+    /// </summary>
+    /// <remarks>
     /// A_キー はレポートに出す固定の英語キー、
     /// A_見出し はログに出す訳語
-    /// </summary>
+    /// </remarks>
     internal readonly record struct 検査項目(
         string A_キー,
         メッセージID A_見出し,
@@ -99,10 +107,12 @@ namespace Tsumiki.Model.Reporting
         string A_内訳);
 
     /// <summary>
-    /// 完全長かどうかの判定と、そう判定した根拠一式<br/>
+    /// 完全長かどうかの判定と、そう判定した根拠一式
+    /// </summary>
+    /// <remarks>
     /// 完全長は「長い配列が出た」ことではなく、必要な検査を全て通ったことを指す<br/>
     /// 情報が足りない箇所を推測で埋めて完全長を名乗らせないための型
-    /// </summary>
+    /// </remarks>
     internal sealed record 完全性判定結果(
         bool A_完全長か,
         品質保証レベル A_品質保証レベル,

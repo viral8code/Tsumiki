@@ -16,12 +16,14 @@ namespace Tsumiki.Core.Pipeline
     internal static class AssemblyPipeline
     {
         /// <summary>
-        /// p_k長 でアセンブリを実行し、生成物のパスを返す<br/>
+        /// p_k長 でアセンブリを実行し、生成物のパスを返す
+        /// </summary>
+        /// <remarks>
         /// unitig 数が上限を超えた場合は null<br/>
         /// 生成物は k ごとの作業ディレクトリに置く<br/>
         /// 最終的に採用したものだけを
         /// V_複製_最終成果物 が作業ディレクトリの直下へ複製する
-        /// </summary>
+        /// </remarks>
         public static アセンブリ実行結果? Get_実行結果(
             Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長,
             IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null,
@@ -261,13 +263,15 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 採用した結果を作業ディレクトリの直下へ複製する<br/>
+        /// 採用した結果を作業ディレクトリの直下へ複製する
+        /// </summary>
+        /// <remarks>
         /// k ごとの成果物は
         /// k のサブディレクトリに残したまま、利用者が受け取る 1 組だけを上へ出す<br/>
         /// unitigs/contigs/scaffolds はここまでの各段階の出力で、最後に手が
         /// 入る前の姿<br/>
         /// 利用者が使うべき 1 本は assembly.fasta のほうになる
-        /// </summary>
+        /// </remarks>
         public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
             V_複製(p_結果.A_ユニティグパス, Path.Combine(p_出力ディレクトリ, Consts.ユニティグファイル名));
@@ -300,7 +304,9 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// 次の k へ渡す配列とカバレッジを用意する<br/>
+        /// 次の k へ渡す配列とカバレッジを用意する
+        /// </summary>
+        /// <remarks>
         /// k-mer インデックスが破棄される前でなければ作れない<br/>
         /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして
         /// 作った合成リード (SuperRead) も足す<br/>
@@ -309,7 +315,7 @@ namespace Tsumiki.Core.Pipeline
         /// バブル除去で外れた側の配列 (careful_bubble)も足す<br/>
         /// この k での
         /// 敗者判定は次の k を拘束しない
-        /// </summary>
+        /// </remarks>
         private static void V_用意_次への引き継ぎ(
             List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
             TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数,
@@ -383,9 +389,11 @@ namespace Tsumiki.Core.Pipeline
         }
 
         /// <summary>
-        /// unitig を構築して FASTA へ書き出し、ID -> 配列 の対応を返す<br/>
-        /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く
+        /// unitig を構築して FASTA へ書き出し、ID -> 配列 の対応を返す
         /// </summary>
+        /// <remarks>
+        /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く
+        /// </remarks>
         private static Dictionary<int, string> Get_ユニティグ(
             TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長,
             string p_出力パス, out bool p_上限に達したか)

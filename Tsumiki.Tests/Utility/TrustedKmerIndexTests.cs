@@ -125,13 +125,17 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// k が 32 を超え 64 以下のとき使われる UInt128 経路 (_trustedKmersMid)と、
-        /// 64 を超えたときの KmerKey フォールバック経路のそれぞれで、
-        /// 正規化 (順鎖・逆鎖のどちらから問い合わせても同じ結果) と
-        /// カバレッジ合算が正しく行われることを確認する<br/>
+        /// 長い k での正規化とカバレッジ合算が正しく行われること
+        /// </summary>
+        /// <remarks>
+        /// k が 32 を超え 64 以下のときの UInt128 経路と、
+        /// 64 を超えたときの KmerKey へのフォールバック経路をそれぞれ確かめる<br/>
+        /// 正規化とは、順鎖と逆鎖のどちらから問い合わせても同じ結果になることをいう
+        /// </remarks>
+        /// <remarks>
         /// 150 bp リードでは k=31 のままだと 31 bp 以上の反復配列がすべて潰れ
         /// contig N50 が伸びないため、k=63 前後で正しく動くことは品質上重要
-        /// </summary>
+        /// </remarks>
         [Theory]
         [InlineData(33)] // UInt128 経路の下限
         [InlineData(63)] // 150bp リードでの実用値
@@ -171,10 +175,12 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// k=63 の直鎖配列で、EnumerateTrustedKmers が UInt128 経路でも
         /// 正しく塩基列へ復元でき (UnpackMid)、隣接判定 (CountOutEdges) が
-        /// 成立することを確認する<br/>
+        /// 成立することを確認する
+        /// </summary>
+        /// <remarks>
         /// パック/アンパックの往復が壊れていると
         /// unitig 構築が丸ごと機能しなくなるため、経路ごとに固定しておく
-        /// </summary>
+        /// </remarks>
         [Fact]
         public void EnumerateAndDegrees_RoundTripThroughUInt128Path()
         {
@@ -197,9 +203,11 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 長さ len の直鎖配列 (分岐なし) の全 k-mer をカットオフ以上登録する<br/>
-        /// GraphSimplifier のテストとも共通で使える小さなヘルパー
+        /// 長さ len の直鎖配列 (分岐なし) の全 k-mer をカットオフ以上登録する
         /// </summary>
+        /// <remarks>
+        /// GraphSimplifier のテストとも共通で使える小さなヘルパー
+        /// </remarks>
         private TrustedKmerIndex BuildLinearIndex(string seq, int kmerLength)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };

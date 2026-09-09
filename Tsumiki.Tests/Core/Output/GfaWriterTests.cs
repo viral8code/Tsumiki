@@ -7,12 +7,14 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// unitig グラフの GFA1 出力の検証<br/>
+    /// unitig グラフの GFA1 出力の検証
+    /// </summary>
+    /// <remarks>
     /// 決められない分岐は今まで打ち切り点になるだけで理由が出力に残らな
     /// かった<br/>
     /// GFA として書き出せば、Bandage 等のビューアでグラフの形が
     /// 直接見えるようになる
-    /// </summary>
+    /// </remarks>
     public class GfaWriterTests : IDisposable
     {
         /// <summary>

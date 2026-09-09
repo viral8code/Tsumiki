@@ -3,10 +3,12 @@
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 最終成果物から、リード長より短い配列を落とす処理の検証<br/>
+    /// 最終成果物から、リード長より短い配列を落とす処理の検証
+    /// </summary>
+    /// <remarks>
     /// リード 1 本に収まる配列はリードそのもの以上の情報を運ばず、
     /// この帯には繋ぎ間違えた断片が集まりやすい
-    /// </summary>
+    /// </remarks>
     public class ShortSequenceFilterTests : IDisposable
     {
         /// <summary>

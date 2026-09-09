@@ -8,13 +8,15 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 環状に閉じた複製単位 (細菌の染色体・プラスミドはいずれも環状) を
     /// 組み上げられた場合に、それを検出して名前で示し、かつ円周の長さが
-    /// 正しくなることを検証する<br/>
+    /// 正しくなることを検証する
+    /// </summary>
+    /// <remarks>
     /// 環状経路では末尾 unitig が「始点 unitig と重なる k-1 塩基」を自分の
     /// 末尾に持っている<br/>
     /// 線状の連結では次の unitig 側から重なりを取り除くが、
     /// 環状では「次」が既に出力済みの始点なので取り除く相手がおらず、
     /// そのままだと円周が k-1 塩基ぶん長く出てしまう
-    /// </summary>
+    /// </remarks>
     public class CircularContigTests : IDisposable
     {
         /// <summary>

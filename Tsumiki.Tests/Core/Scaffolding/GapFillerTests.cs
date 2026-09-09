@@ -9,12 +9,14 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// スキャフォールドのギャップ (N の連続) を、de Bruijn グラフ上で
-    /// 両端を繋ぐ経路を探して実配列に置き換える処理の検証<br/>
+    /// 両端を繋ぐ経路を探して実配列に置き換える処理の検証
+    /// </summary>
+    /// <remarks>
     /// contig が途切れるのは配列が存在しないからではなく、分岐でどちらへ
     /// 進むか決められなかったからであることが多い<br/>
     /// その場合ギャップを埋める
     /// 配列は k-mer 集合の中に実在しており、両端から辿れば復元できる
-    /// </summary>
+    /// </remarks>
     public class GapFillerTests : IDisposable
     {
         /// <summary>
@@ -153,9 +155,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// ギャップを埋める経路が複数ある場合、どれが正しいか決められない<br/>
-        /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全
+        /// ギャップを埋める経路が複数ある場合、どれが正しいか決められない
         /// </summary>
+        /// <remarks>
+        /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全
+        /// </remarks>
         [Fact]
         public void Run_MultiplePathsFitTheGap_LeavesItAsNRatherThanGuessing()
         {

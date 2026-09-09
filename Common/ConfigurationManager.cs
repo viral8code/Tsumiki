@@ -20,11 +20,13 @@ namespace Tsumiki.Common
 
         /// <summary>
         /// 直近の KmerCutoffSelector.V_解決_kmerカットオフ で k-mer スペクトルに
-        /// 適合した混合モデル<br/>
+        /// 適合した混合モデル
+        /// </summary>
+        /// <remarks>
         /// CopyNumberEstimator の単一コピー基準値や GraphSimplifier の tip 判定の
         /// 「無条件に信頼する下限」が、カットオフと同じモデルから導いた値を共有するために公開する<br/>
         /// 適合に失敗した場合や -kc が明示指定された場合は null のままで、各所は自前の推定にフォールバックする
-        /// </summary>
+        /// </remarks>
         public static 混合スペクトル解析結果? A_スペクトルモデル { get; set; }
     }
 }

@@ -4,10 +4,12 @@ using Tsumiki.Core;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペアの隣接証拠を期待本数との比で測るためのモデル<br/>
+    /// ペアの隣接証拠を期待本数との比で測るためのモデル
+    /// </summary>
+    /// <remarks>
     /// 観測本数をそのまま固定の下限と比べると幾何的な偏りを拾うため、
     /// 期待位置数の算出と、裾に強いギャップ長推定を固定する
-    /// </summary>
+    /// </remarks>
     public class PairedDistanceModelTests
     {
         /// <summary>
@@ -40,9 +42,11 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 誤マップ由来の裾が過半を占めても、峰から出るギャップ長と本数が
-        /// 変わらないこと<br/>
-        /// 中央値で測るとここが壊れる
+        /// 変わらないこと
         /// </summary>
+        /// <remarks>
+        /// 中央値で測るとここが壊れる
+        /// </remarks>
         [Fact]
         public void Get_一貫した支持_IsNotMovedByAHeavyTailOfMismappedPairs()
         {
@@ -63,9 +67,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 期待位置数は、接合点の両側が短いほど、ギャップが広いほど小さくなること<br/>
-        /// 観測本数を固定の下限と比べてはいけない理由そのもの
+        /// 期待位置数は、接合点の両側が短いほど、ギャップが広いほど小さくなること
         /// </summary>
+        /// <remarks>
+        /// 観測本数を固定の下限と比べてはいけない理由そのもの
+        /// </remarks>
         [Fact]
         public void Get_期待位置数_ShrinksWithShortFlanksAndWideGaps()
         {

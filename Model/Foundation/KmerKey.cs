@@ -30,10 +30,12 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 塩基ID(1=A,2=C,3=G,4=T) のバイト列から直接構築する版<br/>
+        /// 塩基ID(1=A,2=C,3=G,4=T) のバイト列から直接構築する版
+        /// </summary>
+        /// <remarks>
         /// UnitigMaker/TrustedKmerIndex はバイト ID 空間で動作しているため、
         /// char経由の変換を挟まずに済む (ホットパス向け)
-        /// </summary>
+        /// </remarks>
         public KmerKey(ReadOnlySpan<byte> p_kmer)
         {
             this.A_パック済みデータ = new ulong[(p_kmer.Length + 31) >> 5];
@@ -53,10 +55,12 @@ namespace Tsumiki.Model.Foundation
 
         /// <summary>
         /// この k-mer とその逆相補のうち、パック済みデータを辞書式順序で比較して
-        /// 小さい方を返す<br/>
+        /// 小さい方を返す
+        /// </summary>
+        /// <remarks>
         /// 挿入時・検索時の双方でこれを使えば、順鎖/逆鎖どちらから
         /// 見ても同一のキーに正規化されるため、逆相補を別途リトライする必要がなくなる
-        /// </summary>
+        /// </remarks>
         public KmerKey Get_正規形()
         {
             var l_逆相補 = this.Get_逆相補();
@@ -82,11 +86,13 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 塩基 ID 列へデコードしてから逆相補を取り、再エンコードする<br/>
+        /// 塩基 ID 列へデコードしてから逆相補を取り、再エンコードする
+        /// </summary>
+        /// <remarks>
         /// 64 bit 全体のビット反転で済ませてはいけない<br/>
         /// 2 bit コドン内部の
         /// ビット順まで入れ替わり、C(01) と G(10) のような塩基で値が化ける
-        /// </summary>
+        /// </remarks>
         public KmerKey Get_逆相補()
         {
             var l_逆相補 = Util.V_逆相補(this.Get_塩基列(ConfigurationManager.A_実行時引数.A_k長).AsSpan());
@@ -94,9 +100,11 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// パック済みデータを、塩基ID(1=A,2=C,3=G,4=T) のバイト列へデコードする<br/>
-        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ)を指定する
+        /// パック済みデータを、塩基ID(1=A,2=C,3=G,4=T) のバイト列へデコードする
         /// </summary>
+        /// <remarks>
+        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ)を指定する
+        /// </remarks>
         public byte[] Get_塩基列(int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];

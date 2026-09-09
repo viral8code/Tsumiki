@@ -5,12 +5,14 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// k-mer のカウントが、シャード数 (スレッド数) に依らず正確であることを確認する<br/>
+    /// k-mer のカウントが、シャード数 (スレッド数) に依らず正確であることを確認する
+    /// </summary>
+    /// <remarks>
     /// k-mer をワーカー単位ではなくハッシュ値でシャードへ振り分けるようにした際、
     /// 実データでカウントがちょうど 2 倍になる不具合が出た (ヒストグラムが
     /// 偶数のカウントしか持たない、という形で表面化した)<br/>
     /// スレッド数を変えて同じ答えになることを固定しておく
-    /// </summary>
+    /// </remarks>
     public class CountingShardTests : IDisposable
     {
         /// <summary>

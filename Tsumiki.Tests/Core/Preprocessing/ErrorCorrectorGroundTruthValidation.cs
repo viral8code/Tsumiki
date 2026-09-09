@@ -7,13 +7,17 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// tools/simulate_reads.py が出力した合成データ (正解の errors.tsv 付き) に対して
-    /// ErrorCorrector.V_訂正_リードファイル を実際に走らせ、注入したエラーのうち
-    /// 何割を正しく真の塩基へ戻せたか (recall)、逆に正しかった塩基を
-    /// 誤って書き換えてしまった割合 (誤訂正率) を測定する検証用テスト<br/>
+    /// 合成データに対してエラー訂正を実際に走らせ、その効き目を測る
+    /// </summary>
+    /// <remarks>
+    /// tools/simulate_reads.py が出力した、正解の errors.tsv 付きの合成データを使う<br/>
+    /// 注入したエラーのうち何割を正しく真の塩基へ戻せたか (recall) と、
+    /// 逆に正しかった塩基を誤って書き換えてしまった割合 (誤訂正率) を測る
+    /// </remarks>
+    /// <remarks>
     /// 合成データが存在しない場合はスキップする (通常の CI/dotnet test の対象外、
     /// 手動で tools/simulate_reads.pyを実行した後に手動で実行する想定)
-    /// </summary>
+    /// </remarks>
     public class ErrorCorrectorGroundTruthValidation
     {
         // Bash tool経由 (Git Bash/MSYS) で python tools/simulate_reads.py --out-dir /tmp/tsumiki_synth

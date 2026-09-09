@@ -33,11 +33,13 @@ namespace Tsumiki.Core.UnitigBuilding
         private readonly HashSet<string> _訪問済み_文字列 = [];
 
         /// <summary>
-        /// k-mer(塩基ID 1-4、長さ 64 以下) を2 bit/塩基で UInt128 にパックする<br/>
+        /// k-mer(塩基ID 1-4、長さ 64 以下) を2 bit/塩基で UInt128 にパックする
+        /// </summary>
+        /// <remarks>
         /// 向き依存の値 (逆相補への正規化はしない)<br/>
         /// 循環検出は
         /// 「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
-        /// </summary>
+        /// </remarks>
         private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
@@ -49,14 +51,16 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 各開始 k-mer からの walk を並列に実行し、開始 k-mer と同じ順で結果を返す<br/>
+        /// 各開始 k-mer からの walk を並列に実行し、開始 k-mer と同じ順で結果を返す
+        /// </summary>
+        /// <remarks>
         /// walk はカットオフ後の読み取り専用な k-mer 集合しか触らないので互いに独立<br/>
         /// UnitigMaker 自身は呼び出しごとにクリアする訪問済み集合を持つため、
         /// ワーカーごとに 1 つ用意する<br/>
         /// 重複排除は呼び出し側が元の順序で行う<br/>
         /// どちらの向きが先に登録されるかで
         /// 採用される表現が変わるため、ここで並列に潰すと結果が実行ごとに変わる
-        /// </summary>
+        /// </remarks>
         public static string[] Get_walk結果(
             TrustedKmerIndex p_kmerインデックス, IReadOnlyList<byte[]> p_開始kmer)
         {
@@ -79,10 +83,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// ワーカーごとに持つ走査用の状態<br/>
+        /// ワーカーごとに持つ走査用の状態
+        /// </summary>
+        /// <remarks>
         /// k &lt;= 64 なら転がし更新の実装を使い、
         /// それを超える場合だけ従来の実装へ落ちる
-        /// </summary>
+        /// </remarks>
         private sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)
         {
             /// <summary>

@@ -4,11 +4,13 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// unitig の walk を、パック値を転がしながら進める実装 (k &lt;= 64 用)<br/>
+    /// unitig の walk を、パック値を転がしながら進める実装 (k &lt;= 64 用)
+    /// </summary>
+    /// <remarks>
     /// walk は 1 塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる<br/>
     /// Span から毎回詰め直すと、1 歩あたり O(k) の詰め直しが所属判定と
     /// 入次数判定の回数だけ走る
-    /// </summary>
+    /// </remarks>
     internal sealed class UnitigWalk
     {
         /// <summary>
@@ -90,10 +92,12 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 入次数がちょうど 1 かどうか<br/>
+        /// 入次数がちょうど 1 かどうか
+        /// </summary>
+        /// <remarks>
         /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと
         /// 予測元は c + kmer[..^1] になる
-        /// </summary>
+        /// </remarks>
         private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_件数 = 0;
@@ -109,9 +113,11 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 開始 k-mer から前進 walk して unitig の塩基列を返す<br/>
-        /// 循環を検出したら打ち切る
+        /// 開始 k-mer から前進 walk して unitig の塩基列を返す
         /// </summary>
+        /// <remarks>
+        /// 循環を検出したら打ち切る
+        /// </remarks>
         public List<byte> Get_塩基列(ReadOnlySpan<byte> p_開始kmer, HashSet<UInt128> p_訪問済み)
         {
             p_訪問済み.Clear();

@@ -1,9 +1,11 @@
 ﻿namespace Tsumiki.Model.Scaffolding
 {
     /// <summary>
-    /// スキャフォールド辺の候補<br/>
-    /// 観測本数だけでなく期待本数に対する比を持つ
+    /// スキャフォールド辺の候補
     /// </summary>
+    /// <remarks>
+    /// 観測本数だけでなく期待本数に対する比を持つ
+    /// </remarks>
     /// <param name="A_行き先">接続先の頂点番号<br/>
     /// </param>
     /// <param name="A_支持数">距離が揃っているペアの本数<br/>

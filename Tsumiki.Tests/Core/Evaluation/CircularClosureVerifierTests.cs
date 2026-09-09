@@ -7,10 +7,12 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状の閉じ目を元リードで裏付けられるかの判定を固定する<br/>
+    /// 環状の閉じ目を元リードで裏付けられるかの判定を固定する
+    /// </summary>
+    /// <remarks>
     /// グラフ上で閉じたという主張と、閉じ目を実際に読んだという証拠は別物で、
     /// ここが甘いと線状の断片が完全長として通ってしまう
-    /// </summary>
+    /// </remarks>
     public class CircularClosureVerifierTests : IDisposable
     {
         /// <summary>
@@ -87,9 +89,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 末尾と先頭を跨ぐリード<br/>
-        /// 閉じ目の左右へ 50 bp ずつ踏み込む
+        /// 末尾と先頭を跨ぐリード
         /// </summary>
+        /// <remarks>
+        /// 閉じ目の左右へ 50 bp ずつ踏み込む
+        /// </remarks>
         private static string Get_閉じ目を跨ぐリード(string p_配列)
         {
             return string.Concat(p_配列.AsSpan(p_配列.Length - 50), p_配列.AsSpan(0, 50));

@@ -1,19 +1,23 @@
 ﻿namespace Tsumiki.Model.Evaluation
 {
     /// <summary>
-    /// リファレンス無しで測ったアセンブリの良さ<br/>
+    /// リファレンス無しで測ったアセンブリの良さ
+    /// </summary>
+    /// <remarks>
     /// 「この配列が正しいなら各 k-mer は何回現れるはずか」をカバレッジから求め、
     /// 実際の出力と突き合わせた結果
-    /// </summary>
+    /// </remarks>
     internal record アセンブリ評価(long A_期待延べ数, long A_欠損延べ数, long A_過剰延べ数, long A_総延長, int A_本数, long A_NG50, int A_環状本数 = 0, double A_環状化率 = 0D)
     {
         #region カスタムプロパティ
 
         /// <summary>
-        /// 出すべき k-mer のうち実際に出せた割合<br/>
+        /// 出すべき k-mer のうち実際に出せた割合
+        /// </summary>
+        /// <remarks>
         /// 反復配列を飛ばして繋いだ誤アセンブリは、飛ばした領域の k-mer が
         /// 欠損として現れるためここに反映される
-        /// </summary>
+        /// </remarks>
         public double A_完全性 => this.A_期待延べ数 == 0L ? 0D : 1D - ((double)this.A_欠損延べ数 / this.A_期待延べ数);
 
         /// <summary>

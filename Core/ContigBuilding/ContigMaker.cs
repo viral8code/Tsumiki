@@ -12,13 +12,15 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// unitig を辺で結合して contig を組み立てる<br/>
+    /// unitig を辺で結合して contig を組み立てる
+    /// </summary>
+    /// <remarks>
     /// 責務がいくつかの部分ファイルに分かれている:
     /// - ContigMaker.cs (このファイル): 辺の選択・簡略化・結合確定の中核ロジック
     /// - ContigMaker.Mapping.cs: k-mer 索引構築とリードマッピング
     /// - ContigMaker.FragmentSampling.cs: フラグメント長・インサートサイズの標本収集
     /// - ContigMaker.Walk.cs: 確定した結合を辿って配列を組み立てる処理
-    /// </summary>
+    /// </remarks>
     internal partial class ContigMaker
     {
         /// <param name="p_コピー数">
@@ -199,7 +201,9 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 単純バブルを潰してから辺を選ぶ<br/>
+        /// 単純バブルを潰してから辺を選ぶ
+        /// </summary>
+        /// <remarks>
         /// 相互一意性を課す以上、
         /// 再合流点の入次数が 2 以上のまま残っているとその経路全体が
         /// 結合されなくなるため、先に枝を 1 本に絞っておく必要がある<br/>
@@ -211,7 +215,7 @@ namespace Tsumiki.Core
         /// どちらも変化が無くなるまで
         /// (MEGAHIT の cleaning_rounds に倣い既定 5 ラウンドを上限に)
         /// 交互に繰り返す
-        /// </summary>
+        /// </remarks>
         private void V_簡略化ラウンド(
             UnitigGraph p_グラフ,
             List<string> p_ユニティグ配列,
@@ -344,10 +348,12 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// v→w を結合してよいのは v の唯一の行き先が w で、かつ w の唯一の
-        /// 来訪元が v のときだけ (後者は逆鎖対称性より 選択[w^1] == v^1)<br/>
+        /// 来訪元が v のときだけ (後者は逆鎖対称性より 選択[w^1] == v^1)
+        /// </summary>
+        /// <remarks>
         /// これを欠くと、同じ行き先を指す複数の unitig のうち先着だけが
         /// 結合され、残りが根拠なく千切れる
-        /// </summary>
+        /// </remarks>
         private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数)
         {
             var l_結合 = new int[p_グラフ.A_出辺.Count];

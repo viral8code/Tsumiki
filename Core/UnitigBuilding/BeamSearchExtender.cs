@@ -6,7 +6,9 @@ using Tsumiki.Model.UnitigBuilding;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// 相互一意性の判定で決めきれなかった分岐を、先読み (ビームサーチ) で解く<br/>
+    /// 相互一意性の判定で決めきれなかった分岐を、先読み (ビームサーチ) で解く
+    /// </summary>
+    /// <remarks>
     /// 相互一意性は 1 歩だけを見るため、分岐の直後は五分五分でも数歩先で片方だけが
     /// ペアエンドの証拠と整合する状況を取りこぼす<br/>
     /// 各候補から複数の経路を並行して
@@ -21,15 +23,17 @@ namespace Tsumiki.Core.UnitigBuilding
     /// 何度でも通れてしまい、ありもしない長い経路ができる<br/>
     /// ゲノム全体を 1 本のオイラー路として探すと正解以外の経路も同数だけ存在し
     /// 誤アセンブリを量産するため、あくまで局所的な近似に留める
-    /// </summary>
+    /// </remarks>
     internal static class BeamSearchExtender
     {
         /// <summary>
-        /// 先読みで進む塩基数の上限<br/>
+        /// 先読みで進む塩基数の上限
+        /// </summary>
+        /// <remarks>
         /// 長くするほど遠くの証拠を使えるが、
         /// 探索が広がるうえ、遠いほどペアエンドの証拠は届かなくなる<br/>
         /// インサートサイズの数倍あれば、跨げる範囲は使い切れる
-        /// </summary>
+        /// </remarks>
         private const int 先読み倍率 = 4;
 
         /// <summary>
@@ -43,11 +47,13 @@ namespace Tsumiki.Core.UnitigBuilding
         private const int 経路あたりの最大ステップ数 = 40;
 
         /// <summary>
-        /// 結合が未確定 (-1) の頂点について、先読みで続きを決められるものを決める<br/>
+        /// 結合が未確定 (-1) の頂点について、先読みで続きを決められるものを決める
+        /// </summary>
+        /// <remarks>
         /// 結合の配列を直接書き換える<br/>
         /// 戻り値は新たに確定した結合の数
         /// (有向、双子ぶんを含む)
-        /// </summary>
+        /// </remarks>
         /// <param name="p_較正器">
         /// 支持を生カウントではなく期待本数との比で測るための較正器<br/>
         /// 渡さない (あるいは使えない) 場合は生カウントのままスコアリングする
@@ -121,7 +127,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// contig 末尾のインサートサイズぶんの頂点のうち、単一コピーのものだけを集める<br/>
+        /// contig 末尾のインサートサイズぶんの頂点のうち、単一コピーのものだけを集める
+        /// </summary>
+        /// <remarks>
         /// ここに載ったリードの相方が続きの証拠になる<br/>
         /// 直前の頂点は逆鎖対称性より 結合[v^1] の双子で辿れる<br/>
         /// 多コピーを足場から外すのが要点<br/>
@@ -130,7 +138,7 @@ namespace Tsumiki.Core.UnitigBuilding
         /// 偶然の偏りで誤った側を選ぶ<br/>
         /// 通過はするが足場には数えない (多コピー領域の向こう側にある単一コピー
         /// 領域は証拠として有効なため)
-        /// </summary>
+        /// </remarks>
         private static List<int> Get_足場(
             int p_頂点, List<string> p_ユニティグ配列, int[] p_結合,
             int p_インサートサイズ, IReadOnlyDictionary<int, int> p_コピー数)
@@ -168,9 +176,11 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 分岐元からの各候補について先読みし、最初の 1 歩として最も支持される頂点を返す<br/>
-        /// 決めきれない場合は null
+        /// 分岐元からの各候補について先読みし、最初の 1 歩として最も支持される頂点を返す
         /// </summary>
+        /// <remarks>
+        /// 決めきれない場合は null
+        /// </remarks>
         private static int? Get_最良の1歩(
             UnitigGraph p_グラフ,
             List<string> p_ユニティグ配列,
@@ -294,11 +304,13 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 最初の 1 歩ごとの最良スコアを更新する<br/>
+        /// 最初の 1 歩ごとの最良スコアを更新する
+        /// </summary>
+        /// <remarks>
         /// 正規化スコアが同点になりうる
         /// (較正器が無い場合は生カウントと一致する) ため、比較は正規化スコアで
         /// 行い、対応する生カウントも一緒に持ち替える
-        /// </summary>
+        /// </remarks>
         private static void V_更新_1歩ごとの最良(
             Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
         {
@@ -309,11 +321,13 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 足場群から候補頂点への支持を集計する<br/>
+        /// 足場群から候補頂点への支持を集計する
+        /// </summary>
+        /// <remarks>
         /// 生カウントの合計 (足切り判定用) と、
         /// 較正器が使える場合は期待本数との比の合計 (ランキング・優勢判定用、
         /// 較正器が使えない場合は生カウントと同じ値) を両方返す
-        /// </summary>
+        /// </remarks>
         private static (long A_生, double A_正規化) Get_スコア(
             List<int> p_足場, int p_候補, List<string> p_ユニティグ配列,
             IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器)

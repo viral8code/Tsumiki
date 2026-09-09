@@ -9,7 +9,9 @@ namespace Tsumiki.Core.Scaffolding
 {
     /// <summary>
     /// GapFiller が埋められなかったスキャフォールドのギャップを、局所アセンブリ
-    /// (MEGAHIT/IDBA の localasm 型) で埋める<br/>
+    /// (MEGAHIT/IDBA の localasm 型) で埋める
+    /// </summary>
+    /// <remarks>
     /// AssemblyMerger(-mg) の安全な代替<br/>
     /// -mg は他の k のアセンブリ結果 (=既に確定した結論) を持ち込むため、
     /// 同じリードから作った別 k のアセンブリが同じ反復配列で同じ誤りをする
@@ -23,7 +25,7 @@ namespace Tsumiki.Core.Scaffolding
     /// GapFiller が使う信頼できる k-mer 集合はグローバルなカットオフを既に
     /// 適用済みだが、ここではローカルに集めたリードに対してカットオフ 1
     /// (=1 回でも読まれていれば信頼する) で再構築する
-    /// </summary>
+    /// </remarks>
     internal static class LocalAssembler
     {
         /// <summary>
@@ -32,16 +34,20 @@ namespace Tsumiki.Core.Scaffolding
         private const int アンカー長 = 300;
 
         /// <summary>
-        /// 1 ギャップに集める局所リードの上限<br/>
+        /// 1 ギャップに集める局所リードの上限
+        /// </summary>
+        /// <remarks>
         /// アンカーが反復配列と重なると
         /// 際限なくリードが集まりうるため、暴走を防ぐ
-        /// </summary>
+        /// </remarks>
         private const int 局所リード数の上限 = 4000;
 
         /// <summary>
-        /// 局所アセンブリで使う k-mer カットオフ<br/>
-        /// 1 回読まれていれば信頼する
+        /// 局所アセンブリで使う k-mer カットオフ
         /// </summary>
+        /// <remarks>
+        /// 1 回読まれていれば信頼する
+        /// </remarks>
         private const ulong 局所カットオフ = 1UL;
 
         /// <summary>
@@ -153,9 +159,11 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// 全ギャップの左右アンカーから k-mer 索引を作る<br/>
-        /// キーは正規形 (順鎖・逆鎖どちらでも同じキーに寄る)
+        /// 全ギャップの左右アンカーから k-mer 索引を作る
         /// </summary>
+        /// <remarks>
+        /// キーは正規形 (順鎖・逆鎖どちらでも同じキーに寄る)
+        /// </remarks>
         private static Dictionary<KmerKey, List<int>> Get_アンカー索引(List<局所ギャップ> p_ギャップ一覧, int p_k長)
         {
             Dictionary<KmerKey, List<int>> l_索引 = [];
@@ -215,10 +223,12 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// 生リードを 1 回走査し、アンカーに触れたリードをギャップごとに集める<br/>
+        /// 生リードを 1 回走査し、アンカーに触れたリードをギャップごとに集める
+        /// </summary>
+        /// <remarks>
         /// アンカーに触れたペアは両方のリードを局所リード集合に入れる
         /// (相方が、まだ組み込まれていない領域を読んでいる可能性があるため)
-        /// </summary>
+        /// </remarks>
         private static List<string>[] Get_局所リード(
             Dictionary<KmerKey, List<int>> p_アンカー索引,
             string p_リード1のパス, string p_リード2のパス, int p_k長, int p_ギャップ数)
@@ -286,11 +296,13 @@ namespace Tsumiki.Core.Scaffolding
         }
 
         /// <summary>
-        /// 1 ギャップぶんのミニアセンブリ<br/>
+        /// 1 ギャップぶんのミニアセンブリ
+        /// </summary>
+        /// <remarks>
         /// 左右アンカー配列+局所リードだけから
         /// 使い捨ての TrustedKmerIndex を作り、GapFiller と同じ制約付き探索で
         /// 左アンカー末尾から右アンカー先頭までの経路を探す
-        /// </summary>
+        /// </remarks>
         private static string? Get_局所アセンブリ結果(
             局所ギャップ p_ギャップ, List<string> p_局所リード, int p_k長, string p_作業ディレクトリ,
             out ギャップ充填判定 p_判定)

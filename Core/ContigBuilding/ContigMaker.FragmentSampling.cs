@@ -6,44 +6,56 @@ using Tsumiki.Model.UnitigBuilding;
 namespace Tsumiki.Core
 {
     /// <summary>
-    /// ContigMaker のうち、フラグメント長・インサートサイズの標本収集を担う部分<br/>
+    /// ContigMaker のうち、フラグメント長・インサートサイズの標本収集を担う部分
+    /// </summary>
+    /// <remarks>
     /// (unitig へのマッピングは ContigMaker.Mapping.cs、contig 結合そのものは
     /// ContigMaker.cs を参照)
-    /// </summary>
+    /// </remarks>
     internal partial class ContigMaker
     {
         /// <summary>
-        /// 標本抽出された距離の一覧<br/>
+        /// 標本抽出された距離の一覧
+        /// </summary>
+        /// <remarks>
         /// Scaffolder は出所によるバイアスの違いを
         /// 見るため、この結合ではなく個別の一覧を優先する
-        /// </summary>
+        /// </remarks>
         public List<int> A_インサートサイズ標本 { get; } = [];
 
         /// <summary>
-        /// 単一 unitig 内で両リードがヒットしたペアからの標本<br/>
-        /// unitig がフラグメント長より短いと短いフラグメントに偏る
+        /// 単一 unitig 内で両リードがヒットしたペアからの標本
         /// </summary>
+        /// <remarks>
+        /// unitig がフラグメント長より短いと短いフラグメントに偏る
+        /// </remarks>
         public List<int> A_同一ユニティグ標本 { get; } = [];
 
         /// <summary>
-        /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本<br/>
-        /// 同一ユニティグ標本のような長さバイアスを受けない
+        /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本
         /// </summary>
+        /// <remarks>
+        /// 同一ユニティグ標本のような長さバイアスを受けない
+        /// </remarks>
         public List<int> A_確定辺標本 { get; } = [];
 
         /// <summary>
-        /// ペアエンド由来の隣接候補<br/>
+        /// ペアエンド由来の隣接候補
+        /// </summary>
+        /// <remarks>
         /// キーは (始点, 終点) の unitig ID(符号は向き)、
         /// 値は各観測ペアの既知長の一覧<br/>
         /// Scaffolder から参照される
-        /// </summary>
+        /// </remarks>
         public IReadOnlyDictionary<(int, int), List<int>> A_ペア経路 => this._ペア経路;
 
         /// <summary>
-        /// unitig ID(1 始まり、符号なし) からその塩基長を引く<br/>
+        /// unitig ID(1 始まり、符号なし) からその塩基長を引く
+        /// </summary>
+        /// <remarks>
         /// Scaffolder が
         /// contig 側の末端 unitig の長さを参照する際に使う
-        /// </summary>
+        /// </remarks>
         public IReadOnlyDictionary<int, int> A_ユニティグ長 => this._ユニティグ長;
 
         /// <summary>
@@ -52,13 +64,15 @@ namespace Tsumiki.Core
         public IReadOnlyDictionary<int, ユニティグ配置> A_ユニティグ配置 => this._ユニティグ配置;
 
         /// <summary>
-        /// 両リードが同一 unitig にマップされたペアから、フラグメント長の標本を取る<br/>
+        /// 両リードが同一 unitig にマップされたペアから、フラグメント長の標本を取る
+        /// </summary>
+        /// <remarks>
         /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた
         /// 内側の未読区間 (inner distance) である<br/>
         /// FR 配置では
         /// フラグメント長 = 内側距離 + 両リード長 なので、ここで足し戻して
         /// 以降の推定値の単位をフラグメント長に揃える
-        /// </summary>
+        /// </remarks>
         private static void V_収集_同一ユニティグ標本(
             代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2,
             string p_リード1, string p_リード2,
@@ -99,14 +113,16 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 両リードが別々の unitig にマップされたペアを隣接候補として記録する<br/>
+        /// 両リードが別々の unitig にマップされたペアを隣接候補として記録する
+        /// </summary>
+        /// <remarks>
         /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには
         /// read2 側の unitig ID の符号を反転させる<br/>
         /// 記録するのは「フラグメントのうち既に見えている分の長さ」
         /// (read1長 + unitig1末端までの残り + unitig2先頭からの残り + read2長) で、
         /// ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ
         /// (直接 k-1 で結合された場合は G = -(k-1))
-        /// </summary>
+        /// </remarks>
         private static void V_収集_ペア経路(
             代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2,
             string p_リード1, string p_リード2,
@@ -129,18 +145,22 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// ヒットを、その unitig を逆向きに見た座標系での残り長に変換する<br/>
-        /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
+        /// ヒットを、その unitig を逆向きに見た座標系での残り長に変換する
         /// </summary>
+        /// <remarks>
+        /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
+        /// </remarks>
         private static int Get_反転後の残り長(代表ユニティグヒット p_ヒット)
         {
             return Math.Max(0, p_ヒット.A_最終一致終端位置);
         }
 
         /// <summary>
-        /// ヒットの終端位置を常に順鎖座標系へ揃える<br/>
-        /// 同一 unitig 上の 2 ヒット間の距離を求めるのに使う
+        /// ヒットの終端位置を常に順鎖座標系へ揃える
         /// </summary>
+        /// <remarks>
+        /// 同一 unitig 上の 2 ヒット間の距離を求めるのに使う
+        /// </remarks>
         private static int Get_順鎖座標(代表ユニティグヒット p_ヒット)
         {
             return p_ヒット.A_ユニティグID > 0
@@ -203,10 +223,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// フラグメント長分布の分位点<br/>
+        /// フラグメント長分布の分位点
+        /// </summary>
+        /// <remarks>
         /// 橋渡しできる未知区間の長さを決めるのは
         /// 中央値ではなく分布の上側の裾なので、そこまで出す
-        /// </summary>
+        /// </remarks>
         private static string Get_分布要約(List<int> p_値一覧)
         {
             var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
