@@ -38,6 +38,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))
@@ -52,6 +55,7 @@ namespace Tsumiki.Tests.Core
         // 末尾の k-1 塩基が先頭の k-1 塩基と一致する
         // 複製単位として数えてもらえる長さ (Consts.環状として数える最小長) を
         // 超えるようにしないと、環状の目印が付かない
+
         /// <summary>
         /// 環
         /// </summary>
@@ -72,6 +76,12 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);

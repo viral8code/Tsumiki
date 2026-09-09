@@ -15,6 +15,10 @@ namespace Tsumiki.Tests.Common
     /// </summary>
     public class MessageCatalogTests
     {
+        /// <summary>
+        /// メッセージ ID をすべて返す
+        /// </summary>
+        /// <returns>メッセージ ID</returns>
         private static IEnumerable<メッセージID> Get_全ID()
         {
             return Enum.GetValues<メッセージID>();

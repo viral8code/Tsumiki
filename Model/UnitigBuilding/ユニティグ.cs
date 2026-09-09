@@ -13,6 +13,7 @@ namespace Tsumiki.Model.UnitigBuilding
         /// ユニティグ ID
         /// </summary>
         public readonly string A_ID = p_ID?.ToString() ?? string.Empty;
+
         /// <summary>
         /// 配列
         /// </summary>

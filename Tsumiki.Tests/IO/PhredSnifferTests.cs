@@ -2,6 +2,9 @@
 
 namespace Tsumiki.Tests.IO
 {
+    /// <summary>
+    /// クオリティ文字から Phred オフセットを推定する処理の検証
+    /// </summary>
     public class PhredSnifferTests
     {
         [Fact]

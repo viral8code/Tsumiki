@@ -2,6 +2,9 @@
 
 namespace Tsumiki.Tests.Utility
 {
+    /// <summary>
+    /// k-mer スペクトルから谷と山を求める処理の検証
+    /// </summary>
     public class KmerHistogramTests
     {
         [Fact]

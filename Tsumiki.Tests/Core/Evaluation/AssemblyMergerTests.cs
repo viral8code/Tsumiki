@@ -13,6 +13,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class AssemblyMergerTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public AssemblyMergerTests()
@@ -21,6 +24,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -39,6 +45,12 @@ namespace Tsumiki.Tests.Core
         // 証拠源が 1 つの状況を見たいので、明示的に 1 を渡している
         // 照合そのものは専用のテストで確かめる
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);
@@ -59,6 +71,11 @@ namespace Tsumiki.Tests.Core
             return new アセンブリ実行結果(kmerLength, path, path, null, 2, 20.0);
         }
 
+        /// <summary>
+        /// FASTA から配列をすべて読み込む
+        /// </summary>
+        /// <param name="path">読み込むパス</param>
+        /// <returns>読み込んだ配列</returns>
         private static List<string> ReadSequences(string path)
         {
             List<string> result = [];

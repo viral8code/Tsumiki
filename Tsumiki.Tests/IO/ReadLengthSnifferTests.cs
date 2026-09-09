@@ -8,6 +8,9 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class ReadLengthSnifferTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public ReadLengthSnifferTests()
@@ -16,6 +19,9 @@ namespace Tsumiki.Tests.IO
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -24,6 +30,13 @@ namespace Tsumiki.Tests.IO
             }
         }
 
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="path">書き出し先</param>
+        /// <param name="readLengths">書き出すリードの長さ</param>
+        /// <returns>書き出したパス</returns>
         private string WriteFastq(string name, params int[] readLengths)
         {
             var path = Path.Combine(this._tempDir, name);

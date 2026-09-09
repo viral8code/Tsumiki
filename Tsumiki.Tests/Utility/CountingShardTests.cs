@@ -13,6 +13,9 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class CountingShardTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public CountingShardTests()
@@ -21,6 +24,9 @@ namespace Tsumiki.Tests.Utility
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))

@@ -172,6 +172,9 @@ namespace Tsumiki.Tests.Core
                 return (id, seq);
             }
 
+            /// <summary>
+            /// 一時ディレクトリを片付ける
+            /// </summary>
             public void Dispose() => this._reader.Dispose();
         }
     }

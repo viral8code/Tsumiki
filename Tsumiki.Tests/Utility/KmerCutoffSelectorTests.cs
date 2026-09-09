@@ -15,6 +15,9 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class KmerCutoffSelectorTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public KmerCutoffSelectorTests()
@@ -23,6 +26,9 @@ namespace Tsumiki.Tests.Utility
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -31,6 +37,9 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 21;
 
         /// <summary>

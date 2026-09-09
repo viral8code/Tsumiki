@@ -16,6 +16,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class KmerCarryOverTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public KmerCarryOverTests()
@@ -24,6 +27,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -32,12 +38,25 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);
             return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
         }
 
+        /// <summary>
+        /// 与えた配列から信頼できる k-mer 集合を組み立てる
+        /// </summary>
+        /// <param name="kmerLength">k 長</param>
+        /// <param name="depth">登録する深さ</param>
+        /// <param name="sequences">元になる配列</param>
+        /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex BuildIndex(int kmerLength, int depth, params string[] sequences)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
@@ -61,6 +80,12 @@ namespace Tsumiki.Tests.Core
             return index;
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="sequences">書き出す配列</param>
+        /// <returns>書き出したパス</returns>
         private string WriteFasta(string name, params string[] sequences)
         {
             var path = Path.Combine(this._tempDir, name);

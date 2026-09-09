@@ -8,6 +8,9 @@ namespace Tsumiki.Tests.Core
 {
     public class ErrorCorrectorTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public ErrorCorrectorTests()
@@ -16,6 +19,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -24,6 +30,11 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 配列を塩基 ID 列へ変換する
+        /// </summary>
+        /// <param name="seq">元の配列</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] ToBytes(string seq)
         {
             return [.. seq.Select(c => c switch
@@ -37,6 +48,11 @@ namespace Tsumiki.Tests.Core
             })];
         }
 
+        /// <summary>
+        /// 塩基 ID 列を配列へ変換する
+        /// </summary>
+        /// <param name="bytes">元の塩基 ID 列</param>
+        /// <returns>配列</returns>
         private static string ToSeq(byte[] bytes)
         {
             return string.Join(string.Empty, bytes.Select(Util.V_変換_塩基文字));

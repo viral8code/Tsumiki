@@ -9,6 +9,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ShortSequenceFilterTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public ShortSequenceFilterTests()
@@ -17,6 +20,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -26,6 +32,11 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="p_全件">書き出す名前と配列</param>
+        /// <returns>書き出したパス</returns>
         private string Get_書き出し(params (string A_ID, string A_配列)[] p_全件)
         {
             var l_パス = Path.Combine(this._tempDir, "scaffolds.fasta");

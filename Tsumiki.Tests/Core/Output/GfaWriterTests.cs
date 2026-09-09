@@ -15,7 +15,14 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class GfaWriterTests : IDisposable
     {
+        /// <summary>
+        /// 曖昧塩基を含む窓を表す番号
+        /// </summary>
         private const int AmbiguousKmer = int.MinValue;
+
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 8;
 
         // BeamSearchExtenderTests と同じ構成: A が B/C へ分岐する
@@ -23,6 +30,9 @@ namespace Tsumiki.Tests.Core
         private const string UnitigB = "CGACCGAACGGCGCCGGATC";
         private const string UnitigC = "CGACCGACTGTAATTCTACC";
 
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public GfaWriterTests()
@@ -31,6 +41,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -62,6 +75,13 @@ namespace Tsumiki.Tests.Core
             return (unitigList, UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer));
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="dict">登録先の辞書</param>
+        /// <param name="key">登録する k-mer</param>
+        /// <param name="id">ユニティグ ID</param>
+        /// <param name="position">ユニティグ内の開始位置</param>
         private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
         {
             if (dict.TryGetValue(key, out var existing))

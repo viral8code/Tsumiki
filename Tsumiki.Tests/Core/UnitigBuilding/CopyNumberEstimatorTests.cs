@@ -18,6 +18,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CopyNumberEstimatorTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public CopyNumberEstimatorTests()
@@ -31,6 +34,9 @@ namespace Tsumiki.Tests.Core
             ConfigurationManager.A_スペクトルモデル = null;
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -39,6 +45,12 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);

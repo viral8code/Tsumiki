@@ -33,6 +33,7 @@ namespace Tsumiki.Tests.Core
         // 反復
         // A と B はどちらも R の先頭 k-1 塩基で終わり、
         // R の末尾 k-1 塩基で始まる (= R が入次数 2・出次数 2 になる)
+
         /// <summary>
         /// ユニティグ R
         /// </summary>
@@ -71,6 +72,13 @@ namespace Tsumiki.Tests.Core
             return (l_ユニティグ配列, l_kmer辞書);
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="p_辞書">登録先の辞書</param>
+        /// <param name="p_キー">登録する k-mer</param>
+        /// <param name="p_ID">ユニティグ ID</param>
+        /// <param name="p_位置">ユニティグ内の開始位置</param>
         private static void V_登録(
             Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {

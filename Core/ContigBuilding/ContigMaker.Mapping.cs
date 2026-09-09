@@ -18,6 +18,7 @@ namespace Tsumiki.Core
         // 同一 k-mer が複数の unitig にまたがって出現した (=反復配列等に
         // 由来する曖昧な k-mer である) ことを示す番兵値
         // unitig ID は 1 始まりの正数、逆鎖側はその負数を使うため int.MinValue と衝突しない
+
         /// <summary>
         /// 曖昧 kmer の番兵
         /// </summary>
@@ -28,6 +29,7 @@ namespace Tsumiki.Core
         // 位置情報は代表ユニティグの判定が
         // 「read 内での最後のヒット位置」ではなく「unitig 内での最後のヒット
         // 位置」を正しく求めるために必要 (ギャップ長・インサートサイズ推定に使う)
+
         /// <summary>
         /// k-mer から、それが載るユニティグと開始位置を引く辞書
         /// </summary>
@@ -36,6 +38,7 @@ namespace Tsumiki.Core
         // unitig ID(1 始まり) -> unitig の塩基長
         // ギャップ長推定で
         // 「unitig の末尾からリードのヒット位置までの残り長」を求めるのに使う
+
         /// <summary>
         /// ユニティグ長
         /// </summary>
@@ -48,6 +51,7 @@ namespace Tsumiki.Core
 
         // 単一リード内で直接検出された隣接 (=k-1 塩基のオーバーラップで
         // 実際に結合できる可能性が高い辺)
+
         /// <summary>
         /// リードが跨いだユニティグの組と、その本数
         /// </summary>
@@ -58,6 +62,7 @@ namespace Tsumiki.Core
         // キーは リード隣接 と同じ (始点, 終点) 形式 (符号が unitig の向きを表す)
         // 値は「観測されたペアの一覧」で、各観測ごとの既知長を保持し、
         // Scaffolder 側で代表値 (中央値) を計算できるようにする
+
         /// <summary>
         /// ペアが跨いだユニティグの組と、その間に通った頂点
         /// </summary>
@@ -66,6 +71,7 @@ namespace Tsumiki.Core
         // unitig ID(1 始まり) -> その unitig が最終的にどの contig の
         // どの位置に配置されたか
         // contig 結合の実行後、Scaffolder から参照される
+
         /// <summary>
         /// ユニティグ配置
         /// </summary>

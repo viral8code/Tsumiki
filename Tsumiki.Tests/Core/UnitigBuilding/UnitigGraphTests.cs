@@ -13,6 +13,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class UnitigGraphTests
     {
+        /// <summary>
+        /// 曖昧塩基を含む窓を表す番号
+        /// </summary>
         private const int AmbiguousKmer = int.MinValue;
 
         /// <summary>
@@ -47,6 +50,13 @@ namespace Tsumiki.Tests.Core
             return (unitigList, kmerDict);
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="dict">登録先の辞書</param>
+        /// <param name="key">登録する k-mer</param>
+        /// <param name="id">ユニティグ ID</param>
+        /// <param name="position">ユニティグ内の開始位置</param>
         private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
         {
             if (dict.TryGetValue(key, out var existing))
@@ -230,6 +240,12 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(2, graph.A_出辺[uV].Count);
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);

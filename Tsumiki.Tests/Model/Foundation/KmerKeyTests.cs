@@ -3,8 +3,15 @@ using Tsumiki.Model.Foundation;
 
 namespace Tsumiki.Tests.Model
 {
+    /// <summary>
+    /// k-mer をパックして正規形へ寄せる処理の検証
+    /// </summary>
     public class KmerKeyTests
     {
+        /// <summary>
+        /// 実行時引数の k 長を差し替える
+        /// </summary>
+        /// <param name="k">設定する k 長</param>
         private static void SetKmerLength(int k)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k };

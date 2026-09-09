@@ -13,6 +13,9 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class TrustedKmerIndexHistogramTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public TrustedKmerIndexHistogramTests()
@@ -21,6 +24,9 @@ namespace Tsumiki.Tests.Utility
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -29,8 +35,17 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 21;
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);

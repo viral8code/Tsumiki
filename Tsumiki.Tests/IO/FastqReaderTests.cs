@@ -8,6 +8,9 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class FastqReaderTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public FastqReaderTests()
@@ -16,6 +19,9 @@ namespace Tsumiki.Tests.IO
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -24,6 +30,11 @@ namespace Tsumiki.Tests.IO
             }
         }
 
+        /// <summary>
+        /// 中身を書き出した一時ファイルのパスを返す
+        /// </summary>
+        /// <param name="p_内容">書き出す中身</param>
+        /// <returns>書き出したパス</returns>
         private string Get_書き出し先(string p_内容)
         {
             var l_パス = Path.Combine(this._tempDir, Guid.NewGuid().ToString("N") + ".fastq");

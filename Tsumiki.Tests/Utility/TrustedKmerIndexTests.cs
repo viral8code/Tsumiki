@@ -6,6 +6,9 @@ namespace Tsumiki.Tests.Utility
 {
     public class TrustedKmerIndexTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public TrustedKmerIndexTests()
@@ -14,6 +17,9 @@ namespace Tsumiki.Tests.Utility
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -22,6 +28,11 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
+        /// <summary>
+        /// 配列を塩基 ID 列へ変換する
+        /// </summary>
+        /// <param name="kmer">元の k-mer</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] ToBytes(string kmer)
         {
             return [.. kmer.Select(c => c switch

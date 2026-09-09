@@ -18,6 +18,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class InsertSizeEstimationTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public InsertSizeEstimationTests()
@@ -26,6 +29,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -45,6 +51,12 @@ namespace Tsumiki.Tests.Core
             return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
         }
 
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="reads">書き出すリード</param>
+        /// <param name="path">書き出し先</param>
+        /// <returns>書き出したパス</returns>
         private static void WriteFastq(string path, IEnumerable<(string A_ID, string A_配列)> reads)
         {
             using var writer = new StreamWriter(path);

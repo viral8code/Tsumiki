@@ -18,6 +18,9 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class RepeatRMerVerifierTests : IDisposable
     {
+        /// <summary>
+        /// この検証で使う r-mer 長
+        /// </summary>
         private const int R = 18;
 
         /// <summary>
@@ -25,6 +28,9 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         private const int AssemblyK = 8;
 
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public RepeatRMerVerifierTests()
@@ -37,6 +43,9 @@ namespace Tsumiki.Tests.Utility
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = AssemblyK, A_スレッド数 = 1 };
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -50,6 +59,13 @@ namespace Tsumiki.Tests.Utility
         private const string Tail = "GAGCAGAGTCGTTCTGCGAGG"; // 21bp
         private const string OtherTail = "TTTTTTTTTTTTTTTTTTTTT"; // 21bp、Repeatと接合しない無関係な配列
 
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="reads">書き出すリード</param>
+        /// <param name="path">書き出し先</param>
+        /// <returns>書き出したパス</returns>
         private string WriteFastq(string name, IEnumerable<string> reads)
         {
             var path = Path.Combine(this._tempDir, name);
@@ -66,6 +82,12 @@ namespace Tsumiki.Tests.Utility
             return path;
         }
 
+        /// <summary>
+        /// 配列を 1 塩基ずつずらして覆うリードを作る
+        /// </summary>
+        /// <param name="sequence">覆う配列</param>
+        /// <param name="readLength">リード長</param>
+        /// <returns>リード</returns>
         private static IEnumerable<string> SlidingReads(string sequence, int readLength)
         {
             for (var i = 0; i + readLength <= sequence.Length; i++)
@@ -194,6 +216,12 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_head, l_repeat, l_tail));
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="seed">乱数の種</param>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int p_長さ, int seed)
         {
             var l_乱数 = new Random(seed);

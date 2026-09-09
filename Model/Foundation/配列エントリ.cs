@@ -9,6 +9,7 @@
         /// 配列 ID
         /// </summary>
         public readonly string A_ID = p_ID;
+
         /// <summary>
         /// 配列
         /// </summary>

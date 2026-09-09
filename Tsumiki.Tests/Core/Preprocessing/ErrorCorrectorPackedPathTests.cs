@@ -25,6 +25,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))
@@ -34,11 +37,22 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 配列を塩基 ID 列へ変換する
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] Get_塩基列(string p_配列)
         {
             return [.. p_配列.Select(Util.Get_塩基ID)];
         }
 
+        /// <summary>
+        /// 与えた配列から信頼できる k-mer 集合を組み立てる
+        /// </summary>
+        /// <param name="p_真の配列">元になる配列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex Get_インデックス(string p_真の配列, int p_k長)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };

@@ -27,6 +27,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))

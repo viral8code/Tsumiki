@@ -13,8 +13,14 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ReadSupportCheckerTests : IDisposable
     {
+        /// <summary>
+        /// この検証で使う r-mer 長
+        /// </summary>
         private const int R = 31;
 
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public ReadSupportCheckerTests()
@@ -24,6 +30,9 @@ namespace Tsumiki.Tests.Core
             ConfigurationManager.A_実行時引数 = new Parameters { A_スレッド数 = 1 };
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -33,6 +42,12 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);

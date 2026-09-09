@@ -3,6 +3,9 @@ using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
 {
+    /// <summary>
+    /// アセンブリの長さの統計を求める処理の検証
+    /// </summary>
     public class AssemblyStatsReporterTests
     {
         [Fact]

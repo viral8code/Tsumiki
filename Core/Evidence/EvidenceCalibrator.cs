@@ -16,6 +16,7 @@
         /// モデル
         /// </summary>
         private readonly PairedDistanceModel? _モデル;
+
         /// <summary>
         /// 密度
         /// </summary>

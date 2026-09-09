@@ -17,6 +17,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class GapFillerTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public GapFillerTests()
@@ -25,6 +28,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -33,12 +39,24 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);
             return string.Concat(Enumerable.Range(0, length).Select(_ => "ACGT"[rng.Next(4)]));
         }
 
+        /// <summary>
+        /// 与えた配列から信頼できる k-mer 集合を組み立てる
+        /// </summary>
+        /// <param name="kmerLength">k 長</param>
+        /// <param name="sequences">元になる配列</param>
+        /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex BuildIndex(int kmerLength, params string[] sequences)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
@@ -58,6 +76,12 @@ namespace Tsumiki.Tests.Core
             return index;
         }
 
+        /// <summary>
+        /// スキャフォールドを FASTA として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="sequence">書き出す配列</param>
+        /// <returns>書き出したパス</returns>
         private string WriteScaffold(string name, string sequence)
         {
             var path = Path.Combine(this._tempDir, name);
@@ -68,6 +92,11 @@ namespace Tsumiki.Tests.Core
             return path;
         }
 
+        /// <summary>
+        /// FASTA から 1 本だけの配列を読み込む
+        /// </summary>
+        /// <param name="path">読み込むパス</param>
+        /// <returns>読み込んだ配列</returns>
         private static string ReadSingleSequence(string path)
         {
             using var reader = new FastaReader(path);

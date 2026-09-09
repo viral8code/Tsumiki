@@ -25,8 +25,19 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class RepeatRMerVetoTests
     {
+        /// <summary>
+        /// 曖昧塩基を含む窓を表す番号
+        /// </summary>
         private const int AmbiguousKmer = int.MinValue;
+
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 8;
+
+        /// <summary>
+        /// この検証で使う r-mer 長
+        /// </summary>
         private const int R = K + 10; // AssemblyPipeline の既定の決め方(k + rMer長のk超過分の既定値)と同じ
 
         // RepeatResolutionTests と同じ構成: A/B が R の先頭 k-1 塩基を、
@@ -61,6 +72,13 @@ namespace Tsumiki.Tests.Core
             return (unitigList, kmerDict);
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="dict">登録先の辞書</param>
+        /// <param name="key">登録する k-mer</param>
+        /// <param name="id">ユニティグ ID</param>
+        /// <param name="position">ユニティグ内の開始位置</param>
         private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
         {
             if (dict.TryGetValue(key, out var existing))

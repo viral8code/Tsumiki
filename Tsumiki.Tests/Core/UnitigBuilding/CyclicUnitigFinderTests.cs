@@ -33,6 +33,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))
@@ -42,6 +45,12 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
@@ -80,6 +89,11 @@ namespace Tsumiki.Tests.Core
             return l_インデックス;
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="p_インデックス">登録先の索引</param>
+        /// <param name="p_kmer">登録する k-mer</param>
         private static void V_登録(TrustedKmerIndex p_インデックス, Span<byte> p_kmer)
         {
             for (var l_回 = 0; l_回 < 3; l_回++)

@@ -17,7 +17,14 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class CircularContigTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
+
+        /// <summary>
+        /// 実行前のカレントディレクトリ
+        /// </summary>
         private readonly string _originalCurrentDirectory;
 
         public CircularContigTests()
@@ -27,6 +34,9 @@ namespace Tsumiki.Tests.Core
             this._originalCurrentDirectory = Environment.CurrentDirectory;
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             Environment.CurrentDirectory = this._originalCurrentDirectory;
@@ -40,6 +50,10 @@ namespace Tsumiki.Tests.Core
         // 超える環にする
         // これを下回る閉路はホモポリマー等の産物とみなされ、
         // 環状の目印が付かない
+
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int k = 21;
 
         /// <summary>
@@ -58,6 +72,12 @@ namespace Tsumiki.Tests.Core
 
         private static readonly string UnitigC = Circle[800..] + Circle[..(k - 1)];
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);

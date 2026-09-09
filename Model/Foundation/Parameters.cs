@@ -11,6 +11,7 @@ namespace Tsumiki.Model.Foundation
         /// リード 1 のパス
         /// </summary>
         private string _リード1のパス = string.Empty;
+
         /// <summary>
         /// リード 1 のパス
         /// </summary>
@@ -31,6 +32,7 @@ namespace Tsumiki.Model.Foundation
         /// リード 2 のパス
         /// </summary>
         private string _リード2のパス = string.Empty;
+
         /// <summary>
         /// リード 2 のパス
         /// </summary>
@@ -58,6 +60,7 @@ namespace Tsumiki.Model.Foundation
         /// k 長
         /// </summary>
         private int _k長 = Consts.k長の既定値;
+
         /// <summary>
         /// k 長
         /// </summary>
@@ -132,6 +135,7 @@ namespace Tsumiki.Model.Foundation
         /// k-mer カットオフ
         /// </summary>
         private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
+
         /// <summary>
         /// k-mer カットオフ
         /// </summary>
@@ -172,6 +176,7 @@ namespace Tsumiki.Model.Foundation
         /// Phred オフセット
         /// </summary>
         private int _Phredオフセット = Consts.Phredオフセットの既定値;
+
         /// <summary>
         /// Phred オフセット
         /// </summary>
@@ -392,6 +397,7 @@ namespace Tsumiki.Model.Foundation
         /// 並列に使うスレッド数
         /// </summary>
         private int _スレッド数 = Environment.ProcessorCount;
+
         /// <summary>
         /// 並列に使うスレッド数
         /// </summary>
@@ -412,6 +418,7 @@ namespace Tsumiki.Model.Foundation
         /// ペアの支持で結合を確定させる優勢の閾値
         /// </summary>
         private decimal _ペア結合閾値 = Consts.ペア結合閾値の既定値;
+
         /// <summary>
         /// ペアの支持で結合を確定させる優勢の閾値
         /// </summary>
@@ -432,6 +439,7 @@ namespace Tsumiki.Model.Foundation
         /// 結合を確定させるために要求するペアの支持数
         /// </summary>
         private ulong _ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
+
         /// <summary>
         /// 結合を確定させるために要求するペアの支持数
         /// </summary>

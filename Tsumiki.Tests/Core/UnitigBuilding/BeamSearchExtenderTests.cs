@@ -17,7 +17,14 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class BeamSearchExtenderTests
     {
+        /// <summary>
+        /// 曖昧塩基を含む窓を表す番号
+        /// </summary>
         private const int AmbiguousKmer = int.MinValue;
+
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 8;
 
         // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
@@ -50,6 +57,13 @@ namespace Tsumiki.Tests.Core
             return (unitigList, UnitigGraph.Get_グラフ(unitigList, kmerDict, K, AmbiguousKmer));
         }
 
+        /// <summary>
+        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// </summary>
+        /// <param name="dict">登録先の辞書</param>
+        /// <param name="key">登録する k-mer</param>
+        /// <param name="id">ユニティグ ID</param>
+        /// <param name="position">ユニティグ内の開始位置</param>
         private static void Register(Dictionary<KmerKey, (int, int)> dict, KmerKey key, int id, int position)
         {
             if (dict.TryGetValue(key, out var existing))
@@ -64,6 +78,11 @@ namespace Tsumiki.Tests.Core
             dict[key] = (id, position);
         }
 
+        /// <summary>
+        /// どこも結合していない状態の結合表を作る
+        /// </summary>
+        /// <param name="graph">対象のユニティググラフ</param>
+        /// <returns>結合表</returns>
         private static int[] NoMerges(UnitigGraph graph)
         {
             var merge = new int[graph.A_出辺.Count];

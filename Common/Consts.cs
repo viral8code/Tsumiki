@@ -604,14 +604,17 @@
             /// アデニン
             /// </summary>
             public const byte A = 1;
+
             /// <summary>
             /// シトシン
             /// </summary>
             public const byte C = 2;
+
             /// <summary>
             /// グアニン
             /// </summary>
             public const byte G = 3;
+
             /// <summary>
             /// チミン
             /// </summary>

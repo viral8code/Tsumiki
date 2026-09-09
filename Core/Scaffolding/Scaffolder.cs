@@ -24,6 +24,7 @@ namespace Tsumiki.Core.Scaffolding
         private const int 偏りが無いとみなす長さ比 = 10;
 
         // contig ID(FastaWriter が振った 1 始まりの ID) -> 配列本体
+
         /// <summary>
         /// コンティグ配列
         /// </summary>
@@ -32,6 +33,7 @@ namespace Tsumiki.Core.Scaffolding
         // contig ID -> ID 文字列 (先頭 ">" の次に書かれていた文字列
         // "NODE1" 等)
         // 出力時に元の命名をある程度踏襲するために保持する
+
         /// <summary>
         /// コンティグ名
         /// </summary>

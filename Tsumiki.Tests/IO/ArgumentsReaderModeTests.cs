@@ -9,6 +9,9 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class ArgumentsReaderModeTests : IDisposable
     {
+        /// <summary>
+        /// 実在するだけのダミーのリードのパス
+        /// </summary>
         private readonly string _dummyReadPath;
 
         public ArgumentsReaderModeTests()
@@ -16,6 +19,9 @@ namespace Tsumiki.Tests.IO
             this._dummyReadPath = Path.GetTempFileName();
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (File.Exists(this._dummyReadPath))

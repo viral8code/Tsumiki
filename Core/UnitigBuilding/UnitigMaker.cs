@@ -21,6 +21,7 @@ namespace Tsumiki.Core.UnitigBuilding
         // k<=64 では UInt128 をキーにして 1 歩ごとの文字列生成を避ける
         // 呼び出しごとに作り直さず使い回すのは、この処理が 1 回の実行で
         // 数百万回呼ばれるため
+
         /// <summary>
         /// 訪問済み パック
         /// </summary>
@@ -91,10 +92,12 @@ namespace Tsumiki.Core.UnitigBuilding
                 UnitigWalk.Get_扱えるか(ConfigurationManager.A_実行時引数.A_k長)
                     ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長)
                     : null;
+
             /// <summary>
             /// 従来
             /// </summary>
             private readonly UnitigMaker _従来 = new(p_kmerインデックス);
+
             /// <summary>
             /// 訪問済み
             /// </summary>

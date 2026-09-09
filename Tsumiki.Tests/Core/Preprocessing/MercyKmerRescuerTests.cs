@@ -30,6 +30,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))
@@ -39,6 +42,12 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
@@ -47,6 +56,12 @@ namespace Tsumiki.Tests.Core
                 Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
         }
 
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="p_名前">ファイル名</param>
+        /// <param name="p_リード群">書き出すリード</param>
+        /// <returns>書き出したパス</returns>
         private string V_書き出し_FASTQ(string p_名前, IEnumerable<string> p_リード群)
         {
             var l_パス = Path.Combine(this._一時ディレクトリ, p_名前);

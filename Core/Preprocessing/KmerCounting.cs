@@ -142,6 +142,7 @@ namespace Tsumiki.Core.Preprocessing
             }
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
+
         /// <summary>
         /// FASTQ を順に読み進めてリードを返す
         /// </summary>

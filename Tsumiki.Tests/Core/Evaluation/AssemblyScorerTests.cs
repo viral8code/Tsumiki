@@ -17,6 +17,9 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class AssemblyScorerTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public AssemblyScorerTests()
@@ -25,6 +28,9 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -33,12 +39,22 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// この検証で使う k 長
+        /// </summary>
         private const int K = 21;
+
         /// <summary>
         /// 深さ
         /// </summary>
         private const int 深さ = 20;
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="length">作る長さ</param>
+        /// <param name="seed">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string RandomSequence(int length, int seed)
         {
             var rng = new Random(seed);
@@ -69,6 +85,12 @@ namespace Tsumiki.Tests.Core
             return index;
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="sequences">書き出す配列</param>
+        /// <returns>書き出したパス</returns>
         private string WriteFasta(string name, params string[] sequences)
         {
             var path = Path.Combine(this._tempDir, name);
@@ -81,6 +103,12 @@ namespace Tsumiki.Tests.Core
             return path;
         }
 
+        /// <summary>
+        /// 名前を付けた配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="name">ファイル名</param>
+        /// <param name="entries">書き出す名前と配列</param>
+        /// <returns>書き出したパス</returns>
         private string WriteFastaWithNames(string name, params (string A_名前, string A_配列)[] entries)
         {
             var path = Path.Combine(this._tempDir, name);

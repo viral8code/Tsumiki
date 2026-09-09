@@ -8,6 +8,9 @@ namespace Tsumiki.Tests.Core
 {
     public class GraphSimplifierTests : IDisposable
     {
+        /// <summary>
+        /// 一時ディレクトリのパス
+        /// </summary>
         private readonly string _tempDir;
 
         public GraphSimplifierTests()
@@ -22,6 +25,9 @@ namespace Tsumiki.Tests.Core
             ConfigurationManager.A_スペクトルモデル = null;
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._tempDir))
@@ -30,6 +36,11 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 配列を塩基 ID 列へ変換する
+        /// </summary>
+        /// <param name="seq">元の配列</param>
+        /// <returns>塩基 ID 列</returns>
         private static byte[] ToBytes(string seq)
         {
             return [.. seq.Select(Util.Get_塩基ID)];
@@ -287,6 +298,12 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, occurrences);
         }
 
+        /// <summary>
+        /// 部分文字列が現れる回数を数える
+        /// </summary>
+        /// <param name="haystack">探される側</param>
+        /// <param name="needle">探す文字列</param>
+        /// <returns>現れた回数</returns>
         private static int CountOccurrences(string haystack, string needle)
         {
             var count = 0;

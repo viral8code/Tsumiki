@@ -26,6 +26,9 @@ namespace Tsumiki.Tests.Core
             ConfigurationManager.A_実行時引数 = new Parameters { A_スレッド数 = 2 };
         }
 
+        /// <summary>
+        /// 一時ディレクトリを片付ける
+        /// </summary>
         public void Dispose()
         {
             if (Directory.Exists(this._一時ディレクトリ))
@@ -35,6 +38,12 @@ namespace Tsumiki.Tests.Core
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
@@ -43,6 +52,12 @@ namespace Tsumiki.Tests.Core
                 Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
         }
 
+        /// <summary>
+        /// 配列を FASTA として書き出す
+        /// </summary>
+        /// <param name="p_ID">配列 ID</param>
+        /// <param name="p_配列">書き出す配列</param>
+        /// <returns>書き出したパス</returns>
         private string V_書き出し_FASTA(string p_ID, string p_配列)
         {
             var l_パス = Path.Combine(this._一時ディレクトリ, "assembly.fasta");
@@ -51,6 +66,11 @@ namespace Tsumiki.Tests.Core
             return l_パス;
         }
 
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="p_リード群">書き出すリード</param>
+        /// <returns>書き出したパス</returns>
         private string V_書き出し_FASTQ(IEnumerable<string> p_リード群)
         {
             var l_パス = Path.Combine(this._一時ディレクトリ, "reads.fq");
