@@ -4,13 +4,13 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.IO
 {
     /// <summary>
-    /// FASTQ のクオリティ文字列から Phred オフセット(33 or 64)を推定する<br/>
+    /// FASTQ のクオリティ文字列から Phred オフセット (33 or 64) を推定する<br/>
     /// -p が明示指定されていない場合に限り推定値を自動採用し、明示指定されて
-    /// いる場合は(ユーザーの判断を尊重して)警告のみに留める
+    /// いる場合は (ユーザーの判断を尊重して) 警告のみに留める
     /// </summary>
     internal static class PhredSniffer
     {
-        // 実データで現実的にありうる最大のPhredスコア(Illumina/MGI/BGI いずれも
+        // 実データで現実的にありうる最大のPhredスコア (Illumina/MGI/BGI いずれも
         // 通常は 40 強が上限)
         // これを大きく超えるスコアが観測された場合は、
         // オフセットの取り違えを疑う

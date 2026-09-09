@@ -14,7 +14,7 @@ namespace Tsumiki.Core.UnitigBuilding
     /// カバレッジが基準値比で著しく低い k-mer が続く間だけ剥がす<br/>
     /// unitig 全体の平均で判定してはいけない<br/>
     /// SNP 様の短い分岐では共有部分の
-    ///    高カバレッジに平均が引きずられて検出できず、仮に検出できても unitig 全体を
+    /// 高カバレッジに平均が引きずられて検出できず、仮に検出できても unitig 全体を
     /// 除去すると合流後の共有配列まで消して別の経路を壊す<br/>
     /// エラー由来の分岐は合流点までの区間だけが低カバレッジなので、そこだけ剥がす
     /// </summary>
@@ -66,8 +66,8 @@ namespace Tsumiki.Core.UnitigBuilding
                         var l_先頭次数 = p_kmerインデックス.Get_入次数(l_塩基列.AsSpan(0, p_k長));
                         var l_末尾次数 = p_kmerインデックス.Get_出次数(l_塩基列.AsSpan(l_塩基列.Length - p_k長, p_k長));
 
-                        // 片方の端が行き止まり(そちら向きに続きがない)であれば tip の候補
-                        // 両端とも行き止まりの場合(=孤立した短い断片)も対象に含む
+                        // 片方の端が行き止まり (そちら向きに続きがない) であれば tip の候補
+                        // 両端とも行き止まりの場合 (=孤立した短い断片) も対象に含む
                         //
                         // ただし行き止まりであること自体は誤りの証拠にならない
                         // 実ゲノムでも
@@ -120,7 +120,7 @@ namespace Tsumiki.Core.UnitigBuilding
                     return l_開始kmer;
                 }
 
-                // k-mer集合が縮小されたため、開始点を再検出してから次の反復へ
+                // k-mer 集合が縮小されたため、開始点を再検出してから次の反復へ
                 l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
             }
 
@@ -189,7 +189,7 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// unitigを構成する全k-merのカバレッジの単純平均
+        /// unitig を構成する全 k-mer のカバレッジの単純平均
         /// </summary>
         private static double Get_平均カバレッジ(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
@@ -225,9 +225,9 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 全unitigの平均カバレッジの長さ加重中央値<br/>
+        /// 全 unitig の平均カバレッジの長さ加重中央値<br/>
         /// 多数を占めうる短い
-        /// 断片(エラー由来のtip/バブル候補そのもの)に引きずられず、
+        /// 断片 (エラー由来の tip/バブル候補そのもの) に引きずられず、
         /// ゲノムの大部分を占める正しい主経路のカバレッジ水準を推定するため、
         /// 単純平均・単純中央値ではなく塩基数で重み付けした中央値を使う
         /// </summary>

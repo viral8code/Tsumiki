@@ -6,16 +6,16 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 短い反復配列の解きほぐし(repeat resolution)の検証<br/>
+    /// 短い反復配列の解きほぐし (repeat resolution) の検証<br/>
     /// 反復配列 R がゲノム中に 2 回現れ、それぞれ A→R→C と B→R→D という文脈を
-    /// 持つ場合、de Bruijn グラフ上では R は 1 個の頂点に潰れて入次数 2 ・出次数 2 に
+    /// 持つ場合、de Bruijn グラフ上では R は 1 個の頂点に潰れて入次数 2・出次数 2 に
     /// なる<br/>
     /// R の内部から読まれたリードはどちらのコピー由来か区別できないため、
     /// 分岐でのリード支持は原理的に 5 割前後にしかならず解けない<br/>
     /// R を丸ごと
     /// 跨いだフラグメントだけが手がかりになる<br/>
-    /// 実データ(k=63)ではこの形の unitig が 151 本あり、うち 143 本が
-    /// フラグメント長の中央値(245bp)より短かった
+    /// 実データ (k=63) ではこの形の unitig が 151 本あり、うち 143 本が
+    /// フラグメント長の中央値 (245 bp) より短かった
     /// </summary>
     public class RepeatResolutionTests
     {
@@ -24,7 +24,7 @@ namespace Tsumiki.Tests.Core
 
         // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
         // A と B はどちらも R の先頭 k-1 塩基で終わり、C と D はどちらも
-        // R の末尾 k-1 塩基で始まる(= R が入次数 2 ・出次数 2 の反復になる)
+        // R の末尾 k-1 塩基で始まる (= R が入次数 2・出次数 2 の反復になる)
         private const string UnitigA = "ACAGTTCGCGAGCCCTCCGTC";
         private const string UnitigB = "TGTATTGAGGTCGTCTCCGTC";
         private const string UnitigR = "CTCCGTCAGCTTGTTTGGAGCAGA";
@@ -81,7 +81,7 @@ namespace Tsumiki.Tests.Core
             var c = ContigMaker.Get_頂点番号(4);
             var d = ContigMaker.Get_頂点番号(5);
 
-            // 前提: R が入次数 2 ・出次数 2 の反復として構築されている
+            // 前提: R が入次数 2・出次数 2 の反復として構築されている
             Assert.Equal(2, graph.A_出辺[r].Count);
             Assert.Equal(2, graph.Get_入次数(r));
 
@@ -99,13 +99,13 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(1, resolved);
 
-            // 反復が複製され、頂点が 2 つ(順鎖・逆鎖)増えているはず
+            // 反復が複製され、頂点が 2 つ (順鎖・逆鎖) 増えているはず
             Assert.Equal(vertexCountBefore + 2, graph.A_出辺.Count);
             Assert.Equal(UnitigR, unitigList[vertexCountBefore]);
 
             // どちらの経路も「反復のコピーを 1 つだけ通る一本道」になっていること
             // 元の頂点 r と複製のどちらが A 側に残るかは辺の格納順に依存する
-            // (unitig の番号とは無関係)ので、頂点の同一性ではなく
+            // (unitig の番号とは無関係) ので、頂点の同一性ではなく
             // 経路の構造と対応付けを検証する
             AssertUntangled(graph, unitigList, from: a, to: c, otherFrom: b, otherTo: d);
         }
@@ -119,20 +119,20 @@ namespace Tsumiki.Tests.Core
             var viaFirst = Assert.Single(graph.A_出辺[from]);
             var viaSecond = Assert.Single(graph.A_出辺[otherFrom]);
 
-            // それぞれ別のコピーを通ること(同じ頂点を共有していたら解けていない)
+            // それぞれ別のコピーを通ること (同じ頂点を共有していたら解けていない)
             Assert.NotEqual(viaFirst, viaSecond);
 
             // 通る頂点はどちらも反復配列そのもの
             Assert.Equal(UnitigR, unitigList[viaFirst]);
             Assert.Equal(UnitigR, unitigList[viaSecond]);
 
-            // 各コピーは入次数 1 ・出次数 1 の一本道
+            // 各コピーは入次数 1・出次数 1 の一本道
             Assert.Equal(1, graph.Get_入次数(viaFirst));
             Assert.Equal(1, graph.Get_入次数(viaSecond));
             Assert.Equal([to], graph.A_出辺[viaFirst]);
             Assert.Equal([otherTo], graph.A_出辺[viaSecond]);
 
-            // 逆鎖側も対称であること(片側だけ付け替えるとグラフが壊れ、
+            // 逆鎖側も対称であること (片側だけ付け替えるとグラフが壊れ、
             // 順鎖と逆鎖で別々の経路が組まれてしまう)
             Assert.Contains(viaFirst ^ 1, graph.A_出辺[to ^ 1]);
             Assert.Contains(viaSecond ^ 1, graph.A_出辺[otherTo ^ 1]);
@@ -225,7 +225,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> support = [];
             var vertexCountBefore = graph.A_出辺.Count;
 
-            // R は24bp なので、上限を10bp にすれば対象外になる
+            // R は24 bp なので、上限を10 bp にすれば対象外になる
             var resolved = graph.V_解決_短い反復(
                 unitigList, support, pairLink, p_反復長の上限: 10, p_優勢閾値: 0.8m, p_最小証拠数: 5);
 

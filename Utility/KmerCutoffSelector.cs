@@ -4,9 +4,9 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Utility
 {
     /// <summary>
-    /// k-mer スペクトルから k-mer カットオフ(-kc)を自動選択する<br/>
+    /// k-mer スペクトルから k-mer カットオフ (-kc) を自動選択する<br/>
     /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」<br/>
-    /// まず 2 成分混合モデル(<see cref="KmerSpectrumMixtureModel"/>)の適合を試みる<br/>
+    /// まず 2 成分混合モデル (<see cref="KmerSpectrumMixtureModel"/>) の適合を試みる<br/>
     /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど
     /// 谷が視認できないデータでも働く<br/>
     /// 適合に失敗した場合のみ、谷検出
@@ -24,7 +24,7 @@ namespace Tsumiki.Utility
         /// </summary>
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
-            // 前回(別のk、あるいはErrorCorrector用の一時インデックス)の適合結果を
+            // 前回 (別の k、あるいは ErrorCorrector 用の一時インデックス) の適合結果を
             // 持ち越さない
             // 適合に成功した場合のみ、この下で改めて設定し直す
             ConfigurationManager.A_スペクトルモデル = null;
@@ -50,8 +50,8 @@ namespace Tsumiki.Utility
 
             // フォールバック: 谷検出
             // 混合モデルの適合に失敗するのは、データがこの
-            // 2 成分モデルにうまく当てはまらない(EMが収束しない、あるいは単一コピー
-            // 成分と誤り成分を分離できない)場合
+            // 2 成分モデルにうまく当てはまらない (EM が収束しない、あるいは単一コピー
+            // 成分と誤り成分を分離できない) 場合
             if (KmerHistogram.Get_推奨カットオフ(l_ヒストグラム) is not { } l_推奨値)
             {
                 Logger.V_出力(メッセージID.kmerカットオフ_谷が不明, p_引数.A_kmerカットオフ);

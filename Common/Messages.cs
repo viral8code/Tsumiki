@@ -4,7 +4,7 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Common
 {
     /// <summary>
-    /// メッセージID から表示用の文言を作る<br/>
+    /// メッセージ ID から表示用の文言を作る<br/>
     /// 文言を呼び出し側に直接書かないのは、出す場所と訳す場所を分けるため<br/>
     /// 書式は <see cref="MessageCatalog"/> が言語ごとに持ち、ここは
     /// 現在の言語を選んで差し込むだけにする

@@ -48,7 +48,7 @@ namespace Tsumiki.Core.Evaluation
 
         /// <summary>
         /// 骨格に対して他の候補を統合し、結果を p_出力パス へ書き出す<br/>
-        /// 繋げた箇所が 1 つも無ければ false を返す(その場合、出力は行わない)
+        /// 繋げた箇所が 1 つも無ければ false を返す (その場合、出力は行わない)
         /// </summary>
         public static bool V_統合(
             アセンブリ実行結果 p_骨格,
@@ -220,7 +220,7 @@ namespace Tsumiki.Core.Evaluation
                     continue;
                 }
 
-                // 前側は出口(その向きで見た末端)、後側は入口でなければならない
+                // 前側は出口 (その向きで見た末端)、後側は入口でなければならない
                 var l_前の頂点 = Get_出口頂点(l_前, p_骨格配列, p_アンカーk長);
                 var l_後の頂点 = Get_入口頂点(l_後, p_骨格配列, p_アンカーk長);
                 if (l_前の頂点 is not { } l_始点 || l_後の頂点 is not { } l_終点)
@@ -243,7 +243,7 @@ namespace Tsumiki.Core.Evaluation
 
         /// <summary>
         /// その当たりが骨格配列の出口側末端かを判定し、対応する頂点を返す<br/>
-        /// 順鎖で当たって末尾側にあるなら 2i、逆鎖で当たって先頭側にあるなら 2i+1
+        /// 順鎖で当たって末尾側にあるなら 2 i、逆鎖で当たって先頭側にあるなら 2 i+1
         /// </summary>
         private static int? Get_出口頂点(
             (int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか) p_当たり,

@@ -21,7 +21,7 @@ namespace Tsumiki.Core.Evaluation
     {
         /// <summary>
         /// 閉じ目の左右それぞれに要求する踏み込みの長さ<br/>
-        /// 窓はこの 2 倍になる(2bit パックが UInt128 に収まる範囲に収める)
+        /// 窓はこの 2 倍になる (2 bit パックが UInt128 に収まる範囲に収める)
         /// </summary>
         private const int 接合フランク長 = 30;
 

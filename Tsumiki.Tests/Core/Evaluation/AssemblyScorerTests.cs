@@ -11,7 +11,7 @@ namespace Tsumiki.Tests.Core
     /// リファレンス無しでアセンブリの良さを測る評価器の検証<br/>
     /// multi-k で複数のアセンブリから 1 つを選ぶには、リファレンスを使わずに
     /// 良し悪しを決められなければならない<br/>
-    /// 連続性(N50)だけで選ぶと
+    /// 連続性 (N50) だけで選ぶと
     /// 誤って繋いだものほど高く出るため、完全性と正確性を併せて見る必要がある<br/>
     /// ここではその「誤って繋いだものが落ちる」ことを主に固定する
     /// </summary>
@@ -139,12 +139,12 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// これが評価器の存在意義<br/>
         /// 反復配列を通り抜けて中間を飛ばした
-        /// 誤アセンブリは、素の連続性では「改善」に見える(実際、過去に
+        /// 誤アセンブリは、素の連続性では「改善」に見える (実際、過去に
         /// N50 が 99,974 から 199,945 へ伸びた誤アセンブリがあった)<br/>
         /// 飛ばした領域の k-mer が欠損として現れるため、完全性で見抜ける<br/>
         /// 重要なのは、連続性ではこのキメラのほうが上だという点である<br/>
         /// だからこそ選択規則は「まず完全性で足切りし、そのあとで連続性を見る」
-        /// という順序でなければならない(掛け算にすると連続性の利得が勝ってしまう)
+        /// という順序でなければならない (掛け算にすると連続性の利得が勝ってしまう)
         /// </summary>
         [Fact]
         public void Score_ChimeraThatSkipsSequence_ScoresBelowTheFragmentedButHonestAssembly()
@@ -184,7 +184,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 同じ配列を 2 回出した水増しは、正確性が落ちて総合点が下がること<br/>
-        /// 連続性(NG50)はむしろ上がるため、この判定が無いと選んでしまう
+        /// 連続性 (NG50) はむしろ上がるため、この判定が無いと選んでしまう
         /// </summary>
         [Fact]
         public void Score_DuplicatedSequence_IsPenalisedByAccuracy()
@@ -250,8 +250,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 提案H: 環状に閉じた complicon(ContigMaker が名前に"circular"を
-        /// 付けたもの)は本数・総延長に数えること
+        /// 提案 H: 環状に閉じた complicon(ContigMaker が名前に"circular"を
+        /// 付けたもの) は本数・総延長に数えること
         /// </summary>
         [Fact]
         public void Score_CircularContig_IsCountedInCircularStats()
@@ -306,7 +306,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 評価に含める最小長(500bp)を下回る配列は、環状の目印が付いていても
+        /// 評価に含める最小長 (500 bp) を下回る配列は、環状の目印が付いていても
         /// 数えない<br/>
         /// de Bruijn グラフにはホモポリマーや短いタンデム反復に由来する
         /// 極小の閉路が多数あり、実データではこれが k あたり 10 本前後現れて

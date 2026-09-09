@@ -57,7 +57,7 @@ namespace Tsumiki.Model.Foundation
         private List<int> _k長一覧 = [];
 
         /// <summary>
-        /// -k にカンマ区切りで指定された k の一覧(昇順・重複なし)<br/>
+        /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)<br/>
         /// 未指定なら空<br/>
         /// 2 個以上あれば multi-k として扱う
         /// </summary>
@@ -164,7 +164,7 @@ namespace Tsumiki.Model.Foundation
         public int A_クオリティカットオフ { get; set; } = Consts.クオリティカットオフの既定値;
 
         /// <summary>
-        /// k-mer カウント時にメモリ上へ保持するカウントの総量(バイト)<br/>
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)<br/>
         /// メモリとディスク I/O のトレードオフを環境に合わせて調整するためのもの<br/>
         /// 増やすとフラッシュ回数が減って I/O が軽くなり、減らすとメモリが軽くなる
         /// </summary>
@@ -172,7 +172,7 @@ namespace Tsumiki.Model.Foundation
 
         /// <summary>
         /// メモリ量の指定<br/>
-        /// "2G" / "512M" / "1024"(接尾辞なしは MB)を受け付ける
+        /// "2G" / "512M" / "1024"(接尾辞なしは MB) を受け付ける
         /// </summary>
         public string A_メモリ予算
         {
@@ -242,7 +242,7 @@ namespace Tsumiki.Model.Foundation
         public bool A_エラー訂正するか { get; set; } = false;
 
         /// <summary>
-        /// ペアエンドのオーバーラップ解析(アダプタ除去 + 相互訂正)を
+        /// ペアエンドのオーバーラップ解析 (アダプタ除去 + 相互訂正) を
         /// エラー訂正・アセンブリの前に行うか
         /// </summary>
         public bool A_前処理するか { get; set; } = false;
@@ -263,23 +263,23 @@ namespace Tsumiki.Model.Foundation
 
         /// <summary>
         /// multi-k で、各 k の信頼できる k-mer 集合の中でペアを橋渡しして
-        /// 合成リード(SuperRead)を作り、次の k への引き継ぎに加えるか
+        /// 合成リード (SuperRead) を作り、次の k への引き継ぎに加えるか
         /// </summary>
         public bool A_SuperReadを作るか { get; set; } = false;
 
         /// <summary>
-        /// 短い反復の解決(V_解決_短い反復)で、対応付けを確定させる前に
-        /// r-mer(アセンブリの k とは独立の短い長さ)による接合点の検証を
+        /// 短い反復の解決 (V_解決_短い反復)で、対応付けを確定させる前に
+        /// r-mer(アセンブリの k とは独立の短い長さ) による接合点の検証を
         /// 課すか<br/>
-        /// 生リードの追加走査が 1 回k毎に要る(既定は false)
+        /// 生リードの追加走査が 1 回k毎に要る (既定は false)
         /// </summary>
         public bool A_反復をrMerで検証するか { get; set; } = false;
 
         /// <summary>
         /// GapFiller が埋められなかったスキャフォールドのギャップを、
         /// その両端に実際にマップされた局所リードだけを使う局所アセンブリ
-        /// (LocalAssembler)で埋めるか<br/>
-        /// AssemblyMerger(-mg)の安全な代替
+        /// (LocalAssembler) で埋めるか<br/>
+        /// AssemblyMerger(-mg) の安全な代替
         /// </summary>
         public bool A_局所アセンブリするか { get; set; } = false;
 

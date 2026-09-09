@@ -41,7 +41,7 @@ namespace Tsumiki.Tests.Core
         private TrustedKmerIndex BuildIndex(int kmerLength, int depth, params string[] sequences)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = kmerLength, A_スレッド数 = 1 };
-            // インデックスごとに作業ディレクトリを分ける(同じ場所を使うと
+            // インデックスごとに作業ディレクトリを分ける (同じ場所を使うと
             // 一時ファイルの後始末が互いに干渉する)
             var l_作業 = Path.Combine(this._tempDir, Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(l_作業);

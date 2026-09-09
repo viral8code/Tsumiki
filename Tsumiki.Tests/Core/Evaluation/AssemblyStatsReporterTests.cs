@@ -34,7 +34,7 @@ namespace Tsumiki.Tests.Core
         public void Compute_KnownN50Example()
         {
             // 長さ: 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 (合計 550)
-            // 半分(275)に達するのは 100+90+80+70=340 の時点(4 本目)なので N50=70, L50=4
+            // 半分 (275) に達するのは 100+90+80+70=340 の時点 (4 本目) なので N50=70, L50=4
             List<string> sequences =
             [
                 new string('A', 100),

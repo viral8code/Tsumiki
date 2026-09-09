@@ -19,8 +19,8 @@ namespace Tsumiki.Core.UnitigBuilding
         private readonly HashSet<string> _訪問済み_文字列 = [];
 
         /// <summary>
-        /// k-mer(塩基ID 1-4、長さ 64 以下)を2bit/塩基で UInt128 にパックする<br/>
-        /// 向き依存の値(逆相補への正規化はしない)<br/>
+        /// k-mer(塩基ID 1-4、長さ 64 以下) を2 bit/塩基で UInt128 にパックする<br/>
+        /// 向き依存の値 (逆相補への正規化はしない)<br/>
         /// 循環検出は
         /// 「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
         /// </summary>
@@ -124,7 +124,7 @@ namespace Tsumiki.Core.UnitigBuilding
                 }
 
                 // 次の 1 塩基を決める
-                // 候補がちょうど 1 つ(出次数 1)でなければ
+                // 候補がちょうど 1 つ (出次数 1) でなければ
                 // ここが unitig の終端
                 l_配列.Add(0);
                 byte l_次の塩基 = 0;

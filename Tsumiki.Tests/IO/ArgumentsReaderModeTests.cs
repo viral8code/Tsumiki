@@ -4,7 +4,7 @@ using Tsumiki.IO;
 namespace Tsumiki.Tests.IO
 {
     /// <summary>
-    /// -mode(積極性のプリセット)が -pu/-pc を正しく束ねること、
+    /// -mode(積極性のプリセット) が -pu/-pc を正しく束ねること、
     /// および後ろに書いた個別指定で上書きできることの検証
     /// </summary>
     public class ArgumentsReaderModeTests : IDisposable

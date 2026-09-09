@@ -6,7 +6,7 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 先読み(ビームサーチ)による分岐解決の検証<br/>
+    /// 先読み (ビームサーチ) による分岐解決の検証<br/>
     /// 相互一意性の判定は「その 1 歩だけ」を見るため、分岐の直後だけを見ると
     /// 五分五分に見えるが、2〜3 本先まで進めると片方だけがペアエンドの証拠と
     /// 整合する、という状況を取りこぼす<br/>
@@ -79,10 +79,10 @@ namespace Tsumiki.Tests.Core
             var b = ContigMaker.Get_頂点番号(2);
             var d = ContigMaker.Get_頂点番号(4);
 
-            // 前提: A は B と C の両方へ伸びられる(1 歩だけでは決められない)
+            // 前提: A は B と C の両方へ伸びられる (1 歩だけでは決められない)
             Assert.Equal(2, graph.A_出辺[a].Count);
 
-            // 証拠は A の直後(B/C)ではなく、その次の D に現れる
+            // 証拠は A の直後 (B/C) ではなく、その次の D に現れる
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
@@ -163,7 +163,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// いま反復配列(多コピー)の上にいて、単一コピーの足場が 1 つも取れない
+        /// いま反復配列 (多コピー) の上にいて、単一コピーの足場が 1 つも取れない
         /// 場合は、どのコピーにいるのか分からないので進む方向を選べない<br/>
         /// 反復の内部から読まれたリードはどのコピー由来か区別できない<br/>
         /// それが
@@ -171,9 +171,9 @@ namespace Tsumiki.Tests.Core
         /// どの行き先にも付いてしまう<br/>
         /// 標本数が少ないと偶然の偏りが閾値を超えて
         /// 誤った側が選ばれる<br/>
-        /// これは実際に起きた: 反復入りの合成ゲノム(A-R-B-R-C、R は150bpの
-        /// 2 コピー反復)で、R 自身を足場にしたために A-R-C という中間の B を
-        /// 飛ばした contig が出力されていた(真値照合で発覚)
+        /// これは実際に起きた: 反復入りの合成ゲノム (A-R-B-R-C、R は150 bp の
+        /// 2 コピー反復) で、R 自身を足場にしたために A-R-C という中間の B を
+        /// 飛ばした contig が出力されていた (真値照合で発覚)
         /// </summary>
         [Fact]
         public void Extend_DoesNothing_WhenStandingOnARepeatWithNoSingleCopyAnchor()
@@ -185,7 +185,7 @@ namespace Tsumiki.Tests.Core
             // A 自身が 2 コピーの反復
             // 足場に使える単一コピーの unitig が無い
             Dictionary<int, int> copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-            // 片側にだけ強い(しかし信用してはいけない)証拠を置く
+            // 片側にだけ強い (しかし信用してはいけない) 証拠を置く
             Dictionary<(int, int), ulong> pairLink = new() { [(a, d)] = 30 };
 
             var merge = NoMerges(graph);
@@ -213,7 +213,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<int, int> copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
 
             var merge = NoMerges(graph);
-            // B には既に(別の経路からの)結合が入っていることにする
+            // B には既に (別の経路からの) 結合が入っていることにする
             merge[b ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
 
             _ = BeamSearchExtender.V_延長_先読み(

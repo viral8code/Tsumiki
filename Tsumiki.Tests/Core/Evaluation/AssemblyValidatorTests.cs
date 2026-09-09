@@ -13,7 +13,7 @@ namespace Tsumiki.Tests.Core
     /// リファレンス配列なしで「取りこぼし」と
     /// 「出しすぎ」を検出できることを固定する<br/>
     /// 「出しすぎ」の検出は特に重要で、総延長が実際のゲノムサイズより大きく
-    /// なる原因はほぼこれ(実際、修正前は同じ配列を順鎖と逆鎖の両方で出力して
+    /// なる原因はほぼこれ (実際、修正前は同じ配列を順鎖と逆鎖の両方で出力して
     /// いて総長がちょうど 2.009 倍に膨れていた)
     /// </summary>
     public class AssemblyValidatorTests : IDisposable
@@ -97,7 +97,7 @@ namespace Tsumiki.Tests.Core
             var result = AssemblyValidator.Get_検査結果(path, index, K, p_単一コピー基準値: 20)!.Value;
 
             Assert.True(result.A_取りこぼし数 > 0, "truncated assembly should report missing k-mers");
-            // 600bp の k-mer は 580 個、そのうち前半 300bp に含まれるのは 280 個
+            // 600 bp の k-mer は 580 個、そのうち前半 300 bp に含まれるのは 280 個
             Assert.Equal(580 - 280, result.A_取りこぼし数);
             Assert.InRange(result.A_取りこぼし率, 45, 55);
         }
@@ -125,7 +125,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 逆相補で出力されていても同じ配列とみなされること(正規化の確認)<br/>
+        /// 逆相補で出力されていても同じ配列とみなされること (正規化の確認)<br/>
         /// これが効いていないと、逆鎖側の contig がすべて「取りこぼし」に見えてしまう
         /// </summary>
         [Fact]

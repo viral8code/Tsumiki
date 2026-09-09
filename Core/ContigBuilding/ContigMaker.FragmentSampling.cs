@@ -26,7 +26,7 @@ namespace Tsumiki.Core
         public List<int> A_同一ユニティグ標本 { get; } = [];
 
         /// <summary>
-        /// unitig同士がk-1 オーバーラップで直接結合されたペアからの標本<br/>
+        /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本<br/>
         /// 同一ユニティグ標本のような長さバイアスを受けない
         /// </summary>
         public List<int> A_確定辺標本 { get; } = [];
@@ -40,7 +40,7 @@ namespace Tsumiki.Core
         public IReadOnlyDictionary<(int, int), List<int>> A_ペア経路 => this._ペア経路;
 
         /// <summary>
-        /// unitig ID(1 始まり、符号なし)からその塩基長を引く<br/>
+        /// unitig ID(1 始まり、符号なし) からその塩基長を引く<br/>
         /// Scaffolder が
         /// contig 側の末端 unitig の長さを参照する際に使う
         /// </summary>
@@ -51,8 +51,8 @@ namespace Tsumiki.Core
         /// <summary>
         /// 両リードが同一 unitig にマップされたペアから、フラグメント長の標本を取る<br/>
         /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた
-        /// 内側の未読区間(inner distance)である<br/>
-        /// FR配置では
+        /// 内側の未読区間 (inner distance) である<br/>
+        /// FR 配置では
         /// フラグメント長 = 内側距離 + 両リード長 なので、ここで足し戻して
         /// 以降の推定値の単位をフラグメント長に揃える
         /// </summary>
@@ -63,7 +63,7 @@ namespace Tsumiki.Core
         {
             if ((p_ヒット1.A_ユニティグID > 0) == (p_ヒット2.A_ユニティグID > 0))
             {
-                // 同じ向き同士(FF/RR相当)
+                // 同じ向き同士 (FF/RR 相当)
                 // 両リードの内側の端はどちらも
                 // 同じ側を向いているため、差は「開始位置の差」に相当する
                 // 下流側リード 1 本分を足すとフラグメント長になる
@@ -76,7 +76,7 @@ namespace Tsumiki.Core
             }
             else
             {
-                // 互いに逆向き(FR相当、Illuminaペアエンドの通常配置)
+                // 互いに逆向き (FR 相当、Illumina ペアエンドの通常配置)
                 // 順鎖側ヒットのリードがフラグメントの左端、
                 // 逆鎖側ヒットのリードが右端を占める
                 var l_ヒット1が順鎖か = p_ヒット1.A_ユニティグID > 0;
@@ -100,7 +100,7 @@ namespace Tsumiki.Core
         /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには
         /// read2 側の unitig ID の符号を反転させる<br/>
         /// 記録するのは「フラグメントのうち既に見えている分の長さ」
-        /// (read1長 + unitig1末端までの残り + unitig2先頭からの残り + read2長)で、
+        /// (read1長 + unitig1末端までの残り + unitig2先頭からの残り + read2長) で、
         /// ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ
         /// (直接 k-1 で結合された場合は G = -(k-1))
         /// </summary>
@@ -173,7 +173,7 @@ namespace Tsumiki.Core
 
                 foreach (var l_既知長 in l_既知長標本)
                 {
-                    // 直接結合された辺では 2 つのunitigがk-1 塩基重なるので、
+                    // 直接結合された辺では 2 つの unitig が k-1 塩基重なるので、
                     // 未知区間の長さは G = -(k-1)
                     // よって
                     // フラグメント長 = 既知長 - (k-1)
@@ -191,10 +191,10 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.確定辺標本数, l_確定辺標本.Count);
             if (l_確定辺標本.Count > 0)
             {
-                // このプールは「unitig同士がk-1 オーバーラップで直接結合された」
-                // ペアのみを対象とするため、同一unitig標本のような
-                // 「フラグメントが 1 つのunitigに収まる必要がある」制約が
-                // なく、短いunitigによる短フラグメントへの偏りを受けにくい
+                // このプールは「unitig 同士が k-1 オーバーラップで直接結合された」
+                // ペアのみを対象とするため、同一 unitig 標本のような
+                // 「フラグメントが 1 つの unitig に収まる必要がある」制約が
+                // なく、短い unitig による短フラグメントへの偏りを受けにくい
                 Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);
             }
         }

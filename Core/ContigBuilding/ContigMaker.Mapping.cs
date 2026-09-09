@@ -15,16 +15,16 @@ namespace Tsumiki.Core
     /// </summary>
     internal partial class ContigMaker
     {
-        // 同一 k-mer が複数の unitig にまたがって出現した(=反復配列等に
-        // 由来する曖昧な k-mer である)ことを示す番兵値
+        // 同一 k-mer が複数の unitig にまたがって出現した (=反復配列等に
+        // 由来する曖昧な k-mer である) ことを示す番兵値
         // unitig ID は 1 始まりの正数、逆鎖側はその負数を使うため int.MinValue と衝突しない
         private const int 曖昧kmerの番兵 = int.MinValue;
 
-        // 値は (符号付きunitig ID, そのunitig内でのk-mer開始位置(0 始まり、
+        // 値は (符号付き unitig ID, その unitig 内での k-mer開始位置 (0 始まり、
         // 符号が示す向きの座標系))
         // 位置情報は代表ユニティグの判定が
-        // 「read内での最後のヒット位置」ではなく「unitig内での最後のヒット
-        // 位置」を正しく求めるために必要(ギャップ長・インサートサイズ推定に使う)
+        // 「read 内での最後のヒット位置」ではなく「unitig 内での最後のヒット
+        // 位置」を正しく求めるために必要 (ギャップ長・インサートサイズ推定に使う)
         private readonly Dictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> _kmer辞書;
 
         // unitig ID(1 始まり) -> unitig の塩基長
@@ -34,15 +34,15 @@ namespace Tsumiki.Core
 
         private readonly string _ユニティグファイルパス;
 
-        // 単一リード内で直接検出された隣接(=k-1 塩基のオーバーラップで
+        // 単一リード内で直接検出された隣接 (=k-1 塩基のオーバーラップで
         // 実際に結合できる可能性が高い辺)
         private readonly Dictionary<(int, int), ulong> _リード隣接;
 
-        // ペアエンド情報(read1/read2 がそれぞれ別 unitig にマップされたこと)由来の
+        // ペアエンド情報 (read1/read2 がそれぞれ別 unitig にマップされたこと) 由来の
         // 隣接候補
-        // キーは リード隣接 と同じ (始点, 終点) 形式(符号がunitigの向きを表す)
+        // キーは リード隣接 と同じ (始点, 終点) 形式 (符号が unitig の向きを表す)
         // 値は「観測されたペアの一覧」で、各観測ごとの既知長を保持し、
-        // Scaffolder 側で代表値(中央値)を計算できるようにする
+        // Scaffolder 側で代表値 (中央値) を計算できるようにする
         private readonly Dictionary<(int, int), List<int>> _ペア経路;
 
         // unitig ID(1 始まり) -> その unitig が最終的にどの contig の
@@ -79,7 +79,7 @@ namespace Tsumiki.Core
                     var l_開始位置 = i - l_k長;
                     var l_キー = new KmerKey(l_ユニティグ.A_配列.AsSpan(l_開始位置, l_k長));
                     var l_逆鎖キー = l_キー.Get_逆相補();
-                    // 逆鎖キーは unitig 全体を逆相補した(=逆鎖の向きで読んだ)場合の
+                    // 逆鎖キーは unitig 全体を逆相補した (=逆鎖の向きで読んだ) 場合の
                     // 配列に対応する
                     // 区間 [開始位置, 開始位置+k長) を
                     // 長さ L の配列の逆側に写すと [L-i, L-開始位置) になるため、
@@ -101,11 +101,11 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// k-mer辞書へ 1 件登録する<br/>
+        /// k-mer 辞書へ 1 件登録する<br/>
         /// 衝突した k-mer は後勝ちで上書きすると
         /// 別 unitig 由来のリードが同じ ID に見え、偽の隣接を作る<br/>
         /// そのため曖昧としてマークし、マッピング時のヒットから除く<br/>
-        /// 戻り値は新たに曖昧マークを付けた件数(0 か 1)
+        /// 戻り値は新たに曖昧マークを付けた件数 (0 か 1)
         /// </summary>
         private static int V_登録_kmer(
             Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
@@ -125,10 +125,10 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// unitig 間の隣接を de Bruijn グラフから厳密に構築する<br/>
-        /// V_結合_コンティグ を呼ぶ前(コピー数推定の接続伝播など)でも独立に
+        /// V_結合_コンティグ を呼ぶ前 (コピー数推定の接続伝播など)でも独立に
         /// 呼べるよう公開している<br/>
         /// 呼ぶたびに FASTA を読み直して新しい
-        /// グラフを作る(unitig 数の規模では軽量なので使い捨てで構わない)
+        /// グラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
         /// </summary>
         public UnitigGraph Get_グラフ()
         {
@@ -152,7 +152,7 @@ namespace Tsumiki.Core
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            // k-mer辞書 は構築後に変更されない読み取り専用データなので、
+            // k-mer 辞書 は構築後に変更されない読み取り専用データなので、
             // 複数スレッドから安全に参照できる
             // 隣接への書き込みはスレッドごとにローカルな辞書に集計し、
             // 最後にマージすることでロックを避ける
@@ -191,7 +191,7 @@ namespace Tsumiki.Core
             // ローカルペア経路: (始点,終点) -> このワーカーで観測した各ペアの
             // 「既に見えている長さ」のリスト
             var l_ローカルペア経路 = new Dictionary<(int, int), List<int>>[l_スレッド数];
-            // ライブラリの向き(FR/RF/FF/RR)は決め打ちできないため、符号が
+            // ライブラリの向き (FR/RF/FF/RR) は決め打ちできないため、符号が
             // 一致するヒットと不一致のヒットを別々に集計し、多数派を採用する
             var l_ローカル同一向き標本 = new List<int>[l_スレッド数];
             var l_ローカル逆向き標本 = new List<int>[l_スレッド数];
@@ -276,9 +276,9 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.同一ユニティグのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一ユニティグ標本.Count);
             if (l_同一ユニティグ標本.Count > 0)
             {
-                // 同一unitig内標本は、unitig自体がフラグメント長より短い場合
-                // 両端が同じunitig内に収まるペアしか観測できず、より短い
-                // フラグメントに偏った標本になりやすい(unitigが短いほど顕著)
+                // 同一 unitig 内標本は、unitig 自体がフラグメント長より短い場合
+                // 両端が同じ unitig 内に収まるペアしか観測できず、より短い
+                // フラグメントに偏った標本になりやすい (unitig が短いほど顕著)
                 Logger.V_出力(メッセージID.同一ユニティグの断片長分布, Get_分布要約(l_同一ユニティグ標本));
                 Logger.V_出力(メッセージID.同一ユニティグの断片長中央値, StatsUtil.Get_中央値(l_同一ユニティグ標本), l_同一ユニティグ標本.Count);
             }
@@ -498,7 +498,7 @@ namespace Tsumiki.Core
                             // これを怠ると、
                             // リード内で 3 つ以上の unitig にまたがった場合でも
                             // 常に「最初にヒットした unitig」との組しか記録されず、
-                            // 実際の隣接関係(直前→直後)を反映できない
+                            // 実際の隣接関係 (直前→直後) を反映できない
                             l_直前 = l_ID;
                         }
                     }

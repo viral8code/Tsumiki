@@ -3,7 +3,7 @@
 namespace Tsumiki.Core.Output
 {
     /// <summary>
-    /// unitig グラフを GFA1 形式で書き出す(SPAdes/Unicycler と同様の診断出力)<br/>
+    /// unitig グラフを GFA1 形式で書き出す (SPAdes/Unicycler と同様の診断出力)<br/>
     /// 決められない分岐は、現状では walk の打ち切り点になるだけで
     /// 「なぜそこで切れたか」の情報が contigs.fasta には残らない<br/>
     /// GFA としてグラフそのものを出力すれば、Bandage 等のビューアで
@@ -11,7 +11,7 @@ namespace Tsumiki.Core.Output
     /// 完全長を目指す作業は
     /// 本質的に反復的であり、診断可能性そのものが機能である<br/>
     /// 出力するのは V_結合_コンティグ がバブル除去・反復解決を終えた後の
-    /// グラフの状態(=最終的な walk がどの分岐を残したまま打ち切られたかを
+    /// グラフの状態 (=最終的な walk がどの分岐を残したまま打ち切られたかを
     /// 反映する)<br/>
     /// バブル除去前の生の de Bruijn グラフではない
     /// </summary>
@@ -19,9 +19,9 @@ namespace Tsumiki.Core.Output
     {
         /// <summary>
         /// p_ユニティグ配列・p_グラフ の状態を GFA1 として p_パス へ書き出す<br/>
-        /// 頂点は unitig ID(1 始まり)の順鎖/逆鎖のペアで表現されているため、
+        /// 頂点は unitig ID(1 始まり) の順鎖/逆鎖のペアで表現されているため、
         /// 各物理的な隣接は双子の辺として 2 回現れる<br/>
-        /// 片方だけを 1 本のL行として出す
+        /// 片方だけを 1 本の L 行として出す
         /// </summary>
         public static void V_出力(
             string p_パス,

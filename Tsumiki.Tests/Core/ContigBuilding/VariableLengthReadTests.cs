@@ -8,15 +8,15 @@ namespace Tsumiki.Tests.Core
     /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する<br/>
     /// トリミング済みのデータではリード長がばらつく<br/>
     /// GAGE-B の
-    /// R. sphaeroides MiSeq(trimmed)では 755,847 本のうち 8% 以上が
-    /// k=63 未満で、最短は 19bp だった<br/>
+    /// R. sphaeroides MiSeq(trimmed) では 755,847 本のうち 8% 以上が
+    /// k=63 未満で、最短は 19 bp だった<br/>
     /// マッピング側に長さの判定が無く、
-    /// 19bp のリードに対して添字 62 までアクセスして例外になっていた<br/>
+    /// 19 bp のリードに対して添字 62 までアクセスして例外になっていた<br/>
     /// しかもその例外はワーカースレッドの中で起き、キューが満杯になった
     /// プロデューサーが永久に待ち続けたため、ログも例外も出ないまま
     /// 2 時間以上プロセスが停止した<br/>
     /// 長さの判定と、
-    /// ワーカーの例外を伝える仕組み(ReadPipelineTests)の両方が要る
+    /// ワーカーの例外を伝える仕組み (ReadPipelineTests) の両方が要る
     /// </summary>
     public class VariableLengthReadTests : IDisposable
     {
@@ -71,7 +71,7 @@ namespace Tsumiki.Tests.Core
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
-            // 19bp(最短の実例と同じ長さ)から 200bp まで、k をまたぐ長さを混ぜる
+            // 19 bp(最短の実例と同じ長さ) から 200 bp まで、k をまたぐ長さを混ぜる
             var lengths = new[] { 19, 30, K - 1, K, K + 1, 120, 200 };
             var reads1 = new List<(string, string)>();
             var reads2 = new List<(string, string)>();

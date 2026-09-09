@@ -56,7 +56,7 @@ namespace Tsumiki.Core.Preprocessing
 
         /// <summary>
         /// 引き継ぎ配列のうち、この k の集合に無い k-mer を足す<br/>
-        /// 既にある k-mer は触らない(実際のリード由来の観測を優先する)<br/>
+        /// 既にある k-mer は触らない (実際のリード由来の観測を優先する)<br/>
         /// 戻り値は足した k-mer の数
         /// </summary>
         public static int V_引き継ぎ(

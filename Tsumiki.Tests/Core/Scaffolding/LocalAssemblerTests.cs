@@ -9,11 +9,11 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// GapFiller が埋められなかったスキャフォールドのギャップを、その両端に
     /// 実際にマップされた局所リードだけで再アセンブリして埋める処理の検証<br/>
-    /// AssemblyMerger(-mg)と違い、他の k の「既に確定した結論」を持ち込むの
+    /// AssemblyMerger(-mg) と違い、他の k の「既に確定した結論」を持ち込むの
     /// ではなく、生リードから新しく証拠を集める<br/>
     /// ここでは生の FASTQ を
     /// 直接与えて、局所アセンブリだけでギャップが埋まる/埋まらないことを
-    /// 検証する(GapFiller 側は経由しない)
+    /// 検証する (GapFiller 側は経由しない)
     /// </summary>
     public class LocalAssemblerTests : IDisposable
     {
@@ -24,7 +24,7 @@ namespace Tsumiki.Tests.Core
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_localasm_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
             // LocalAssembler は内部で TrustedKmerIndex/KmerKey を使うため、
-            // 現在の実行時引数のk長を、テストで使うk(21)に合わせておく
+            // 現在の実行時引数の k 長を、テストで使うk(21) に合わせておく
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 21, A_スレッド数 = 1 };
         }
 
@@ -118,7 +118,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// アンカー付近のリードはあるが、両者を橋渡しする配列(ギャップの中身)を
+        /// アンカー付近のリードはあるが、両者を橋渡しする配列 (ギャップの中身) を
         /// 読んだリードが無い場合、経路が繋がらないので埋められない
         /// </summary>
         [Fact]
@@ -130,7 +130,7 @@ namespace Tsumiki.Tests.Core
             var suffix = RandomSequence(300, seed: 22);
 
             var scaffoldPath = this.WriteScaffold("scaffold_nopath.fasta", prefix + new string('N', fill.Length) + suffix);
-            // prefix と suffix それぞれの内部だけを読んだリード(橋渡しは無い)
+            // prefix と suffix それぞれの内部だけを読んだリード (橋渡しは無い)
             var readsPath = this.WriteReads("reads_nopath.fq", [prefix, suffix], readLength: 100);
 
             var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
@@ -143,7 +143,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// 橋渡しの配列が 2 通りとも読まれている場合、どちらが正しいか
-        /// 決められないので N のまま残す(誤った配列で埋めるより安全)
+        /// 決められないので N のまま残す (誤った配列で埋めるより安全)
         /// </summary>
         [Fact]
         public void FillGaps_TwoEquallySupportedFills_LeavesItAsNRatherThanGuessing()

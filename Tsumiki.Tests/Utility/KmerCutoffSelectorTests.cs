@@ -9,8 +9,8 @@ namespace Tsumiki.Tests.Utility
     /// 一気通貫で検証する<br/>
     /// 既定値の 2 はどのカバレッジ帯にも合わない<br/>
     /// 実測では同じ検体でも
-    /// 35x で 4、100x で 6〜11 が谷であり、2 のままだとエラー由来の k-mer が
-    /// 大量に残る(35x の実データで「良い k-mer」が 12.9M と、ゲノムサイズの
+    /// 35 x で 4、100 x で 6〜11 が谷であり、2 のままだとエラー由来の k-mer が
+    /// 大量に残る (35 x の実データで「良い k-mer」が 12.9 M と、ゲノムサイズの
     /// 倍に膨れていた)
     /// </summary>
     public class KmerCutoffSelectorTests : IDisposable
@@ -49,10 +49,10 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// このスペクトルに対して選ばれるべきカットオフ<br/>
-        /// 谷(8)ではない<br/>
+        /// 谷 (8) ではない<br/>
         /// V_解決_kmerカットオフ はまず 2 成分混合モデル
-        /// (KmerSpectrumMixtureModel)の適合を試み、この形のスペクトルなら
-        /// 適合に成功して谷検出(KmerHistogram)より低い 6 を返す
+        /// (KmerSpectrumMixtureModel) の適合を試み、この形のスペクトルなら
+        /// 適合に成功して谷検出 (KmerHistogram) より低い 6 を返す
         /// (事後誤り確率が有意水準を下回る最小の出現回数)<br/>
         /// どちらの経路でも「谷までは上げない」という結論は変わらない
         /// </summary>
@@ -98,7 +98,7 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal(選ばれるべきカットオフ, param.A_kmerカットオフ);
             // 谷より上へは決して行かないこと
             // 谷で切ると本物の k-mer の左裾まで
-            // 削れてグラフが切れる(実データで N50 が半分以下になった)
+            // 削れてグラフが切れる (実データで N50 が半分以下になった)
             Assert.True(param.A_kmerカットオフ < 谷の位置);
             // 自動適用は「明示指定された」扱いにしない
             Assert.False(param.A_kmerカットオフが明示指定されたか);
@@ -120,7 +120,7 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 自動選択したカットオフをそのまま適用したとき、実際に残る k-mer が
-        /// 選択値と辻褄が合っていること(選択とカットオフの適用が同じ
+        /// 選択値と辻褄が合っていること (選択とカットオフの適用が同じ
         /// ヒストグラムを見ている、という一気通貫の確認)
         /// </summary>
         [Fact]

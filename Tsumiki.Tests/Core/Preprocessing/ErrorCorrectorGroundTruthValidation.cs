@@ -7,18 +7,18 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// tools/simulate_reads.py が出力した合成データ(正解のerrors.tsv付き)に対して
+    /// tools/simulate_reads.py が出力した合成データ (正解の errors.tsv 付き) に対して
     /// ErrorCorrector.V_訂正_リードファイル を実際に走らせ、注入したエラーのうち
-    /// 何割を正しく真の塩基へ戻せたか(recall)、逆に正しかった塩基を
-    /// 誤って書き換えてしまった割合(誤訂正率)を測定する検証用テスト<br/>
-    /// 合成データが存在しない場合はスキップする(通常のCI/dotnet testの対象外、
-    /// 手動でtools/simulate_reads.pyを実行した後に手動で実行する想定)
+    /// 何割を正しく真の塩基へ戻せたか (recall)、逆に正しかった塩基を
+    /// 誤って書き換えてしまった割合 (誤訂正率) を測定する検証用テスト<br/>
+    /// 合成データが存在しない場合はスキップする (通常の CI/dotnet test の対象外、
+    /// 手動で tools/simulate_reads.pyを実行した後に手動で実行する想定)
     /// </summary>
     public class ErrorCorrectorGroundTruthValidation
     {
-        // Bash tool経由(Git Bash/MSYS)で python tools/simulate_reads.py --out-dir /tmp/tsumiki_synth
-        // を実行した場合の実際の出力先(MSYSが/tmpをこのWindowsパスへ解決する)
-        // .NET のファイルAPIはMSYSのパス変換を経由しないため、Windows形式で直接指定する
+        // Bash tool経由 (Git Bash/MSYS) で python tools/simulate_reads.py --out-dir /tmp/tsumiki_synth
+        // を実行した場合の実際の出力先 (MSYS が/tmp をこの Windows パスへ解決する)
+        // .NET のファイル API は MSYS のパス変換を経由しないため、Windows 形式で直接指定する
         private static readonly string SynthDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp", "tsumiki_synth");
 
@@ -81,7 +81,7 @@ namespace Tsumiki.Tests.Core
                 Console.WriteLine($"Total positions changed by corrector: {totalChangedPositions}");
                 Console.WriteLine($"Of those, changed a previously-CORRECT base to something wrong (false corrections): {newlyWrongCount} ({falseCorrectionRate:P2})");
 
-                // 大まかな健全性チェック: recallは意味のある水準まで達し、
+                // 大まかな健全性チェック: recall は意味のある水準まで達し、
                 // 誤訂正率は低く抑えられているべき
                 Assert.True(recall > 0.5, $"Expected recall > 50%, got {recall:P2}");
                 Assert.True(falseCorrectionRate < 0.05, $"Expected false-correction rate < 5%, got {falseCorrectionRate:P2}");
@@ -147,7 +147,7 @@ namespace Tsumiki.Tests.Core
                     }
                     else if (changed)
                     {
-                        // 元々エラーではなかった(=正しかった)位置を書き換えてしまった
+                        // 元々エラーではなかった (=正しかった) 位置を書き換えてしまった
                         newlyWrongCount++;
                     }
                 }
@@ -155,7 +155,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// FASTQを「id, 配列」の 2 行単位として読むだけの軽量リーダー(品質行は無視)
+        /// FASTQ を「id, 配列」の 2 行単位として読むだけの軽量リーダー (品質行は無視)
         /// </summary>
         private sealed class 簡易FASTQ読み込み(string p_パス) : IDisposable
         {

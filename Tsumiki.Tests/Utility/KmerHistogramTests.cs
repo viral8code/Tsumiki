@@ -13,7 +13,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Analyse_ClassicBimodalSpectrum_FindsValley()
         {
-            // エラー由来の山(count=1,2)、谷(count=3)、真のゲノム由来の山(count~30)
+            // エラー由来の山 (count=1,2)、谷 (count=3)、真のゲノム由来の山 (count~30)
             Dictionary<ulong, long> histogram = new()
             {
                 [1] = 10_000,
@@ -39,7 +39,7 @@ namespace Tsumiki.Tests.Utility
         /// 削ってしまう<br/>
         /// エラーが集合を支配しない範囲でできるだけ低く返す<br/>
         /// 上のスペクトルなら、出現回数 2 以上を残せば 48,300 種類で
-        /// 推定ゲノムサイズ 40,623 の 1.19 倍に収まるため、谷(3)まで
+        /// 推定ゲノムサイズ 40,623 の 1.19 倍に収まるため、谷 (3) まで
         /// 上げる必要はない
         /// </summary>
         [Fact]
@@ -60,7 +60,7 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// エラー由来の k-mer が桁違いに多い(高カバレッジ)場合は、
+        /// エラー由来の k-mer が桁違いに多い (高カバレッジ) 場合は、
         /// 集合がエラーに埋め尽くされないところまでカットオフを上げること<br/>
         /// 品質は変わらないがメモリが減る
         /// </summary>
@@ -77,7 +77,7 @@ namespace Tsumiki.Tests.Utility
 
             Assert.NotNull(suggestion);
             Assert.True(suggestion > 2, $"cutoff should have been raised above 2, but was {suggestion}");
-            // 谷を超えて上げてはいけない(そこから先はゲノム由来しか残っていない)
+            // 谷を超えて上げてはいけない (そこから先はゲノム由来しか残っていない)
             var analysis = KmerHistogram.Get_解析結果(histogram);
             Assert.NotNull(analysis);
             Assert.True(suggestion <= analysis.A_谷, $"cutoff {suggestion} exceeded the valley {analysis.A_谷}");
@@ -123,7 +123,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void SuggestCutoff_ValleyAtCountOne_IsRaisedToTheFloor()
         {
-            // count=1 が最小(エラーがほとんど無いデータ)で、そこから
+            // count=1 が最小 (エラーがほとんど無いデータ) で、そこから
             // 単一コピーの山へ立ち上がるスペクトル
             Dictionary<ulong, long> histogram = new()
             {
@@ -148,7 +148,7 @@ namespace Tsumiki.Tests.Utility
         /// スペクトル<br/>
         /// 谷・山・ゲノムサイズがまとめて取れること<br/>
         /// 素朴な「最初に頻度が増えた位置」だけを見る実装は、谷の底が平らな
-        /// 実データでノイズに引きずられて答えがぶれた(同じ検体の 100x で
+        /// 実データでノイズに引きずられて答えがぶれた (同じ検体の 100 x で
         /// 6 と 11 の両方が出た)<br/>
         /// 底の最小値を取り直すことで安定させている
         /// </summary>
@@ -184,7 +184,7 @@ namespace Tsumiki.Tests.Utility
             var histogram = BuildRealisticSpectrum(truePeak, trueGenomeSize, p_エラー係数: 10_000_000);
             var baseline = KmerHistogram.Get_解析結果(histogram);
 
-            // 100 万回出現する k-mer を 50 種類混ぜる(延べ 5000 万)
+            // 100 万回出現する k-mer を 50 種類混ぜる (延べ 5000 万)
             histogram[1_000_000] = 50;
             var withOutliers = KmerHistogram.Get_解析結果(histogram);
 
@@ -194,8 +194,8 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// エラー由来の裾(出現回数の二乗に反比例して減衰)と、単一コピーの
-        /// 山(平均 p_ピーク の正規分布状)を重ね合わせた、実データに近い形の
+        /// エラー由来の裾 (出現回数の二乗に反比例して減衰) と、単一コピーの
+        /// 山 (平均 p_ピーク の正規分布状)を重ね合わせた、実データに近い形の
         /// ヒストグラムを作る
         /// </summary>
         private static Dictionary<ulong, long> BuildRealisticSpectrum(int p_ピーク, long p_ゲノムサイズ, long p_エラー係数)

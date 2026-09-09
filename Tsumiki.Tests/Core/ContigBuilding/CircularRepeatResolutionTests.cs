@@ -8,7 +8,7 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 環状の複製単位に同じ反復が 2 回現れる形の解きほぐしを固定する<br/>
     /// 環状のゲノムに反復 R が 2 回あると、その間に挟まれる領域は必ず 2 つ
-    /// (A と B)になり、ゲノムは A R B R を 1 周する形になる<br/>
+    /// (A と B) になり、ゲノムは A R B R を 1 周する形になる<br/>
     /// このとき R へ
     /// 入ってくるのも A と B、R から出ていくのも A と B で、同じ unitig が
     /// 入口と出口の両方に立つ<br/>
@@ -26,7 +26,7 @@ namespace Tsumiki.Tests.Core
 
         // 反復
         // A と B はどちらも R の先頭 k-1 塩基で終わり、
-        // R の末尾 k-1 塩基で始まる(= R が入次数 2 ・出次数 2 になる)
+        // R の末尾 k-1 塩基で始まる (= R が入次数 2・出次数 2 になる)
         private const string ユニティグR = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
         private const string ユニティグA = "GAGCAGAGTCGTTCTGCGAGGACAGTTCGCGAGCCCTCCGTC";
@@ -71,7 +71,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// A R B R の環を組み、R が入次数 2 ・出次数 2 になっていることまで確かめる
+        /// A R B R の環を組み、R が入次数 2・出次数 2 になっていることまで確かめる
         /// </summary>
         private static (UnitigGraph A_グラフ, List<string> A_ユニティグ配列, int A_a, int A_b, int A_r) Get_環()
         {
@@ -100,7 +100,7 @@ namespace Tsumiki.Tests.Core
             var (l_グラフ, l_ユニティグ配列, l_a, l_b, _) = Get_環();
             var l_頂点数 = l_グラフ.A_出辺.Count;
 
-            // A の次は B、B の次は A(= 1 本の環)という証拠だけを与える
+            // A の次は B、B の次は A(= 1 本の環) という証拠だけを与える
             Dictionary<(int, int), ulong> l_ペア連結 = new()
             {
                 [(l_a, l_b)] = 30,
@@ -130,7 +130,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_グラフ, l_ユニティグ配列, l_a, l_b, _) = Get_環();
 
-            // A の次は A、B の次は B(= 2 本の独立した環)という証拠
+            // A の次は A、B の次は B(= 2 本の独立した環) という証拠
             Dictionary<(int, int), ulong> l_ペア連結 = new()
             {
                 [(l_a, l_a)] = 30,

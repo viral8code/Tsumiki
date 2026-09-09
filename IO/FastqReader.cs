@@ -51,7 +51,7 @@ namespace Tsumiki.IO
 
         /// <summary>
         /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す<br/>
-        /// 最終成果物へリードを貼り直す処理(ポリッシュ・閉じ目の検証)のように、
+        /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、
         /// ID もクオリティも要らない全走査のための入口
         /// </summary>
         public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)

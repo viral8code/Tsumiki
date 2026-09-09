@@ -41,10 +41,10 @@ namespace Tsumiki.Common
         /// <summary>
         /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する
         /// (Booth のアルゴリズム、O(n))<br/>
-        /// 環状に閉じた contig は開始位置が任意(walk がどこから始まったかの
+        /// 環状に閉じた contig は開始位置が任意 (walk がどこから始まったかの
         /// 産物でしかない)<br/>
         /// 決定的な基準を置かないと、同じ環状配列でも
-        /// 実行のたびに(あるいは同じ実行内でも walk の起点が変われば)
+        /// 実行のたびに (あるいは同じ実行内でも walk の起点が変われば)
         /// 別の文字列として出力され、下流の比較や再現性を損なう
         /// </summary>
         public static string Get_最小回転(string p_配列)
@@ -145,7 +145,7 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 塩基文字が曖昧(A/C/G/T のいずれでもない IUPAC コード)かどうか<br/>
+        /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか<br/>
         /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
         /// </summary>
         public static bool Get_曖昧塩基か(char p_塩基文字)
@@ -224,7 +224,7 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// 塩基IDを 1 文字へ変換する<br/>
+        /// 塩基 ID を 1 文字へ変換する<br/>
         /// 文字列を返す版は連結のたびに確保が起きるため、
         /// 塩基列をまとめて文字列にする場面ではこちらを使う
         /// </summary>
@@ -265,7 +265,7 @@ namespace Tsumiki.Common
 
         /// <summary>
         /// 曖昧塩基を無視する経路向けの軽量版<br/>
-        /// リードの各文字を 1 バイトIDに変換する<br/>
+        /// リードの各文字を 1 バイト ID に変換する<br/>
         /// A/C/G/T 以外は Consts.無効な塩基 になる<br/>
         /// V_変換_塩基候補列 と異なり
         /// LINQ・per-char の byte[] アロケーションを行わないため大幅に高速
@@ -302,7 +302,7 @@ namespace Tsumiki.Common
 
         /// <summary>
         /// "2G" / "512M" / "2048" のようなサイズ指定をバイト数に変換する<br/>
-        /// 接尾辞は 2 進接頭辞(1K = 1024)、接尾辞が無い場合は MB とみなす
+        /// 接尾辞は 2 進接頭辞 (1 K = 1024)、接尾辞が無い場合は MB とみなす
         /// </summary>
         public static long V_変換_メモリサイズ(string p_表記)
         {
@@ -352,7 +352,7 @@ namespace Tsumiki.Common
         }
 
         /// <summary>
-        /// バイト数を "2 GB" のような読みやすい形に戻す(パラメータ表示用)
+        /// バイト数を "2 GB" のような読みやすい形に戻す (パラメータ表示用)
         /// </summary>
         public static string Get_表示用メモリサイズ(long p_バイト数)
         {

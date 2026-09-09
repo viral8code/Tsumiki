@@ -44,7 +44,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void BuildWarning_RealisticPhred33Data_NoWarning()
         {
-            // 典型的なPhred33品質文字('#'=Q2 〜 'J'=Q41相当)を模した、
+            // 典型的なPhred33品質文字 ('#'=Q2 〜 'J'=Q41相当) を模した、
             // ばらつきのあるサンプル
             var sample = PhredSniffer.Get_標本(["#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"]);
 
@@ -103,13 +103,13 @@ namespace Tsumiki.Tests.IO
         }
 
         /// <summary>
-        /// 実データ(Achromobacter の IS350 ライブラリ)で観測された ASCII 範囲
+        /// 実データ (Achromobacter の IS350 ライブラリ) で観測された ASCII 範囲
         /// [64, 104]<br/>
         /// Phred33 と解釈すると Q[31, 71] となり上限がありえないが、
         /// Phred64 なら Q[0, 40] で完全に妥当<br/>
         /// この判別ができないと、
         /// 「quality - Phred - QualityCutoff が負なら捨てる」という品質フィルタが
-        /// 事実上まったく効かなくなる(Q0 の塩基が Q31 に見えるため)
+        /// 事実上まったく効かなくなる (Q0 の塩基が Q31 に見えるため)
         /// </summary>
         [Fact]
         public void InferOffset_RealWorldPhred64Range_InfersPhred64()
@@ -122,7 +122,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void InferOffset_TypicalPhred33Range_InfersPhred33()
         {
-            // '!'(ASCII 33, Q0)から 'I'(ASCII 73, Q40)までの一般的な Phred33 範囲
+            // '!'(ASCII 33, Q0) から 'I'(ASCII 73, Q40) までの一般的な Phred33 範囲
             // Phred64 と解釈すると Q が負になるため、33 side のみが妥当
             var sample = PhredSniffer.Get_標本(["!!!!IIII"]);
 

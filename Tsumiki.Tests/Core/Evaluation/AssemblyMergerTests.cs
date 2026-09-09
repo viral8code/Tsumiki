@@ -81,7 +81,7 @@ namespace Tsumiki.Tests.Core
 
             // 骨格は中間で切れている
             var 骨格 = this.WriteAssembly("backbone.fasta", 63, 左, 右);
-            // 別の k は切れ目を跨いでいる(両端に十分なアンカーを持つ)
+            // 別の k は切れ目を跨いでいる (両端に十分なアンカーを持つ)
             var 他 = this.WriteAssembly("other.fasta", 31, truth);
 
             var 出力 = Path.Combine(this._tempDir, "merged.fasta");

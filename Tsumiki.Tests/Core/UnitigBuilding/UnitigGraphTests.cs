@@ -7,7 +7,7 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// unitig 間の隣接を de Bruijn グラフから厳密に構築する UnitigGraph の検証<br/>
-    /// 旧実装(リードマッピング由来の隣接候補 + 任意長オーバーラップ探索)は
+    /// 旧実装 (リードマッピング由来の隣接候補 + 任意長オーバーラップ探索) は
     /// 実データで平均 2.96 塩基という偶然の一致で unitig を接着していたため、
     /// 「辺が張られる条件」そのものをここで固定する
     /// </summary>
@@ -17,7 +17,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// ContigMaker のコンストラクタと同じ規則で kmerDict を組み立てる<br/>
-        /// 添字 2u が unitig u の順鎖、2u+1 が逆鎖
+        /// 添字 2 u が unitig u の順鎖、2 u+1 が逆鎖
         /// </summary>
         private static (List<string> UnitigList, Dictionary<KmerKey, (int UnitigId, int Position)> KmerDict) Build(
             int kmerLength,
@@ -111,7 +111,7 @@ namespace Tsumiki.Tests.Core
         public void Build_CreatesNoEdge_WhenTargetKmerIsInteriorRatherThanHead()
         {
             // B の「途中」に一致する k-mer があっても、k-1 オーバーラップでの
-            // 連結はできないため辺を張ってはならない(Position != 0 を弾く条件)
+            // 連結はできないため辺を張ってはならない (Position != 0 を弾く条件)
             // A の末尾 k-mer を 1 塩基伸ばした k-mer が B の 3 塩基目から始まるよう構成する
             const int k = 8;
             const string junction = "ACGGATCA"; // A の末尾から伸ばして得られる k-mer
@@ -147,8 +147,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 単純バブル(u から 2 本に分かれ、それぞれ 1 本の unitig を経て
-        /// 同じ w へ再合流する)で、リード支持の高い枝だけが経路として
+        /// 単純バブル (u から 2 本に分かれ、それぞれ 1 本の unitig を経て
+        /// 同じ w へ再合流する) で、リード支持の高い枝だけが経路として
         /// 残ることを確認する<br/>
         /// 結合の採用条件を相互一意にした結果、再合流点 w の入次数が
         /// 2 のままだと u から w へ至る経路が一切結合されなくなるため、
@@ -190,7 +190,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal([wV], graph.A_出辺[b1V]);
             Assert.Empty(graph.A_出辺[b2V]);
 
-            // 逆鎖側も対称に取り除かれていること(片側だけ消すと順鎖と逆鎖で
+            // 逆鎖側も対称に取り除かれていること (片側だけ消すと順鎖と逆鎖で
             // 別々の経路が組まれてしまう)
             Assert.Equal(1, graph.Get_入次数(wV));
             Assert.DoesNotContain(b2V ^ 1, graph.A_出辺[wV ^ 1]);
@@ -198,8 +198,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 長さが大きく異なる分岐は、同じ領域の別表現(バブル)ではなく
-        /// 本物の分岐(反復配列の出入口など)である可能性が高いため、
+        /// 長さが大きく異なる分岐は、同じ領域の別表現 (バブル) ではなく
+        /// 本物の分岐 (反復配列の出入口など) である可能性が高いため、
         /// 支持の低い側であっても勝手に経路から外してはならない
         /// </summary>
         [Fact]
@@ -208,7 +208,7 @@ namespace Tsumiki.Tests.Core
             const int k = 8;
             const string u = "GCTAAAGACAATTACGCA";
             const string b1 = "TTACGCAAGGATCCTGCACGT";
-            // b2 は b1 より大幅に長い(長さ比が既定の閾値 1.5 を超える)
+            // b2 は b1 より大幅に長い (長さ比が既定の閾値 1.5 を超える)
             const string b2 = "TTACGCACTTAGCAGGTCCAATTGGACCAATGCACGT";
             const string w = "TGCACGTAAGGCTTACCA";
 
@@ -239,7 +239,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// バブルの枝が単一 unitig とは限らない<br/>
-        /// 分岐の無い(排他的な)2 本の
+        /// 分岐の無い (排他的な) 2 本の
         /// unitig をまたぐ枝同士でも、1 本の経路として検出・比較できること
         /// </summary>
         [Fact]
@@ -251,7 +251,7 @@ namespace Tsumiki.Tests.Core
             const string u = "GCTAAAGACAATTACGCA";
             const string w = "TGCACGTAAGGCTTACCA";
 
-            // 枝 1 ・枝 2 は完全に無関係な乱数配列にする(配列類似度の検証(第 2 段階)は
+            // 枝 1・枝 2 は完全に無関係な乱数配列にする (配列類似度の検証 (第 2 段階) は
             // 別のテストで確かめるため、ここでは第 2 段階を無効にして多段構造の
             // 検出・長さ帯の比較そのものだけを確かめる)
             var joint1 = RandomSequence(7, seed: 501);
@@ -276,7 +276,7 @@ namespace Tsumiki.Tests.Core
             var b2bV = ContigMaker.Get_頂点番号(5);
             var wV = ContigMaker.Get_頂点番号(6);
 
-            // 前提: それぞれの枝が 2 unitigの分岐無しの鎖になっている
+            // 前提: それぞれの枝が 2 unitig の分岐無しの鎖になっている
             Assert.Equal(2, graph.A_出辺[uV].Count);
             Assert.Equal([b1bV], graph.A_出辺[b1aV]);
             Assert.Equal([b2bV], graph.A_出辺[b2aV]);
@@ -289,12 +289,12 @@ namespace Tsumiki.Tests.Core
                 [(uV, b2aV)] = 3,
             };
 
-            // 配列類似度の検証(第 2 段階)は別のテストで確かめる
+            // 配列類似度の検証 (第 2 段階) は別のテストで確かめる
             // ここでは多段構造の検出・長さ帯の比較だけを見たいので無効にする
             var popped = graph.V_除去_単純バブル(unitigList, support, k, p_類似度の下限: 0.0);
 
             Assert.Equal(1, popped);
-            // 枝 1(2 unitig とも)は生き残り、枝 2(2 unitig とも)は取り除かれる
+            // 枝 1(2 unitig とも) は生き残り、枝 2(2 unitig とも) は取り除かれる
             Assert.Equal([b1aV], graph.A_出辺[uV]);
             Assert.Equal([wV], graph.A_出辺[b1bV]);
             Assert.Empty(graph.A_出辺[b2aV]);
@@ -336,8 +336,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 長さが揃っていても配列がまるで違う(たまたま長さが一致しただけの
-        /// 別の反復など)場合は、同じ領域の別表現とは言えないため触らない
+        /// 長さが揃っていても配列がまるで違う (たまたま長さが一致しただけの
+        /// 別の反復など) 場合は、同じ領域の別表現とは言えないため触らない
         /// </summary>
         [Fact]
         public void PopSimpleBubbles_LeavesBranchesOfMatchingLengthButUnrelatedSequenceAlone()

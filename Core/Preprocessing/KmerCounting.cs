@@ -16,7 +16,7 @@ namespace Tsumiki.Core.Preprocessing
     {
         /// <summary>
         /// FASTQ を 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する<br/>
-        /// 読み取りを 1 本に保つのはディスクI/Oをシーケンシャルなままにするため
+        /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
         /// </summary>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
         {
@@ -55,10 +55,10 @@ namespace Tsumiki.Core.Preprocessing
         }
 
         /// <summary>
-        /// リード 1(・指定があればリード 2)を、-ab の有無に応じた経路で
+        /// リード 1(・指定があればリード 2) を、-ab の有無に応じた経路で
         /// TrustedKmerIndex へ読み込む<br/>
         /// AssemblyPipeline と MultiKAssembler の
-        /// どちらも(単一k・複数kの違いだけで)同じ読み込み手順を必要とするため
+        /// どちらも (単一 k・複数 k の違いだけで) 同じ読み込み手順を必要とするため
         /// ここにまとめる
         /// </summary>
         public static void V_読込_リードペア(

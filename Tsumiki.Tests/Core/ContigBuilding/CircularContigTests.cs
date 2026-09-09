@@ -6,7 +6,7 @@ using Tsumiki.Model.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状に閉じた複製単位(細菌の染色体・プラスミドはいずれも環状)を
+    /// 環状に閉じた複製単位 (細菌の染色体・プラスミドはいずれも環状) を
     /// 組み上げられた場合に、それを検出して名前で示し、かつ円周の長さが
     /// 正しくなることを検証する<br/>
     /// 環状経路では末尾 unitig が「始点 unitig と重なる k-1 塩基」を自分の
@@ -36,7 +36,7 @@ namespace Tsumiki.Tests.Core
             }
         }
 
-        // 複製単位として数えてもらえる長さ(Consts.環状として数える最小長)を
+        // 複製単位として数えてもらえる長さ (Consts.環状として数える最小長) を
         // 超える環にする
         // これを下回る閉路はホモポリマー等の産物とみなされ、
         // 環状の目印が付かない
@@ -48,7 +48,7 @@ namespace Tsumiki.Tests.Core
         private static readonly string Circle = Get_乱数配列(円周, p_種: 20250908);
 
         // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
-        // 先頭 unitig の先頭 k-1 塩基と一致する(= 環が閉じる)ように切り分ける
+        // 先頭 unitig の先頭 k-1 塩基と一致する (= 環が閉じる) ように切り分ける
         private static readonly string UnitigA = Circle[..(400 + k - 1)];
 
         private static readonly string UnitigB = Circle[400..(800 + k - 1)];
@@ -94,7 +94,7 @@ namespace Tsumiki.Tests.Core
             // 重なりを二重に数えず、円周ちょうどの長さになっていること
             Assert.Equal(円周, contig.A_配列.Length);
 
-            // 配列としても、環状配列のいずれかの回転(またはその逆相補)に
+            // 配列としても、環状配列のいずれかの回転 (またはその逆相補) に
             // 一致していなければならない
             var doubled = Circle + Circle;
             var doubledRevComp = Util.V_逆相補(Circle) + Util.V_逆相補(Circle);
@@ -128,7 +128,7 @@ namespace Tsumiki.Tests.Core
 
             var contig = Assert.Single(contigs);
             Assert.DoesNotContain("circular", contig.A_ID);
-            // A(38bp) + B の重なりを除いた分(38 - 7 = 31bp)= 69bp
+            // A(38 bp) + B の重なりを除いた分 (38 - 7 = 31 bp)= 69 bp
             Assert.Equal(UnitigA.Length + UnitigB.Length - (k - 1), contig.A_配列.Length);
         }
     }

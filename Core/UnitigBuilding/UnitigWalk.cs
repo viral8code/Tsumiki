@@ -4,7 +4,7 @@ using Tsumiki.Utility;
 namespace Tsumiki.Core.UnitigBuilding
 {
     /// <summary>
-    /// unitig の walk を、パック値を転がしながら進める実装(k &lt;= 64 用)<br/>
+    /// unitig の walk を、パック値を転がしながら進める実装 (k &lt;= 64 用)<br/>
     /// walk は 1 塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる<br/>
     /// Span から毎回詰め直すと、1 歩あたり O(k) の詰め直しが所属判定と
     /// 入次数判定の回数だけ走る
@@ -58,7 +58,7 @@ namespace Tsumiki.Core.UnitigBuilding
         }
 
         /// <summary>
-        /// 先頭に塩基を足した(末尾を落とした)k-mer の順鎖・逆鎖パック値
+        /// 先頭に塩基を足した (末尾を落とした) k-mer の順鎖・逆鎖パック値
         /// </summary>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {

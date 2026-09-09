@@ -19,12 +19,12 @@ namespace Tsumiki.Core.Evaluation
     internal static class CompletenessValidator
     {
         /// <summary>
-        /// 信頼できる k-mer の取りこぼしとして許す割合(%)
+        /// 信頼できる k-mer の取りこぼしとして許す割合 (%)
         /// </summary>
         private const double 取りこぼしの許容率 = 5.0;
 
         /// <summary>
-        /// コピー数の推定を超えて出している延べ数として許す割合(%)
+        /// コピー数の推定を超えて出している延べ数として許す割合 (%)
         /// </summary>
         private const double 出しすぎの許容率 = 1.0;
 

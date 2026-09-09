@@ -3,8 +3,8 @@
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// k-mer スペクトルの 2 成分混合モデル(誤り=幾何分布、真のk-mer=単一コピー平均の
-    /// 整数倍に山を持つポアソン混合)のEM推定を、理論分布そのものから作った
+    /// k-mer スペクトルの 2 成分混合モデル (誤り=幾何分布、真の k-mer=単一コピー平均の
+    /// 整数倍に山を持つポアソン混合) の EM 推定を、理論分布そのものから作った
     /// ヒストグラムで固定する<br/>
     /// 理論分布を使うことで、サンプリング由来のノイズを
     /// 排して「モデルが正しいパラメータへ収束するか」だけを検証できる
@@ -30,7 +30,7 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// 指定したパラメータ通りの理論混合分布から、その通りのヒストグラムを作る
         /// (サンプリングはしない<br/>
-        /// EMが真のパラメータへ収束するかだけを見るため)
+        /// EM が真のパラメータへ収束するかだけを見るため)
         /// </summary>
         private static Dictionary<ulong, long> Get_理論ヒストグラム(
             double p_λ, double p_誤り混合比, double p_誤り平均, double[] p_コピー数別混合比,
@@ -51,7 +51,7 @@ namespace Tsumiki.Tests.Utility
 
         private static double[] Get_コピー数別混合比_単一コピー優勢()
         {
-            // モデル(π_k ∝ r^(k-1))と同じ形の生成分布
+            // モデル (π_k ∝ r^(k-1))と同じ形の生成分布
             const double r = 0.15;
             var l_比 = new double[10];
             var l_合計 = 0.0;
@@ -76,7 +76,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Get_解析結果_TooNarrowAScanRange_ReturnsNull()
         {
-            // コピー数上限(10)の 2 倍に満たない走査範囲では、単一コピーの山と
+            // コピー数上限 (10) の 2 倍に満たない走査範囲では、単一コピーの山と
             // その倍数の山を区別する材料が無い
             Dictionary<ulong, long> l_ヒストグラム = new() { [1] = 100, [2] = 50, [5] = 200 };
             Assert.Null(KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム));
@@ -97,13 +97,13 @@ namespace Tsumiki.Tests.Utility
 
             Assert.NotNull(l_結果);
             Assert.InRange(l_結果!.A_単一コピー平均, 真のλ - 2, 真のλ + 2);
-            // カットオフは誤り成分側、信頼下限はカットオフ以上、どちらも単一コピー峰(30)未満のはず
+            // カットオフは誤り成分側、信頼下限はカットオフ以上、どちらも単一コピー峰 (30) 未満のはず
             Assert.InRange((double)l_結果.A_カットオフ, 1, 真のλ);
             Assert.True(l_結果.A_信頼下限 >= l_結果.A_カットオフ);
         }
 
         /// <summary>
-        /// 低カバレッジ気味(単一コピー平均が誤り成分の平均に近い)でも、
+        /// 低カバレッジ気味 (単一コピー平均が誤り成分の平均に近い) でも、
         /// 谷が視認できるかどうかに関わらずモデルが分離できることを確かめる
         /// </summary>
         [Fact]

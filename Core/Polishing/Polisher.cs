@@ -90,7 +90,7 @@ namespace Tsumiki.Core.Polishing
 
         /// <summary>
         /// p_FASTAパス を磨いて p_出力パス へ書き出す<br/>
-        /// 磨く対象が無い(配列が空、種が 1 つも取れない)場合は null を返す
+        /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
         /// </summary>
         public static ポリッシュ統計? Get_磨いた結果(
             string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス)
@@ -113,7 +113,7 @@ namespace Tsumiki.Core.Polishing
             }
 
             // 位置ごとの塩基の得票
-            // 塩基IDは 1..4 なので (位置 * 4 + 塩基ID - 1)
+            // 塩基 ID は 1..4 なので (位置 * 4 + 塩基ID - 1)
             var l_得票 = l_配列群.Select(x => new int[x.Length * 4]).ToArray();
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);

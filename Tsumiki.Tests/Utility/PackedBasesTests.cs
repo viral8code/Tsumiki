@@ -4,7 +4,7 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// 塩基列を 2bit/塩基 で詰め、語単位で突き合わせる部品の検証<br/>
+    /// 塩基列を 2 bit/塩基 で詰め、語単位で突き合わせる部品の検証<br/>
     /// 重なりの探索がこれに置き換わるので、1 塩基ずつ比べた場合と
     /// 完全に同じ数を返すことが要件になる
     /// </summary>
@@ -49,7 +49,7 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// 開始位置・長さのあらゆる組み合わせで、1 塩基ずつ数えた結果と一致すること<br/>
-        /// 語の境界をまたぐ位置(32 の倍数の前後)を必ず含むように総当たりする
+        /// 語の境界をまたぐ位置 (32 の倍数の前後) を必ず含むように総当たりする
         /// </summary>
         [Fact]
         public void Get_不一致数_MatchesTheNaiveCountAtEveryOffsetAndLength()

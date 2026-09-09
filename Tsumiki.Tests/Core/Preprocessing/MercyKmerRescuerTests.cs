@@ -8,8 +8,8 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// カットオフで落ちた k-mer の救済を固定する<br/>
-    /// 救うべきもの(信頼できる k-mer に挟まれた低頻度)と、救ってはいけないもの
-    /// (端に生えているだけの低頻度)の線引きが要点
+    /// 救うべきもの (信頼できる k-mer に挟まれた低頻度) と、救ってはいけないもの
+    /// (端に生えているだけの低頻度) の線引きが要点
     /// </summary>
     public class MercyKmerRescuerTests : IDisposable
     {

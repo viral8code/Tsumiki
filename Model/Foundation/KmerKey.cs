@@ -15,9 +15,9 @@ namespace Tsumiki.Model.Foundation
                 var l_シフト量 = (31 ^ (i & 31)) << 1;
                 // Get_塩基ID候補 は曖昧塩基対応のため List を確保するが、
                 // ContigMaker 側では曖昧塩基を含む区間はそもそも KmerKey 化されない
-                // (呼ばれない)ため、ここでは List 確保のない軽量な単一塩基変換で十分
+                // (呼ばれない) ため、ここでは List 確保のない軽量な単一塩基変換で十分
                 var l_値 = (ulong)Util.Get_塩基ID(p_kmer[i]) - 1;
-                // 32 塩基ごとに同じ ulong 要素(2bit x 32 = 64bit)を共有するため、
+                // 32 塩基ごとに同じ ulong 要素 (2 bit x 32 = 64 bit) を共有するため、
                 // 代入ではなく OR で詰め込まないと、直前までに書き込んだ
                 // 塩基の情報が上書きで消えてしまう
                 // (この不具合により、同じ ulong 要素に収まる k-mer 同士が
@@ -27,9 +27,9 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 塩基ID(1=A,2=C,3=G,4=T)のバイト列から直接構築する版<br/>
-        /// UnitigMaker/TrustedKmerIndex はバイトID空間で動作しているため、
-        /// char経由の変換を挟まずに済む(ホットパス向け)
+        /// 塩基ID(1=A,2=C,3=G,4=T) のバイト列から直接構築する版<br/>
+        /// UnitigMaker/TrustedKmerIndex はバイト ID 空間で動作しているため、
+        /// char経由の変換を挟まずに済む (ホットパス向け)
         /// </summary>
         public KmerKey(ReadOnlySpan<byte> p_kmer)
         {
@@ -73,9 +73,9 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// 塩基ID列へデコードしてから逆相補を取り、再エンコードする<br/>
-        /// 64bit 全体のビット反転で済ませてはいけない<br/>
-        /// 2bit コドン内部の
+        /// 塩基 ID 列へデコードしてから逆相補を取り、再エンコードする<br/>
+        /// 64 bit 全体のビット反転で済ませてはいけない<br/>
+        /// 2 bit コドン内部の
         /// ビット順まで入れ替わり、C(01) と G(10) のような塩基で値が化ける
         /// </summary>
         public KmerKey Get_逆相補()
@@ -85,8 +85,8 @@ namespace Tsumiki.Model.Foundation
         }
 
         /// <summary>
-        /// パック済みデータを、塩基ID(1=A,2=C,3=G,4=T)のバイト列へデコードする<br/>
-        /// p_長さ は元のk-mer長(コンストラクタに渡した長さ)を指定する
+        /// パック済みデータを、塩基ID(1=A,2=C,3=G,4=T) のバイト列へデコードする<br/>
+        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ)を指定する
         /// </summary>
         public byte[] Get_塩基列(int p_長さ)
         {

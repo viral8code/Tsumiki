@@ -6,14 +6,14 @@ namespace Tsumiki.Utility
     /// <summary>
     /// リード長から k 長を自動選択する<br/>
     /// k が短いとその長さを超える反復配列が潰れ、長すぎると 1 リードから取れる
-    /// k-mer の本数(リード長 - k + 1)が減ってカバレッジが痩せる
+    /// k-mer の本数 (リード長 - k + 1) が減ってカバレッジが痩せる
     /// </summary>
     internal static class KmerLengthSelector
     {
         /// <summary>
         /// -k 未指定時に、リード長から k を決めて適用する<br/>
         /// 明示指定されている場合はユーザーの判断を尊重し、明らかに成立しない
-        /// 場合(k がリード長以上)だけ警告する
+        /// 場合 (k がリード長以上) だけ警告する
         /// </summary>
         public static void V_解決_k長(Parameters p_引数, int? p_リード長)
         {
@@ -49,10 +49,10 @@ namespace Tsumiki.Utility
 
         /// <summary>
         /// リード長に対する推奨 k 長<br/>
-        /// 上限を設けるのは、k が 64 を超えると 2bit パックが UInt128 に
+        /// 上限を設けるのは、k が 64 を超えると 2 bit パックが UInt128 に
         /// 収まらず高速経路から外れるため<br/>
         /// 偶数を避けるのは、k-mer 自身が
-        /// その逆相補と一致しうる(回文)と正規形が縮退して隣接判定が壊れるため
+        /// その逆相補と一致しうる (回文) と正規形が縮退して隣接判定が壊れるため
         /// </summary>
         public static int? Get_推奨k長(int p_リード長)
         {

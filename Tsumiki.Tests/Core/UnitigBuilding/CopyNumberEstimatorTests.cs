@@ -26,7 +26,7 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(this._tempDir);
 
             // これらのテストは長さ加重中央値のフォールバック経路を検証する
-            // 他のテスト(KmerCutoffSelectorTests 等)が残した混合モデルの
+            // 他のテスト (KmerCutoffSelectorTests 等) が残した混合モデルの
             // 適合結果が ConfigurationManager 経由で漏れ込まないようにする
             ConfigurationManager.A_スペクトルモデル = null;
         }
@@ -51,8 +51,8 @@ namespace Tsumiki.Tests.Core
             const int k = 21;
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
 
-            // 単一コピー相当を 2 本(長さで基準値を支配させる)、
-            // 2 倍・ 4 倍のカバレッジで登録する配列を 1 本ずつ用意する
+            // 単一コピー相当を 2 本 (長さで基準値を支配させる)、
+            // 2 倍・4 倍のカバレッジで登録する配列を 1 本ずつ用意する
             var single1 = RandomSequence(400, seed: 1);
             var single2 = RandomSequence(400, seed: 2);
             var doubled = RandomSequence(120, seed: 3);
@@ -144,7 +144,7 @@ namespace Tsumiki.Tests.Core
 
         /// <summary>
         /// k-mer 長より短い unitig はカバレッジを測れないが、
-        /// コピー数 0 にして経路から締め出してはいけない(配列自体は存在する)
+        /// コピー数 0 にして経路から締め出してはいけない (配列自体は存在する)
         /// </summary>
         [Fact]
         public void Estimate_UnitigShorterThanKmer_GetsCopyNumberOneRatherThanZero()
@@ -180,7 +180,7 @@ namespace Tsumiki.Tests.Core
         /// プラスミドのように染色体とは異なるカバレッジ水準を持つ領域は、
         /// 大域基準値との比だけで見ると多コピーの反復に見える<br/>
         /// しかし
-        /// その単一コピー領域同士は分岐の無い(排他的な)鎖で繋がっているため、
+        /// その単一コピー領域同士は分岐の無い (排他的な) 鎖で繋がっているため、
         /// 接続構造を使えば「大域とは水準が違うだけの単一コピー」だと分かる<br/>
         /// unicycler の copy depth propagation が解決する問題そのもの
         /// </summary>
@@ -191,7 +191,7 @@ namespace Tsumiki.Tests.Core
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
             ConfigurationManager.A_スペクトルモデル = null;
 
-            // 染色体相当(長さで大域基準値=60 を支配する)
+            // 染色体相当 (長さで大域基準値=60 を支配する)
             var chromosome = RandomSequence(400, seed: 10);
 
             // プラスミド相当
@@ -243,7 +243,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 排他的に繋がる相手がいない(孤立した)高カバレッジ unitig は、
+        /// 排他的に繋がる相手がいない (孤立した) 高カバレッジ unitig は、
         /// 比較材料が無いため接続補正の対象にせず、大域基準値との比のまま残す
         /// </summary>
         [Fact]
@@ -279,7 +279,7 @@ namespace Tsumiki.Tests.Core
         /// もっとも典型的なケース<br/>
         /// 染色体側の成分とは一切繋がりが無い、
         /// 十分な長さを持つ「島」なので、大域基準値との比が高くても
-        /// 単一コピーとみなしてよい(高コピープラスミド自身の水準で 1 コピー)
+        /// 単一コピーとみなしてよい (高コピープラスミド自身の水準で 1 コピー)
         /// </summary>
         [Fact]
         public void Estimate_WithGraph_RecognisesAnIsolatedLongUnitigAsItsOwnSingleCopyReplicon()

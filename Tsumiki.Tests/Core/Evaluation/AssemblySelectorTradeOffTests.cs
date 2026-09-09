@@ -32,7 +32,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 7.4Mbp の実データで観測された 6 候補<br/>
+        /// 7.4 Mbp の実データで観測された 6 候補<br/>
         /// 完全性は単調増加、
         /// 正確性は単調減少し、NG50 は k=93 で最大になる
         /// </summary>
@@ -90,7 +90,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_最良_統合で正確性が大きく落ちた候補は退ける()
         {
-            // 実データで観測された統合の失敗(99.94% -> 86.97%)
+            // 実データで観測された統合の失敗 (99.94% -> 86.97%)
             var l_選択 = AssemblySelector.Get_最良(
             [
                 Get_候補(21, 38_261, 0.9843, 0.9994),
@@ -107,7 +107,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, AssemblySelector.Get_段(0.9976, 0.9994));
             Assert.Equal(0, AssemblySelector.Get_段(0.9970, 0.9994));
 
-            // 同点幅(0.5 ポイント)を超えれば段が下がる
+            // 同点幅 (0.5 ポイント) を超えれば段が下がる
             Assert.True(AssemblySelector.Get_段(0.9900, 0.9994) > 0);
         }
 

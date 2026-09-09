@@ -7,7 +7,7 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード(SuperRead)へ
+    /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード (SuperRead) へ
     /// 統合する処理の検証<br/>
     /// read1 の末尾 k-mer から RC(read2) の先頭 k-mer まで、
     /// 信頼できる k-mer 集合の中で経路がちょうど 1 本に定まったときだけ統合する
@@ -125,7 +125,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// read1 と RC(read2) がそのまま隣接する(橋渡しの長さが 0 の)ケースも、
+        /// read1 と RC(read2) がそのまま隣接する (橋渡しの長さが 0 の) ケースも、
         /// 特別扱いなく正しく 1 本に統合できること
         /// </summary>
         [Fact]
@@ -186,7 +186,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 断片が read1 に収まっている(アダプタ読み抜け)場合は、繋いでも
+        /// 断片が read1 に収まっている (アダプタ読み抜け) 場合は、繋いでも
         /// 長さが伸びないので重なりでは統合しない
         /// </summary>
         [Fact]
@@ -212,7 +212,7 @@ namespace Tsumiki.Tests.Core
             const int k = 121;
             var truth = RandomSequence(280, seed: 20260912);
 
-            // 重なりは 20bp (Consts.ペア結合の最小重なり長 = 40 未満)
+            // 重なりは 20 bp (Consts.ペア結合の最小重なり長 = 40 未満)
             // k を read1 より長くして、経路探索の側も走らないようにする
             var read1 = truth[..150];
             var read2 = Util.V_逆相補(truth[130..280]);
@@ -256,7 +256,7 @@ namespace Tsumiki.Tests.Core
             const int k = 121;
             var truth = RandomSequence(260, seed: 20260921);
 
-            // 重なりは 40bp
+            // 重なりは 40 bp
             // Consts.ペア結合の最小重なり長 (60) に届かない
             var read1 = truth[..150];
             var read2 = Util.V_逆相補(truth[110..260]);

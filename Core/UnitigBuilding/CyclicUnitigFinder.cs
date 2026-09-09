@@ -8,7 +8,7 @@ namespace Tsumiki.Core.UnitigBuilding
     /// 分岐を 1 つも持たない閉路を拾い、そこからの走査の開始点を返す<br/>
     /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」
     /// k-mer として選ぶ<br/>
-    /// 閉路の全頂点が入次数 1 ・出次数 1 で、予測元も分岐して
+    /// 閉路の全頂点が入次数 1・出次数 1 で、予測元も分岐して
     /// いない場合、この条件を満たす k-mer が 1 つも存在せず、閉路が丸ごと
     /// 走査対象から外れる<br/>
     /// エラーの少ない小さなプラスミドや、きれいな
@@ -48,7 +48,7 @@ namespace Tsumiki.Core.UnitigBuilding
 
         /// <summary>
         /// 走査で得た配列が覆った k-mer を記録する<br/>
-        /// k &lt;= 64 ではパック値を転がして作る(位置ごとに詰め直すと
+        /// k &lt;= 64 ではパック値を転がして作る (位置ごとに詰め直すと
         /// 総延長 x k の手間になる)
         /// </summary>
         private static void V_記録_覆った範囲(正規形集合 p_覆済み, string p_配列, int p_k長)
@@ -144,7 +144,7 @@ namespace Tsumiki.Core.UnitigBuilding
 
         /// <summary>
         /// 逆相補を同一視して k-mer を覚える集合<br/>
-        /// k で表現を切り替えるのは、k &lt;= 64 なら 2bit パックが
+        /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが
         /// UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
         /// </summary>
         private sealed class 正規形集合(int p_k長)

@@ -10,7 +10,7 @@ namespace Tsumiki.Core
     internal partial class ContigMaker
     {
         /// <summary>
-        /// 符号付き unitig ID(正=順鎖、負=逆鎖)をグラフの頂点番号に変換する
+        /// 符号付き unitig ID(正=順鎖、負=逆鎖) をグラフの頂点番号に変換する
         /// </summary>
         internal static int Get_頂点番号(int p_符号付きユニティグID)
         {

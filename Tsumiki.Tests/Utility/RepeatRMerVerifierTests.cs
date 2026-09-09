@@ -5,16 +5,16 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// 短い反復解決の拒否権(-rv)が使う r-mer 検証器そのものの検証<br/>
+    /// 短い反復解決の拒否権 (-rv) が使う r-mer 検証器そのものの検証<br/>
     /// head→repeat→tail の接合点を実際に跨いだリードが無ければ支持は
     /// 得られず、跨ぐリードがあれば支持が得られること、接合点を跨がない
-    /// (=各配列の内部だけに収まる)リードだけでは支持にならないことを確認する<br/>
-    /// フィクスチャの head/repeat/tail は(このアセンブリの)k=8 で
+    /// (=各配列の内部だけに収まる) リードだけでは支持にならないことを確認する<br/>
+    /// フィクスチャの head/repeat/tail は (このアセンブリの) k=8 で
     /// 隣接する unitig 同士なので k-1=7 塩基を共有している<br/>
     /// r をこの
     /// 重なりより確実に長く取らないと、跨ぐ窓も共有区間の内側に収まって
-    /// しまい判定にならない(RepeatRMerVerifier のクラスコメント参照)ため、
-    /// ここでは r=18(=k+10、AssemblyPipeline の既定の決め方と同じ)を使う
+    /// しまい判定にならない (RepeatRMerVerifier のクラスコメント参照) ため、
+    /// ここでは r=18(=k+10、AssemblyPipeline の既定の決め方と同じ) を使う
     /// </summary>
     public class RepeatRMerVerifierTests : IDisposable
     {
@@ -31,9 +31,9 @@ namespace Tsumiki.Tests.Utility
         {
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_rmer_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
-            // Get_接合点の支持数 は head/tail から共有重なり(k-1 塩基)を除くのに
+            // Get_接合点の支持数 は head/tail から共有重なり (k-1 塩基) を除くのに
             // 現在の実行時引数の k 長を参照するため、フィクスチャの重なり長
-            // (AssemblyK-1=7)に合わせておく
+            // (AssemblyK-1=7) に合わせておく
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = AssemblyK, A_スレッド数 = 1 };
         }
 
@@ -115,8 +115,8 @@ namespace Tsumiki.Tests.Utility
 
         /// <summary>
         /// Head-Repeat 接合点は本物のリードに跨がれているが、
-        /// Repeat-Tail 側は無関係な配列(OtherTail)であり跨ぐリードが無い場合でも
-        /// 支持は得られる(Head-Repeat側の支持だけでカウントされるため)<br/>
+        /// Repeat-Tail 側は無関係な配列 (OtherTail) であり跨ぐリードが無い場合でも
+        /// 支持は得られる (Head-Repeat 側の支持だけでカウントされるため)<br/>
         /// この支持数は、両方の接合点が本物のリードに跨がれている場合の
         /// 支持数を超えないはず
         /// </summary>
@@ -168,7 +168,7 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 2bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ
+        /// 2 bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ
         /// 切り替えて同じ判定ができること<br/>
         /// 跨いだリードがあれば支持が出て、
         /// 無ければ出ない

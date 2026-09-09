@@ -8,7 +8,7 @@ using Tsumiki.Utility;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// スキャフォールドのギャップ(N の連続)を、de Bruijn グラフ上で
+    /// スキャフォールドのギャップ (N の連続) を、de Bruijn グラフ上で
     /// 両端を繋ぐ経路を探して実配列に置き換える処理の検証<br/>
     /// contig が途切れるのは配列が存在しないからではなく、分岐でどちらへ
     /// 進むか決められなかったからであることが多い<br/>
@@ -79,13 +79,13 @@ namespace Tsumiki.Tests.Core
         public void Run_UniquePathThroughTheGraph_RestoresTheTrueSequence()
         {
             const int k = 21;
-            // 200bp の非反復的な配列
+            // 200 bp の非反復的な配列
             // k=21 なので偶然の重複はまず起きない
             var truth = RandomSequence(200, seed: 20260903);
 
             using var index = this.BuildIndex(k, truth);
 
-            // 真ん中 40bp を N に置き換えたスキャフォールドを作る
+            // 真ん中 40 bp を N に置き換えたスキャフォールドを作る
             const int gapStart = 80;
             const int gapLength = 40;
             var withGap = truth[..gapStart] + new string('N', gapLength) + truth[(gapStart + gapLength)..];
@@ -109,7 +109,7 @@ namespace Tsumiki.Tests.Core
 
             using var index = this.BuildIndex(k, truth);
 
-            // 実際の欠損は 40bp だが、推定を誤って 30 個の N になっている状況
+            // 実際の欠損は 40 bp だが、推定を誤って 30 個の N になっている状況
             // ギャップ長推定はインサートサイズ推定のばらつきを引き継ぐため、
             // ぴったりの長さしか探さないと現実にはまず埋まらない
             const int gapStart = 80;
@@ -152,7 +152,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 両端を繋ぐ経路がグラフ上に存在しない(本当に配列が無い)場合は、
+        /// 両端を繋ぐ経路がグラフ上に存在しない (本当に配列が無い) 場合は、
         /// 当然埋められない
         /// </summary>
         [Fact]

@@ -21,7 +21,7 @@ namespace Tsumiki.Tests.Common
         }
 
         /// <summary>
-        /// 差し込み位置({0} など)の並び<br/>
+        /// 差し込み位置 ({0} など) の並び<br/>
         /// 書式指定は無視する
         /// </summary>
         private static List<int> Get_差し込み位置(string p_書式)

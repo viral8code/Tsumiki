@@ -90,7 +90,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k=32 と k=33 は内部表現(ulong と UInt128)の境界<br/>
+        /// k=32 と k=33 は内部表現 (ulong と UInt128) の境界<br/>
         /// 転がしのマスクとシフトがここで壊れやすい
         /// </summary>
         [Theory]
@@ -134,8 +134,8 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 環状配列<br/>
         /// 循環検出の打ち切り位置が両実装で一致すること<br/>
-        /// 完全な環には開始 k-mer が存在しない(どの k-mer も入次数 1 で、
-        /// その予測元の出次数も 1)ため、任意の k-mer から walk して比べる
+        /// 完全な環には開始 k-mer が存在しない (どの k-mer も入次数 1 で、
+        /// その予測元の出次数も 1) ため、任意の k-mer から walk して比べる
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_OnACircularSequence()
@@ -156,7 +156,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 逆相補側から始めても一致すること(正規形の判定が転がしでも正しいこと)
+        /// 逆相補側から始めても一致すること (正規形の判定が転がしでも正しいこと)
         /// </summary>
         [Fact]
         public void Walk_MatchesTheOriginalImplementation_FromTheReverseStrand()

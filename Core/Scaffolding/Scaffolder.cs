@@ -17,7 +17,7 @@ namespace Tsumiki.Core.Scaffolding
     internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
     {
         /// <summary>
-        /// 同一 unitig 内標本を信頼してよい「unitig長 / 推定フラグメント長」の下限比<br/>
+        /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比<br/>
         /// unitig がフラグメントより短いと両端が収まるペアしか観測できず
         /// 短い側へ偏るが、この倍率以上に長ければ打ち切りは事実上起きない
         /// </summary>
@@ -26,13 +26,13 @@ namespace Tsumiki.Core.Scaffolding
         // contig ID(FastaWriter が振った 1 始まりの ID) -> 配列本体
         private readonly Dictionary<int, string> _コンティグ配列 = [];
 
-        // contig ID -> ID 文字列(先頭 ">" の次に書かれていた文字列
+        // contig ID -> ID 文字列 (先頭 ">" の次に書かれていた文字列
         // "NODE1" 等)
         // 出力時に元の命名をある程度踏襲するために保持する
         private readonly Dictionary<int, string> _コンティグ名 = [];
 
         /// <summary>
-        /// 自動推定された(あるいは CLI で明示指定された)インサートサイズ<br/>
+        /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ<br/>
         /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは
         /// 行われない
         /// </summary>
@@ -40,8 +40,8 @@ namespace Tsumiki.Core.Scaffolding
 
         /// <summary>
         /// スキャフォールディングを実行し、指定パスに結果を書き出す<br/>
-        /// インサートサイズが(指定・推定いずれの方法でも)確定できなかった場合は、
-        /// その旨をログに出力して何もせずに戻る(ファイルは作成されない)
+        /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、
+        /// その旨をログに出力して何もせずに戻る (ファイルは作成されない)
         /// </summary>
         public void V_実行(string p_スキャフォールドパス)
         {
@@ -67,7 +67,7 @@ namespace Tsumiki.Core.Scaffolding
             // contig 単位の頂点空間を作る
             // unitig 同様、各 contig を
             // 「順方向」「逆方向」の 2 頂点として扱う
-            // 頂点番号 = コンティグID << 1 (順方向) / コンティグID << 1 | 1 (逆方向)
+            // 頂点番号 = コンティグ ID << 1 (順方向) / コンティグ ID << 1 | 1 (逆方向)
             var l_コンティグ数 = this._コンティグ配列.Keys.Count == 0 ? 0 : this._コンティグ配列.Keys.Max();
             var l_頂点数 = (l_コンティグ数 + 1) << 1;
 
@@ -112,7 +112,7 @@ namespace Tsumiki.Core.Scaffolding
                     continue;
                 }
 
-                // 自己ループ(同一 contig の同一末端同士)は無視する
+                // 自己ループ (同一 contig の同一末端同士) は無視する
                 if (l_始点頂点 >> 1 == l_終点頂点 >> 1)
                 {
                     continue;
@@ -172,7 +172,7 @@ namespace Tsumiki.Core.Scaffolding
                 var (l_一貫した本数, l_ギャップ長) = l_モデル.Get_一貫した支持(l_標本);
 
                 // 期待は接合点から 1 フラグメント長ぶんの窓しか効かないので、
-                // 重なっている(ギャップが負)場合は接している場合と同じとみなす
+                // 重なっている (ギャップが負) 場合は接している場合と同じとみなす
                 var l_期待に対する比 = l_較正器.Get_正規化済み支持(
                     (ulong)l_一貫した本数, this.Get_コンティグ長(l_始点), this.Get_コンティグ長(l_終点), Math.Max(0, l_ギャップ長));
 
@@ -275,7 +275,7 @@ namespace Tsumiki.Core.Scaffolding
                 }
             }
 
-            // まだ訪問されていない(=孤立した、あるいは循環に巻き込まれた)contig を
+            // まだ訪問されていない (=孤立した、あるいは循環に巻き込まれた) contig を
             // 単独スキャフォールドとして出力する
             for (var l_コンティグID = 1; l_コンティグID <= l_コンティグ数; l_コンティグID++)
             {
@@ -384,7 +384,7 @@ namespace Tsumiki.Core.Scaffolding
         /// <summary>
         /// 符号付き unitig ID が contig の末端に配置されているかを判定し、
         /// 配置されていれば対応する contig 頂点を返す<br/>
-        /// 出口側(読み進める起点)として有効なのは「順鎖かつ contig 内で末尾」
+        /// 出口側 (読み進める起点) として有効なのは「順鎖かつ contig 内で末尾」
         /// または「逆鎖かつ先頭」、入口側はその逆<br/>
         /// contig が正規化で逆相補化されていると walk 順の先頭/末尾の意味が
         /// 反転するため、その分も考慮して向きを決める
@@ -421,7 +421,7 @@ namespace Tsumiki.Core.Scaffolding
             // 「walk 順で見た先頭/末尾」と「実際の contigs.fasta 上の先頭/末尾」が
             // 入れ替わる
             // スキャフォールディングは contigs.fasta 上の配列
-            // (=実際に出力された向き)を基準に扱うため、ここで反転させる
+            // (=実際に出力された向き) を基準に扱うため、ここで反転させる
             var l_最終配列で順鎖か = l_配置情報.A_コンティグが逆相補か ? !l_実効的に順鎖か : l_実効的に順鎖か;
 
             p_頂点番号 = (l_配置情報.A_コンティグID << 1) | (l_最終配列で順鎖か ? 0 : 1);
@@ -513,11 +513,11 @@ namespace Tsumiki.Core.Scaffolding
 
             var l_出力 = new StringBuilder(l_逆鎖か ? Util.V_逆相補(l_配列) : l_配列);
             var l_現在 = p_始点;
-            // 頂点を「消費」した(=いずれかの向きでスキャフォールドに組み込んだ)際は、
+            // 頂点を「消費」した (=いずれかの向きでスキャフォールドに組み込んだ) 際は、
             // その contig の両方の向きの頂点を訪問済みにする
             // 片方の頂点だけを訪問済みにすると、同じ contig の反対向きの頂点が
             // 別の開始点や「未訪問の孤立 contig」判定で再度使われてしまう
-            // (同じ contig が 2 回出力される)おそれがあるため
+            // (同じ contig が 2 回出力される) おそれがあるため
             V_記録_訪問済み(p_訪問済み, l_現在);
             while (p_確定辺[l_現在] is { } l_辺 && !p_訪問済み[l_辺.A_行き先])
             {

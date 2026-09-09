@@ -7,7 +7,7 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// multi-k で試す k の一覧の決め方<br/>
-    /// 実測では最適な k が範囲の両端に現れている(反復が少ない検体では上限の
+    /// 実測では最適な k が範囲の両端に現れている (反復が少ない検体では上限の
     /// k=63、反復が 11% を占める検体では下限側の k=31)<br/>
     /// したがって候補は
     /// 片側に寄せず、上限とその半分あたりの両方を含んでいる必要がある
@@ -43,7 +43,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k が偶数だと k-mer 自身がその逆相補と一致しうる(回文)ため、
+        /// k が偶数だと k-mer 自身がその逆相補と一致しうる (回文) ため、
         /// 正規形が縮退して隣接判定が壊れる<br/>
         /// どの候補も奇数であること
         /// </summary>
@@ -110,9 +110,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void PredictedCoverage_ShrinksWithTheNumberOfKmersPerRead()
         {
-            // リード長 150、k=31 で 25x
+            // リード長 150、k=31 で 25 x
             // k=135 なら 1 リードあたり 120 本から
-            // 16 本へ減るので、25 * 16 / 120 = 3.33x
+            // 16 本へ減るので、25 * 16 / 120 = 3.33 x
             var l_予測 = MultiKAssembler.Get_予測kmerカバレッジ(
                 p_直前の基準値: 25.0, p_直前のk長: 31, p_次のk長: 135, p_リード長: 150);
 
@@ -134,7 +134,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// リード長が分からない場合でも一覧が作れること(既定値を上限に使う)
+        /// リード長が分からない場合でも一覧が作れること (既定値を上限に使う)
         /// </summary>
         [Fact]
         public void CandidateList_WhenReadLengthIsUnknown_FallsBackToTheDefault()

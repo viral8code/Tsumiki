@@ -39,7 +39,7 @@ namespace Tsumiki.Tests.Core
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
         }
 
-        /// <summary>元の配列を 100bp のリードで隙間なく覆った FASTQ を作る<br/>
+        /// <summary>元の配列を 100 bp のリードで隙間なく覆った FASTQ を作る<br/>
         /// </summary>
         private string Get_リード(string p_名前, params string[] p_元)
         {

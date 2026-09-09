@@ -15,7 +15,7 @@ namespace Tsumiki.Tests.Core
             this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_graph_simplifier_tests_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._tempDir);
 
-            // これらのテストは比率ベースのtip判定を検証する
+            // これらのテストは比率ベースの tip 判定を検証する
             // 他のテストが残した
             // 混合モデルの適合結果が「無条件に信頼する下限」として漏れ込み、
             // 判定を横取りしないようにする
@@ -36,11 +36,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// mainSeq(主経路)のk-mer群に加えて、その途中の 1 点から分岐する
-        /// 短いtip配列(tipSeq)のk-mer群も登録した TrustedKmerIndex を作る<br/>
-        /// tipSeqはmainSeqの位置branchPointから始まる長さkmerLength-1 の
+        /// mainSeq(主経路) の k-mer 群に加えて、その途中の 1 点から分岐する
+        /// 短いtip配列 (tipSeq) の k-mer 群も登録した TrustedKmerIndex を作る<br/>
+        /// tipSeq は mainSeq の位置 branchPoint から始まる長さ kmerLength-1 の
         /// 「本来の続き」をコピーした上で、最後の 1 塩基だけ変えることで
-        /// 主経路とk-1 塩基だけ重なる分岐を作る単純な構成にする
+        /// 主経路と k-1 塩基だけ重なる分岐を作る単純な構成にする
         /// </summary>
         private TrustedKmerIndex BuildIndexWithTip(
             string mainSeq, int kmerLength, int branchPoint, int tipLength,
@@ -63,12 +63,12 @@ namespace Tsumiki.Tests.Core
             AddAllKmers(ToBytes(mainSeq), mainRepetitions);
 
             // 分岐点の直前 kmerLength-1 文字を土台に、最後だけ主経路と異なる
-            // 1 塩基を続けて tip を伸ばす(主経路と k-2 塩基だけ重なる短い枝)
+            // 1 塩基を続けて tip を伸ばす (主経路と k-2 塩基だけ重なる短い枝)
             var overlap = mainSeq.Substring(branchPoint, kmerLength - 1);
             var branchBaseChar = mainSeq[branchPoint + kmerLength - 1];
             var altChar = "ACGT".First(c => c != branchBaseChar);
-            // overlap(主経路とk-1 塩基共有)+ altChar(主経路とは異なる 1 塩基)+
-            // 適当なユニークな続きで、主経路から分岐する短いtipを作る
+            // overlap(主経路と k-1 塩基共有)+ altChar(主経路とは異なる 1 塩基)+
+            // 適当なユニークな続きで、主経路から分岐する短い tip を作る
             var tipSeq = overlap + altChar + string.Concat(Enumerable.Range(0, tipLength).Select(i => "ACGT"[i % 4]));
             AddAllKmers(ToBytes(tipSeq), tipRepetitions);
 
@@ -79,7 +79,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void ClipTips_RemovesShortDeadEndBranch_AndRebuildsSingleMainUnitig()
         {
-            // 非周期的な主経路配列(k=8 での内部重複なしを別途Pythonで確認済み)
+            // 非周期的な主経路配列 (k=8 での内部重複なしを別途 Python で確認済み)
             const string mainSeq = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
             const int k = 8;
             const int branchPoint = 20; // 主経路の途中から分岐させる
@@ -89,8 +89,8 @@ namespace Tsumiki.Tests.Core
 
             var simplifiedFirstKmers = GraphSimplifier.V_除去_tip(index, k, p_tip長閾値: k * 2);
 
-            // tip除去後は、分岐点だった箇所の次数が解消され、
-            // 主経路が 1 本のunitigとして(理想的には)再構築されるはず
+            // tip 除去後は、分岐点だった箇所の次数が解消され、
+            // 主経路が 1 本のunitigとして (理想的には) 再構築されるはず
             var unitigMaker = new UnitigMaker(index);
             HashSet<string> seen = [];
             var unitigs = new List<string>();
@@ -106,9 +106,9 @@ namespace Tsumiki.Tests.Core
                 unitigs.Add(u.A_配列);
             }
 
-            // tip自体はもう存在しないはずなので、tip由来の短い配列を含む
-            // unitigは残っていないこと、かつ主経路の全長をカバーする
-            // (ほぼ)1 本のunitigが存在することを確認する
+            // tip 自体はもう存在しないはずなので、tip 由来の短い配列を含む
+            // unitig は残っていないこと、かつ主経路の全長をカバーする
+            // (ほぼ) 1 本の unitig が存在することを確認する
             var longest = unitigs.OrderByDescending(u => u.Length).First();
             Assert.True(longest.Length >= mainSeq.Length - k, $"expected a near-full-length main unitig, longest was {longest.Length}bp among [{string.Join(",", unitigs.Select(u => u.Length))}]");
         }
@@ -158,7 +158,7 @@ namespace Tsumiki.Tests.Core
 
             var after = index.Get_信頼kmer一覧().Count();
 
-            // 分岐のない直鎖配列にはtipが存在しないため、何も除去されないはず
+            // 分岐のない直鎖配列には tip が存在しないため、何も除去されないはず
             Assert.Equal(before, after);
             Assert.NotEmpty(firstKmers);
         }
@@ -166,9 +166,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void ClipTips_RemovesLowCoverageBubbleBranch_KeepsHighCoverageBranch()
         {
-            // 分岐点(commonBefore末尾)から 1 塩基だけ異なる('A' vs 'C')経路B/Cに
-            // 分かれ、その後sharedAfterへ合流するSNP様の単純なbubble構造
-            // Python(scripts外、事前検証)でk=8 内に重複が生じないことを確認済み
+            // 分岐点 (commonBefore 末尾) から 1 塩基だけ異なる ('A' vs 'C') 経路 B/C に
+            // 分かれ、その後 sharedAfter へ合流する SNP 様の単純な bubble 構造
+            // Python(scripts 外、事前検証) で k=8 内に重複が生じないことを確認済み
             const string commonBefore = "GAAGTTGCCGTACTAAATTA"; // 20bp
             const string sharedAfter = "TGACAGCCGGGGATCTTCCC"; // 20bp
             const string seqHighCoverage = commonBefore + "A" + sharedAfter; // 分岐点でA
@@ -190,9 +190,9 @@ namespace Tsumiki.Tests.Core
                 }
             }
 
-            // 高カバレッジ経路(真のゲノム由来相当)は 20 回、低カバレッジ経路
-            // (エラー由来相当)は 3 回登録する(カットオフ 2 は超えるが、
-            // baseline(高カバレッジ経路水準)に比べて著しく低い)
+            // 高カバレッジ経路 (真のゲノム由来相当) は 20 回、低カバレッジ経路
+            // (エラー由来相当) は 3 回登録する (カットオフ 2 は超えるが、
+            // baseline(高カバレッジ経路水準) に比べて著しく低い)
             AddAllKmers(seqHighCoverage, repetitions: 20);
             AddAllKmers(seqLowCoverage, repetitions: 3);
 
@@ -220,20 +220,20 @@ namespace Tsumiki.Tests.Core
             // 現れない = 低カバレッジ経路は除去された)
             Assert.DoesNotContain(unitigs, u => u.Contains('C' + sharedAfter[..(k - 1)]));
 
-            // 高カバレッジ経路(commonBefore + "A" + sharedAfter の全体、または
-            // その逆相補)を含む、ほぼ全長のunitigが存在するはず
+            // 高カバレッジ経路 (commonBefore + "A" + sharedAfter の全体、または
+            // その逆相補) を含む、ほぼ全長の unitig が存在するはず
             var fullHigh = seqHighCoverage;
             var fullHighRevComp = Util.V_逆相補(fullHigh);
             Assert.Contains(unitigs, u => u == fullHigh || u == fullHighRevComp || u.Contains(fullHigh) || u.Contains(fullHighRevComp));
         }
 
         /// <summary>
-        /// 2 つの異なる経路が同じ配列へ合流する構造(reverse bubble)で、
-        /// 合流後の共有配列が複数のunitigに重複して現れないことを確認する<br/>
-        /// unitigの定義は「内部の全節点が入次数 1 かつ出次数 1 の極大パス」であり、
-        /// 合流点(入次数 2)からは別のunitigが始まらなければならない<br/>
-        /// この規則が無いと、両方の経路のwalkが共有配列を走り抜けてしまい、
-        /// 同じ配列を 2 度出力する(実データでk-mer延べ数が実内容の 1.43 倍に
+        /// 2 つの異なる経路が同じ配列へ合流する構造 (reverse bubble) で、
+        /// 合流後の共有配列が複数の unitig に重複して現れないことを確認する<br/>
+        /// unitig の定義は「内部の全節点が入次数 1 かつ出次数 1 の極大パス」であり、
+        /// 合流点 (入次数 2) からは別の unitig が始まらなければならない<br/>
+        /// この規則が無いと、両方の経路の walk が共有配列を走り抜けてしまい、
+        /// 同じ配列を 2 度出力する (実データで k-mer 延べ数が実内容の 1.43 倍に
         /// 膨らんでいた原因)
         /// </summary>
         [Fact]
@@ -279,8 +279,8 @@ namespace Tsumiki.Tests.Core
                 unitigs.Add(u.A_配列);
             }
 
-            // 共有配列の先頭k-mer(またはその逆相補)が、全unitigを通じて
-            // 延べ 1 回しか現れないこと(=重複出力されていないこと)を確認する
+            // 共有配列の先頭 k-mer(またはその逆相補) が、全 unitig を通じて
+            // 延べ 1 回しか現れないこと (=重複出力されていないこと) を確認する
             var sharedKmer = shared[..k];
             var sharedKmerRc = Util.V_逆相補(sharedKmer);
             var occurrences = unitigs.Sum(u => CountOccurrences(u, sharedKmer) + CountOccurrences(u, sharedKmerRc));

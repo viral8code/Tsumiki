@@ -104,7 +104,7 @@ namespace Tsumiki.Tests.Core
 
             var lLines = File.ReadAllLines(path).Where(l => l.StartsWith("L\t")).ToList();
 
-            // A は B・C の両方へ分岐する(2 つの物理的な隣接)
+            // A は B・C の両方へ分岐する (2 つの物理的な隣接)
             // 各隣接は v→w と w^1→v^1 の双子として内部的には 2 回現れるが、
             // GFA には 1 本ずつしか出ないこと
             Assert.Equal(2, lLines.Count);

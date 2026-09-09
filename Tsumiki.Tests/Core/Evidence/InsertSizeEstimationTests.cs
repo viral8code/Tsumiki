@@ -6,14 +6,14 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// ペアエンドから推定される「インサートサイズ」が、リードに挟まれた内側の
-    /// 未読区間ではなく、真のフラグメント長(左リードの 5'端から右リードの
-    /// 3'端まで)の単位になっていることを検証する<br/>
-    /// 実データ(150bpリード・IS350ライブラリ)で同一unitig由来サンプルの
+    /// 未読区間ではなく、真のフラグメント長 (左リードの 5'端から右リードの
+    /// 3'端まで) の単位になっていることを検証する<br/>
+    /// 実データ (150 bp リード・IS350ライブラリ) で同一 unitig 由来サンプルの
     /// 中央値が 58 と報告されていた<br/>
-    /// リード長150bpより短いフラグメントは
+    /// リード長150 bp より短いフラグメントは
     /// physically ありえないため、これは単位の取り違えを示していた<br/>
     /// 内側距離 58 に両リード長を足すと 358 となりライブラリ名と一致する<br/>
-    /// この取り違えはギャップ長推定(ギャップ = インサートサイズ - 既知長)にも
+    /// この取り違えはギャップ長推定 (ギャップ = インサートサイズ - 既知長) にも
     /// そのまま伝播するため、単位を明示的に固定しておく
     /// </summary>
     public class InsertSizeEstimationTests : IDisposable
@@ -37,7 +37,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 決定的な擬似乱数で非反復的な塩基配列を作る<br/>
         /// k=21 では
-        /// この長さの乱数配列に重複k-merが現れる確率は無視できる
+        /// この長さの乱数配列に重複 k-mer が現れる確率は無視できる
         /// </summary>
         private static string RandomSequence(int length, int seed)
         {
@@ -72,7 +72,7 @@ namespace Tsumiki.Tests.Core
             var unitigsPath = Path.Combine(this._tempDir, "unitigs.fasta");
             File.WriteAllText(unitigsPath, $">1\n{unitigSeq}\n");
 
-            // FR配置: read1 はフラグメント左端から順鎖方向、
+            // FR 配置: read1 はフラグメント左端から順鎖方向、
             // read2 はフラグメント右端から逆鎖方向に読まれる
             var read1 = unitigSeq.Substring(fragmentStart, readLength);
             var read2 = Util.V_逆相補(
@@ -89,7 +89,7 @@ namespace Tsumiki.Tests.Core
             contigMaker.V_マッピング_ペアリード(path1, path2);
 
             Assert.NotEmpty(contigMaker.A_同一ユニティグ標本);
-            // 内側距離(= 350 - 50 - 50 = 250)ではなく、フラグメント長 350 が
+            // 内側距離 (= 350 - 50 - 50 = 250) ではなく、フラグメント長 350 が
             // 得られなければならない
             Assert.All(
                 contigMaker.A_同一ユニティグ標本,
@@ -97,8 +97,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// フラグメント長を変えたときに推定値が同じだけ動くこと(定数ぶんの
-        /// ずれではなく、単位そのものが一致していること)を確認する
+        /// フラグメント長を変えたときに推定値が同じだけ動くこと (定数ぶんの
+        /// ずれではなく、単位そのものが一致していること) を確認する
         /// </summary>
         [Theory]
         [InlineData(200)]
