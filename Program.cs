@@ -1,15 +1,15 @@
 ﻿using System.Text;
-using Tsumiki.Common;
-using Tsumiki.Core.Evaluation;
-using Tsumiki.Core.Output;
-using Tsumiki.Core.Pipeline;
-using Tsumiki.Core.Polishing;
-using Tsumiki.Core.Preprocessing;
+using Tsumiki.Commons;
+using Tsumiki.Cores.Evaluation;
+using Tsumiki.Cores.Output;
+using Tsumiki.Cores.Pipeline;
+using Tsumiki.Cores.Polishing;
+using Tsumiki.Cores.Preprocessing;
 using Tsumiki.IO;
-using Tsumiki.Model.Evaluation;
-using Tsumiki.Model.Foundation;
-using Tsumiki.Model.Polishing;
-using Tsumiki.Utility;
+using Tsumiki.Models.Evaluation;
+using Tsumiki.Models.Foundation;
+using Tsumiki.Models.Polishing;
+using Tsumiki.Utilities;
 
 namespace Tsumiki
 {
