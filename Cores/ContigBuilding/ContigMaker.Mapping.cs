@@ -12,15 +12,20 @@ namespace Tsumiki.Core
     /// ContigMaker のうち、unitig への k-mer 索引構築とリードマッピングを担う部分
     /// </summary>
     /// <remarks>
-    /// (contig 結合そのものは ContigMaker.cs、walk 構築は ContigMaker.Walk.cs、
-    /// フラグメント長標本の収集は ContigMaker.FragmentSampling.cs を参照)
+    /// (contig 結合そのものは ContigMaker.cs、walk 構築は ContigMaker.Walk.cs、フラグメント長標本の収集は ContigMaker.FragmentSampling.cs を参照)
     /// </remarks>
     internal partial class ContigMaker
     {
+        #region 定数
+
         /// <summary>
         /// 曖昧 kmer の番兵
         /// </summary>
         private const int 曖昧kmerの番兵 = int.MinValue;
+
+        #endregion
+
+        #region 内部変数
 
         /// <summary>
         /// k-mer から、それが載るユニティグと開始位置を引く辞書
@@ -52,6 +57,14 @@ namespace Tsumiki.Core
         /// </summary>
         private readonly Dictionary<int, ユニティグ配置> _ユニティグ配置 = [];
 
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="p_ユニティグファイルパス"></param>
         public ContigMaker(string p_ユニティグファイルパス)
         {
             this._ユニティグファイルパス = p_ユニティグファイルパス;
@@ -68,6 +81,7 @@ namespace Tsumiki.Core
             {
                 var l_ユニティグ = l_読み込み.Get_次の配列();
                 this._ユニティグ長[l_ID] = l_ユニティグ.A_配列.Length;
+
                 if (l_ユニティグ.A_配列.Length < l_k長)
                 {
                     // k 未満の unitig は k-mer を持てずマッピング対象から漏れる
@@ -81,6 +95,7 @@ namespace Tsumiki.Core
                     var l_開始位置 = i - l_k長;
                     var l_キー = new KmerKey(l_ユニティグ.A_配列.AsSpan(l_開始位置, l_k長));
                     var l_逆鎖キー = l_キー.Get_逆相補();
+
                     // 逆鎖キーは unitig 全体を逆相補した (=逆鎖の向きで読んだ) 場合の
                     // 配列に対応する
                     // 区間 [開始位置, 開始位置+k長) を
@@ -92,49 +107,28 @@ namespace Tsumiki.Core
                 }
                 l_ID++;
             }
+
             if (l_短すぎるユニティグ数 > 0)
             {
                 Logger.V_出力(メッセージID.短すぎるユニティグの除外, l_短すぎるユニティグ数);
             }
+
             if (l_曖昧数 > 0)
             {
                 Logger.V_出力(メッセージID.曖昧なkmer登録, l_曖昧数);
             }
         }
 
-        /// <summary>
-        /// k-mer 辞書へ 1 件登録する
-        /// </summary>
-        /// <remarks>
-        /// 衝突した k-mer は後勝ちで上書きすると
-        /// 別 unitig 由来のリードが同じ ID に見え、偽の隣接を作る<br/>
-        /// そのため曖昧としてマークし、マッピング時のヒットから除く<br/>
-        /// 戻り値は新たに曖昧マークを付けた件数 (0 か 1)
-        /// </remarks>
-        private static int V_登録_kmer(
-            Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
-        {
-            if (p_辞書.TryGetValue(p_キー, out var l_既存))
-            {
-                if (l_既存.Item1 == 曖昧kmerの番兵 || l_既存.Item1 == p_ID)
-                {
-                    return 0;
-                }
-                p_辞書[p_キー] = (曖昧kmerの番兵, 0);
-                return 1;
-            }
-            p_辞書[p_キー] = (p_ID, p_位置);
-            return 0;
-        }
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// unitig 間の隣接を de Bruijn グラフから厳密に構築する
         /// </summary>
         /// <remarks>
-        /// V_結合_コンティグ を呼ぶ前 (コピー数推定の接続伝播など)でも独立に
-        /// 呼べるよう公開している<br/>
-        /// 呼ぶたびに FASTA を読み直して新しい
-        /// グラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
+        /// <see cref="V_結合_コンティグ"/> を呼ぶ前 (コピー数推定の接続伝播など)でも独立に呼べるよう公開している<br/>
+        /// 呼ぶたびに FASTA を読み直して新しいグラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
         /// </remarks>
         public UnitigGraph Get_グラフ()
         {
@@ -172,18 +166,14 @@ namespace Tsumiki.Core
                 l_ローカル隣接[i] = [];
             }
 
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 256,
-                Get_生リード列(p_リードパス),
-                (l_リード, l_ワーカー番号) => this.V_マッピング_1リード(l_リード, l_ローカル隣接[l_ワーカー番号]));
+            var l_処理 = (string l_リード, int l_ワーカー番号) => this.V_マッピング_1リード(l_リード, l_ローカル隣接[l_ワーカー番号]);
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_生リード列(p_リードパス), l_処理);
 
             foreach (var l_ローカル in l_ローカル隣接)
             {
                 foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    this._リード隣接[l_キー] =
-                        this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
+                    this._リード隣接[l_キー] = this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
                 }
             }
         }
@@ -191,6 +181,8 @@ namespace Tsumiki.Core
         /// <summary>
         /// ペアエンドから unitig 間の隣接を検出する
         /// </summary>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
         /// <remarks>
         /// 単一リードでは unitig 境界を跨げない場合でも、フラグメント長ぶん
         /// 離れた 2 つの unitig の隣接なら検出できる
@@ -200,9 +192,11 @@ namespace Tsumiki.Core
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
+
             // ローカルペア経路: (始点,終点) -> このワーカーで観測した各ペアの
             // 「既に見えている長さ」のリスト
             var l_ローカルペア経路 = new Dictionary<(int, int), List<int>>[l_スレッド数];
+
             // ライブラリの向き (FR/RF/FF/RR) は決め打ちできないため、符号が
             // 一致するヒットと不一致のヒットを別々に集計し、多数派を採用する
             var l_ローカル同一向き標本 = new List<int>[l_スレッド数];
@@ -215,24 +209,14 @@ namespace Tsumiki.Core
                 l_ローカル逆向き標本[i] = [];
             }
 
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 256,
-                Get_ペアリード列(p_リード1のパス, p_リード2のパス),
-                (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(
-                    l_ペア.A_リード1,
-                    l_ペア.A_リード2,
-                    l_ローカル隣接[l_ワーカー番号],
-                    l_ローカルペア経路[l_ワーカー番号],
-                    l_ローカル同一向き標本[l_ワーカー番号],
-                    l_ローカル逆向き標本[l_ワーカー番号]));
+            var l_処理 = ((string A_リード1, string A_リード2) l_ペア, int l_ワーカー番号) => this.V_処理_1ペア(l_ペア.A_リード1, l_ペア.A_リード2, l_ローカル隣接[l_ワーカー番号], l_ローカルペア経路[l_ワーカー番号], l_ローカル同一向き標本[l_ワーカー番号], l_ローカル逆向き標本[l_ワーカー番号]);
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_ペアリード列(p_リード1のパス, p_リード2のパス), l_処理);
 
             foreach (var l_ローカル in l_ローカル隣接)
             {
                 foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    this._リード隣接[l_キー] =
-                        this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
+                    this._リード隣接[l_キー] = this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
                 }
             }
 
@@ -259,6 +243,7 @@ namespace Tsumiki.Core
 
             IEnumerable<List<int>> l_採用する標本群;
             string l_採用ラベル;
+
             if (l_同一向き合計 == 0 && l_逆向き合計 == 0)
             {
                 l_採用する標本群 = [];
@@ -296,13 +281,45 @@ namespace Tsumiki.Core
             }
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// k-mer 辞書へ 1 件登録する
+        /// </summary>
+        /// <param name="p_辞書"></param>
+        /// <param name="p_キー"></param>
+        /// <param name="p_ID"></param>
+        /// <param name="p_位置"></param>
+        /// <remarks>
+        /// 衝突した k-mer は後勝ちで上書きすると
+        /// 別 unitig 由来のリードが同じ ID に見え、偽の隣接を作る<br/>
+        /// そのため曖昧としてマークし、マッピング時のヒットから除く<br/>
+        /// 戻り値は新たに曖昧マークを付けた件数 (0 か 1)
+        /// </remarks>
+        private static int V_登録_kmer(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
+        {
+            if (p_辞書.TryGetValue(p_キー, out var l_既存))
+            {
+                if (l_既存.Item1 == 曖昧kmerの番兵 || l_既存.Item1 == p_ID)
+                {
+                    return 0;
+                }
+                p_辞書[p_キー] = (曖昧kmerの番兵, 0);
+                return 1;
+            }
+            p_辞書[p_キー] = (p_ID, p_位置);
+            return 0;
+        }
+
         /// <summary>
         /// 1 本のリードが代表としてどの unitig にマップされるかを判定する
         /// </summary>
         /// <remarks>
         /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
         /// </remarks>
-        internal 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
+        private 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
         {
             if (string.IsNullOrEmpty(p_リード))
             {
@@ -316,6 +333,7 @@ namespace Tsumiki.Core
             }
 
             var l_得票 = new Dictionary<int, int>();
+
             // 記録するのは unitig 内での終端位置であって read 内での位置ではない
             // 両者は unitig が read より十分長いと大きく食い違う
             var l_最終終端位置 = new Dictionary<int, int>();
@@ -333,6 +351,7 @@ namespace Tsumiki.Core
                 {
                     l_曖昧塩基数--;
                 }
+
                 if (l_曖昧塩基数 == 0)
                 {
                     var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
@@ -368,12 +387,13 @@ namespace Tsumiki.Core
         /// <summary>
         /// read1/read2 を同時に読み進めて対応するペアを返す
         /// </summary>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
         /// <remarks>
         /// ID の対応が取れないものと片側だけ残ったものは A_リード2 を空文字にし、
         /// 単一リード内の隣接検出だけは通常どおり行えるようにする
         /// </remarks>
-        private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(
-            string p_リード1のパス, string p_リード2のパス)
+        private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(string p_リード1のパス, string p_リード2のパス)
         {
             using var l_読み込み1 = new FastqReader(p_リード1のパス);
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
@@ -391,6 +411,7 @@ namespace Tsumiki.Core
                         Logger.V_出力(メッセージID.ペアリードIDの不一致, l_データ1.A_ID, l_データ2.A_ID);
                         l_不一致を警告済みか = true;
                     }
+
                     // お互いを誤ってペアとして扱わないよう、別々に流す
                     yield return (l_データ1.A_生リード!, string.Empty);
                     yield return (l_データ2.A_生リード!, string.Empty);
@@ -414,17 +435,16 @@ namespace Tsumiki.Core
         /// <summary>
         /// ペア 1 組を処理する
         /// </summary>
+        /// <param name="p_リード1"></param>
+        /// <param name="p_リード2"></param>
+        /// <param name="p_ローカル隣接"></param>
+        /// <param name="p_ローカルペア経路"></param>
+        /// <param name="p_同一向き標本"></param>
+        /// <param name="p_逆向き標本"></param>
         /// <remarks>
-        /// ペアエンド由来の隣接は直接のオーバーラップを
-        /// 保証しない弱い証拠なので、リード隣接とは分けて集計する
+        /// ペアエンド由来の隣接は直接のオーバーラップを保証しない弱い証拠なので、リード隣接とは分けて集計する
         /// </remarks>
-        private void V_処理_1ペア(
-            string p_リード1,
-            string p_リード2,
-            Dictionary<(int, int), ulong> p_ローカル隣接,
-            Dictionary<(int, int), List<int>> p_ローカルペア経路,
-            List<int> p_同一向き標本,
-            List<int> p_逆向き標本)
+        private void V_処理_1ペア(string p_リード1, string p_リード2, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
             this.V_マッピング_1リード(p_リード1, p_ローカル隣接);
             this.V_マッピング_1リード(p_リード2, p_ローカル隣接);
@@ -491,6 +511,7 @@ namespace Tsumiki.Core
                 {
                     l_曖昧塩基数++;
                 }
+
                 if (Util.Get_曖昧塩基か(l_逆鎖リード[i]))
                 {
                     l_逆鎖の曖昧塩基数++;
@@ -502,6 +523,7 @@ namespace Tsumiki.Core
                 {
                     l_曖昧塩基数--;
                 }
+
                 if (l_曖昧塩基数 == 0)
                 {
                     var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
@@ -515,8 +537,8 @@ namespace Tsumiki.Core
                         else if (l_直前 != l_ID)
                         {
                             var l_経路キー = (l_直前, l_ID);
-                            p_ローカル隣接[l_経路キー] =
-                                p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
+                            p_ローカル隣接[l_経路キー] = p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
+
                             // 直前にヒットした unitig を更新する
                             // これを怠ると、
                             // リード内で 3 つ以上の unitig にまたがった場合でも
@@ -526,16 +548,20 @@ namespace Tsumiki.Core
                         }
                     }
                 }
+
                 if (Util.Get_曖昧塩基か(l_逆鎖リード[i - l_k長]))
                 {
                     l_逆鎖の曖昧塩基数--;
                 }
+
                 if (l_逆鎖の曖昧塩基数 == 0)
                 {
                     var l_逆鎖キー = new KmerKey(l_逆鎖リード.AsSpan(i - l_k長, l_k長));
+
                     if (this._kmer辞書.TryGetValue(l_逆鎖キー, out var l_逆鎖項目) && l_逆鎖項目.A_ユニティグID != 曖昧kmerの番兵)
                     {
                         var l_逆鎖ID = l_逆鎖項目.A_ユニティグID;
+
                         if (l_逆鎖の直前 == 0)
                         {
                             l_逆鎖の直前 = l_逆鎖ID;
@@ -543,13 +569,14 @@ namespace Tsumiki.Core
                         else if (l_逆鎖の直前 != l_逆鎖ID)
                         {
                             var l_経路キー = (l_逆鎖の直前, l_逆鎖ID);
-                            p_ローカル隣接[l_経路キー] =
-                                p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
+                            p_ローカル隣接[l_経路キー] = p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1 : 1;
                             l_逆鎖の直前 = l_逆鎖ID;
                         }
                     }
                 }
             }
         }
+
+        #endregion
     }
 }

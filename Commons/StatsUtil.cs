@@ -10,6 +10,8 @@
     /// </remarks>
     internal static class StatsUtil
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 中央値を返す
         /// </summary>
@@ -37,6 +39,8 @@
         /// <summary>
         /// 整列済みの一覧から分位点の値を取り出す
         /// </summary>
+        /// <param name="p_整列済み"></param>
+        /// <param name="p_分位"></param>
         public static int Get_分位点(IReadOnlyList<int> p_整列済み, double p_分位)
         {
             return p_整列済み[Math.Clamp((int)(p_分位 * (p_整列済み.Count - 1)), 0, p_整列済み.Count - 1)];
@@ -45,6 +49,7 @@
         /// <summary>
         /// 長さで重み付けした値の中央値
         /// </summary>
+        /// <param name="p_組"></param>
         /// <remarks>
         /// 累積長が総延長の半分を超えた点の
         /// 値を採る<br/>
@@ -77,6 +82,7 @@
         /// <summary>
         /// 長さ一覧から N50/L50 を求める
         /// </summary>
+        /// <param name="p_長さ一覧"></param>
         /// <remarks>
         /// N50 は「この長さ以上の配列だけで
         /// 総延長の半分に達する」最小の長さ、L50 はそのために必要な本数
@@ -101,5 +107,7 @@
             }
             return (l_降順[^1], l_降順.Count);
         }
+
+        #endregion
     }
 }

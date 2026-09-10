@@ -7,7 +7,6 @@ namespace Tsumiki.Commons
     /// </summary>
     /// <remarks>
     /// <see cref="Messages"/> から引く<br/>
-    /// 
     /// 言語を増やすときは、その言語の辞書をここに足して <see cref="Get_辞書"/> に
     /// 繋ぐだけでよい<br/>
     /// 訳が無い ID は英語にそのまま落ちるので、部分的に訳した
@@ -15,45 +14,7 @@ namespace Tsumiki.Commons
     /// </remarks>
     internal static class MessageCatalog
     {
-        /// <summary>
-        /// p_ID の書式文字列
-        /// </summary>
-        /// <remarks>
-        /// 指定言語に無ければ英語を返す
-        /// </remarks>
-        public static string Get_書式(言語 p_言語, メッセージID p_ID)
-        {
-            var l_辞書 = Get_辞書(p_言語);
-            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
-        }
-
-        /// <summary>
-        /// その言語にこの ID の訳があるか
-        /// </summary>
-        /// <remarks>
-        /// 訳の入れ忘れの検査に使う
-        /// </remarks>
-        public static bool Get_訳があるか(言語 p_言語, メッセージID p_ID)
-        {
-            return Get_辞書(p_言語)?.ContainsKey(p_ID) == true;
-        }
-
-        /// <summary>
-        /// その言語の辞書
-        /// </summary>
-        /// <remarks>
-        /// まだ用意していない言語は null
-        /// </remarks>
-        private static Dictionary<メッセージID, string>? Get_辞書(言語 p_言語)
-        {
-            return p_言語 switch
-            {
-                言語.英語 => _英語,
-                言語.日本語 => _日本語,
-                言語.中国語 => _中国語,
-                _ => null,
-            };
-        }
+        #region 定数
 
         /// <summary>
         /// 英語
@@ -1431,5 +1392,60 @@ namespace Tsumiki.Commons
             [メッセージID.合成リードを再利用] =
                 "[SuperRead] 复用在首个 k 构建的合成 read {0:N0} 条",
         };
+
+        #endregion
+
+        #region 公開メソッド
+
+        /// <summary>
+        /// p_ID の書式文字列
+        /// </summary>
+        /// <param name="p_言語"></param>
+        /// <param name="p_ID"></param>
+        /// <remarks>
+        /// 指定言語に無ければ英語を返す
+        /// </remarks>
+        public static string Get_書式(言語 p_言語, メッセージID p_ID)
+        {
+            var l_辞書 = Get_辞書(p_言語);
+            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
+        }
+
+        /// <summary>
+        /// その言語にこの ID の訳があるか
+        /// </summary>
+        /// <param name="p_言語"></param>
+        /// <param name="p_ID"></param>
+        /// <remarks>
+        /// 訳の入れ忘れの検査に使う
+        /// </remarks>
+        public static bool Get_訳があるか(言語 p_言語, メッセージID p_ID)
+        {
+            return Get_辞書(p_言語)?.ContainsKey(p_ID) == true;
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// その言語の辞書
+        /// </summary>
+        /// <param name="p_言語"></param>
+        /// <remarks>
+        /// まだ用意していない言語は null
+        /// </remarks>
+        private static Dictionary<メッセージID, string>? Get_辞書(言語 p_言語)
+        {
+            return p_言語 switch
+            {
+                言語.英語 => _英語,
+                言語.日本語 => _日本語,
+                言語.中国語 => _中国語,
+                _ => null,
+            };
+        }
+
+        #endregion
     }
 }

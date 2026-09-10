@@ -7,6 +7,8 @@ namespace Tsumiki.Commons
     /// </summary>
     internal class Util
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 塩基 ID 列の逆相補を返す
         /// </summary>
@@ -55,6 +57,7 @@ namespace Tsumiki.Commons
         /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する
         /// (Booth のアルゴリズム、O(n))
         /// </summary>
+        /// <param name="p_配列"></param>
         /// <remarks>
         /// 環状に閉じた contig は開始位置が任意 (walk がどこから始まったかの
         /// 産物でしかない)<br/>
@@ -73,50 +76,9 @@ namespace Tsumiki.Commons
         }
 
         /// <summary>
-        /// Booth のアルゴリズム
-        /// </summary>
-        /// <remarks>
-        /// p_配列 を2つ繋げた仮想文字列の上で
-        /// KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める
-        /// </remarks>
-        private static int Get_最小回転の開始位置(string p_配列)
-        {
-            var l_長さ = p_配列.Length;
-            var l_二重化 = p_配列 + p_配列;
-            var l_失敗関数 = new int[l_二重化.Length];
-            Array.Fill(l_失敗関数, -1);
-            var l_k = 0;
-            for (var j = 1; j < l_二重化.Length; j++)
-            {
-                var l_文字 = l_二重化[j];
-                var l_i = l_失敗関数[j - l_k - 1];
-                while (l_i != -1 && l_文字 != l_二重化[l_k + l_i + 1])
-                {
-                    if (l_文字 < l_二重化[l_k + l_i + 1])
-                    {
-                        l_k = j - l_i - 1;
-                    }
-                    l_i = l_失敗関数[l_i];
-                }
-                if (l_文字 != l_二重化[l_k + l_i + 1])
-                {
-                    if (l_文字 < l_二重化[l_k])
-                    {
-                        l_k = j;
-                    }
-                    l_失敗関数[j - l_k] = -1;
-                }
-                else
-                {
-                    l_失敗関数[j - l_k] = l_i + 1;
-                }
-            }
-            return l_k % l_長さ;
-        }
-
-        /// <summary>
         /// 曖昧塩基が混入しうる文字列向けの逆相補
         /// </summary>
+        /// <param name="p_配列"></param>
         /// <remarks>
         /// A/C/G/T 以外は位置だけ反転して通す<br/>
         /// unitig/contig には使わないこと<br/>
@@ -171,6 +133,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか
         /// </summary>
+        /// <param name="p_塩基文字"></param>
         /// <remarks>
         /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
         /// </remarks>
@@ -215,6 +178,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 単一の塩基文字を ID に変換する軽量版
         /// </summary>
+        /// <param name="p_塩基文字"></param>
         /// <remarks>
         /// 曖昧塩基は一律 Consts.無効な塩基<br/>
         /// List 確保を伴わないため、曖昧塩基を無視する経路ではこちらを使う
@@ -269,6 +233,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 塩基 ID を 1 文字へ変換する
         /// </summary>
+        /// <param name="p_塩基ID"></param>
         /// <remarks>
         /// 文字列を返す版は連結のたびに確保が起きるため、
         /// 塩基列をまとめて文字列にする場面ではこちらを使う
@@ -316,6 +281,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 曖昧塩基を無視する経路向けの軽量版
         /// </summary>
+        /// <param name="p_リード"></param>
         /// <remarks>
         /// リードの各文字を 1 バイト ID に変換する<br/>
         /// A/C/G/T 以外は Consts.無効な塩基 になる<br/>
@@ -366,6 +332,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// "2G" / "512M" / "2048" のようなサイズ指定をバイト数に変換する
         /// </summary>
+        /// <param name="p_表記"></param>
         /// <remarks>
         /// 接尾辞は 2 進接頭辞 (1 K = 1024)、接尾辞が無い場合は MB とみなす
         /// </remarks>
@@ -419,6 +386,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// バイト数を "2 GB" のような読みやすい形に戻す (パラメータ表示用)
         /// </summary>
+        /// <param name="p_バイト数"></param>
         public static string Get_表示用メモリサイズ(long p_バイト数)
         {
             string[] l_単位 = ["", "K", "M", "G", "T"];
@@ -435,6 +403,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す
         /// </summary>
+        /// <param name="p_ID"></param>
         /// <remarks>
         /// 対応する例:
         /// "@READ001/1"                       -> "@READ001"
@@ -466,5 +435,54 @@ namespace Tsumiki.Commons
             // "/A", "/B" のような表記に対応する亜種も一応見ておく
             return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// Booth のアルゴリズム
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <remarks>
+        /// p_配列 を2つ繋げた仮想文字列の上で
+        /// KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める
+        /// </remarks>
+        private static int Get_最小回転の開始位置(string p_配列)
+        {
+            var l_長さ = p_配列.Length;
+            var l_二重化 = p_配列 + p_配列;
+            var l_失敗関数 = new int[l_二重化.Length];
+            Array.Fill(l_失敗関数, -1);
+            var l_k = 0;
+            for (var j = 1; j < l_二重化.Length; j++)
+            {
+                var l_文字 = l_二重化[j];
+                var l_i = l_失敗関数[j - l_k - 1];
+                while (l_i != -1 && l_文字 != l_二重化[l_k + l_i + 1])
+                {
+                    if (l_文字 < l_二重化[l_k + l_i + 1])
+                    {
+                        l_k = j - l_i - 1;
+                    }
+                    l_i = l_失敗関数[l_i];
+                }
+                if (l_文字 != l_二重化[l_k + l_i + 1])
+                {
+                    if (l_文字 < l_二重化[l_k])
+                    {
+                        l_k = j;
+                    }
+                    l_失敗関数[j - l_k] = -1;
+                }
+                else
+                {
+                    l_失敗関数[j - l_k] = l_i + 1;
+                }
+            }
+            return l_k % l_長さ;
+        }
+
+        #endregion
     }
 }
