@@ -33,9 +33,9 @@ namespace Tsumiki.Cores.Preprocessing
             var l_ログ回数 = 0UL;
             var l_カウンタロック = new object();
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_リード列(p_ファイルパス), (l_リード, l_ワーカー番号) =>
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_リード列(p_ファイルパス), (l_リード, _) =>
                 {
-                    V_登録_1リード(l_リード, p_kmerインデックス, l_ワーカー番号);
+                    V_登録_1リード(l_リード, p_kmerインデックス);
 
                     var l_ログ出力するか = false;
                     var l_ログ値 = 0UL;
@@ -177,13 +177,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_リード"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <param name="p_ワーカー番号"></param>
         /// <remarks>
         /// 逆相補側を別途登録してはいけない<br/>
         /// TrustedKmerIndex.V_登録 が
         /// 正規形へ寄せて数えるため、二重計上になる
         /// </remarks>
-        private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス, int p_ワーカー番号)
+        private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス)
         {
             var l_塩基列 = p_リード.A_塩基列!;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -209,7 +208,7 @@ namespace Tsumiki.Cores.Preprocessing
             }
             if (l_低品質数 == 0)
             {
-                p_kmerインデックス.V_登録(l_塩基[..l_k長], p_ワーカー番号);
+                p_kmerインデックス.V_登録(l_塩基[..l_k長]);
             }
 
             for (var i = l_k長; i < l_塩基列.Length; i++)
@@ -226,7 +225,7 @@ namespace Tsumiki.Cores.Preprocessing
                 }
                 if (l_低品質数 == 0)
                 {
-                    p_kmerインデックス.V_登録(l_塩基.Slice(i - l_k長 + 1, l_k長), p_ワーカー番号);
+                    p_kmerインデックス.V_登録(l_塩基.Slice(i - l_k長 + 1, l_k長));
                 }
             }
         }

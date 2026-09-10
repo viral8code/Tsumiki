@@ -135,7 +135,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 同じリードが同じ配列を何度支持しても 1 本と数える
         /// </remarks>
-        private static void V_数える_1リード(string p_リード, IReadOnlyDictionary<UInt128, int> p_接合窓, int[] p_支持数)
+        private static void V_数える_1リード(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
             if (p_リード.Length < 接合窓長)
             {

@@ -94,7 +94,7 @@ namespace Tsumiki.Core
             // 標本が無い場合は控えめな既定値
             var l_反復長の上限 = this.A_同一ユニティグ標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一ユニティグ標本) : l_k長 * 4;
 
-            this.V_簡略化ラウンド(l_グラフ, l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
+            V_簡略化ラウンド(l_グラフ, l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
 
             // 支持を生カウントではなく期待本数との比で測るための較正器
             // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
@@ -216,7 +216,7 @@ namespace Tsumiki.Core
         /// 露出することがあり、逆に反復を解きほぐすと新たに単純化できるバブルが現れることがある<br/>
         /// どちらも変化が無くなるまで (MEGAHIT の cleaning_rounds に倣い既定 5 ラウンドを上限に) 交互に繰り返す
         /// </remarks>
-        private void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;

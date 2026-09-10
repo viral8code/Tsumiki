@@ -399,7 +399,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_kmer = Get_kmerバイト列(p_配列, i, p_k長);
                 if (l_kmer is not null)
                 {
-                    p_索引.V_登録(l_kmer, p_ワーカー番号: 0);
+                    p_索引.V_登録(l_kmer);
                 }
             }
         }

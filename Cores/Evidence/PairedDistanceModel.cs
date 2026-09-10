@@ -87,9 +87,7 @@ namespace Tsumiki.Cores.Evidence
                 l_総数++;
             }
 
-            this._分布 = l_総数 == 0
-                ? []
-                : [.. l_件数.OrderBy(x => x.Key).Select(x => (x.Key, (double)x.Value / l_総数))];
+            this._分布 = l_総数 == 0 ? [] : [.. l_件数.OrderBy(x => x.Key).Select(x => (x.Key, (double)x.Value / l_総数))];
         }
 
         #endregion

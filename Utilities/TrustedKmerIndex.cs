@@ -161,14 +161,13 @@ namespace Tsumiki.Utilities
         /// k-mer を 1 件カウントする
         /// </summary>
         /// <param name="p_kmer"></param>
-        /// <param name="p_ワーカー番号"></param>
         /// <remarks>
         /// 振り分けはワーカー番号ではなく k-mer 自身のハッシュで行う<br/>
         /// ワーカー単位だと同じ k-mer がスレッド数ぶんの辞書に重複して載る<br/>
         /// 数える前に正規形へ寄せるのも同じ理由で、両向きを別キーにすると
         /// エントリ数と書き出し量が倍になる
         /// </remarks>
-        public void V_登録(Span<byte> p_kmer, int p_ワーカー番号)
+        public void V_登録(Span<byte> p_kmer)
         {
             if (this._カウンタ群 is not { } l_カウンタ群)
             {
@@ -641,7 +640,7 @@ namespace Tsumiki.Utilities
         {
             if (p_位置 == p_塩基候補列.Length)
             {
-                this.V_登録(p_kmer.AsSpan(), p_ワーカー番号);
+                this.V_登録(p_kmer.AsSpan());
                 return;
             }
             foreach (var l_塩基ID in p_塩基候補列[p_位置])
