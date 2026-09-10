@@ -23,11 +23,16 @@ namespace Tsumiki.Cores.Scaffolding
     /// </remarks>
     internal static class GapFiller
     {
+        #region 公開メソッド
+
         /// <summary>
         /// スキャフォールドを読み込み、埋められるギャップを埋めて同じパスへ書き戻す
         /// </summary>
-        public static ギャップ充填統計 V_充填_ギャップ(
-            string p_スキャフォールドパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        /// <param name="p_スキャフォールドパス"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <returns></returns>
+        public static ギャップ充填統計 V_充填_ギャップ(string p_スキャフォールドパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
 
@@ -60,8 +65,7 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
 
-                    var l_埋めた配列 = Get_ギャップを埋める配列(
-                        l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定);
+                    var l_埋めた配列 = Get_ギャップを埋める配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定);
                     if (l_埋めた配列 != null)
                     {
                         _ = l_出力.Append(l_埋めた配列);
@@ -101,19 +105,38 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
+        /// ギャップ充填の結果をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">ギャップ充填の結果</param>
+        public static void V_出力_充填統計(ギャップ充填統計 p_統計)
+        {
+            if (p_統計.A_総ギャップ数 == 0)
+            {
+                Logger.V_出力(メッセージID.ギャップ充填_対象なし);
+                return;
+            }
+            Logger.V_出力(メッセージID.ギャップ充填統計, p_統計.A_埋めたギャップ数, p_統計.A_総ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
         /// ギャップの左右の足場から、その間を埋める配列を探す
         /// </summary>
+        /// <param name="p_左側の出力"></param>
+        /// <param name="p_配列"></param>
+        /// <param name="p_ギャップ長"></param>
+        /// <param name="p_ギャップ終端"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_判定"></param>
+        /// <returns></returns>
         /// <remarks>
         /// 見つからない/一意に定まらない場合は null を返す
         /// </remarks>
-        private static string? Get_ギャップを埋める配列(
-            StringBuilder p_左側の出力,
-            string p_配列,
-            int p_ギャップ長,
-            int p_ギャップ終端,
-            TrustedKmerIndex p_kmerインデックス,
-            int p_k長,
-            out ギャップ充填判定 p_判定)
+        private static string? Get_ギャップを埋める配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定)
         {
             p_判定 = ギャップ充填判定.到達不能;
 
@@ -121,6 +144,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 return null;
             }
+
             if (p_ギャップ終端 + p_k長 > p_配列.Length)
             {
                 return null;
@@ -145,6 +169,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 return null;
             }
+
             if (!p_kmerインデックス.Get_含まれるか(l_左のkmer) || !p_kmerインデックス.Get_含まれるか(l_目標kmer))
             {
                 // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない
@@ -154,24 +179,10 @@ namespace Tsumiki.Cores.Scaffolding
             var l_最小長 = Math.Max(0, p_ギャップ長 - Consts.ギャップ充填の長さの余裕幅);
             var l_最大長 = p_ギャップ長 + Consts.ギャップ充填の長さの余裕幅;
 
-            (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
-                l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);
+            (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);
             return l_経路;
         }
 
-        /// <summary>
-        /// ギャップ充填の結果をログへ出力する
-        /// </summary>
-        /// <param name="p_統計">ギャップ充填の結果</param>
-        public static void V_出力_充填統計(ギャップ充填統計 p_統計)
-        {
-            if (p_統計.A_総ギャップ数 == 0)
-            {
-                Logger.V_出力(メッセージID.ギャップ充填_対象なし);
-                return;
-            }
-            Logger.V_出力(
-                メッセージID.ギャップ充填統計, p_統計.A_埋めたギャップ数, p_統計.A_総ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
-        }
+        #endregion
     }
 }

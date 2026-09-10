@@ -1,7 +1,7 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Core.Pipeline;
+﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Pipeline;
 using Tsumiki.Core;
-using Tsumiki.Model.Foundation;
+using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Tests.Core
 {

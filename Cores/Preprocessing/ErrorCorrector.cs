@@ -16,6 +16,8 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class ErrorCorrector
     {
+        #region 定数
+
         /// <summary>
         /// 1 バッチあたりのリード数
         /// </summary>
@@ -26,17 +28,24 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const int 訂正バッチサイズ = 20000;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// リードファイルを読み込んでエラー訂正を行い、結果を出力先へ書き出す
         /// </summary>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_一時ディレクトリ"></param>
+        /// <param name="p_出力先1"></param>
+        /// <param name="p_出力先2"></param>
         /// <remarks>
         /// 「信頼できる k-mer」の判定には、本アセンブリと同じ -kc のカットオフ値を
         /// 使って構築した専用の k-mer インデックス (このメソッド内で完結し、
         /// 本パイプライン用のインデックスとは独立) を用いる
         /// </remarks>
-        public static void V_訂正_リードファイル(
-            string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ,
-            string p_出力先1, string? p_出力先2)
+        public static void V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
@@ -54,20 +63,17 @@ namespace Tsumiki.Cores.Preprocessing
                 // 訂正の判定はこのカットオフが全て
                 // 既定値のままだと
                 // エラー由来の k-mer まで信頼扱いになり、訂正が起きない
-                KmerCutoffSelector.V_解決_kmerカットオフ(
-                    ConfigurationManager.A_実行時引数, l_kmerインデックス);
+                KmerCutoffSelector.V_解決_kmerカットオフ(ConfigurationManager.A_実行時引数, l_kmerインデックス);
                 _ = l_kmerインデックス.V_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
 
                 Logger.V_出力(メッセージID.エラー訂正_訂正開始);
                 var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長);
-                Logger.V_出力(
-                    メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード1のパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
+                Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード1のパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
 
                 if (p_リード2のパス != null && p_出力先2 != null)
                 {
                     var l_統計2 = Get_訂正統計_ファイル(p_リード2のパス, p_出力先2, l_kmerインデックス, l_k長);
-                    Logger.V_出力(
-                        メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード2のパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
+                    Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード2のパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
                 }
             }
 
@@ -75,74 +81,13 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// 1 ファイルぶんのリードを訂正して書き出し、その集計を返す
-        /// </summary>
-        /// <param name="p_入力パス">訂正するリードのパス</param>
-        /// <param name="p_出力パス">書き出し先</param>
-        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
-        /// <param name="p_k長">k 長</param>
-        /// <returns>訂正の集計</returns>
-        private static ファイル訂正統計 Get_訂正統計_ファイル(
-            string p_入力パス, string p_出力パス, TrustedKmerIndex p_kmerインデックス, int p_k長)
-        {
-            var l_総リード数 = 0;
-            var l_訂正されたリード数 = 0;
-            var l_総訂正塩基数 = 0;
-
-            // 訂正処理は副作用のない純粋関数で、k-mer インデックスも
-            // カットオフ後は読み取り専用なので、リード単位で安全に並列化できる
-            // 実データ (35 x, 800 k ペア) で単一スレッドだと 40 分以上かかっており、
-            // パイプライン全体の律速になっていた
-            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
-            using var l_読み込み = new FastqReader(p_入力パス);
-            using var l_書き込み = new FastqWriter(p_出力パス);
-
-            var l_ID群 = new string[訂正バッチサイズ];
-            var l_クオリティ群 = new string[訂正バッチサイズ];
-            var l_塩基列群 = new byte[訂正バッチサイズ][];
-            var l_結果群 = new 訂正結果[訂正バッチサイズ];
-
-            while (l_読み込み.Get_続きがあるか())
-            {
-                var l_件数 = 0;
-                while (l_件数 < 訂正バッチサイズ && l_読み込み.Get_続きがあるか())
-                {
-                    var l_リード = l_読み込み.Get_次のリード_軽量();
-                    l_ID群[l_件数] = l_リード.A_ID;
-                    l_クオリティ群[l_件数] = l_リード.A_クオリティ;
-                    l_塩基列群[l_件数] = l_リード.A_塩基列!;
-                    l_件数++;
-                }
-                l_総リード数 += l_件数;
-
-                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
-                {
-                    l_結果群[i] = Get_訂正結果(l_塩基列群[i], p_kmerインデックス, p_k長);
-                });
-
-                for (var i = 0; i < l_件数; i++)
-                {
-                    var l_結果 = l_結果群[i];
-                    if (l_結果.A_訂正数 > 0)
-                    {
-                        l_訂正されたリード数++;
-                        l_総訂正塩基数 += l_結果.A_訂正数;
-                    }
-                    l_書き込み.V_書き込み(
-                        l_ID群[i],
-                        string.Join(string.Empty, l_結果.A_塩基列.Select(Util.V_変換_塩基文字)),
-                        l_クオリティ群[i]);
-                }
-            }
-
-            return new ファイル訂正統計(l_総リード数, l_訂正されたリード数, l_総訂正塩基数);
-        }
-
-        /// <summary>
         /// 1 リード (塩基 ID 空間のバイト列、曖昧塩基は Consts.無効な塩基) を
         /// 貪欲法で訂正する
         /// </summary>
+        /// <param name="p_リード"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_最大反復数"></param>
         /// <remarks>
         /// 副作用のない純粋関数 (入力は変更しない)<br/>
         /// k が 64 以下なら、窓を 2 bit パックして転がす経路を使う<br/>
@@ -150,8 +95,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 選ぶ置換も逐次経路と同じで、1 窓あたりの手間だけが O(k) から O(1) に
         /// 変わる (逐次経路は窓を見るたびにパックと逆相補を取り直していた)
         /// </remarks>
-        public static 訂正結果 Get_訂正結果(
-            ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10)
+        public static 訂正結果 Get_訂正結果(ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10)
         {
             return p_リード.Length < p_k長
                 ? new 訂正結果(p_リード.ToArray(), 0)
@@ -163,11 +107,14 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// k が 64 を超える場合の経路
         /// </summary>
+        /// <param name="p_塩基列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_最大反復数"></param>
         /// <remarks>
         /// パックできないので窓ごとに評価する
         /// </remarks>
-        internal static 訂正結果 Get_訂正結果_逐次(
-            byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
+        internal static 訂正結果 Get_訂正結果_逐次(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
             var l_塩基列 = p_塩基列;
             var l_窓数 = l_塩基列.Length - p_k長 + 1;
@@ -217,8 +164,7 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
 
-                        var l_改善数 = Get_置換の改善数(
-                            l_塩基列, l_位置, l_候補, l_窓開始, l_窓終了, p_k長, l_信頼状況, p_kmerインデックス);
+                        var l_改善数 = Get_置換の改善数(l_塩基列, l_位置, l_候補, l_窓開始, l_窓終了, p_k長, l_信頼状況, p_kmerインデックス);
                         if (l_改善数 > l_最良改善数)
                         {
                             l_最良改善数 = l_改善数;
@@ -242,15 +188,83 @@ namespace Tsumiki.Cores.Preprocessing
             return new 訂正結果(l_塩基列, l_訂正数);
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 1 ファイルぶんのリードを訂正して書き出し、その集計を返す
+        /// </summary>
+        /// <param name="p_入力パス">訂正するリードのパス</param>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>訂正の集計</returns>
+        private static ファイル訂正統計 Get_訂正統計_ファイル(string p_入力パス, string p_出力パス, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        {
+            var l_総リード数 = 0;
+            var l_訂正されたリード数 = 0;
+            var l_総訂正塩基数 = 0;
+
+            // 訂正処理は副作用のない純粋関数で、k-mer インデックスも
+            // カットオフ後は読み取り専用なので、リード単位で安全に並列化できる
+            // 実データ (35 x, 800 k ペア) で単一スレッドだと 40 分以上かかっており、
+            // パイプライン全体の律速になっていた
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+
+            using var l_読み込み = new FastqReader(p_入力パス);
+            using var l_書き込み = new FastqWriter(p_出力パス);
+
+            var l_ID群 = new string[訂正バッチサイズ];
+            var l_クオリティ群 = new string[訂正バッチサイズ];
+            var l_塩基列群 = new byte[訂正バッチサイズ][];
+            var l_結果群 = new 訂正結果[訂正バッチサイズ];
+
+            while (l_読み込み.Get_続きがあるか())
+            {
+                var l_件数 = 0;
+                while (l_件数 < 訂正バッチサイズ && l_読み込み.Get_続きがあるか())
+                {
+                    var l_リード = l_読み込み.Get_次のリード_軽量();
+                    l_ID群[l_件数] = l_リード.A_ID;
+                    l_クオリティ群[l_件数] = l_リード.A_クオリティ;
+                    l_塩基列群[l_件数] = l_リード.A_塩基列!;
+                    l_件数++;
+                }
+                l_総リード数 += l_件数;
+
+                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
+                {
+                    l_結果群[i] = Get_訂正結果(l_塩基列群[i], p_kmerインデックス, p_k長);
+                });
+
+                for (var i = 0; i < l_件数; i++)
+                {
+                    var l_結果 = l_結果群[i];
+                    if (l_結果.A_訂正数 > 0)
+                    {
+                        l_訂正されたリード数++;
+                        l_総訂正塩基数 += l_結果.A_訂正数;
+                    }
+                    l_書き込み.V_書き込み(l_ID群[i], string.Join(string.Empty, l_結果.A_塩基列.Select(Util.V_変換_塩基文字)), l_クオリティ群[i]);
+                }
+            }
+
+            return new ファイル訂正統計(l_総リード数, l_訂正されたリード数, l_総訂正塩基数);
+        }
+
         /// <summary>
         /// パック経路の訂正本体
         /// </summary>
+        /// <param name="p_塩基列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_最大反復数"></param>
         /// <remarks>
         /// 逐次経路と同じ貪欲法で、窓の評価だけを
         /// パック値の更新で済ませる
         /// </remarks>
-        private static 訂正結果 Get_訂正結果_パック(
-            byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
+        private static 訂正結果 Get_訂正結果_パック(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
             var l_窓数 = p_塩基列.Length - p_k長 + 1;
             var l_パック = new UInt128[l_窓数];
@@ -303,9 +317,7 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
 
-                        var l_改善数 = Get_置換の改善数_パック(
-                            l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス,
-                            l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
+                        var l_改善数 = Get_置換の改善数_パック(l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
                         if (l_改善数 > l_最良改善数)
                         {
                             l_最良改善数 = l_改善数;
@@ -331,13 +343,18 @@ namespace Tsumiki.Cores.Preprocessing
         /// 全窓のパック値・逆相補・曖昧塩基の数・信頼状況を、隣の窓から
         /// 転がして求める
         /// </summary>
+        /// <param name="p_塩基列"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_パック"></param>
+        /// <param name="p_逆相補"></param>
+        /// <param name="p_無効数"></param>
+        /// <param name="p_信頼状況"></param>
         /// <remarks>
         /// 曖昧塩基はコドン 0 として詰めておき、判定では
         /// 曖昧塩基の数で弾く (窓から出れば残りのコドンはそのまま正しい)
         /// </remarks>
-        private static void V_計算_窓の状態(
-            byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス,
-            UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
+        private static void V_計算_窓の状態(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
         {
             var l_マスク = Get_マスク(p_k長);
             var l_最上位への移動 = 2 * (p_k長 - 1);
@@ -384,6 +401,18 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// p_位置 を p_候補 に置換したときの、信頼できる窓の純増数
         /// </summary>
+        /// <param name="p_位置"></param>
+        /// <param name="p_候補"></param>
+        /// <param name="p_窓開始"></param>
+        /// <param name="p_窓終了"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_パック"></param>
+        /// <param name="p_逆相補"></param>
+        /// <param name="p_無効数"></param>
+        /// <param name="p_信頼状況"></param>
+        /// <param name="p_未信頼累積"></param>
+        /// <param name="p_最良改善数"></param>
         /// <remarks>
         /// 置換で変わるのは各窓のうち 1 コドンだけなので、窓ごとにパック値を
         /// 詰め直さず、その 1 コドンを差し替えて引く<br/>
@@ -392,11 +421,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 選ばれる置換は変わらない<br/>
         /// 改善数が同じ候補は元から採用されない)
         /// </remarks>
-        private static int Get_置換の改善数_パック(
-            int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長,
-            TrustedKmerIndex p_kmerインデックス,
-            UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況,
-            int[] p_未信頼累積, int p_最良改善数)
+        private static int Get_置換の改善数_パック(int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況, int[] p_未信頼累積, int p_最良改善数)
         {
             var l_コドン = Get_コドン(p_候補);
             var l_相補コドン = Get_相補コドン(p_候補);
@@ -444,8 +469,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// パック済みの順鎖・逆鎖から、信頼できる k-mer 集合に含まれるかを引く
         /// </summary>
-        private static bool Get_含まれるか(
-            TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_パック"></param>
+        /// <param name="p_逆相補"></param>
+        private static bool Get_含まれるか(TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
         {
             var l_正規形 = p_パック < p_逆相補 ? p_パック : p_逆相補;
             return p_k長 <= 32
@@ -466,6 +494,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 塩基 ID の 2 bit 表現
         /// </summary>
+        /// <param name="p_塩基ID"></param>
         /// <remarks>
         /// 曖昧塩基は 0 として詰める (判定は無効数で弾く)
         /// </remarks>
@@ -510,8 +539,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">k 長</param>
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <returns>信頼できれば true</returns>
-        private static bool Get_窓が信頼できるか(
-            byte[] p_塩基列, int p_窓開始, int p_k長, TrustedKmerIndex p_kmerインデックス)
+        private static bool Get_窓が信頼できるか(byte[] p_塩基列, int p_窓開始, int p_k長, TrustedKmerIndex p_kmerインデックス)
         {
             for (var i = p_窓開始; i < p_窓開始 + p_k長; i++)
             {
@@ -528,13 +556,19 @@ namespace Tsumiki.Cores.Preprocessing
         /// (p_窓開始..p_窓終了 の範囲、すなわち その位置を含みうる窓のみが
         /// 影響を受けるため、その範囲だけを再評価すれば十分)
         /// </summary>
+        /// <param name="p_塩基列"></param>
+        /// <param name="p_位置"></param>
+        /// <param name="p_候補"></param>
+        /// <param name="p_窓開始"></param>
+        /// <param name="p_窓終了"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_置換前の信頼状況"></param>
+        /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// 塩基列は評価後、
         /// 呼び出し前の状態に戻す (副作用を残さない)
         /// </remarks>
-        private static int Get_置換の改善数(
-            byte[] p_塩基列, int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長,
-            bool[] p_置換前の信頼状況, TrustedKmerIndex p_kmerインデックス)
+        private static int Get_置換の改善数(byte[] p_塩基列, int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, bool[] p_置換前の信頼状況, TrustedKmerIndex p_kmerインデックス)
         {
             var l_元の塩基 = p_塩基列[p_位置];
             p_塩基列[p_位置] = p_候補;
@@ -556,5 +590,7 @@ namespace Tsumiki.Cores.Preprocessing
             p_塩基列[p_位置] = l_元の塩基;
             return l_改善数;
         }
+
+        #endregion
     }
 }

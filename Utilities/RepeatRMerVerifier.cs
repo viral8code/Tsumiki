@@ -33,6 +33,8 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal sealed class RepeatRMerVerifier
     {
+        #region 内部変数
+
         /// <summary>
         /// r-mer の厳密な集合、r が 32 を超える場合は null
         /// </summary>
@@ -48,6 +50,10 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly int _r長;
 
+        #endregion
+
+        #region コンストラクタ
+
         /// <summary>
         /// コンストラクタ
         /// </summary>
@@ -61,25 +67,9 @@ namespace Tsumiki.Utilities
             this._r長 = p_r長;
         }
 
-        /// <summary>
-        /// r-mer の値を集合、あるいはふるいへ登録する
-        /// </summary>
-        /// <param name="p_値">正準化した r-mer の値</param>
-        private void V_登録(ulong p_値)
-        {
-            _ = (this._rMer集合?.Add(p_値));
-            this._rMerふるい?.V_登録(p_値);
-        }
+        #endregion
 
-        /// <summary>
-        /// r-mer をリードで見たか
-        /// </summary>
-        /// <param name="p_値">正準化した r-mer の値</param>
-        /// <returns>見ていれば true、ふるいを使う場合は偽陽性で true になりうる</returns>
-        private bool Get_見たか(ulong p_値)
-        {
-            return this._rMer集合?.Contains(p_値) ?? this._rMerふるい!.Get_含まれるか(p_値);
-        }
+        #region 公開メソッド
 
         /// <summary>
         /// 生リードファイル群を 1 回走査し、出現した r-mer (正準形) の集合を作る
@@ -118,48 +108,6 @@ namespace Tsumiki.Utilities
                 }
             }
             return l_検証器;
-        }
-
-        /// <summary>
-        /// ふるいの大きさをリードファイルの総量から決める
-        /// </summary>
-        /// <remarks>
-        /// 実際の種類数は数え終わるまで分からないので、塩基数を上限とみなして
-        /// 1 件あたり 4 ビットを見込み、確保量に上限を設ける
-        /// </remarks>
-        /// <param name="p_パス群">走査するリードファイルのパス</param>
-        /// <returns>確保したふるい</returns>
-        private static BloomFilter Get_ふるい(IEnumerable<string> p_パス群)
-        {
-            // FASTQ は塩基とクオリティで 1 塩基あたり約 2 バイトになる
-            var l_見込み塩基数 = p_パス群.Sum(x => new FileInfo(x).Length) / 2;
-            var l_ビット数 = Math.Clamp(4 * l_見込み塩基数, 1L << 20, Consts.rMerふるいのビット数上限);
-            return new BloomFilter(l_ビット数, Consts.rMerふるいのハッシュ数);
-        }
-
-        /// <summary>
-        /// 1 本のリードに現れる r-mer をすべて登録する
-        /// </summary>
-        /// <param name="p_リード">リードの配列</param>
-        /// <param name="p_r長">r-mer の長さ</param>
-        private void V_登録_rMer(string p_リード, int p_r長)
-        {
-            for (var i = 0; i + p_r長 <= p_リード.Length; i++)
-            {
-                var l_曖昧か = false;
-                for (var j = 0; j < p_r長; j++)
-                {
-                    if (Util.Get_曖昧塩基か(p_リード[i + j]))
-                    {
-                        l_曖昧か = true;
-                        break;
-                    }
-                }
-                if (!l_曖昧か)
-                {
-                    this.V_登録(Get_正準値(p_リード.AsSpan(i, p_r長)));
-                }
-            }
         }
 
         /// <summary>
@@ -235,6 +183,72 @@ namespace Tsumiki.Utilities
             return this.Get_接合点の支持数(p_head配列, p_repeat配列, p_tail配列) >= p_閾値;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// r-mer の値を集合、あるいはふるいへ登録する
+        /// </summary>
+        /// <param name="p_値">正準化した r-mer の値</param>
+        private void V_登録(ulong p_値)
+        {
+            _ = (this._rMer集合?.Add(p_値));
+            this._rMerふるい?.V_登録(p_値);
+        }
+
+        /// <summary>
+        /// r-mer をリードで見たか
+        /// </summary>
+        /// <param name="p_値">正準化した r-mer の値</param>
+        /// <returns>見ていれば true、ふるいを使う場合は偽陽性で true になりうる</returns>
+        private bool Get_見たか(ulong p_値)
+        {
+            return this._rMer集合?.Contains(p_値) ?? this._rMerふるい!.Get_含まれるか(p_値);
+        }
+
+        /// <summary>
+        /// ふるいの大きさをリードファイルの総量から決める
+        /// </summary>
+        /// <remarks>
+        /// 実際の種類数は数え終わるまで分からないので、塩基数を上限とみなして
+        /// 1 件あたり 4 ビットを見込み、確保量に上限を設ける
+        /// </remarks>
+        /// <param name="p_パス群">走査するリードファイルのパス</param>
+        /// <returns>確保したふるい</returns>
+        private static BloomFilter Get_ふるい(IEnumerable<string> p_パス群)
+        {
+            // FASTQ は塩基とクオリティで 1 塩基あたり約 2 バイトになる
+            var l_見込み塩基数 = p_パス群.Sum(x => new FileInfo(x).Length) / 2;
+            var l_ビット数 = Math.Clamp(4 * l_見込み塩基数, 1L << 20, Consts.rMerふるいのビット数上限);
+            return new BloomFilter(l_ビット数, Consts.rMerふるいのハッシュ数);
+        }
+
+        /// <summary>
+        /// 1 本のリードに現れる r-mer をすべて登録する
+        /// </summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_r長">r-mer の長さ</param>
+        private void V_登録_rMer(string p_リード, int p_r長)
+        {
+            for (var i = 0; i + p_r長 <= p_リード.Length; i++)
+            {
+                var l_曖昧か = false;
+                for (var j = 0; j < p_r長; j++)
+                {
+                    if (Util.Get_曖昧塩基か(p_リード[i + j]))
+                    {
+                        l_曖昧か = true;
+                        break;
+                    }
+                }
+                if (!l_曖昧か)
+                {
+                    this.V_登録(Get_正準値(p_リード.AsSpan(i, p_r長)));
+                }
+            }
+        }
+
         /// <summary>
         /// 配列とその逆相補のうち、順鎖と逆鎖どちらから読んでも同一になるキーを返す
         /// </summary>
@@ -253,5 +267,7 @@ namespace Tsumiki.Utilities
             }
             return KmerPacking.Get_正規化ハッシュ_64(l_塩基ID列);
         }
+
+        #endregion
     }
 }

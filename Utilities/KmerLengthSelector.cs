@@ -12,9 +12,13 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class KmerLengthSelector
     {
+        #region 公開メソッド
+
         /// <summary>
         /// -k 未指定時に、リード長から k を決めて適用する
         /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_リード長"></param>
         /// <remarks>
         /// 明示指定されている場合はユーザーの判断を尊重し、明らかに成立しない
         /// 場合 (k がリード長以上) だけ警告する
@@ -54,6 +58,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// リード長に対する推奨 k 長
         /// </summary>
+        /// <param name="p_リード長"></param>
         /// <remarks>
         /// 上限を設けるのは、k が 64 を超えると 2 bit パックが UInt128 に
         /// 収まらず高速経路から外れるため<br/>
@@ -75,5 +80,7 @@ namespace Tsumiki.Utilities
             }
             return l_候補;
         }
+
+        #endregion
     }
 }

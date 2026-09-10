@@ -19,20 +19,22 @@ namespace Tsumiki.Cores.Output
     /// </remarks>
     internal static class GfaWriter
     {
+        #region 公開メソッド
+
         /// <summary>
         /// p_ユニティグ配列・p_グラフ の状態を GFA1 として p_パス へ書き出す
         /// </summary>
+        /// <param name="p_パス"></param>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_コピー数"></param>
         /// <remarks>
         /// 頂点は unitig ID(1 始まり) の順鎖/逆鎖のペアで表現されているため、
         /// 各物理的な隣接は双子の辺として 2 回現れる<br/>
         /// 片方だけを 1 本の L 行として出す
         /// </remarks>
-        public static void V_出力(
-            string p_パス,
-            List<string> p_ユニティグ配列,
-            UnitigGraph p_グラフ,
-            int p_k長,
-            IReadOnlyDictionary<int, int>? p_コピー数 = null)
+        public static void V_出力(string p_パス, List<string> p_ユニティグ配列, UnitigGraph p_グラフ, int p_k長, IReadOnlyDictionary<int, int>? p_コピー数 = null)
         {
             var l_重なり長 = Math.Max(0, p_k長 - 1);
             var l_ユニティグ数 = (p_ユニティグ配列.Count - 2) / 2;
@@ -70,5 +72,7 @@ namespace Tsumiki.Cores.Output
                 }
             }
         }
+
+        #endregion
     }
 }

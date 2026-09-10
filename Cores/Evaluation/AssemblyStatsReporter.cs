@@ -10,6 +10,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </summary>
     internal static class AssemblyStatsReporter
     {
+        #region 定数
+
         /// <summary>
         /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)
         /// </summary>
@@ -17,6 +19,10 @@ namespace Tsumiki.Cores.Evaluation
         /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない
         /// </remarks>
         public const int 比較用の最小長 = 500;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 配列群から統計を求めて返す
@@ -40,6 +46,7 @@ namespace Tsumiki.Cores.Evaluation
                     {
                         continue;
                     }
+
                     l_塩基数++;
                     if (l_文字 is 'G' or 'g' or 'C' or 'c')
                     {
@@ -77,6 +84,34 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
+        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する
+        /// </summary>
+        /// <param name="p_ラベル">出力の見出しに使うラベル</param>
+        /// <param name="p_FASTAパス">対象の FASTA のパス</param>
+        /// <remarks>
+        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
+        /// 比較用の最小長以上の配列だけに絞った統計も併記する
+        /// </remarks>
+        public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
+        {
+            if (!File.Exists(p_FASTAパス))
+            {
+                Logger.V_出力(メッセージID.統計_ファイルなし, p_ラベル, p_FASTAパス);
+                return;
+            }
+
+            var l_統計 = Get_統計_FASTA(p_FASTAパス);
+            Logger.V_出力(メッセージID.統計, p_ラベル, l_統計);
+
+            var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= 比較用の最小長));
+            Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, 比較用の最小長, l_絞り込み統計);
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
         /// FASTA から配列だけを取り出して返す
         /// </summary>
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
@@ -90,25 +125,6 @@ namespace Tsumiki.Cores.Evaluation
             }
         }
 
-        /// <summary>
-        /// FASTA の統計量を計算し、"[Stats] ラベル: ..." の形式でコンソールへ出力する
-        /// </summary>
-        /// <remarks>
-        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
-        /// 比較用の最小長以上の配列だけに絞った統計も併記する
-        /// </remarks>
-        public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
-        {
-            if (!File.Exists(p_FASTAパス))
-            {
-                Logger.V_出力(メッセージID.統計_ファイルなし, p_ラベル, p_FASTAパス);
-                return;
-            }
-            var l_統計 = Get_統計_FASTA(p_FASTAパス);
-            Logger.V_出力(メッセージID.統計, p_ラベル, l_統計);
-
-            var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= 比較用の最小長));
-            Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, 比較用の最小長, l_絞り込み統計);
-        }
+        #endregion
     }
 }

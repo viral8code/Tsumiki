@@ -11,21 +11,42 @@ namespace Tsumiki.IO
     /// </remarks>
     internal abstract class SequenceFileReaderBase : IDisposable
     {
-        /// <summary>
-        /// ファイルパス
-        /// </summary>
-        public string A_ファイルパス { get; }
-
-        /// <summary>
-        /// 読み込み
-        /// </summary>
-        private readonly StreamReader _読み込み;
+        #region 定数
 
         /// <summary>
         /// バッファサイズ
         /// </summary>
         private const int バッファサイズ = 1 << 25;
 
+        #endregion
+
+        #region 内部変数
+
+        /// <summary>
+        /// 読み込み
+        /// </summary>
+        private readonly StreamReader _読み込み;
+
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
+        /// ファイルパス
+        /// </summary>
+        public string A_ファイルパス { get; }
+
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// ファイルを開く
+        /// </summary>
+        /// <param name="p_パス"></param>
+        /// <remarks>
+        /// 拡張子が .gz なら透過的に展開する
+        /// </remarks>
         protected SequenceFileReaderBase(string p_パス)
         {
             this.A_ファイルパス = p_パス;
@@ -34,6 +55,10 @@ namespace Tsumiki.IO
                 ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: バッファサイズ)
                 : new StreamReader(l_入力ストリーム, bufferSize: バッファサイズ);
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// まだ読める行があるか
@@ -76,5 +101,7 @@ namespace Tsumiki.IO
         {
             this._読み込み.Dispose();
         }
+
+        #endregion
     }
 }

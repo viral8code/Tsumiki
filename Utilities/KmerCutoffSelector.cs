@@ -19,9 +19,13 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class KmerCutoffSelector
     {
+        #region 公開メソッド
+
         /// <summary>
         /// -kc が未指定の場合に限り、スペクトルから求めた値を適用する
         /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルを
         /// もう一度走査するが、明示指定時はこの走査自体を行わない
@@ -70,5 +74,7 @@ namespace Tsumiki.Utilities
             p_引数.Set_推定kmerカットオフ(l_推奨値);
             Logger.V_出力(メッセージID.kmerカットオフ_スペクトル, l_推奨値);
         }
+
+        #endregion
     }
 }

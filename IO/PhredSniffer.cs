@@ -12,15 +12,21 @@ namespace Tsumiki.IO
     /// </remarks>
     internal static class PhredSniffer
     {
-        // 実データで現実的にありうる最大のPhredスコア (Illumina/MGI/BGI いずれも
-        // 通常は 40 強が上限)
-        // これを大きく超えるスコアが観測された場合は、
-        // オフセットの取り違えを疑う
+        #region 定数
 
         /// <summary>
         /// 現実的な Q 上限
         /// </summary>
+        /// <remarks>
+        /// 実データで現実的にありうる最大の Phred スコア<br/>
+        /// (Illumina/MGI/BGI いずれも通常は 40 強が上限)<br/>
+        /// これを大きく超えるスコアが観測された場合は、オフセットの取り違えを疑う
+        /// </remarks>
         private const int 現実的なQ上限 = 45;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// クオリティ行から、オフセットを見分けるための標本を集めて返す
@@ -65,6 +71,8 @@ namespace Tsumiki.IO
         /// 標本が p_有効オフセット(現在有効な -p 値)と矛盾していそうな
         /// 場合に警告文を返す
         /// </summary>
+        /// <param name="p_標本"></param>
+        /// <param name="p_有効オフセット"></param>
         /// <remarks>
         /// 問題なさそうな場合は null を返す
         /// </remarks>
@@ -82,35 +90,21 @@ namespace Tsumiki.IO
             List<string> l_指摘 = [];
             if (l_最小Q < 0 || l_最大Q > 現実的なQ上限)
             {
-                l_指摘.Add(
-                    $"observed quality ASCII range [{p_標本.A_最小ASCII}, {p_標本.A_最大ASCII}] decodes to Q[{l_最小Q}, {l_最大Q}] " +
-                    $"under Phred{p_有効オフセット}, which is implausible for real sequencing data " +
-                    $"(negative or > {現実的なQ上限}). This data may actually be Phred{l_別のオフセット} " +
-                    $"-- consider re-running with -p {l_別のオフセット} if so.");
+                l_指摘.Add($"observed quality ASCII range [{p_標本.A_最小ASCII}, {p_標本.A_最大ASCII}] decodes to Q[{l_最小Q}, {l_最大Q}] under Phred{p_有効オフセット}, which is implausible for real sequencing data (negative or > {現実的なQ上限}). This data may actually be Phred{l_別のオフセット} -- consider re-running with -p {l_別のオフセット} if so.");
             }
+
             if (p_標本.A_一様か)
             {
-                l_指摘.Add(
-                    $"quality is completely uniform (every sampled base is ASCII {p_標本.A_最小ASCII}) across " +
-                    $"{p_標本.A_標本リード数} sampled read(s) -- this is unusual for real sequencer output and " +
-                    "may indicate a placeholder/binned quality scheme rather than a genuine Phred offset mismatch.");
+                l_指摘.Add($"quality is completely uniform (every sampled base is ASCII {p_標本.A_最小ASCII}) across {p_標本.A_標本リード数} sampled read(s) -- this is unusual for real sequencer output and may indicate a placeholder/binned quality scheme rather than a genuine Phred offset mismatch.");
             }
 
             return l_指摘.Count == 0 ? null : string.Join(" ", l_指摘);
         }
 
         /// <summary>
-        /// その標本を p_オフセット で解釈したとき、Q が負にならず、かつ
-        /// 現実的な上限を超えないかどうか
-        /// </summary>
-        private static bool Get_妥当なオフセットか(Phred標本 p_標本, int p_オフセット)
-        {
-            return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= 現実的なQ上限;
-        }
-
-        /// <summary>
         /// 標本から、どちらのオフセットが妥当かを判定する
         /// </summary>
+        /// <param name="p_標本"></param>
         /// <remarks>
         /// 片方だけが妥当な場合にそのオフセットを返す<br/>
         /// 両方妥当/両方不当な場合は判別できないため null を返す
@@ -128,33 +122,20 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// Phred オフセットを推定し、-p が未指定なら適用する
+        /// クオリティ文字から Phred オフセットを推定し、実行時引数へ反映する
         /// </summary>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_リード1のパス">リード 1 のパス</param>
+        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
+        /// <param name="p_標本上限">見る行数の上限</param>
         /// <remarks>
+        /// -p で明示指定されている場合は、利用者の判断を優先して推定結果で上書きしない<br/>
         /// 警告だけでは足りない<br/>
         /// Phred64 のデータを Phred33 として読むと
         /// すべてのスコアが 31 以上に見え、品質フィルタが完全に無効化されるが、
         /// その事実はログを読まない限り気付けない<br/>
         /// read1 と read2 で推定が食い違う場合は自信が持てないため警告に留める
         /// </remarks>
-        /// <summary>
-        /// 推定できなかった場合も含めた、表示用のオフセット
-        /// </summary>
-        private static string Get_表示用オフセット(int? p_推定)
-        {
-            return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);
-        }
-
-        /// <summary>
-        /// クオリティ文字から Phred オフセットを推定し、実行時引数へ反映する
-        /// </summary>
-        /// <remarks>
-        /// -p で明示指定されている場合は、利用者の判断を優先して推定結果で上書きしない
-        /// </remarks>
-        /// <param name="p_引数">実行時引数</param>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
-        /// <param name="p_標本上限">見る行数の上限</param>
         public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
@@ -166,11 +147,7 @@ namespace Tsumiki.IO
                 var l_推定2 = Get_推定オフセット(l_標本2);
                 if (l_推定 != l_推定2)
                 {
-                    Logger.V_出力(
-                        メッセージID.Phred_ファイル間で不一致,
-                        Get_表示用オフセット(l_推定),
-                        Get_表示用オフセット(l_推定2),
-                        p_引数.A_Phredオフセット);
+                    Logger.V_出力(メッセージID.Phred_ファイル間で不一致, Get_表示用オフセット(l_推定), Get_表示用オフセット(l_推定2), p_引数.A_Phredオフセット);
                     l_推定 = null;
                 }
             }
@@ -198,6 +175,9 @@ namespace Tsumiki.IO
         /// <summary>
         /// ファイルを標本抽出し、疑わしい場合はコンソールへ警告を出す
         /// </summary>
+        /// <param name="p_ファイルパス"></param>
+        /// <param name="p_有効オフセット"></param>
+        /// <param name="p_標本上限"></param>
         public static void V_警告_疑わしいオフセット(string p_ファイルパス, int p_有効オフセット, int p_標本上限 = 20_000)
         {
             var l_標本 = Get_標本(Get_クオリティ行(p_ファイルパス, p_標本上限), p_標本上限);
@@ -206,6 +186,30 @@ namespace Tsumiki.IO
             {
                 Logger.V_出力(メッセージID.Phred_検査の警告, Path.GetFileName(p_ファイルパス), l_警告);
             }
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// その標本を p_オフセット で解釈したとき、Q が負にならず、かつ
+        /// 現実的な上限を超えないかどうか
+        /// </summary>
+        /// <param name="p_標本"></param>
+        /// <param name="p_オフセット"></param>
+        private static bool Get_妥当なオフセットか(Phred標本 p_標本, int p_オフセット)
+        {
+            return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= 現実的なQ上限;
+        }
+
+        /// <summary>
+        /// 推定できなかった場合も含めた、表示用のオフセット
+        /// </summary>
+        /// <param name="p_推定"></param>
+        private static string Get_表示用オフセット(int? p_推定)
+        {
+            return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);
         }
 
         /// <summary>
@@ -224,5 +228,7 @@ namespace Tsumiki.IO
                 l_件数++;
             }
         }
+
+        #endregion
     }
 }

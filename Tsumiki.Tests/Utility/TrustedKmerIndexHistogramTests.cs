@@ -1,6 +1,6 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Model.Foundation;
-using Tsumiki.Utility;
+﻿using Tsumiki.Commons;
+using Tsumiki.Models.Foundation;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Utility
 {

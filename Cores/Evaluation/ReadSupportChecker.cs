@@ -23,6 +23,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </remarks>
     internal static class ReadSupportChecker
     {
+        #region 定数
+
         /// <summary>
         /// 1 バッチあたりのリード数
         /// </summary>
@@ -30,6 +32,10 @@ namespace Tsumiki.Cores.Evaluation
         /// まとめて読んで並列に照合する
         /// </remarks>
         private const int 照合バッチサイズ = 20000;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 最終成果物がリードに裏付けられているかを調べる
@@ -58,6 +64,24 @@ namespace Tsumiki.Cores.Evaluation
 
             return Get_集計(l_全件, l_位置ごとの番号, l_見たか, p_r長);
         }
+
+        /// <summary>
+        /// 検査結果をログへ出力する
+        /// </summary>
+        /// <param name="p_結果">検査結果、調べられなかった場合は null</param>
+        public static void V_出力_検査結果(支持検査結果? p_結果)
+        {
+            if (p_結果 is not { } l_結果)
+            {
+                return;
+            }
+
+            Logger.V_出力(メッセージID.支持検査の結果, l_結果.A_r長, l_結果.A_支持のない位置数, l_結果.A_調べた位置数, $"{l_結果.A_支持のない率:F4}", l_結果.A_区間.Count);
+        }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// アセンブリの r-mer に通し番号を振った表と、位置ごとの番号を作る
@@ -228,23 +252,6 @@ namespace Tsumiki.Cores.Evaluation
             p_開始 = -1;
         }
 
-        /// <summary>
-        /// 検査結果をログへ出力する
-        /// </summary>
-        /// <param name="p_結果">検査結果、調べられなかった場合は null</param>
-        public static void V_出力_検査結果(支持検査結果? p_結果)
-        {
-            if (p_結果 is not { } l_結果)
-            {
-                return;
-            }
-            Logger.V_出力(
-                メッセージID.支持検査の結果,
-                l_結果.A_r長,
-                l_結果.A_支持のない位置数,
-                l_結果.A_調べた位置数,
-                $"{l_結果.A_支持のない率:F4}",
-                l_結果.A_区間.Count);
-        }
+        #endregion
     }
 }

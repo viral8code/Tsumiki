@@ -10,6 +10,10 @@
     {
         #region 継承メソッド
 
+        /// <summary>
+        /// (オーバーライド) アセンブリ統計を表す文字列を返す
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return $"count={this.A_配列数}, total_length={this.A_総延長}, " +

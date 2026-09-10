@@ -1,6 +1,6 @@
-﻿using Tsumiki.Core.Scaffolding;
+﻿using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Core;
-using Tsumiki.Model.Scaffolding;
+using Tsumiki.Models.Scaffolding;
 
 namespace Tsumiki.Tests.Core
 {

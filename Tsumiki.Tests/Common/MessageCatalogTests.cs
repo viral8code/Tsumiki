@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 using System;
-using Tsumiki.Common;
-using Tsumiki.Model.Foundation;
+using Tsumiki.Commons;
+using Tsumiki.Models.Foundation;
 using Xunit;
 
 namespace Tsumiki.Tests.Common

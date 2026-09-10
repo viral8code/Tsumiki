@@ -8,6 +8,11 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Scaffolding
 {
     /// <summary>
+    /// 局所アセンブリで埋める 1 箇所のギャップ
+    /// </summary>
+    internal readonly record struct 局所ギャップ(int A_足場番号, int A_開始, int A_長さ, string A_左アンカー, string A_右アンカー);
+
+    /// <summary>
     /// GapFiller が埋められなかったスキャフォールドのギャップを、局所アセンブリ
     /// (MEGAHIT/IDBA の localasm 型) で埋める
     /// </summary>
@@ -26,13 +31,10 @@ namespace Tsumiki.Cores.Scaffolding
     /// 適用済みだが、ここではローカルに集めたリードに対してカットオフ 1
     /// (=1 回でも読まれていれば信頼する) で再構築する
     /// </remarks>
-    /// <summary>
-    /// 局所アセンブリで埋める 1 箇所のギャップ
-    /// </summary>
-    internal readonly record struct 局所ギャップ(int A_足場番号, int A_開始, int A_長さ, string A_左アンカー, string A_右アンカー);
-
     internal static class LocalAssembler
     {
+        #region 定数
+
         /// <summary>
         /// ギャップの両端からアンカーとして使う長さ
         /// </summary>
@@ -55,6 +57,10 @@ namespace Tsumiki.Cores.Scaffolding
         /// </remarks>
         private const ulong 局所カットオフ = 1UL;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 残ったギャップを、その両端に付いたリードだけで組み直して埋める
         /// </summary>
@@ -62,14 +68,9 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス</param>
         /// <param name="p_k長">k 長</param>
-        /// <param name="p_インサートサイズ">インサートサイズ</param>
+        /// <param name="p_作業ディレクトリ"></param>
         /// <returns>局所アセンブリの集計</returns>
-        public static 局所アセンブリ統計 V_充填_ギャップ(
-            string p_スキャフォールドパス,
-            string p_リード1のパス,
-            string p_リード2のパス,
-            int p_k長,
-            string p_作業ディレクトリ)
+        public static 局所アセンブリ統計 V_充填_ギャップ(string p_スキャフォールドパス, string p_リード1のパス, string p_リード2のパス, int p_k長, string p_作業ディレクトリ)
         {
             var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
 
@@ -120,6 +121,25 @@ namespace Tsumiki.Cores.Scaffolding
             return new 局所アセンブリ統計(
                 l_ギャップ一覧.Count, l_埋めた数, l_埋めた塩基数, l_リード無し数, l_一意でない数, l_到達不能数);
         }
+
+        /// <summary>
+        /// 局所アセンブリの結果をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">局所アセンブリの結果</param>
+        public static void V_出力_統計(局所アセンブリ統計 p_統計)
+        {
+            if (p_統計.A_対象ギャップ数 == 0)
+            {
+                Logger.V_出力(メッセージID.局所アセンブリ_対象なし);
+                return;
+            }
+            Logger.V_出力(
+                メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
+        }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 埋める対象になるギャップを集めて返す
@@ -452,19 +472,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
         }
 
-        /// <summary>
-        /// 局所アセンブリの結果をログへ出力する
-        /// </summary>
-        /// <param name="p_統計">局所アセンブリの結果</param>
-        public static void V_出力_統計(局所アセンブリ統計 p_統計)
-        {
-            if (p_統計.A_対象ギャップ数 == 0)
-            {
-                Logger.V_出力(メッセージID.局所アセンブリ_対象なし);
-                return;
-            }
-            Logger.V_出力(
-                メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
-        }
+        #endregion
     }
 }

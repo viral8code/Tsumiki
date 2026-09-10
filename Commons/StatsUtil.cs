@@ -33,7 +33,7 @@
         {
             var l_整列済み = p_値一覧.Order().ToList();
             var l_中央 = l_整列済み.Count / 2;
-            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2.0 : l_整列済み[l_中央];
+            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2D : l_整列済み[l_中央];
         }
 
         /// <summary>
@@ -61,12 +61,12 @@
         {
             var l_整列済み = p_組.OrderBy(x => x.A_値).ToList();
             var l_総延長 = l_整列済み.Sum(x => x.A_長さ);
-            if (l_整列済み.Count == 0 || l_総延長 == 0)
+            if (l_整列済み.Count == 0 || l_総延長 == 0L)
             {
-                return 0;
+                return 0D;
             }
 
-            var l_半分 = l_総延長 / 2.0;
+            var l_半分 = l_総延長 / 2D;
             var l_累積 = 0L;
             foreach (var (l_長さ, l_値) in l_整列済み)
             {
@@ -91,11 +91,11 @@
         {
             if (p_長さ一覧.Count == 0)
             {
-                return (0, 0);
+                return (0L, 0);
             }
 
             var l_降順 = p_長さ一覧.OrderByDescending(x => x).ToList();
-            var l_半分 = l_降順.Sum() / 2.0;
+            var l_半分 = l_降順.Sum() / 2D;
             var l_累積 = 0L;
             for (var i = 0; i < l_降順.Count; i++)
             {

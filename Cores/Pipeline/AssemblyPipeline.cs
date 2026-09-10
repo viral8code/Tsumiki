@@ -16,20 +16,26 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     internal static class AssemblyPipeline
     {
+        #region 公開メソッド
+
         /// <summary>
         /// p_k長 でアセンブリを実行し、生成物のパスを返す
         /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_一時ディレクトリ"></param>
+        /// <param name="p_リード長"></param>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_次への引き継ぎ"></param>
+        /// <param name="p_合成リードの控え"></param>
+        /// <returns></returns>
         /// <remarks>
         /// unitig 数が上限を超えた場合は null<br/>
         /// 生成物は k ごとの作業ディレクトリに置く<br/>
         /// 最終的に採用したものだけを
         /// V_複製_最終成果物 が作業ディレクトリの直下へ複製する
         /// </remarks>
-        public static アセンブリ実行結果? Get_実行結果(
-            Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長,
-            IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null,
-            List<引き継ぎ配列>? p_次への引き継ぎ = null,
-            List<引き継ぎ配列>? p_合成リードの控え = null)
+        public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長, IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null, List<引き継ぎ配列>? p_次への引き継ぎ = null, List<引き継ぎ配列>? p_合成リードの控え = null)
         {
             // 以降の全処理は ConfigurationManager 経由で k 長を参照する
             // 明示指定の印は立てない (自動選択された値のままとして扱う)
@@ -94,8 +100,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.ユニティグ構築開始);
-            var l_ユニティグ配列 = Get_ユニティグ(
-                l_kmerインデックス, l_開始kmer, p_k長, l_ユニティグパス, out var l_上限に達したか);
+            var l_ユニティグ配列 = Get_ユニティグ(l_kmerインデックス, l_開始kmer, p_k長, l_ユニティグパス, out var l_上限に達したか);
 
             AssemblyStatsReporter.V_出力_統計("unitigs", l_ユニティグパス);
 
@@ -165,8 +170,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
                 if (l_窓数 >= Consts.rMer検証に必要な窓数)
                 {
-                    l_r_mer検証器 = RepeatRMerVerifier.V_構築(
-                        [p_引数.A_リード1のパス, p_引数.A_リード2のパス], l_r長);
+                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([p_引数.A_リード1のパス, p_引数.A_リード2のパス], l_r長);
                 }
                 else
                 {
@@ -174,9 +178,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            l_コンティグ構築.V_結合_コンティグ(
-                l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数,
-                l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_GFAを出力するか ? l_GFAパス : null);
+            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_GFAを出力するか ? l_GFAパス : null);
             Logger.V_出力(メッセージID.コンティグ構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 
@@ -195,19 +197,12 @@ namespace Tsumiki.Cores.Pipeline
 
             if (!l_スキャフォールドを作ったか)
             {
-                var l_コンティグの検査 = AssemblyValidator.Get_検査結果(
-                    l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
+                var l_コンティグの検査 = AssemblyValidator.Get_検査結果(l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
                 AssemblyValidator.V_出力_検査結果("contigs", l_コンティグの検査);
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次への引き継ぎ(
-                    p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数,
-                    l_バブル敗者, p_合成リードの控え);
-                var l_コンティグのみの結果 = new アセンブリ実行結果(
-                    p_k長, l_ユニティグパス, l_コンティグパス, null,
-                    p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
-                    p_引数.A_GFAを出力するか ? l_GFAパス : null,
-                    l_コンティグの検査);
+                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+                var l_コンティグのみの結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_GFAを出力するか ? l_GFAパス : null, l_コンティグの検査);
                 V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_コンティグのみの結果;
             }
@@ -228,8 +223,7 @@ namespace Tsumiki.Cores.Pipeline
             // 局所リードだけの使い捨てミニアセンブリで埋める (-la、-mg の安全な代替)
             if (p_引数.A_局所アセンブリするか)
             {
-                var l_局所統計 = LocalAssembler.V_充填_ギャップ(
-                    l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長, l_作業ディレクトリ);
+                var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長, l_作業ディレクトリ);
                 LocalAssembler.V_出力_統計(l_局所統計);
                 if (l_局所統計.A_埋めたギャップ数 > 0)
                 {
@@ -237,35 +231,23 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            var l_スキャフォールドの検査 = AssemblyValidator.Get_検査結果(
-                l_スキャフォールドパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
+            var l_スキャフォールドの検査 = AssemblyValidator.Get_検査結果(l_スキャフォールドパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
             AssemblyValidator.V_出力_検査結果("scaffolds", l_スキャフォールドの検査);
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次への引き継ぎ(
-                p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数,
-                l_バブル敗者, p_合成リードの控え);
-            var l_結果 = new アセンブリ実行結果(
-                p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス,
-                p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値,
-                p_引数.A_GFAを出力するか ? l_GFAパス : null,
-                l_スキャフォールドの検査);
+            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+            var l_結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_GFAを出力するか ? l_GFAパス : null, l_スキャフォールドの検査);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
         }
 
         /// <summary>
-        /// この k で決めきれなかった箇所を残す
-        /// </summary>
-        private static void V_保存_チェックポイント(string p_作業ディレクトリ, int p_k長)
-        {
-            AmbiguityRecorder.V_保存(p_作業ディレクトリ, p_k長);
-        }
-
-        /// <summary>
         /// 採用した結果を作業ディレクトリの直下へ複製する
         /// </summary>
+        /// <param name="p_結果"></param>
+        /// <param name="p_出力ディレクトリ"></param>
+        /// <returns></returns>
         /// <remarks>
         /// k ごとの成果物は
         /// k のサブディレクトリに残したまま、利用者が受け取る 1 組だけを上へ出す<br/>
@@ -291,6 +273,20 @@ namespace Tsumiki.Cores.Pipeline
             return l_最終パス;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// この k で決めきれなかった箇所を残す
+        /// </summary>
+        /// <param name="p_作業ディレクトリ"></param>
+        /// <param name="p_k長"></param>
+        private static void V_保存_チェックポイント(string p_作業ディレクトリ, int p_k長)
+        {
+            AmbiguityRecorder.V_保存(p_作業ディレクトリ, p_k長);
+        }
+
         /// <summary>
         /// ファイルを複製する
         /// </summary>
@@ -307,6 +303,13 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 次の k へ渡す配列とカバレッジを用意する
         /// </summary>
+        /// <param name="p_次への引き継ぎ"></param>
+        /// <param name="p_FASTAパス"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_引数"></param>
+        /// <param name="p_バブル敗者"></param>
+        /// <param name="p_合成リードの控え"></param>
         /// <remarks>
         /// k-mer インデックスが破棄される前でなければ作れない<br/>
         /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして
@@ -317,23 +320,20 @@ namespace Tsumiki.Cores.Pipeline
         /// この k での
         /// 敗者判定は次の k を拘束しない
         /// </remarks>
-        private static void V_用意_次への引き継ぎ(
-            List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス,
-            TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数,
-            IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
+        private static void V_用意_次への引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
         {
             if (p_次への引き継ぎ is null)
             {
                 return;
             }
+
             // ここから次の k が始まるまでは出力の無い区間が続く
             // 何をしている
             // ところなのかが分からないと止まったように見えるため、区切りを出す
             Logger.V_出力(メッセージID.引き継ぎの準備開始);
 
             p_次への引き継ぎ.Clear();
-            p_次への引き継ぎ.AddRange(
-                KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
+            p_次への引き継ぎ.AddRange(KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長));
 
             foreach (var l_配列 in p_バブル敗者)
             {
@@ -367,8 +367,7 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            var l_合成リード = SuperReadJoiner.Get_合成リード(
-                p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
+            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
             SuperReadJoiner.V_出力_統計(l_統計);
             p_次への引き継ぎ.AddRange(l_合成リード);
             p_合成リードの控え?.AddRange(l_合成リード);
@@ -378,6 +377,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 配列を、位置ごとのカバレッジ付きの引き継ぎ配列にする
         /// </summary>
+        /// <param name="p_配列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <returns></returns>
         private static 引き継ぎ配列 Get_引き継ぎ配列(string p_配列, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
@@ -392,20 +395,23 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// unitig を構築して FASTA へ書き出し、ID -> 配列 の対応を返す
         /// </summary>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_開始kmer"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_出力パス"></param>
+        /// <param name="p_上限に達したか"></param>
+        /// <returns></returns>
         /// <remarks>
         /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く
         /// </remarks>
-        private static Dictionary<int, string> Get_ユニティグ(
-            TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長,
-            string p_出力パス, out bool p_上限に達したか)
+        private static Dictionary<int, string> Get_ユニティグ(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_上限に達したか)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
 
             // 分岐を 1 つも持たない閉路は開始点の条件を満たす k-mer を持たず、
             // ここまでの走査から丸ごと漏れる
             // 覆い残しを拾って足す
-            var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(
-                p_kmerインデックス, l_walk結果, p_k長);
+            var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(p_kmerインデックス, l_walk結果, p_k長);
             if (l_閉路の開始kmer.Count > 0)
             {
                 Logger.V_出力(メッセージID.分岐のない閉路, l_閉路の開始kmer.Count);
@@ -439,5 +445,7 @@ namespace Tsumiki.Cores.Pipeline
             p_上限に達したか = l_ID > Consts.ユニティグ数の上限;
             return l_ユニティグ配列;
         }
+
+        #endregion
     }
 }

@@ -8,6 +8,8 @@ namespace Tsumiki.IO
     /// </summary>
     internal class ArgumentsReader
     {
+        #region 公開メソッド
+
         /// <summary>
         /// コマンドライン引数を実行時引数へ組み立てて返す
         /// </summary>
@@ -33,9 +35,7 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.引数キー.k長:
-                            l_引数.Set_k長一覧(
-                                p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries
-                                    | StringSplitOptions.TrimEntries).Select(int.Parse));
+                            l_引数.Set_k長一覧(p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;
 
                         case Consts.引数キー.kmerカットオフ:
@@ -189,9 +189,14 @@ namespace Tsumiki.IO
             return l_引数;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// -lang に渡された言語名を解釈する
         /// </summary>
+        /// <param name="p_言語名"></param>
         private static 言語 Get_言語(string p_言語名)
         {
             return p_言語名 switch
@@ -199,15 +204,14 @@ namespace Tsumiki.IO
                 Consts.言語名.日本語 => 言語.日本語,
                 Consts.言語名.英語 => 言語.英語,
                 Consts.言語名.中国語 => 言語.中国語,
-                _ => throw new ArgumentException(
-                    $"Unknown language \"{p_言語名}\": expected one of " +
-                    $"{Consts.言語名.日本語}, {Consts.言語名.英語}, {Consts.言語名.中国語}"),
+                _ => throw new ArgumentException($"Unknown language \"{p_言語名}\": expected one of {Consts.言語名.日本語}, {Consts.言語名.英語}, {Consts.言語名.中国語}"),
             };
         }
 
         /// <summary>
         /// -log に渡された水準名を解釈する
         /// </summary>
+        /// <param name="p_水準名"></param>
         private static ログ水準 Get_ログ水準(string p_水準名)
         {
             return p_水準名 switch
@@ -215,9 +219,7 @@ namespace Tsumiki.IO
                 Consts.ログ水準名.最小 => ログ水準.最小,
                 Consts.ログ水準名.標準 => ログ水準.標準,
                 Consts.ログ水準名.詳細 => ログ水準.詳細,
-                _ => throw new ArgumentException(
-                    $"Unknown log level \"{p_水準名}\": expected one of " +
-                    $"{Consts.ログ水準名.最小}, {Consts.ログ水準名.標準}, {Consts.ログ水準名.詳細}"),
+                _ => throw new ArgumentException($"Unknown log level \"{p_水準名}\": expected one of {Consts.ログ水準名.最小}, {Consts.ログ水準名.標準}, {Consts.ログ水準名.詳細}"),
             };
         }
 
@@ -225,6 +227,8 @@ namespace Tsumiki.IO
         /// -pu (優勢閾値) と -pc (支持数閾値) を、完全性/正確性のどちらに倒すかの
         /// 1 軸で束ねて適用する
         /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_モード名"></param>
         /// <remarks>
         /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる
         /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
@@ -249,10 +253,10 @@ namespace Tsumiki.IO
                     break;
 
                 default:
-                    throw new ArgumentException(
-                        $"Unknown mode \"{p_モード名}\": expected one of " +
-                        $"{Consts.積極性モード名.保守的}, {Consts.積極性モード名.標準}, {Consts.積極性モード名.積極的}");
+                    throw new ArgumentException($"Unknown mode \"{p_モード名}\": expected one of {Consts.積極性モード名.保守的}, {Consts.積極性モード名.標準}, {Consts.積極性モード名.積極的}");
             }
         }
+
+        #endregion
     }
 }

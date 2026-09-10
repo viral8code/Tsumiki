@@ -20,14 +20,16 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// </remarks>
     internal static class CyclicUnitigFinder
     {
+        #region 公開メソッド
+
         /// <summary>
         /// p_walk結果 が覆えなかった閉路それぞれについて、開始点を 1 つずつ返す
         /// </summary>
-        /// <remarks>
-        /// 覆い残しが無ければ空
-        /// </remarks>
-        public static List<byte[]> Get_閉路の開始kmer(
-            TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_walk結果"></param>
+        /// <param name="p_k長"></param>
+        /// <returns>覆い残しが無ければ空</returns>
+        public static List<byte[]> Get_閉路の開始kmer(TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
         {
             var l_覆済み = new 正規形集合(p_k長);
             foreach (var l_配列 in p_walk結果)
@@ -50,9 +52,16 @@ namespace Tsumiki.Cores.UnitigBuilding
             return l_開始kmer;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// 走査で得た配列が覆った k-mer を記録する
         /// </summary>
+        /// <param name="p_覆済み"></param>
+        /// <param name="p_配列"></param>
+        /// <param name="p_k長"></param>
         /// <remarks>
         /// k &lt;= 64 ではパック値を転がして作る (位置ごとに詰め直すと
         /// 総延長 x k の手間になる)
@@ -112,8 +121,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// それでも念のため見るのは、
         /// 上流の判定が変わったときに無限に回り続けないようにするため
         /// </remarks>
-        private static bool V_辿る_閉路(
-            TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_開始kmer"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_覆済み"></param>
+        /// <returns>閉路であれば true</returns>
+        private static bool V_辿る_閉路(TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
         {
             var l_現在 = (byte[])p_開始kmer.Clone();
             var l_次 = new byte[p_k長];
@@ -149,5 +162,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_次.CopyTo(l_現在, 0);
             }
         }
+
+        #endregion
     }
 }

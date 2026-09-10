@@ -9,6 +9,8 @@ namespace Tsumiki.Models.UnitigBuilding
     /// <param name="p_配列">ユニティグの配列</param>
     internal class ユニティグ(object p_ID, string p_配列)
     {
+        #region 内部変数
+
         /// <summary>
         /// ユニティグ ID
         /// </summary>
@@ -18,6 +20,10 @@ namespace Tsumiki.Models.UnitigBuilding
         /// 配列
         /// </summary>
         public readonly string A_配列 = p_配列;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// (オーバーライド) ユニティグを FASTA の 2 行として返す
@@ -30,5 +36,7 @@ namespace Tsumiki.Models.UnitigBuilding
                 .AppendLine($"Seq: {this.A_配列}");
             return l_文字列.ToString();
         }
+
+        #endregion
     }
 }

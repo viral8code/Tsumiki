@@ -8,9 +8,12 @@ namespace Tsumiki.IO
     /// </summary>
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
+        #region 公開メソッド
+
         /// <summary>
         /// FASTA を 1 回で全件読み込む
         /// </summary>
+        /// <param name="p_パス"></param>
         /// <remarks>
         /// ID の先頭 '>' は取り除く
         /// </remarks>
@@ -45,5 +48,7 @@ namespace Tsumiki.IO
                 throw;
             }
         }
+
+        #endregion
     }
 }

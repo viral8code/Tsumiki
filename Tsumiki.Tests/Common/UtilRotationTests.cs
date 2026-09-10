@@ -1,4 +1,4 @@
-﻿using Tsumiki.Common;
+﻿using Tsumiki.Commons;
 
 namespace Tsumiki.Tests.Common
 {

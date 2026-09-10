@@ -16,9 +16,13 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class KmerCounting
     {
+        #region 公開メソッド
+
         /// <summary>
         /// FASTQ を 1 本のスレッドで順に読み進めつつ、ワーカー群へ配って並列に登録する
         /// </summary>
+        /// <param name="p_ファイルパス"></param>
+        /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
         /// </remarks>
@@ -29,11 +33,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_ログ回数 = 0UL;
             var l_カウンタロック = new object();
 
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 64,
-                Get_リード列(p_ファイルパス),
-                (l_リード, l_ワーカー番号) =>
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_リード列(p_ファイルパス), (l_リード, l_ワーカー番号) =>
                 {
                     V_登録_1リード(l_リード, p_kmerインデックス, l_ワーカー番号);
 
@@ -62,13 +62,15 @@ namespace Tsumiki.Cores.Preprocessing
         /// リード 1(・指定があればリード 2) を、-ab の有無に応じた経路で
         /// TrustedKmerIndex へ読み込む
         /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_進行状況を出力するか"></param>
         /// <remarks>
         /// AssemblyPipeline と MultiKAssembler の
         /// どちらも (単一 k・複数 k の違いだけで) 同じ読み込み手順を必要とするため
         /// ここにまとめる
         /// </remarks>
-        public static void V_読込_リードペア(
-            Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
+        public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
         {
             var l_ペアエンドか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
             if (p_進行状況を出力するか)
@@ -90,26 +92,10 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// 1 ファイルを読み込んで k-mer を数える
-        /// </summary>
-        /// <param name="p_パス">読み込むリードのパス</param>
-        /// <param name="p_曖昧塩基を許容するか">曖昧塩基を展開して数えるか</param>
-        /// <param name="p_kmerインデックス">数え上げ先</param>
-        private static void V_読込_1ファイル(string p_パス, bool p_曖昧塩基を許容するか, TrustedKmerIndex p_kmerインデックス)
-        {
-            if (p_曖昧塩基を許容するか)
-            {
-                V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス);
-            }
-            else
-            {
-                V_読込_リードファイル(p_パス, p_kmerインデックス);
-            }
-        }
-
-        /// <summary>
         /// 曖昧塩基を許容する経路
         /// </summary>
+        /// <param name="p_ファイルパス"></param>
+        /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// 呼ばれる頻度が低い想定のため未並列
         /// </remarks>
@@ -151,9 +137,32 @@ namespace Tsumiki.Cores.Preprocessing
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 1 ファイルを読み込んで k-mer を数える
+        /// </summary>
+        /// <param name="p_パス">読み込むリードのパス</param>
+        /// <param name="p_曖昧塩基を許容するか">曖昧塩基を展開して数えるか</param>
+        /// <param name="p_kmerインデックス">数え上げ先</param>
+        private static void V_読込_1ファイル(string p_パス, bool p_曖昧塩基を許容するか, TrustedKmerIndex p_kmerインデックス)
+        {
+            if (p_曖昧塩基を許容するか)
+            {
+                V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス);
+            }
+            else
+            {
+                V_読込_リードファイル(p_パス, p_kmerインデックス);
+            }
+        }
+
         /// <summary>
         /// FASTQ を順に読み進めてリードを返す
         /// </summary>
+        /// <param name="p_ファイルパス"></param>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
@@ -166,6 +175,9 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 1 リード分の k-mer 抽出・品質フィルタリング・登録
         /// </summary>
+        /// <param name="p_リード"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_ワーカー番号"></param>
         /// <remarks>
         /// 逆相補側を別途登録してはいけない<br/>
         /// TrustedKmerIndex.V_登録 が
@@ -218,5 +230,7 @@ namespace Tsumiki.Cores.Preprocessing
                 }
             }
         }
+
+        #endregion
     }
 }

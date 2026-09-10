@@ -1,8 +1,8 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Core.Polishing;
+﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Polishing;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model.Foundation;
+using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Tests.Core
 {

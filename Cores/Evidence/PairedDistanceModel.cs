@@ -13,6 +13,8 @@ namespace Tsumiki.Cores.Evidence
     /// </remarks>
     internal sealed class PairedDistanceModel
     {
+        #region 内部変数
+
         /// <summary>
         /// フラグメント長の経験分布
         /// </summary>
@@ -36,6 +38,24 @@ namespace Tsumiki.Cores.Evidence
         /// </summary>
         private readonly int _中央フラグメント長;
 
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
+        /// 使えるか
+        /// </summary>
+        public bool A_使えるか => this._分布.Length > 0;
+
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// フラグメント長標本から経験分布を組み立てる
+        /// </summary>
+        /// <param name="p_フラグメント長標本">フラグメント長の標本</param>
+        /// <param name="p_リード長">リード長</param>
         public PairedDistanceModel(IReadOnlyList<int> p_フラグメント長標本, int p_リード長)
         {
             this._リード長 = Math.Max(1, p_リード長);
@@ -72,27 +92,16 @@ namespace Tsumiki.Cores.Evidence
                 : [.. l_件数.OrderBy(x => x.Key).Select(x => (x.Key, (double)x.Value / l_総数))];
         }
 
-        /// <summary>
-        /// 使えるか
-        /// </summary>
-        public bool A_使えるか => this._分布.Length > 0;
+        #endregion
 
-        /// <summary>
-        /// 昇順に並んだ値から分位点を返す
-        /// </summary>
-        /// <param name="p_昇順">昇順に並んだ値</param>
-        /// <param name="p_位置">求める分位 (0 から 1)</param>
-        /// <returns>分位点</returns>
-        private static int Get_分位(int[] p_昇順, double p_位置)
-        {
-            var l_i = (int)(p_昇順.Length * p_位置);
-            return p_昇順[Math.Clamp(l_i, 0, p_昇順.Length - 1)];
-        }
+        #region 公開メソッド
 
         /// <summary>
         /// 既知長標本の中で最も密集した窓を選び、その本数と、そこから導かれる
         /// ギャップ長を返す
         /// </summary>
+        /// <param name="p_既知長標本">既知長の標本</param>
+        /// <returns>最も密集した窓の本数と、そこから導かれるギャップ長</returns>
         /// <remarks>
         /// 中央値ではなく密集した窓を採るのは、反復の別コピーへ誤マップした
         /// ペアが長い裾を作るため<br/>
@@ -136,6 +145,10 @@ namespace Tsumiki.Cores.Evidence
         /// ギャップ長 p_ギャップ長 で隣り合う長さ p_長さ1・p_長さ2 の配列に跨がりうる
         /// フラグメントの開始位置の総数
         /// </summary>
+        /// <param name="p_長さ1">片側の長さ</param>
+        /// <param name="p_長さ2">もう片側の長さ</param>
+        /// <param name="p_ギャップ長">両者の間のギャップ長</param>
+        /// <returns>フラグメントの開始位置の総数</returns>
         /// <remarks>
         /// フラグメント開始位置の密度を掛けると
         /// 期待ペア数になる<br/>
@@ -162,6 +175,8 @@ namespace Tsumiki.Cores.Evidence
         /// <summary>
         /// 1 本の配列の内側に両端が収まるフラグメントの開始位置の総数
         /// </summary>
+        /// <param name="p_長さ">配列の長さ</param>
+        /// <returns>フラグメントの開始位置の総数</returns>
         /// <remarks>
         /// 同一 unitig 内の観測数からフラグメント開始位置の密度を較正するのに使う
         /// </remarks>
@@ -178,5 +193,23 @@ namespace Tsumiki.Cores.Evidence
             }
             return l_合計;
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 昇順に並んだ値から分位点を返す
+        /// </summary>
+        /// <param name="p_昇順">昇順に並んだ値</param>
+        /// <param name="p_位置">求める分位 (0 から 1)</param>
+        /// <returns>分位点</returns>
+        private static int Get_分位(int[] p_昇順, double p_位置)
+        {
+            var l_i = (int)(p_昇順.Length * p_位置);
+            return p_昇順[Math.Clamp(l_i, 0, p_昇順.Length - 1)];
+        }
+
+        #endregion
     }
 }

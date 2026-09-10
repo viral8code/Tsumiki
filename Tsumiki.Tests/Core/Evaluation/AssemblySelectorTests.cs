@@ -1,6 +1,6 @@
-﻿using Tsumiki.Core.Evaluation;
+﻿using Tsumiki.Cores.Evaluation;
 using Tsumiki.Core;
-using Tsumiki.Model.Evaluation;
+using Tsumiki.Models.Evaluation;
 
 namespace Tsumiki.Tests.Core
 {

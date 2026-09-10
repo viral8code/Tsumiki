@@ -7,10 +7,56 @@ namespace Tsumiki.Models.Foundation
     /// </summary>
     internal class Parameters
     {
+        #region 内部変数
+
         /// <summary>
         /// リード 1 のパス
         /// </summary>
         private string _リード1のパス = string.Empty;
+
+        /// <summary>
+        /// リード 2 のパス
+        /// </summary>
+        private string _リード2のパス = string.Empty;
+
+        /// <summary>
+        /// k 長
+        /// </summary>
+        private int _k長 = Consts.k長の既定値;
+
+        /// <summary>
+        /// -k に指定された k の一覧
+        /// </summary>
+        private List<int> _k長一覧 = [];
+
+        /// <summary>
+        /// k-mer カットオフ
+        /// </summary>
+        private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
+
+        /// <summary>
+        /// Phred オフセット
+        /// </summary>
+        private int _Phredオフセット = Consts.Phredオフセットの既定値;
+
+        /// <summary>
+        /// 並列に使うスレッド数
+        /// </summary>
+        private int _スレッド数 = Environment.ProcessorCount;
+
+        /// <summary>
+        /// ペアの支持で結合を確定させる優勢の閾値
+        /// </summary>
+        private decimal _ペア結合閾値 = Consts.ペア結合閾値の既定値;
+
+        /// <summary>
+        /// 結合を確定させるために要求するペアの支持数
+        /// </summary>
+        private ulong _ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
+
+        #endregion
+
+        #region プロパティ
 
         /// <summary>
         /// リード 1 のパス
@@ -27,11 +73,6 @@ namespace Tsumiki.Models.Foundation
                 this._リード1のパス = value;
             }
         }
-
-        /// <summary>
-        /// リード 2 のパス
-        /// </summary>
-        private string _リード2のパス = string.Empty;
 
         /// <summary>
         /// リード 2 のパス
@@ -61,11 +102,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k 長
         /// </summary>
-        private int _k長 = Consts.k長の既定値;
-
-        /// <summary>
-        /// k 長
-        /// </summary>
         public int A_k長
         {
             get => this._k長;
@@ -81,11 +117,6 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
-        /// -k に指定された k の一覧
-        /// </summary>
-        private List<int> _k長一覧 = [];
-
-        /// <summary>
         /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)
         /// </summary>
         /// <remarks>
@@ -95,43 +126,6 @@ namespace Tsumiki.Models.Foundation
         public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
 
         /// <summary>
-        /// k の一覧を設定する
-        /// </summary>
-        /// <param name="p_k長一覧">設定する k の一覧</param>
-        public void Set_k長一覧(IEnumerable<int> p_k長一覧)
-        {
-            var l_一覧 = p_k長一覧.Distinct().OrderBy(x => x).ToList();
-            if (l_一覧.Count == 0)
-            {
-                throw new ArgumentException("Please set at least one kmer length");
-            }
-            foreach (var l_k長 in l_一覧)
-            {
-                if (l_k長 <= 0)
-                {
-                    throw new ArgumentException("Please make the value of kmer a positive integer");
-                }
-            }
-            this._k長一覧 = l_一覧;
-            this.A_k長 = l_一覧[^1];
-        }
-
-        /// <summary>
-        /// 推定結果から k 長を設定する
-        /// </summary>
-        /// <remarks>
-        /// A_k長が明示指定されたか は立てないため、
-        /// 「ユーザーが明示指定した」扱いにはならない
-        /// </remarks>
-        /// <param name="p_k長">推定して得られた k 長</param>
-        public void Set_推定k長(int p_k長)
-        {
-            var l_明示指定済みか = this.A_k長が明示指定されたか;
-            this.A_k長 = p_k長;
-            this.A_k長が明示指定されたか = l_明示指定済みか;
-        }
-
-        /// <summary>
         /// -kc が明示的に指定されたかどうか
         /// </summary>
         /// <remarks>
@@ -139,11 +133,6 @@ namespace Tsumiki.Models.Foundation
         /// k-mer スペクトルの谷から求めたカットオフを自動採用する
         /// </remarks>
         public bool A_kmerカットオフが明示指定されたか { get; private set; }
-
-        /// <summary>
-        /// k-mer カットオフ
-        /// </summary>
-        private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
 
         /// <summary>
         /// k-mer カットオフ
@@ -163,20 +152,6 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
-        /// 推定結果から k-mer カットオフを設定する
-        /// </summary>
-        /// <remarks>
-        /// A_kmerカットオフが明示指定されたか は立てない
-        /// </remarks>
-        /// <param name="p_カットオフ">推定して得られたカットオフ</param>
-        public void Set_推定kmerカットオフ(ulong p_カットオフ)
-        {
-            var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
-            this.A_kmerカットオフ = p_カットオフ;
-            this.A_kmerカットオフが明示指定されたか = l_明示指定済みか;
-        }
-
-        /// <summary>
         /// -p が明示的に指定されたかどうか
         /// </summary>
         /// <remarks>
@@ -185,11 +160,6 @@ namespace Tsumiki.Models.Foundation
         /// 明示指定はユーザーの判断なので、推定結果で上書きはしない
         /// </remarks>
         public bool A_Phredが明示指定されたか { get; private set; }
-
-        /// <summary>
-        /// Phred オフセット
-        /// </summary>
-        private int _Phredオフセット = Consts.Phredオフセットの既定値;
 
         /// <summary>
         /// Phred オフセット
@@ -206,21 +176,6 @@ namespace Tsumiki.Models.Foundation
                 this._Phredオフセット = value;
                 this.A_Phredが明示指定されたか = true;
             }
-        }
-
-        /// <summary>
-        /// 推定結果から Phred オフセットを設定する
-        /// </summary>
-        /// <remarks>
-        /// A_Phredが明示指定されたか は
-        /// 立てないため、「ユーザーが明示指定した」扱いにはならない
-        /// </remarks>
-        /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
-        public void Set_推定Phredオフセット(int p_オフセット)
-        {
-            var l_明示指定済みか = this.A_Phredが明示指定されたか;
-            this.A_Phredオフセット = p_オフセット;
-            this.A_Phredが明示指定されたか = l_明示指定済みか;
         }
 
         /// <summary>
@@ -284,42 +239,6 @@ namespace Tsumiki.Models.Foundation
         /// 静かにしても後から原因を追う手掛かりは失われない
         /// </remarks>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
-
-        /// <summary>
-        /// -log に書く綴り
-        /// </summary>
-        /// <remarks>
-        /// 表示は CLI で指定する形に合わせる
-        /// </remarks>
-        /// <param name="p_水準">綴りへ変換するログ水準</param>
-        /// <returns>-log に書く綴り</returns>
-        private static string Get_ログ水準名(ログ水準 p_水準)
-        {
-            return p_水準 switch
-            {
-                ログ水準.最小 => Consts.ログ水準名.最小,
-                ログ水準.詳細 => Consts.ログ水準名.詳細,
-                _ => Consts.ログ水準名.標準,
-            };
-        }
-
-        /// <summary>
-        /// -lang に書く綴り
-        /// </summary>
-        /// <remarks>
-        /// 表示は CLI で指定する形に合わせる
-        /// </remarks>
-        /// <param name="p_言語">綴りへ変換する言語</param>
-        /// <returns>-lang に書く綴り</returns>
-        private static string Get_言語名(言語 p_言語)
-        {
-            return p_言語 switch
-            {
-                言語.日本語 => Consts.言語名.日本語,
-                言語.中国語 => Consts.言語名.中国語,
-                _ => Consts.言語名.英語,
-            };
-        }
 
         /// <summary>
         /// 曖昧塩基を許容するか
@@ -449,11 +368,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 並列に使うスレッド数
         /// </summary>
-        private int _スレッド数 = Environment.ProcessorCount;
-
-        /// <summary>
-        /// 並列に使うスレッド数
-        /// </summary>
         public int A_スレッド数
         {
             get => this._スレッド数;
@@ -466,11 +380,6 @@ namespace Tsumiki.Models.Foundation
                 this._スレッド数 = value;
             }
         }
-
-        /// <summary>
-        /// ペアの支持で結合を確定させる優勢の閾値
-        /// </summary>
-        private decimal _ペア結合閾値 = Consts.ペア結合閾値の既定値;
 
         /// <summary>
         /// ペアの支持で結合を確定させる優勢の閾値
@@ -491,11 +400,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 結合を確定させるために要求するペアの支持数
         /// </summary>
-        private ulong _ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
-
-        /// <summary>
-        /// 結合を確定させるために要求するペアの支持数
-        /// </summary>
         public ulong A_ペア支持数閾値
         {
             get => this._ペア支持数閾値;
@@ -507,6 +411,76 @@ namespace Tsumiki.Models.Foundation
                 }
                 this._ペア支持数閾値 = value;
             }
+        }
+
+        #endregion
+
+        #region 公開メソッド
+
+        /// <summary>
+        /// k の一覧を設定する
+        /// </summary>
+        /// <param name="p_k長一覧">設定する k の一覧</param>
+        public void Set_k長一覧(IEnumerable<int> p_k長一覧)
+        {
+            var l_一覧 = p_k長一覧.Distinct().OrderBy(x => x).ToList();
+            if (l_一覧.Count == 0)
+            {
+                throw new ArgumentException("Please set at least one kmer length");
+            }
+            foreach (var l_k長 in l_一覧)
+            {
+                if (l_k長 <= 0)
+                {
+                    throw new ArgumentException("Please make the value of kmer a positive integer");
+                }
+            }
+            this._k長一覧 = l_一覧;
+            this.A_k長 = l_一覧[^1];
+        }
+
+        /// <summary>
+        /// 推定結果から k 長を設定する
+        /// </summary>
+        /// <param name="p_k長">推定して得られた k 長</param>
+        /// <remarks>
+        /// A_k長が明示指定されたか は立てないため、
+        /// 「ユーザーが明示指定した」扱いにはならない
+        /// </remarks>
+        public void Set_推定k長(int p_k長)
+        {
+            var l_明示指定済みか = this.A_k長が明示指定されたか;
+            this.A_k長 = p_k長;
+            this.A_k長が明示指定されたか = l_明示指定済みか;
+        }
+
+        /// <summary>
+        /// 推定結果から k-mer カットオフを設定する
+        /// </summary>
+        /// <param name="p_カットオフ">推定して得られたカットオフ</param>
+        /// <remarks>
+        /// A_kmerカットオフが明示指定されたか は立てない
+        /// </remarks>
+        public void Set_推定kmerカットオフ(ulong p_カットオフ)
+        {
+            var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
+            this.A_kmerカットオフ = p_カットオフ;
+            this.A_kmerカットオフが明示指定されたか = l_明示指定済みか;
+        }
+
+        /// <summary>
+        /// 推定結果から Phred オフセットを設定する
+        /// </summary>
+        /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
+        /// <remarks>
+        /// A_Phredが明示指定されたか は
+        /// 立てないため、「ユーザーが明示指定した」扱いにはならない
+        /// </remarks>
+        public void Set_推定Phredオフセット(int p_オフセット)
+        {
+            var l_明示指定済みか = this.A_Phredが明示指定されたか;
+            this.A_Phredオフセット = p_オフセット;
+            this.A_Phredが明示指定されたか = l_明示指定済みか;
         }
 
         /// <summary>
@@ -553,5 +527,47 @@ namespace Tsumiki.Models.Foundation
 
                 """;
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// -log に書く綴り
+        /// </summary>
+        /// <param name="p_水準">綴りへ変換するログ水準</param>
+        /// <returns>-log に書く綴り</returns>
+        /// <remarks>
+        /// 表示は CLI で指定する形に合わせる
+        /// </remarks>
+        private static string Get_ログ水準名(ログ水準 p_水準)
+        {
+            return p_水準 switch
+            {
+                ログ水準.最小 => Consts.ログ水準名.最小,
+                ログ水準.詳細 => Consts.ログ水準名.詳細,
+                _ => Consts.ログ水準名.標準,
+            };
+        }
+
+        /// <summary>
+        /// -lang に書く綴り
+        /// </summary>
+        /// <param name="p_言語">綴りへ変換する言語</param>
+        /// <returns>-lang に書く綴り</returns>
+        /// <remarks>
+        /// 表示は CLI で指定する形に合わせる
+        /// </remarks>
+        private static string Get_言語名(言語 p_言語)
+        {
+            return p_言語 switch
+            {
+                言語.日本語 => Consts.言語名.日本語,
+                言語.中国語 => Consts.言語名.中国語,
+                _ => Consts.言語名.英語,
+            };
+        }
+
+        #endregion
     }
 }

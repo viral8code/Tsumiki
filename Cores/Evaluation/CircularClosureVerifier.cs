@@ -21,6 +21,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </remarks>
     internal static class CircularClosureVerifier
     {
+        #region 定数
+
         /// <summary>
         /// 閉じ目の左右それぞれに要求する踏み込みの長さ
         /// </summary>
@@ -44,14 +46,21 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         private const int 閉じ目に必要なリード数 = 5;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// p_FASTAパス の環状配列それぞれについて、閉じ目を跨ぐリードを数える
         /// </summary>
+        /// <param name="p_FASTAパス">検証する配列を含む FASTA のパス</param>
+        /// <param name="p_リード1のパス">支持を数えるリードのパス</param>
+        /// <param name="p_リード2のパス">ペアの相方のパス、無ければ null</param>
+        /// <returns>配列ごとの環状閉鎖検証結果</returns>
         /// <remarks>
         /// 環状の配列が 1 本も無ければ空を返す
         /// </remarks>
-        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(
-            string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス)
+        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
 
@@ -85,17 +94,12 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_支持数 = new int[l_対象.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 256,
-                FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス),
-                (l_リード, _) => V_数える_1リード(l_リード, l_接合窓, l_支持数));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, _) => V_数える_1リード(l_リード, l_接合窓, l_支持数));
 
             List<環状閉鎖検証結果> l_結果 = [];
             for (var i = 0; i < l_対象.Count; i++)
             {
-                l_結果.Add(new 環状閉鎖検証結果(
-                    l_対象[i].A_ID, l_対象[i].A_長さ, l_支持数[i], 閉じ目に必要なリード数));
+                l_結果.Add(new 環状閉鎖検証結果(l_対象[i].A_ID, l_対象[i].A_長さ, l_支持数[i], 閉じ目に必要なリード数));
             }
             return l_結果;
         }
@@ -111,22 +115,27 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.閉じ目_環状の配列が無い);
                 return;
             }
+
             foreach (var l_結果 in p_結果群)
             {
-                Logger.V_出力(
-                    l_結果.A_支持されたか ? メッセージID.閉じ目を裏付けた : メッセージID.閉じ目を裏付けられず,
-                    l_結果.A_配列ID, l_結果.A_長さ, l_結果.A_跨いだリード数, l_結果.A_必要本数);
+                Logger.V_出力(l_結果.A_支持されたか ? メッセージID.閉じ目を裏付けた : メッセージID.閉じ目を裏付けられず, l_結果.A_配列ID, l_結果.A_長さ, l_結果.A_跨いだリード数, l_結果.A_必要本数);
             }
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 1 本のリードが閉じ目の窓を含むかを調べ、含めばその配列の支持を 1 つ増やす
         /// </summary>
+        /// <param name="p_リード">検査するリードの配列</param>
+        /// <param name="p_接合窓">正規形の窓 -> 配列番号</param>
+        /// <param name="p_支持数">配列番号ごとの支持数、見つかれば加算する</param>
         /// <remarks>
         /// 同じリードが同じ配列を何度支持しても 1 本と数える
         /// </remarks>
-        private static void V_数える_1リード(
-            string p_リード, IReadOnlyDictionary<UInt128, int> p_接合窓, int[] p_支持数)
+        private static void V_数える_1リード(string p_リード, IReadOnlyDictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
             if (p_リード.Length < 接合窓長)
             {
@@ -173,5 +182,7 @@ namespace Tsumiki.Cores.Evaluation
                 _ = Interlocked.Increment(ref p_支持数[l_配列番号]);
             }
         }
+
+        #endregion
     }
 }

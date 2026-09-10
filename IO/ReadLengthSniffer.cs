@@ -8,9 +8,13 @@
     /// </remarks>
     internal static class ReadLengthSniffer
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 標本の中央値をリード長とする
         /// </summary>
+        /// <param name="p_ファイルパス"></param>
+        /// <param name="p_標本上限"></param>
         /// <remarks>
         /// トリミング済みデータでは長さがばらつくため、
         /// 平均や最大値より中央値のほうが実態に近い<br/>
@@ -39,6 +43,9 @@
         /// <summary>
         /// 両ファイルの代表リード長のうち短いほう
         /// </summary>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_標本上限"></param>
         /// <remarks>
         /// 長いほうに合わせると
         /// 短い側のリードが丸ごと使えなくなりうる
@@ -54,5 +61,7 @@
             var l_リード長2 = Get_代表リード長(p_リード2のパス, p_標本上限);
             return l_リード長1 is not { } l_長さ1 ? l_リード長2 : l_リード長2 is not { } l_長さ2 ? l_リード長1 : Math.Min(l_長さ1, l_長さ2);
         }
+
+        #endregion
     }
 }

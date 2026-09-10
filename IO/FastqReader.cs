@@ -8,10 +8,16 @@ namespace Tsumiki.IO
     /// </summary>
     internal class FastqReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
+        #region 公開メソッド
+
         /// <summary>
+        /// (オーバーライド) 次の 1 行を読み込んで返す
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>
         /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF という
         /// ケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
-        /// </summary>
+        /// </remarks>
         protected override string Get_次の行()
         {
             var l_行 = this.Get_次の行_生();
@@ -19,8 +25,7 @@ namespace Tsumiki.IO
             {
                 if (l_行 is null && !this.Get_続きがあるか())
                 {
-                    throw new InvalidDataException(
-                        $"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
+                    throw new InvalidDataException($"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
                 }
                 l_行 = this.Get_次の行_生();
             }
@@ -28,35 +33,9 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
-        /// 品質判定が配列の範囲外を触って落ちる
-        /// </summary>
-        /// <remarks>
-        /// どのリードが不正かを言って止める
-        /// </remarks>
-        private void V_検査(string p_ID, string p_配列, string p_クオリティ)
-        {
-            if (p_配列.Length != p_クオリティ.Length)
-            {
-                throw new InvalidDataException(
-                    $"{this.A_ファイルパス}: リード {p_ID} の塩基列({p_配列.Length}文字)と" +
-                    $"クオリティ({p_クオリティ.Length}文字)の長さが一致しない。");
-            }
-        }
-
-        private (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
-        {
-            var l_ID = this.Get_次の行();
-            var l_配列 = this.Get_次の行();
-            _ = this.Get_次の行();
-            var l_クオリティ = this.Get_次の行();
-            this.V_検査(l_ID, l_配列, l_クオリティ);
-            return (l_ID, l_配列, l_クオリティ);
-        }
-
-        /// <summary>
         /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す
         /// </summary>
+        /// <param name="p_パス群"></param>
         /// <remarks>
         /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、
         /// ID もクオリティも要らない全走査のための入口
@@ -128,5 +107,43 @@ namespace Tsumiki.IO
                 throw;
             }
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
+        /// 品質判定が配列の範囲外を触って落ちる
+        /// </summary>
+        /// <param name="p_ID"></param>
+        /// <param name="p_配列"></param>
+        /// <param name="p_クオリティ"></param>
+        /// <remarks>
+        /// どのリードが不正かを言って止める
+        /// </remarks>
+        private void V_検査(string p_ID, string p_配列, string p_クオリティ)
+        {
+            if (p_配列.Length != p_クオリティ.Length)
+            {
+                throw new InvalidDataException($"{this.A_ファイルパス}: リード {p_ID} の塩基列({p_配列.Length}文字)とクオリティ({p_クオリティ.Length}文字)の長さが一致しない。");
+            }
+        }
+
+        /// <summary>
+        /// ID・配列・クオリティの 1 レコードを読み込んで返す
+        /// </summary>
+        /// <returns></returns>
+        private (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
+        {
+            var l_ID = this.Get_次の行();
+            var l_配列 = this.Get_次の行();
+            _ = this.Get_次の行();
+            var l_クオリティ = this.Get_次の行();
+            this.V_検査(l_ID, l_配列, l_クオリティ);
+            return (l_ID, l_配列, l_クオリティ);
+        }
+
+        #endregion
     }
 }

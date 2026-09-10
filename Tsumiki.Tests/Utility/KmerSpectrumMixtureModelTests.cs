@@ -1,4 +1,4 @@
-﻿using Tsumiki.Utility;
+﻿using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Utility
 {

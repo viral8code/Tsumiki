@@ -19,6 +19,17 @@
     /// </remarks>
     internal readonly struct 代表ユニティグヒット(int p_ユニティグID, int p_一致kmer数, int p_最終一致終端位置, int p_ユニティグ長)
     {
+        #region 定数
+
+        /// <summary>
+        /// ヒットなし
+        /// </summary>
+        public static readonly 代表ユニティグヒット A_ヒットなし = new(0, 0, 0, 0);
+
+        #endregion
+
+        #region 内部変数
+
         /// <summary>
         /// マップ先 unitig ID
         /// </summary>
@@ -48,10 +59,9 @@
         /// </summary>
         public readonly int A_ユニティグ長 = p_ユニティグ長;
 
-        /// <summary>
-        /// ヒットなし
-        /// </summary>
-        public static readonly 代表ユニティグヒット A_ヒットなし = new(0, 0, 0, 0);
+        #endregion
+
+        #region プロパティ
 
         /// <summary>
         /// unitig の末尾から、リードが最後にヒットした位置までの残り塩基数
@@ -61,5 +71,7 @@
         /// (＝ペアのもう一方までの未知区間が長くなる可能性が高い) ことを示す
         /// </remarks>
         public int A_末尾までの残り長 => Math.Max(0, this.A_ユニティグ長 - this.A_最終一致終端位置);
+
+        #endregion
     }
 }

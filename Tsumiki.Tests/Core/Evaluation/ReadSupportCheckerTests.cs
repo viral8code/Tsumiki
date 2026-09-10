@@ -1,8 +1,8 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Core.Evaluation;
+﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Evaluation;
 using Tsumiki.IO;
-using Tsumiki.Model.Foundation;
-using Tsumiki.Utility;
+using Tsumiki.Models.Foundation;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Core
 {

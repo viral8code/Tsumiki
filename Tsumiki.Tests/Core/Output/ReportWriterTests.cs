@@ -1,10 +1,10 @@
 ﻿using System.Text.Json;
-using Tsumiki.Core.Evaluation;
-using Tsumiki.Core.Output;
+using Tsumiki.Cores.Evaluation;
+using Tsumiki.Cores.Output;
 using Tsumiki.Core;
-using Tsumiki.Model.Evaluation;
-using Tsumiki.Model.Polishing;
-using Tsumiki.Model.Reporting;
+using Tsumiki.Models.Evaluation;
+using Tsumiki.Models.Polishing;
+using Tsumiki.Models.Reporting;
 
 namespace Tsumiki.Tests.Core
 {

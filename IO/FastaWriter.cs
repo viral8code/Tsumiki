@@ -5,10 +5,16 @@
     /// </summary>
     internal class FastaWriter(string p_ファイル名) : IDisposable
     {
+        #region 内部変数
+
         /// <summary>
         /// 書き込み
         /// </summary>
         private readonly StreamWriter _書き込み = new(p_ファイル名);
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 1 配列を書き出す
@@ -29,5 +35,7 @@
         {
             this._書き込み?.Dispose();
         }
+
+        #endregion
     }
 }

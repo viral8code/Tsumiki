@@ -17,6 +17,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </remarks>
     internal static class AssemblyValidator
     {
+        #region 公開メソッド
+
         /// <summary>
         /// FASTA のアセンブリを、k-mer インデックスが保持する信頼できる k-mer 集合と
         /// 突き合わせる
@@ -26,8 +28,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_単一コピー基準値">その k-mer が何回現れてよいかをカバレッジから見積もるための基準値</param>
         /// <returns>自己検査の結果</returns>
-        public static 整合性検査結果? Get_検査結果(
-            string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
+        public static 整合性検査結果? Get_検査結果(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
         {
             // 逆相補は同一視して数える
             // キーは 2 bit パックした UInt128 で、k が 64 を超えるとパックが収まらないので正規形のハッシュに切り替える
@@ -100,8 +101,11 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.検査_対象外のk長, p_ラベル);
                 return;
             }
+
             Logger.V_出力(メッセージID.検査_取りこぼし, p_ラベル, p_結果.A_信頼kmer数, p_結果.A_取りこぼし数, p_結果.A_取りこぼし率);
             Logger.V_出力(メッセージID.検査_出しすぎ, p_ラベル, p_結果.A_アセンブリ内の延べ数, p_結果.A_余分な延べ数, p_結果.A_出しすぎ率, p_結果.A_出しすぎkmer種類数);
         }
+
+        #endregion
     }
 }

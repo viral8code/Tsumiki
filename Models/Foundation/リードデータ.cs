@@ -5,6 +5,8 @@
     /// </summary>
     internal class リードデータ
     {
+        #region プロパティ
+
         /// <summary>
         /// リード ID
         /// </summary>
@@ -38,6 +40,10 @@
         /// </summary>
         public required string A_クオリティ { get; set; }
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// (オーバーライド) リードを FASTQ の 4 行として返す
         /// </summary>
@@ -52,5 +58,7 @@
 
                 """;
         }
+
+        #endregion
     }
 }

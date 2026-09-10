@@ -14,6 +14,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </remarks>
     internal static class AssemblyScorer
     {
+        #region 定数
+
         /// <summary>
         /// 評価に含める配列の最小長
         /// </summary>
@@ -28,28 +30,30 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         private const int 評価に含める最小長 = 500;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// p_FASTAパス のアセンブリを、アンカー k-mer 集合に対して評価する
         /// </summary>
+        /// <param name="p_FASTAパス"></param>
+        /// <param name="p_アンカーインデックス"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_単一コピー基準値"></param>
+        /// <param name="p_推定ゲノムサイズ"></param>
         /// <remarks>
         /// アンカー k が 64 を超える場合 (2 bit パックが UInt128 に収まらない) は
         /// 評価できないため null を返す
         /// </remarks>
-        public static アセンブリ評価? Get_評価(
-            string p_FASTAパス,
-            TrustedKmerIndex p_アンカーインデックス,
-            int p_アンカーk長,
-            double p_単一コピー基準値,
-            long p_推定ゲノムサイズ)
+        public static アセンブリ評価? Get_評価(string p_FASTAパス, TrustedKmerIndex p_アンカーインデックス, int p_アンカーk長, double p_単一コピー基準値, long p_推定ゲノムサイズ)
         {
             if (p_アンカーk長 > 64 || p_単一コピー基準値 <= 0)
             {
                 return null;
             }
 
-            var l_観測 = Get_出現回数(
-                p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長,
-                out var l_環状本数, out var l_環状延長);
+            var l_観測 = Get_出現回数(p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長, out var l_環状本数, out var l_環状延長);
 
             var l_期待延べ数 = 0L;
             var l_欠損延べ数 = 0L;
@@ -86,9 +90,19 @@ namespace Tsumiki.Cores.Evaluation
                 A_環状化率: p_推定ゲノムサイズ > 0 ? (double)l_環状延長 / p_推定ゲノムサイズ : 0);
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// アセンブリ中に各アンカー k-mer が何回現れるかを数える
         /// </summary>
+        /// <param name="p_FASTAパス"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_長さ一覧"></param>
+        /// <param name="p_総延長"></param>
+        /// <param name="p_環状本数"></param>
+        /// <param name="p_環状延長"></param>
         /// <remarks>
         /// 逆相補は同一視する<br/>
         /// 併せて、環状に閉じた配列 (名前に環状の目印が付いたもの) の
@@ -97,9 +111,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 環状の目印は既にそれより長い閉路にしか
         /// 付かないため、環状の集計がこの足切りで漏れることはない
         /// </remarks>
-        private static Dictionary<UInt128, int> Get_出現回数(
-            string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長,
-            out int p_環状本数, out long p_環状延長)
+        private static Dictionary<UInt128, int> Get_出現回数(string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長, out int p_環状本数, out long p_環状延長)
         {
             Dictionary<UInt128, int> l_観測 = [];
             p_長さ一覧 = [];
@@ -139,6 +151,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// NG50
         /// </summary>
+        /// <param name="p_長さ一覧"></param>
+        /// <param name="p_推定ゲノムサイズ"></param>
+        /// <param name="p_総延長"></param>
         /// <remarks>
         /// 素の N50 は自分の総延長を分母にするため、配列を落として
         /// 短くなったアセンブリほど有利になり k を跨いだ比較に使えない<br/>
@@ -163,5 +178,7 @@ namespace Tsumiki.Cores.Evaluation
             }
             return 0;
         }
+
+        #endregion
     }
 }

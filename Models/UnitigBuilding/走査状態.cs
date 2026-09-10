@@ -14,6 +14,8 @@ namespace Tsumiki.Models.UnitigBuilding
     /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
     internal sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)
     {
+        #region 内部変数
+
         /// <summary>
         /// 転がし
         /// </summary>
@@ -31,6 +33,10 @@ namespace Tsumiki.Models.UnitigBuilding
         /// 訪問済み
         /// </summary>
         private readonly HashSet<UInt128> _訪問済み = [];
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 開始 k-mer から walk して配列を返す
@@ -53,5 +59,7 @@ namespace Tsumiki.Models.UnitigBuilding
                     }
                 });
         }
+
+        #endregion
     }
 }

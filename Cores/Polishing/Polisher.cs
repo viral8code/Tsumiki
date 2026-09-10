@@ -7,6 +7,14 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Polishing
 {
     /// <summary>
+    /// 種索引の 1 件
+    /// </summary>
+    /// <remarks>
+    /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
+    /// </remarks>
+    internal readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
+
+    /// <summary>
     /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す
     /// </summary>
     /// <remarks>
@@ -21,16 +29,10 @@ namespace Tsumiki.Cores.Polishing
     /// 連結の裏付けが無い接合点はその前後で
     /// 深度が不連続になるため、完全長の判定にも使う
     /// </remarks>
-    /// <summary>
-    /// 種索引の 1 件
-    /// </summary>
-    /// <remarks>
-    /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
-    /// </remarks>
-    internal readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
-
     internal static class Polisher
     {
+        #region 定数
+
         /// <summary>
         /// リードの置き場所を探す種にする長さ
         /// </summary>
@@ -104,14 +106,21 @@ namespace Tsumiki.Cores.Polishing
         /// </summary>
         private const int 曖昧な種の番兵 = -1;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// p_FASTAパス を磨いて p_出力パス へ書き出す
         /// </summary>
+        /// <param name="p_FASTAパス"></param>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_出力パス"></param>
         /// <remarks>
         /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
         /// </remarks>
-        public static ポリッシュ統計? Get_磨いた結果(
-            string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス)
+        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
             if (l_エントリ群.Count == 0)
@@ -139,27 +148,22 @@ namespace Tsumiki.Cores.Polishing
             var l_棄却数 = new long[l_スレッド数];
 
             Logger.V_出力(メッセージID.ポリッシュのマッピング開始);
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 256,
-                FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス),
-                (l_リード, l_ワーカー番号) =>
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, l_ワーカー番号) =>
+            {
+                if (V_貼り付け_1リード(l_リード, l_種索引, l_配列群, l_得票))
                 {
-                    if (V_貼り付け_1リード(l_リード, l_種索引, l_配列群, l_得票))
-                    {
-                        l_マップ数[l_ワーカー番号]++;
-                    }
-                    else
-                    {
-                        l_棄却数[l_ワーカー番号]++;
-                    }
-                });
+                    l_マップ数[l_ワーカー番号]++;
+                }
+                else
+                {
+                    l_棄却数[l_ワーカー番号]++;
+                }
+            });
 
             var l_中央値 = Get_深度の中央値(l_配列群, l_得票);
             Logger.V_出力(メッセージID.ポリッシュの深度中央値, l_中央値);
 
-            var l_訂正数 = V_訂正_多数決(
-                l_配列群, l_得票, l_中央値, out var l_深度不足数, out var l_評価位置数);
+            var l_訂正数 = V_訂正_多数決(l_配列群, l_得票, l_中央値, out var l_深度不足数, out var l_評価位置数);
 
             using (var l_書き込み = new FastaWriter(p_出力パス))
             {
@@ -169,15 +173,7 @@ namespace Tsumiki.Cores.Polishing
                 }
             }
 
-            return new ポリッシュ統計(
-                A_配列数: l_エントリ群.Count,
-                A_総延長: l_総延長,
-                A_マップされたリード数: l_マップ数.Sum(),
-                A_棄却されたリード数: l_棄却数.Sum(),
-                A_訂正した塩基数: l_訂正数,
-                A_深度不足の位置数: l_深度不足数,
-                A_評価できた位置数: l_評価位置数,
-                A_深度の中央値: l_中央値);
+            return new ポリッシュ統計(A_配列数: l_エントリ群.Count, A_総延長: l_総延長, A_マップされたリード数: l_マップ数.Sum(), A_棄却されたリード数: l_棄却数.Sum(), A_訂正した塩基数: l_訂正数, A_深度不足の位置数: l_深度不足数, A_評価できた位置数: l_評価位置数, A_深度の中央値: l_中央値);
         }
 
         /// <summary>
@@ -191,18 +187,19 @@ namespace Tsumiki.Cores.Polishing
                 Logger.V_出力(メッセージID.ポリッシュを行えず);
                 return;
             }
-            Logger.V_出力(
-                メッセージID.ポリッシュのマッピング結果,
-                l_統計.A_マップされたリード数, l_統計.A_棄却されたリード数);
+            Logger.V_出力(メッセージID.ポリッシュのマッピング結果, l_統計.A_マップされたリード数, l_統計.A_棄却されたリード数);
             Logger.V_出力(メッセージID.ポリッシュの訂正結果, l_統計.A_訂正した塩基数, l_統計.A_総延長);
-            Logger.V_出力(
-                メッセージID.ポリッシュの深度不足,
-                l_統計.A_深度不足の位置数, l_統計.A_評価できた位置数, l_統計.A_深度不足率 * 100);
+            Logger.V_出力(メッセージID.ポリッシュの深度不足, l_統計.A_深度不足の位置数, l_統計.A_評価できた位置数, l_統計.A_深度不足率 * 100);
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 参照配列から種索引を作る
         /// </summary>
+        /// <param name="p_配列群"></param>
         /// <remarks>
         /// 順鎖と逆相補を別のキーで登録し、
         /// リードがどちらの向きで載ったかを引けるようにする<br/>
@@ -221,8 +218,7 @@ namespace Tsumiki.Cores.Polishing
                         continue;
                     }
                     V_登録_種(l_索引, l_順鎖, new 種の位置(i, l_位置, false));
-                    V_登録_種(
-                        l_索引, KmerPacking.Get_逆相補(l_順鎖, シード長), new 種の位置(i, l_位置, true));
+                    V_登録_種(l_索引, KmerPacking.Get_逆相補(l_順鎖, シード長), new 種の位置(i, l_位置, true));
                 }
             }
             return l_索引;
@@ -234,8 +230,7 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_索引">登録先の索引</param>
         /// <param name="p_キー">種の k-mer</param>
         /// <param name="p_値">その種が指す位置</param>
-        private static void V_登録_種(
-            Dictionary<UInt128, 種の位置> p_索引, UInt128 p_キー, 種の位置 p_値)
+        private static void V_登録_種(Dictionary<UInt128, 種の位置> p_索引, UInt128 p_キー, 種の位置 p_値)
         {
             if (p_索引.TryGetValue(p_キー, out var l_既存))
             {
@@ -251,16 +246,16 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// 1 本のリードを置ける場所へ置き、各位置の得票を加算する
         /// </summary>
+        /// <param name="p_リード"></param>
+        /// <param name="p_種索引"></param>
+        /// <param name="p_配列群"></param>
+        /// <param name="p_得票"></param>
         /// <remarks>
         /// 置けたら true<br/>
         /// 得票は複数のワーカーが同じ配列を触るため Interlocked で足す<br/>
         /// 加算は順序に依らないので、並列でも結果は毎回同じになる
         /// </remarks>
-        private static bool V_貼り付け_1リード(
-            string p_リード,
-            Dictionary<UInt128, 種の位置> p_種索引,
-            List<char[]> p_配列群,
-            int[][] p_得票)
+        private static bool V_貼り付け_1リード(string p_リード, Dictionary<UInt128, 種の位置> p_種索引, List<char[]> p_配列群, int[][] p_得票)
         {
             if (p_リード.Length < シード長)
             {
@@ -288,6 +283,7 @@ namespace Tsumiki.Cores.Polishing
                 {
                     continue;
                 }
+
                 if (!p_種索引.TryGetValue(l_順鎖, out var l_位置) || l_位置.A_配列番号 == 曖昧な種の番兵)
                 {
                     continue;
@@ -313,6 +309,7 @@ namespace Tsumiki.Cores.Polishing
                 {
                     return true;
                 }
+
                 if (++l_試した回数 >= 試すヒット数)
                 {
                     return false;
@@ -324,11 +321,14 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// リードを参照の指定位置へ ungapped に重ね、不一致が許容内なら得票を加算する
         /// </summary>
+        /// <param name="p_リード"></param>
+        /// <param name="p_参照"></param>
+        /// <param name="p_参照開始"></param>
+        /// <param name="p_得票"></param>
         /// <remarks>
         /// 参照からはみ出す部分は切り詰める
         /// </remarks>
-        private static bool V_照合(
-            string p_リード, char[] p_参照, int p_参照開始, int[] p_得票)
+        private static bool V_照合(string p_リード, char[] p_参照, int p_参照開始, int[] p_得票)
         {
             var l_左 = Math.Max(0, p_参照開始);
             var l_右 = Math.Min(p_参照.Length, p_参照開始 + p_リード.Length);
@@ -368,6 +368,8 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// リードが載っている位置での深度の中央値
         /// </summary>
+        /// <param name="p_配列群"></param>
+        /// <param name="p_得票"></param>
         /// <remarks>
         /// ヒストグラムから求めるのは、
         /// 位置ごとの値をすべて並べるとゲノムサイズぶんの配列をもう 1 本
@@ -430,15 +432,18 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// 得票の多数決で置換を適用する
         /// </summary>
+        /// <param name="p_配列群"></param>
+        /// <param name="p_得票"></param>
+        /// <param name="p_深度の中央値"></param>
+        /// <param name="p_深度不足数"></param>
+        /// <param name="p_評価位置数"></param>
         /// <remarks>
         /// 併せて深度不足の位置を数える<br/>
         /// N の位置は触らない<br/>
         /// ギャップの長さは推定値であり、
         /// そこを塩基で埋めるのは多数決の仕事ではない
         /// </remarks>
-        private static long V_訂正_多数決(
-            List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値,
-            out long p_深度不足数, out long p_評価位置数)
+        private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数)
         {
             var l_深度不足の閾値 = p_深度の中央値 * 深度不足とみなす比;
 
@@ -491,5 +496,7 @@ namespace Tsumiki.Cores.Polishing
             }
             return l_訂正数;
         }
+
+        #endregion
     }
 }

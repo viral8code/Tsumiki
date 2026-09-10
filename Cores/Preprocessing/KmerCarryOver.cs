@@ -19,6 +19,8 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class KmerCarryOver
     {
+        #region 定数
+
         /// <summary>
         /// 引き継ぐ配列の最小長
         /// </summary>
@@ -28,14 +30,20 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const int 引き継ぐ配列の最小長 = 500;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 引き継ぎ元の配列とカバレッジを、その k の成果物から作る
         /// </summary>
+        /// <param name="p_FASTAパス"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
         /// <remarks>
         /// k-mer インデックスが生きているうちにしか作れない
         /// </remarks>
-        public static List<引き継ぎ配列> Get_引き継ぎ配列(
-            string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             List<引き継ぎ配列> l_結果 = [];
             using var l_読み込み = new FastaReader(p_FASTAパス);
@@ -63,15 +71,15 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 引き継ぎ配列のうち、この k の集合に無い k-mer を足す
         /// </summary>
+        /// <param name="p_引き継ぎ配列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
         /// <remarks>
         /// 既にある k-mer は触らない (実際のリード由来の観測を優先する)<br/>
         /// 戻り値は足した k-mer の数
         /// </remarks>
-        public static int V_引き継ぎ(
-            IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列,
-            TrustedKmerIndex p_kmerインデックス,
-            int p_k長,
-            int? p_リード長)
+        public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
             var l_追加数 = 0;
             var l_処理数 = 0;
@@ -114,6 +122,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// この k-mer に与えるカバレッジ
         /// </summary>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_位置"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
         /// <remarks>
         /// 前段の k-mer のうちこの窓に重なるものの最小値を取る<br/>
         /// 長い k-mer は
@@ -125,8 +137,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// スケールしないと、引き継いだ領域だけカバレッジが
         /// 高く見えてコピー数を過大に推定する
         /// </remarks>
-        public static ulong Get_引き継ぐカバレッジ(
-            引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
+        public static ulong Get_引き継ぐカバレッジ(引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
         {
             var l_終端 = Math.Min(p_引き継ぎ.A_カバレッジ.Length - 1, p_位置 + p_k長 - p_引き継ぎ.A_k長);
             if (p_位置 > l_終端)
@@ -153,5 +164,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_今の本数 = l_リード長 - p_k長 + 1;
             return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)l_最小 : (ulong)Math.Max(1L, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
         }
+
+        #endregion
     }
 }

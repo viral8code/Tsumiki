@@ -1,9 +1,9 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Core.Evaluation;
-using Tsumiki.Core.Scaffolding;
+﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Evaluation;
+using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Core;
 using Tsumiki.IO;
-using Tsumiki.Model.Foundation;
+using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Tests.Core
 {

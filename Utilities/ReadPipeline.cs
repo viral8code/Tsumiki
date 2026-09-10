@@ -15,15 +15,20 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class ReadPipeline
     {
+        #region 公開メソッド
+
         /// <summary>
         /// p_供給元 の各要素を p_処理 へ並列に配る
         /// </summary>
+        /// <param name="p_スレッド数"></param>
+        /// <param name="p_キュー容量"></param>
+        /// <param name="p_供給元"></param>
+        /// <param name="p_処理"></param>
         /// <remarks>
         /// p_処理 の第2引数はワーカー番号で、ワーカーごとのローカル集計用配列の
         /// 添字として使うことを想定している
         /// </remarks>
-        public static void V_実行<T>(
-            int p_スレッド数, int p_キュー容量, IEnumerable<T> p_供給元, Action<T, int> p_処理)
+        public static void V_実行<T>(int p_スレッド数, int p_キュー容量, IEnumerable<T> p_供給元, Action<T, int> p_処理)
         {
             using var l_キュー = new BlockingCollection<T>(p_キュー容量);
             using var l_中断 = new CancellationTokenSource();
@@ -77,5 +82,7 @@ namespace Tsumiki.Utilities
 
             l_供給側の例外?.Throw();
         }
+
+        #endregion
     }
 }

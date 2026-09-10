@@ -20,6 +20,8 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class Preprocessor
     {
+        #region 定数
+
         /// <summary>
         /// ペアの重なりとみなすために要求する最小長
         /// </summary>
@@ -59,6 +61,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const int 前処理バッチサイズ = 20000;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// ペアの FASTQ を読み込んで前処理し、結果を出力先へ書き出す
         /// </summary>
@@ -67,8 +73,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_出力先1">前処理したリード 1 の書き出し先</param>
         /// <param name="p_出力先2">前処理したリード 2 の書き出し先</param>
         /// <returns>前処理の集計</returns>
-        public static 前処理統計 V_前処理_リードファイル(
-            string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2)
+        public static 前処理統計 V_前処理_リードファイル(string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2)
         {
             var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -110,8 +115,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                 _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                 {
-                    l_結果群[i] = Get_前処理結果(
-                        l_配列1群[i], l_クオリティ1群[i], l_配列2群[i], l_クオリティ2群[i], l_Phredオフセット);
+                    l_結果群[i] = Get_前処理結果(l_配列1群[i], l_クオリティ1群[i], l_配列2群[i], l_クオリティ2群[i], l_Phredオフセット);
                 });
 
                 for (var i = 0; i < l_件数; i++)
@@ -154,15 +158,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_クオリティ2">read2 のクオリティ</param>
         /// <param name="p_Phredオフセット">クオリティ文字から Phred スコアを引くためのオフセット</param>
         /// <returns>前処理の結果</returns>
-        internal static ペア前処理結果 Get_前処理結果(
-            string p_配列1, string p_クオリティ1, string p_配列2, string p_クオリティ2, int p_Phredオフセット)
+        internal static ペア前処理結果 Get_前処理結果(string p_配列1, string p_クオリティ1, string p_配列2, string p_クオリティ2, int p_Phredオフセット)
         {
             var l_塩基列1 = Util.V_変換_塩基列(p_配列1);
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
             var l_塩基列2RC = Util.V_変換_塩基列(l_RC配列2);
 
-            var l_オーバーラップ = Get_最適オーバーラップ(
-                l_塩基列1, l_塩基列2RC, 最小オーバーラップ長, 許容不一致率, out _);
+            var l_オーバーラップ = Get_最適オーバーラップ(l_塩基列1, l_塩基列2RC, 最小オーバーラップ長, 許容不一致率, out _);
             if (l_オーバーラップ is not { } l_重なり)
             {
                 return new ペア前処理結果(p_配列1, p_クオリティ1, p_配列2, p_クオリティ2, false, 0);
@@ -215,13 +217,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_新長さ2 = Math.Min(p_配列2.Length, l_フラグメント長);
             var l_アダプタを検出したか = l_新長さ1 < p_配列1.Length || l_新長さ2 < p_配列2.Length;
 
-            return new ペア前処理結果(
-                new string(l_配列1文字, 0, l_新長さ1),
-                p_クオリティ1[..l_新長さ1],
-                new string(l_配列2文字, 0, l_新長さ2),
-                p_クオリティ2[..l_新長さ2],
-                l_アダプタを検出したか,
-                l_訂正数);
+            return new ペア前処理結果(new string(l_配列1文字, 0, l_新長さ1), p_クオリティ1[..l_新長さ1], new string(l_配列2文字, 0, l_新長さ2), p_クオリティ2[..l_新長さ2], l_アダプタを検出したか, l_訂正数);
         }
 
         /// <summary>
@@ -241,9 +237,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 条件を満たすもののなかで重なりが最長のもの (同点なら不一致数が少ないもの)<br/>
         /// 見つからなければ null (通常の、フラグメント長がリード長を超える場合)
         /// </returns>
-        internal static オーバーラップ結果? Get_最適オーバーラップ(
-            byte[] p_塩基列1, byte[] p_塩基列2RC,
-            int p_最小重なり長, double p_許容不一致率, out bool p_対抗馬があるか)
+        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_対抗馬があるか)
         {
             p_対抗馬があるか = false;
             var l_n1 = p_塩基列1.Length;
@@ -271,8 +265,7 @@ namespace Tsumiki.Cores.Preprocessing
                 // 閾値を超えた時点でやめないと全ペア × 全オフセットが O(read 長) のままになる
                 var l_不一致数 = l_詰め1 is { } l_詰めA && l_詰め2 is { } l_詰めB
                     ? Get_不一致数_語単位(l_詰めA, l_詰めB, l_開始1, l_開始2, l_重なり長, l_許容不一致数)
-                    : Get_不一致数_1塩基ずつ(
-                        p_塩基列1, p_塩基列2RC, l_開始1, l_開始2, l_重なり長, l_許容不一致数);
+                    : Get_不一致数_1塩基ずつ(p_塩基列1, p_塩基列2RC, l_開始1, l_開始2, l_重なり長, l_許容不一致数);
                 if (l_不一致数 > l_許容不一致数)
                 {
                     continue;
@@ -295,6 +288,10 @@ namespace Tsumiki.Cores.Preprocessing
             return l_最良;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// 重なり区間の不一致数を 32 塩基ずつ数える
         /// </summary>
@@ -305,16 +302,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_重なり長">比べる長さ</param>
         /// <param name="p_許容不一致数">許容する不一致の数</param>
         /// <returns>不一致の数、許容数を超えた時点で打ち切るのでその場合は許容数より大きい値</returns>
-        private static int Get_不一致数_語単位(
-            PackedBases p_詰め1, PackedBases p_詰め2,
-            int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
+        private static int Get_不一致数_語単位(PackedBases p_詰め1, PackedBases p_詰め2, int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
         {
             var l_不一致数 = 0;
             for (var i = 0; i < p_重なり長; i += PackedBases.語あたりの塩基数)
             {
                 var l_今回 = Math.Min(PackedBases.語あたりの塩基数, p_重なり長 - i);
-                l_不一致数 += PackedBases.Get_不一致数(
-                    p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
+                l_不一致数 += PackedBases.Get_不一致数(p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
                 if (l_不一致数 > p_許容不一致数)
                 {
                     return l_不一致数;
@@ -337,9 +331,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_重なり長">比べる長さ</param>
         /// <param name="p_許容不一致数">許容する不一致の数</param>
         /// <returns>不一致の数、許容数を超えた時点で打ち切るのでその場合は許容数より大きい値</returns>
-        private static int Get_不一致数_1塩基ずつ(
-            byte[] p_塩基列1, byte[] p_塩基列2RC,
-            int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
+        private static int Get_不一致数_1塩基ずつ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
         {
             var l_不一致数 = 0;
             for (var i = 0; i < p_重なり長; i++)
@@ -372,5 +364,7 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_文字 => l_文字,
             };
         }
+
+        #endregion
     }
 }

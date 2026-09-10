@@ -11,16 +11,12 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
     internal class UnitigMaker(TrustedKmerIndex p_kmerインデックス)
     {
+        #region 内部変数
+
         /// <summary>
         /// kmer インデックス
         /// </summary>
         private readonly TrustedKmerIndex _kmerインデックス = p_kmerインデックス;
-
-        // 循環検出用
-        // walk 中に同じ k-mer へ戻ってきたら打ち切る
-        // k<=64 では UInt128 をキーにして 1 歩ごとの文字列生成を避ける
-        // 呼び出しごとに作り直さず使い回すのは、この処理が 1 回の実行で
-        // 数百万回呼ばれるため
 
         /// <summary>
         /// 訪問済み パック
@@ -32,27 +28,15 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         private readonly HashSet<string> _訪問済み_文字列 = [];
 
-        /// <summary>
-        /// k-mer(塩基ID 1-4、長さ 64 以下) を2 bit/塩基で UInt128 にパックする
-        /// </summary>
-        /// <remarks>
-        /// 向き依存の値 (逆相補への正規化はしない)<br/>
-        /// 循環検出は
-        /// 「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
-        /// </remarks>
-        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
-        {
-            UInt128 l_値 = 0;
-            foreach (var l_塩基ID in p_kmer)
-            {
-                l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
-            }
-            return l_値;
-        }
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 各開始 k-mer からの walk を並列に実行し、開始 k-mer と同じ順で結果を返す
         /// </summary>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_開始kmer"></param>
         /// <remarks>
         /// walk はカットオフ後の読み取り専用な k-mer 集合しか触らないので互いに独立<br/>
         /// UnitigMaker 自身は呼び出しごとにクリアする訪問済み集合を持つため、
@@ -61,23 +45,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// どちらの向きが先に登録されるかで
         /// 採用される表現が変わるため、ここで並列に潰すと結果が実行ごとに変わる
         /// </remarks>
-        public static string[] Get_walk結果(
-            TrustedKmerIndex p_kmerインデックス, IReadOnlyList<byte[]> p_開始kmer)
+        public static string[] Get_walk結果(TrustedKmerIndex p_kmerインデックス, IReadOnlyList<byte[]> p_開始kmer)
         {
             var l_結果 = new string[p_開始kmer.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            _ = Parallel.For(
-                0,
-                p_開始kmer.Count,
-                new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 },
-                () => new 走査状態(p_kmerインデックス),
-                (i, _, l_状態) =>
+            _ = Parallel.For(0, p_開始kmer.Count, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, () => new 走査状態(p_kmerインデックス), (i, _, l_状態) =>
                 {
                     l_結果[i] = l_状態.Get_配列(p_開始kmer[i]);
                     return l_状態;
-                },
-                _ => { });
+                }, _ => { });
 
             return l_結果;
         }
@@ -156,5 +133,30 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             return new ユニティグ(l_配列.GetHashCode(), string.Join(string.Empty, l_配列.Select(Util.V_変換_塩基文字)));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// k-mer(塩基ID 1-4、長さ 64 以下) を2 bit/塩基で UInt128 にパックする
+        /// </summary>
+        /// <param name="p_kmer"></param>
+        /// <remarks>
+        /// 向き依存の値 (逆相補への正規化はしない)<br/>
+        /// 循環検出は
+        /// 「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
+        /// </remarks>
+        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
+        {
+            UInt128 l_値 = 0;
+            foreach (var l_塩基ID in p_kmer)
+            {
+                l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
+            }
+            return l_値;
+        }
+
+        #endregion
     }
 }

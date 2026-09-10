@@ -23,6 +23,8 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class SuperReadJoiner
     {
+        #region 定数
+
         /// <summary>
         /// 橋渡しする長さの上限
         /// </summary>
@@ -56,6 +58,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const double インサートサイズの許容比 = 1.5D;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// ペアの FASTQ を読み込み、統合できたペアを合成配列 (引き継ぎ配列) として返す
         /// </summary>
@@ -65,9 +71,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_統計">統合の内訳</param>
         /// <returns>統合できたペアの合成配列</returns>
-        public static List<引き継ぎ配列> Get_合成リード(
-            string p_リード1のパス, string p_リード2のパス,
-            TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計)
+        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_インサートサイズ = ConfigurationManager.A_実行時引数.A_インサートサイズ;
@@ -135,6 +139,24 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
+        /// 統合の内訳をログへ出力する
+        /// </summary>
+        /// <param name="p_統計">統合の内訳</param>
+        public static void V_出力_統計(SuperRead統計 p_統計)
+        {
+            Logger.V_出力(メッセージID.SuperRead統計, p_統計.A_統合数, p_統計.A_総ペア数);
+            Logger.V_出力(メッセージID.SuperRead統計_重なり, p_統計.A_重なり結合数, p_統計.A_橋渡し数);
+            if (p_統計.A_曖昧で捨てた数 > 0)
+            {
+                Logger.V_出力(メッセージID.SuperRead統計_曖昧, p_統計.A_曖昧で捨てた数);
+            }
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
         /// 1 ペア分の統合を試みる
         /// </summary>
         /// <remarks>
@@ -150,6 +172,10 @@ namespace Tsumiki.Cores.Preprocessing
         {
             return Get_合成配列_内訳つき(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ).A_配列;
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 1 ペア分の統合を、どちらの手段で繋いだかと一緒に返す
@@ -342,18 +368,6 @@ namespace Tsumiki.Cores.Preprocessing
             return new 引き継ぎ配列(p_配列, l_カバレッジ, p_k長);
         }
 
-        /// <summary>
-        /// 統合の内訳をログへ出力する
-        /// </summary>
-        /// <param name="p_統計">統合の内訳</param>
-        public static void V_出力_統計(SuperRead統計 p_統計)
-        {
-            Logger.V_出力(メッセージID.SuperRead統計, p_統計.A_統合数, p_統計.A_総ペア数);
-            Logger.V_出力(メッセージID.SuperRead統計_重なり, p_統計.A_重なり結合数, p_統計.A_橋渡し数);
-            if (p_統計.A_曖昧で捨てた数 > 0)
-            {
-                Logger.V_出力(メッセージID.SuperRead統計_曖昧, p_統計.A_曖昧で捨てた数);
-            }
-        }
+        #endregion
     }
 }

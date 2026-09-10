@@ -5,6 +5,8 @@
     /// </summary>
     internal readonly struct 配列エントリ(string p_ID, string p_配列)
     {
+        #region 内部変数
+
         /// <summary>
         /// 配列 ID
         /// </summary>
@@ -14,5 +16,7 @@
         /// 配列
         /// </summary>
         public readonly string A_配列 = p_配列;
+
+        #endregion
     }
 }

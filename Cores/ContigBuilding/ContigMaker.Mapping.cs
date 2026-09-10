@@ -319,7 +319,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
         /// </remarks>
-        private 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
+        internal 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
         {
             if (string.IsNullOrEmpty(p_リード))
             {

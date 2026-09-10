@@ -11,46 +11,28 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// Span から毎回詰め直すと、1 歩あたり O(k) の詰め直しが所属判定と
     /// 入次数判定の回数だけ走る
     /// </remarks>
-    internal sealed class UnitigWalk
+    internal sealed class UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)
     {
-        /// <summary>
-        /// kmer インデックス
-        /// </summary>
-        private readonly TrustedKmerIndex _kmerインデックス;
-
-        /// <summary>
-        /// k 長
-        /// </summary>
-        private readonly int _k長;
+        #region 内部変数
 
         /// <summary>
         /// 小経路か
         /// </summary>
-        private readonly bool _小経路か;
+        private readonly bool _小経路か = p_k長 <= 32;
 
         /// <summary>
         /// マスク
         /// </summary>
-        private readonly UInt128 _マスク;
+        private readonly UInt128 _マスク = p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
 
         /// <summary>
         /// 上位シフト
         /// </summary>
-        private readonly int _上位シフト;
+        private readonly int _上位シフト = 2 * (p_k長 - 1);
 
-        /// <summary>
-        /// walk に使う kmer インデックスと k 長から状態を組み立てる
-        /// </summary>
-        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
-        /// <param name="p_k長">k 長</param>
-        public UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)
-        {
-            this._kmerインデックス = p_kmerインデックス;
-            this._k長 = p_k長;
-            this._小経路か = p_k長 <= 32;
-            this._マスク = p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
-            this._上位シフト = 2 * (p_k長 - 1);
-        }
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// この実装で扱える k かどうか
@@ -63,65 +45,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         }
 
         /// <summary>
-        /// 既に通った k-mer か
-        /// </summary>
-        /// <param name="p_順鎖">順鎖のパック値</param>
-        /// <param name="p_逆鎖">逆鎖のパック値</param>
-        /// <returns>通っていれば true</returns>
-        private bool Get_含まれるか(UInt128 p_順鎖, UInt128 p_逆鎖)
-        {
-            var l_正規形 = p_順鎖 < p_逆鎖 ? p_順鎖 : p_逆鎖;
-            return this._小経路か
-                ? this._kmerインデックス.Get_含まれるか_小((ulong)l_正規形)
-                : this._kmerインデックス.Get_含まれるか_中(l_正規形);
-        }
-
-        /// <summary>
-        /// 末尾に塩基を足した k-mer の順鎖・逆鎖パック値
-        /// </summary>
-        private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_後続(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
-        {
-            var l_コドン = (UInt128)(p_塩基ID - 1);
-            var l_順鎖 = ((p_順鎖 << 2) | l_コドン) & this._マスク;
-            var l_逆鎖 = (p_逆鎖 >> 2) | ((3 - l_コドン) << this._上位シフト);
-            return (l_順鎖, l_逆鎖);
-        }
-
-        /// <summary>
-        /// 先頭に塩基を足した (末尾を落とした) k-mer の順鎖・逆鎖パック値
-        /// </summary>
-        private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
-        {
-            var l_コドン = (UInt128)(p_塩基ID - 1);
-            var l_順鎖 = (p_順鎖 >> 2) | (l_コドン << this._上位シフト);
-            var l_逆鎖 = ((p_逆鎖 << 2) | (3 - l_コドン)) & this._マスク;
-            return (l_順鎖, l_逆鎖);
-        }
-
-        /// <summary>
-        /// 入次数がちょうど 1 かどうか
-        /// </summary>
-        /// <remarks>
-        /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと
-        /// 予測元は c + kmer[..^1] になる
-        /// </remarks>
-        private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
-        {
-            var l_件数 = 0;
-            for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
-            {
-                var (l_元順, l_元逆) = this.Get_予測元(p_順鎖, p_逆鎖, i);
-                if (this.Get_含まれるか(l_元順, l_元逆) && ++l_件数 > 1)
-                {
-                    return false;
-                }
-            }
-            return l_件数 == 1;
-        }
-
-        /// <summary>
         /// 開始 k-mer から前進 walk して unitig の塩基列を返す
         /// </summary>
+        /// <param name="p_開始kmer">walk の起点となる k-mer</param>
+        /// <param name="p_訪問済み">循環検出用の作業集合</param>
+        /// <returns>組み立てた塩基列</returns>
         /// <remarks>
         /// 循環を検出したら打ち切る
         /// </remarks>
@@ -158,6 +86,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         continue;
                     }
+
                     if (++l_候補数 > 1)
                     {
                         break;
@@ -178,5 +107,76 @@ namespace Tsumiki.Cores.UnitigBuilding
                 (l_順鎖, l_逆鎖) = (l_次順, l_次逆);
             }
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 既に通った k-mer か
+        /// </summary>
+        /// <param name="p_順鎖">順鎖のパック値</param>
+        /// <param name="p_逆鎖">逆鎖のパック値</param>
+        /// <returns>通っていれば true</returns>
+        private bool Get_含まれるか(UInt128 p_順鎖, UInt128 p_逆鎖)
+        {
+            var l_正規形 = p_順鎖 < p_逆鎖 ? p_順鎖 : p_逆鎖;
+            return this._小経路か
+                ? p_kmerインデックス.Get_含まれるか_小((ulong)l_正規形)
+                : p_kmerインデックス.Get_含まれるか_中(l_正規形);
+        }
+
+        /// <summary>
+        /// 末尾に塩基を足した k-mer の順鎖・逆鎖パック値
+        /// </summary>
+        /// <param name="p_順鎖"></param>
+        /// <param name="p_逆鎖"></param>
+        /// <param name="p_塩基ID"></param>
+        private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_後続(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
+        {
+            var l_コドン = (UInt128)(p_塩基ID - 1);
+            var l_順鎖 = ((p_順鎖 << 2) | l_コドン) & this._マスク;
+            var l_逆鎖 = (p_逆鎖 >> 2) | ((3 - l_コドン) << this._上位シフト);
+            return (l_順鎖, l_逆鎖);
+        }
+
+        /// <summary>
+        /// 先頭に塩基を足した (末尾を落とした) k-mer の順鎖・逆鎖パック値
+        /// </summary>
+        /// <param name="p_順鎖"></param>
+        /// <param name="p_逆鎖"></param>
+        /// <param name="p_塩基ID"></param>
+        private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
+        {
+            var l_コドン = (UInt128)(p_塩基ID - 1);
+            var l_順鎖 = (p_順鎖 >> 2) | (l_コドン << this._上位シフト);
+            var l_逆鎖 = ((p_逆鎖 << 2) | (3 - l_コドン)) & this._マスク;
+            return (l_順鎖, l_逆鎖);
+        }
+
+        /// <summary>
+        /// 入次数がちょうど 1 かどうか
+        /// </summary>
+        /// <param name="p_順鎖"></param>
+        /// <param name="p_逆鎖"></param>
+        /// <remarks>
+        /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと
+        /// 予測元は c + kmer[..^1] になる
+        /// </remarks>
+        private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
+        {
+            var l_件数 = 0;
+            for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
+            {
+                var (l_元順, l_元逆) = this.Get_予測元(p_順鎖, p_逆鎖, i);
+                if (this.Get_含まれるか(l_元順, l_元逆) && ++l_件数 > 1)
+                {
+                    return false;
+                }
+            }
+            return l_件数 == 1;
+        }
+
+        #endregion
     }
 }

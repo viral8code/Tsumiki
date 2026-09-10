@@ -1,7 +1,12 @@
 ﻿namespace Tsumiki.Utilities
 {
+    /// <summary>
+    /// バイト列の中身が等しいかを比べる比較子
+    /// </summary>
     internal class ByteArrayEqualityComparer : IEqualityComparer<byte[]>
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 同じ中身のバイト列か
         /// </summary>
@@ -55,5 +60,7 @@
             }
             return l_ハッシュ;
         }
+
+        #endregion
     }
 }

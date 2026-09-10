@@ -5,6 +5,8 @@
     /// </summary>
     internal sealed class 先読み探索状態
     {
+        #region プロパティ
+
         /// <summary>
         /// いま到達している頂点
         /// </summary>
@@ -50,5 +52,7 @@
         /// コピー数の予算管理に使う
         /// </remarks>
         public required Dictionary<int, int> A_使用回数 { get; init; }
+
+        #endregion
     }
 }

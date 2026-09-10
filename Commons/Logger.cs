@@ -29,7 +29,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 錠
         /// </summary>
-        protected internal static readonly object _錠 = new();
+        internal static readonly Lock _錠 = new();
 
         /// <summary>
         /// 0 より大きい間は何も出さない
@@ -37,7 +37,7 @@ namespace Tsumiki.Commons
         /// <remarks>
         /// 入れ子にできるよう数で持つ
         /// </remarks>
-        protected internal static int _休止の深さ;
+        internal static int _休止の深さ;
 
         /// <summary>
         /// 全量を残す書き出し先、まだ開いていなければ null
@@ -95,8 +95,7 @@ namespace Tsumiki.Commons
                 {
                     return;
                 }
-                _ファイル = new StreamWriter(
-                    Path.Combine(p_一時ディレクトリ, Consts.ログファイル名), append: true)
+                _ファイル = new StreamWriter(Path.Combine(p_一時ディレクトリ, Consts.ログファイル名), append: true)
                 {
                     // 長時間走るので、途中で落ちても直前までが残るようにする
                     AutoFlush = true,
@@ -238,6 +237,7 @@ namespace Tsumiki.Commons
                 {
                     return;
                 }
+
                 if (_ファイル is { } l_ファイル)
                 {
                     l_ファイル.WriteLine(p_行);
@@ -252,6 +252,7 @@ namespace Tsumiki.Commons
                     Console.Error.WriteLine(p_行);
                     return;
                 }
+
                 if (Get_水準(p_行) <= A_水準)
                 {
                     Console.WriteLine(p_行);

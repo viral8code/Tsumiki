@@ -16,12 +16,14 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// 定義上ちょうど k-1 のオーバーラップを持つ<br/>
     /// 結合時にオーバーラップ長を
     /// 探索する必要がそもそも無くなる<br/>
-    /// 頂点は向き付き: unitig ID u に対し 2 u(順鎖) と 2 u+1(逆鎖)、
+    /// 頂点は向き付き: unitig ID u に対し 2 u (順鎖) と 2 u+1 (逆鎖)、
     /// v の双子は v^1<br/>
     /// 構築方法より、辺 v→w があれば必ず w^1→v^1 もある
     /// </remarks>
     internal sealed class UnitigGraph
     {
+        #region プロパティ
+
         /// <summary>
         /// 頂点ごとの出辺 (行き先の頂点インデックス)
         /// </summary>
@@ -36,6 +38,10 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </remarks>
         public HashSet<int> A_自己ループ { get; }
 
+        #endregion
+
+        #region コンストラクタ
+
         /// <summary>
         /// 構築済みの出辺と自己ループから頂点を作る
         /// </summary>
@@ -47,9 +53,14 @@ namespace Tsumiki.Cores.UnitigBuilding
             this.A_自己ループ = p_自己ループ;
         }
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 頂点の入次数
         /// </summary>
+        /// <param name="p_頂点"></param>
         /// <remarks>
         /// 辺の逆鎖対称性より、v の入次数は v^1 の出次数に等しい
         /// </remarks>
@@ -61,8 +72,10 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// その頂点を通り抜けてよいか
         /// </summary>
+        /// <param name="p_コピー数"></param>
+        /// <param name="p_頂点"></param>
         /// <remarks>
-        /// A-R-B-R-C(R は 2 コピーの反復) で A→R と R→C はどちらも本物の隣接だが、
+        /// A-R-B-R-C (R は 2 コピーの反復) で A→R と R→C はどちらも本物の隣接だが、
         /// walk は各 unitig を 1 回しか使えないため、連鎖させると中間の B を
         /// 飛ばした A-R-C ができてしまう<br/>
         /// 通り抜けてよいのは反復が解きほぐされ
@@ -76,16 +89,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 隣接グラフを構築する
         /// </summary>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_kmer辞書"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_曖昧kmerの番兵"></param>
         /// <remarks>
-        /// 行き先が「先頭 k-mer である (開始位置==0)」ことを要求するのが要点で、
+        /// 行き先が「先頭 k-mer である (開始位置 == 0)」ことを要求するのが要点で、
         /// これにより結合が必ず k-1 オーバーラップの単純連結になる<br/>
         /// 曖昧 k-mer は行き先を一意に決められないため辺を張らない
         /// </remarks>
-        public static UnitigGraph Get_グラフ(
-            List<string> p_ユニティグ配列,
-            IReadOnlyDictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> p_kmer辞書,
-            int p_k長,
-            int p_曖昧kmerの番兵)
+        public static UnitigGraph Get_グラフ(List<string> p_ユニティグ配列, IReadOnlyDictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> p_kmer辞書, int p_k長, int p_曖昧kmerの番兵)
         {
             List<List<int>> l_出辺 = [];
             HashSet<int> l_自己ループ = [];
@@ -118,6 +131,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                     l_候補[i] = l_塩基ID;
                 }
+
                 if (l_無効な塩基があるか)
                 {
                     continue;
@@ -126,10 +140,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                 for (var l_末尾塩基 = Consts.塩基ID.A; l_末尾塩基 <= Consts.塩基ID.T; l_末尾塩基++)
                 {
                     l_候補[p_k長 - 1] = l_末尾塩基;
+
                     if (!p_kmer辞書.TryGetValue(new KmerKey(l_候補.AsSpan()), out var l_ヒット))
                     {
                         continue;
                     }
+
                     if (l_ヒット.A_ユニティグID == p_曖昧kmerの番兵 || l_ヒット.A_開始位置 != 0)
                     {
                         // 開始位置 != 0 は「その k-mer が unitig の途中に現れる」
@@ -139,6 +155,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         continue;
                     }
                     var l_行き先 = ContigMaker.Get_頂点番号(l_ヒット.A_ユニティグID);
+
                     if (l_行き先 == l_頂点)
                     {
                         // 自己ループは辿ると無限に伸びるため辺として持たない
@@ -154,30 +171,31 @@ namespace Tsumiki.Cores.UnitigBuilding
         }
 
         /// <summary>
-        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして取り除く
-        /// </summary>
-        /// <remarks>
-        /// 片方だけ消すとグラフの逆鎖対称性が崩れ、順鎖側と逆鎖側で
-        /// 別々の経路が組まれてしまう
-        /// </remarks>
-        private void V_除去_辺の対(int p_始点, int p_終点)
-        {
-            _ = this.A_出辺[p_始点].Remove(p_終点);
-            _ = this.A_出辺[p_終点 ^ 1].Remove(p_始点 ^ 1);
-        }
-
-        /// <summary>
-        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして追加する
-        /// </summary>
-        private void V_追加_辺の対(int p_始点, int p_終点)
-        {
-            this.A_出辺[p_始点].Add(p_終点);
-            this.A_出辺[p_終点 ^ 1].Add(p_始点 ^ 1);
-        }
-
-        /// <summary>
         /// 短い反復配列を、ペアエンドの証拠に基づいて経路ごとに複製して解きほぐす
         /// </summary>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_支持"></param>
+        /// <param name="p_ペア連結"></param>
+        /// <param name="p_反復長の上限"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <param name="p_r_mer検証器">
+        /// 渡すと、対応付けが確定したあとに複製を確定する前段として、
+        /// 提案された 2 本の経路 (勝ったペアリングそれぞれ) を r-mer で検証する (ABySS RResolver 型の拒否権)<br/>
+        /// どちらか一方でも接合点を跨ぐ r-mer の
+        /// 支持が足りなければ複製を見送る<br/>
+        /// 注意: head-repeat・repeat-tail はどちらの対応付けでも de Bruijn
+        /// グラフ上の本物の辺なので、正しい対応付けのリードだけからも
+        /// 個々の接合点の存在は独立に確認できてしまう<br/>
+        /// したがってこの検証は「対応付け A」と「対応付け B」のどちらが正しいかを区別する力は
+        /// 本質的に持たない (反復が反復である以上、局所的な文脈だけでは
+        /// 区別できないため)<br/>
+        /// 実際に効くのは、ペア支持が示す対応付けについて
+        /// 個々の接合点すら生リードに一切裏付けられない (=そもそもその
+        /// unitig 同士が隣接している根拠が生データに無い) 場合であり、
+        /// この限定的だが無視できない安全網として使う
+        /// </param>
+        /// <returns>解きほぐした反復の数</returns>
         /// <remarks>
         /// 反復 R が a→R→c と b→R→d の文脈を持つとき、グラフ上では R が
         /// 1 頂点に潰れて入次数 2・出次数 2 になる<br/>
@@ -190,34 +208,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// R の配列が 2 回出力されるのは
         /// 実際に 2 回現れることの反映であって水増しではない
         /// </remarks>
-        /// <param name="p_r_mer検証器">
-        /// 渡すと、対応付けが確定したあとに複製を確定する前段として、
-        /// 提案された 2 本の経路 (勝ったペアリングそれぞれ) を r-mer で検証する
-        /// (ABySS RResolver 型の拒否権)<br/>
-        /// どちらか一方でも接合点を跨ぐ r-mer の
-        /// 支持が足りなければ複製を見送る<br/>
-        /// 注意: head-repeat・repeat-tail はどちらの対応付けでも de Bruijn
-        /// グラフ上の本物の辺なので、正しい対応付けのリードだけからも
-        /// 個々の接合点の存在は独立に確認できてしまう<br/>
-        /// したがってこの検証は
-        /// 「対応付け A」と「対応付け B」のどちらが正しいかを区別する力は
-        /// 本質的に持たない (反復が反復である以上、局所的な文脈だけでは
-        /// 区別できないため)<br/>
-        /// 実際に効くのは、ペア支持が示す対応付けについて
-        /// 個々の接合点すら生リードに一切裏付けられない (=そもそもその
-        /// unitig 同士が隣接している根拠が生データに無い) 場合であり、
-        /// この限定的だが無視できない安全網として使う
-        /// </param>
-        /// <returns>解きほぐした反復の数<br/>
-        /// </returns>
-        public int V_解決_短い反復(
-            List<string> p_ユニティグ配列,
-            Dictionary<(int, int), ulong> p_支持,
-            IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
-            int p_反復長の上限,
-            decimal p_優勢閾値,
-            ulong p_最小証拠数,
-            RepeatRMerVerifier? p_r_mer検証器 = null)
+        public int V_解決_短い反復(List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null)
         {
             var l_解決数 = 0;
             var l_r_mer検証で棄却した数 = 0;
@@ -256,15 +247,15 @@ namespace Tsumiki.Cores.UnitigBuilding
                 // 解ける反復が解けないまま残る
                 var l_反復のID = l_反復頂点 >> 1;
                 int[] l_周囲 = [l_入1 >> 1, l_入2 >> 1, l_出1 >> 1, l_出2 >> 1];
-                if (l_周囲.Contains(l_反復のID)
-                    || (l_入1 >> 1) == (l_入2 >> 1)
-                    || (l_出1 >> 1) == (l_出2 >> 1))
+
+                if (l_周囲.Contains(l_反復のID) || (l_入1 >> 1) == (l_入2 >> 1) || (l_出1 >> 1) == (l_出2 >> 1))
                 {
                     continue;
                 }
 
                 var l_平行 = p_ペア連結.GetValueOrDefault((l_入1, l_出1)) + p_ペア連結.GetValueOrDefault((l_入2, l_出2));
                 var l_交差 = p_ペア連結.GetValueOrDefault((l_入1, l_出2)) + p_ペア連結.GetValueOrDefault((l_入2, l_出1));
+
                 var l_合計 = l_平行 + l_交差;
                 if (l_合計 < p_最小証拠数)
                 {
@@ -291,12 +282,8 @@ namespace Tsumiki.Cores.UnitigBuilding
                     // どちらか一方でも接合点の支持が足りなければ、この対応付け
                     // 自体を疑って複製しない (誤った複製は取りこぼしではなく
                     // 実在しない配列を作る偽陽性になるため、疑わしきは見送る)
-                    var l_残る側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(
-                        p_ユニティグ配列[l_入1], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_残る出辺],
-                        Consts.r_mer接合点支持の閾値の既定値);
-                    var l_移す側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(
-                        p_ユニティグ配列[l_移す入辺], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_移す出辺],
-                        Consts.r_mer接合点支持の閾値の既定値);
+                    var l_残る側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(p_ユニティグ配列[l_入1], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_残る出辺], Consts.r_mer接合点支持の閾値の既定値);
+                    var l_移す側で支持あるか = p_r_mer検証器.Get_接合点に支持があるか(p_ユニティグ配列[l_移す入辺], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_移す出辺], Consts.r_mer接合点支持の閾値の既定値);
                     if (!l_残る側で支持あるか || !l_移す側で支持あるか)
                     {
                         l_r_mer検証で棄却した数++;
@@ -338,22 +325,25 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 単純バブルを検出し、リード支持が最も高い経路以外の辺を取り除く
         /// </summary>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_支持"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_敗者への引き継ぎ先"></param>
+        /// <param name="p_長さ帯の割合"></param>
+        /// <param name="p_長さ帯の下限"></param>
+        /// <param name="p_類似度の下限"></param>
+        /// <param name="p_経路長の上限"></param>
+        /// <returns>取り除いた経路の数</returns>
         /// <remarks>
         /// 単純バブルとは、u から分かれた枝が、途中に本物の分岐の無い 1 本の経路
         /// (1 つ以上の unitig の連なり) を経て同じ w へ再合流する構造をいう<br/>
-        /// SPAdes の AlternativesAnalyzer、MEGAHIT の ComplexBubbleRemover に相当する
-        /// </remarks>
-        /// <remarks>
+        /// SPAdes の AlternativesAnalyzer、MEGAHIT の ComplexBubbleRemover に相当する<br/>
         /// 相互一意を結合の条件にしているため、バブルがあると再合流点の入次数が
         /// 2 以上のままになり、その経路全体が結合されなくなる<br/>
-        /// 半数体である
-        /// 細菌ゲノムにバブルは本来存在しない (エラーか株レベルの変異)<br/>
-        /// 経路は固定の長さ比ではなく delta = max(p_長さ帯の下限,
-        /// p_長さ帯の割合 * 最短経路長) の帯で比較する<br/>
-        /// 中間に unitig を複数
-        /// 挟む経路や、長さがぴったり揃わない経路も対象になる<br/>
-        /// 長さが揃っていても
-        /// 配列が大きく異なる経路 (たまたま長さが一致した別の反復など) は、
+        /// 半数体である細菌ゲノムにバブルは本来存在しない (エラーか株レベルの変異)<br/>
+        /// 経路は固定の長さ比ではなく delta = max(p_長さ帯の下限, p_長さ帯の割合 * 最短経路長) の帯で比較する<br/>
+        /// 中間に unitig を複数挟む経路や、長さがぴったり揃わない経路も対象になる<br/>
+        /// 長さが揃っていても配列が大きく異なる経路 (たまたま長さが一致した別の反復など) は、
         /// 編集距離ベースの類似度 (p_類似度の下限)で弾く<br/>
         /// 敗者の経路自体は削除しない<br/>
         /// 誤りだった場合の損害が大きく、辺だけ外せば
@@ -363,17 +353,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 「この k では敗者と判断したが、それは決定であって事実ではない<br/>
         /// 次の k は自分の証拠で判断し直せる」という KmerCarryOver と同じ思想
         /// </remarks>
-        /// <returns>取り除いた経路の数<br/>
-        /// </returns>
-        public int V_除去_単純バブル(
-            List<string> p_ユニティグ配列,
-            IReadOnlyDictionary<(int, int), ulong> p_支持,
-            int p_k長,
-            List<string>? p_敗者への引き継ぎ先 = null,
-            double p_長さ帯の割合 = 0.1D,
-            int p_長さ帯の下限 = 3,
-            double p_類似度の下限 = 0.7D,
-            int p_経路長の上限 = 2000)
+        public int V_除去_単純バブル(List<string> p_ユニティグ配列, IReadOnlyDictionary<(int, int), ulong> p_支持, int p_k長, List<string>? p_敗者への引き継ぎ先 = null, double p_長さ帯の割合 = 0.1D, int p_長さ帯の下限 = 3, double p_類似度の下限 = 0.7D, int p_経路長の上限 = 2000)
         {
             var l_除去数 = 0;
 
@@ -461,16 +441,49 @@ namespace Tsumiki.Cores.UnitigBuilding
             return l_除去数;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして取り除く
+        /// </summary>
+        /// <param name="p_始点"></param>
+        /// <param name="p_終点"></param>
+        /// <remarks>
+        /// 片方だけ消すとグラフの逆鎖対称性が崩れ、順鎖側と逆鎖側で
+        /// 別々の経路が組まれてしまう
+        /// </remarks>
+        private void V_除去_辺の対(int p_始点, int p_終点)
+        {
+            _ = this.A_出辺[p_始点].Remove(p_終点);
+            _ = this.A_出辺[p_終点 ^ 1].Remove(p_始点 ^ 1);
+        }
+
+        /// <summary>
+        /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして追加する
+        /// </summary>
+        /// <param name="p_始点"></param>
+        /// <param name="p_終点"></param>
+        private void V_追加_辺の対(int p_始点, int p_終点)
+        {
+            this.A_出辺[p_始点].Add(p_終点);
+            this.A_出辺[p_終点 ^ 1].Add(p_始点 ^ 1);
+        }
+
         /// <summary>
         /// p_開始 から、途中に本物の分岐が無い限り辿れるだけ辿った経路と、
         /// その先の再合流先 (=最初に他からも入ってくる頂点) を返す
         /// </summary>
+        /// <param name="p_開始"></param>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_長さ上限"></param>
         /// <remarks>
         /// 判定できない (開始点が既に他からも入られている、途中で行き止まる/
         /// さらに分岐する、循環する、長さの上限を超える) 場合は null
         /// </remarks>
-        private (List<int> A_経路, int A_再合流先)? Get_単純経路(
-            int p_開始, List<string> p_ユニティグ配列, int p_k長, int p_長さ上限)
+        private (List<int> A_経路, int A_再合流先)? Get_単純経路(int p_開始, List<string> p_ユニティグ配列, int p_k長, int p_長さ上限)
         {
             List<int> l_経路 = [];
             HashSet<int> l_訪問済み = [];
@@ -491,6 +504,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 var l_この頂点の長さ = p_ユニティグ配列[l_現在].Length;
                 l_累積長 += l_経路.Count == 0 ? l_この頂点の長さ : Math.Max(0, l_この頂点の長さ - l_重なり長);
+
                 if (l_累積長 > p_長さ上限)
                 {
                     return null;
@@ -537,7 +551,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         private static double Get_類似度(string p_a, string p_b)
         {
             var l_最大長 = Math.Max(p_a.Length, p_b.Length);
-            return l_最大長 == 0 ? 1.0 : 1.0 - ((double)Get_編集距離(p_a, p_b) / l_最大長);
+            return l_最大長 == 0 ? 1D : 1D - ((double)Get_編集距離(p_a, p_b) / l_最大長);
         }
 
         /// <summary>
@@ -566,5 +580,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
             return l_前行[p_b.Length];
         }
+
+        #endregion
     }
 }

@@ -1,4 +1,4 @@
-﻿using Tsumiki.Core.Evidence;
+﻿using Tsumiki.Cores.Evidence;
 using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core

@@ -12,6 +12,8 @@
     /// </remarks>
     internal readonly struct ユニティグ配置(int p_コンティグID, bool p_コンティグが逆相補か, int p_walk順の位置, int p_walk順の総数, bool p_walk中で逆鎖か)
     {
+        #region 内部変数
+
         /// <summary>
         /// この unitig が属する contig の ID (FastaWriter に書き出した ID、1 始まり)
         /// </summary>
@@ -38,6 +40,10 @@
         /// </summary>
         public readonly bool A_walk中で逆鎖か = p_walk中で逆鎖か;
 
+        #endregion
+
+        #region プロパティ
+
         /// <summary>
         /// この unitig が contig の先頭 (5' 端) に位置するか
         /// </summary>
@@ -47,5 +53,7 @@
         /// この unitig が contig の末尾 (3' 端) に位置するか
         /// </summary>
         public bool A_コンティグ末尾か => this.A_walk順の位置 == this.A_walk順の総数 - 1;
+
+        #endregion
     }
 }

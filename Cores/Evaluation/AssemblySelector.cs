@@ -44,6 +44,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </remarks>
     internal static class AssemblySelector
     {
+        #region 定数
+
         /// <summary>
         /// 足切りに使う完全性の許容差
         /// </summary>
@@ -73,19 +75,24 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         public const double 同点とみなす差 = 0.005D;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 候補から最良のものを選ぶ
         /// </summary>
+        /// <param name="p_候補"></param>
         /// <remarks>
         /// 候補が空なら null
         /// </remarks>
-        public static (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)? Get_最良(
-            IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補)
+        public static (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)? Get_最良(IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補)
         {
             if (p_候補.Count == 0)
             {
                 return null;
             }
+
             if (p_候補.Count == 1)
             {
                 return p_候補[0];
@@ -127,6 +134,8 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 基準値からどれだけ離れているかを、同点とみなす幅で刻んだ段
         /// </summary>
+        /// <param name="p_値"></param>
+        /// <param name="p_基準値"></param>
         /// <remarks>
         /// 0 が基準と同等で、大きいほど劣る
         /// </remarks>
@@ -138,12 +147,12 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 候補の一覧を出力する
         /// </summary>
+        /// <param name="p_候補"></param>
+        /// <param name="p_採用したもの"></param>
         /// <remarks>
         /// 自動選択の妥当性を利用者が確かめられるようにする
         /// </remarks>
-        public static void V_出力_候補一覧(
-            IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補,
-            アセンブリ実行結果 p_採用したもの)
+        public static void V_出力_候補一覧(IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, アセンブリ実行結果 p_採用したもの)
         {
             Logger.V_出力(メッセージID.候補一覧の見出し);
             foreach (var (l_実行結果, l_評価) in p_候補.OrderBy(x => x.A_実行結果.A_k長))
@@ -152,5 +161,7 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.候補一覧の明細, l_実行結果.A_k長, l_評価, l_印);
             }
         }
+
+        #endregion
     }
 }

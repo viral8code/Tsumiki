@@ -22,24 +22,28 @@ namespace Tsumiki.Cores.Scaffolding
     /// <param name="p_リード長">リード長、不明なら null</param>
     internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
     {
+        #region 定数
+
         /// <summary>
         /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比
         /// </summary>
         /// <remarks>
-        /// unitig がフラグメントより短いと両端が収まるペアしか観測できず
-        /// 短い側へ偏るが、この倍率以上に長ければ打ち切りは事実上起きない
+        /// unitig がフラグメントより短いと両端が収まるペアしか観測できず短い側へ偏るが、この倍率以上に長ければ打ち切りは事実上起きない
         /// </remarks>
         private const int 偏りが無いとみなす長さ比 = 10;
 
-        // contig ID(FastaWriter が振った 1 始まりの ID) -> 配列本体
+        #endregion
+
+        #region 内部変数
+
+        // contig ID (FastaWriter が振った 1 始まりの ID) -> 配列本体
 
         /// <summary>
         /// コンティグ配列
         /// </summary>
         private readonly Dictionary<int, string> _コンティグ配列 = [];
 
-        // contig ID -> ID 文字列 (先頭 ">" の次に書かれていた文字列
-        // "NODE1" 等)
+        // contig ID -> ID 文字列 (先頭 ">" の次に書かれていた文字列 "NODE1" 等)
         // 出力時に元の命名をある程度踏襲するために保持する
 
         /// <summary>
@@ -47,21 +51,28 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private readonly Dictionary<int, string> _コンティグ名 = [];
 
+        #endregion
+
+        #region プロパティ
+
         /// <summary>
         /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ
         /// </summary>
         /// <remarks>
-        /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは
-        /// 行われない
+        /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは行われない
         /// </remarks>
         public int? A_有効インサートサイズ { get; private set; }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// スキャフォールディングを実行し、指定パスに結果を書き出す
         /// </summary>
+        /// <param name="p_スキャフォールドパス"></param>
         /// <remarks>
-        /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、
-        /// その旨をログに出力して何もせずに戻る (ファイルは作成されない)
+        /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、その旨をログに出力して何もせずに戻る (ファイルは作成されない)
         /// </remarks>
         public void V_実行(string p_スキャフォールドパス)
         {
@@ -325,6 +336,10 @@ namespace Tsumiki.Cores.Scaffolding
 
             Logger.V_出力(メッセージID.スキャフォールド出力完了, l_スキャフォールド群.Count, l_総延長, p_スキャフォールドパス);
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// インサートサイズを確定する
@@ -610,5 +625,7 @@ namespace Tsumiki.Cores.Scaffolding
                 p_訪問済み[l_逆鎖] = true;
             }
         }
+
+        #endregion
     }
 }

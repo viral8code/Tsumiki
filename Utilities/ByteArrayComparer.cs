@@ -1,7 +1,12 @@
 ﻿namespace Tsumiki.Utilities
 {
+    /// <summary>
+    /// バイト列を辞書式順序で比べる比較子
+    /// </summary>
     internal class ByteArrayComparer : IComparer<byte[]>
     {
+        #region 公開メソッド
+
         /// <summary>
         /// バイト列を辞書式順序で比べる
         /// </summary>
@@ -36,5 +41,7 @@
 
             return p_x.Length.CompareTo(p_y.Length);
         }
+
+        #endregion
     }
 }

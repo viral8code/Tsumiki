@@ -13,6 +13,8 @@ namespace Tsumiki.Models.UnitigBuilding
     /// <param name="p_k長">k 長</param>
     internal sealed class 正規形集合(int p_k長)
     {
+        #region 内部変数
+
         /// <summary>
         /// 小
         /// </summary>
@@ -22,6 +24,10 @@ namespace Tsumiki.Models.UnitigBuilding
         /// 大
         /// </summary>
         private readonly HashSet<KmerKey>? _大 = p_k長 > 64 ? [] : null;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 訪問済みとして正規形を覚える
@@ -65,12 +71,13 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <param name="p_右">比較する k-mer のもう片方</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>同じ座位を指すなら true</returns>
-        public static bool Get_同じ座位か(
-            ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
+        public static bool Get_同じ座位か(ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
         {
             return p_k長 <= 64
                 ? KmerPacking.Get_正規化パック(p_左) == KmerPacking.Get_正規化パック(p_右)
                 : new KmerKey(p_左).Get_正規形().Equals(new KmerKey(p_右).Get_正規形());
         }
+
+        #endregion
     }
 }

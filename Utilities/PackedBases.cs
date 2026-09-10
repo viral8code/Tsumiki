@@ -14,6 +14,8 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal sealed class PackedBases
     {
+        #region 定数
+
         /// <summary>
         /// 1 語に詰まる塩基数
         /// </summary>
@@ -24,15 +26,27 @@ namespace Tsumiki.Utilities
         /// </summary>
         private const ulong 下位ビット = 0x5555555555555555UL;
 
+        #endregion
+
+        #region 内部変数
+
         /// <summary>
         /// 詰めた語の並び
         /// </summary>
         private readonly ulong[] _語;
 
+        #endregion
+
+        #region プロパティ
+
         /// <summary>
         /// 詰めた塩基の数
         /// </summary>
         public int A_長さ { get; }
+
+        #endregion
+
+        #region コンストラクタ
 
         /// <summary>
         /// コンストラクタ
@@ -44,6 +58,10 @@ namespace Tsumiki.Utilities
             this._語 = p_語;
             this.A_長さ = p_長さ;
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 塩基 ID 列を詰める
@@ -105,5 +123,7 @@ namespace Tsumiki.Utilities
             }
             return BitOperations.PopCount(l_レーン);
         }
+
+        #endregion
     }
 }

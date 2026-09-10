@@ -1,4 +1,4 @@
-﻿using Tsumiki.Core.Preprocessing;
+﻿using Tsumiki.Cores.Preprocessing;
 using Tsumiki.Core;
 
 namespace Tsumiki.Tests.Core
@@ -86,7 +86,7 @@ namespace Tsumiki.Tests.Core
             const string アダプタ1 = "AGATCGGAAG";
             const string アダプタ2 = "TTTTTTTTTT";
             var 配列1 = 真の断片 + アダプタ1; // 50 bp
-            var 配列2 = Tsumiki.Common.Util.V_逆相補(真の断片) + アダプタ2; // 50 bp
+            var 配列2 = Tsumiki.Commons.Util.V_逆相補(真の断片) + アダプタ2; // 50 bp
 
             var l_クオリティ1 = 高品質クオリティ(配列1.Length);
             var l_クオリティ2 = 高品質クオリティ(配列2.Length);
@@ -95,7 +95,7 @@ namespace Tsumiki.Tests.Core
 
             Assert.True(l_結果.A_アダプタを検出したか);
             Assert.Equal(真の断片, l_結果.A_配列1);
-            Assert.Equal(Tsumiki.Common.Util.V_逆相補(真の断片), l_結果.A_配列2);
+            Assert.Equal(Tsumiki.Commons.Util.V_逆相補(真の断片), l_結果.A_配列2);
             Assert.Equal(真の断片.Length, l_結果.A_クオリティ1.Length);
             Assert.Equal(真の断片.Length, l_結果.A_クオリティ2.Length);
         }

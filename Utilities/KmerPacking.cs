@@ -13,6 +13,8 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class KmerPacking
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 配列の位置から k 塩基を 2 bit パックし、正規形を返す
         /// </summary>
@@ -111,51 +113,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 正規形のバイト列を 128 bit へ畳む
-        /// </summary>
-        /// <remarks>
-        /// 逆相補は実際には作らず、どちら向きが小さいかを決めてからその向きで畳む
-        /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
-        /// <returns>畳んだ値</returns>
-        private static UInt128 Get_正規化ハッシュ(ReadOnlySpan<byte> p_kmer)
-        {
-            var l_順鎖が小さいか = Get_順鎖が小さいか(p_kmer);
-            var l_上位 = 14695981039346656037UL;
-            var l_下位 = 1099511628211UL;
-            for (var i = 0; i < p_kmer.Length; i++)
-            {
-                var l_塩基 = l_順鎖が小さいか
-                    ? p_kmer[i]
-                    : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
-                l_上位 = (l_上位 ^ l_塩基) * 1099511628211UL;
-                l_下位 = (l_下位 ^ l_塩基) * 14695981039346656037UL;
-            }
-            return ((UInt128)l_上位 << 64) | l_下位;
-        }
-
-        /// <summary>
-        /// 順鎖と逆相補を辞書順で比べる
-        /// </summary>
-        /// <remarks>
-        /// 塩基 ID は A = 1 .. T = 4 で、相補は 5 - ID になる
-        /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
-        /// <returns>順鎖のほうが小さいか等しければ true</returns>
-        private static bool Get_順鎖が小さいか(ReadOnlySpan<byte> p_kmer)
-        {
-            for (var i = 0; i < p_kmer.Length; i++)
-            {
-                var l_逆 = (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
-                if (p_kmer[i] != l_逆)
-                {
-                    return p_kmer[i] < l_逆;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>
         /// 配列の位置から k 塩基を、正規化せず順鎖のまま 2 bit パックする
         /// </summary>
         /// <remarks>
@@ -214,5 +171,56 @@ namespace Tsumiki.Utilities
             var l_逆相補 = Get_逆相補(p_パック済み, p_長さ);
             return p_パック済み < l_逆相補 ? p_パック済み : l_逆相補;
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 正規形のバイト列を 128 bit へ畳む
+        /// </summary>
+        /// <remarks>
+        /// 逆相補は実際には作らず、どちら向きが小さいかを決めてからその向きで畳む
+        /// </remarks>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <returns>畳んだ値</returns>
+        private static UInt128 Get_正規化ハッシュ(ReadOnlySpan<byte> p_kmer)
+        {
+            var l_順鎖が小さいか = Get_順鎖が小さいか(p_kmer);
+            var l_上位 = 14695981039346656037UL;
+            var l_下位 = 1099511628211UL;
+            for (var i = 0; i < p_kmer.Length; i++)
+            {
+                var l_塩基 = l_順鎖が小さいか
+                    ? p_kmer[i]
+                    : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
+                l_上位 = (l_上位 ^ l_塩基) * 1099511628211UL;
+                l_下位 = (l_下位 ^ l_塩基) * 14695981039346656037UL;
+            }
+            return ((UInt128)l_上位 << 64) | l_下位;
+        }
+
+        /// <summary>
+        /// 順鎖と逆相補を辞書順で比べる
+        /// </summary>
+        /// <remarks>
+        /// 塩基 ID は A = 1 .. T = 4 で、相補は 5 - ID になる
+        /// </remarks>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <returns>順鎖のほうが小さいか等しければ true</returns>
+        private static bool Get_順鎖が小さいか(ReadOnlySpan<byte> p_kmer)
+        {
+            for (var i = 0; i < p_kmer.Length; i++)
+            {
+                var l_逆 = (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
+                if (p_kmer[i] != l_逆)
+                {
+                    return p_kmer[i] < l_逆;
+                }
+            }
+            return true;
+        }
+
+        #endregion
     }
 }

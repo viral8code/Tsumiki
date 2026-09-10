@@ -7,10 +7,16 @@ namespace Tsumiki.Models.Foundation
     /// </summary>
     internal readonly struct KmerKey : IEquatable<KmerKey>
     {
+        #region 内部変数
+
         /// <summary>
         /// パック済みデータ
         /// </summary>
         public readonly ulong[] A_パック済みデータ;
+
+        #endregion
+
+        #region コンストラクタ
 
         /// <summary>
         /// char の k-mer 文字列からパック済みデータを構築する
@@ -39,6 +45,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 塩基ID (1=A,2=C,3=G,4=T) のバイト列から直接構築する版
         /// </summary>
+        /// <param name="p_kmer">パックする塩基 ID 列</param>
         /// <remarks>
         /// UnitigMaker/TrustedKmerIndex はバイト ID 空間で動作しているため、
         /// char 経由の変換を挟まずに済む (ホットパス向け)
@@ -55,10 +62,18 @@ namespace Tsumiki.Models.Foundation
             }
         }
 
+        /// <summary>
+        /// パック済みデータから直接構築する
+        /// </summary>
+        /// <param name="p_パック済みデータ">構築元のパック済みデータ</param>
         private KmerKey(ulong[] p_パック済みデータ)
         {
             this.A_パック済みデータ = p_パック済みデータ;
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// この k-mer とその逆相補のうち、パック済みデータを辞書式順序で比較して
@@ -72,24 +87,6 @@ namespace Tsumiki.Models.Foundation
         {
             var l_逆相補 = this.Get_逆相補();
             return Get_比較結果(this.A_パック済みデータ, l_逆相補.A_パック済みデータ) <= 0 ? this : l_逆相補;
-        }
-
-        /// <summary>
-        /// パック済みデータを辞書式順序で比べる
-        /// </summary>
-        /// <param name="p_左">比べるパック済みデータ</param>
-        /// <param name="p_右">比べるパック済みデータ</param>
-        /// <returns>左が小さければ -1、大きければ 1、等しければ 0</returns>
-        private static int Get_比較結果(ulong[] p_左, ulong[] p_右)
-        {
-            for (var i = 0; i < p_左.Length; i++)
-            {
-                if (p_左[i] != p_右[i])
-                {
-                    return p_左[i] < p_右[i] ? -1 : 1;
-                }
-            }
-            return 0;
         }
 
         /// <summary>
@@ -109,9 +106,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// パック済みデータを、塩基ID (1=A,2=C,3=G,4=T) のバイト列へデコードする
         /// </summary>
-        /// <remarks>
-        /// p_長さ は元の k-mer長 (コンストラクタに渡した長さ) を指定する
-        /// </remarks>
+        /// <param name="p_長さ">元の k-mer 長 (コンストラクタに渡した長さ)</param>
         public byte[] Get_塩基列(int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];
@@ -128,18 +123,18 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 同じ k-mer か
         /// </summary>
-        /// <param name="other">比べる k-mer</param>
+        /// <param name="p_other">比べる k-mer</param>
         /// <returns>同じなら true</returns>
-        public bool Equals(KmerKey other)
+        public bool Equals(KmerKey p_other)
         {
-            if (this.A_パック済みデータ.Length != other.A_パック済みデータ.Length)
+            if (this.A_パック済みデータ.Length != p_other.A_パック済みデータ.Length)
             {
                 return false;
             }
 
             for (var i = 0; i < this.A_パック済みデータ.Length; i++)
             {
-                if (this.A_パック済みデータ[i] != other.A_パック済みデータ[i])
+                if (this.A_パック済みデータ[i] != p_other.A_パック済みデータ[i])
                 {
                     return false;
                 }
@@ -150,11 +145,11 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// (オーバーライド) 同じ k-mer か
         /// </summary>
-        /// <param name="obj">比べる対象</param>
+        /// <param name="p_obj">比べる対象</param>
         /// <returns></returns>
-        public override bool Equals(object? obj)
+        public override bool Equals(object? p_obj)
         {
-            return obj is KmerKey other && this.Equals(other);
+            return p_obj is KmerKey l_other && this.Equals(l_other);
         }
 
         /// <summary>
@@ -171,5 +166,29 @@ namespace Tsumiki.Models.Foundation
             }
             return (int)(l_ハッシュ ^ (l_ハッシュ >> 32));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// パック済みデータを辞書式順序で比べる
+        /// </summary>
+        /// <param name="p_左">比べるパック済みデータ</param>
+        /// <param name="p_右">比べるパック済みデータ</param>
+        /// <returns>左が小さければ -1、大きければ 1、等しければ 0</returns>
+        private static int Get_比較結果(ulong[] p_左, ulong[] p_右)
+        {
+            for (var i = 0; i < p_左.Length; i++)
+            {
+                if (p_左[i] != p_右[i])
+                {
+                    return p_左[i] < p_右[i] ? -1 : 1;
+                }
+            }
+            return 0;
+        }
+
+        #endregion
     }
 }

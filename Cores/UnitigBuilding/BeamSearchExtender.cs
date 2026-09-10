@@ -26,6 +26,8 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// </remarks>
     internal static class BeamSearchExtender
     {
+        #region 定数
+
         /// <summary>
         /// 先読みで進む塩基数の上限
         /// </summary>
@@ -46,6 +48,10 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         private const int 経路あたりの最大ステップ数 = 40;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 結合が未確定 (-1) の頂点について、先読みで続きを決められるものを決める
         /// </summary>
@@ -54,20 +60,20 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 戻り値は新たに確定した結合の数
         /// (有向、双子ぶんを含む)
         /// </remarks>
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_結合"></param>
+        /// <param name="p_ペア連結"></param>
+        /// <param name="p_コピー数"></param>
+        /// <param name="p_インサートサイズ"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
         /// <param name="p_較正器">
         /// 支持を生カウントではなく期待本数との比で測るための較正器<br/>
         /// 渡さない (あるいは使えない) 場合は生カウントのままスコアリングする
         /// </param>
-        public static int V_延長_先読み(
-            UnitigGraph p_グラフ,
-            List<string> p_ユニティグ配列,
-            int[] p_結合,
-            IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
-            IReadOnlyDictionary<int, int> p_コピー数,
-            int p_インサートサイズ,
-            decimal p_優勢閾値,
-            ulong p_最小証拠数,
-            証拠較正器? p_較正器 = null)
+        /// <returns>新たに確定した結合の数</returns>
+        public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null)
         {
             var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * 先読み倍率;
             var l_確定数 = 0;
@@ -78,6 +84,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 if (p_グラフ.A_出辺[v].Count == 0)
                 {
                     continue;
@@ -93,9 +100,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_最良 = Get_最良の1歩(
-                    p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数,
-                    l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
+                var l_最良 = Get_最良の1歩(p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
                 if (l_最良 is not { } l_選択)
                 {
                     continue;
@@ -126,6 +131,10 @@ namespace Tsumiki.Cores.UnitigBuilding
             return l_確定数;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// contig 末尾のインサートサイズぶんの頂点のうち、単一コピーのものだけを集める
         /// </summary>
@@ -139,9 +148,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 通過はするが足場には数えない (多コピー領域の向こう側にある単一コピー
         /// 領域は証拠として有効なため)
         /// </remarks>
-        private static List<int> Get_足場(
-            int p_頂点, List<string> p_ユニティグ配列, int[] p_結合,
-            int p_インサートサイズ, IReadOnlyDictionary<int, int> p_コピー数)
+        /// <param name="p_頂点"></param>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_結合"></param>
+        /// <param name="p_インサートサイズ"></param>
+        /// <param name="p_コピー数"></param>
+        /// <returns>単一コピーとみなせる足場頂点の一覧</returns>
+        private static List<int> Get_足場(int p_頂点, List<string> p_ユニティグ配列, int[] p_結合, int p_インサートサイズ, IReadOnlyDictionary<int, int> p_コピー数)
         {
             List<int> l_足場 = [];
             List<int> l_通過済み = [p_頂点];
@@ -181,17 +194,18 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <remarks>
         /// 決めきれない場合は null
         /// </remarks>
-        private static int? Get_最良の1歩(
-            UnitigGraph p_グラフ,
-            List<string> p_ユニティグ配列,
-            int p_分岐元,
-            List<int> p_足場,
-            IReadOnlyDictionary<(int, int), ulong> p_ペア連結,
-            IReadOnlyDictionary<int, int> p_コピー数,
-            int p_先読み塩基数,
-            decimal p_優勢閾値,
-            ulong p_最小証拠数,
-            証拠較正器? p_較正器)
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_分岐元"></param>
+        /// <param name="p_足場"></param>
+        /// <param name="p_ペア連結"></param>
+        /// <param name="p_コピー数"></param>
+        /// <param name="p_先読み塩基数"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <param name="p_較正器"></param>
+        /// <returns>最初の 1 歩として最も支持される頂点、決めきれない場合は null</returns>
+        private static int? Get_最良の1歩(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int p_分岐元, List<int> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器)
         {
             List<先読み探索状態> l_ビーム = [];
             foreach (var l_候補 in p_グラフ.A_出辺[p_分岐元])
@@ -311,8 +325,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// (較正器が無い場合は生カウントと一致する) ため、比較は正規化スコアで
         /// 行い、対応する生カウントも一緒に持ち替える
         /// </remarks>
-        private static void V_更新_1歩ごとの最良(
-            Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
+        /// <param name="p_1歩ごとの最良"></param>
+        /// <param name="p_状態"></param>
+        private static void V_更新_1歩ごとの最良(Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
         {
             if (!p_1歩ごとの最良.TryGetValue(p_状態.A_最初の1歩, out var l_既存) || p_状態.A_スコア > l_既存.A_正規化)
             {
@@ -345,5 +360,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
             return (l_生スコア, l_正規化スコア);
         }
+
+        #endregion
     }
 }

@@ -20,6 +20,8 @@ namespace Tsumiki.Cores.Output
     /// </remarks>
     internal static class ReportWriter
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 完全性レポートを JSON で書き出す
         /// </summary>
@@ -33,27 +35,14 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
         /// <param name="p_ポリッシュ">ポリッシュの結果</param>
         /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
-        public static void V_書き出し_レポート(
-            string p_出力パス,
-            int p_k長,
-            アセンブリ統計 p_統計,
-            int p_未解決ギャップ数,
-            int p_環状本数,
-            完全性判定結果 p_判定,
-            整合性検査結果? p_整合性,
-            IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証,
-            ポリッシュ統計? p_ポリッシュ,
-            IReadOnlyList<曖昧箇所> p_曖昧箇所)
+        public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所)
         {
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine("{");
             V_追加(l_文, "  \"tsumiki_version\": {0},", Get_文字列(Consts.バージョン));
             V_追加(l_文, "  \"complete\": {0},", p_判定.A_完全長か ? "true" : "false");
             V_追加(l_文, "  \"quality_level\": {0},", Get_文字列("Q" + (int)p_判定.A_品質保証レベル));
-            V_追加(
-                l_文, "  \"reason_codes\": [{0}],",
-                string.Join(", ", p_判定.A_未達理由.Select(
-                    x => Get_文字列(CompletenessValidator.Get_理由コード(x)))));
+            V_追加(l_文, "  \"reason_codes\": [{0}],", string.Join(", ", p_判定.A_未達理由.Select(x => Get_文字列(CompletenessValidator.Get_理由コード(x)))));
             V_追加(l_文, "  \"k\": {0},", p_k長);
             V_追加(l_文, "  \"sequences\": {0},", p_統計.A_配列数);
             V_追加(l_文, "  \"total_length\": {0},", p_統計.A_総延長);
@@ -69,12 +58,7 @@ namespace Tsumiki.Cores.Output
             {
                 var l_項目 = p_判定.A_検査項目[i];
                 var l_末尾 = i == p_判定.A_検査項目.Count - 1 ? string.Empty : ",";
-                V_追加(
-                    l_文, "    {{\"name\": {0}, \"result\": {1}, \"detail\": {2}}}{3}",
-                    Get_文字列(l_項目.A_キー),
-                    Get_文字列(CompletenessValidator.Get_判定コード(l_項目.A_判定)),
-                    Get_文字列(l_項目.A_内訳),
-                    l_末尾);
+                V_追加(l_文, "    {{\"name\": {0}, \"result\": {1}, \"detail\": {2}}}{3}", Get_文字列(l_項目.A_キー), Get_文字列(CompletenessValidator.Get_判定コード(l_項目.A_判定)), Get_文字列(l_項目.A_内訳), l_末尾);
             }
             _ = l_文.AppendLine("  ],");
 
@@ -97,15 +81,13 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_出力パス">書き出し先</param>
         /// <param name="p_区間">支持のない区間</param>
         /// <param name="p_r長">支持を問うた r-mer の長さ</param>
-        public static void V_書き出し_支持のない箇所(
-            string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
+        public static void V_書き出し_支持のない箇所(string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
         {
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine(string.Join('\t', "sequence", "start", "end", "length", "r"));
             foreach (var l_区間 in p_区間)
             {
-                _ = l_文.AppendLine(string.Join(
-                    '\t', l_区間.A_配列ID, l_区間.A_開始, l_区間.A_終了, l_区間.A_長さ, p_r長));
+                _ = l_文.AppendLine(string.Join('\t', l_区間.A_配列ID, l_区間.A_開始, l_区間.A_終了, l_区間.A_長さ, p_r長));
             }
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
@@ -118,29 +100,22 @@ namespace Tsumiki.Cores.Output
         public static void V_書き出し_曖昧箇所(string p_出力パス, IReadOnlyList<曖昧箇所> p_曖昧箇所)
         {
             var l_文 = new StringBuilder();
-            _ = l_文.AppendLine(string.Join(
-                '\t',
-                "k", "type", "location", "top_support", "second_support",
-                "margin", "raw_support", "confidence"));
+            _ = l_文.AppendLine(string.Join('\t', "k", "type", "location", "top_support", "second_support", "margin", "raw_support", "confidence"));
             foreach (var l_箇所 in p_曖昧箇所)
             {
-                _ = l_文.AppendLine(string.Join(
-                    '\t',
-                    l_箇所.A_k長,
-                    Get_種別コード(l_箇所.A_種別),
-                    l_箇所.A_場所,
-                    Get_数値(l_箇所.A_首位の支持),
-                    Get_数値(l_箇所.A_次点の支持),
-                    Get_数値(l_箇所.A_余裕),
-                    l_箇所.A_首位の生支持数,
-                    Get_数値(l_箇所.A_確信度)));
+                _ = l_文.AppendLine(string.Join('\t', l_箇所.A_k長, Get_種別コード(l_箇所.A_種別), l_箇所.A_場所, Get_数値(l_箇所.A_首位の支持), Get_数値(l_箇所.A_次点の支持), Get_数値(l_箇所.A_余裕), l_箇所.A_首位の生支持数, Get_数値(l_箇所.A_確信度)));
             }
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// TSV に出す固定の種別名
         /// </summary>
+        /// <param name="p_種別"></param>
         /// <remarks>
         /// 訳さない
         /// </remarks>
@@ -202,8 +177,7 @@ namespace Tsumiki.Cores.Output
         /// </summary>
         /// <param name="p_文">組み立て中のレポート</param>
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
-        private static void V_追加_閉鎖検証(
-            StringBuilder p_文, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証)
+        private static void V_追加_閉鎖検証(StringBuilder p_文, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証)
         {
             if (p_閉鎖検証 is null)
             {
@@ -215,16 +189,7 @@ namespace Tsumiki.Cores.Output
             {
                 var l_検証 = p_閉鎖検証[i];
                 var l_末尾 = i == p_閉鎖検証.Count - 1 ? string.Empty : ",";
-                V_追加(
-                    p_文,
-                    "    {{\"id\": {0}, \"length\": {1}, \"spanning_reads\": {2}, "
-                        + "\"required\": {3}, \"supported\": {4}}}{5}",
-                    Get_文字列(l_検証.A_配列ID),
-                    l_検証.A_長さ,
-                    l_検証.A_跨いだリード数,
-                    l_検証.A_必要本数,
-                    l_検証.A_支持されたか ? "true" : "false",
-                    l_末尾);
+                V_追加(p_文, "    {{\"id\": {0}, \"length\": {1}, \"spanning_reads\": {2}, \"required\": {3}, \"supported\": {4}}}{5}", Get_文字列(l_検証.A_配列ID), l_検証.A_長さ, l_検証.A_跨いだリード数, l_検証.A_必要本数, l_検証.A_支持されたか ? "true" : "false", l_末尾);
             }
             _ = p_文.AppendLine("  ],");
         }
@@ -253,6 +218,7 @@ namespace Tsumiki.Cores.Output
         /// <summary>
         /// JSON の文字列リテラル
         /// </summary>
+        /// <param name="p_値"></param>
         /// <remarks>
         /// ID には引用符も含まれうる
         /// </remarks>
@@ -272,12 +238,12 @@ namespace Tsumiki.Cores.Output
                     '\n' => l_文.Append("\\n"),
                     '\r' => l_文.Append("\\r"),
                     '\t' => l_文.Append("\\t"),
-                    _ => l_文字 < ' '
-                                                ? l_文.Append(CultureInfo.InvariantCulture, $"\\u{(int)l_文字:x4}")
-                                                : l_文.Append(l_文字),
+                    _ => l_文字 < ' ' ? l_文.Append(CultureInfo.InvariantCulture, $"\\u{(int)l_文字:x4}") : l_文.Append(l_文字),
                 };
             }
             return l_文.Append('"').ToString();
         }
+
+        #endregion
     }
 }

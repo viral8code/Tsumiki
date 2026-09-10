@@ -7,8 +7,11 @@ namespace Tsumiki.Models.Foundation
     /// </summary>
     internal sealed class 記録の休止 : IDisposable
     {
-        #region 公開メソッド
+        #region コンストラクタ
 
+        /// <summary>
+        /// 休止を開始する
+        /// </summary>
         public 記録の休止()
         {
             lock (Logger._錠)
@@ -19,7 +22,7 @@ namespace Tsumiki.Models.Foundation
 
         #endregion
 
-        #region 継承メソッド
+        #region 公開メソッド
 
         /// <summary>
         /// 保持している資源を解放する

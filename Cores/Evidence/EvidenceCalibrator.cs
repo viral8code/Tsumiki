@@ -14,6 +14,21 @@
     /// </remarks>
     internal sealed class 証拠較正器
     {
+        #region 定数
+
+        /// <summary>
+        /// 支持本数を 0〜1 の確信度へ潰すときの時定数
+        /// </summary>
+        /// <remarks>
+        /// この本数あたりで
+        /// 6 割強に達し、以降は増やしてもほとんど動かなくなる
+        /// </remarks>
+        public const double 飽和の時定数 = 3.0D;
+
+        #endregion
+
+        #region 内部変数
+
         /// <summary>
         /// モデル
         /// </summary>
@@ -23,6 +38,22 @@
         /// 密度
         /// </summary>
         private readonly double _密度;
+
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
+        /// モデルが構築できたか
+        /// </summary>
+        /// <remarks>
+        /// false の場合、呼び出し側は生カウント方式に自分でフォールバックする
+        /// </remarks>
+        public bool A_使えるか => this._モデル is not null;
+
+        #endregion
+
+        #region コンストラクタ
 
         /// <summary>
         /// モデルと密度から較正器を組み立てる
@@ -35,18 +66,14 @@
             this._密度 = p_密度;
         }
 
-        /// <summary>
-        /// 支持本数を 0〜1 の確信度へ潰すときの時定数
-        /// </summary>
-        /// <remarks>
-        /// この本数あたりで
-        /// 6 割強に達し、以降は増やしてもほとんど動かなくなる
-        /// </remarks>
-        public const double 飽和の時定数 = 3.0D;
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 独立な支持本数を 0〜1 の確信度に変換する
         /// </summary>
+        /// <param name="p_独立支持数">独立とみなせる支持本数</param>
         /// <remarks>
         /// 本数をそのまま足し合わせると、ほぼ同じ条件のペアが 1000 本あるだけで
         /// 種類の違う証拠 1 本を完全に押し流してしまう<br/>
@@ -61,6 +88,7 @@
         /// <summary>
         /// 観測された既知長の一覧から、独立とみなせる支持本数を数える
         /// </summary>
+        /// <param name="p_既知長一覧">観測された既知長の一覧</param>
         /// <remarks>
         /// 同じ辺に対して全く同じ距離を示す観測は、PCR 重複か同一断片の
         /// 読み直しである可能性が高く、別々の分子から得た裏付けとは言えない<br/>
@@ -72,6 +100,7 @@
             {
                 return 0;
             }
+
             HashSet<int> l_相異なる距離 = [];
             foreach (var l_距離 in p_既知長一覧)
             {
@@ -81,25 +110,18 @@
         }
 
         /// <summary>
-        /// モデルが構築できたか
-        /// </summary>
-        /// <remarks>
-        /// false の場合、呼び出し側は生カウント方式に自分でフォールバックする
-        /// </remarks>
-        public bool A_使えるか => this._モデル is not null;
-
-        /// <summary>
         /// 同一 unitig 内標本とリード長から較正器を作る
         /// </summary>
+        /// <param name="p_同一ユニティグ標本">同一 unitig 内で観測された距離の標本</param>
+        /// <param name="p_リード長">リード長、不明な場合は null</param>
+        /// <param name="p_ユニティグ長一覧">unitig ごとの長さ</param>
+        /// <returns>較正器、モデルが使えない場合も返り値自体は null にならない</returns>
         /// <remarks>
         /// 標本が無い・リード長が
         /// 不明・期待位置数の合計が 0(すべての unitig がフラグメント長より
         /// 短い等) のいずれかならモデルは使えないものとして返す
         /// </remarks>
-        public static 証拠較正器 Get_較正器(
-            IReadOnlyList<int> p_同一ユニティグ標本,
-            int? p_リード長,
-            IEnumerable<long> p_ユニティグ長一覧)
+        public static 証拠較正器 Get_較正器(IReadOnlyList<int> p_同一ユニティグ標本, int? p_リード長, IEnumerable<long> p_ユニティグ長一覧)
         {
             if (p_リード長 is not { } l_リード長 || p_同一ユニティグ標本.Count == 0)
             {
@@ -129,6 +151,11 @@
         /// <summary>
         /// 観測本数を期待本数 (密度 x 期待位置数) で割った比
         /// </summary>
+        /// <param name="p_観測本数">観測された本数</param>
+        /// <param name="p_長さ1">片側の長さ</param>
+        /// <param name="p_長さ2">もう片側の長さ</param>
+        /// <param name="p_ギャップ長">両者の間のギャップ長</param>
+        /// <returns>正規化済みの支持</returns>
         /// <remarks>
         /// モデルが使えない場合は 0 を返す (=証拠なしとして扱う)<br/>
         /// 生カウントへのフォールバックが必要な呼び出し側は
@@ -140,8 +167,11 @@
             {
                 return 0;
             }
+
             var l_期待 = this._密度 * l_モデル.Get_期待位置数(p_長さ1, p_長さ2, p_ギャップ長);
             return l_期待 > 0 ? p_観測本数 / l_期待 : 0;
         }
+
+        #endregion
     }
 }

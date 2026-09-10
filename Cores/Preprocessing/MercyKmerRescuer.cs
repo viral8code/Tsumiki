@@ -18,6 +18,8 @@ namespace Tsumiki.Cores.Preprocessing
     /// </remarks>
     internal static class MercyKmerRescuer
     {
+        #region 定数
+
         /// <summary>
         /// 救済の対象とする、信頼できない窓の連続長の上限
         /// </summary>
@@ -35,6 +37,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const int 救済に必要な観測数 = 2;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// 落ちた k-mer を救済し、実際に足した件数を返す
         /// </summary>
@@ -42,8 +48,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <returns>救済して足した k-mer の件数</returns>
-        public static int Get_救済数(
-            Parameters p_引数, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        public static int Get_救済数(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             // 候補は数百万件になりうるので、ワーカーごとに辞書を持つとその本数だけ複製することになるため、1 つを共有する
             // 値に塩基列そのものを持つのは、キーが k > 64 でハッシュになり配列を戻せなくなるためで、
@@ -74,19 +79,21 @@ namespace Tsumiki.Cores.Preprocessing
             return l_追加数;
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// 1 本のリードから救済候補を集める
         /// </summary>
-        /// <remarks>
-        /// 信頼できない窓の連なりが、両側を信頼できる窓に挟まれている場合だけを候補にする
-        /// </remarks>
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_候補">集めた救済候補</param>
-        private static void V_集める_1リード(
-            string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長,
-            ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> p_候補)
+        /// <remarks>
+        /// 信頼できない窓の連なりが、両側を信頼できる窓に挟まれている場合だけを候補にする
+        /// </remarks>
+        private static void V_集める_1リード(string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> p_候補)
         {
             if (p_リード.Length < p_k長 + 2)
             {
@@ -155,5 +162,7 @@ namespace Tsumiki.Cores.Preprocessing
                 i = l_終わり;
             }
         }
+
+        #endregion
     }
 }

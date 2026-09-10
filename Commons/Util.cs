@@ -374,7 +374,7 @@ namespace Tsumiki.Commons
             }
 
             if (!double.TryParse(l_本体, System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture, out var l_数値) || l_数値 <= 0)
+                    System.Globalization.CultureInfo.InvariantCulture, out var l_数値) || l_数値 <= 0D)
             {
                 throw new ArgumentException($"Could not read '{p_表記}' as a memory size (e.g. 2G, 512M, 1024)");
             }

@@ -16,6 +16,8 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class ConstrainedPathFinder
     {
+        #region 定数
+
         /// <summary>
         /// 展開してよい探索状態の上限
         /// </summary>
@@ -26,14 +28,23 @@ namespace Tsumiki.Utilities
         /// </remarks>
         public const int 既定状態数上限 = 200_000;
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
         /// p_左のkmer から 1 塩基ずつ伸ばし、p_目標kmer に一致する状態のうち、
         /// 追加した塩基数 (=末尾 k-mer 同士の重なりを除いた、新たに埋まる長さ) が
         /// [p_最小長, p_最大長] に収まるものを探す
         /// </summary>
-        public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(
-            byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長,
-            TrustedKmerIndex p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
+        /// <param name="p_左のkmer"></param>
+        /// <param name="p_目標kmer"></param>
+        /// <param name="p_最小長"></param>
+        /// <param name="p_最大長"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_状態数上限"></param>
+        public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
         {
             // 各状態が「これまでに継ぎ足した塩基列」そのものを持つと、
             // 状態数の上限 × 経路長ぶんのメモリと文字列コピーが発生する
@@ -143,9 +154,14 @@ namespace Tsumiki.Utilities
                 : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
         }
 
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// k-mer を 1 塩基 2 ビットで詰める (k &lt;= 64 でのみ使える)
         /// </summary>
+        /// <param name="p_kmer"></param>
         private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_パック = 0;
@@ -159,6 +175,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// k &gt; 64 で k-mer を鍵にするための文字列表現
         /// </summary>
+        /// <param name="p_kmer"></param>
         private static string Get_状態の鍵(ReadOnlySpan<byte> p_kmer)
         {
             var l_文字 = new char[p_kmer.Length];
@@ -172,8 +189,10 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// この状態までの経路上に、別経路からも到達された状態があるか
         /// </summary>
-        private static bool Get_多重到達を通るか(
-            List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
+        /// <param name="p_節点"></param>
+        /// <param name="p_多重到達"></param>
+        /// <param name="p_末端"></param>
+        private static bool Get_多重到達を通るか(List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
         {
             for (var l_位置 = p_末端; l_位置 >= 0; l_位置 = p_節点[l_位置].A_親)
             {
@@ -188,6 +207,9 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 親を辿って、継ぎ足した塩基列のうち先頭 p_埋める長さ 塩基を復元する
         /// </summary>
+        /// <param name="p_節点"></param>
+        /// <param name="p_末端"></param>
+        /// <param name="p_埋める長さ"></param>
         /// <remarks>
         /// 末尾側 (目標 k-mer と重なる分) は捨てる
         /// </remarks>
@@ -203,5 +225,7 @@ namespace Tsumiki.Utilities
             l_逆順.Reverse();
             return string.Concat(l_逆順.Take(p_埋める長さ).Select(Util.V_変換_塩基文字));
         }
+
+        #endregion
     }
 }

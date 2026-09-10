@@ -13,6 +13,8 @@
     /// <param name="p_ハッシュ数">1 つの値に対して立てるビットの数</param>
     internal sealed class BloomFilter(long p_ビット数, int p_ハッシュ数)
     {
+        #region 内部変数
+
         /// <summary>
         /// ビット列の実体
         /// </summary>
@@ -27,6 +29,10 @@
         /// 1 つの値に対して立てるビットの数
         /// </summary>
         private readonly int _ハッシュ数 = p_ハッシュ数;
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 値を登録する
@@ -56,6 +62,10 @@
             }
             return true;
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 1 つの値から複数のビット位置を作る
@@ -90,5 +100,7 @@
             l_値 ^= l_値 >> 33;
             return l_値;
         }
+
+        #endregion
     }
 }

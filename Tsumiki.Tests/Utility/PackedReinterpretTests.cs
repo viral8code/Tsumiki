@@ -1,5 +1,5 @@
-﻿using Tsumiki.Common;
-using Tsumiki.Utility;
+﻿using Tsumiki.Commons;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Utility
 {
