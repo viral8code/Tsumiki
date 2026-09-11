@@ -66,18 +66,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         public void V_登録(ReadOnlySpan<byte> p_kmer)
         {
-            if (this._小 is { } l_小)
-            {
-                _ = l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer));
-            }
-            else if (this._中 is { } l_中)
-            {
-                _ = l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer));
-            }
-            else
-            {
-                _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
-            }
+            _ = this._小 is { } l_小
+                ? l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer))
+                : this._中 is { } l_中 ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._大!.Add(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -86,15 +77,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         public bool Get_含まれるか(Span<byte> p_kmer)
         {
-            if (this._小 is { } l_小)
-            {
-                return l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer));
-            }
-            if (this._中 is { } l_中)
-            {
-                return l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer));
-            }
-            return this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+            return this._小 is { } l_小
+                ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer))
+                : this._中 is { } l_中 ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
         }
 
         #endregion
