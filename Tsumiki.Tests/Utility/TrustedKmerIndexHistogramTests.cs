@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Utility
                 var l_times = (ulong)((i % 4) + 1);
                 for (var t = 0UL; t < l_times; t++)
                 {
-                    l_index.V_登録(l_bytes.AsSpan(i, k長), p_ワーカー番号: (int)(t % 4));
+                    l_index.V_登録(l_bytes.AsSpan(i, k長));
                 }
                 p_期待ヒストグラム[l_times] = p_期待ヒストグラム.GetValueOrDefault(l_times, 0L) + 1;
             }

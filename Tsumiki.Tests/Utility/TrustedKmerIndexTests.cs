@@ -64,7 +64,7 @@ namespace Tsumiki.Tests.Utility
             // カットオフ (2) を超えるよう複数回登録する
             for (var i = 0; i < 5; i++)
             {
-                l_index.V_登録(l_inserted.AsSpan(), p_ワーカー番号: 0);
+                l_index.V_登録(l_inserted.AsSpan());
             }
 
             _ = l_index.V_カットオフ(p_カットオフ: 2);
@@ -85,7 +85,7 @@ namespace Tsumiki.Tests.Utility
             using var l_index = new TrustedKmerIndex(this._tempDir);
             var l_belowThreshold = V_変換_塩基ID列("GGGGCCCC");
 
-            l_index.V_登録(l_belowThreshold.AsSpan(), p_ワーカー番号: 0); // 1回だけ = カットオフ2未満
+            l_index.V_登録(l_belowThreshold.AsSpan()); // 1回だけ = カットオフ2未満
 
             _ = l_index.V_カットオフ(p_カットオフ: 2);
 
@@ -109,11 +109,11 @@ namespace Tsumiki.Tests.Utility
             // カットオフ後の正規化されたエントリでは合算されているはず
             for (var i = 0; i < 3; i++)
             {
-                l_index.V_登録(l_forward.AsSpan(), p_ワーカー番号: 0);
+                l_index.V_登録(l_forward.AsSpan());
             }
             for (var i = 0; i < 2; i++)
             {
-                l_index.V_登録(l_revComp.AsSpan(), p_ワーカー番号: 0);
+                l_index.V_登録(l_revComp.AsSpan());
             }
 
             _ = l_index.V_カットオフ(p_カットオフ: 2);
@@ -131,8 +131,8 @@ namespace Tsumiki.Tests.Utility
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
 
             using var l_index = new TrustedKmerIndex(this._tempDir);
-            l_index.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan(), p_ワーカー番号: 0);
-            l_index.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan(), p_ワーカー番号: 0);
+            l_index.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan());
+            l_index.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan());
 
             _ = l_index.V_カットオフ(p_カットオフ: 2);
 
@@ -169,11 +169,11 @@ namespace Tsumiki.Tests.Utility
 
             for (var i = 0; i < 3; i++)
             {
-                l_index.V_登録(l_inserted.AsSpan(), p_ワーカー番号: 0);
+                l_index.V_登録(l_inserted.AsSpan());
             }
             for (var i = 0; i < 2; i++)
             {
-                l_index.V_登録(l_revComp.AsSpan(), p_ワーカー番号: 0);
+                l_index.V_登録(l_revComp.AsSpan());
             }
 
             _ = l_index.V_カットオフ(p_カットオフ: 2);
@@ -235,7 +235,7 @@ namespace Tsumiki.Tests.Utility
             {
                 for (var rep = 0; rep < 3; rep++)
                 {
-                    l_index.V_登録(l_bytes.AsSpan(i, p_kmerLength), p_ワーカー番号: 0);
+                    l_index.V_登録(l_bytes.AsSpan(i, p_kmerLength));
                 }
             }
             _ = l_index.V_カットオフ(p_カットオフ: 2);

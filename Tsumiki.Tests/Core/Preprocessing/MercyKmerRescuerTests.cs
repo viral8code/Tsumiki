@@ -95,7 +95,7 @@ namespace Tsumiki.Tests.Core
                 var l_穴か = i >= p_穴の開始 && i < p_穴の開始 + p_穴の長さ;
                 for (var l_回 = 0; l_回 < (l_穴か ? 1 : 5); l_回++)
                 {
-                    l_インデックス.V_登録(l_塩基列.AsSpan(i, k長), p_ワーカー番号: 0);
+                    l_インデックス.V_登録(l_塩基列.AsSpan(i, k長));
                 }
             }
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2);

@@ -101,13 +101,37 @@ namespace Tsumiki.Cores.Preprocessing
                     continue;
                 }
 
-                var l_塩基列 = l_引き継ぎ.A_配列.Select(Util.Get_塩基ID).ToArray();
+                // Array.IndexOf を窓ごとに呼ぶと窓 1 つあたり O(k) かかり、
+                // 配列全体では O(n*k) になる
+                // 窓をスライドさせる際に新しく入る 1 塩基だけを見て
+                // 「直近に見た無効塩基の位置」を更新すれば、
+                // その位置が現在の窓の左端以降にある間は判定を使い回せる
+                // (無効塩基は稀なので償却 O(n) で済む)
+                var l_塩基列 = Util.V_変換_塩基列(l_引き継ぎ.A_配列);
+                var l_直近の無効塩基位置 = -1;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
                 {
-                    if (Array.IndexOf(l_塩基列, Consts.無効な塩基, i, p_k長) >= 0)
+                    var l_新規末尾 = i + p_k長 - 1;
+                    if (i == 0)
+                    {
+                        for (var j = 0; j < p_k長; j++)
+                        {
+                            if (l_塩基列[j] == Consts.無効な塩基)
+                            {
+                                l_直近の無効塩基位置 = j;
+                            }
+                        }
+                    }
+                    else if (l_塩基列[l_新規末尾] == Consts.無効な塩基)
+                    {
+                        l_直近の無効塩基位置 = l_新規末尾;
+                    }
+
+                    if (l_直近の無効塩基位置 >= i)
                     {
                         continue;
                     }
+
                     var l_カバレッジ = Get_引き継ぐカバレッジ(l_引き継ぎ, i, p_k長, p_リード長);
                     if (l_カバレッジ > 0
                         && p_kmerインデックス.V_追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))

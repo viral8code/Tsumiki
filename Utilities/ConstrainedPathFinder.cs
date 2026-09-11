@@ -44,7 +44,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_状態数上限"></param>
-        public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
+        public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
         {
             // 各状態が「これまでに継ぎ足した塩基列」そのものを持つと、
             // 状態数の上限 × 経路長ぶんのメモリと文字列コピーが発生する

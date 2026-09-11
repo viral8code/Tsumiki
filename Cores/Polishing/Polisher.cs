@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Mapping;
 using Tsumiki.IO;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Polishing;
@@ -6,14 +7,6 @@ using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Polishing
 {
-    /// <summary>
-    /// 種索引の 1 件
-    /// </summary>
-    /// <remarks>
-    /// A_配列番号 が負の値なら複数箇所に当たる曖昧な種
-    /// </remarks>
-    internal readonly record struct 種の位置(int A_配列番号, int A_位置, bool A_逆鎖);
-
     /// <summary>
     /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す
     /// </summary>
@@ -23,8 +16,8 @@ namespace Tsumiki.Cores.Polishing
     /// リードそのものの
     /// 多数決は k-mer とは独立した証拠で、そこを最後に均す<br/>
     /// 直すのは置換だけとする<br/>
-    /// ここの照合は ungapped なので挿入・欠失は
-    /// そもそも検出できず、検出できないものを直そうとすれば配列を壊す<br/>
+    /// 挿入・欠失を含むリードは帯域制限整列で位置を対応付け、
+    /// 参照と対応した塩基だけを投票に使う<br/>
     /// 併せて位置ごとの深度が得られる<br/>
     /// 連結の裏付けが無い接合点はその前後で
     /// 深度が不連続になるため、完全長の判定にも使う
@@ -40,39 +33,12 @@ namespace Tsumiki.Cores.Polishing
         /// 短いほど反復配列で曖昧になり、
         /// 長いほどエラーを 1 つ含んだだけで種が潰れる
         /// </remarks>
-        private const int シード長 = 31;
+        private const int シード長 = 21;
 
         /// <summary>
-        /// 参照側で種を登録する間隔
+        /// 投票に使う整列として意味を持つ最小の対応塩基数
         /// </summary>
-        /// <remarks>
-        /// リード長はこれよりはるかに長いため、
-        /// 間引いてもリードのどこかは必ず登録済みの位置に重なる<br/>
-        /// 全位置を持つと索引がゲノムサイズそのものの規模になる
-        /// </remarks>
-        private const int シード間隔 = 8;
-
-        /// <summary>
-        /// 1 本のリードにつき試す種ヒットの数
-        /// </summary>
-        /// <remarks>
-        /// 反復配列では種が当たっても
-        /// 照合に落ちることが続くため、諦める上限を決める
-        /// </remarks>
-        private const int 試すヒット数 = 4;
-
-        /// <summary>
-        /// 照合を認める不一致の割合
-        /// </summary>
-        /// <remarks>
-        /// これを超えたら別の場所とみなす
-        /// </remarks>
-        private const double 許容不一致率 = 0.1D;
-
-        /// <summary>
-        /// ungapped 照合として意味を持つ最小の重なり長
-        /// </summary>
-        private const int 最小重なり長 = シード長;
+        private const int 最小整列長 = シード長;
 
         /// <summary>
         /// 置換を認めるのに必要な、その位置の深度
@@ -101,11 +67,6 @@ namespace Tsumiki.Cores.Polishing
         /// </remarks>
         private const int 深度ヒストグラムの上限 = 65535;
 
-        /// <summary>
-        /// 複数の位置に当たった種であることを示す番兵
-        /// </summary>
-        private const int 曖昧な種の番兵 = -1;
-
         #endregion
 
         #region 公開メソッド
@@ -132,8 +93,8 @@ namespace Tsumiki.Cores.Polishing
             var l_総延長 = l_配列群.Sum(x => (long)x.Length);
 
             Logger.V_出力(メッセージID.ポリッシュの索引構築, l_エントリ群.Count, l_総延長);
-            var l_種索引 = Get_種索引(l_配列群);
-            if (l_種索引.Count == 0)
+            var l_マッパー = new ReadMapper(l_配列群.Select(x => new string(x)).ToArray());
+            if (l_配列群.All(x => x.Length < シード長))
             {
                 Logger.V_出力(メッセージID.ポリッシュの種が無い, シード長);
                 return null;
@@ -150,7 +111,7 @@ namespace Tsumiki.Cores.Polishing
             Logger.V_出力(メッセージID.ポリッシュのマッピング開始);
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, l_ワーカー番号) =>
             {
-                if (V_貼り付け_1リード(l_リード, l_種索引, l_配列群, l_得票))
+                if (V_貼り付け_1リード(l_リード, l_マッパー, l_得票))
                 {
                     l_マップ数[l_ワーカー番号]++;
                 }
@@ -197,172 +158,47 @@ namespace Tsumiki.Cores.Polishing
         #region 内部メソッド
 
         /// <summary>
-        /// 参照配列から種索引を作る
-        /// </summary>
-        /// <param name="p_配列群"></param>
-        /// <remarks>
-        /// 順鎖と逆相補を別のキーで登録し、
-        /// リードがどちらの向きで載ったかを引けるようにする<br/>
-        /// 複数の位置に当たる種は反復配列由来なので、曖昧として使わない
-        /// </remarks>
-        private static Dictionary<UInt128, 種の位置> Get_種索引(List<char[]> p_配列群)
-        {
-            Dictionary<UInt128, 種の位置> l_索引 = [];
-            for (var i = 0; i < p_配列群.Count; i++)
-            {
-                var l_配列 = new string(p_配列群[i]);
-                for (var l_位置 = 0; l_位置 + シード長 <= l_配列.Length; l_位置 += シード間隔)
-                {
-                    if (!KmerPacking.Get_パック(l_配列, l_位置, シード長, out var l_順鎖))
-                    {
-                        continue;
-                    }
-                    V_登録_種(l_索引, l_順鎖, new 種の位置(i, l_位置, false));
-                    V_登録_種(l_索引, KmerPacking.Get_逆相補(l_順鎖, シード長), new 種の位置(i, l_位置, true));
-                }
-            }
-            return l_索引;
-        }
-
-        /// <summary>
-        /// リードの貼り付け位置を探す種を索引へ登録する
-        /// </summary>
-        /// <param name="p_索引">登録先の索引</param>
-        /// <param name="p_キー">種の k-mer</param>
-        /// <param name="p_値">その種が指す位置</param>
-        private static void V_登録_種(Dictionary<UInt128, 種の位置> p_索引, UInt128 p_キー, 種の位置 p_値)
-        {
-            if (p_索引.TryGetValue(p_キー, out var l_既存))
-            {
-                if (l_既存.A_配列番号 != 曖昧な種の番兵)
-                {
-                    p_索引[p_キー] = l_既存 with { A_配列番号 = 曖昧な種の番兵 };
-                }
-                return;
-            }
-            p_索引[p_キー] = p_値;
-        }
-
-        /// <summary>
         /// 1 本のリードを置ける場所へ置き、各位置の得票を加算する
         /// </summary>
         /// <param name="p_リード"></param>
-        /// <param name="p_種索引"></param>
-        /// <param name="p_配列群"></param>
+        /// <param name="p_マッパー"></param>
         /// <param name="p_得票"></param>
         /// <remarks>
         /// 置けたら true<br/>
         /// 得票は複数のワーカーが同じ配列を触るため Interlocked で足す<br/>
         /// 加算は順序に依らないので、並列でも結果は毎回同じになる
         /// </remarks>
-        private static bool V_貼り付け_1リード(string p_リード, Dictionary<UInt128, 種の位置> p_種索引, List<char[]> p_配列群, int[][] p_得票)
+        private static bool V_貼り付け_1リード(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
         {
-            if (p_リード.Length < シード長)
+            var l_配置 = p_マッパー.Get_配置(p_リード);
+            if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0)
             {
                 return false;
             }
 
-            string? l_逆相補 = null;
-            var l_マスク = (UInt128.One << (2 * シード長)) - 1;
-            UInt128 l_順鎖 = 0;
-            var l_直近の曖昧位置 = -1;
-            var l_試した回数 = 0;
-
-            for (var i = 0; i < p_リード.Length; i++)
+            foreach (var l_整列位置 in l_配置.A_整列位置群)
             {
-                var l_塩基ID = Util.Get_塩基ID(p_リード[i]);
-                var l_有効か = l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T;
-                l_順鎖 = ((l_順鎖 << 2) | (UInt128)(l_有効か ? l_塩基ID - 1 : 0)) & l_マスク;
-                if (!l_有効か)
-                {
-                    l_直近の曖昧位置 = i;
-                }
-
-                var l_開始 = i - シード長 + 1;
-                if (l_開始 < 0 || l_直近の曖昧位置 >= l_開始)
+                var l_塩基ID = Util.Get_塩基ID(p_リード[l_整列位置.A_リード位置]);
+                if (l_塩基ID is < Consts.塩基ID.A or > Consts.塩基ID.T)
                 {
                     continue;
                 }
 
-                if (!p_種索引.TryGetValue(l_順鎖, out var l_位置) || l_位置.A_配列番号 == 曖昧な種の番兵)
+                // A_リード位置 は元のリードの向きでの添字なので、逆鎖に載ったリードは
+                // 参照と同じ向きにするため相補を取ってから投票する
+                if (l_配置.A_逆鎖か)
                 {
-                    continue;
+                    l_塩基ID = l_塩基ID switch
+                    {
+                        Consts.塩基ID.A => Consts.塩基ID.T,
+                        Consts.塩基ID.C => Consts.塩基ID.G,
+                        Consts.塩基ID.G => Consts.塩基ID.C,
+                        _ => Consts.塩基ID.A,
+                    };
                 }
-
-                // 逆鎖に当たった場合、リードを逆相補にすると参照と同じ向きになる
-                // そのとき種はリードの後ろから数えた位置に移る
-                string l_照合するリード;
-                int l_参照開始;
-                if (l_位置.A_逆鎖)
-                {
-                    l_逆相補 ??= Util.V_逆相補_曖昧塩基あり(p_リード);
-                    l_照合するリード = l_逆相補;
-                    l_参照開始 = l_位置.A_位置 - (p_リード.Length - l_開始 - シード長);
-                }
-                else
-                {
-                    l_照合するリード = p_リード;
-                    l_参照開始 = l_位置.A_位置 - l_開始;
-                }
-
-                if (V_照合(l_照合するリード, p_配列群[l_位置.A_配列番号], l_参照開始, p_得票[l_位置.A_配列番号]))
-                {
-                    return true;
-                }
-
-                if (++l_試した回数 >= 試すヒット数)
-                {
-                    return false;
-                }
+                _ = Interlocked.Increment(ref p_得票[l_配置.A_配列番号][(l_整列位置.A_参照位置 * 4) + l_塩基ID - 1]);
             }
-            return false;
-        }
-
-        /// <summary>
-        /// リードを参照の指定位置へ ungapped に重ね、不一致が許容内なら得票を加算する
-        /// </summary>
-        /// <param name="p_リード"></param>
-        /// <param name="p_参照"></param>
-        /// <param name="p_参照開始"></param>
-        /// <param name="p_得票"></param>
-        /// <remarks>
-        /// 参照からはみ出す部分は切り詰める
-        /// </remarks>
-        private static bool V_照合(string p_リード, char[] p_参照, int p_参照開始, int[] p_得票)
-        {
-            var l_左 = Math.Max(0, p_参照開始);
-            var l_右 = Math.Min(p_参照.Length, p_参照開始 + p_リード.Length);
-            var l_重なり = l_右 - l_左;
-            if (l_重なり < 最小重なり長)
-            {
-                return false;
-            }
-
-            var l_許容不一致数 = (int)(l_重なり * 許容不一致率);
-            var l_不一致数 = 0;
-            for (var i = l_左; i < l_右; i++)
-            {
-                var l_参照塩基 = p_参照[i];
-                var l_リード塩基 = p_リード[i - p_参照開始];
-                if (l_参照塩基 == 'N' || l_リード塩基 == 'N' || l_参照塩基 == l_リード塩基)
-                {
-                    continue;
-                }
-                if (++l_不一致数 > l_許容不一致数)
-                {
-                    return false;
-                }
-            }
-
-            for (var i = l_左; i < l_右; i++)
-            {
-                var l_塩基ID = Util.Get_塩基ID(p_リード[i - p_参照開始]);
-                if (l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T)
-                {
-                    _ = Interlocked.Increment(ref p_得票[(i * 4) + l_塩基ID - 1]);
-                }
-            }
-            return true;
+            return l_配置.A_整列位置群.Count >= 最小整列長;
         }
 
         /// <summary>

@@ -57,7 +57,7 @@ namespace Tsumiki.Tests.Utility
             // ちょうど 7 回登録する (奇数にして「2 倍になっていないか」を確実に見る)
             for (var i = 0; i < 7; i++)
             {
-                index.V_登録(l_kmer.AsSpan(), p_ワーカー番号: i % p_スレッド数);
+                index.V_登録(l_kmer.AsSpan());
             }
 
             _ = index.V_カットオフ(p_カットオフ: 2);
@@ -91,7 +91,7 @@ namespace Tsumiki.Tests.Utility
                 l_期待値[i] = l_回数;
                 for (ulong t = 0UL; t < l_回数; t++)
                 {
-                    index.V_登録(l_塩基列.AsSpan(i, k), p_ワーカー番号: (int)(t % (ulong)p_スレッド数));
+                    index.V_登録(l_塩基列.AsSpan(i, k));
                 }
             }
 

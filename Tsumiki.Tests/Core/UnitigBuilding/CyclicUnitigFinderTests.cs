@@ -102,7 +102,7 @@ namespace Tsumiki.Tests.Core
         {
             for (var l_回 = 0; l_回 < 3; l_回++)
             {
-                p_インデックス.V_登録(p_kmer, p_ワーカー番号: 0);
+                p_インデックス.V_登録(p_kmer);
             }
         }
 

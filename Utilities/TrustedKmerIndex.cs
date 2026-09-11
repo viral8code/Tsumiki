@@ -13,7 +13,7 @@ namespace Tsumiki.Utilities
     /// グラフ構造の誤判定 (偽の分岐点・偽の隣接) を原理的に排除できないため<br/>
     /// 細菌ゲノム規模なら厳密な集合をメモリに載せられる
     /// </remarks>
-    internal class TrustedKmerIndex : IDisposable
+    internal class TrustedKmerIndex : IDisposable, IKmerLookup
     {
         #region 内部変数
 
@@ -725,7 +725,7 @@ namespace Tsumiki.Utilities
         /// 2bitコドンごとに相補を取り (A&lt;-&gt;T, C&lt;-&gt;G)、
         /// 下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる
         /// </remarks>
-        private static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
+        internal static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
             var l_結果 = 0UL;
@@ -743,7 +743,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer">塩基 ID 列</param>
         /// <returns>正規形</returns>
-        private static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
+        internal static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_パック済み = Get_パック_小(p_kmer);
             var l_逆相補 = Get_逆相補_小(l_パック済み, p_kmer.Length);
@@ -791,7 +791,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
-        private static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
+        internal static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
             UInt128 l_結果 = 0;
@@ -809,7 +809,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer">塩基 ID 列</param>
         /// <returns>正規形</returns>
-        private static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
+        internal static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
         {
             var l_パック済み = Get_パック_中(p_kmer);
             var l_逆相補 = Get_逆相補_中(l_パック済み, p_kmer.Length);

@@ -139,9 +139,30 @@ namespace Tsumiki.Utilities
             var l_接合点2 = l_head側.Length + p_repeat配列.Length;
 
             var l_支持数 = 0;
+            // 窓ごとに Get_曖昧塩基か を r 回呼ぶと O(n*r) になるため、
+            // V_登録_rMer と同じく「直近に見た曖昧塩基の位置」を
+            // 窓のスライドに合わせて償却 O(n) で更新する
+            // (接合点を跨がない窓は continue するが、曖昧判定は
+            // スキップせず続けないと以降の窓の判定がずれる)
+            var l_直近の曖昧位置 = -1;
             for (var i = 0; i + this._r長 <= l_テスト配列.Length; i++)
             {
                 var l_窓終端 = i + this._r長; // exclusive
+                var l_新規末尾 = l_窓終端 - 1;
+                if (i == 0)
+                {
+                    for (var j = 0; j < this._r長; j++)
+                    {
+                        if (Util.Get_曖昧塩基か(l_テスト配列[j]))
+                        {
+                            l_直近の曖昧位置 = j;
+                        }
+                    }
+                }
+                else if (Util.Get_曖昧塩基か(l_テスト配列[l_新規末尾]))
+                {
+                    l_直近の曖昧位置 = l_新規末尾;
+                }
 
                 // repeat の先頭 k-1 塩基は head の末尾のコピーなので、
                 // そこまでしか踏み込まない窓は head の部分文字列そのもので、
@@ -153,16 +174,7 @@ namespace Tsumiki.Utilities
                     continue;
                 }
 
-                var l_曖昧か = false;
-                for (var j = 0; j < this._r長; j++)
-                {
-                    if (Util.Get_曖昧塩基か(l_テスト配列[i + j]))
-                    {
-                        l_曖昧か = true;
-                        break;
-                    }
-                }
-                if (!l_曖昧か && this.Get_見たか(Get_正準値(l_テスト配列.AsSpan(i, this._r長))))
+                if (l_直近の曖昧位置 < i && this.Get_見たか(Get_正準値(l_テスト配列.AsSpan(i, this._r長))))
                 {
                     l_支持数++;
                 }
@@ -229,23 +241,40 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_r長">r-mer の長さ</param>
+        /// <remarks>
+        /// 窓ごとに Get_曖昧塩基か を r 回呼ぶと全体で O(n*r) になる
+        /// (この呼び出しは V_構築 から全リード分繰り返されるためリード規模でそのまま効く)<br/>
+        /// 窓をスライドさせる際は新しく入る 1 塩基だけを見て「直近に見た曖昧塩基の
+        /// 位置」を更新すれば、その位置が現在の窓の左端以降にある間は判定を
+        /// 使い回せる (曖昧塩基は稀なので償却 O(n) で済む)
+        /// </remarks>
         private void V_登録_rMer(string p_リード, int p_r長)
         {
+            var l_直近の曖昧位置 = -1;
             for (var i = 0; i + p_r長 <= p_リード.Length; i++)
             {
-                var l_曖昧か = false;
-                for (var j = 0; j < p_r長; j++)
+                var l_新規末尾 = i + p_r長 - 1;
+                if (i == 0)
                 {
-                    if (Util.Get_曖昧塩基か(p_リード[i + j]))
+                    for (var j = 0; j < p_r長; j++)
                     {
-                        l_曖昧か = true;
-                        break;
+                        if (Util.Get_曖昧塩基か(p_リード[j]))
+                        {
+                            l_直近の曖昧位置 = j;
+                        }
                     }
                 }
-                if (!l_曖昧か)
+                else if (Util.Get_曖昧塩基か(p_リード[l_新規末尾]))
                 {
-                    this.V_登録(Get_正準値(p_リード.AsSpan(i, p_r長)));
+                    l_直近の曖昧位置 = l_新規末尾;
                 }
+
+                if (l_直近の曖昧位置 >= i)
+                {
+                    continue;
+                }
+
+                this.V_登録(Get_正準値(p_リード.AsSpan(i, p_r長)));
             }
         }
 

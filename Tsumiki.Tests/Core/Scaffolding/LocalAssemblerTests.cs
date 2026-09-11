@@ -123,7 +123,7 @@ namespace Tsumiki.Tests.Core
             var scaffoldPath = this.V_書き出し_スキャフォールド("scaffold.fasta", prefix + new string('N', fill.Length) + suffix);
             var readsPath = this.V_書き出し_リード("reads.fq", [truth], p_リード長: 100);
 
-            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
+            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k);
 
             Assert.Equal(1, stats.A_対象ギャップ数);
             Assert.Equal(1, stats.A_埋めたギャップ数);
@@ -147,7 +147,7 @@ namespace Tsumiki.Tests.Core
             var unrelated = V_生成_ランダム配列(500, p_シード: 999);
             var readsPath = this.V_書き出し_リード("reads_unrelated.fq", [unrelated], p_リード長: 100);
 
-            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
+            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k);
 
             Assert.Equal(1, stats.A_対象ギャップ数);
             Assert.Equal(0, stats.A_埋めたギャップ数);
@@ -171,7 +171,7 @@ namespace Tsumiki.Tests.Core
             // prefix と suffix それぞれの内部だけを読んだリード (橋渡しは無い)
             var readsPath = this.V_書き出し_リード("reads_nopath.fq", [prefix, suffix], p_リード長: 100);
 
-            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
+            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k);
 
             Assert.Equal(1, stats.A_対象ギャップ数);
             Assert.Equal(0, stats.A_埋めたギャップ数);
@@ -196,7 +196,7 @@ namespace Tsumiki.Tests.Core
             var readsPath = this.V_書き出し_リード(
                 "reads_ambiguous.fq", [prefix + fillA + suffix, prefix + fillB + suffix], p_リード長: 100);
 
-            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
+            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k);
 
             Assert.Equal(1, stats.A_対象ギャップ数);
             Assert.Equal(0, stats.A_埋めたギャップ数);
@@ -215,7 +215,7 @@ namespace Tsumiki.Tests.Core
             var scaffoldPath = this.V_書き出し_スキャフォールド("scaffold_nogap.fasta", truth);
             var readsPath = this.V_書き出し_リード("reads_nogap.fq", [truth], p_リード長: 100);
 
-            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k, this._tempDir);
+            var stats = LocalAssembler.V_充填_ギャップ(scaffoldPath, readsPath, string.Empty, k);
 
             Assert.Equal(0, stats.A_対象ギャップ数);
             Assert.Equal(truth, Get_単一配列(scaffoldPath));

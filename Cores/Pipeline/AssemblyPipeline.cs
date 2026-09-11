@@ -223,7 +223,7 @@ namespace Tsumiki.Cores.Pipeline
             // 局所リードだけの使い捨てミニアセンブリで埋める (-la、-mg の安全な代替)
             if (p_引数.A_局所アセンブリするか)
             {
-                var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長, l_作業ディレクトリ);
+                var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長);
                 LocalAssembler.V_出力_統計(l_局所統計);
                 if (l_局所統計.A_埋めたギャップ数 > 0)
                 {

@@ -64,7 +64,7 @@ namespace Tsumiki.Tests.Core
             {
                 for (var l_回 = 0; l_回 < 3; l_回++)
                 {
-                    l_インデックス.V_登録(l_塩基列.AsSpan(i, p_k長), p_ワーカー番号: 0);
+                    l_インデックス.V_登録(l_塩基列.AsSpan(i, p_k長));
                 }
             }
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2);

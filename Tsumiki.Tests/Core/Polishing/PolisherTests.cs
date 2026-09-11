@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Polishing;
+using Tsumiki.Cores.Mapping;
 using Tsumiki.Core;
 using Tsumiki.IO;
 using Tsumiki.Models.Foundation;
@@ -117,10 +118,16 @@ namespace Tsumiki.Tests.Core
             var l_FASTA = this.V_書き出し_FASTA("contig1", l_誤りを含む配列);
             var l_FASTQ = this.V_書き出し_FASTQ(l_真の配列, p_リード長: 150, p_刻み: 10);
             var l_出力 = Path.Combine(this._一時ディレクトリ, "polished.fasta");
+            var l_配置 = new ReadMapper([l_誤りを含む配列]).Get_配置(l_真の配列.Substring(950, 150));
+            Console.WriteLine(l_配置.A_整列位置群.First(x => x.A_参照位置 == l_誤り位置));
 
             var l_統計 = Polisher.Get_磨いた結果(l_FASTA, l_FASTQ, null, l_出力);
 
+            Console.WriteLine(l_統計);
+
             Assert.NotNull(l_統計);
+            Console.WriteLine(l_真の配列.Substring(l_誤り位置 - 3, 7));
+            Console.WriteLine(FastaReader.Get_全エントリ(l_出力)[0].A_配列.Substring(l_誤り位置 - 3, 7));
             Assert.Equal(1, l_統計!.Value.A_訂正した塩基数);
 
             var l_結果 = FastaReader.Get_全エントリ(l_出力);

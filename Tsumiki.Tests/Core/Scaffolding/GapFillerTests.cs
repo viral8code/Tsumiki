@@ -73,7 +73,7 @@ namespace Tsumiki.Tests.Core
                 {
                     for (var l_繰り返し = 0; l_繰り返し < 3; l_繰り返し++)
                     {
-                        l_索引.V_登録(l_バイト列.AsSpan(i, p_kmer長), p_ワーカー番号: 0);
+                        l_索引.V_登録(l_バイト列.AsSpan(i, p_kmer長));
                     }
                 }
             }

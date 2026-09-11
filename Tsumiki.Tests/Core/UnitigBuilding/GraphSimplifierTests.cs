@@ -62,7 +62,7 @@ namespace Tsumiki.Tests.Core
             {
                 for (var rep = 0; rep < p_repetitions; rep++)
                 {
-                    p_index.V_登録(p_bytes.AsSpan(i, p_k), p_ワーカー番号: 0);
+                    p_index.V_登録(p_bytes.AsSpan(i, p_k));
                 }
             }
         }

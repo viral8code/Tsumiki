@@ -68,9 +68,8 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス</param>
         /// <param name="p_k長">k 長</param>
-        /// <param name="p_作業ディレクトリ"></param>
         /// <returns>局所アセンブリの集計</returns>
-        public static 局所アセンブリ統計 V_充填_ギャップ(string p_スキャフォールドパス, string p_リード1のパス, string p_リード2のパス, int p_k長, string p_作業ディレクトリ)
+        public static 局所アセンブリ統計 V_充填_ギャップ(string p_スキャフォールドパス, string p_リード1のパス, string p_リード2のパス, int p_k長)
         {
             var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
 
@@ -99,7 +98,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 var l_埋め = Get_局所アセンブリ結果(
-                    l_ギャップ一覧[g], l_局所リード[g], p_k長, p_作業ディレクトリ, out var l_判定);
+                    l_ギャップ一覧[g], l_局所リード[g], p_k長, out var l_判定);
                 if (l_埋め != null)
                 {
                     l_結果[g] = l_埋め;
@@ -324,12 +323,15 @@ namespace Tsumiki.Cores.Scaffolding
         /// 1 ギャップぶんのミニアセンブリ
         /// </summary>
         /// <remarks>
-        /// 左右アンカー配列+局所リードだけから
-        /// 使い捨ての TrustedKmerIndex を作り、GapFiller と同じ制約付き探索で
-        /// 左アンカー末尾から右アンカー先頭までの経路を探す
+        /// 左右アンカー配列+局所リードだけから使い捨ての LocalKmerSet を作り、
+        /// GapFiller と同じ制約付き探索で左アンカー末尾から右アンカー先頭までの
+        /// 経路を探す<br/>
+        /// 集めた k-mer は局所リード数の上限ぶんしかなくインメモリで
+        /// 完結するため、TrustedKmerIndex のようなディスク経由のシャード集計は
+        /// 使わない (ギャップの数だけ繰り返すには重すぎる)
         /// </remarks>
         private static string? Get_局所アセンブリ結果(
-            局所ギャップ p_ギャップ, List<string> p_局所リード, int p_k長, string p_作業ディレクトリ,
+            局所ギャップ p_ギャップ, List<string> p_局所リード, int p_k長,
             out ギャップ充填判定 p_判定)
         {
             if (p_ギャップ.A_左アンカー.Length < p_k長 || p_ギャップ.A_右アンカー.Length < p_k長)
@@ -338,48 +340,27 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
-            var l_一時ディレクトリ = Path.Combine(p_作業ディレクトリ, $"localasm_{Guid.NewGuid():N}");
-            _ = Directory.CreateDirectory(l_一時ディレクトリ);
-            try
+            var l_集合 = new LocalKmerSet(p_k長);
+            V_登録_全kmer(l_集合, p_ギャップ.A_左アンカー, p_k長);
+            V_登録_全kmer(l_集合, p_ギャップ.A_右アンカー, p_k長);
+            foreach (var l_リード in p_局所リード)
             {
-                // 索引の構築はギャップの数だけ繰り返される
-                // 1 件ごとの
-                // 統計はログを埋めるだけなので、この区間は記録を止める
-                using var l_休止 = Logger.V_止める_記録();
-                using var l_索引 = new TrustedKmerIndex(l_一時ディレクトリ);
-                V_登録_全kmer(l_索引, p_ギャップ.A_左アンカー, p_k長);
-                V_登録_全kmer(l_索引, p_ギャップ.A_右アンカー, p_k長);
-                foreach (var l_リード in p_局所リード)
-                {
-                    V_登録_全kmer(l_索引, l_リード, p_k長);
-                }
-                _ = l_索引.V_カットオフ(局所カットオフ);
-
-                var l_左のkmer = Get_kmerバイト列(p_ギャップ.A_左アンカー, p_ギャップ.A_左アンカー.Length - p_k長, p_k長);
-                var l_目標kmer = Get_kmerバイト列(p_ギャップ.A_右アンカー, 0, p_k長);
-                if (l_左のkmer is null || l_目標kmer is null)
-                {
-                    p_判定 = ギャップ充填判定.到達不能;
-                    return null;
-                }
-
-                var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - Consts.ギャップ充填の長さの余裕幅);
-                var l_最大長 = p_ギャップ.A_長さ + Consts.ギャップ充填の長さの余裕幅;
-                (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
-                    l_左のkmer, l_目標kmer, l_最小長, l_最大長, l_索引, p_k長);
-                return l_経路;
+                V_登録_全kmer(l_集合, l_リード, p_k長);
             }
-            finally
+
+            var l_左のkmer = Get_kmerバイト列(p_ギャップ.A_左アンカー, p_ギャップ.A_左アンカー.Length - p_k長, p_k長);
+            var l_目標kmer = Get_kmerバイト列(p_ギャップ.A_右アンカー, 0, p_k長);
+            if (l_左のkmer is null || l_目標kmer is null)
             {
-                try
-                {
-                    Directory.Delete(l_一時ディレクトリ, recursive: true);
-                }
-                catch (IOException)
-                {
-                    // 一時ファイルの掃除に失敗してもアセンブリ結果には影響しない
-                }
+                p_判定 = ギャップ充填判定.到達不能;
+                return null;
             }
+
+            var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - Consts.ギャップ充填の長さの余裕幅);
+            var l_最大長 = p_ギャップ.A_長さ + Consts.ギャップ充填の長さの余裕幅;
+            (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(
+                l_左のkmer, l_目標kmer, l_最小長, l_最大長, l_集合, p_k長);
+            return l_経路;
         }
 
         /// <summary>
@@ -388,7 +369,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_索引">登録先の索引</param>
         /// <param name="p_配列">元の配列</param>
         /// <param name="p_k長">k 長</param>
-        private static void V_登録_全kmer(TrustedKmerIndex p_索引, string p_配列, int p_k長)
+        private static void V_登録_全kmer(LocalKmerSet p_索引, string p_配列, int p_k長)
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
             {

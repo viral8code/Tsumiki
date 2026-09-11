@@ -99,7 +99,7 @@ namespace Tsumiki.Tests.Utility
                 {
                     for (var t = 0UL; t < l_出現回数; t++)
                     {
-                        l_index.V_登録(l_bases.AsSpan(l_position, k長), p_ワーカー番号: (int)(t % 4));
+                        l_index.V_登録(l_bases.AsSpan(l_position, k長));
                     }
                 }
             }
