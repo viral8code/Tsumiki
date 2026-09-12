@@ -254,7 +254,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.統合開始);
 
-            var l_統合パス = Path.Combine(p_一時ディレクトリ, "merged_" + Consts.スキャフォールドファイル名);
+            var l_統合パス = Path.Combine(p_一時ディレクトリ, "merged_" + Consts.Scaffoldファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
             if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
             {
@@ -263,8 +263,8 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_統合結果 = p_最良.A_実行結果 with
             {
-                A_コンティグパス = l_統合パス,
-                A_スキャフォールドパス = l_統合パス,
+                A_contigパス = l_統合パス,
+                A_scaffoldパス = l_統合パス,
             };
 
             // 統合評価は候補評価と全く同じアンカー k-mer 集合 (同じ k ・同じ

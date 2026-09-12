@@ -67,12 +67,12 @@
         /// <summary>
         /// 環状 contig が見つかった
         /// </summary>
-        環状コンティグあり,
+        環状Contigあり,
 
         /// <summary>
         /// 環状 contig が見つからなかった
         /// </summary>
-        環状コンティグなし,
+        環状Contigなし,
 
         /// <summary>
         /// 確定辺として採った標本の数
@@ -87,7 +87,7 @@
         /// <summary>
         /// 短すぎる unitig を除外した
         /// </summary>
-        短すぎるユニティグの除外,
+        短すぎるunitigの除外,
 
         /// <summary>
         /// 曖昧塩基を含む k-mer を登録した
@@ -102,17 +102,17 @@
         /// <summary>
         /// 同一 unitig 内のペアの向きの集計
         /// </summary>
-        同一ユニティグのペア向き集計,
+        同一unitigのペア向き集計,
 
         /// <summary>
         /// 同一 unitig 内の断片長の分布
         /// </summary>
-        同一ユニティグの断片長分布,
+        同一unitigの断片長分布,
 
         /// <summary>
         /// 同一 unitig 内の断片長の中央値
         /// </summary>
-        同一ユニティグの断片長中央値,
+        同一unitigの断片長中央値,
 
         /// <summary>
         /// ペアのリード ID が一致しない
@@ -192,7 +192,7 @@
         /// <summary>
         /// unitig の構築を開始した
         /// </summary>
-        ユニティグ構築開始,
+        Unitig構築開始,
 
         /// <summary>
         /// グラフが複雑すぎる
@@ -207,7 +207,7 @@
         /// <summary>
         /// unitig の結合を開始した
         /// </summary>
-        ユニティグ結合開始,
+        Unitig結合開始,
 
         /// <summary>
         /// r-mer 検証を見送った
@@ -217,12 +217,12 @@
         /// <summary>
         /// contig の構築が完了した
         /// </summary>
-        コンティグ構築完了,
+        Contig構築完了,
 
         /// <summary>
-        /// スキャフォールディングを開始した
+        /// scaffolding を開始した
         /// </summary>
-        スキャフォールディング開始,
+        Scaffolding開始,
 
         /// <summary>
         /// ギャップ充填を開始した
@@ -365,19 +365,19 @@
         局所アセンブリ統計,
 
         /// <summary>
-        /// インサートサイズが不明なためスキャフォールディングを省略した
+        /// インサートサイズが不明なため scaffolding を省略した
         /// </summary>
-        スキャフォールディング省略_インサートサイズ不明,
+        Scaffolding省略_インサートサイズ不明,
 
         /// <summary>
-        /// インサートサイズを添えてスキャフォールディングを開始した
+        /// インサートサイズを添えて scaffolding を開始した
         /// </summary>
-        スキャフォールディング開始_インサートサイズ,
+        Scaffolding開始_インサートサイズ,
 
         /// <summary>
-        /// contig が無いためスキャフォールディングを省略した
+        /// contig が無いため scaffolding を省略した
         /// </summary>
-        スキャフォールディング省略_コンティグなし,
+        Scaffolding省略_Contigなし,
 
         /// <summary>
         /// 配列内部を指したペア候補の数
@@ -392,17 +392,17 @@
         /// <summary>
         /// 閾値適用後に残った scaffold 辺
         /// </summary>
-        閾値後のスキャフォールド辺,
+        閾値後のscaffold辺,
 
         /// <summary>
         /// scaffold の出力が完了した
         /// </summary>
-        スキャフォールド出力完了,
+        Scaffold出力完了,
 
         /// <summary>
         /// 同一 unitig 内のペアからのインサートサイズ推定
         /// </summary>
-        インサートサイズ推定_同一ユニティグ,
+        インサートサイズ推定_同一unitig,
 
         /// <summary>
         /// 確定辺からのインサートサイズ推定
@@ -587,7 +587,7 @@
         /// <summary>
         /// contig の総延長
         /// </summary>
-        コンティグ総延長,
+        Contig総延長,
 
         /// <summary>
         /// リードファイルのパス
@@ -617,7 +617,7 @@
         /// <summary>
         /// scaffold 候補辺の数
         /// </summary>
-        スキャフォールド候補辺数,
+        Scaffold候補辺数,
 
         /// <summary>
         /// 理想本数モデルが利用できた

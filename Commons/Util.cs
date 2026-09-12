@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Tsumiki.Commons
+﻿namespace Tsumiki.Commons
 {
     /// <summary>
     /// 塩基の変換など、どこからでも使う小さな処理

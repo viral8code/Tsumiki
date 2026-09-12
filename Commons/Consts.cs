@@ -104,7 +104,7 @@
         /// <summary>
         /// scaffold ファイル名
         /// </summary>
-        public const string スキャフォールドファイル名 = "scaffolds.fasta";
+        public const string Scaffoldファイル名 = "scaffolds.fasta";
 
         /// <summary>
         /// GFA ファイル名

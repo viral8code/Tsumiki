@@ -7,7 +7,7 @@ namespace Tsumiki.Models.UnitigBuilding
     /// </summary>
     /// <param name="p_ID">unitig ID</param>
     /// <param name="p_配列">unitig の配列</param>
-    internal class ユニティグ(object p_ID, string p_配列)
+    internal class Unitig(object p_ID, string p_配列)
     {
         #region 内部変数
 

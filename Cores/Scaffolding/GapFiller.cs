@@ -19,13 +19,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// scaffold を読み込み、埋められるギャップを埋めて同じパスへ書き戻す
         /// </summary>
-        /// <param name="p_スキャフォールドパス"></param>
+        /// <param name="p_scaffoldパス"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <returns></returns>
-        public static ギャップ充填統計 V_充填_ギャップ(string p_スキャフォールドパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        public static ギャップ充填統計 V_充填_ギャップ(string p_scaffoldパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
-            var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
+            var l_scaffold群 = FastaReader.Get_全エントリ(p_scaffoldパス);
 
             var l_総ギャップ数 = 0;
             var l_埋めたギャップ数 = 0;
@@ -34,7 +34,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_到達不能数 = 0;
 
             List<(string A_ID, string A_配列)> l_結果 = [];
-            foreach (var (l_ID, l_配列) in l_スキャフォールド群)
+            foreach (var (l_ID, l_配列) in l_scaffold群)
             {
                 var l_出力 = new StringBuilder();
                 var l_位置 = 0;
@@ -80,7 +80,7 @@ namespace Tsumiki.Cores.Scaffolding
                 l_結果.Add((l_ID, l_出力.ToString()));
             }
 
-            using (var l_書き込み = new FastaWriter(p_スキャフォールドパス))
+            using (var l_書き込み = new FastaWriter(p_scaffoldパス))
             {
                 foreach (var (l_ID, l_配列) in l_結果)
                 {

@@ -57,7 +57,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_開始kmer">walk を始める k-mer</param>
         /// <returns>組み上がった unitig</returns>
-        public ユニティグ Get_ユニティグ(Span<byte> p_開始kmer)
+        public Unitig Get_Unitig(Span<byte> p_開始kmer)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_Isパック経路使用 = l_k長 <= 64;
@@ -124,7 +124,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
             }
 
-            return new ユニティグ(l_配列.GetHashCode(), string.Join(string.Empty, l_配列.Select(Util.V_変換_塩基文字)));
+            return new Unitig(l_配列.GetHashCode(), string.Join(string.Empty, l_配列.Select(Util.V_変換_塩基文字)));
         }
 
         #endregion

@@ -41,14 +41,14 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
             {
-                var l_ユニティグ群 = Get_ユニティグ情報(p_kmerインデックス, Get_ユニティグ群(p_kmerインデックス, l_開始kmer), p_k長);
-                var l_基準値 = Get_長さ加重中央カバレッジ(l_ユニティグ群);
+                var l_unitig群 = Get_Unitig情報(p_kmerインデックス, Get_Unitig群(p_kmerインデックス, l_開始kmer), p_k長);
+                var l_基準値 = Get_長さ加重中央カバレッジ(l_unitig群);
                 var l_低カバレッジ閾値 = l_基準値 * p_低カバレッジ比;
 
                 var l_除去tip数 = 0;
                 var l_剥がしたkmer数 = 0;
                 var l_トリミングしたunitig数 = 0;
-                foreach (var (l_塩基列, l_平均カバレッジ) in l_ユニティグ群)
+                foreach (var (l_塩基列, l_平均カバレッジ) in l_unitig群)
                 {
                     if (l_塩基列.Length < p_k長)
                     {
@@ -85,7 +85,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                             if (!l_Is無条件信頼
                                 && (l_基準値 <= 0D || l_平均カバレッジ < l_基準値 * p_tipカバレッジ比))
                             {
-                                V_除去_ユニティグ全体(p_kmerインデックス, l_塩基列, p_k長);
+                                V_除去_Unitig全体(p_kmerインデックス, l_塩基列, p_k長);
                                 l_除去tip数++;
                                 continue;
                             }
@@ -105,7 +105,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                 }
 
-                Logger.V_出力(メッセージID.グラフ単純化の反復, l_反復, l_ユニティグ群.Length, l_tip長閾値, l_基準値, l_除去tip数, l_剥がしたkmer数, l_トリミングしたunitig数);
+                Logger.V_出力(メッセージID.グラフ単純化の反復, l_反復, l_unitig群.Length, l_tip長閾値, l_基準値, l_除去tip数, l_剥がしたkmer数, l_トリミングしたunitig数);
 
                 if (l_除去tip数 == 0 && l_剥がしたkmer数 == 0)
                 {
@@ -129,11 +129,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <param name="p_開始kmer">walk を始める k-mer</param>
         /// <returns>unitig の配列</returns>
-        private static List<string> Get_ユニティグ群(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
+        private static List<string> Get_Unitig群(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
 
-            List<string> l_ユニティグ群 = [];
+            List<string> l_unitig群 = [];
             HashSet<string> l_既出 = [];
             foreach (var l_配列 in l_walk結果)
             {
@@ -143,9 +143,9 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
                 _ = l_既出.Add(l_配列);
                 _ = l_既出.Add(Util.V_逆相補(l_配列));
-                l_ユニティグ群.Add(l_配列);
+                l_unitig群.Add(l_配列);
             }
-            return l_ユニティグ群;
+            return l_unitig群;
         }
 
         /// <summary>
@@ -218,7 +218,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 各 unitig の塩基列と平均カバレッジ
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
-        /// <param name="p_ユニティグ群"></param>
+        /// <param name="p_unitig群"></param>
         /// <param name="p_k長"></param>
         /// <remarks>
         /// 基準値の算出と tip 判定の両方が同じ値を使うため、まとめて 1 回だけ求める<br/>
@@ -226,9 +226,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 読み取りのみなので並列に行う
         /// </remarks>
         /// <returns></returns>
-        private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_ユニティグ情報(TrustedKmerIndex p_kmerインデックス, List<string> p_ユニティグ群, int p_k長)
+        private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_Unitig情報(TrustedKmerIndex p_kmerインデックス, List<string> p_unitig群, int p_k長)
         {
-            return [.. p_ユニティグ群
+            return [.. p_unitig群
                 .AsParallel()
                 .AsOrdered()
                 .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
@@ -242,14 +242,14 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 全 unitig の平均カバレッジの長さ加重中央値
         /// </summary>
-        /// <param name="p_ユニティグ群"></param>
+        /// <param name="p_unitig群"></param>
         /// <remarks>
         /// 多数を占めうる短い断片 (エラー由来の tip/バブル候補そのもの) に引きずられず、ゲノムの大部分を占める正しい主経路のカバレッジ水準を推定するため、単純平均・単純中央値ではなく塩基数で重み付けした中央値を使う
         /// </remarks>
         /// <returns></returns>
-        private static double Get_長さ加重中央カバレッジ((byte[] A_塩基列, double A_平均カバレッジ)[] p_ユニティグ群)
+        private static double Get_長さ加重中央カバレッジ((byte[] A_塩基列, double A_平均カバレッジ)[] p_unitig群)
         {
-            return StatsUtil.Get_長さ加重中央値(p_ユニティグ群.Select(x => ((long)x.A_塩基列.Length, x.A_平均カバレッジ)));
+            return StatsUtil.Get_長さ加重中央値(p_unitig群.Select(x => ((long)x.A_塩基列.Length, x.A_平均カバレッジ)));
         }
 
         /// <summary>
@@ -258,7 +258,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <param name="p_塩基列">unitig の塩基 ID 列</param>
         /// <param name="p_k長">k 長</param>
-        private static void V_除去_ユニティグ全体(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
+        private static void V_除去_Unitig全体(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
             for (var i = 0; i + p_k長 <= p_塩基列.Length; i++)
             {

@@ -34,16 +34,16 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 残ったギャップを、その両端に付いたリードだけで組み直して埋める
         /// </summary>
-        /// <param name="p_スキャフォールドパス">対象の scaffold のパス</param>
+        /// <param name="p_scaffoldパス">対象の scaffold のパス</param>
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>局所アセンブリの集計</returns>
-        public static 局所アセンブリ統計 V_充填_ギャップ(string p_スキャフォールドパス, string p_リード1のパス, string p_リード2のパス, int p_k長)
+        public static 局所アセンブリ統計 V_充填_ギャップ(string p_scaffoldパス, string p_リード1のパス, string p_リード2のパス, int p_k長)
         {
-            var l_スキャフォールド群 = FastaReader.Get_全エントリ(p_スキャフォールドパス);
+            var l_scaffold群 = FastaReader.Get_全エントリ(p_scaffoldパス);
 
-            var l_ギャップ一覧 = Get_対象ギャップ一覧(l_スキャフォールド群, p_k長);
+            var l_ギャップ一覧 = Get_対象ギャップ一覧(l_scaffold群, p_k長);
             if (l_ギャップ一覧.Count == 0)
             {
                 return new 局所アセンブリ統計(0, 0, 0, 0, 0, 0);
@@ -84,7 +84,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            V_書き戻し(p_スキャフォールドパス, l_スキャフォールド群, l_ギャップ一覧, l_結果);
+            V_書き戻し(p_scaffoldパス, l_scaffold群, l_ギャップ一覧, l_結果);
 
             return new 局所アセンブリ統計(l_ギャップ一覧.Count, l_埋めた数, l_埋めた塩基数, l_リード無し数, l_一意でない数, l_到達不能数);
         }
@@ -148,15 +148,15 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 埋める対象になるギャップを集めて返す
         /// </summary>
-        /// <param name="p_スキャフォールド群">対象の scaffold</param>
+        /// <param name="p_scaffold群">対象の scaffold</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>対象のギャップ</returns>
-        private static List<局所ギャップ> Get_対象ギャップ一覧(List<(string A_ID, string A_配列)> p_スキャフォールド群, int p_k長)
+        private static List<局所ギャップ> Get_対象ギャップ一覧(List<(string A_ID, string A_配列)> p_scaffold群, int p_k長)
         {
             List<局所ギャップ> l_結果 = [];
-            for (var s = 0; s < p_スキャフォールド群.Count; s++)
+            for (var s = 0; s < p_scaffold群.Count; s++)
             {
-                var l_配列 = p_スキャフォールド群[s].A_配列;
+                var l_配列 = p_scaffold群[s].A_配列;
                 var l_i = 0;
                 while (l_i < l_配列.Length)
                 {
@@ -447,21 +447,21 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 埋まったギャップを反映して scaffold を書き直す
         /// </summary>
-        /// <param name="p_スキャフォールドパス">書き出し先</param>
-        /// <param name="p_スキャフォールド群">対象の scaffold</param>
+        /// <param name="p_scaffoldパス">書き出し先</param>
+        /// <param name="p_scaffold群">対象の scaffold</param>
         /// <param name="p_ギャップ一覧">埋めたギャップ</param>
         /// <param name="p_結果"></param>
-        private static void V_書き戻し(string p_スキャフォールドパス, List<(string A_ID, string A_配列)> p_スキャフォールド群, List<局所ギャップ> p_ギャップ一覧, string?[] p_結果)
+        private static void V_書き戻し(string p_scaffoldパス, List<(string A_ID, string A_配列)> p_scaffold群, List<局所ギャップ> p_ギャップ一覧, string?[] p_結果)
         {
             var l_scaffold別ギャップ = p_ギャップ一覧
                 .Select((l_ギャップ, l_番号) => (l_ギャップ, l_番号))
                 .GroupBy(x => x.l_ギャップ.A_足場番号)
                 .ToDictionary(x => x.Key, x => x.ToList());
 
-            using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
-            for (var s = 0; s < p_スキャフォールド群.Count; s++)
+            using var l_書き込み = new FastaWriter(p_scaffoldパス);
+            for (var s = 0; s < p_scaffold群.Count; s++)
             {
-                var (l_ID, l_配列) = p_スキャフォールド群[s];
+                var (l_ID, l_配列) = p_scaffold群[s];
                 if (!l_scaffold別ギャップ.TryGetValue(s, out var l_該当))
                 {
                     l_書き込み.V_書き込み(l_ID, l_配列);

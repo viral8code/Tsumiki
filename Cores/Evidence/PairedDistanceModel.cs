@@ -1,6 +1,4 @@
-﻿using Tsumiki.Commons;
-
-namespace Tsumiki.Cores.Evidence
+﻿namespace Tsumiki.Cores.Evidence
 {
     /// <summary>
     /// ペアエンドの隣接証拠を、観測本数ではなく期待本数との比で測るためのモデル

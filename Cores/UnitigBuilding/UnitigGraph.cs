@@ -76,7 +76,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 隣接グラフを構築する
         /// </summary>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_kmer辞書"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_曖昧kmerの番兵"></param>
@@ -85,11 +85,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 曖昧 k-mer は行き先を一意に決められないため辺を張らない
         /// </remarks>
         /// <returns></returns>
-        public static UnitigGraph Get_グラフ(List<string> p_ユニティグ配列, IReadOnlyDictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> p_kmer辞書, int p_k長, int p_曖昧kmerの番兵)
+        public static UnitigGraph Get_グラフ(List<string> p_unitig配列, IReadOnlyDictionary<KmerKey, (int A_unitigID, int A_開始位置)> p_kmer辞書, int p_k長, int p_曖昧kmerの番兵)
         {
             List<List<int>> l_出辺 = [];
             HashSet<int> l_自己ループ = [];
-            for (var i = 0; i < p_ユニティグ配列.Count; i++)
+            for (var i = 0; i < p_unitig配列.Count; i++)
             {
                 l_出辺.Add([]);
             }
@@ -97,9 +97,9 @@ namespace Tsumiki.Cores.UnitigBuilding
             // 末尾 k-mer から 1 塩基伸ばした候補を組み立てるための作業バッファ
             var l_候補 = new byte[p_k長];
 
-            for (var l_頂点 = 2; l_頂点 < p_ユニティグ配列.Count; l_頂点++)
+            for (var l_頂点 = 2; l_頂点 < p_unitig配列.Count; l_頂点++)
             {
-                var l_配列 = p_ユニティグ配列[l_頂点];
+                var l_配列 = p_unitig配列[l_頂点];
                 if (l_配列.Length < p_k長)
                 {
                     continue;
@@ -133,7 +133,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         continue;
                     }
 
-                    if (l_ヒット.A_ユニティグID == p_曖昧kmerの番兵 || l_ヒット.A_開始位置 != 0)
+                    if (l_ヒット.A_unitigID == p_曖昧kmerの番兵 || l_ヒット.A_開始位置 != 0)
                     {
                         // 開始位置 != 0 は「その k-mer が unitig の途中に現れる」
                         // ことを意味し、そこへ k-1 オーバーラップで連結することは
@@ -141,7 +141,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         // グラフ簡略化で k-mer を削った結果として起こりうる)
                         continue;
                     }
-                    var l_行き先 = ContigMaker.Get_頂点番号(l_ヒット.A_ユニティグID);
+                    var l_行き先 = ContigMaker.Get_頂点番号(l_ヒット.A_unitigID);
 
                     if (l_行き先 == l_頂点)
                     {
@@ -160,7 +160,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 短い反復配列を、ペアエンドの証拠に基づいて経路ごとに複製して解きほぐす
         /// </summary>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_支持"></param>
         /// <param name="p_ペア連結"></param>
         /// <param name="p_反復長の上限"></param>
@@ -174,7 +174,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 実際に効くのは、ペア支持が示す対応付けについて個々の接合点すら生リードに一切裏付けられない (=そもそもその unitig 同士が隣接している根拠が生データに無い) 場合であり、この限定的だが無視できない安全網として使う
         /// </param>
         /// <returns>解きほぐした反復の数</returns>
-        public int V_解決_短い反復(List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null)
+        public int V_解決_短い反復(List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null)
         {
             var l_解決数 = 0;
             var l_r_mer検証で棄却した数 = 0;
@@ -183,7 +183,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             for (var l_反復頂点 = 2; l_反復頂点 < l_元の頂点数; l_反復頂点 += 2)
             {
-                if (p_ユニティグ配列[l_反復頂点].Length > p_反復長の上限)
+                if (p_unitig配列[l_反復頂点].Length > p_反復長の上限)
                 {
                     continue;
                 }
@@ -247,8 +247,8 @@ namespace Tsumiki.Cores.UnitigBuilding
                     // どちらか一方でも接合点の支持が足りなければ、この対応付け
                     // 自体を疑って複製しない (誤った複製は取りこぼしではなく
                     // 実在しない配列を作る偽陽性になるため、疑わしきは見送る)
-                    var l_Has残存側支持 = p_r_mer検証器.Has接合点支持(p_ユニティグ配列[l_入1], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_残る出辺], Consts.r_mer接合点支持の閾値の既定値);
-                    var l_Has移動側支持 = p_r_mer検証器.Has接合点支持(p_ユニティグ配列[l_移す入辺], p_ユニティグ配列[l_反復頂点], p_ユニティグ配列[l_移す出辺], Consts.r_mer接合点支持の閾値の既定値);
+                    var l_Has残存側支持 = p_r_mer検証器.Has接合点支持(p_unitig配列[l_入1], p_unitig配列[l_反復頂点], p_unitig配列[l_残る出辺], Consts.r_mer接合点支持の閾値の既定値);
+                    var l_Has移動側支持 = p_r_mer検証器.Has接合点支持(p_unitig配列[l_移す入辺], p_unitig配列[l_反復頂点], p_unitig配列[l_移す出辺], Consts.r_mer接合点支持の閾値の既定値);
                     if (!l_Has残存側支持 || !l_Has移動側支持)
                     {
                         l_r_mer検証で棄却した数++;
@@ -256,9 +256,9 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                 }
 
-                var l_複製 = p_ユニティグ配列.Count; // 常に偶数 = 順鎖側の頂点
-                p_ユニティグ配列.Add(p_ユニティグ配列[l_反復頂点]);
-                p_ユニティグ配列.Add(p_ユニティグ配列[l_反復頂点 ^ 1]);
+                var l_複製 = p_unitig配列.Count; // 常に偶数 = 順鎖側の頂点
+                p_unitig配列.Add(p_unitig配列[l_反復頂点]);
+                p_unitig配列.Add(p_unitig配列[l_反復頂点 ^ 1]);
                 this.A_出辺.Add([]);
                 this.A_出辺.Add([]);
 
@@ -290,7 +290,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 単純バブルを検出し、リード支持が最も高い経路以外の辺を取り除く
         /// </summary>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_支持"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_敗者への引き継ぎ先"></param>
@@ -299,7 +299,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_類似度の下限"></param>
         /// <param name="p_経路長の上限"></param>
         /// <returns>取り除いた経路の数</returns>
-        public int V_除去_単純バブル(List<string> p_ユニティグ配列, IReadOnlyDictionary<(int, int), ulong> p_支持, int p_k長, List<string>? p_敗者への引き継ぎ先 = null, double p_長さ帯の割合 = 0.1D, int p_長さ帯の下限 = 3, double p_類似度の下限 = 0.7D, int p_経路長の上限 = 2_000)
+        public int V_除去_単純バブル(List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_支持, int p_k長, List<string>? p_敗者への引き継ぎ先 = null, double p_長さ帯の割合 = 0.1D, int p_長さ帯の下限 = 3, double p_類似度の下限 = 0.7D, int p_経路長の上限 = 2_000)
         {
             var l_除去数 = 0;
 
@@ -316,7 +316,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 Dictionary<int, List<List<int>>> l_再合流先ごと = [];
                 foreach (var l_開始 in l_出辺)
                 {
-                    if (this.Get_単純経路(l_開始, p_ユニティグ配列, p_k長, p_経路長の上限) is not { } l_結果)
+                    if (this.Get_単純経路(l_開始, p_unitig配列, p_k長, p_経路長の上限) is not { } l_結果)
                     {
                         continue;
                     }
@@ -340,7 +340,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         continue;
                     }
 
-                    var l_配列群 = l_経路群.Select(x => Get_経路配列(p_ユニティグ配列, x, p_k長)).ToList();
+                    var l_配列群 = l_経路群.Select(x => Get_経路配列(p_unitig配列, x, p_k長)).ToList();
 
                     var l_基準長 = l_配列群.Min(x => x.Length);
                     var l_差分 = Math.Max(p_長さ帯の下限, p_長さ帯の割合 * l_基準長);
@@ -420,14 +420,14 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// p_開始 から、途中に本物の分岐が無い限り辿れるだけ辿った経路と、その先の再合流先 (=最初に他からも入ってくる頂点) を返す
         /// </summary>
         /// <param name="p_開始"></param>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_長さ上限"></param>
         /// <remarks>
         /// 判定できない (開始点が既に他からも入られている、途中で行き止まる/さらに分岐する、循環する、長さの上限を超える) 場合は null
         /// </remarks>
         /// <returns></returns>
-        private (List<int> A_経路, int A_再合流先)? Get_単純経路(int p_開始, List<string> p_ユニティグ配列, int p_k長, int p_長さ上限)
+        private (List<int> A_経路, int A_再合流先)? Get_単純経路(int p_開始, List<string> p_unitig配列, int p_k長, int p_長さ上限)
         {
             List<int> l_経路 = [];
             HashSet<int> l_訪問済み = [];
@@ -446,7 +446,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return l_経路.Count > 0 ? (l_経路, l_現在) : null;
                 }
 
-                var l_この頂点の長さ = p_ユニティグ配列[l_現在].Length;
+                var l_この頂点の長さ = p_unitig配列[l_現在].Length;
                 l_累積長 += l_経路.Count == 0 ? l_この頂点の長さ : Math.Max(0, l_この頂点の長さ - l_重なり長);
 
                 if (l_累積長 > p_長さ上限)
@@ -470,17 +470,17 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 経路が表す 1 本の配列を組み立てて返す
         /// </summary>
-        /// <param name="p_ユニティグ配列">unitig ID 順の配列</param>
+        /// <param name="p_unitig配列">unitig ID 順の配列</param>
         /// <param name="p_経路">辿る頂点の並び</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>組み立てた配列</returns>
-        private static string Get_経路配列(List<string> p_ユニティグ配列, List<int> p_経路, int p_k長)
+        private static string Get_経路配列(List<string> p_unitig配列, List<int> p_経路, int p_k長)
         {
             var l_重なり長 = p_k長 - 1;
-            var l_出力 = new StringBuilder(p_ユニティグ配列[p_経路[0]]);
+            var l_出力 = new StringBuilder(p_unitig配列[p_経路[0]]);
             for (var i = 1; i < p_経路.Count; i++)
             {
-                var l_配列 = p_ユニティグ配列[p_経路[i]];
+                var l_配列 = p_unitig配列[p_経路[i]];
                 _ = l_出力.Append(l_配列.Length > l_重なり長 ? l_配列[l_重なり長..] : string.Empty);
             }
             return l_出力.ToString();

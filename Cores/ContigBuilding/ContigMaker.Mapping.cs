@@ -30,17 +30,17 @@ namespace Tsumiki.Core
         /// <summary>
         /// k-mer から、それが載る unitig と開始位置を引く辞書
         /// </summary>
-        private readonly Dictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> _kmer辞書;
+        private readonly Dictionary<KmerKey, (int A_unitigID, int A_開始位置)> _kmer辞書;
 
         /// <summary>
         /// unitig 長
         /// </summary>
-        private readonly Dictionary<int, int> _ユニティグ長;
+        private readonly Dictionary<int, int> _unitig長;
 
         /// <summary>
         /// 正逆両鎖の unitig 配列
         /// </summary>
-        private readonly List<string> _ユニティグ配列;
+        private readonly List<string> _unitig配列;
 
         /// <summary>
         /// リードが跨いだ unitig の組と、その本数
@@ -55,7 +55,7 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig 配置
         /// </summary>
-        private readonly Dictionary<int, ユニティグ配置> _ユニティグ配置 = [];
+        private readonly Dictionary<int, Unitig配置> _unitig配置 = [];
 
         #endregion
 
@@ -64,38 +64,38 @@ namespace Tsumiki.Core
         /// <summary>
         /// コンストラクタ
         /// </summary>
-        /// <param name="p_ユニティグファイルパス"></param>
-        public ContigMaker(string p_ユニティグファイルパス)
+        /// <param name="p_unitigファイルパス"></param>
+        public ContigMaker(string p_unitigファイルパス)
         {
             this._kmer辞書 = [];
-            this._ユニティグ長 = [];
-            this._ユニティグ配列 = [string.Empty, string.Empty];
+            this._unitig長 = [];
+            this._unitig配列 = [string.Empty, string.Empty];
             this._リード隣接 = [];
             this._ペア経路 = [];
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            using FastaReader l_読み込み = new(p_ユニティグファイルパス);
+            using FastaReader l_読み込み = new(p_unitigファイルパス);
             var l_ID = 1;
-            var l_短すぎるユニティグ数 = 0;
+            var l_短すぎるunitig数 = 0;
             var l_曖昧数 = 0;
             while (l_読み込み.Has続き())
             {
-                var l_ユニティグ = l_読み込み.Get_次の配列();
-                this._ユニティグ長[l_ID] = l_ユニティグ.A_配列.Length;
-                this._ユニティグ配列.Add(l_ユニティグ.A_配列);
-                this._ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ.A_配列));
+                var l_unitig = l_読み込み.Get_次の配列();
+                this._unitig長[l_ID] = l_unitig.A_配列.Length;
+                this._unitig配列.Add(l_unitig.A_配列);
+                this._unitig配列.Add(Util.V_逆相補(l_unitig.A_配列));
 
-                if (l_ユニティグ.A_配列.Length < l_k長)
+                if (l_unitig.A_配列.Length < l_k長)
                 {
                     // k 未満の unitig は k-mer を持てずマッピング対象から漏れる
                     // 黙って漏れないよう数だけ可視化しておく
-                    l_短すぎるユニティグ数++;
+                    l_短すぎるunitig数++;
                     l_ID++;
                     continue;
                 }
-                for (var i = l_k長; i <= l_ユニティグ.A_配列.Length; i++)
+                for (var i = l_k長; i <= l_unitig.A_配列.Length; i++)
                 {
                     var l_開始位置 = i - l_k長;
-                    var l_キー = new KmerKey(l_ユニティグ.A_配列.AsSpan(l_開始位置, l_k長));
+                    var l_キー = new KmerKey(l_unitig.A_配列.AsSpan(l_開始位置, l_k長));
                     var l_逆鎖キー = l_キー.Get_逆相補();
 
                     // 逆鎖キーは unitig 全体を逆相補した (=逆鎖の向きで読んだ) 場合の
@@ -103,16 +103,16 @@ namespace Tsumiki.Core
                     // 区間 [開始位置, 開始位置+k 長) を
                     // 長さ L の配列の逆側に写すと [L-i, L-開始位置) になるため、
                     // 逆鎖側での開始位置は L-i
-                    var l_逆鎖開始位置 = l_ユニティグ.A_配列.Length - i;
+                    var l_逆鎖開始位置 = l_unitig.A_配列.Length - i;
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー, l_ID, l_開始位置);
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_逆鎖キー, -l_ID, l_逆鎖開始位置);
                 }
                 l_ID++;
             }
 
-            if (l_短すぎるユニティグ数 > 0)
+            if (l_短すぎるunitig数 > 0)
             {
-                Logger.V_出力(メッセージID.短すぎるユニティグの除外, l_短すぎるユニティグ数);
+                Logger.V_出力(メッセージID.短すぎるunitigの除外, l_短すぎるunitig数);
             }
 
             if (l_曖昧数 > 0)
@@ -129,7 +129,7 @@ namespace Tsumiki.Core
         /// unitig 間の隣接を de Bruijn グラフから厳密に構築する
         /// </summary>
         /// <remarks>
-        /// <see cref="V_結合_コンティグ"/> を呼ぶ前 (コピー数推定の接続伝播など) でも独立に呼べるよう公開している<br/>
+        /// <see cref="V_結合_Contig"/> を呼ぶ前 (コピー数推定の接続伝播など) でも独立に呼べるよう公開している<br/>
         /// 呼ぶたびに FASTA を読み直して新しいグラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
         /// </remarks>
         /// <returns></returns>
@@ -137,7 +137,7 @@ namespace Tsumiki.Core
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            return UnitigGraph.Get_グラフ(this._ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+            return UnitigGraph.Get_グラフ(this._unitig配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
         }
 
         /// <summary>
@@ -249,24 +249,24 @@ namespace Tsumiki.Core
                 l_採用ラベル = "opposite-orientation";
             }
 
-            var l_同一ユニティグ標本 = new List<int>();
+            var l_同一unitig標本 = new List<int>();
             foreach (var l_標本 in l_採用する標本群)
             {
-                l_同一ユニティグ標本.AddRange(l_標本);
+                l_同一unitig標本.AddRange(l_標本);
             }
-            this.A_インサートサイズ標本.AddRange(l_同一ユニティグ標本);
-            this.A_同一ユニティグ標本.AddRange(l_同一ユニティグ標本);
+            this.A_インサートサイズ標本.AddRange(l_同一unitig標本);
+            this.A_同一unitig標本.AddRange(l_同一unitig標本);
 
             var l_ペア支持数 = this._ペア経路.Values.Sum(x => x.Count);
             Logger.V_出力(メッセージID.ペア隣接候補数, this._ペア経路.Count, l_ペア支持数);
-            Logger.V_出力(メッセージID.同一ユニティグのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一ユニティグ標本.Count);
-            if (l_同一ユニティグ標本.Count > 0)
+            Logger.V_出力(メッセージID.同一unitigのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一unitig標本.Count);
+            if (l_同一unitig標本.Count > 0)
             {
                 // 同一 unitig 内標本は、unitig 自体がフラグメント長より短い場合
                 // 両端が同じ unitig 内に収まるペアしか観測できず、より短い
                 // フラグメントに偏った標本になりやすい (unitig が短いほど顕著)
-                Logger.V_出力(メッセージID.同一ユニティグの断片長分布, Get_分布要約(l_同一ユニティグ標本));
-                Logger.V_出力(メッセージID.同一ユニティグの断片長中央値, StatsUtil.Get_中央値(l_同一ユニティグ標本), l_同一ユニティグ標本.Count);
+                Logger.V_出力(メッセージID.同一unitigの断片長分布, Get_分布要約(l_同一unitig標本));
+                Logger.V_出力(メッセージID.同一unitigの断片長中央値, StatsUtil.Get_中央値(l_同一unitig標本), l_同一unitig標本.Count);
             }
         }
 
@@ -310,17 +310,17 @@ namespace Tsumiki.Core
         /// </remarks>
         /// <param name="p_リード"></param>
         /// <returns></returns>
-        internal 代表ユニティグヒット Get_代表ユニティグ(string p_リード)
+        internal 代表Unitigヒット Get_代表Unitig(string p_リード)
         {
             if (string.IsNullOrEmpty(p_リード))
             {
-                return 代表ユニティグヒット.A_ヒットなし;
+                return 代表Unitigヒット.A_ヒットなし;
             }
 
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             if (p_リード.Length < l_k長)
             {
-                return 代表ユニティグヒット.A_ヒットなし;
+                return 代表Unitigヒット.A_ヒットなし;
             }
 
             var l_得票 = new Dictionary<int, int>();
@@ -346,9 +346,9 @@ namespace Tsumiki.Core
                 if (l_曖昧塩基数 == 0)
                 {
                     var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
-                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_ユニティグID != 曖昧kmerの番兵)
+                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_unitigID != 曖昧kmerの番兵)
                     {
-                        var l_ID = l_項目.A_ユニティグID;
+                        var l_ID = l_項目.A_unitigID;
                         l_得票[l_ID] = l_得票.GetValueOrDefault(l_ID) + 1;
                         l_最終終端位置[l_ID] = l_項目.A_開始位置 + l_k長;
                     }
@@ -357,7 +357,7 @@ namespace Tsumiki.Core
 
             if (l_得票.Count == 0)
             {
-                return 代表ユニティグヒット.A_ヒットなし;
+                return 代表Unitigヒット.A_ヒットなし;
             }
 
             var l_最良 = 0;
@@ -371,8 +371,8 @@ namespace Tsumiki.Core
                 }
             }
 
-            var l_ユニティグ長 = this._ユニティグ長.GetValueOrDefault(Math.Abs(l_最良), 0);
-            return new 代表ユニティグヒット(l_最良, l_最多得票, l_最終終端位置[l_最良], l_ユニティグ長);
+            var l_unitig長 = this._unitig長.GetValueOrDefault(Math.Abs(l_最良), 0);
+            return new 代表Unitigヒット(l_最良, l_最多得票, l_最終終端位置[l_最良], l_unitig長);
         }
 
         /// <summary>
@@ -440,17 +440,17 @@ namespace Tsumiki.Core
             this.V_マッピング_1リード(p_リード1, p_ローカル隣接);
             this.V_マッピング_1リード(p_リード2, p_ローカル隣接);
 
-            var l_ヒット1 = this.Get_代表ユニティグ(p_リード1);
-            var l_ヒット2 = this.Get_代表ユニティグ(p_リード2);
+            var l_ヒット1 = this.Get_代表Unitig(p_リード1);
+            var l_ヒット2 = this.Get_代表Unitig(p_リード2);
 
-            if (l_ヒット1.A_ユニティグID == 0 || l_ヒット2.A_ユニティグID == 0)
+            if (l_ヒット1.A_unitigID == 0 || l_ヒット2.A_unitigID == 0)
             {
                 return;
             }
 
-            if (Math.Abs(l_ヒット1.A_ユニティグID) == Math.Abs(l_ヒット2.A_ユニティグID))
+            if (Math.Abs(l_ヒット1.A_unitigID) == Math.Abs(l_ヒット2.A_unitigID))
             {
-                V_収集_同一ユニティグ標本(l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_同一向き標本, p_逆向き標本);
+                V_収集_同一unitig標本(l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_同一向き標本, p_逆向き標本);
             }
             else
             {
@@ -510,9 +510,9 @@ namespace Tsumiki.Core
                 if (l_曖昧塩基数 == 0)
                 {
                     var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
-                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_ユニティグID != 曖昧kmerの番兵)
+                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_unitigID != 曖昧kmerの番兵)
                     {
-                        var l_ID = l_項目.A_ユニティグID;
+                        var l_ID = l_項目.A_unitigID;
                         if (l_直前 == 0)
                         {
                             l_直前 = l_ID;
@@ -531,7 +531,6 @@ namespace Tsumiki.Core
                         }
                     }
                 }
-
             }
         }
 

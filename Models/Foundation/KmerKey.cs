@@ -140,7 +140,7 @@ namespace Tsumiki.Models.Foundation
         /// <returns></returns>
         public KmerKey Get_逆相補()
         {
-            Span<byte> l_逆相補 = this._長さ <= 128 ? stackalloc byte[this._長さ] : new byte[this._長さ];
+            var l_逆相補 = this._長さ <= 128 ? stackalloc byte[this._長さ] : new byte[this._長さ];
             for (var i = 0; i < this._長さ; i++)
             {
                 l_逆相補[this._長さ - 1 - i] = Util.Get_相補塩基ID(this.Get_塩基ID(i));

@@ -29,7 +29,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// unitig がフラグメント長より短いと短いフラグメントに偏る
         /// </remarks>
-        public List<int> A_同一ユニティグ標本 { get; } = [];
+        public List<int> A_同一unitig標本 { get; } = [];
 
         /// <summary>
         /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本
@@ -54,12 +54,12 @@ namespace Tsumiki.Core
         /// <remarks>
         /// Scaffolder が contig 側の末端 unitig の長さを参照する際に使う
         /// </remarks>
-        public IReadOnlyDictionary<int, int> A_ユニティグ長 => this._ユニティグ長;
+        public IReadOnlyDictionary<int, int> A_unitig長 => this._unitig長;
 
         /// <summary>
         /// unitig 配置
         /// </summary>
-        public IReadOnlyDictionary<int, ユニティグ配置> A_ユニティグ配置 => this._ユニティグ配置;
+        public IReadOnlyDictionary<int, Unitig配置> A_unitig配置 => this._unitig配置;
 
         #endregion
 
@@ -78,9 +78,9 @@ namespace Tsumiki.Core
         /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた内側の未読区間 (inner distance) である<br/>
         /// FR 配置では「フラグメント長 = 内側距離 + 両リード長」なので、ここで足し戻して以降の推定値の単位をフラグメント長に揃える
         /// </remarks>
-        private static void V_収集_同一ユニティグ標本(代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2, string p_リード1, string p_リード2, List<int> p_同一向き標本, List<int> p_逆向き標本)
+        private static void V_収集_同一unitig標本(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
-            if ((p_ヒット1.A_ユニティグID > 0) == (p_ヒット2.A_ユニティグID > 0))
+            if ((p_ヒット1.A_unitigID > 0) == (p_ヒット2.A_unitigID > 0))
             {
                 // 同じ向き同士 (FF/RR 相当)
                 // 両リードの内側の端はどちらも
@@ -99,7 +99,7 @@ namespace Tsumiki.Core
                 // 互いに逆向き (FR 相当、Illumina ペアエンドの通常配置)
                 // 順鎖側ヒットのリードがフラグメントの左端、
                 // 逆鎖側ヒットのリードが右端を占める
-                var l_Isヒット1順鎖 = p_ヒット1.A_ユニティグID > 0;
+                var l_Isヒット1順鎖 = p_ヒット1.A_unitigID > 0;
                 var l_順鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット1 : p_ヒット2);
                 var l_逆鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット2 : p_ヒット1);
                 var l_順鎖側リード長 = l_Isヒット1順鎖 ? p_リード1.Length : p_リード2.Length;
@@ -128,9 +128,9 @@ namespace Tsumiki.Core
         /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには read2 側の unitig ID の符号を反転させる<br/>
         /// 記録するのは「フラグメントのうち既に見えている分の長さ」 (read1 長 + unitig1 末端までの残り + unitig2 先頭からの残り + read2 長) で、ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = - (k-1))
         /// </remarks>
-        private static void V_収集_ペア経路(代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
+        private static void V_収集_ペア経路(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
-            var l_キー = (p_ヒット1.A_ユニティグID, -p_ヒット2.A_ユニティグID);
+            var l_キー = (p_ヒット1.A_unitigID, -p_ヒット2.A_unitigID);
 
             var l_残り1 = p_ヒット1.A_末尾までの残り長;
             var l_残り2 = Get_反転後残長(p_ヒット2);
@@ -154,7 +154,7 @@ namespace Tsumiki.Core
         /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
         /// </remarks>
         /// <returns></returns>
-        private static int Get_反転後残長(代表ユニティグヒット p_ヒット)
+        private static int Get_反転後残長(代表Unitigヒット p_ヒット)
         {
             return Math.Max(0, p_ヒット.A_最終一致終端位置);
         }
@@ -167,9 +167,9 @@ namespace Tsumiki.Core
         /// 同一 unitig 上の 2 ヒット間の距離を求めるのに使う
         /// </remarks>
         /// <returns></returns>
-        private static int Get_順鎖座標(代表ユニティグヒット p_ヒット)
+        private static int Get_順鎖座標(代表Unitigヒット p_ヒット)
         {
-            return p_ヒット.A_ユニティグID > 0 ? p_ヒット.A_最終一致終端位置 : p_ヒット.A_ユニティグ長 - p_ヒット.A_最終一致終端位置;
+            return p_ヒット.A_unitigID > 0 ? p_ヒット.A_最終一致終端位置 : p_ヒット.A_unitig長 - p_ヒット.A_最終一致終端位置;
         }
 
         /// <summary>
@@ -191,10 +191,10 @@ namespace Tsumiki.Core
                 }
 
                 // 頂点番号 -> 符号付き unitig ID
-                var l_始点ユニティグ = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
-                var l_終点ユニティグ = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
+                var l_始点unitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
+                var l_終点unitig = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
 
-                if (!this._ペア経路.TryGetValue((l_始点ユニティグ, l_終点ユニティグ), out var l_既知長標本))
+                if (!this._ペア経路.TryGetValue((l_始点unitig, l_終点unitig), out var l_既知長標本))
                 {
                     continue;
                 }

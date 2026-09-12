@@ -13,7 +13,7 @@ namespace Tsumiki.Cores.Output
         /// p_unitig配列・p_グラフ の状態を GFA1 として p_パス へ書き出す
         /// </summary>
         /// <param name="p_パス"></param>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_グラフ"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_コピー数"></param>
@@ -21,17 +21,17 @@ namespace Tsumiki.Cores.Output
         /// 頂点は unitig ID (1 始まり) の順鎖/逆鎖のペアで表現されているため、各物理的な隣接は双子の辺として 2 回現れる<br/>
         /// 片方だけを 1 本の L 行として出す
         /// </remarks>
-        public static void V_出力(string p_パス, List<string> p_ユニティグ配列, UnitigGraph p_グラフ, int p_k長, IReadOnlyDictionary<int, int>? p_コピー数 = null)
+        public static void V_出力(string p_パス, List<string> p_unitig配列, UnitigGraph p_グラフ, int p_k長, IReadOnlyDictionary<int, int>? p_コピー数 = null)
         {
             var l_重なり長 = Math.Max(0, p_k長 - 1);
-            var l_ユニティグ数 = (p_ユニティグ配列.Count - 2) / 2;
+            var l_unitig数 = (p_unitig配列.Count - 2) / 2;
 
             using var l_書き込み = new StreamWriter(p_パス);
             l_書き込み.WriteLine("H\tVN:Z:1.0");
 
-            for (var l_ID = 1; l_ID <= l_ユニティグ数; l_ID++)
+            for (var l_ID = 1; l_ID <= l_unitig数; l_ID++)
             {
-                var l_配列 = p_ユニティグ配列[l_ID << 1]; // 順鎖側
+                var l_配列 = p_unitig配列[l_ID << 1]; // 順鎖側
                 var l_深度タグ = p_コピー数 is not null && p_コピー数.TryGetValue(l_ID, out var l_コピー数値)
                     ? $"\tCN:i:{l_コピー数値}"
                     : string.Empty;

@@ -105,28 +105,28 @@
         /// <summary>
         /// 同一 unitig 内標本とリード長から較正器を作る
         /// </summary>
-        /// <param name="p_同一ユニティグ標本">同一 unitig 内で観測された距離の標本</param>
+        /// <param name="p_同一unitig標本">同一 unitig 内で観測された距離の標本</param>
         /// <param name="p_リード長">リード長、不明な場合は null</param>
-        /// <param name="p_ユニティグ長一覧">unitig ごとの長さ</param>
+        /// <param name="p_unitig長一覧">unitig ごとの長さ</param>
         /// <returns>較正器、モデルが使えない場合も返り値自体は null にならない</returns>
         /// <remarks>
         /// 標本が無い・リード長が不明・期待位置数の合計が 0 (すべての unitig がフラグメント長より短い等) のいずれかならモデルは使えないものとして返す
         /// </remarks>
-        public static 証拠較正器 Get_較正器(IReadOnlyList<int> p_同一ユニティグ標本, int? p_リード長, IEnumerable<long> p_ユニティグ長一覧)
+        public static 証拠較正器 Get_較正器(IReadOnlyList<int> p_同一unitig標本, int? p_リード長, IEnumerable<long> p_unitig長一覧)
         {
-            if (p_リード長 is not { } l_リード長 || p_同一ユニティグ標本.Count == 0)
+            if (p_リード長 is not { } l_リード長 || p_同一unitig標本.Count == 0)
             {
                 return new 証拠較正器(null, 0D);
             }
 
-            var l_モデル = new PairedDistanceModel(p_同一ユニティグ標本, l_リード長);
+            var l_モデル = new PairedDistanceModel(p_同一unitig標本, l_リード長);
             if (!l_モデル.A_Is使用可能)
             {
                 return new 証拠較正器(null, 0D);
             }
 
             var l_期待位置数合計 = 0D;
-            foreach (var l_長さ in p_ユニティグ長一覧)
+            foreach (var l_長さ in p_unitig長一覧)
             {
                 l_期待位置数合計 += l_モデル.Get_期待位置数_単一(l_長さ);
             }
@@ -135,7 +135,7 @@
                 return new 証拠較正器(null, 0D);
             }
 
-            var l_密度 = p_同一ユニティグ標本.Count / l_期待位置数合計;
+            var l_密度 = p_同一unitig標本.Count / l_期待位置数合計;
             return l_密度 > 0D ? new 証拠較正器(l_モデル, l_密度) : new 証拠較正器(null, 0D);
         }
 

@@ -17,10 +17,10 @@ namespace Tsumiki.Cores.Scaffolding
     /// <remarks>
     /// 出力は新規ファイルで、contigs.fasta 自体は変更しない
     /// </remarks>
-    /// <param name="p_コンティグ構築">確定辺・配置情報を持つ contig 構築器</param>
-    /// <param name="p_コンティグファイルパス">読み直す contig ファイルのパス</param>
+    /// <param name="p_contig構築">確定辺・配置情報を持つ contig 構築器</param>
+    /// <param name="p_contigファイルパス">読み直す contig ファイルのパス</param>
     /// <param name="p_リード長">リード長、不明なら null</param>
-    internal class Scaffolder(ContigMaker p_コンティグ構築, string p_コンティグファイルパス, int? p_リード長)
+    internal class Scaffolder(ContigMaker p_contig構築, string p_contigファイルパス, int? p_リード長)
     {
         #region 定数
 
@@ -35,7 +35,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// scaffold 辺に必要なペア数
         /// </summary>
-        private const ulong スキャフォールド支持数の下限 = 3UL;
+        private const ulong Scaffold支持数の下限 = 3UL;
 
         /// <summary>
         /// インサートサイズ推定に必要な標本数
@@ -54,12 +54,12 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// contig 配列
         /// </summary>
-        private readonly Dictionary<int, string> _コンティグ配列 = [];
+        private readonly Dictionary<int, string> _contig配列 = [];
 
         /// <summary>
         /// contig 名
         /// </summary>
-        private readonly Dictionary<int, string> _コンティグ名 = [];
+        private readonly Dictionary<int, string> _contig名 = [];
 
         #endregion
 
@@ -69,7 +69,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ
         /// </summary>
         /// <remarks>
-        /// 推定に失敗した場合は null のままとなり、その場合スキャフォールディングは行われない
+        /// 推定に失敗した場合は null のままとなり、その場合 scaffolding は行われない
         /// </remarks>
         public int? A_有効インサートサイズ { get; private set; }
 
@@ -78,41 +78,41 @@ namespace Tsumiki.Cores.Scaffolding
         #region 公開メソッド
 
         /// <summary>
-        /// スキャフォールディングを実行し、指定パスに結果を書き出す
+        /// scaffolding を実行し、指定パスに結果を書き出す
         /// </summary>
-        /// <param name="p_スキャフォールドパス"></param>
+        /// <param name="p_scaffoldパス"></param>
         /// <remarks>
         /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、その旨をログに出力して何もせずに戻る (ファイルは作成されない)
         /// </remarks>
-        public void V_実行(string p_スキャフォールドパス)
+        public void V_実行(string p_scaffoldパス)
         {
             if (!this.TryGet_インサートサイズ(out var l_インサートサイズ))
             {
-                Logger.V_出力(メッセージID.スキャフォールディング省略_インサートサイズ不明);
+                Logger.V_出力(メッセージID.Scaffolding省略_インサートサイズ不明);
                 return;
             }
             this.A_有効インサートサイズ = l_インサートサイズ;
-            Logger.V_出力(メッセージID.スキャフォールディング開始_インサートサイズ, l_インサートサイズ);
+            Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, l_インサートサイズ);
 
-            this.V_読込_コンティグ();
+            this.V_読込_Contig();
 
-            if (this._コンティグ配列.Count == 0)
+            if (this._contig配列.Count == 0)
             {
-                Logger.V_出力(メッセージID.スキャフォールディング省略_コンティグなし);
+                Logger.V_出力(メッセージID.Scaffolding省略_Contigなし);
                 return;
             }
 
-            var l_配置 = p_コンティグ構築.A_ユニティグ配置;
-            var l_ペア経路 = p_コンティグ構築.A_ペア経路;
+            var l_配置 = p_contig構築.A_unitig配置;
+            var l_ペア経路 = p_contig構築.A_ペア経路;
 
             // contig 単位の頂点空間を作る
             // unitig 同様、各 contig を
             // 「順方向」「逆方向」の 2 頂点として扱う
             // 頂点番号 = contig ID << 1 (順方向) / contig ID << 1 | 1 (逆方向)
-            var l_コンティグ数 = this._コンティグ配列.Keys.Count == 0 ? 0 : this._コンティグ配列.Keys.Max();
-            var l_頂点数 = (l_コンティグ数 + 1) << 1;
+            var l_contig数 = this._contig配列.Keys.Count == 0 ? 0 : this._contig配列.Keys.Max();
+            var l_頂点数 = (l_contig数 + 1) << 1;
 
-            var l_隣接 = new List<スキャフォールド候補>[l_頂点数];
+            var l_隣接 = new List<Scaffold候補>[l_頂点数];
             for (var i = 0; i < l_頂点数; i++)
             {
                 l_隣接[i] = [];
@@ -125,11 +125,11 @@ namespace Tsumiki.Cores.Scaffolding
 
             foreach (var (l_キー, l_標本) in l_ペア経路)
             {
-                var (l_始点ユニティグ, l_終点ユニティグ) = l_キー;
+                var (l_始点unitig, l_終点unitig) = l_キー;
 
-                if (!TryGet_コンティグ末端頂点(l_配置, l_始点ユニティグ, p_Is出口側: true, out var l_始点頂点))
+                if (!TryGet_Contig末端頂点(l_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
                 {
-                    if (!l_配置.ContainsKey(Math.Abs(l_始点ユニティグ)))
+                    if (!l_配置.ContainsKey(Math.Abs(l_始点unitig)))
                     {
                         l_未配置を指した数++;
                     }
@@ -140,9 +140,9 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (!TryGet_コンティグ末端頂点(l_配置, l_終点ユニティグ, p_Is出口側: false, out var l_終点頂点))
+                if (!TryGet_Contig末端頂点(l_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
                 {
-                    if (!l_配置.ContainsKey(Math.Abs(l_終点ユニティグ)))
+                    if (!l_配置.ContainsKey(Math.Abs(l_終点unitig)))
                     {
                         l_未配置を指した数++;
                     }
@@ -204,8 +204,8 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            var l_モデル = new PairedDistanceModel(p_コンティグ構築.A_同一ユニティグ標本, p_リード長 ?? l_インサートサイズ);
-            var l_較正器 = 証拠較正器.Get_較正器(p_コンティグ構築.A_同一ユニティグ標本, p_リード長 ?? l_インサートサイズ, p_コンティグ構築.A_ユニティグ長.Values.Select(x => (long)x));
+            var l_モデル = new PairedDistanceModel(p_contig構築.A_同一unitig標本, p_リード長 ?? l_インサートサイズ);
+            var l_較正器 = 証拠較正器.Get_較正器(p_contig構築.A_同一unitig標本, p_リード長 ?? l_インサートサイズ, p_contig構築.A_unitig長.Values.Select(x => (long)x));
 
             foreach (var ((l_始点, l_終点), (_, l_標本)) in l_対称化)
             {
@@ -213,21 +213,21 @@ namespace Tsumiki.Cores.Scaffolding
 
                 // 期待は接合点から 1 フラグメント長ぶんの窓しか効かないので、
                 // 重なっている (ギャップが負) 場合は接している場合と同じとみなす
-                var l_期待に対する比 = l_較正器.Get_正規化済み支持((ulong)l_一貫した本数, this.Get_コンティグ長(l_始点), this.Get_コンティグ長(l_終点), Math.Max(0, l_ギャップ長));
+                var l_期待に対する比 = l_較正器.Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
 
-                l_隣接[l_始点].Add(new スキャフォールド候補(l_終点, (ulong)l_一貫した本数, l_ギャップ長, l_期待に対する比));
+                l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_一貫した本数, l_ギャップ長, l_期待に対する比));
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
-            var l_最小証拠数 = スキャフォールド支持数の下限;
+            var l_最小証拠数 = Scaffold支持数の下限;
 
-            Logger.V_出力(メッセージID.スキャフォールド候補辺数, l_辺の集計.Count, Messages.Get_文言(l_較正器.A_Is使用可能 ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
+            Logger.V_出力(メッセージID.Scaffold候補辺数, l_辺の集計.Count, Messages.Get_文言(l_較正器.A_Is使用可能 ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
 
             // 各頂点について、最多支持の辺 1 本だけを残す
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
             for (var v = 2; v < l_頂点数; v++)
             {
-                V_確定_スキャフォールド辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
+                V_確定_Scaffold辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
             }
 
             var l_確定数 = 0;
@@ -265,7 +265,7 @@ namespace Tsumiki.Cores.Scaffolding
                     AmbiguityRecorder.V_記録(曖昧箇所の種別.経路が一意でない, AmbiguityRecorder.Get_場所名(v, "contig"));
                 }
             }
-            Logger.V_出力(メッセージID.閾値後のスキャフォールド辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
+            Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
 
             // 「入ってくる結合を持たない」頂点が経路の始点
             // v への結合が
@@ -273,7 +273,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_始点群 = new List<int>();
             for (var v = 2; v < l_頂点数; v++)
             {
-                if (this._コンティグ配列.ContainsKey(v >> 1) && (v ^ 1) < l_頂点数 && l_確定辺[v ^ 1] == null)
+                if (this._contig配列.ContainsKey(v >> 1) && (v ^ 1) < l_頂点数 && l_確定辺[v ^ 1] == null)
                 {
                     l_始点群.Add(v);
                 }
@@ -284,7 +284,7 @@ namespace Tsumiki.Cores.Scaffolding
             // 環状を引き継ぐ
             // 他の contig を継ぎ足した時点で、それはもう
             // 閉じた環ではない
-            List<(string A_配列, bool A_Is環状)> l_スキャフォールド群 = [];
+            List<(string A_配列, bool A_Is環状)> l_scaffold群 = [];
             var l_訪問済み = new bool[l_頂点数];
             foreach (var l_始点 in l_始点群)
             {
@@ -299,41 +299,41 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                var l_スキャフォールド = this.Get_スキャフォールド配列(l_確定辺, l_始点, l_訪問済み, out var l_連結数);
-                if (l_スキャフォールド != null)
+                var l_scaffold = this.Get_Scaffold配列(l_確定辺, l_始点, l_訪問済み, out var l_連結数);
+                if (l_scaffold != null)
                 {
-                    l_スキャフォールド群.Add((l_スキャフォールド, l_連結数 == 1 && this.Is環状(l_始点 >> 1)));
+                    l_scaffold群.Add((l_scaffold, l_連結数 == 1 && this.Is環状(l_始点 >> 1)));
                 }
             }
 
             // まだ訪問されていない (=孤立した、あるいは循環に巻き込まれた) contig を
             // 単独 scaffold として出力する
-            for (var l_コンティグID = 1; l_コンティグID <= l_コンティグ数; l_コンティグID++)
+            for (var l_contigID = 1; l_contigID <= l_contig数; l_contigID++)
             {
-                var l_順鎖 = l_コンティグID << 1;
-                var l_逆鎖 = (l_コンティグID << 1) | 1;
-                if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖] && this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
+                var l_順鎖 = l_contigID << 1;
+                var l_逆鎖 = (l_contigID << 1) | 1;
+                if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖] && this._contig配列.TryGetValue(l_contigID, out var l_配列))
                 {
-                    l_スキャフォールド群.Add((l_配列, this.Is環状(l_コンティグID)));
+                    l_scaffold群.Add((l_配列, this.Is環状(l_contigID)));
                     l_訪問済み[l_順鎖] = true;
                     l_訪問済み[l_逆鎖] = true;
                 }
             }
 
-            using var l_書き込み = new FastaWriter(p_スキャフォールドパス);
-            var l_スキャフォールドID = 1;
+            using var l_書き込み = new FastaWriter(p_scaffoldパス);
+            var l_scaffoldID = 1;
             var l_総延長 = 0L;
-            foreach (var (l_配列, l_Is環状) in l_スキャフォールド群)
+            foreach (var (l_配列, l_Is環状) in l_scaffold群)
             {
                 var l_名前 = l_Is環状
-                    ? $"SCAFFOLD{l_スキャフォールドID}_{Consts.環状の目印}"
-                    : $"SCAFFOLD{l_スキャフォールドID}";
+                    ? $"SCAFFOLD{l_scaffoldID}_{Consts.環状の目印}"
+                    : $"SCAFFOLD{l_scaffoldID}";
                 l_書き込み.V_書き込み(l_名前, l_配列);
-                l_スキャフォールドID++;
+                l_scaffoldID++;
                 l_総延長 += l_配列.Length;
             }
 
-            Logger.V_出力(メッセージID.スキャフォールド出力完了, l_スキャフォールド群.Count, l_総延長, p_スキャフォールドパス);
+            Logger.V_出力(メッセージID.Scaffold出力完了, l_scaffold群.Count, l_総延長, p_scaffoldパス);
         }
 
         #endregion
@@ -353,20 +353,20 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            var l_同一ユニティグ標本 = p_コンティグ構築.A_同一ユニティグ標本;
-            if (l_同一ユニティグ標本.Count >= インサートサイズ標本数の下限)
+            var l_同一unitig標本 = p_contig構築.A_同一unitig標本;
+            if (l_同一unitig標本.Count >= インサートサイズ標本数の下限)
             {
-                var l_推定値 = StatsUtil.Get_中央値(l_同一ユニティグ標本);
-                var l_ユニティグN50 = Get_ユニティグN50(p_コンティグ構築.A_ユニティグ長);
-                if (l_推定値 > 0 && l_ユニティグN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
+                var l_推定値 = StatsUtil.Get_中央値(l_同一unitig標本);
+                var l_unitigN50 = Get_UnitigN50(p_contig構築.A_unitig長);
+                if (l_推定値 > 0 && l_unitigN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
                 {
                     p_インサートサイズ = l_推定値;
-                    Logger.V_出力(メッセージID.インサートサイズ推定_同一ユニティグ, p_インサートサイズ, l_同一ユニティグ標本.Count, l_ユニティグN50, 偏りが無いとみなす長さ比);
+                    Logger.V_出力(メッセージID.インサートサイズ推定_同一unitig, p_インサートサイズ, l_同一unitig標本.Count, l_unitigN50, 偏りが無いとみなす長さ比);
                     return true;
                 }
             }
 
-            var l_確定辺標本 = p_コンティグ構築.A_確定辺標本;
+            var l_確定辺標本 = p_contig構築.A_確定辺標本;
             if (l_確定辺標本.Count >= インサートサイズ標本数の下限)
             {
                 p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
@@ -374,7 +374,7 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            var l_全標本 = p_コンティグ構築.A_インサートサイズ標本;
+            var l_全標本 = p_contig構築.A_インサートサイズ標本;
             if (l_全標本.Count < インサートサイズ標本数の下限)
             {
                 Logger.V_出力(メッセージID.インサートサイズ推定_標本不足, インサートサイズ標本数の下限, l_確定辺標本.Count, l_全標本.Count);
@@ -394,25 +394,25 @@ namespace Tsumiki.Cores.Scaffolding
         /// 打ち切りバイアスの有無の判断に使う<br/>
         /// 平均ではなく N50 を使うのは、本数では短い断片が多くてもペアが実際に観測される場所は長い unitig に偏るため
         /// </remarks>
-        /// <param name="p_ユニティグ長"></param>
+        /// <param name="p_unitig長"></param>
         /// <returns></returns>
-        private static long Get_ユニティグN50(IReadOnlyDictionary<int, int> p_ユニティグ長)
+        private static long Get_UnitigN50(IReadOnlyDictionary<int, int> p_unitig長)
         {
-            return StatsUtil.Get_N50([.. p_ユニティグ長.Values.Select(x => (long)x)]).A_N50;
+            return StatsUtil.Get_N50([.. p_unitig長.Values.Select(x => (long)x)]).A_N50;
         }
 
         /// <summary>
         /// contig を読み込んで、長さと配列を手元に持つ
         /// </summary>
-        private void V_読込_コンティグ()
+        private void V_読込_Contig()
         {
-            using var l_読み込み = new FastaReader(p_コンティグファイルパス);
+            using var l_読み込み = new FastaReader(p_contigファイルパス);
             var l_ID = 1;
             while (l_読み込み.Has続き())
             {
                 var l_配列エントリ = l_読み込み.Get_次の配列();
-                this._コンティグ名[l_ID] = l_配列エントリ.A_ID.TrimStart('>');
-                this._コンティグ配列[l_ID] = l_配列エントリ.A_配列;
+                this._contig名[l_ID] = l_配列エントリ.A_ID.TrimStart('>');
+                this._contig配列[l_ID] = l_配列エントリ.A_配列;
                 l_ID++;
             }
         }
@@ -425,17 +425,17 @@ namespace Tsumiki.Cores.Scaffolding
         /// contig が正規化で逆相補化されていると walk 順の先頭/末尾の意味が反転するため、その分も考慮して向きを決める
         /// </remarks>
         /// <param name="p_配置"></param>
-        /// <param name="p_符号付きユニティグID"></param>
+        /// <param name="p_符号付きunitigID"></param>
         /// <param name="p_Is出口側"></param>
         /// <param name="p_頂点番号"></param>
         /// <returns></returns>
-        private static bool TryGet_コンティグ末端頂点(IReadOnlyDictionary<int, ユニティグ配置> p_配置, int p_符号付きユニティグID, bool p_Is出口側, out int p_頂点番号)
+        private static bool TryGet_Contig末端頂点(IReadOnlyDictionary<int, Unitig配置> p_配置, int p_符号付きunitigID, bool p_Is出口側, out int p_頂点番号)
         {
             p_頂点番号 = 0;
-            var l_ユニティグID = Math.Abs(p_符号付きユニティグID);
-            var l_Is順鎖 = p_符号付きユニティグID > 0;
+            var l_unitigID = Math.Abs(p_符号付きunitigID);
+            var l_Is順鎖 = p_符号付きunitigID > 0;
 
-            if (!p_配置.TryGetValue(l_ユニティグID, out var l_配置情報))
+            if (!p_配置.TryGetValue(l_unitigID, out var l_配置情報))
             {
                 return false;
             }
@@ -446,8 +446,8 @@ namespace Tsumiki.Cores.Scaffolding
             var l_Is実効順鎖 = l_Is順鎖 != l_配置情報.A_Iswalk中逆鎖;
 
             var l_Is該当端 = p_Is出口側
-                ? l_Is実効順鎖 ? l_配置情報.A_Isコンティグ末尾 : l_配置情報.A_Isコンティグ先頭
-                : l_Is実効順鎖 ? l_配置情報.A_Isコンティグ先頭 : l_配置情報.A_Isコンティグ末尾;
+                ? l_Is実効順鎖 ? l_配置情報.A_IsContig末尾 : l_配置情報.A_IsContig先頭
+                : l_Is実効順鎖 ? l_配置情報.A_IsContig先頭 : l_配置情報.A_IsContig末尾;
             if (!l_Is該当端)
             {
                 return false;
@@ -456,11 +456,11 @@ namespace Tsumiki.Cores.Scaffolding
             // contig 全体が正規化のために逆相補化されている場合、
             // 「walk 順で見た先頭/末尾」と「実際の contigs.fasta 上の先頭/末尾」が
             // 入れ替わる
-            // スキャフォールディングは contigs.fasta 上の配列
+            // scaffolding は contigs.fasta 上の配列
             // (=実際に出力された向き) を基準に扱うため、ここで反転させる
-            var l_Is最終配列順鎖 = l_配置情報.A_Isコンティグ逆相補 ? !l_Is実効順鎖 : l_Is実効順鎖;
+            var l_Is最終配列順鎖 = l_配置情報.A_IsContig逆相補 ? !l_Is実効順鎖 : l_Is実効順鎖;
 
-            p_頂点番号 = (l_配置情報.A_コンティグID << 1) | (l_Is最終配列順鎖 ? 0 : 1);
+            p_頂点番号 = (l_配置情報.A_ContigID << 1) | (l_Is最終配列順鎖 ? 0 : 1);
             return true;
         }
 
@@ -472,7 +472,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_優勢閾値">優勢とみなす比</param>
         /// <param name="p_最小証拠数">確定に要求する支持数</param>
         /// <param name="p_確定辺">確定した辺の書き留め先</param>
-        private static void V_確定_スキャフォールド辺(List<スキャフォールド候補>[] p_隣接, int p_頂点, decimal p_優勢閾値, ulong p_最小証拠数, (int A_行き先, int A_ギャップ長)?[] p_確定辺)
+        private static void V_確定_Scaffold辺(List<Scaffold候補>[] p_隣接, int p_頂点, decimal p_優勢閾値, ulong p_最小証拠数, (int A_行き先, int A_ギャップ長)?[] p_確定辺)
         {
             var l_最良 = Get_優勢な候補(p_隣接[p_頂点], p_優勢閾値, p_最小証拠数);
             if (l_最良 is not { } l_辺)
@@ -495,7 +495,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
         /// <returns></returns>
-        internal static スキャフォールド候補? Get_優勢な候補(IReadOnlyList<スキャフォールド候補> p_候補, decimal p_優勢閾値, ulong p_最小証拠数)
+        internal static Scaffold候補? Get_優勢な候補(IReadOnlyList<Scaffold候補> p_候補, decimal p_優勢閾値, ulong p_最小証拠数)
         {
             var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
             if (l_候補.Count == 0)
@@ -513,9 +513,9 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_頂点">向き付きの頂点番号</param>
         /// <returns>contig の長さ</returns>
-        private long Get_コンティグ長(int p_頂点)
+        private long Get_Contig長(int p_頂点)
         {
-            return this._コンティグ配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;
+            return this._contig配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;
         }
 
         /// <summary>
@@ -527,18 +527,18 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_確定辺">確定した辺の書き留め先</param>
         /// <param name="p_始点"></param>
         /// <param name="p_訪問済み"></param>
-        /// <param name="p_連結したコンティグ数"></param>
+        /// <param name="p_連結したcontig数"></param>
         /// <returns></returns>
-        private string? Get_スキャフォールド配列((int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み, out int p_連結したコンティグ数)
+        private string? Get_Scaffold配列((int A_行き先, int A_ギャップ長)?[] p_確定辺, int p_始点, bool[] p_訪問済み, out int p_連結したcontig数)
         {
-            p_連結したコンティグ数 = 0;
-            var l_コンティグID = p_始点 >> 1;
+            p_連結したcontig数 = 0;
+            var l_contigID = p_始点 >> 1;
             var l_Is逆鎖 = (p_始点 & 1) == 1;
-            if (!this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
+            if (!this._contig配列.TryGetValue(l_contigID, out var l_配列))
             {
                 return null;
             }
-            p_連結したコンティグ数 = 1;
+            p_連結したcontig数 = 1;
 
             var l_出力 = new StringBuilder(l_Is逆鎖 ? Util.V_逆相補(l_配列) : l_配列);
             var l_現在 = p_始点;
@@ -550,9 +550,9 @@ namespace Tsumiki.Cores.Scaffolding
             V_記録_訪問済み(p_訪問済み, l_現在);
             while (p_確定辺[l_現在] is { } l_辺 && !p_訪問済み[l_辺.A_行き先])
             {
-                var l_次のコンティグID = l_辺.A_行き先 >> 1;
+                var l_次のcontigID = l_辺.A_行き先 >> 1;
                 var l_Is次が逆鎖 = (l_辺.A_行き先 & 1) == 1;
-                if (!this._コンティグ配列.TryGetValue(l_次のコンティグID, out var l_次の配列))
+                if (!this._contig配列.TryGetValue(l_次のcontigID, out var l_次の配列))
                 {
                     break;
                 }
@@ -561,7 +561,7 @@ namespace Tsumiki.Cores.Scaffolding
                 _ = l_出力.Append(l_Is次が逆鎖 ? Util.V_逆相補(l_次の配列) : l_次の配列);
 
                 l_現在 = l_辺.A_行き先;
-                p_連結したコンティグ数++;
+                p_連結したcontig数++;
                 V_記録_訪問済み(p_訪問済み, l_現在);
             }
 
@@ -571,11 +571,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// その contig が環状に閉じたものとして作られたか
         /// </summary>
-        /// <param name="p_コンティグID"></param>
+        /// <param name="p_contigID"></param>
         /// <returns></returns>
-        private bool Is環状(int p_コンティグID)
+        private bool Is環状(int p_contigID)
         {
-            return this._コンティグ名.TryGetValue(p_コンティグID, out var l_名前)
+            return this._contig名.TryGetValue(p_contigID, out var l_名前)
                 && l_名前.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -586,8 +586,8 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_頂点番号"></param>
         private static void V_記録_訪問済み(bool[] p_訪問済み, int p_頂点番号)
         {
-            var l_コンティグID = p_頂点番号 >> 1;
-            var l_順鎖 = l_コンティグID << 1;
+            var l_contigID = p_頂点番号 >> 1;
+            var l_順鎖 = l_contigID << 1;
             var l_逆鎖 = l_順鎖 | 1;
             if (l_逆鎖 < p_訪問済み.Length)
             {

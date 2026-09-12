@@ -3,18 +3,18 @@
     /// <summary>
     /// ContigMaker.Get_代表unitig の結果
     /// </summary>
-    /// <param name="p_ユニティグID"></param>
+    /// <param name="p_unitigID"></param>
     /// <param name="p_一致kmer数"></param>
     /// <param name="p_最終一致終端位置"></param>
-    /// <param name="p_ユニティグ長"></param>
-    internal readonly struct 代表ユニティグヒット(int p_ユニティグID, int p_一致kmer数, int p_最終一致終端位置, int p_ユニティグ長)
+    /// <param name="p_unitig長"></param>
+    internal readonly struct 代表Unitigヒット(int p_unitigID, int p_一致kmer数, int p_最終一致終端位置, int p_unitig長)
     {
         #region 定数
 
         /// <summary>
         /// ヒットなし
         /// </summary>
-        public static readonly 代表ユニティグヒット A_ヒットなし = new(0, 0, 0, 0);
+        public static readonly 代表Unitigヒット A_ヒットなし = new(0, 0, 0, 0);
 
         #endregion
 
@@ -27,7 +27,7 @@
         /// 正=unitig の順鎖として一致、負=逆鎖として一致<br/>
         /// 0 はヒットなしを表す
         /// </remarks>
-        public readonly int A_ユニティグID = p_ユニティグID;
+        public readonly int A_unitigID = p_unitigID;
 
         /// <summary>
         /// 採用された (最多得票の) unitig に対する一致 k-mer 数
@@ -45,7 +45,7 @@
         /// <summary>
         /// マップ先 unitig の全長 (向きに依存せず同じ)
         /// </summary>
-        public readonly int A_ユニティグ長 = p_ユニティグ長;
+        public readonly int A_unitig長 = p_unitig長;
 
         #endregion
 
@@ -57,7 +57,7 @@
         /// <remarks>
         /// この値が小さいほど、リードは unitig の末端近くまで到達している (＝ペアのもう一方までの未知区間が長くなる可能性が高い) ことを示す
         /// </remarks>
-        public int A_末尾までの残り長 => Math.Max(0, this.A_ユニティグ長 - this.A_最終一致終端位置);
+        public int A_末尾までの残り長 => Math.Max(0, this.A_unitig長 - this.A_最終一致終端位置);
 
         #endregion
     }

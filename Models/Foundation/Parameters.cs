@@ -224,7 +224,7 @@ namespace Tsumiki.Models.Foundation
         /// 期待インサートサイズ
         /// </summary>
         /// <remarks>
-        /// CLI で明示指定されなかった場合は null のままとし、スキャフォールディング実行時にマップ済みペアから標本推定を試みる<br/>
+        /// CLI で明示指定されなかった場合は null のままとし、scaffolding 実行時にマップ済みペアから標本推定を試みる<br/>
         /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で別途保持する<br/>
         /// CLI 指定値と自動推定値を区別するため)
         /// </remarks>

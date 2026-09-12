@@ -30,7 +30,7 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig グラフから辺を選び結合を確定して、contig を FASTA へ書き出す
         /// </summary>
-        /// <param name="p_コンティグパス">出力先の FASTA パス</param>
+        /// <param name="p_contigパス">出力先の FASTA パス</param>
         /// <param name="p_優勢閾値">分岐選択で優勢とみなす正規化支持の割合</param>
         /// <param name="p_最小証拠数">分岐選択に必要な最小の証拠数</param>
         /// <param name="p_コピー数">
@@ -53,17 +53,17 @@ namespace Tsumiki.Core
         /// <param name="p_GFAパス">
         /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
         /// </param>
-        public void V_結合_コンティグ(string p_コンティグパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null)
+        public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
 
-            var l_ユニティグ配列 = this._ユニティグ配列;
+            var l_unitig配列 = this._unitig配列;
 
             // 隣接は de Bruijn グラフから厳密に導く (UnitigGraph の説明を参照)
             // リードマッピング由来の隣接情報は「辺を作る」ためではなく、
             // 分岐点でどの辺を選ぶかの「重み」としてのみ使う
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
 
             var l_辺数 = 0;
             var l_分岐頂点数 = 0;
@@ -83,14 +83,14 @@ namespace Tsumiki.Core
             // フラグメント長の実測中央値を使う
             // (これより長い反復は、そもそも両端を別々の unitig に載せたペアが存在しえない)
             // 標本が無い場合は控えめな既定値
-            var l_反復長の上限 = this.A_同一ユニティグ標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一ユニティグ標本) : l_k長 * 4;
+            var l_反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一unitig標本) : l_k長 * 4;
 
-            V_簡略化ラウンド(l_グラフ, l_ユニティグ配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
+            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
 
             // 支持を生カウントではなく期待本数との比で測るための較正器
             // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
             // (較正器が使えない場合は生カウントへフォールバックし、挙動は従来と完全に一致する)
-            var l_較正器 = 証拠較正器.Get_較正器(this.A_同一ユニティグ標本, p_リード長, this._ユニティグ長.Values.Select(x => (long)x));
+            var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, p_リード長, this._unitig長.Values.Select(x => (long)x));
 
             var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数);
             var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数);
@@ -99,7 +99,7 @@ namespace Tsumiki.Core
             // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
             // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
             // ペアエンドの証拠と整合する、という状況を拾える
-            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器);
+            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器);
 
             if (l_先読みで解決した数 > 0)
             {
@@ -108,13 +108,13 @@ namespace Tsumiki.Core
 
             if (p_GFAパス is not null)
             {
-                GfaWriter.V_出力(p_GFAパス, l_ユニティグ配列, l_グラフ, l_k長, p_コピー数);
+                GfaWriter.V_出力(p_GFAパス, l_unitig配列, l_グラフ, l_k長, p_コピー数);
                 Logger.V_出力(メッセージID.GFA出力完了, p_GFAパス);
             }
 
             this.V_収集_確定辺標本(l_結合);
 
-            this.V_walk実行してFASTA書き出し(l_グラフ, l_ユニティグ配列, l_結合, l_重なり長, p_コンティグパス);
+            this.V_walk実行してFASTA書き出し(l_グラフ, l_unitig配列, l_結合, l_重なり長, p_contigパス);
         }
 
         #endregion
@@ -174,7 +174,7 @@ namespace Tsumiki.Core
         /// 単純バブルを潰してから辺を選ぶ
         /// </summary>
         /// <param name="p_グラフ"></param>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_支持"></param>
         /// <param name="p_ペア連結"></param>
         /// <param name="p_反復長の上限"></param>
@@ -182,14 +182,14 @@ namespace Tsumiki.Core
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_r_mer検証器"></param>
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
-        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
             for (var l_ラウンド = 1; l_ラウンド <= ラウンド数上限; l_ラウンド++)
             {
-                var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_ユニティグ配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
-                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_ユニティグ配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
+                var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
+                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
                 l_除去バブル数 += l_今回のバブル数;
                 l_解決した反復数 += l_今回の反復数;
 
@@ -256,7 +256,7 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                var l_始点長 = this._ユニティグ長.GetValueOrDefault(v >> 1, 0);
+                var l_始点長 = this._unitig長.GetValueOrDefault(v >> 1, 0);
                 var l_最良 = -1;
                 var l_最良の生本数 = 0UL;
                 var l_最良の正規化 = double.NegativeInfinity;
@@ -264,7 +264,7 @@ namespace Tsumiki.Core
                 foreach (var w in l_出辺)
                 {
                     var l_件数 = p_支持.GetValueOrDefault((v, w));
-                    var l_終点長 = this._ユニティグ長.GetValueOrDefault(w >> 1, 0);
+                    var l_終点長 = this._unitig長.GetValueOrDefault(w >> 1, 0);
 
                     // 較正器が使えない場合は生カウントをそのまま正規化値として扱う
                     // これにより以下の判定式は較正器が無かった従来のロジックと
@@ -370,20 +370,20 @@ namespace Tsumiki.Core
         /// 確定した結合を辿って contig を組み立て、FASTA へ書き出す
         /// </summary>
         /// <param name="p_グラフ">unitig グラフ</param>
-        /// <param name="p_ユニティグ配列">unitig ID 順の配列</param>
+        /// <param name="p_unitig配列">unitig ID 順の配列</param>
         /// <param name="p_結合">頂点ごとの結合先</param>
         /// <param name="p_重なり長">隣り合う unitig が共有する長さ</param>
-        /// <param name="p_コンティグパス">書き出し先</param>
-        private void V_walk実行してFASTA書き出し(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int[] p_結合, int p_重なり長, string p_コンティグパス)
+        /// <param name="p_contigパス">書き出し先</param>
+        private void V_walk実行してFASTA書き出し(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, int p_重なり長, string p_contigパス)
         {
             // 双子 (v と v^1) は同一 unitig の裏表なので、unitig 単位で訪問済みを管理する
             // これを頂点単位でやっていたため、順鎖側の walk と逆鎖側の
             // walk が同じ unitig を別々に出力し、contig 総長が unitig 総長の
             // ちょうど 2 倍に膨れていた
-            var l_ユニティグ数 = (p_ユニティグ配列.Count - 2) >> 1;
-            var l_訪問済み = new bool[l_ユニティグ数 + 1];
+            var l_unitig数 = (p_unitig配列.Count - 2) >> 1;
+            var l_訪問済み = new bool[l_unitig数 + 1];
 
-            List<string> l_コンティグ群 = [];
+            List<string> l_contig群 = [];
             List<List<int>> l_walk順群 = [];
             List<bool> l_環状フラグ群 = [];
 
@@ -395,7 +395,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                V_実行_walk(p_ユニティグ配列, p_結合, l_訪問済み, p_重なり長, v, l_コンティグ群, l_walk順群, l_環状フラグ群);
+                V_実行_walk(p_unitig配列, p_結合, l_訪問済み, p_重なり長, v, l_contig群, l_walk順群, l_環状フラグ群);
             }
 
             // 始点を持たない=循環している経路を拾う (環状ゲノム/プラスミド等)
@@ -405,27 +405,27 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                V_実行_walk(p_ユニティグ配列, p_結合, l_訪問済み, p_重なり長, v, l_コンティグ群, l_walk順群, l_環状フラグ群);
+                V_実行_walk(p_unitig配列, p_結合, l_訪問済み, p_重なり長, v, l_contig群, l_walk順群, l_環状フラグ群);
             }
 
-            using var l_書き込み = new FastaWriter(p_コンティグパス);
+            using var l_書き込み = new FastaWriter(p_contigパス);
             var l_ID = 1;
             var l_総延長 = 0L;
-            for (var c = 0; c < l_コンティグ群.Count; c++)
+            for (var c = 0; c < l_contig群.Count; c++)
             {
-                var l_コンティグ = l_コンティグ群[c];
+                var l_contig = l_contig群[c];
                 var l_walk順 = l_walk順群[c];
-                var l_逆相補 = Util.V_逆相補(l_コンティグ);
-                var l_Is逆相補採用 = string.CompareOrdinal(l_コンティグ, l_逆相補) > 0;
+                var l_逆相補 = Util.V_逆相補(l_contig);
+                var l_Is逆相補採用 = string.CompareOrdinal(l_contig, l_逆相補) > 0;
 
                 // 環状に閉じた contig は、その複製単位 (染色体・プラスミド) を
                 // 完全に組み上げられたことを意味するため、名前に明示する
                 // 閉じていても、複製単位と呼べる長さが無ければ目印は付けない
                 // ホモポリマー由来の 1 bp の閉路まで環状のレプリコンとして数えると、
                 // 候補選択も完全性の判定もその雑音に従ってしまう
-                var l_Is複製単位 = l_環状フラグ群[c] && l_コンティグ群[c].Length >= Consts.環状として数える最小長;
+                var l_Is複製単位 = l_環状フラグ群[c] && l_contig群[c].Length >= Consts.環状として数える最小長;
                 var l_名前 = l_Is複製単位 ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
-                var l_出力配列 = l_Is逆相補採用 ? l_逆相補 : l_コンティグ;
+                var l_出力配列 = l_Is逆相補採用 ? l_逆相補 : l_contig;
 
                 if (l_環状フラグ群[c])
                 {
@@ -445,33 +445,33 @@ namespace Tsumiki.Core
                 for (var w = 0; w < l_walk順.Count; w++)
                 {
                     var l_頂点番号 = l_walk順[w];
-                    this._ユニティグ配置[l_頂点番号 >> 1] = new ユニティグ配置(l_ID, l_Is逆相補採用, w, l_walk順.Count, (l_頂点番号 & 1) == 1);
+                    this._unitig配置[l_頂点番号 >> 1] = new Unitig配置(l_ID, l_Is逆相補採用, w, l_walk順.Count, (l_頂点番号 & 1) == 1);
                 }
 
                 l_ID++;
-                l_総延長 += l_コンティグ.Length;
+                l_総延長 += l_contig.Length;
             }
-            Logger.V_出力(メッセージID.コンティグ総延長, l_総延長);
+            Logger.V_出力(メッセージID.Contig総延長, l_総延長);
 
-            var l_環状コンティグ = Enumerable.Range(0, l_コンティグ群.Count)
-                .Where(x => l_環状フラグ群[x] && l_コンティグ群[x].Length >= Consts.環状として数える最小長)
+            var l_環状contig = Enumerable.Range(0, l_contig群.Count)
+                .Where(x => l_環状フラグ群[x] && l_contig群[x].Length >= Consts.環状として数える最小長)
                 .ToList();
-            var l_短すぎる閉路 = Enumerable.Range(0, l_コンティグ群.Count)
-                .Count(x => l_環状フラグ群[x] && l_コンティグ群[x].Length < Consts.環状として数える最小長);
+            var l_短すぎる閉路 = Enumerable.Range(0, l_contig群.Count)
+                .Count(x => l_環状フラグ群[x] && l_contig群[x].Length < Consts.環状として数える最小長);
 
             if (l_短すぎる閉路 > 0)
             {
                 Logger.V_出力(メッセージID.短すぎる閉路, l_短すぎる閉路, Consts.環状として数える最小長);
             }
 
-            if (l_環状コンティグ.Count > 0)
+            if (l_環状contig.Count > 0)
             {
-                var l_長さ一覧 = string.Join(", ", l_環状コンティグ.Select(x => $"{l_コンティグ群[x].Length}bp"));
-                Logger.V_出力(メッセージID.環状コンティグあり, l_環状コンティグ.Count, l_長さ一覧);
+                var l_長さ一覧 = string.Join(", ", l_環状contig.Select(x => $"{l_contig群[x].Length}bp"));
+                Logger.V_出力(メッセージID.環状Contigあり, l_環状contig.Count, l_長さ一覧);
             }
             else
             {
-                Logger.V_出力(メッセージID.環状コンティグなし);
+                Logger.V_出力(メッセージID.環状Contigなし);
             }
         }
 

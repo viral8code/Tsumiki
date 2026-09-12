@@ -1,6 +1,6 @@
 # Tsumiki
 
-**Tsumiki** は、シングルエンドおよびペアエンドのショートリードに対応した C# 製の実験的ゲノムアセンブラです。信頼性の高い k-mer から de Bruijn グラフを構築し、リードの接続情報を用いてコンティグやスキャフォールドの構築、および各種検証レポートの出力を行います。
+**Tsumiki** は、シングルエンドおよびペアエンドのショートリードに対応した C# 製の実験的ゲノムアセンブラです。信頼性の高い k-mer から de Bruijn グラフを構築し、リードの接続情報を用いて contig や scaffold の構築、および各種検証レポートの出力を行います。
 
 > [!CAUTION]
 > **本プロジェクトは現在開発中（アクティブ開発段階）です**
@@ -12,7 +12,7 @@
 
 - **k-mer 自動最適化**: リード長や頻度に基づく k-mer 長・カットオフの自動決定（手動指定も可）
 - **メモリ効率の高い k-mer カウント**: 指定したメモリバジェット内で動作するディスクバック型カウント
-- **グラフ構造の解析・最適化**: de Bruijn グラフの簡略化、Unitig 構築、コピー数を考慮したリピート処理、ペアエンド情報に基づくスキャフォールディング
+- **グラフ構造の解析・最適化**: de Bruijn グラフの簡略化、Unitig 構築、コピー数を考慮したリピート処理、ペアエンド情報に基づく scaffolding
 - **前処理 & エラー訂正**: リードのオーバーラップに基づく前処理や、k-mer スペクトラムを用いたエラー訂正（オプション）
 - **マルチ k 処理**: 複数 k-mer でのアセンブリ実行、配列の引き継ぎ（Carry-over）、最良候補の選定（オプション）
 - **局所リファインメント & ポリッシング**: 有界コンテキスト長での局所ギャップ再アセンブリ、塩基置換のポリッシング、環状接合部の検証（オプション）
@@ -124,8 +124,8 @@ dotnet publish/Tsumiki.dll -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,63
 assembly-run/
 ├── assembly.fasta           # 【最終出力】アセンブリ結果の FASTA ファイル
 ├── unitigs.fasta            # 構築された Unitig 配列
-├── contigs.fasta            # スキャフォールディング前のコンティグ配列
-├── scaffolds.fasta          # スキャフォールド配列 (生成時のみ)
+├── contigs.fasta            # scaffolding 前の Contig 配列
+├── scaffolds.fasta          # Scaffold 配列 (生成時のみ)
 ├── assembly.report.json     # アセンブリ統計・整合性検証レポート
 ├── assembly.provenance.json # 実行環境、入力ファイルの SHA-256、設定ログ
 ├── assembly.ambiguous.tsv   # 曖昧領域のサマリー
@@ -173,8 +173,8 @@ Tsumiki/
 │   ├── Pipeline/          # パイプライン制御、マルチk統合、検証処理
 │   ├── Preprocessing/     # トリミング、エラー訂正、k-merカウント
 │   ├── UnitigBuilding/    # グラフ構築、グラフ単純化、コピー数推定
-│   ├── ContigBuilding/    # リードマッピング、コンティグ探索
-│   ├── Scaffolding/       # スキャフォールディング、ギャップリファインメント
+│   ├── ContigBuilding/    # リードマッピング、contig 探索
+│   ├── Scaffolding/       # scaffolding、ギャップリファインメント
 │   └── Evaluation/        # 候補評価、レポート生成・データ出力
 ├── IO/                    # 入出力・ファイル読み込み
 ├── Utilities/             # 各種ユーティリティ・インデックス構造

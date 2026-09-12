@@ -43,13 +43,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// unitig ID (1 始まり) -> その unitig を構成する k-mer の平均カバレッジ、を計算する
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
-        /// <param name="p_ユニティグ配列"></param>
+        /// <param name="p_unitig配列"></param>
         /// <param name="p_k長"></param>
         /// <returns></returns>
-        public static Dictionary<int, double> Get_カバレッジ(TrustedKmerIndex p_kmerインデックス, IReadOnlyDictionary<int, string> p_ユニティグ配列, int p_k長)
+        public static Dictionary<int, double> Get_カバレッジ(TrustedKmerIndex p_kmerインデックス, IReadOnlyDictionary<int, string> p_unitig配列, int p_k長)
         {
             Dictionary<int, double> l_カバレッジ = [];
-            foreach (var (l_ID, l_配列) in p_ユニティグ配列)
+            foreach (var (l_ID, l_配列) in p_unitig配列)
             {
                 if (l_配列.Length < p_k長)
                 {
@@ -75,10 +75,10 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// カバレッジからコピー数を推定する
         /// </summary>
         /// <param name="p_カバレッジ"></param>
-        /// <param name="p_ユニティグ長"></param>
+        /// <param name="p_unitig長"></param>
         /// <param name="p_グラフ"></param>
         /// <returns></returns>
-        public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長, UnitigGraph? p_グラフ = null)
+        public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, UnitigGraph? p_グラフ = null)
         {
             // k-mer スペクトルの 2 成分混合モデルが適合できていれば、その単一コピー平均を
             // 基準値に使う
@@ -90,7 +90,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_モデル基準値 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均;
             var l_基準値 = l_モデル基準値 is { } l_値 && l_値 > 0D
                 ? l_値
-                : Get_長さ加重中央値(p_カバレッジ, p_ユニティグ長);
+                : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
 
             Dictionary<int, int> l_コピー数 = [];
             foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
@@ -116,7 +116,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             if (p_グラフ is { } l_グラフ)
             {
-                V_修正_孤立複製単位コピー数(l_グラフ, p_カバレッジ, p_ユニティグ長, l_コピー数);
+                V_修正_孤立複製単位コピー数(l_グラフ, p_カバレッジ, p_unitig長, l_コピー数);
                 V_修正_接続による単一コピー再判定(l_グラフ, p_カバレッジ, l_コピー数);
             }
 
@@ -127,18 +127,18 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 推定結果の要約をコンソールへ出力する
         /// </summary>
         /// <param name="p_推定結果"></param>
-        /// <param name="p_ユニティグ長"></param>
+        /// <param name="p_unitig長"></param>
         /// <remarks>
         /// 「単一コピーが何本・何 bp、2 コピー以上が何本・何 bp」が分かると、反復配列がアセンブリのどれだけを占めているかが把握できる
         /// </remarks>
-        public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_ユニティグ長)
+        public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_unitig長)
         {
             Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);
 
             var l_コピー数別 = p_推定結果.A_コピー数
                 .GroupBy(x => x.Value)
                 .OrderBy(x => x.Key)
-                .Select(x => (A_コピー数: x.Key, A_本数: x.Count(), A_塩基数: x.Sum(y => (long)p_ユニティグ長.GetValueOrDefault(y.Key, 0))))
+                .Select(x => (A_コピー数: x.Key, A_本数: x.Count(), A_塩基数: x.Sum(y => (long)p_unitig長.GetValueOrDefault(y.Key, 0))))
                 .ToList();
 
             var l_要約 = string.Join(", ", l_コピー数別.Select(x => $"x{x.A_コピー数}: {x.A_本数} unitig(s)/{x.A_塩基数:N0}bp"));
@@ -161,9 +161,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_グラフ"></param>
         /// <param name="p_カバレッジ"></param>
-        /// <param name="p_ユニティグ長"></param>
+        /// <param name="p_unitig長"></param>
         /// <param name="p_コピー数"></param>
-        private static void V_修正_孤立複製単位コピー数(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長, Dictionary<int, int> p_コピー数)
+        private static void V_修正_孤立複製単位コピー数(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
         {
             var l_成分ID = Get_連結成分(p_グラフ, p_コピー数.Keys);
 
@@ -177,7 +177,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             foreach (var l_島 in l_未確定の島一覧)
             {
-                var l_島の合計長 = l_島.Sum(l_ID => (long)p_ユニティグ長.GetValueOrDefault(l_ID, 0));
+                var l_島の合計長 = l_島.Sum(l_ID => (long)p_unitig長.GetValueOrDefault(l_ID, 0));
                 if (l_島の合計長 < 孤立複製単位とみなす最小合計長)
                 {
                     continue;
@@ -222,17 +222,17 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// unitig をグラフ上の連結成分に分ける (向きは無視し、辺があれば繋がっているとみなす)
         /// </summary>
         /// <param name="p_グラフ"></param>
-        /// <param name="p_ユニティグID一覧"></param>
+        /// <param name="p_unitigID一覧"></param>
         /// <remarks>
         /// 辺 v→w があれば逆鎖対称性より w^1→v^1 もあるため、各 unitig の両頂点 (順鎖・逆鎖) の出辺だけを辿れば入ってくる辺も含めて全方向を辿ったことになる
         /// </remarks>
         /// <returns></returns>
-        private static Dictionary<int, int> Get_連結成分(UnitigGraph p_グラフ, IEnumerable<int> p_ユニティグID一覧)
+        private static Dictionary<int, int> Get_連結成分(UnitigGraph p_グラフ, IEnumerable<int> p_unitigID一覧)
         {
             Dictionary<int, int> l_成分ID = [];
             var l_次の成分ID = 0;
 
-            foreach (var l_開始ID in p_ユニティグID一覧)
+            foreach (var l_開始ID in p_unitigID一覧)
             {
                 if (l_成分ID.ContainsKey(l_開始ID))
                 {
@@ -317,18 +317,18 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 指定した unitig から、排他的な辺 (出次数 1 かつ行き先の入次数も 1) だけを両方向へ辿って到達できる unitig ID の集合 (自分自身を含む) を返す
         /// </summary>
         /// <param name="p_グラフ"></param>
-        /// <param name="p_ユニティグID"></param>
+        /// <param name="p_unitigID"></param>
         /// <remarks>
         /// 両方の頂点 (順鎖・逆鎖) から辿ることで、鎖を両方向に伸ばす
         /// </remarks>
         /// <returns></returns>
-        private static HashSet<int> Get_排他的成分(UnitigGraph p_グラフ, int p_ユニティグID)
+        private static HashSet<int> Get_排他的成分(UnitigGraph p_グラフ, int p_unitigID)
         {
-            var l_開始1 = 2 * p_ユニティグID;
+            var l_開始1 = 2 * p_unitigID;
             var l_開始2 = l_開始1 ^ 1;
 
             HashSet<int> l_訪問済み頂点 = [l_開始1, l_開始2];
-            HashSet<int> l_結果 = [p_ユニティグID];
+            HashSet<int> l_結果 = [p_unitigID];
             Queue<int> l_キュー = new([l_開始1, l_開始2]);
 
             while (l_キュー.Count > 0)
@@ -361,16 +361,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 長さで重み付けしたカバレッジの中央値
         /// </summary>
         /// <param name="p_カバレッジ"></param>
-        /// <param name="p_ユニティグ長"></param>
+        /// <param name="p_unitig長"></param>
         /// <remarks>
         /// ゲノムの大部分を占める単一コピー領域の水準を推定するために使う
         /// </remarks>
         /// <returns></returns>
-        private static double Get_長さ加重中央値(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長)
+        private static double Get_長さ加重中央値(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長)
         {
             var l_組 = p_カバレッジ
-                .Where(x => p_ユニティグ長.ContainsKey(x.Key) && x.Value > 0D)
-                .Select(x => ((long)p_ユニティグ長[x.Key], x.Value));
+                .Where(x => p_unitig長.ContainsKey(x.Key) && x.Value > 0D)
+                .Select(x => ((long)p_unitig長[x.Key], x.Value));
             return StatsUtil.Get_長さ加重中央値(l_組);
         }
 
