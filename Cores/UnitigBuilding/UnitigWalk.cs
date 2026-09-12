@@ -29,7 +29,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 上位シフト
         /// </summary>
-        private readonly int _上位シフト = 2 * (p_k長 - 1);
+        private readonly int _上位シフト = (p_k長 - 1) << 1;
 
         #endregion
 

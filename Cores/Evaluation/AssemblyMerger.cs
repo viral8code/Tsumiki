@@ -28,7 +28,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// ここより内側でしか一致しない配列は、末端を跨いでいる証拠にならない
         /// </remarks>
-        private const int 末端とみなす長さ = 2000;
+        private const int 末端とみなす長さ = 2_000;
 
         /// <summary>
         /// 橋渡しとして認める最大の挟み込み長

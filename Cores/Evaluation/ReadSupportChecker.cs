@@ -26,7 +26,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// まとめて読んで並列に照合する
         /// </remarks>
-        private const int 照合バッチサイズ = 20000;
+        private const int 照合バッチサイズ = 20_000;
 
         #endregion
 

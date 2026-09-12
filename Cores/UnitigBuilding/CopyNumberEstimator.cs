@@ -302,6 +302,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 if (!p_カバレッジ.TryGetValue(l_ID, out var l_自身のカバレッジ) || l_自身のカバレッジ <= 0D)
                 {
                     continue;

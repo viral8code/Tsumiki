@@ -20,32 +20,15 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly string _一時ディレクトリ;
 
-        // k-mer カウント用のシャード
-        // k-mer 自身のハッシュで振り分けるため、
-        // ある k-mer は必ず 1 つのシャードにしか載らない
-
         /// <summary>
         /// ワーカーごとの k-mer カウンタ
         /// </summary>
         private CountingDB[]? _カウンタ群;
 
-        // シャードごとのロック
-        // k-mer をワーカー単位ではなくハッシュ値で
-        // 振り分けるようにしたため、複数スレッドが同じシャードへ書きうる
-
         /// <summary>
         /// シャードロック
         /// </summary>
-        private readonly object[]? _シャードロック;
-
-        // カットオフを通過した k-mer の厳密な集合 (常に正規形)
-        // 値はカバレッジ
-        //
-        // k の範囲で経路を分けるのは、ulong / UInt128 が値型でヒープ確保を
-        // 伴わないため
-        // KmerKey は毎回 ulong[] を確保し、1 リードあたり
-        // 数百〜数千回呼ばれる所属判定では実データ規模で致命的に効く
-        // k>64 のときだけ KmerKey へフォールバックする
+        private readonly Lock[]? _シャードロック;
 
         /// <summary>
         /// 信頼できる k-mer と出現回数 (k &gt; 64)
@@ -57,38 +40,20 @@ namespace Tsumiki.Utilities
         /// </summary>
         private Dictionary<ulong, ulong>? _信頼kmer_小;
 
-        // 33 <= k <= 64 用
-        // 150 bp リードで k=31 のままだと 31 bp 以上の反復配列が
-        // すべて潰れてしまい contig N50 が伸びないため、k を 63 前後まで上げられる
-        // ことが品質上きわめて重要になる
-
         /// <summary>
         /// 信頼できる k-mer と出現回数 (33 &lt;= k &lt;= 64)
         /// </summary>
         private Dictionary<UInt128, ulong>? _信頼kmer_中;
-
-        // 全シャードを 1 本にマージしたソート済みファイル
-        // 統合は高くつくため
-        // 一度だけ行い、ヒストグラムの集計とカットオフの適用で使い回す
 
         /// <summary>
         /// ワーカーごとのカウントを 1 本へ統合したファイルのパス
         /// </summary>
         private string? _統合ファイルパス;
 
-        // 最終マージの書き出し中に集計したヒストグラム
-        // シャードが 1 つで
-        // マージが走らなかった場合は null になり、そのときだけ読み直す
-
         /// <summary>
         /// 統合の際に数えた、出現回数ごとの k-mer 種類数
         /// </summary>
         private Dictionary<ulong, long>? _統合時のヒストグラム;
-
-        // k 長は構築時に固定する
-        // グローバルから毎回読むと、別の k を使う処理が
-        // 走った後にこのインデックスへ問い合わせたとき、内部表現と食い違う経路を
-        // 選んで破綻する (multi-k のように k が切り替わる場面で実際に起きる)
 
         /// <summary>
         /// k 長
@@ -116,8 +81,7 @@ namespace Tsumiki.Utilities
         /// カットオフ判定と同じループで作れるため追加のコストはかからない<br/>
         /// ゲノムサイズやカバレッジの推定に使う
         /// </remarks>
-        public IReadOnlyDictionary<ulong, long> A_出現回数ヒストグラム { get; private set; }
-            = new Dictionary<ulong, long>();
+        public IReadOnlyDictionary<ulong, long> A_出現回数ヒストグラム { get; private set; } = new Dictionary<ulong, long>();
 
         #endregion
 
@@ -135,11 +99,11 @@ namespace Tsumiki.Utilities
             this._一時ディレクトリ = p_一時ディレクトリ;
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
-            this._シャードロック = new object[l_シャード数];
+            this._シャードロック = new Lock[l_シャード数];
             for (var i = 0; i < l_シャード数; i++)
             {
                 this._カウンタ群[i] = new CountingDB(p_一時ディレクトリ, l_シャード数);
-                this._シャードロック[i] = new object();
+                this._シャードロック[i] = new Lock();
             }
         }
 
@@ -260,7 +224,7 @@ namespace Tsumiki.Utilities
         /// 先頭塩基が最上位側、末尾塩基が最下位側に来る (空きビットは下位側に残る)
         /// </remarks>
         /// <returns></returns>
-        internal static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
+        public static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_値 = 0UL;
             foreach (var l_塩基ID in p_kmer)
@@ -279,7 +243,7 @@ namespace Tsumiki.Utilities
         /// 並びの規約が同じなので、塩基列へ展開して詰め直す必要はない
         /// </remarks>
         /// <returns></returns>
-        internal static ulong Get_読み替え_小(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
+        public static ulong Get_読み替え_小(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
         {
             var l_値 = 0UL;
             foreach (var l_バイト in p_パック済み)
@@ -295,7 +259,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_パック済み"></param>
         /// <param name="p_余りビット"></param>
         /// <returns></returns>
-        internal static UInt128 Get_読み替え_中(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
+        public static UInt128 Get_読み替え_中(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
         {
             UInt128 l_値 = 0;
             foreach (var l_バイト in p_パック済み)
@@ -313,7 +277,7 @@ namespace Tsumiki.Utilities
         /// ビット配置の規約は同じで、kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る
         /// </remarks>
         /// <returns></returns>
-        internal static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
+        public static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
             foreach (var l_塩基ID in p_kmer)
@@ -407,7 +371,6 @@ namespace Tsumiki.Utilities
             // tip 除去は反復のたびにこれを呼ぶため、
             // 単一スレッドだと実行時間の大半をここが占める
             // 判定は読み取りのみなので並列に行える
-            //
             // AsOrdered で走査順を保つ
             // unitig 構築の結果は開始点の順序に
             // 依存するため、順序が変わると出力が実行ごとに変わる
@@ -557,6 +520,7 @@ namespace Tsumiki.Utilities
             this._信頼kmer_中 = l_信頼kmer_中;
 
             Logger.V_出力(メッセージID.開始kmerの探索);
+
             // 以前はここで一度カットオフ通過 k-mer をファイルへ書き出し、
             // 読み直して開始点を判定していた
             // 厳密な集合をインメモリで

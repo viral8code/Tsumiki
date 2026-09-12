@@ -153,7 +153,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             return (l_生スコア, l_正規化スコア);
         }
 
-
         #endregion
 
         #region 内部メソッド
@@ -193,12 +192,14 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     break;
                 }
+
                 var l_直前 = l_双子の結合 ^ 1;
                 if (l_直前 == l_現在 || l_通過済み.Contains(l_直前))
                 {
                     break;
                 }
                 l_通過済み.Add(l_直前);
+
                 if (p_コピー数.GetValueOrDefault(l_直前 >> 1, 1) <= 1)
                 {
                     l_足場.Add((l_直前, l_累積長));

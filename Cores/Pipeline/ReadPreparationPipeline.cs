@@ -84,6 +84,5 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         #endregion
-
     }
 }

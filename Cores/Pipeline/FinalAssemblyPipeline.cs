@@ -28,7 +28,7 @@ namespace Tsumiki.Cores.Pipeline
         /// 加えてこの帯にはタンデムリピートのコピー数を誤って繋いだ断片が集まりやすく、下流の注釈ツールも同種の閾値で捨てる<br/>
         /// 落とした分は一時ディレクトリの k ごとの成果物にそのまま残る
         /// </remarks>
-        internal static void V_除外_短い配列(string p_パス, int? p_リード長)
+        public static void V_除外_短い配列(string p_パス, int? p_リード長)
         {
             if (p_リード長 is not { } l_下限 || l_下限 <= 0 || !File.Exists(p_パス))
             {

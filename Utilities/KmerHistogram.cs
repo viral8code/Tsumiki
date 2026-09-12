@@ -97,6 +97,7 @@ namespace Tsumiki.Utilities
                 }
                 var l_延べ数 = (long)l_出現回数 * l_頻度;
                 l_延べ数の総和 += l_延べ数;
+
                 if (l_出現回数 >= l_谷)
                 {
                     l_ゲノム由来の延べ数 += l_延べ数;
@@ -272,6 +273,7 @@ namespace Tsumiki.Utilities
                 {
                     continue;
                 }
+
                 if (l_頻度 < l_最小頻度)
                 {
                     l_最小頻度 = l_頻度;

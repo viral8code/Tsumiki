@@ -92,6 +92,7 @@ namespace Tsumiki.Utilities
                     {
                         return (null, ギャップ充填判定.一意でない);
                     }
+
                     l_見つかった経路.Add(Get_復元経路(l_節点, l_現在, l_埋める長さ));
                     if (l_見つかった経路.Count > 1)
                     {
@@ -110,10 +111,12 @@ namespace Tsumiki.Utilities
                 {
                     Array.Copy(l_現在のkmer, 1, l_作業バッファ, 0, p_k長 - 1);
                     l_作業バッファ[p_k長 - 1] = l_塩基;
+
                     if (!p_kmerインデックス.Get_含まれるか(l_作業バッファ))
                     {
                         continue;
                     }
+
                     var l_深さ = l_継ぎ足した数 + 1;
                     if (l_到達済み is not null)
                     {

@@ -110,18 +110,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// head → repeat → tail の経路上で、head-repeat 接合点と repeat-tail 接合点の両方を実際に跨いだ r-mer のうち、生リード由来の集合に見つかった本数を返す
-        /// </summary>
-        /// <param name="p_head配列">接合点の手前の配列</param>
-        /// <param name="p_repeat配列">反復配列</param>
-        /// <param name="p_tail配列">接合点の先の配列</param>
-        /// <returns>支持している r-mer の本数</returns>
-        public int Get_接合点の支持数(string p_head配列, string p_repeat配列, string p_tail配列)
-        {
-            return this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列).A_全体;
-        }
-
-        /// <summary>
         /// 接合点の支持が閾値に届いているか
         /// </summary>
         /// <param name="p_head配列">接合点の手前の配列</param>
@@ -143,7 +131,7 @@ namespace Tsumiki.Utilities
         /// </remarks>
         /// <param name="p_配列">元の配列</param>
         /// <returns>正準化したキー</returns>
-        internal static (UInt128 A_上位, UInt128 A_下位, string? A_長い配列) Get_正準値(ReadOnlySpan<char> p_配列)
+        public static (UInt128 A_上位, UInt128 A_下位, string? A_長い配列) Get_正準値(ReadOnlySpan<char> p_配列)
         {
             var l_逆鎖か = false;
             for (var i = 0; i < p_配列.Length; i++)
@@ -173,6 +161,22 @@ namespace Tsumiki.Utilities
                 }
             }
             return (l_上位, l_下位, l_長い配列 is null ? null : new string(l_長い配列));
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// head → repeat → tail の経路上で、head-repeat 接合点と repeat-tail 接合点の両方を実際に跨いだ r-mer のうち、生リード由来の集合に見つかった本数を返す
+        /// </summary>
+        /// <param name="p_head配列">接合点の手前の配列</param>
+        /// <param name="p_repeat配列">反復配列</param>
+        /// <param name="p_tail配列">接合点の先の配列</param>
+        /// <returns>支持している r-mer の本数</returns>
+        public int Get_接合点の支持数(string p_head配列, string p_repeat配列, string p_tail配列)
+        {
+            return this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列).A_全体;
         }
 
         #endregion
@@ -253,7 +257,6 @@ namespace Tsumiki.Utilities
             }
             return (l_支持数, l_入口支持数, l_出口支持数);
         }
-
 
         /// <summary>
         /// r-mer の値を厳密な集合へ登録する

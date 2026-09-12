@@ -98,19 +98,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 正規形 (順鎖と逆相補のうち辞書順で小さいほう) を 64 bit へ畳む
-        /// </summary>
-        /// <remarks>
-        /// 32 塩基以下なら 2 bit パックそのもので、衝突は起きない
-        /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
-        /// <returns>畳んだ値</returns>
-        public static ulong Get_正規化ハッシュ_64(ReadOnlySpan<byte> p_kmer)
-        {
-            return p_kmer.Length <= 32 ? (ulong)Get_正規化パック(p_kmer) : (ulong)Get_正規化ハッシュ(p_kmer);
-        }
-
-        /// <summary>
         /// 配列の位置から k 塩基を、正規化せず順鎖のまま 2 bit パックする
         /// </summary>
         /// <remarks>
@@ -167,6 +154,23 @@ namespace Tsumiki.Utilities
         {
             var l_逆相補 = Get_逆相補(p_パック済み, p_長さ);
             return p_パック済み < l_逆相補 ? p_パック済み : l_逆相補;
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// 正規形 (順鎖と逆相補のうち辞書順で小さいほう) を 64 bit へ畳む
+        /// </summary>
+        /// <remarks>
+        /// 32 塩基以下なら 2 bit パックそのもので、衝突は起きない
+        /// </remarks>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
+        /// <returns>畳んだ値</returns>
+        public static ulong Get_正規化ハッシュ_64(ReadOnlySpan<byte> p_kmer)
+        {
+            return p_kmer.Length <= 32 ? (ulong)Get_正規化パック(p_kmer) : (ulong)Get_正規化ハッシュ(p_kmer);
         }
 
         #endregion

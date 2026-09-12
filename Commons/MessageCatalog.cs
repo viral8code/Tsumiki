@@ -1,4 +1,4 @@
-using Tsumiki.Models.Foundation;
+﻿using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Commons
 {
@@ -731,6 +731,10 @@ namespace Tsumiki.Commons
             var l_辞書 = Get_辞書(p_言語);
             return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
         }
+
+        #endregion
+
+        #region テストメソッド
 
         /// <summary>
         /// その言語にこの ID の訳があるか

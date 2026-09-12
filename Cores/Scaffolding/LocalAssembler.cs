@@ -32,15 +32,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <remarks>
         /// アンカーが反復配列と重なると際限なくリードが集まりうるため、暴走を防ぐ
         /// </remarks>
-        private const int 局所リード数の上限 = 4000;
-
-        /// <summary>
-        /// 局所アセンブリで使う k-mer カットオフ
-        /// </summary>
-        /// <remarks>
-        /// 1 回読まれていれば信頼する
-        /// </remarks>
-        private const ulong 局所カットオフ = 1UL;
+        private const int 局所リード数の上限 = 4_000;
 
         #endregion
 
@@ -186,6 +178,7 @@ namespace Tsumiki.Cores.Scaffolding
                         l_i++;
                     }
                     var l_長さ = l_i - l_開始;
+
                     // 両端に最低 k 長ぶんの足場が要る (左右のアンカー k-mer を取るため)
                     if (l_長さ <= Consts.ギャップ充填のギャップ長上限 && l_開始 >= p_k長 && l_i + p_k長 <= l_配列.Length)
                     {
@@ -233,12 +226,14 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_鍵 = new KmerKey(p_配列.AsSpan(i, p_k長)).Get_正規形();
                 if (!p_索引.TryGetValue(l_鍵, out var l_一覧))
                 {
                     l_一覧 = [];
                     p_索引[l_鍵] = l_一覧;
                 }
+
                 if (!l_一覧.Contains(p_ギャップ番号))
                 {
                     l_一覧.Add(p_ギャップ番号);
@@ -327,6 +322,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_鍵 = new KmerKey(p_リード.AsSpan(i, p_k長)).Get_正規形();
                 if (p_索引.TryGetValue(l_鍵, out var l_一覧))
                 {
@@ -369,6 +365,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_候補 = Get_固定kの局所結果(p_ギャップ, l_異なるリード, l_局所k, out var l_局所判定);
                 if (l_局所判定 == ギャップ充填判定.一意でない)
                 {
@@ -419,6 +416,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_kmer = Get_kmerバイト列(p_配列, i, p_k長);
                 if (l_kmer is not null)
                 {

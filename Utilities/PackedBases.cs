@@ -118,7 +118,7 @@ namespace Tsumiki.Utilities
 
             if (p_塩基数 < 語あたりの塩基数)
             {
-                l_レーン &= ulong.MaxValue << (64 - (2 * p_塩基数));
+                l_レーン &= ulong.MaxValue << (64 - (p_塩基数 << 1));
             }
             return BitOperations.PopCount(l_レーン);
         }

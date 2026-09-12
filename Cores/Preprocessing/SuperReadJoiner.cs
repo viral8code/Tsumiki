@@ -34,7 +34,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 1 バッチあたりのペア数
         /// </summary>
-        private const int バッチサイズ = 5000;
+        private const int バッチサイズ = 5_000;
 
         /// <summary>
         /// 1 ペアあたりに展開してよい探索状態の上限
@@ -90,8 +90,7 @@ namespace Tsumiki.Cores.Preprocessing
             while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
             {
                 var l_件数 = 0;
-                while (l_件数 < バッチサイズ
-                    && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+                while (l_件数 < バッチサイズ && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
                 {
                     l_配列1群[l_件数] = l_読み込み1.Get_次のリード_軽量().A_生リード;
                     l_配列2群[l_件数] = l_読み込み2.Get_次のリード_軽量().A_生リード;

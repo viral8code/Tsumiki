@@ -36,15 +36,10 @@ namespace Tsumiki.Cores.Scaffolding
 
         #region 内部変数
 
-        // contig ID (FastaWriter が振った 1 始まりの ID) -> 配列本体
-
         /// <summary>
         /// コンティグ配列
         /// </summary>
         private readonly Dictionary<int, string> _コンティグ配列 = [];
-
-        // contig ID -> ID 文字列 (先頭 ">" の次に書かれていた文字列 "NODE1" 等)
-        // 出力時に元の命名をある程度踏襲するために保持する
 
         /// <summary>
         /// コンティグ名
@@ -165,6 +160,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 Logger.V_出力(メッセージID.内部を指したペア候補, l_内部を指した数);
             }
+
             if (l_未配置を指した数 > 0)
             {
                 Logger.V_出力(メッセージID.未配置を指したペア候補, l_未配置を指した数);
@@ -245,6 +241,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_双子 = l_辺.A_行き先 ^ 1;
                 if (l_双子 >= l_頂点数 || l_候補辺[l_双子] is not { } l_戻りの辺 || l_戻りの辺.A_行き先 != (v ^ 1))
                 {
@@ -286,6 +283,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_スキャフォールド = this.Get_スキャフォールド配列(l_確定辺, l_始点, l_訪問済み, out var l_連結数);
                 if (l_スキャフォールド != null)
                 {
@@ -299,8 +297,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 var l_順鎖 = l_コンティグID << 1;
                 var l_逆鎖 = (l_コンティグID << 1) | 1;
-                if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖]
-                    && this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
+                if (l_順鎖 < l_頂点数 && !l_訪問済み[l_順鎖] && !l_訪問済み[l_逆鎖] && this._コンティグ配列.TryGetValue(l_コンティグID, out var l_配列))
                 {
                     l_スキャフォールド群.Add((l_配列, this.Get_環状か(l_コンティグID)));
                     l_訪問済み[l_順鎖] = true;
@@ -510,27 +507,6 @@ namespace Tsumiki.Cores.Scaffolding
         private long Get_コンティグ長(int p_頂点)
         {
             return this._コンティグ配列.TryGetValue(p_頂点 >> 1, out var l_配列) ? l_配列.Length : 0;
-        }
-
-        /// <summary>
-        /// 標本群から挿入する N の数を決める
-        /// </summary>
-        /// <remarks>
-        /// 各標本は既知長で、フラグメント長 = 標本 + ギャップ長 が成り立つため、ギャップ長 = インサートサイズ - 標本 の中央値を採る<br/>
-        /// 推定が負や 0 でも隣接の事実自体には証拠があるので、下限で丸めて少なくとも 1 つの N を残す
-        /// </remarks>
-        /// <param name="p_既知長標本"></param>
-        /// <returns></returns>
-        private int Get_推定ギャップ長(List<int> p_既知長標本)
-        {
-            var l_インサートサイズ = this.A_有効インサートサイズ ?? 0;
-            if (p_既知長標本.Count == 0)
-            {
-                return Consts.ギャップ長の下限;
-            }
-
-            var l_ギャップ候補 = p_既知長標本.Select(x => l_インサートサイズ - x).ToList();
-            return Math.Max(Consts.ギャップ長の下限, StatsUtil.Get_中央値(l_ギャップ候補));
         }
 
         /// <summary>

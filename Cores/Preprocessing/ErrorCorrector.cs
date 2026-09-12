@@ -23,7 +23,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 訂正自体は独立に並列化できるが、出力の行順はペアの対応付けを保つため入力と厳密に一致させる必要があり、「まとめて読む → 並列に訂正 → 順番通りに書く」形にしている
         /// </remarks>
-        private const int 訂正バッチサイズ = 20000;
+        private const int 訂正バッチサイズ = 20_000;
 
         #endregion
 
@@ -55,6 +55,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス);
                 }
+
                 // 訂正の判定はこのカットオフが全て
                 // 既定値のままだと
                 // エラー由来の k-mer まで信頼扱いになり、訂正が起きない

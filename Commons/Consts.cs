@@ -417,6 +417,8 @@
         /// </remarks>
         public static class 引数キー
         {
+            #region 定数
+
             /// <summary>
             /// リード 1 のパス
             /// </summary>
@@ -576,6 +578,8 @@
             /// ログ水準
             /// </summary>
             public const string ログ水準 = "-log";
+
+            #endregion
         }
 
         /// <summary>
@@ -606,7 +610,6 @@
             public const string 中国語 = "zh";
 
             #endregion
-
         }
 
         /// <summary>
@@ -632,7 +635,6 @@
             public const string 詳細 = "verbose";
 
             #endregion
-
         }
 
         /// <summary>
@@ -671,7 +673,6 @@
             public const string レポート = "[Report]";
 
             #endregion
-
         }
 
         /// <summary>
@@ -697,7 +698,6 @@
             public const string 積極的 = "bold";
 
             #endregion
-
         }
 
         /// <summary>
@@ -731,7 +731,6 @@
             public const byte T = 4;
 
             #endregion
-
         }
 
         #endregion

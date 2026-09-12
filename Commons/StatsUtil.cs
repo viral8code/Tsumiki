@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Commons
 {
     /// <summary>
-    /// 中央値・分位点・ N50 ・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
+    /// 中央値・分位点・N50・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
     /// </summary>
     /// <remarks>
     /// 「整列してから累積和が半分を超えた点を採る」という同じ骨格の実装がファイルごとに個別に書かれていたのを 1 箇所にする
@@ -18,8 +18,8 @@
         public static int Get_中央値(IReadOnlyCollection<int> p_値一覧)
         {
             var l_整列済み = p_値一覧.Order().ToList();
-            var l_中央 = l_整列済み.Count / 2;
-            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2 : l_整列済み[l_中央];
+            var l_中央 = l_整列済み.Count >> 1;
+            return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) >> 1 : l_整列済み[l_中央];
         }
 
         /// <summary>
@@ -30,7 +30,7 @@
         public static double Get_中央値(IReadOnlyCollection<double> p_値一覧)
         {
             var l_整列済み = p_値一覧.Order().ToList();
-            var l_中央 = l_整列済み.Count / 2;
+            var l_中央 = l_整列済み.Count >> 1;
             return l_整列済み.Count % 2 == 0 ? (l_整列済み[l_中央 - 1] + l_整列済み[l_中央]) / 2D : l_整列済み[l_中央];
         }
 

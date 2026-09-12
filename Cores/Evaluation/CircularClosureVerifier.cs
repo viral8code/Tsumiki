@@ -30,7 +30,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 閉じ目を跨いだとみなす窓の長さ
         /// </summary>
-        private const int 接合窓長 = 接合フランク長 * 2;
+        private const int 接合窓長 = 接合フランク長 << 1;
 
         /// <summary>
         /// 閉じ目を支持されたとみなすのに必要なリード本数
@@ -137,8 +137,8 @@ namespace Tsumiki.Cores.Evaluation
                 return;
             }
 
-            var l_マスク = (UInt128.One << (2 * 接合窓長)) - 1;
-            var l_最上位へ = 2 * (接合窓長 - 1);
+            var l_マスク = (UInt128.One << (接合窓長 << 1)) - 1;
+            var l_最上位へ = (接合窓長 - 1) << 1;
             UInt128 l_順鎖 = 0;
             UInt128 l_逆鎖 = 0;
             var l_直近の曖昧位置 = -1;

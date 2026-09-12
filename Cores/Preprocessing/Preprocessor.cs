@@ -54,7 +54,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// ErrorCorrector と同じ理由 (出力の行順を入力と厳密に一致させる必要がある) で、まとめて読み並列に処理し順番通りに書く形にしている
         /// </remarks>
-        private const int 前処理バッチサイズ = 20000;
+        private const int 前処理バッチサイズ = 20_000;
 
         #endregion
 
@@ -93,8 +93,7 @@ namespace Tsumiki.Cores.Preprocessing
             while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
             {
                 var l_件数 = 0;
-                while (l_件数 < 前処理バッチサイズ
-                    && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+                while (l_件数 < 前処理バッチサイズ && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
                 {
                     var l_リード1 = l_読み込み1.Get_次のリード_軽量();
                     var l_リード2 = l_読み込み2.Get_次のリード_軽量();

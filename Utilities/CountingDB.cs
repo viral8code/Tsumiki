@@ -12,25 +12,15 @@ namespace Tsumiki.Utilities
     {
         #region 定数
 
-        // 1 エントリあたりの実消費の目安
-        // キーの byte[] (ヘッダ 24 B + 中身) と
-        // Dictionary のエントリ構造体を合わせて概ね 80 B
-        // 予算は全シャードで分け合う総量として扱う (1 シャードあたりにすると
-        // スレッド数倍に膨らむ)
-
         /// <summary>
         /// エントリあたりの推定バイト数
         /// </summary>
         private const int エントリあたりの推定バイト数 = 80;
 
-        // FileStream に渡すバッファサイズ
-        // 8 バイト単位の細かい書き込みでも
-        // システムコールが頻発しないよう大きめに確保する
-
         /// <summary>
         /// IO バッファサイズ
         /// </summary>
-        private const int IOバッファサイズ = 1 << 20; // 1 MB
+        private const int IOバッファサイズ = 1 << 20;
 
         #endregion
 

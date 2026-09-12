@@ -98,6 +98,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.tip除去開始);
+
             // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
             // 数え直す必要がある
             // 除去側が最終状態のものを返す
@@ -150,6 +151,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.ユニティグ結合開始);
+
             // careful_bubble: バブル除去で外れた側の配列も、この k では
             // 敗者と判断しただけであって存在しないわけではない
             // 捨てずに
@@ -193,6 +195,7 @@ namespace Tsumiki.Cores.Pipeline
             // スキャフォールディングはペアエンド情報を前提とする
             // インサートサイズが推定できず作られないこともある
             var l_スキャフォールドを作ったか = false;
+
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 Logger.V_出力(メッセージID.スキャフォールディング開始);
@@ -353,7 +356,6 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             // 合成リードは最初の k で作ったものを以降の k でも使い回す
-            //
             // 橋渡しはその k の信頼できる k-mer 集合を通るので k ごとに
             // 作り直していたが、実データでは本数がほとんど動かなかった
             // (7.4 Mbp ・ 170 x で 556,352 -> 557,761 -> 557,867 -> 558,026 -> 557,931)
@@ -436,6 +438,7 @@ namespace Tsumiki.Cores.Pipeline
                     _ = l_既出.Add(Util.V_逆相補(l_配列));
                     l_ユニティグ配列[l_ID] = l_配列;
                     l_書き込み.V_書き込み(l_ID++, l_配列);
+
                     if (l_ID > Consts.ユニティグ数の上限)
                     {
                         break;

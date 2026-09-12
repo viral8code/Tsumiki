@@ -17,15 +17,6 @@ namespace Tsumiki.Cores.Pipeline
     /// </remarks>
     internal static class MultiKAssembler
     {
-        #region 定数
-
-        /// <summary>
-        /// 試す k 長の下限
-        /// </summary>
-        private const int 試すk長の下限 = 21;
-
-        #endregion
-
         #region 公開メソッド
 
         /// <summary>

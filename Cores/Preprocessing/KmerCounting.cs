@@ -213,11 +213,13 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_低品質数--;
                 }
+
                 if (l_塩基[i] == Consts.無効な塩基 ||
                     l_クオリティ[i] - l_Phredオフセット - l_クオリティカットオフ < 0)
                 {
                     l_低品質数++;
                 }
+
                 if (l_低品質数 == 0)
                 {
                     p_kmerインデックス.V_登録(l_塩基.Slice(i - l_k長 + 1, l_k長));

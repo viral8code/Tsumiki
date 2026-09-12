@@ -86,34 +86,6 @@ namespace Tsumiki.Commons
         }
 
         /// <summary>
-        /// 位置ごとの塩基候補列の逆相補を返す
-        /// </summary>
-        /// <param name="p_塩基候補列">元の塩基候補列</param>
-        /// <returns>逆相補の塩基候補列</returns>
-        public static Span<byte[]> V_逆相補(Span<byte[]> p_塩基候補列)
-        {
-            var l_結果 = new byte[p_塩基候補列.Length][];
-            for (var i = 0; i < p_塩基候補列.Length; i++)
-            {
-                var l_候補 = p_塩基候補列[p_塩基候補列.Length - 1 - i];
-                var l_変換後 = new byte[l_候補.Length];
-                for (var j = 0; j < l_候補.Length; j++)
-                {
-                    l_変換後[j] = l_候補[j] switch
-                    {
-                        Consts.塩基ID.A => Consts.塩基ID.T,
-                        Consts.塩基ID.C => Consts.塩基ID.G,
-                        Consts.塩基ID.G => Consts.塩基ID.C,
-                        Consts.塩基ID.T => Consts.塩基ID.A,
-                        _ => l_候補[j]
-                    };
-                }
-                l_結果[i] = l_変換後;
-            }
-            return l_結果.AsSpan();
-        }
-
-        /// <summary>
         /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか
         /// </summary>
         /// <param name="p_塩基文字"></param>
@@ -128,34 +100,6 @@ namespace Tsumiki.Commons
                 'A' or 'C' or 'G' or 'T' => false,
                 'M' or 'V' or 'N' or 'H' or 'R' or 'D' or 'W' or 'S' or 'B' or 'Y' or 'K' => true,
                 _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code"),
-            };
-        }
-
-        /// <summary>
-        /// 塩基文字が表しうる塩基 ID を返す
-        /// </summary>
-        /// <param name="p_塩基文字">塩基文字</param>
-        /// <returns>その文字が表しうる塩基 ID、曖昧塩基なら複数返る</returns>
-        public static List<int> Get_塩基ID候補(char p_塩基文字)
-        {
-            return p_塩基文字 switch
-            {
-                'A' => [Consts.塩基ID.A],
-                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
-                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
-                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
-                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
-                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
-                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
-                'C' => [Consts.塩基ID.C],
-                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
-                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
-                'G' => [Consts.塩基ID.G],
-                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
-                'T' => [Consts.塩基ID.T],
-                _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code")
             };
         }
 
@@ -178,17 +122,6 @@ namespace Tsumiki.Commons
                 'T' => Consts.塩基ID.T,
                 _ => Consts.無効な塩基,
             };
-        }
-
-        /// <summary>
-        /// パック済みの 1 バイトを 4 塩基の ID 列へ戻す
-        /// </summary>
-        /// <param name="p_パック済みバイト">2 bit ずつ 4 塩基を詰めたバイト</param>
-        /// <returns>塩基 ID 列</returns>
-        public static byte[] V_変換_塩基列(byte p_パック済みバイト)
-        {
-            return [.. new[] { (p_パック済みバイト >>> 6) & 3, (p_パック済みバイト >>> 4) & 3, (p_パック済みバイト >>> 2) & 3, p_パック済みバイト & 3 }
-                .Select(x => (x + 1) switch { Consts.塩基ID.A => Consts.塩基ID.A, Consts.塩基ID.C => Consts.塩基ID.C, Consts.塩基ID.G => Consts.塩基ID.G, Consts.塩基ID.T => Consts.塩基ID.T, _ => throw new ArgumentException($"{x + 1} is not the expected value for a base") })];
         }
 
         /// <summary>
@@ -254,27 +187,6 @@ namespace Tsumiki.Commons
             for (var i = 0; i < p_リード.Length; i++)
             {
                 l_結果[i] = Get_塩基ID(p_リード[i]);
-            }
-            return l_結果;
-        }
-
-        /// <summary>
-        /// 累乗を返す
-        /// </summary>
-        /// <param name="p_底">底</param>
-        /// <param name="p_指数">指数</param>
-        /// <returns>累乗した値</returns>
-        public static ulong V_累乗(ulong p_底, long p_指数)
-        {
-            var l_結果 = 1UL;
-            while (p_指数 > 0L)
-            {
-                if ((p_指数 & 1L) > 0L)
-                {
-                    l_結果 *= p_底;
-                }
-                p_底 *= p_底;
-                p_指数 >>= 1;
             }
             return l_結果;
         }
@@ -390,6 +302,98 @@ namespace Tsumiki.Commons
 
             // "/A", "/B" のような表記に対応する亜種も一応見ておく
             return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// 位置ごとの塩基候補列の逆相補を返す
+        /// </summary>
+        /// <param name="p_塩基候補列">元の塩基候補列</param>
+        /// <returns>逆相補の塩基候補列</returns>
+        public static Span<byte[]> V_逆相補(Span<byte[]> p_塩基候補列)
+        {
+            var l_結果 = new byte[p_塩基候補列.Length][];
+            for (var i = 0; i < p_塩基候補列.Length; i++)
+            {
+                var l_候補 = p_塩基候補列[p_塩基候補列.Length - 1 - i];
+                var l_変換後 = new byte[l_候補.Length];
+                for (var j = 0; j < l_候補.Length; j++)
+                {
+                    l_変換後[j] = l_候補[j] switch
+                    {
+                        Consts.塩基ID.A => Consts.塩基ID.T,
+                        Consts.塩基ID.C => Consts.塩基ID.G,
+                        Consts.塩基ID.G => Consts.塩基ID.C,
+                        Consts.塩基ID.T => Consts.塩基ID.A,
+                        _ => l_候補[j]
+                    };
+                }
+                l_結果[i] = l_変換後;
+            }
+            return l_結果.AsSpan();
+        }
+
+        /// <summary>
+        /// 塩基文字が表しうる塩基 ID を返す
+        /// </summary>
+        /// <param name="p_塩基文字">塩基文字</param>
+        /// <returns>その文字が表しうる塩基 ID、曖昧塩基なら複数返る</returns>
+        public static List<int> Get_塩基ID候補(char p_塩基文字)
+        {
+            return p_塩基文字 switch
+            {
+                'A' => [Consts.塩基ID.A],
+                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
+                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
+                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
+                'C' => [Consts.塩基ID.C],
+                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
+                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
+                'G' => [Consts.塩基ID.G],
+                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
+                'T' => [Consts.塩基ID.T],
+                _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code")
+            };
+        }
+
+        /// <summary>
+        /// パック済みの 1 バイトを 4 塩基の ID 列へ戻す
+        /// </summary>
+        /// <param name="p_パック済みバイト">2 bit ずつ 4 塩基を詰めたバイト</param>
+        /// <returns>塩基 ID 列</returns>
+        public static byte[] V_変換_塩基列(byte p_パック済みバイト)
+        {
+            return [.. new[] { (p_パック済みバイト >>> 6) & 3, (p_パック済みバイト >>> 4) & 3, (p_パック済みバイト >>> 2) & 3, p_パック済みバイト & 3 }
+                .Select(x => (x + 1) switch { Consts.塩基ID.A => Consts.塩基ID.A, Consts.塩基ID.C => Consts.塩基ID.C, Consts.塩基ID.G => Consts.塩基ID.G, Consts.塩基ID.T => Consts.塩基ID.T, _ => throw new ArgumentException($"{x + 1} is not the expected value for a base") })];
+        }
+
+        /// <summary>
+        /// 累乗を返す
+        /// </summary>
+        /// <param name="p_底">底</param>
+        /// <param name="p_指数">指数</param>
+        /// <returns>累乗した値</returns>
+        public static ulong V_累乗(ulong p_底, long p_指数)
+        {
+            var l_結果 = 1UL;
+            while (p_指数 > 0L)
+            {
+                if ((p_指数 & 1L) > 0L)
+                {
+                    l_結果 *= p_底;
+                }
+                p_底 *= p_底;
+                p_指数 >>= 1;
+            }
+            return l_結果;
         }
 
         #endregion

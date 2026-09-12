@@ -118,6 +118,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         l_曖昧数--;
                     }
+
                     if (l_塩基列[i + p_k長 - 1] is < Consts.塩基ID.A or > Consts.塩基ID.T)
                     {
                         l_曖昧数++;

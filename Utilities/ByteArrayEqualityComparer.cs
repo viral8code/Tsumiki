@@ -20,12 +20,12 @@
                 return true;
             }
 
-            if (p_x == null)
+            if (p_x is null)
             {
                 return p_y == null;
             }
 
-            if (p_y == null)
+            if (p_y is null)
             {
                 return false;
             }

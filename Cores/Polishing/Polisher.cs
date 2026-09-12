@@ -59,7 +59,7 @@ namespace Tsumiki.Cores.Polishing
         /// <remarks>
         /// これ以上は同じ枠に入れる
         /// </remarks>
-        private const int 深度ヒストグラムの上限 = 65535;
+        private const int 深度ヒストグラムの上限 = 65_535;
 
         #endregion
 
@@ -89,7 +89,7 @@ namespace Tsumiki.Cores.Polishing
             var l_総延長 = l_配列群.Sum(x => (long)x.Length);
 
             Logger.V_出力(メッセージID.ポリッシュの索引構築, l_エントリ群.Count, l_総延長);
-            var l_マッパー = new ReadMapper(l_配列群.Select(x => new string(x)).ToArray());
+            var l_マッパー = new ReadMapper([.. l_配列群.Select(x => new string(x))]);
             if (l_配列群.All(x => x.Length < シード長))
             {
                 Logger.V_出力(メッセージID.ポリッシュの種が無い, シード長);
