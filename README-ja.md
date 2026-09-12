@@ -103,9 +103,9 @@ dotnet publish/Tsumiki.dll -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,63
 | `-po` | 最終アセンブリの置換ポリッシング (修復) | Off |
 | `-cc` | 環状接合部を跨ぐリードの整合性検証 | Off |
 | `-gfa` | GFA1 形式での Unitig グラフ出力 | Off |
-| `-t <path>` | 出力・一時ファイルの保存先ディレクトリス | `temp` |
+| `-t <path>` | 出力・一時ファイルの保存先ディレクトリ | `temp` |
 | `-rs` | 以前の前処理・訂正結果をキャッシュとして再利用 | Off |
-| `-rt` | 正常完了時におよび中間ファイルを自動削除 | Off |
+| `-rt` | 正常完了時に一時および中間ファイルを自動削除 | Off |
 | `-lang <ja\|en\|zh>` | 表示言語 (`ja`: 日本語, `en`: 英語, `zh`: 中国語) | `ja` |
 | `-log <quiet\|normal\|verbose>` | ログ出力の詳細度 | `normal` |
 | `-v` | バージョン情報の表示 | — |
