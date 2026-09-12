@@ -112,7 +112,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 7.4 Mbp の実データで観測された 6 候補
+        /// 完全性と正確性が逆方向へ動く 6 候補
         /// </summary>
         /// <remarks>
         /// 完全性は単調増加、正確性は単調減少し、NG50 は k=93 で最大になる

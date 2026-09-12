@@ -11,13 +11,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// 複数の k のアセンブリを 1 つに統合する
     /// </summary>
-    /// <remarks>
-    /// k を変えると壊れ方が逆になる<br/>
-    /// 低い k は反復配列を潰して短く切れ、高い k はカバレッジが薄くなってグラフが千切れる<br/>
-    /// したがって片方が途切れている場所を、もう片方が繋いでいることがある<br/>
-    /// 最も良い 1 本を骨格に選び、他の k の配列がその骨格の 2 本を跨いでいる箇所を隣接の証拠として集める<br/>
-    /// 採否は相互一意性で判定し、跨いだ配列をそのまま繋ぎ目に使う
-    /// </remarks>
     internal static class AssemblyMerger
     {
         #region 定数
@@ -63,7 +56,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 繋げた箇所が 1 つも無ければ false を返す (その場合、出力は行わない)
         /// </remarks>
         /// <returns></returns>
-        public static bool V_統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = 必要な独立支持数の既定値)
+        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = 必要な独立支持数の既定値)
         {
             var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
             if (l_骨格配列.Count == 0)
@@ -108,7 +101,7 @@ namespace Tsumiki.Cores.Evaluation
             List<string> l_名前 = [];
             List<string> l_配列 = [];
             using var l_読み込み = new FastaReader(p_パス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_項目 = l_読み込み.Get_次の配列();
                 l_名前.Add(l_項目.A_ID);
@@ -126,7 +119,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 複数の配列に現れる k-mer は行き先を一意に決められないため捨てる
         /// </remarks>
         /// <returns></returns>
-        private static Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_順鎖か)> Get_骨格索引(List<string> p_骨格配列, int p_アンカーk長)
+        private static Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> Get_骨格索引(List<string> p_骨格配列, int p_アンカーk長)
         {
             Dictionary<UInt128, (int, int, bool)> l_索引 = [];
             HashSet<UInt128> l_重複 = [];
@@ -134,9 +127,9 @@ namespace Tsumiki.Cores.Evaluation
             for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
             {
                 var l_配列 = p_骨格配列[l_番号];
-                foreach (var l_位置 in Get_末端の位置範囲(l_配列.Length, p_アンカーk長))
+                foreach (var l_位置 in Get_末端位置範囲(l_配列.Length, p_アンカーk長))
                 {
-                    if (!KmerPacking.Get_正規化パック(l_配列, l_位置, p_アンカーk長, out var l_鍵))
+                    if (!KmerPacking.TryGet_正規化パック(l_配列, l_位置, p_アンカーk長, out var l_鍵))
                     {
                         continue;
                     }
@@ -152,7 +145,7 @@ namespace Tsumiki.Cores.Evaluation
                         _ = l_重複.Add(l_鍵);
                         continue;
                     }
-                    l_索引[l_鍵] = (l_番号, l_位置, Get_順鎖か(l_配列, l_位置, p_アンカーk長));
+                    l_索引[l_鍵] = (l_番号, l_位置, Is順鎖(l_配列, l_位置, p_アンカーk長));
                 }
             }
             return l_索引;
@@ -164,7 +157,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_配列長">配列の長さ</param>
         /// <param name="p_アンカーk長">アンカーの k 長</param>
         /// <returns>アンカーを取る位置</returns>
-        private static IEnumerable<int> Get_末端の位置範囲(int p_配列長, int p_アンカーk長)
+        private static IEnumerable<int> Get_末端位置範囲(int p_配列長, int p_アンカーk長)
         {
             var l_最終位置 = p_配列長 - p_アンカーk長;
 
@@ -191,9 +184,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_位置">k-mer の開始位置</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>順鎖なら true</returns>
-        private static bool Get_順鎖か(string p_配列, int p_位置, int p_k長)
+        private static bool Is順鎖(string p_配列, int p_位置, int p_k長)
         {
-            _ = KmerPacking.Get_正規化パック(p_配列, p_位置, p_k長, out var l_正規形);
+            _ = KmerPacking.TryGet_正規化パック(p_配列, p_位置, p_k長, out var l_正規形);
             UInt128 l_順鎖 = 0;
             for (var i = 0; i < p_k長; i++)
             {
@@ -210,7 +203,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格配列"></param>
         /// <param name="p_アンカーk長"></param>
         /// <returns></returns>
-        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_順鎖か)> p_索引, List<string> p_骨格配列, int p_アンカーk長)
+        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> p_索引, List<string> p_骨格配列, int p_アンカーk長)
         {
             List<橋渡し候補> l_結果 = [];
             var (_, l_他の配列) = Get_配列一覧(p_他.A_最終パス);
@@ -218,18 +211,18 @@ namespace Tsumiki.Cores.Evaluation
             foreach (var l_配列 in l_他の配列)
             {
                 // この配列が骨格のどこにどの順で当たったかを並べる
-                List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか)> l_当たり = [];
+                List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> l_当たり = [];
                 for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
                 {
-                    if (!KmerPacking.Get_正規化パック(l_配列, i, p_アンカーk長, out var l_鍵)
+                    if (!KmerPacking.TryGet_正規化パック(l_配列, i, p_アンカーk長, out var l_鍵)
                         || !p_索引.TryGetValue(l_鍵, out var l_骨格側))
                     {
                         continue;
                     }
-                    l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Get_順鎖か(l_配列, i, p_アンカーk長) == l_骨格側.A_順鎖か));
+                    l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Is順鎖(l_配列, i, p_アンカーk長) == l_骨格側.A_Is順鎖));
                 }
 
-                l_結果.AddRange(Get_連続する2本の跨ぎ(l_当たり, l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
+                l_結果.AddRange(Get_連続2本跨ぎ(l_当たり, l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
             }
             return l_結果;
         }
@@ -246,7 +239,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 切り替わりの直前・直後の当たりが、それぞれの骨格配列の「出口」と「入口」に当たっているときだけ隣接の証拠になる
         /// </remarks>
         /// <returns></returns>
-        private static IEnumerable<橋渡し候補> Get_連続する2本の跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
+        private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
         {
             for (var i = 1; i < p_当たり.Count; i++)
             {
@@ -289,11 +282,11 @@ namespace Tsumiki.Cores.Evaluation
         /// 順鎖で当たって末尾側にあるなら 2 i、逆鎖で当たって先頭側にあるなら 2 i+1
         /// </remarks>
         /// <returns></returns>
-        private static int? Get_出口頂点((int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか) p_当たり, List<string> p_骨格配列, int p_アンカーk長)
+        private static int? Get_出口頂点((int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_当たり, List<string> p_骨格配列, int p_アンカーk長)
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            return p_当たり.A_同じ向きか ? l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_Is同方向 ? l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         /// <summary>
@@ -303,11 +296,11 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格配列">骨格の配列</param>
         /// <param name="p_アンカーk長">アンカーの k 長</param>
         /// <returns>入口の頂点、決められなければ null</returns>
-        private static int? Get_入口頂点((int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか) p_当たり, List<string> p_骨格配列, int p_アンカーk長)
+        private static int? Get_入口頂点((int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_当たり, List<string> p_骨格配列, int p_アンカーk長)
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            return p_当たり.A_同じ向きか ? p_当たり.A_位置 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : l_末尾からの距離 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_Is同方向 ? p_当たり.A_位置 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : l_末尾からの距離 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         /// <summary>
@@ -327,8 +320,8 @@ namespace Tsumiki.Cores.Evaluation
             Dictionary<(int, int), HashSet<int>> l_支持したk = [];
             foreach (var l_候補 in p_候補)
             {
-                V_数える(l_支持したk, (l_候補.A_始点, l_候補.A_終点), l_候補.A_由来のk長);
-                V_数える(l_支持したk, (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1), l_候補.A_由来のk長);
+                V_登録_k支持(l_支持したk, (l_候補.A_始点, l_候補.A_終点), l_候補.A_由来のk長);
+                V_登録_k支持(l_支持したk, (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1), l_候補.A_由来のk長);
             }
 
             // 頂点ごとに、行き先の集合と代表となる候補を集める
@@ -380,7 +373,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_支持したk">辺ごとに支持した k</param>
         /// <param name="p_辺">支持された辺</param>
         /// <param name="p_k長">支持した k</param>
-        private static void V_数える(Dictionary<(int, int), HashSet<int>> p_支持したk, (int, int) p_辺, int p_k長)
+        private static void V_登録_k支持(Dictionary<(int, int), HashSet<int>> p_支持したk, (int, int) p_辺, int p_k長)
         {
             if (!p_支持したk.TryGetValue(p_辺, out var l_集合))
             {
@@ -425,7 +418,7 @@ namespace Tsumiki.Cores.Evaluation
 
             for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
             {
-                if (l_使用済み[l_番号] || Get_来訪元があるか(p_確定, l_番号))
+                if (l_使用済み[l_番号] || Has来訪元(p_確定, l_番号))
                 {
                     continue;
                 }
@@ -463,7 +456,7 @@ namespace Tsumiki.Cores.Evaluation
         /// あれば連結の起点にはしない
         /// </remarks>
         /// <returns></returns>
-        private static bool Get_来訪元があるか(Dictionary<int, 橋渡し候補> p_確定, int p_番号)
+        private static bool Has来訪元(Dictionary<int, 橋渡し候補> p_確定, int p_番号)
         {
             // v へ入る辺は、双子 v^1 から出る辺と同値
             return p_確定.ContainsKey((p_番号 << 1) | 1);

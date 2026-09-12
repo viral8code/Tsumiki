@@ -82,7 +82,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// ユニティグごとに順方向配列と長さを持つ S 行を 1 つ書くことを確かめる
+        /// unitig ごとに順方向配列と長さを持つ S 行を 1 つ書くことを確かめる
         /// </summary>
         [Fact]
         public void V_出力_ユニティグごとに順方向配列と長さを持つS行を1つ書く()
@@ -160,9 +160,9 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// 分岐を持つ検証用のユニティググラフを組み立てる
+        /// 分岐を持つ検証用の unitig グラフを組み立てる
         /// </summary>
-        /// <returns>ユニティグ一覧とグラフ</returns>
+        /// <returns>unitig 一覧とグラフ</returns>
         private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
@@ -187,12 +187,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存))

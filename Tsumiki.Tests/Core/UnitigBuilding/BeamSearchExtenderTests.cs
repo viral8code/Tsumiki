@@ -147,12 +147,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// いま反復配列 (多コピー) の上にいて、単一コピーの足場が 1 つも取れない場合は、どのコピーにいるのか分からないので進む方向を選べない
         /// </summary>
-        /// <remarks>
-        /// 反復の内部から読まれたリードはどのコピー由来か区別できない<br/>
-        /// それが反復が解けない理由そのものなので、そこを起点にしたペアの証拠はどの行き先にも付いてしまう<br/>
-        /// 標本数が少ないと偶然の偏りが閾値を超えて誤った側が選ばれる<br/>
-        /// これは実際に起きた: 反復入りの合成ゲノム (A-R-B-R-C、R は 150 bp の 2 コピー反復) で、R 自身を足場にしたために A-R-C という中間の B を飛ばした contig が出力されていた (真値照合で発覚)
-        /// </remarks>
         [Fact]
         public void V_単一コピーの足場が無い反復上では繋がない()
         {
@@ -203,7 +197,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// A → (B or C)、B → D、C → E という形の分岐構造を持つグラフを作る
         /// </summary>
-        /// <returns>ユニティグ一覧とグラフ</returns>
+        /// <returns>unitig 一覧とグラフ</returns>
         private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
@@ -228,12 +222,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録_kmer(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存値))
@@ -251,7 +245,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// どこも結合していない状態の結合表を作る
         /// </summary>
-        /// <param name="p_グラフ">対象のユニティググラフ</param>
+        /// <param name="p_グラフ">対象の unitig グラフ</param>
         /// <returns>結合表</returns>
         private static int[] V_構築_未結合表(UnitigGraph p_グラフ)
         {

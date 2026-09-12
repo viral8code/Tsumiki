@@ -34,7 +34,7 @@ namespace Tsumiki.Tests.Common
         [InlineData('K')]
         public void V_候補数による判定と一致する(char p_塩基文字)
         {
-            Assert.Equal(Util.Get_塩基ID候補(p_塩基文字).Count > 1, Util.Get_曖昧塩基か(p_塩基文字));
+            Assert.Equal(Util.Get_塩基ID候補(p_塩基文字).Count > 1, Util.Is曖昧塩基(p_塩基文字));
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Tsumiki.Tests.Common
         [InlineData('-')]
         public void V_塩基でない文字を拒否する(char p_文字)
         {
-            _ = Assert.Throws<ArgumentException>(() => Util.Get_曖昧塩基か(p_文字));
+            _ = Assert.Throws<ArgumentException>(() => Util.Is曖昧塩基(p_文字));
         }
 
         #endregion

@@ -80,9 +80,9 @@ namespace Tsumiki.Tests.Utility
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Assert.True(l_インデックス.Get_含まれるか(l_inserted));
-            Assert.True(l_インデックス.Get_含まれるか(l_revComp)); // 正規化されるため逆鎖側からの問い合わせでもヒットする
-            Assert.False(l_インデックス.Get_含まれるか(l_neverInserted));
+            Assert.True(l_インデックス.Haskmer(l_inserted));
+            Assert.True(l_インデックス.Haskmer(l_revComp)); // 正規化されるため逆鎖側からの問い合わせでもヒットする
+            Assert.False(l_インデックス.Haskmer(l_neverInserted));
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace Tsumiki.Tests.Utility
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Assert.False(l_インデックス.Get_含まれるか(l_belowThreshold));
+            Assert.False(l_インデックス.Haskmer(l_belowThreshold));
         }
 
         /// <summary>
@@ -188,9 +188,9 @@ namespace Tsumiki.Tests.Utility
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Assert.True(l_インデックス.Get_含まれるか(l_inserted));
-            Assert.True(l_インデックス.Get_含まれるか(l_revComp));
-            Assert.False(l_インデックス.Get_含まれるか(l_neverInserted));
+            Assert.True(l_インデックス.Haskmer(l_inserted));
+            Assert.True(l_インデックス.Haskmer(l_revComp));
+            Assert.False(l_インデックス.Haskmer(l_neverInserted));
 
             // 順鎖 3 回 + 逆鎖 2 回 が同一の正規化キーへ合算されているはず
             Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_inserted));
@@ -216,7 +216,7 @@ namespace Tsumiki.Tests.Utility
             Assert.NotEmpty(l_kmers);
             Assert.All(l_kmers, l_kmer => Assert.Equal(l_k長, l_kmer.Length));
             // 復元した k-mer は必ず集合に含まれていなければならない
-            Assert.All(l_kmers, l_kmer => Assert.True(l_インデックス.Get_含まれるか(l_kmer)));
+            Assert.All(l_kmers, l_kmer => Assert.True(l_インデックス.Haskmer(l_kmer)));
 
             var l_バイト列 = V_変換_塩基ID列(l_配列);
             Assert.Equal(1, l_インデックス.Get_出次数(l_バイト列.AsSpan(0, l_k長)));
@@ -268,12 +268,12 @@ namespace Tsumiki.Tests.Utility
             var l_kmer = V_変換_塩基ID列(l_配列[..l_k長]);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(l_配列[..l_k長]));
 
-            Assert.True(l_インデックス.Get_含まれるか(l_kmer));
+            Assert.True(l_インデックス.Haskmer(l_kmer));
 
             l_インデックス.V_除去(l_kmer);
 
-            Assert.False(l_インデックス.Get_含まれるか(l_kmer));
-            Assert.False(l_インデックス.Get_含まれるか(l_revComp));
+            Assert.False(l_インデックス.Haskmer(l_kmer));
+            Assert.False(l_インデックス.Haskmer(l_revComp));
         }
 
         /// <summary>

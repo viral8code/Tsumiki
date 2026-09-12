@@ -123,7 +123,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_結果 = new Dictionary<(string, int), string>();
             using var l_リーダー = new 簡易FASTQ読み込み(p_パス);
-            while (l_リーダー.Get_続きがあるか())
+            while (l_リーダー.Has続き())
             {
                 var (l_生ID, l_配列) = l_リーダー.Get_次のリード();
                 var l_ID = l_生ID.TrimStart('@').Split('/')[0];
@@ -146,7 +146,7 @@ namespace Tsumiki.Tests.Core
         private static void V_検証_ファイル(string p_訂正済みパス, int p_ペア番号, Dictionary<(string, int), string> p_元のリード, Dictionary<(string A_リードID, int A_ペア番号, int A_位置), char> p_正解エラー, ref int p_訂正数, ref int p_未訂正数, ref int p_誤訂正数, ref int p_変更位置総数)
         {
             using var l_リーダー = new 簡易FASTQ読み込み(p_訂正済みパス);
-            while (l_リーダー.Get_続きがあるか())
+            while (l_リーダー.Has続き())
             {
                 var (l_生ID, l_訂正済み配列) = l_リーダー.Get_次のリード();
                 var l_リードID = l_生ID.TrimStart('@').Split('/')[0];
@@ -210,7 +210,7 @@ namespace Tsumiki.Tests.Core
         /// まだ読めるリードがあるか
         /// </summary>
         /// <returns>続きがあれば true</returns>
-        public bool Get_続きがあるか() => !this._読み込み.EndOfStream;
+        public bool Has続き() => !this._読み込み.EndOfStream;
 
         /// <summary>
         /// 次のリードの ID と配列を返す

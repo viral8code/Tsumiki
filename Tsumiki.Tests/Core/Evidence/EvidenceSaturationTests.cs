@@ -39,7 +39,7 @@ namespace Tsumiki.Tests.Core
             }
 
             // 極端な本数では倍精度の分解能で 1 に到達するが、超えることはない
-            Assert.True(証拠較正器.Get_飽和支持(10000D) <= 1.0D);
+            Assert.True(証拠較正器.Get_飽和支持(10_000D) <= 1.0D);
         }
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Tsumiki.Tests.Core
             Assert.True(l_1から3 > l_3から10);
 
             // 1000 本と 10000 本はほぼ区別が付かない
-            Assert.True(証拠較正器.Get_飽和支持(10000D) - 証拠較正器.Get_飽和支持(1000D) < 0.001D);
+            Assert.True(証拠較正器.Get_飽和支持(10_000D) - 証拠較正器.Get_飽和支持(1_000D) < 0.001D);
         }
 
         /// <summary>

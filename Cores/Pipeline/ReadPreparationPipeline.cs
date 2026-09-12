@@ -18,7 +18,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ">処理済みリードの出力先</param>
         public static void V_実行(Parameters p_引数, string p_一時ディレクトリ)
         {
-            if (p_引数.A_前処理するか)
+            if (p_引数.A_Is前処理)
             {
                 if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
                 {
@@ -32,7 +32,7 @@ namespace Tsumiki.Cores.Pipeline
                     var l_前処理済み2 = Path.Combine(p_一時ディレクトリ, "preprocessed.2.fq");
 
                     var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
-                    if (p_引数.A_再開するか && StageCheckpoint.Get_再利用可能(l_署名, l_前処理済み1, l_前処理済み2))
+                    if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_前処理済み1, l_前処理済み2))
                     {
                         Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_前処理済み1);
                     }
@@ -52,29 +52,29 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            if (p_引数.A_エラー訂正するか)
+            if (p_引数.A_Isエラー訂正)
             {
                 Logger.V_出力(メッセージID.エラー訂正開始);
 
                 var l_訂正済み1 = Path.Combine(p_一時ディレクトリ, "corrected.1.fq");
-                var l_リード2があるか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-                var l_訂正済み2 = l_リード2があるか ? Path.Combine(p_一時ディレクトリ, "corrected.2.fq") : null;
+                var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
+                var l_訂正済み2 = l_Hasリード2 ? Path.Combine(p_一時ディレクトリ, "corrected.2.fq") : null;
 
                 var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
-                if (p_引数.A_再開するか && StageCheckpoint.Get_再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
+                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_訂正済み1);
                 }
                 else
                 {
-                    ErrorCorrector.V_訂正_リードファイル(p_引数.A_リード1のパス, l_リード2があるか ? p_引数.A_リード2のパス : null, p_一時ディレクトリ, l_訂正済み1, l_訂正済み2);
+                    ErrorCorrector.V_訂正_リードファイル(p_引数.A_リード1のパス, l_Hasリード2 ? p_引数.A_リード2のパス : null, p_一時ディレクトリ, l_訂正済み1, l_訂正済み2);
                     StageCheckpoint.V_保存(l_署名, l_訂正済み1, l_訂正済み2);
                 }
 
                 // 以降の全処理 (k-mer カウント・グラフ構築・リードの再マッピング) は
                 // 訂正済みファイルを見るようにする
                 p_引数.A_リード1のパス = l_訂正済み1;
-                if (l_リード2があるか)
+                if (l_Hasリード2)
                 {
                     p_引数.A_リード2のパス = l_訂正済み2!;
                 }

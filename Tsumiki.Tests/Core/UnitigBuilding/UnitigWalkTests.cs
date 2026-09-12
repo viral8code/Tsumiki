@@ -7,7 +7,7 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// パック値を転がしながら進める walk が、従来の実装と同じ結果を返すことを固定する
+    /// パック値を転がす walk と参照実装の一致を検証する
     /// </summary>
     /// <remarks>
     /// 転がし更新は unitig 構築の時間のほとんどを占めていた O (k) の詰め直しを省くためのもので、結果は 1 塩基たりとも変わってはいけない<br/>
@@ -51,7 +51,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 直鎖配列で、転がし実装と従来実装が一致する
+        /// 直鎖配列で高速 walk と参照実装が一致する
         /// </summary>
         /// <param name="p_kmer長"></param>
         [Theory]
@@ -151,8 +151,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_内部表現の上限を超えるk長では扱えないと判定される()
         {
-            Assert.True(UnitigWalk.Get_扱えるか(64));
-            Assert.False(UnitigWalk.Get_扱えるか(65));
+            Assert.True(UnitigWalk.Is対応k長(64));
+            Assert.False(UnitigWalk.Is対応k長(65));
         }
 
         #endregion
@@ -199,7 +199,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 従来実装と転がし実装が、すべての開始点で同じ配列を返すこと
+        /// すべての開始点で高速 walk と参照実装が一致すること
         /// </summary>
         /// <param name="p_k長"></param>
         /// <param name="p_配列"></param>

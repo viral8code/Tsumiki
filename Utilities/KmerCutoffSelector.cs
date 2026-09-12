@@ -6,13 +6,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// k-mer スペクトルから k-mer カットオフ (-kc) を自動選択する
     /// </summary>
-    /// <remarks>
-    /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」<br/>
-    /// まず 2 成分混合モデル (<see cref="KmerSpectrumMixtureModel"/>) の適合を試みる<br/>
-    /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど谷が視認できないデータでも働く<br/>
-    /// 適合に失敗した場合のみ、谷検出 (<see cref="KmerHistogram.Get_推奨カットオフ"/>) にフォールバックする<br/>
-    /// 混合モデルが適合できた場合、その単一コピー平均・信頼下限をConfigurationManager.A_スペクトルモデル に公開し、CopyNumberEstimator の単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする
-    /// </remarks>
     internal static class KmerCutoffSelector
     {
         #region 公開メソッド
@@ -32,7 +25,7 @@ namespace Tsumiki.Utilities
             // 適合に成功した場合のみ、この下で改めて設定し直す
             ConfigurationManager.A_スペクトルモデル = null;
 
-            if (p_引数.A_kmerカットオフが明示指定されたか)
+            if (p_引数.A_Iskmerカットオフ明示指定)
             {
                 return;
             }

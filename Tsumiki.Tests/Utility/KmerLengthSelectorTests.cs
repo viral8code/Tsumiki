@@ -7,10 +7,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// リード長からの k 長自動選択の検証
     /// </summary>
-    /// <remarks>
-    /// 既定の k=31 は 150 bp リードに対して明確に短すぎ、実データで unitig の N50 が k=63 の場合の 1/5 にしかならなかった<br/>
-    /// リード長は 75 bp から 300 bp まで大きく変わるため、固定値ではなく実際のリード長から決める
-    /// </remarks>
     public class KmerLengthSelectorTests
     {
         #region 公開メソッド
@@ -41,7 +37,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_推奨k長は常に奇数でリード長より短い()
         {
-            for (var l_リード長 = Consts.自動k長に必要な最小リード長; l_リード長 <= 400; l_リード長++)
+            for (var l_リード長 = 32; l_リード長 <= 400; l_リード長++)
             {
                 var l_suggestion = KmerLengthSelector.Get_推奨k長(l_リード長);
                 Assert.NotNull(l_suggestion);
@@ -57,7 +53,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_リードが短すぎる場合はnullを返す()
         {
-            Assert.Null(KmerLengthSelector.Get_推奨k長(Consts.自動k長に必要な最小リード長 - 1));
+            Assert.Null(KmerLengthSelector.Get_推奨k長(31));
         }
 
         /// <summary>
@@ -67,13 +63,13 @@ namespace Tsumiki.Tests.Utility
         public void V_k長未指定なら推奨値を適用する()
         {
             var l_param = new Parameters();
-            Assert.False(l_param.A_k長が明示指定されたか);
+            Assert.False(l_param.A_Isk長明示指定);
 
             KmerLengthSelector.V_解決_k長(l_param, 150);
 
             Assert.Equal(63, l_param.A_k長);
             // 自動適用は「明示指定された」扱いにしない
-            Assert.False(l_param.A_k長が明示指定されたか);
+            Assert.False(l_param.A_Isk長明示指定);
         }
 
         /// <summary>
@@ -83,7 +79,7 @@ namespace Tsumiki.Tests.Utility
         public void V_明示指定されたk長はそのまま残す()
         {
             var l_param = new Parameters { A_k長 = 31 };
-            Assert.True(l_param.A_k長が明示指定されたか);
+            Assert.True(l_param.A_Isk長明示指定);
 
             KmerLengthSelector.V_解決_k長(l_param, 150);
 
@@ -100,7 +96,7 @@ namespace Tsumiki.Tests.Utility
 
             KmerLengthSelector.V_解決_k長(l_param, null);
 
-            Assert.Equal(Consts.k長の既定値, l_param.A_k長);
+            Assert.Equal(31, l_param.A_k長);
         }
 
         /// <summary>
@@ -111,9 +107,9 @@ namespace Tsumiki.Tests.Utility
         {
             var l_param = new Parameters();
 
-            KmerLengthSelector.V_解決_k長(l_param, Consts.自動k長に必要な最小リード長 - 1);
+            KmerLengthSelector.V_解決_k長(l_param, 31);
 
-            Assert.Equal(Consts.k長の既定値, l_param.A_k長);
+            Assert.Equal(31, l_param.A_k長);
         }
 
         #endregion

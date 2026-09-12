@@ -20,9 +20,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_較正器_リード長が不明なら使えない()
         {
-            var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: null, [1000L, 2000L]);
+            var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: null, [1_000L, 2_000L]);
 
-            Assert.False(l_較正器.A_使えるか);
+            Assert.False(l_較正器.A_Is使用可能);
         }
 
         /// <summary>
@@ -31,13 +31,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_較正器_標本が空なら使えない()
         {
-            var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1000L, 2000L]);
+            var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1_000L, 2_000L]);
 
-            Assert.False(l_較正器.A_使えるか);
+            Assert.False(l_較正器.A_Is使用可能);
         }
 
         /// <summary>
-        /// 全ユニティグがフラグメントより短い較正器は使えないこと
+        /// 全 unitig がフラグメントより短い較正器は使えないこと
         /// </summary>
         /// <remarks>
         /// すべての unitig がフラグメントより短いと、期待位置数の合計が 0 になり密度を較正できない (0 除算を避けて安全にフォールバックする)
@@ -47,7 +47,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 100, [50L, 80L]);
 
-            Assert.False(l_較正器.A_使えるか);
+            Assert.False(l_較正器.A_Is使用可能);
         }
 
         /// <summary>
@@ -56,9 +56,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_正規化済み支持_較正器が使えないとゼロ()
         {
-            var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1000L, 2000L]);
+            var l_較正器 = 証拠較正器.Get_較正器([], p_リード長: 100, [1_000L, 2_000L]);
 
-            Assert.Equal(0D, l_較正器.Get_正規化済み支持(p_観測本数: 10UL, p_長さ1: 1000L, p_長さ2: 1000L, p_ギャップ長: 0));
+            Assert.Equal(0D, l_較正器.Get_正規化済み支持(p_観測本数: 10UL, p_長さ1: 1_000L, p_長さ2: 1_000L, p_ギャップ長: 0));
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace Tsumiki.Tests.Core
             var l_短い辺への支持 = l_較正器.Get_正規化済み支持(p_観測本数: 8UL, p_長さ1: 100_000L, p_長さ2: 150L, p_ギャップ長: 0);
             var l_長い辺への支持 = l_較正器.Get_正規化済み支持(p_観測本数: 8UL, p_長さ1: 100_000L, p_長さ2: 50_000L, p_ギャップ長: 0);
 
-            Assert.True(l_較正器.A_使えるか);
+            Assert.True(l_較正器.A_Is使用可能);
             Assert.True(l_短い辺への支持 > l_長い辺への支持, $"expected short-flank ratio ({l_短い辺への支持}) to exceed long-flank ratio ({l_長い辺への支持}) for the same raw count");
         }
 
@@ -112,9 +112,9 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         /// <param name="p_件数"></param>
         /// <returns></returns>
-        private static List<int> Get_同一ユニティグ標本(int p_件数 = 2000)
+        private static List<int> Get_同一ユニティグ標本(int p_件数 = 2_000)
         {
-            var l_乱数 = new Random(20260908);
+            var l_乱数 = new Random(20_260_908);
             return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
         }
 

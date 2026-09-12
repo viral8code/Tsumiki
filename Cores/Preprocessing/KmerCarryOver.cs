@@ -8,12 +8,6 @@ namespace Tsumiki.Cores.Preprocessing
     /// <summary>
     /// 前段の k で組み上がった配列を、次の k の k-mer 集合へ引き継ぐ
     /// </summary>
-    /// <remarks>
-    /// k を上げるとカバレッジが痩せてグラフが千切れるが、前段の配列はその領域を既に通っている<br/>
-    /// 配列を渡せば連結が保たれる<br/>
-    /// 渡すのは配列であって、繋ぐという決定ではない<br/>
-    /// 決定を渡すと前段の誤アセンブリをそのまま継承するが、配列を渡すだけなら次の k が自分の証拠で経路を決め直せる
-    /// </remarks>
     internal static class KmerCarryOver
     {
         #region 定数
@@ -45,7 +39,7 @@ namespace Tsumiki.Cores.Preprocessing
             List<引き継ぎ配列> l_結果 = [];
             using var l_読み込み = new FastaReader(p_FASTAパス);
 
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_配列 = l_読み込み.Get_次の配列().A_配列;
                 if (l_配列.Length < Math.Max(引き継ぐ配列の最小長, p_k長))
@@ -131,7 +125,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                     var l_カバレッジ = Get_引き継ぐカバレッジ(l_引き継ぎ, i, p_k長, p_リード長);
                     if (l_カバレッジ > 0UL
-                        && p_kmerインデックス.V_追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
+                        && p_kmerインデックス.Try追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
                     {
                         l_追加数++;
                     }
@@ -147,13 +141,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_位置"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 前段の k-mer のうちこの窓に重なるものの最小値を取る<br/>
-        /// 長い k-mer は構成する短い k-mer すべてを含むので、最も弱い部分より強くはなれない<br/>
-        /// そのうえで k の差ぶんスケールする<br/>
-        /// 1 リードから取れる k-mer はリード長 - k + 1 本なので、k を上げれば同じ座位のカバレッジはその比で下がる<br/>
-        /// スケールしないと、引き継いだ領域だけカバレッジが高く見えてコピー数を過大に推定する
-        /// </remarks>
         /// <returns></returns>
         public static ulong Get_引き継ぐカバレッジ(引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
         {

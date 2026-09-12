@@ -35,7 +35,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     V_登録_1リード(l_リード, p_kmerインデックス);
 
-                    var l_ログ出力するか = false;
+                    var l_Isログ出力 = false;
                     var l_ログ値 = 0UL;
                     lock (l_カウンタロック)
                     {
@@ -43,11 +43,11 @@ namespace Tsumiki.Cores.Preprocessing
                         if (l_総リード数 % Consts.進捗ログ間隔 == 0UL)
                         {
                             l_ログ回数++;
-                            l_ログ出力するか = true;
+                            l_Isログ出力 = true;
                             l_ログ値 = l_ログ回数 * Consts.進捗ログ間隔;
                         }
                     }
-                    if (l_ログ出力するか)
+                    if (l_Isログ出力)
                     {
                         Logger.V_出力(メッセージID.リード読込の進捗, l_ログ値);
                     }
@@ -61,29 +61,29 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <param name="p_進行状況を出力するか"></param>
+        /// <param name="p_Is進行状況出力"></param>
         /// <remarks>
         /// AssemblyPipeline と MultiKAssembler のどちらも (単一 k ・複数 k の違いだけで) 同じ読み込み手順を必要とするためここにまとめる
         /// </remarks>
-        public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
+        public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_Is進行状況出力 = false)
         {
-            var l_ペアエンドか = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-            if (p_進行状況を出力するか)
+            var l_Isペアエンド = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
+            if (p_Is進行状況出力)
             {
-                Logger.V_出力(l_ペアエンドか ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
+                Logger.V_出力(l_Isペアエンド ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
             }
-            V_読込_1ファイル(p_引数.A_リード1のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
+            V_読込_1ファイル(p_引数.A_リード1のパス, p_引数.A_Is曖昧塩基許容, p_kmerインデックス);
 
-            if (!l_ペアエンドか)
+            if (!l_Isペアエンド)
             {
                 return;
             }
 
-            if (p_進行状況を出力するか)
+            if (p_Is進行状況出力)
             {
                 Logger.V_出力(メッセージID.リード2の読込開始);
             }
-            V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_曖昧塩基を許容するか, p_kmerインデックス);
+            V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_Is曖昧塩基許容, p_kmerインデックス);
         }
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
 
             using var l_読み込み = new FastqReader(p_ファイルパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_リード = l_読み込み.Get_次のリード();
                 if (l_リード.A_塩基候補列!.Count < l_k長)
@@ -140,11 +140,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// 1 ファイルを読み込んで k-mer を数える
         /// </summary>
         /// <param name="p_パス">読み込むリードのパス</param>
-        /// <param name="p_曖昧塩基を許容するか">曖昧塩基を展開して数えるか</param>
+        /// <param name="p_Is曖昧塩基許容">曖昧塩基を展開して数えるか</param>
         /// <param name="p_kmerインデックス">数え上げ先</param>
-        private static void V_読込_1ファイル(string p_パス, bool p_曖昧塩基を許容するか, TrustedKmerIndex p_kmerインデックス)
+        private static void V_読込_1ファイル(string p_パス, bool p_Is曖昧塩基許容, TrustedKmerIndex p_kmerインデックス)
         {
-            if (p_曖昧塩基を許容するか)
+            if (p_Is曖昧塩基許容)
             {
                 V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス);
             }
@@ -162,7 +162,7 @@ namespace Tsumiki.Cores.Preprocessing
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 yield return l_読み込み.Get_次のリード_軽量();
             }

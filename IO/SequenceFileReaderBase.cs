@@ -63,7 +63,7 @@ namespace Tsumiki.IO
         /// まだ読める行があるか
         /// </summary>
         /// <returns>続きがあれば true</returns>
-        public bool Get_続きがあるか()
+        public bool Has続き()
         {
             return !this._読み込み.EndOfStream;
         }

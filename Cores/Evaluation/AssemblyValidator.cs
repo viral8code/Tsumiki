@@ -9,10 +9,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかの自己検査
     /// </summary>
-    /// <remarks>
-    /// 取りこぼし (信頼集合にあるのにアセンブリに現れない) は削りすぎか経路から漏れた領域を、出しすぎ (コピー数を超えて現れる) は反復の複製過多か同じ領域の二重組み立てを意味する<br/>
-    /// どちらもゼロにはならない (エラー由来の k-mer が信頼集合に残れば取りこぼし側に出る) ため、絶対値ではなく変更前後の増減を見る指標になる
-    /// </remarks>
     internal static class AssemblyValidator
     {
         #region 公開メソッド
@@ -35,12 +31,12 @@ namespace Tsumiki.Cores.Evaluation
 
             using (var l_読み込み = new FastaReader(p_FASTAパス))
             {
-                while (l_読み込み.Get_続きがあるか())
+                while (l_読み込み.Has続き())
                 {
                     var l_配列 = l_読み込み.Get_次の配列().A_配列;
                     for (var i = 0; i + p_k長 <= l_配列.Length; i++)
                     {
-                        if (!KmerPacking.Get_正規化キー(l_配列, i, p_k長, out var l_正規形))
+                        if (!KmerPacking.TryGet_正規化キー(l_配列, i, p_k長, out var l_正規形))
                         {
                             continue;
                         }
@@ -58,7 +54,7 @@ namespace Tsumiki.Cores.Evaluation
             foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {
                 l_信頼kmer数++;
-                var l_正規形 = KmerPacking.Get_正規化キー(l_kmer);
+                var l_正規形 = KmerPacking.TryGet_正規化キー(l_kmer);
 
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
                 if (l_出現数 == 0)

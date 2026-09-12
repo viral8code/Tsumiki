@@ -156,7 +156,6 @@ namespace Tsumiki.Commons
             [メッセージID.採用kmer数] = "[Debug] Retained k-mers: {0}",
             [メッセージID.アセンブリ不能] = "\nGenome complexity too high to assemble with current settings\nPlease adjust parameters\n",
             [メッセージID.概要_説明] = "Tsumiki is a genome assembler",
-            [メッセージID.概要_作者] = "Author: {0}",
             [メッセージID.概要_バージョン] = "Version: {0}",
             [メッセージID.ヘルプ_使い方] = "Usage: tsumiki {0} <path> [{1} <path>] [options]",
             [メッセージID.ヘルプ節_入力] = "# Input",
@@ -389,7 +388,6 @@ namespace Tsumiki.Commons
             [メッセージID.採用kmer数] = "[Debug] 採用 k-mer 数: {0}",
             [メッセージID.アセンブリ不能] = "\n対象ゲノムが複雑すぎるため現在のアセンブリパラメータでは処理できません\nパラメータを再調整してください\n",
             [メッセージID.概要_説明] = "Tsumiki -- Genome Assembler",
-            [メッセージID.概要_作者] = "作者: {0}",
             [メッセージID.概要_バージョン] = "バージョン: {0}",
             [メッセージID.ヘルプ_使い方] = "使用方法: tsumiki {0} <path> [{1} <path>] [options]",
             [メッセージID.ヘルプ節_入力] = "# 入力設定",
@@ -622,7 +620,6 @@ namespace Tsumiki.Commons
             [メッセージID.採用kmer数] = "[Debug] 保留 k-mer 数：{0}",
             [メッセージID.アセンブリ不能] = "\n目标基因组过复杂，无法在当前参数下组装\n请调整参数\n",
             [メッセージID.概要_説明] = "Tsumiki -- 基因组组装工具",
-            [メッセージID.概要_作者] = "作者：{0}",
             [メッセージID.概要_バージョン] = "版本：{0}",
             [メッセージID.ヘルプ_使い方] = "用法：tsumiki {0} <path> [{1} <path>] [options]",
             [メッセージID.ヘルプ節_入力] = "# 输入设置",
@@ -745,7 +742,7 @@ namespace Tsumiki.Commons
         /// 訳の入れ忘れの検査に使う
         /// </remarks>
         /// <returns></returns>
-        public static bool Get_訳があるか(言語 p_言語, メッセージID p_ID)
+        public static bool Has訳(言語 p_言語, メッセージID p_ID)
         {
             return Get_辞書(p_言語)?.ContainsKey(p_ID) == true;
         }

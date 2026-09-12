@@ -40,10 +40,10 @@ namespace Tsumiki.Core
         private static void V_実行_walk(List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点, List<string> p_コンティグ群, List<List<int>> p_walk順群, List<bool> p_環状フラグ群)
         {
             List<int> l_walk順 = [];
-            var (l_配列, l_環状か) = Get_walk結果(p_ユニティグ配列, p_結合, p_訪問済み, p_重なり長, p_始点, l_walk順);
+            var (l_配列, l_Is環状) = Get_walk結果(p_ユニティグ配列, p_結合, p_訪問済み, p_重なり長, p_始点, l_walk順);
             p_コンティグ群.Add(l_配列);
             p_walk順群.Add(l_walk順);
-            p_環状フラグ群.Add(l_環状か);
+            p_環状フラグ群.Add(l_Is環状);
         }
 
         /// <summary>
@@ -59,13 +59,13 @@ namespace Tsumiki.Core
         /// 経路が始点へ戻ってきた場合は環状として報告する
         /// </remarks>
         /// <returns></returns>
-        private static (string A_配列, bool A_環状か) Get_walk結果(List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点, List<int> p_walk順)
+        private static (string A_配列, bool A_Is環状) Get_walk結果(List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点, List<int> p_walk順)
         {
             var l_出力 = new StringBuilder(p_ユニティグ配列[p_始点]);
             p_walk順.Add(p_始点);
             p_訪問済み[p_始点 >> 1] = true;
             var l_現在 = p_始点;
-            var l_環状か = false;
+            var l_Is環状 = false;
             while (true)
             {
                 var l_次 = p_結合[l_現在];
@@ -81,7 +81,7 @@ namespace Tsumiki.Core
                     // 細菌の染色体と
                     // プラスミドは環状なので、これは「その複製単位を
                     // 完全に 1 周組み上げられた」ことを意味する
-                    l_環状か = l_次 == p_始点;
+                    l_Is環状 = l_次 == p_始点;
                     break;
                 }
                 var l_配列 = p_ユニティグ配列[l_次];
@@ -93,7 +93,7 @@ namespace Tsumiki.Core
 
                 // 構築方法より k-1 のオーバーラップは保証されているが、
                 // 万一崩れていた場合に誤った配列を作らないよう検証する
-                if (!Get_重なりが一致するか(l_出力, l_配列, p_重なり長))
+                if (!Is重なり一致(l_出力, l_配列, p_重なり長))
                 {
                     break;
                 }
@@ -107,12 +107,12 @@ namespace Tsumiki.Core
             // それは配列の先頭にも現れる
             // 線状の連結では次の unitig 側から
             // 取り除くが、環状では「次」が出力済みの始点なので末尾から取り除く
-            if (l_環状か && l_出力.Length > p_重なり長)
+            if (l_Is環状 && l_出力.Length > p_重なり長)
             {
                 _ = l_出力.Remove(l_出力.Length - p_重なり長, p_重なり長);
             }
 
-            return (l_出力.ToString(), l_環状か);
+            return (l_出力.ToString(), l_Is環状);
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace Tsumiki.Core
         /// <param name="p_ユニティグ"></param>
         /// <param name="p_重なり長"></param>
         /// <returns></returns>
-        private static bool Get_重なりが一致するか(StringBuilder p_出力, string p_ユニティグ, int p_重なり長)
+        private static bool Is重なり一致(StringBuilder p_出力, string p_ユニティグ, int p_重なり長)
         {
             var l_開始位置 = p_出力.Length - p_重なり長;
             for (var j = 0; j < p_重なり長; j++)

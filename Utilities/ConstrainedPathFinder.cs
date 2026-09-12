@@ -45,9 +45,9 @@ namespace Tsumiki.Utilities
             // 代わりに親へのインデックスと追加した 1 塩基だけを持ち、
             // 解が見つかったときに親を辿って復元する
             // 1 状態あたり定数サイズで済む
-            var l_節点 = new List<(int A_親, byte A_塩基)>(1024) { (-1, 0) };
-            var l_kmer群 = new List<byte[]>(1024) { p_左のkmer };
-            var l_深さ群 = new List<int>(1024) { 0 };
+            var l_節点 = new List<(int A_親, byte A_塩基)>(1_024) { (-1, 0) };
+            var l_kmer群 = new List<byte[]>(1_024) { p_左のkmer };
+            var l_深さ群 = new List<int>(1_024) { 0 };
 
             // 同じ k-mer に同じ深さで別経路から着いた状態を作らないための記録
             // これをしないと分岐点の数だけ経路が掛け算で増え、同じ部分木を
@@ -57,9 +57,9 @@ namespace Tsumiki.Utilities
             // k <= 64 なら k-mer は UInt128 に詰められるので、鍵の生成に
             // 割り当てが要らない
             // それを超える k だけ文字列に落とす
-            var l_到達済み = p_k長 <= 64 ? new Dictionary<(UInt128, int), int>(1024) : null;
-            var l_到達済み_長いk = p_k長 <= 64 ? null : new Dictionary<(string, int), int>(1024);
-            var l_多重到達 = new List<bool>(1024) { false };
+            var l_到達済み = p_k長 <= 64 ? new Dictionary<(UInt128, int), int>(1_024) : null;
+            var l_到達済み_長いk = p_k長 <= 64 ? null : new Dictionary<(string, int), int>(1_024);
+            var l_多重到達 = new List<bool>(1_024) { false };
 
             var l_見つかった経路 = new List<string>();
             var l_キュー = new Queue<int>();
@@ -88,7 +88,7 @@ namespace Tsumiki.Utilities
 
                 if (l_埋める長さ >= p_最小長 && l_現在のkmer.AsSpan().SequenceEqual(p_目標kmer))
                 {
-                    if (Get_多重到達を通るか(l_節点, l_多重到達, l_現在))
+                    if (Has多重到達(l_節点, l_多重到達, l_現在))
                     {
                         return (null, ギャップ充填判定.一意でない);
                     }
@@ -112,7 +112,7 @@ namespace Tsumiki.Utilities
                     Array.Copy(l_現在のkmer, 1, l_作業バッファ, 0, p_k長 - 1);
                     l_作業バッファ[p_k長 - 1] = l_塩基;
 
-                    if (!p_kmerインデックス.Get_含まれるか(l_作業バッファ))
+                    if (!p_kmerインデックス.Haskmer(l_作業バッファ))
                     {
                         continue;
                     }
@@ -120,7 +120,7 @@ namespace Tsumiki.Utilities
                     var l_深さ = l_継ぎ足した数 + 1;
                     if (l_到達済み is not null)
                     {
-                        var l_鍵 = (Get_パック(l_作業バッファ), l_深さ);
+                        var l_鍵 = (TryGet_パック(l_作業バッファ), l_深さ);
                         if (l_到達済み.TryGetValue(l_鍵, out var l_既存))
                         {
                             l_多重到達[l_既存] = true;
@@ -160,7 +160,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
+        private static UInt128 TryGet_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_パック = 0;
             foreach (var l_塩基 in p_kmer)
@@ -192,7 +192,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_多重到達"></param>
         /// <param name="p_末端"></param>
         /// <returns></returns>
-        private static bool Get_多重到達を通るか(List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
+        private static bool Has多重到達(List<(int A_親, byte A_塩基)> p_節点, List<bool> p_多重到達, int p_末端)
         {
             for (var l_位置 = p_末端; l_位置 >= 0; l_位置 = p_節点[l_位置].A_親)
             {

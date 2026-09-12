@@ -16,11 +16,6 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
-        /// 1 語に詰まる塩基数
-        /// </summary>
-        public const int 語あたりの塩基数 = 32;
-
-        /// <summary>
         /// 2 bit レーンの下位ビットだけを立てたマスク
         /// </summary>
         private const ulong 下位ビット = 0x5555555555555555UL;
@@ -72,7 +67,7 @@ namespace Tsumiki.Utilities
         /// <returns>詰めた結果、曖昧塩基を含む場合は null</returns>
         public static PackedBases? Get_作る(ReadOnlySpan<byte> p_塩基列)
         {
-            var l_語 = new ulong[(p_塩基列.Length / 語あたりの塩基数) + 2];
+            var l_語 = new ulong[(p_塩基列.Length / Consts.語あたりの塩基数) + 2];
             for (var i = 0; i < p_塩基列.Length; i++)
             {
                 var l_塩基ID = p_塩基列[i];
@@ -80,8 +75,8 @@ namespace Tsumiki.Utilities
                 {
                     return null;
                 }
-                var l_語番号 = i / 語あたりの塩基数;
-                var l_ずらし = 62 - (2 * (i % 語あたりの塩基数));
+                var l_語番号 = i / Consts.語あたりの塩基数;
+                var l_ずらし = 62 - (2 * (i % Consts.語あたりの塩基数));
                 l_語[l_語番号] |= (ulong)(l_塩基ID - 1) << l_ずらし;
             }
             return new PackedBases(l_語, p_塩基列.Length);
@@ -94,8 +89,8 @@ namespace Tsumiki.Utilities
         /// <returns>取り出した語、配列の末尾を越える分は 0</returns>
         public ulong Get_窓(int p_位置)
         {
-            var l_語番号 = p_位置 / 語あたりの塩基数;
-            var l_ずらし = 2 * (p_位置 % 語あたりの塩基数);
+            var l_語番号 = p_位置 / Consts.語あたりの塩基数;
+            var l_ずらし = 2 * (p_位置 % Consts.語あたりの塩基数);
             var l_先頭 = this._語[l_語番号];
             return l_ずらし == 0
                 ? l_先頭
@@ -116,7 +111,7 @@ namespace Tsumiki.Utilities
             // 2 bit のどちらかが立っていれば不一致なので、レーンごとに 1 ビットへ畳む
             var l_レーン = (l_差 | (l_差 >> 1)) & 下位ビット;
 
-            if (p_塩基数 < 語あたりの塩基数)
+            if (p_塩基数 < Consts.語あたりの塩基数)
             {
                 l_レーン &= ulong.MaxValue << (64 - (p_塩基数 << 1));
             }

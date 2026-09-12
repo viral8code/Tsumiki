@@ -92,7 +92,7 @@ namespace Tsumiki.Utilities
             this._パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
-            this._フラッシュ閾値 = (int)Math.Max(1024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
+            this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
             this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
             this._ファイル連番 = 0;
         }
@@ -128,10 +128,6 @@ namespace Tsumiki.Utilities
         /// k-mer を 1 件登録する
         /// </summary>
         /// <param name="p_パック済みkmer"></param>
-        /// <remarks>
-        /// 従来はここで即ディスクに書き込んでいたが、メモリ上の Dictionary でカウントを集約することで、同一 k-mer の再出現をディスク書き込みに変換しないようにする<br/>
-        /// 閾値に達したら整列済みの状態でディスクへフラッシュする
-        /// </remarks>
         public void V_登録_パック済み(byte[] p_パック済みkmer)
         {
             if (this._バッファ.TryGetValue(p_パック済みkmer, out var l_出現回数))
@@ -224,8 +220,8 @@ namespace Tsumiki.Utilities
             Dictionary<ulong, long>? l_ヒストグラム = null;
             while (l_対象ファイル.Count > 1)
             {
-                var l_最後のマージか = l_対象ファイル.Count == 2;
-                if (l_最後のマージか)
+                var l_Is最後のマージ = l_対象ファイル.Count == 2;
+                if (l_Is最後のマージ)
                 {
                     l_ヒストグラム = [];
                 }
@@ -320,8 +316,8 @@ namespace Tsumiki.Utilities
                 // 「まだ中身がある」と誤認し、続く ReadUInt64 で破綻する
                 // k-mer をハッシュでシャードへ振り分けるようにして以降、
                 // 空のシャードが普通に発生するようになったため必須
-                var l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
-                var l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                var l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                var l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
 
                 while (l_キー1 != null && l_キー2 != null)
                 {
@@ -330,20 +326,20 @@ namespace Tsumiki.Utilities
                     {
                         l_書き込み.Write(l_キー1);
                         V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64(), p_ヒストグラム);
-                        l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
-                        l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                        l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                        l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                     else if (l_比較結果 < 0)
                     {
                         l_書き込み.Write(l_キー1);
                         V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
-                        l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                        l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                     }
                     else
                     {
                         l_書き込み.Write(l_キー2);
                         V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
-                        l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                        l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                 }
 
@@ -351,14 +347,14 @@ namespace Tsumiki.Utilities
                 {
                     l_書き込み.Write(l_キー1);
                     V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
-                    l_キー1 = Util.Get_続きがあるか(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
+                    l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                 }
 
                 while (l_キー2 != null)
                 {
                     l_書き込み.Write(l_キー2);
                     V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
-                    l_キー2 = Util.Get_続きがあるか(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
+                    l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                 }
             }
 

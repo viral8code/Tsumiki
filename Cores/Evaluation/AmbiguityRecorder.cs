@@ -7,12 +7,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// 決めきれずに打ち切った箇所を、その場で書き留めておくための収集器
     /// </summary>
-    /// <remarks>
-    /// 打ち切った事実は「N を入れた」「繋がなかった」という結果にしか残らず、なぜそこで止めたのかは失われる<br/>
-    /// 後から人や別のツールが再解析できるよう、判断に使った数値ごと残す<br/>
-    /// k ごとに分けて持つのは、multi-k では採用しなかった k の記録まで混ざるため<br/>
-    /// レポートには採用した k のぶんだけを出す
-    /// </remarks>
     internal static class AmbiguityRecorder
     {
         #region 定数
@@ -24,6 +18,11 @@ namespace Tsumiki.Cores.Evaluation
         /// 再開時に読み直す
         /// </remarks>
         private const string 保存ファイル名 = "ambiguous.tsv";
+
+        /// <summary>
+        /// 場所名の既定接頭辞
+        /// </summary>
+        private const string 既定接頭辞 = "unitig";
 
         #endregion
 
@@ -93,7 +92,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_頂点"></param>
         /// <param name="p_接頭辞"></param>
         /// <returns></returns>
-        public static string Get_場所名(int p_頂点, string p_接頭辞 = "unitig")
+        public static string Get_場所名(int p_頂点, string p_接頭辞 = 既定接頭辞)
         {
             return $"{p_接頭辞}{p_頂点 >> 1}{((p_頂点 & 1) == 0 ? '+' : '-')}";
         }

@@ -5,12 +5,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// k-mer 出現回数ヒストグラムを「誤り成分 (幾何分布、裾が重い) ＋真の k-mer 成分 (単一コピー平均 λ の整数倍に山を持つ、コピー数上限までのポアソン混合) 」の 2 成分混合モデルとして EM で推定する
     /// </summary>
-    /// <remarks>
-    /// KmerHistogram の谷検出は、低カバレッジなど二峰性が視認できないデータで壊れる (「the spectrum may not be bimodal」に落ちる) <br/>
-    /// 混合モデルは谷の目視判定に頼らず、各出現回数がどちらの成分に属するかを尤度で判定する<br/>
-    /// EM は初期値に収束先が左右されるため、谷検出には頼らず複数の初期値 (頻度の高い局所極大 + 対数間隔グリッド) から独立に実行し、対数尤度が最良のものを採用する<br/>
-    /// k-mer カットオフ・単一コピー基準値・ tip 判定の「無条件に信頼する下限」を、別々のヒューリスティックではなくこの 1 つのモデルから導出できるようにする (ConfigurationManager.A_スペクトルモデル として公開する)
-    /// </remarks>
     internal static class KmerSpectrumMixtureModel
     {
         #region 定数
@@ -215,7 +209,7 @@ namespace Tsumiki.Utilities
                     return null;
                 }
 
-                if (!Get_Mstep(p_出現回数, p_頻度, l_r誤り, l_rコピー, p_総数, ref l_誤り平均, ref l_誤り混合比, ref l_λ, ref l_コピー数減衰率))
+                if (!Try更新_Mstep(p_出現回数, p_頻度, l_r誤り, l_rコピー, p_総数, ref l_誤り平均, ref l_誤り混合比, ref l_λ, ref l_コピー数減衰率))
                 {
                     return null;
                 }
@@ -360,14 +354,8 @@ namespace Tsumiki.Utilities
         /// <param name="p_誤り混合比">更新後の誤り成分の混合比</param>
         /// <param name="p_λ">更新後の単一コピー平均</param>
         /// <param name="p_コピー数減衰率">更新後のコピー数別混合比の減衰率</param>
-        /// <remarks>
-        /// 責任度で重み付けした最尤推定でパラメータを更新する<br/>
-        /// どちらかの成分が完全に空 (重みの総和が 0) になった場合は false を返す<br/>
-        /// r (コピー数の減衰率) は、コピー数の重み付き平均 m から (幾何分布の平均 = 1/ (1-r) の関係を使って) r = 1 - 1/m として更新する<br/>
-        /// 打ち切り (コピー数上限 10) の影響を無視した近似だが、r が極端に 1 に近くない限り無視できる誤差であり、閉形式で軽量に更新できる
-        /// </remarks>
         /// <returns></returns>
-        private static bool Get_Mstep(double[] p_出現回数, double[] p_頻度, double[] p_r誤り, double[][] p_rコピー, double p_総数, ref double p_誤り平均, ref double p_誤り混合比, ref double p_λ, ref double p_コピー数減衰率)
+        private static bool Try更新_Mstep(double[] p_出現回数, double[] p_頻度, double[] p_r誤り, double[][] p_rコピー, double p_総数, ref double p_誤り平均, ref double p_誤り混合比, ref double p_λ, ref double p_コピー数減衰率)
         {
             var l_誤りの重み合計 = 0D;
             var l_誤りの加重カウント合計 = 0D;

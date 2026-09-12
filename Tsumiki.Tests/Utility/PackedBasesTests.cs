@@ -22,7 +22,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_あらゆる開始位置と長さで語単位の不一致数が素朴な数え方と一致する()
         {
-            var l_乱数 = new Random(20260925);
+            var l_乱数 = new Random(20_260_925);
             for (var l_試行 = 0; l_試行 < 20; l_試行++)
             {
                 var l_列1 = V_生成_乱数塩基列(150, l_乱数);
@@ -130,9 +130,9 @@ namespace Tsumiki.Tests.Utility
         private static int Get_不一致数_語単位(PackedBases p_詰め1, PackedBases p_詰め2, int p_開始1, int p_開始2, int p_長さ)
         {
             var l_数 = 0;
-            for (var i = 0; i < p_長さ; i += PackedBases.語あたりの塩基数)
+            for (var i = 0; i < p_長さ; i += Consts.語あたりの塩基数)
             {
-                var l_今回 = Math.Min(PackedBases.語あたりの塩基数, p_長さ - i);
+                var l_今回 = Math.Min(Consts.語あたりの塩基数, p_長さ - i);
                 l_数 += PackedBases.Get_不一致数(p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
             }
             return l_数;

@@ -127,7 +127,7 @@ namespace Tsumiki.Cores.Mapping
             var l_次善スコア = 0;
             foreach (var l_配置 in l_配置候補)
             {
-                if (Get_異なる配置か(l_最良, l_配置))
+                if (Is異なる配置(l_最良, l_配置))
                 {
                     l_次善スコア = Math.Max(l_次善スコア, l_配置.A_スコア);
                 }
@@ -150,7 +150,7 @@ namespace Tsumiki.Cores.Mapping
                 var l_配列 = this._参照配列群[i];
                 for (var j = 0; j + 種長 <= l_配列.Length; j += 種間隔)
                 {
-                    if (!KmerPacking.Get_パック(l_配列, j, 種長, out var l_順鎖))
+                    if (!KmerPacking.TryGet_パック(l_配列, j, 種長, out var l_順鎖))
                     {
                         continue;
                     }
@@ -185,20 +185,20 @@ namespace Tsumiki.Cores.Mapping
         /// </summary>
         /// <param name="p_リード"></param>
         /// <returns>候補とそれを支持する種の数</returns>
-        private Dictionary<(int A_配列番号, bool A_逆鎖か, int A_対角線), int> Get_候補数(string p_リード)
+        private Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
         {
-            Dictionary<(int A_配列番号, bool A_逆鎖か, int A_対角線), int> l_候補数 = [];
+            Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = [];
             for (var i = 0; i + 種長 <= p_リード.Length; i++)
             {
-                if (!KmerPacking.Get_パック(p_リード, i, 種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
+                if (!KmerPacking.TryGet_パック(p_リード, i, 種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
                 {
                     continue;
                 }
 
                 foreach (var l_ヒット in l_ヒット群)
                 {
-                    var l_リード位置 = l_ヒット.A_逆鎖か ? p_リード.Length - i - 種長 : i;
-                    var l_候補 = (l_ヒット.A_配列番号, l_ヒット.A_逆鎖か, l_ヒット.A_参照位置 - l_リード位置);
+                    var l_リード位置 = l_ヒット.A_Is逆鎖 ? p_リード.Length - i - 種長 : i;
+                    var l_候補 = (l_ヒット.A_配列番号, l_ヒット.A_Is逆鎖, l_ヒット.A_参照位置 - l_リード位置);
                     l_候補数[l_候補] = l_候補数.GetValueOrDefault(l_候補) + 1;
                 }
             }
@@ -211,9 +211,9 @@ namespace Tsumiki.Cores.Mapping
         /// <param name="p_基準"></param>
         /// <param name="p_比較対象"></param>
         /// <returns>別の配置なら true</returns>
-        private static bool Get_異なる配置か(リード配置 p_基準, リード配置 p_比較対象)
+        private static bool Is異なる配置(リード配置 p_基準, リード配置 p_比較対象)
         {
-            if (p_基準.A_配列番号 != p_比較対象.A_配列番号 || p_基準.A_逆鎖か != p_比較対象.A_逆鎖か)
+            if (p_基準.A_配列番号 != p_比較対象.A_配列番号 || p_基準.A_Is逆鎖 != p_比較対象.A_Is逆鎖)
             {
                 return true;
             }
@@ -237,9 +237,9 @@ namespace Tsumiki.Cores.Mapping
         /// <param name="p_リード"></param>
         /// <param name="p_候補"></param>
         /// <returns>整列した配置</returns>
-        private リード配置 Get_整列(string p_リード, (int A_配列番号, bool A_逆鎖か, int A_対角線) p_候補)
+        private リード配置 Get_整列(string p_リード, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
         {
-            var l_照合リード = p_候補.A_逆鎖か ? Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+            var l_照合リード = p_候補.A_Is逆鎖 ? Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
             var l_参照 = this._参照配列群[p_候補.A_配列番号];
             var l_開始 = Math.Max(0, p_候補.A_対角線 - 帯域幅);
             var l_終了 = Math.Min(l_参照.Length, p_候補.A_対角線 + l_照合リード.Length + 帯域幅);
@@ -301,7 +301,7 @@ namespace Tsumiki.Cores.Mapping
                 var l_経路種別 = l_経路[i * (l_幅 + 1) + l_末尾];
                 if (l_経路種別 == 0)
                 {
-                    var l_リード位置 = p_候補.A_逆鎖か ? p_リード.Length - i : i - 1;
+                    var l_リード位置 = p_候補.A_Is逆鎖 ? p_リード.Length - i : i - 1;
                     l_位置群.Add(new 整列位置(l_リード位置, l_開始 + l_末尾 - 1));
                     i--;
                     l_末尾--;
@@ -317,7 +317,7 @@ namespace Tsumiki.Cores.Mapping
             }
 
             l_位置群.Reverse();
-            return new リード配置(p_候補.A_配列番号, p_候補.A_逆鎖か, l_最終スコア, 0, l_位置群);
+            return new リード配置(p_候補.A_配列番号, p_候補.A_Is逆鎖, l_最終スコア, 0, l_位置群);
         }
 
         #endregion

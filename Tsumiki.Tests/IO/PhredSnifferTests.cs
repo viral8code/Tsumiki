@@ -44,7 +44,7 @@ namespace Tsumiki.Tests.IO
         {
             var l_標本 = PhredSniffer.Get_標本(["hhhh", "hhhhhh"]);
 
-            Assert.True(l_標本.A_一様か);
+            Assert.True(l_標本.A_Is一様);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Tsumiki.Tests.IO
         {
             var l_標本 = PhredSniffer.Get_標本(["hhIh", "hhhh"]);
 
-            Assert.False(l_標本.A_一様か);
+            Assert.False(l_標本.A_Is一様);
         }
 
         /// <summary>

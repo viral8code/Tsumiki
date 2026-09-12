@@ -88,15 +88,15 @@ namespace Tsumiki.Tests.Core
             File.WriteAllText(l_出力, "CCCC");
             var l_設定 = new Parameters { A_リード1のパス = l_入力 };
             var l_署名 = StageCheckpoint.Get_入力署名(l_設定);
-            Assert.False(StageCheckpoint.Get_再利用可能(l_署名, l_出力, null));
+            Assert.False(StageCheckpoint.Is再利用可能(l_署名, l_出力, null));
             StageCheckpoint.V_保存(l_署名, l_出力, null);
-            Assert.True(StageCheckpoint.Get_再利用可能(l_署名, l_出力, null));
-            l_設定.A_再開するか = true;
+            Assert.True(StageCheckpoint.Is再利用可能(l_署名, l_出力, null));
+            l_設定.A_Is再開 = true;
             Assert.Equal(l_署名, StageCheckpoint.Get_入力署名(l_設定));
             File.WriteAllText(l_入力, "AAAT");
-            Assert.False(StageCheckpoint.Get_再利用可能(StageCheckpoint.Get_入力署名(l_設定), l_出力, null));
+            Assert.False(StageCheckpoint.Is再利用可能(StageCheckpoint.Get_入力署名(l_設定), l_出力, null));
             File.WriteAllText(l_出力, "CCCT");
-            Assert.False(StageCheckpoint.Get_再利用可能(l_署名, l_出力, null));
+            Assert.False(StageCheckpoint.Is再利用可能(l_署名, l_出力, null));
         }
 
         /// <summary>
@@ -111,9 +111,9 @@ namespace Tsumiki.Tests.Core
             File.WriteAllText(l_逆鎖, "TTTT");
             StageCheckpoint.V_保存("input", l_順鎖, l_逆鎖);
             File.WriteAllText(l_逆鎖, "TTTA");
-            Assert.False(StageCheckpoint.Get_再利用可能("input", l_順鎖, l_逆鎖));
+            Assert.False(StageCheckpoint.Is再利用可能("input", l_順鎖, l_逆鎖));
             File.Delete(l_逆鎖);
-            Assert.False(StageCheckpoint.Get_再利用可能("input", l_順鎖, l_逆鎖));
+            Assert.False(StageCheckpoint.Is再利用可能("input", l_順鎖, l_逆鎖));
         }
 
         /// <summary>
@@ -127,7 +127,7 @@ namespace Tsumiki.Tests.Core
             var l_複製 = l_元.Get_複製();
             l_複製.Set_k長一覧([21, 41]);
             Assert.Equal([31, 63], l_元.A_k長一覧);
-            Assert.True(l_複製.A_k長が明示指定されたか);
+            Assert.True(l_複製.A_Isk長明示指定);
         }
 
         /// <summary>

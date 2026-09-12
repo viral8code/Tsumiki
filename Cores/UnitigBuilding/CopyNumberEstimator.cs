@@ -8,14 +8,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// 各 unitig のコピー数をカバレッジから推定する
     /// </summary>
-    /// <remarks>
-    /// n 回現れる配列にはリードが n 倍集まるので、平均カバレッジ / 基準値 を丸める<br/>
-    /// 反復かどうかをグラフの形ではなく量的な根拠で判定できる点が要点<br/>
-    /// 入次数 2 ・出次数 2 でも単一コピー (バブルの残骸) でありうるし、次数 1 でも高カバレッジならタンデムリピートを 1 本に潰している疑いがある<br/>
-    /// 経路探索では「この unitig を何回まで使ってよいか」の予算にもなる<br/>
-    /// 基準値は長さ加重中央値<br/>
-    /// 単純平均や単純中央値だと本数の多い短い断片に引きずられ、ゲノムの大部分を占める単一コピー領域の水準から外れる
-    /// </remarks>
     internal static class CopyNumberEstimator
     {
         #region 定数
@@ -85,11 +77,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_ユニティグ長"></param>
         /// <param name="p_グラフ"></param>
-        /// <remarks>
-        /// p_グラフ を渡すと、大域基準値との比だけでは「多コピー」に見える unitig を、排他的な鎖 (分岐の無い一続きの隣接) で繋がった近傍のカバレッジと比較し直す (Get_修正_接続による単一コピー再判定 参照) <br/>
-        /// これにより、染色体全体とは異なるカバレッジ水準を持つプラスミドの単一コピー領域を、反復と誤判定しにくくなる<br/>
-        /// 渡さない場合は従来どおり大域基準値との比だけで判定する
-        /// </remarks>
         /// <returns></returns>
         public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長, UnitigGraph? p_グラフ = null)
         {
@@ -129,7 +116,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             if (p_グラフ is { } l_グラフ)
             {
-                V_修正_孤立した複製単位を単一コピーとみなす(l_グラフ, p_カバレッジ, p_ユニティグ長, l_コピー数);
+                V_修正_孤立複製単位コピー数(l_グラフ, p_カバレッジ, p_ユニティグ長, l_コピー数);
                 V_修正_接続による単一コピー再判定(l_グラフ, p_カバレッジ, l_コピー数);
             }
 
@@ -176,13 +163,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_ユニティグ長"></param>
         /// <param name="p_コピー数"></param>
-        /// <remarks>
-        /// 大域基準値との比では多コピーに見える unitig 群のうち、大域基準値と一致する確定済みの成分とグラフ上まったく繋がりが無いものが対象になる<br/>
-        /// 高コピープラスミドなどがこれにあたる<br/>
-        /// 分散型の反復配列 (rRNA オペロン等) は複数の異なるゲノム上の文脈を前後に持つため、通常は染色体側の成分と繋がった分岐点になる (孤立した島にはならない) <br/>
-        /// したがって「染色体と繋がりが無い、内部でカバレッジが一貫した島」という条件は、反復の誤判定を招きにくい
-        /// </remarks>
-        private static void V_修正_孤立した複製単位を単一コピーとみなす(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長, Dictionary<int, int> p_コピー数)
+        private static void V_修正_孤立複製単位コピー数(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_ユニティグ長, Dictionary<int, int> p_コピー数)
         {
             var l_成分ID = Get_連結成分(p_グラフ, p_コピー数.Keys);
 
@@ -217,12 +198,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_内部で一貫しているか = l_島.All(l_ID =>
+                var l_Is内部一貫 = l_島.All(l_ID =>
                 {
                     var l_値 = p_カバレッジ.GetValueOrDefault(l_ID, 0D);
                     return l_値 <= 0D || l_値 / l_局所基準値 < 多コピーとみなす比の下限;
                 });
-                if (!l_内部で一貫しているか)
+                if (!l_Is内部一貫)
                 {
                     // 島の内部でもカバレッジ水準がばらついている
                     // (=島の中に反復がある)
@@ -288,12 +269,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_グラフ"></param>
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_コピー数"></param>
-        /// <remarks>
-        /// 対象の unitig から、分岐の無い (出次数 1 かつ行き先の入次数も 1 という意味で排他的な) 辺だけを辿って両方向に伸ばせるだけ伸ばし、到達できた unitig 群を「排他的成分」とする<br/>
-        /// この成分が 2 本以上からなり、かつ成分内でのカバレッジの中央値に対する対象の比が多コピーとみなす比の下限 を下回るなら、大域基準値とは水準が違うだけの単一コピー領域 (高コピープラスミドの背骨など) と判断し、コピー数を 1 に修正する<br/>
-        /// 排他的な辺だけを辿るため、途中に本物の分岐 (反復の入口・合流) があれば成分はそこで止まる<br/>
-        /// したがって成分内のカバレッジが実際に反復を含んでいれば、その反復自身は今回の対象にならない限り誤って巻き込まれない
-        /// </remarks>
         private static void V_修正_接続による単一コピー再判定(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, Dictionary<int, int> p_コピー数)
         {
             foreach (var l_ID in p_コピー数.Keys.ToList())

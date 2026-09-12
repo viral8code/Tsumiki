@@ -44,11 +44,11 @@ namespace Tsumiki.Tests.Core
         public void V_先読み距離_到達不能な証拠を除外()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長 };
-            var l_較正器 = 証拠較正器.Get_較正器(Enumerable.Repeat(400, 100).ToArray(), 100, [2000L]);
+            var l_較正器 = 証拠較正器.Get_較正器(Enumerable.Repeat(400, 100).ToArray(), 100, [2_000L]);
             List<string> l_配列 = [new string('A', 500), new string('C', 500)];
             Dictionary<(int, int), ulong> l_証拠 = new() { [(0, 1)] = 10UL };
             var l_近い = BeamSearchExtender.Get_スコア([(0, 0)], 1, l_配列, l_証拠, l_較正器, 0);
-            var l_遠い = BeamSearchExtender.Get_スコア([(0, 0)], 1, l_配列, l_証拠, l_較正器, 1000);
+            var l_遠い = BeamSearchExtender.Get_スコア([(0, 0)], 1, l_配列, l_証拠, l_較正器, 1_000);
             Assert.True(l_近い.A_正規化 > 0D);
             Assert.Equal(0D, l_遠い.A_正規化);
         }
@@ -93,7 +93,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<int, int> l_copyNumber = new() { [l_aId] = 1, [l_bId] = 1, [l_cId] = 1 };
 
             var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 30, [(long)l_ユニティグ一覧[l_先頭配列].Length, (long)l_ユニティグ一覧[l_中間配列].Length, (long)l_ユニティグ一覧[l_末尾配列].Length]);
-            Assert.True(l_較正器.A_使えるか);
+            Assert.True(l_較正器.A_Is使用可能);
 
             var l_merge = V_構築_未結合表(l_グラフ);
             var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3UL, p_較正器: l_較正器);
@@ -120,12 +120,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録_kmer(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存値))
@@ -151,10 +151,10 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
 
-            var l_anchor = V_生成_乱数配列(アンカー長, p_乱数種: 20260908);
+            var l_anchor = V_生成_乱数配列(アンカー長, p_乱数種: 20_260_908);
             var l_unitigA = V_生成_乱数配列(230, p_乱数種: 1) + l_anchor; // 250 bp
             var l_unitigB = l_anchor + V_生成_乱数配列(15, p_乱数種: 2); // 35 bp (短い)
-            var l_unitigC = l_anchor + V_生成_乱数配列(2000, p_乱数種: 3); // 2020 bp (長い)
+            var l_unitigC = l_anchor + V_生成_乱数配列(2_000, p_乱数種: 3); // 2020 bp (長い)
 
             List<string> l_ユニティグ一覧 = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> l_kmer辞書 = [];
@@ -181,7 +181,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// どこも結合していない状態の結合表を作る
         /// </summary>
-        /// <param name="p_グラフ">対象のユニティググラフ</param>
+        /// <param name="p_グラフ">対象の unitig グラフ</param>
         /// <returns>結合表</returns>
         private static int[] V_構築_未結合表(UnitigGraph p_グラフ)
         {

@@ -5,11 +5,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// プロデューサー/コンシューマが、ワーカーの例外で無言のハングに陥らないことを固定する
     /// </summary>
-    /// <remarks>
-    /// 素朴に書くとこうなる: キューには容量上限があるため、ワーカーが例外で落ちるとキューを引き取る者がいなくなり、プロデューサーは Add で永久に待ち続ける<br/>
-    /// Task.WaitAll に到達しないのでワーカーの例外は誰にも観測されず、ログも例外も出ないままプロセスが CPU 0% で止まる<br/>
-    /// 実際に GAGE-B のデータで 2 時間以上まったく無言でハングした
-    /// </remarks>
     public class ReadPipelineTests
     {
         #region 公開メソッド
@@ -20,7 +15,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_全ての項目をちょうど1回ずつ処理する()
         {
-            var l_入力 = Enumerable.Range(0, 5000).ToList();
+            var l_入力 = Enumerable.Range(0, 5_000).ToList();
             var l_結果 = new System.Collections.Concurrent.ConcurrentBag<int>();
 
             ReadPipeline.V_実行(4, 32, l_入力, (l_項目, _) => l_結果.Add(l_項目));

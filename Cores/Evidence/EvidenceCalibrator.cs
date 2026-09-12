@@ -5,7 +5,7 @@
     /// </summary>
     /// <remarks>
     /// ある辺で観測される本数は、その辺の両側の unitig 長とフラグメント長分布に応じて期待値そのものが桁で変わるため、観測本数をそのまま固定閾値と比べると、短い辺には厳しすぎ、長い辺には緩すぎる基準になる<br/>
-    /// Scaffolder (スキャフォールド辺の選択) ・ ContigMaker (分岐選択) ・ BeamSearchExtender (先読みスコア) が同じ較正を共有するために括り出した
+    /// Scaffolder (scaffold 辺の選択) ・ ContigMaker (分岐選択) ・ BeamSearchExtender (先読みスコア) が同じ較正を共有するために括り出した
     /// </remarks>
     internal sealed class 証拠較正器
     {
@@ -43,7 +43,7 @@
         /// <remarks>
         /// false の場合、呼び出し側は生カウント方式に自分でフォールバックする
         /// </remarks>
-        public bool A_使えるか => this._モデル is not null;
+        public bool A_Is使用可能 => this._モデル is not null;
 
         #endregion
 
@@ -120,7 +120,7 @@
             }
 
             var l_モデル = new PairedDistanceModel(p_同一ユニティグ標本, l_リード長);
-            if (!l_モデル.A_使えるか)
+            if (!l_モデル.A_Is使用可能)
             {
                 return new 証拠較正器(null, 0D);
             }
@@ -149,7 +149,7 @@
         /// <returns>正規化済みの支持</returns>
         /// <remarks>
         /// モデルが使えない場合は 0 を返す (=証拠なしとして扱う) <br/>
-        /// 生カウントへのフォールバックが必要な呼び出し側はA_使えるか を先に見て自分で分岐すること
+        /// 生カウントへのフォールバックが必要な呼び出し側はA_Is使用可能 を先に見て自分で分岐すること
         /// </remarks>
         public double Get_正規化済み支持(ulong p_観測本数, long p_長さ1, long p_長さ2, int p_ギャップ長)
         {

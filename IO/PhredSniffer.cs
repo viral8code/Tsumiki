@@ -16,11 +16,6 @@ namespace Tsumiki.IO
         /// <summary>
         /// 現実的な Q 上限
         /// </summary>
-        /// <remarks>
-        /// 実データで現実的にありうる最大の Phred スコア<br/>
-        /// (Illumina/MGI/BGI いずれも通常は 40 強が上限) <br/>
-        /// これを大きく超えるスコアが観測された場合は、オフセットの取り違えを疑う
-        /// </remarks>
         private const int 現実的なQ上限 = 45;
 
         #endregion
@@ -92,7 +87,7 @@ namespace Tsumiki.IO
                 l_指摘.Add($"observed quality ASCII range [{p_標本.A_最小ASCII}, {p_標本.A_最大ASCII}] decodes to Q[{l_最小Q}, {l_最大Q}] under Phred{p_有効オフセット}, which is implausible for real sequencing data (negative or > {現実的なQ上限}). This data may actually be Phred{l_別のオフセット} -- consider re-running with -p {l_別のオフセット} if so.");
             }
 
-            if (p_標本.A_一様か)
+            if (p_標本.A_Is一様)
             {
                 l_指摘.Add($"quality is completely uniform (every sampled base is ASCII {p_標本.A_最小ASCII}) across {p_標本.A_標本リード数} sampled read(s) -- this is unusual for real sequencer output and may indicate a placeholder/binned quality scheme rather than a genuine Phred offset mismatch.");
             }
@@ -116,8 +111,8 @@ namespace Tsumiki.IO
                 return null;
             }
 
-            var l_33が妥当 = Get_妥当なオフセットか(p_標本, 33);
-            var l_64が妥当 = Get_妥当なオフセットか(p_標本, 64);
+            var l_33が妥当 = Is妥当オフセット(p_標本, 33);
+            var l_64が妥当 = Is妥当オフセット(p_標本, 64);
             return l_33が妥当 == l_64が妥当 ? null : l_33が妥当 ? 33 : 64;
         }
 
@@ -128,12 +123,6 @@ namespace Tsumiki.IO
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
         /// <param name="p_標本上限">見る行数の上限</param>
-        /// <remarks>
-        /// -p で明示指定されている場合は、利用者の判断を優先して推定結果で上書きしない<br/>
-        /// 警告だけでは足りない<br/>
-        /// Phred64 のデータを Phred33 として読むとすべてのスコアが 31 以上に見え、品質フィルタが完全に無効化されるが、その事実はログを読まない限り気付けない<br/>
-        /// read1 と read2 で推定が食い違う場合は自信が持てないため警告に留める
-        /// </remarks>
         public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
@@ -152,7 +141,7 @@ namespace Tsumiki.IO
 
             if (l_推定 is { } l_オフセット && l_オフセット != p_引数.A_Phredオフセット)
             {
-                if (p_引数.A_Phredが明示指定されたか)
+                if (p_引数.A_IsPhred明示指定)
                 {
                     Logger.V_出力(メッセージID.Phred_明示指定と不一致, l_オフセット, p_引数.A_Phredオフセット, l_オフセット, l_オフセット);
                 }
@@ -196,7 +185,7 @@ namespace Tsumiki.IO
         /// <param name="p_標本"></param>
         /// <param name="p_オフセット"></param>
         /// <returns></returns>
-        private static bool Get_妥当なオフセットか(Phred標本 p_標本, int p_オフセット)
+        private static bool Is妥当オフセット(Phred標本 p_標本, int p_オフセット)
         {
             return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= 現実的なQ上限;
         }
@@ -221,7 +210,7 @@ namespace Tsumiki.IO
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
             var l_件数 = 0;
-            while (l_件数 < p_標本上限 && l_読み込み.Get_続きがあるか())
+            while (l_件数 < p_標本上限 && l_読み込み.Has続き())
             {
                 yield return l_読み込み.Get_次のリード().A_クオリティ;
                 l_件数++;

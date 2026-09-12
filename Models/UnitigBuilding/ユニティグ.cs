@@ -5,14 +5,14 @@ namespace Tsumiki.Models.UnitigBuilding
     /// <summary>
     /// 分岐を持たない 1 本の配列
     /// </summary>
-    /// <param name="p_ID">ユニティグ ID</param>
-    /// <param name="p_配列">ユニティグの配列</param>
+    /// <param name="p_ID">unitig ID</param>
+    /// <param name="p_配列">unitig の配列</param>
     internal class ユニティグ(object p_ID, string p_配列)
     {
         #region 内部変数
 
         /// <summary>
-        /// ユニティグ ID
+        /// unitig ID
         /// </summary>
         public readonly string A_ID = p_ID?.ToString() ?? string.Empty;
 
@@ -26,7 +26,7 @@ namespace Tsumiki.Models.UnitigBuilding
         #region 公開メソッド
 
         /// <summary>
-        /// (オーバーライド) ユニティグを FASTA の 2 行として返す
+        /// (オーバーライド) unitig を FASTA の 2 行として返す
         /// </summary>
         /// <returns></returns>
         public override string ToString()

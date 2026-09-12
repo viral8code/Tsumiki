@@ -29,14 +29,14 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 円周
         /// </summary>
-        private const int 円周 = 1200;
+        private const int 円周 = 1_200;
 
         // k=21 なら 1200 塩基の乱数列に重複する正規化 k-mer は事実上現れない
 
         /// <summary>
         /// 環状の複製単位そのもの
         /// </summary>
-        private static readonly string Circle = Get_乱数配列(円周, p_種: 20250908);
+        private static readonly string Circle = Get_乱数配列(円周, p_種: 20_250_908);
 
         // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
         // 先頭 unitig の先頭 k-1 塩基と一致する (= 環が閉じる) ように切り分ける
@@ -124,7 +124,7 @@ namespace Tsumiki.Tests.Core
             List<(string A_ID, string A_配列)> l_コンティグ群 = [];
             using (var l_読み込み = new FastaReader(l_コンティグパス))
             {
-                while (l_読み込み.Get_続きがあるか())
+                while (l_読み込み.Has続き())
                 {
                     var l_配列 = l_読み込み.Get_次の配列();
                     l_コンティグ群.Add((l_配列.A_ID.TrimStart('>'), l_配列.A_配列));
@@ -163,7 +163,7 @@ namespace Tsumiki.Tests.Core
             List<(string A_ID, string A_配列)> l_コンティグ群 = [];
             using (var l_読み込み = new FastaReader(l_コンティグパス))
             {
-                while (l_読み込み.Get_続きがあるか())
+                while (l_読み込み.Has続き())
                 {
                     var l_配列 = l_読み込み.Get_次の配列();
                     l_コンティグ群.Add((l_配列.A_ID.TrimStart('>'), l_配列.A_配列));

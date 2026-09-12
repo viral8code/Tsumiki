@@ -26,7 +26,7 @@ namespace Tsumiki.Tests.Common
         {
             var l_欠け = (from l_言語 in Enum.GetValues<言語>()
                           from l_ID in Get_全ID()
-                          where !MessageCatalog.Get_訳があるか(l_言語, l_ID)
+                          where !MessageCatalog.Has訳(l_言語, l_ID)
                           select $"{l_言語}/{l_ID}").ToList();
 
             Assert.Empty(l_欠け);

@@ -103,7 +103,7 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_レベル = Get_品質保証レベル(l_取りこぼし, l_出しすぎ, l_深度, l_支持, l_ギャップ, l_接合点, l_代替経路, l_閉鎖);
 
-            return new 完全性判定結果(A_完全長か: l_レベル == 品質保証レベル.完全長, A_品質保証レベル: l_レベル, A_検査項目: l_項目, A_未達理由: [.. l_理由.Distinct()]);
+            return new 完全性判定結果(A_Is完全長: l_レベル == 品質保証レベル.完全長, A_品質保証レベル: l_レベル, A_検査項目: l_項目, A_未達理由: [.. l_理由.Distinct()]);
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.完全性の検査行, Messages.Get_文言(l_項目.A_見出し), Messages.Get_文言(Get_判定の見出し(l_項目.A_判定)), l_項目.A_内訳);
             }
 
-            Logger.V_出力(p_判定.A_完全長か ? メッセージID.完全長と判定 : メッセージID.完全長に届かず, (int)p_判定.A_品質保証レベル);
+            Logger.V_出力(p_判定.A_Is完全長 ? メッセージID.完全長と判定 : メッセージID.完全長に届かず, (int)p_判定.A_品質保証レベル);
             if (p_判定.A_未達理由.Count > 0)
             {
                 Logger.V_出力(メッセージID.完全性の未達理由, string.Join(", ", p_判定.A_未達理由.Select(Get_理由コード)));
@@ -180,7 +180,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             var l_数 = 0;
             using var l_読み込み = new FastaReader(p_FASTAパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 if (l_読み込み.Get_次の配列().A_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase))
                 {
@@ -202,18 +202,18 @@ namespace Tsumiki.Cores.Evaluation
         {
             var l_数 = 0;
             using var l_読み込み = new FastaReader(p_FASTAパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_配列 = l_読み込み.Get_次の配列().A_配列;
-                var l_直前がNか = false;
+                var l_Is直前N = false;
                 foreach (var l_文字 in l_配列)
                 {
-                    var l_Nか = l_文字 is 'N' or 'n';
-                    if (l_Nか && !l_直前がNか)
+                    var l_IsN = l_文字 is 'N' or 'n';
+                    if (l_IsN && !l_Is直前N)
                     {
                         l_数++;
                     }
-                    l_直前がNか = l_Nか;
+                    l_Is直前N = l_IsN;
                 }
             }
             return l_数;
@@ -241,13 +241,13 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 合否から検査判定を作り、不合格なら理由を書き留める
         /// </summary>
-        /// <param name="p_合格か">合格したか</param>
+        /// <param name="p_Is合格">合格したか</param>
         /// <param name="p_理由">不合格のときの理由</param>
         /// <param name="p_理由一覧">書き留める先</param>
         /// <returns>検査判定</returns>
-        private static 検査判定 Get_判定(bool p_合格か, 未達理由 p_理由, List<未達理由> p_理由一覧)
+        private static 検査判定 Get_判定(bool p_Is合格, 未達理由 p_理由, List<未達理由> p_理由一覧)
         {
-            if (p_合格か)
+            if (p_Is合格)
             {
                 return 検査判定.合格;
             }
@@ -285,7 +285,7 @@ namespace Tsumiki.Cores.Evaluation
                 p_理由一覧.Add(未達理由.環状に閉じていない);
                 return (検査判定.不合格, "0");
             }
-            var l_支持数 = p_閉鎖検証.Count(x => x.A_支持されたか);
+            var l_支持数 = p_閉鎖検証.Count(x => x.A_Has支持);
             var l_内訳 = $"{l_支持数}/{p_閉鎖検証.Count}";
             if (l_支持数 == p_閉鎖検証.Count)
             {

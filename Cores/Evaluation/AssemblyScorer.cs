@@ -18,12 +18,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 評価に含める配列の最小長
         /// </summary>
-        /// <remarks>
-        /// abyss-fac の既定と同じ 500 bp<br/>
-        /// これより短い断片は、そこに配列が入っていても下流で使いようがない<br/>
-        /// k-mer の集計にも掛けるのが要点で、掛けないと「短い破片を大量に出しただけ」のアセンブリが完全性で得をする<br/>
-        /// 実データでは k=21 の 3,421 本のうち 500 bp 以上は 322 本しかなく、残りが完全性を底上げして低い k を有利にしていた
-        /// </remarks>
         private const int 評価に含める最小長 = 500;
 
         #endregion
@@ -57,7 +51,7 @@ namespace Tsumiki.Cores.Evaluation
 
             foreach (var l_kmer in p_アンカーインデックス.Get_信頼kmer一覧())
             {
-                var l_正規形 = KmerPacking.Get_正規化パック(l_kmer);
+                var l_正規形 = KmerPacking.TryGet_正規化パック(l_kmer);
                 var l_カバレッジ = p_アンカーインデックス.Get_カバレッジ(l_kmer);
                 var l_期待コピー数 = Math.Max(1, (int)Math.Round(l_カバレッジ / p_単一コピー基準値));
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
@@ -91,12 +85,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_総延長"></param>
         /// <param name="p_環状本数"></param>
         /// <param name="p_環状延長"></param>
-        /// <remarks>
-        /// 逆相補は同一視する<br/>
-        /// 併せて、環状に閉じた配列 (名前に環状の目印が付いたもの) の本数と総延長も集計する<br/>
-        /// 短すぎる配列は数えない<br/>
-        /// 環状の目印は既にそれより長い閉路にしか付かないため、環状の集計がこの足切りで漏れることはない
-        /// </remarks>
         /// <returns></returns>
         private static Dictionary<UInt128, int> Get_出現回数(string p_FASTAパス, int p_アンカーk長, out List<int> p_長さ一覧, out long p_総延長, out int p_環状本数, out long p_環状延長)
         {
@@ -107,7 +95,7 @@ namespace Tsumiki.Cores.Evaluation
             p_環状延長 = 0L;
 
             using var l_読み込み = new FastaReader(p_FASTAパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
                 var l_配列 = l_エントリ.A_配列;
@@ -126,7 +114,7 @@ namespace Tsumiki.Cores.Evaluation
 
                 for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
                 {
-                    if (KmerPacking.Get_正規化パック(l_配列, i, p_アンカーk長, out var l_正規形))
+                    if (KmerPacking.TryGet_正規化パック(l_配列, i, p_アンカーk長, out var l_正規形))
                     {
                         l_観測[l_正規形] = l_観測.GetValueOrDefault(l_正規形) + 1;
                     }

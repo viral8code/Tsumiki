@@ -24,10 +24,10 @@ namespace Tsumiki.Tests.Utility
         public void V_読み替え_小はパックした結果と一致する(int p_k長)
         {
             var l_塩基 = Get_塩基ID列(p_k長, 7 + p_k長);
-            var l_パック = Get_パック済み(l_塩基);
+            var l_パック = TryGet_パック済み(l_塩基);
             var l_余り = (8 * l_パック.Length) - (2 * p_k長);
 
-            Assert.Equal(TrustedKmerIndex.Get_パック_小(l_塩基), TrustedKmerIndex.Get_読み替え_小(l_パック, l_余り));
+            Assert.Equal(TrustedKmerIndex.TryGet_パック_小(l_塩基), TrustedKmerIndex.Get_読み替え_小(l_パック, l_余り));
         }
 
         /// <summary>
@@ -42,10 +42,10 @@ namespace Tsumiki.Tests.Utility
         public void V_読み替え_中はパックした結果と一致する(int p_k長)
         {
             var l_塩基 = Get_塩基ID列(p_k長, 11 + p_k長);
-            var l_パック = Get_パック済み(l_塩基);
+            var l_パック = TryGet_パック済み(l_塩基);
             var l_余り = (8 * l_パック.Length) - (2 * p_k長);
 
-            Assert.Equal(TrustedKmerIndex.Get_パック_中(l_塩基), TrustedKmerIndex.Get_読み替え_中(l_パック, l_余り));
+            Assert.Equal(TrustedKmerIndex.TryGet_パック_中(l_塩基), TrustedKmerIndex.Get_読み替え_中(l_パック, l_余り));
         }
 
         #endregion
@@ -57,7 +57,7 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         /// <param name="p_塩基ID列">元の塩基 ID 列</param>
         /// <returns>詰めたバイト列</returns>
-        private static byte[] Get_パック済み(byte[] p_塩基ID列)
+        private static byte[] TryGet_パック済み(byte[] p_塩基ID列)
         {
             // CountingDB.V_登録 と同じ手順
             // 端数は A で埋める

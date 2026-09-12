@@ -9,13 +9,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// 出した配列の各位置について、そこを跨ぐ r-mer がリードに 1 度でも現れるかを調べる
     /// </summary>
-    /// <remarks>
-    /// 誤って繋いだ接合は、両側それぞれは正しい配列なので、カバレッジやコピー数といった局所の量では正当に見える<br/>
-    /// 区別できるのは接合を跨ぐ証拠だけで、繋ぎ目を含む r-mer がどのリードにも無いことがそのままこの繋ぎ方を見た読みが一つも無いことを意味する<br/>
-    /// マッピングによる深度がこれを取り逃がすのは、マッパーが不一致を許すため誤った接合を跨いでリードが載ってしまうからで、完全一致で問う必要がある<br/>
-    /// 表はアセンブリ側に持ち、リードを流して印を付ける<br/>
-    /// リード側の k-mer 集合を作るとエラー由来の種類数がゲノムの数十倍に膨らむが、この向きならアセンブリの長さぶんで済む
-    /// </remarks>
     internal static class ReadSupportChecker
     {
         #region 定数
@@ -54,10 +47,10 @@ namespace Tsumiki.Cores.Evaluation
                 return null;
             }
 
-            var l_見たか = new byte[l_表.Count];
-            V_印を付ける(l_表, l_見たか, p_リード1のパス, p_リード2のパス, p_r長);
+            var l_観測状態 = new byte[l_表.Count];
+            V_記録_支持(l_表, l_観測状態, p_リード1のパス, p_リード2のパス, p_r長);
 
-            return Get_集計(l_全件, l_位置ごとの番号, l_見たか, p_r長);
+            return Get_集計(l_全件, l_位置ごとの番号, l_観測状態, p_r長);
         }
 
         /// <summary>
@@ -104,7 +97,7 @@ namespace Tsumiki.Cores.Evaluation
                 var l_番号列 = new int[l_数];
                 for (var i = 0; i < l_数; i++)
                 {
-                    if (!KmerPacking.Get_正規化キー(l_配列, i, p_r長, out var l_正規形))
+                    if (!KmerPacking.TryGet_正規化キー(l_配列, i, p_r長, out var l_正規形))
                     {
                         l_番号列[i] = -1;
                         continue;
@@ -129,11 +122,11 @@ namespace Tsumiki.Cores.Evaluation
         /// 書き込みは 0 でなくするだけなので、並列に走っても取りこぼしは出ない
         /// </remarks>
         /// <param name="p_表">r-mer から通し番号への表</param>
-        /// <param name="p_見たか">通し番号ごとの、リードで見たかどうか</param>
+        /// <param name="p_観測状態">通し番号ごとの観測状態</param>
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
-        private static void V_印を付ける(Dictionary<UInt128, int> p_表, byte[] p_見たか, string? p_リード1のパス, string? p_リード2のパス, int p_r長)
+        private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, string? p_リード1のパス, string? p_リード2のパス, int p_r長)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_バッチ = new string[照合バッチサイズ];
@@ -144,13 +137,13 @@ namespace Tsumiki.Cores.Evaluation
                 l_バッチ[l_件数++] = l_リード;
                 if (l_件数 == 照合バッチサイズ)
                 {
-                    V_照合(p_表, p_見たか, l_バッチ, l_件数, p_r長, l_スレッド数);
+                    V_照合(p_表, p_観測状態, l_バッチ, l_件数, p_r長, l_スレッド数);
                     l_件数 = 0;
                 }
             }
             if (l_件数 > 0)
             {
-                V_照合(p_表, p_見たか, l_バッチ, l_件数, p_r長, l_スレッド数);
+                V_照合(p_表, p_観測状態, l_バッチ, l_件数, p_r長, l_スレッド数);
             }
         }
 
@@ -158,22 +151,22 @@ namespace Tsumiki.Cores.Evaluation
         /// バッチに溜めたリードを並列に照合し、表にある r-mer に印を付ける
         /// </summary>
         /// <param name="p_表">r-mer から通し番号への表</param>
-        /// <param name="p_見たか">通し番号ごとの、リードで見たかどうか</param>
+        /// <param name="p_観測状態">通し番号ごとの観測状態</param>
         /// <param name="p_バッチ">照合対象のリードを溜めた配列</param>
         /// <param name="p_件数">バッチに溜まっている件数</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
         /// <param name="p_スレッド数">並列度</param>
-        private static void V_照合(Dictionary<UInt128, int> p_表, byte[] p_見たか, string[] p_バッチ, int p_件数, int p_r長, int p_スレッド数)
+        private static void V_照合(Dictionary<UInt128, int> p_表, byte[] p_観測状態, string[] p_バッチ, int p_件数, int p_r長, int p_スレッド数)
         {
             _ = Parallel.For(0, p_件数, new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, i =>
             {
                 var l_リード = p_バッチ[i];
                 for (var p = 0; p + p_r長 <= l_リード.Length; p++)
                 {
-                    if (KmerPacking.Get_正規化キー(l_リード, p, p_r長, out var l_正規形)
+                    if (KmerPacking.TryGet_正規化キー(l_リード, p, p_r長, out var l_正規形)
                         && p_表.TryGetValue(l_正規形, out var l_番号))
                     {
-                        p_見たか[l_番号] = 1;
+                        p_観測状態[l_番号] = 1;
                     }
                 }
             });
@@ -184,10 +177,10 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_全件">アセンブリの全配列</param>
         /// <param name="p_位置ごとの番号">配列 ID ごとの位置別番号</param>
-        /// <param name="p_見たか">通し番号ごとの、リードで見たかどうか</param>
+        /// <param name="p_観測状態">通し番号ごとの観測状態</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
         /// <returns>検査結果</returns>
-        private static 支持検査結果 Get_集計(IReadOnlyList<(string A_ID, string A_配列)> p_全件, Dictionary<string, int[]> p_位置ごとの番号, byte[] p_見たか, int p_r長)
+        private static 支持検査結果 Get_集計(IReadOnlyList<(string A_ID, string A_配列)> p_全件, Dictionary<string, int[]> p_位置ごとの番号, byte[] p_観測状態, int p_r長)
         {
             var l_調べた = 0L;
             var l_支持なし = 0L;
@@ -208,7 +201,7 @@ namespace Tsumiki.Cores.Evaluation
                     }
 
                     l_調べた++;
-                    if (p_見たか[l_番号] != 0)
+                    if (p_観測状態[l_番号] != 0)
                     {
                         V_閉じる(l_区間, l_ID, ref l_開始, i - 1, p_r長);
                         continue;

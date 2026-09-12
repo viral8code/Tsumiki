@@ -58,8 +58,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_磨いた結果_リードが支持する塩基へ置換を直す()
         {
-            var l_真の配列 = Get_乱数配列(2000, 1);
-            var l_誤り位置 = 1000;
+            var l_真の配列 = Get_乱数配列(2_000, 1);
+            var l_誤り位置 = 1_000;
             var l_文字 = l_真の配列.ToCharArray();
             l_文字[l_誤り位置] = l_文字[l_誤り位置] == 'A' ? 'C' : 'A';
             var l_誤りを含む配列 = new string(l_文字);
@@ -90,9 +90,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_磨いた結果_リードが届かない位置は動かさない()
         {
-            var l_真の配列 = Get_乱数配列(2000, 2);
+            var l_真の配列 = Get_乱数配列(2_000, 2);
             // 後半に誤りを置き、前半にしかリードを与えない
-            var l_誤り位置 = 1600;
+            var l_誤り位置 = 1_600;
             var l_文字 = l_真の配列.ToCharArray();
             l_文字[l_誤り位置] = l_文字[l_誤り位置] == 'G' ? 'T' : 'G';
             var l_誤りを含む配列 = new string(l_文字);
@@ -116,15 +116,15 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_磨いた結果_リードが届かない範囲は深度不足として数える()
         {
-            var l_真の配列 = Get_乱数配列(2000, 3);
+            var l_真の配列 = Get_乱数配列(2_000, 3);
             var l_FASTA = this.V_書き出し_FASTA("contig1", l_真の配列);
-            var l_FASTQ = this.V_書き出し_FASTQ(l_真の配列, p_リード長: 150, p_刻み: 10, p_開始: 0, p_終了: 1000);
+            var l_FASTQ = this.V_書き出し_FASTQ(l_真の配列, p_リード長: 150, p_刻み: 10, p_開始: 0, p_終了: 1_000);
             var l_出力 = Path.Combine(this._一時ディレクトリ, "polished.fasta");
 
             var l_統計 = Polisher.Get_磨いた結果(l_FASTA, l_FASTQ, null, l_出力);
 
             Assert.NotNull(l_統計);
-            Assert.Equal(2000L, l_統計!.Value.A_評価できた位置数);
+            Assert.Equal(2_000L, l_統計!.Value.A_評価できた位置数);
 
             // 覆われていない後半のぶんが深度不足として出る
             Assert.True(l_統計.Value.A_深度不足率 > 0.4D, $"深度不足率={l_統計.Value.A_深度不足率}");

@@ -51,7 +51,7 @@ namespace Tsumiki.Tests.IO
             var l_パス = this.Get_書き出し先("@r1\nACGTACGT\n+\nIIIIIIII\n");
             using var l_読み込み = new FastqReader(l_パス);
 
-            Assert.True(l_読み込み.Get_続きがあるか());
+            Assert.True(l_読み込み.Has続き());
             var l_リード = l_読み込み.Get_次のリード_軽量();
             Assert.Equal("@r1", l_リード.A_ID);
             Assert.Equal("ACGTACGT", l_リード.A_生リード);

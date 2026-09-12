@@ -196,10 +196,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 2 つの異なる経路が同じ配列へ合流する構造 (reverse bubble) で、合流後の共有配列が複数の unitig に重複して現れないことを確認する
         /// </summary>
-        /// <remarks>
-        /// unitig の定義は「内部の全節点が入次数 1 かつ出次数 1 の極大パス」であり、合流点 (入次数 2) からは別の unitig が始まらなければならない<br/>
-        /// この規則が無いと、両方の経路の walk が共有配列を走り抜けてしまい、同じ配列を 2 度出力する (実データで k-mer 延べ数が実内容の 1.43 倍に膨らんでいた原因)
-        /// </remarks>
         [Fact]
         public void V_合流点でunitig構築が止まり共有配列が重複出力されない()
         {
@@ -235,7 +231,7 @@ namespace Tsumiki.Tests.Core
             // 延べ 1 回しか現れないこと (=重複出力されていないこと) を確認する
             var l_sharedKmer = l_shared[..l_k長];
             var l_sharedKmerRc = Util.V_逆相補(l_sharedKmer);
-            var l_occurrences = l_ユニティグ群.Sum(u => V_数える_出現回数(u, l_sharedKmer) + V_数える_出現回数(u, l_sharedKmerRc));
+            var l_occurrences = l_ユニティグ群.Sum(u => Get_出現回数(u, l_sharedKmer) + Get_出現回数(u, l_sharedKmerRc));
             Assert.Equal(1, l_occurrences);
         }
 
@@ -311,7 +307,7 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_検索対象">探される側</param>
         /// <param name="p_検索配列">探す文字列</param>
         /// <returns>現れた回数</returns>
-        private static int V_数える_出現回数(string p_検索対象, string p_検索配列)
+        private static int Get_出現回数(string p_検索対象, string p_検索配列)
         {
             var l_count = 0;
             for (var i = 0; i + p_検索配列.Length <= p_検索対象.Length; i++)

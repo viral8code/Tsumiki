@@ -66,7 +66,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_検査結果_リードどおりの配列なら支持のない位置は出ない()
         {
-            var l_真値 = Get_乱数配列(2000, p_種: 20260913);
+            var l_真値 = Get_乱数配列(2_000, p_種: 20_260_913);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 
@@ -83,8 +83,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_検査結果_無関係な2本を繋いだ接合を1つの区間として指す()
         {
-            var l_左 = Get_乱数配列(1000, p_種: 20260914);
-            var l_右 = Get_乱数配列(1000, p_種: 20260915);
+            var l_左 = Get_乱数配列(1_000, p_種: 20_260_914);
+            var l_右 = Get_乱数配列(1_000, p_種: 20_260_915);
 
             // リードは左右それぞれからしか出ない
             // 繋いだ接合を読んだリードは無い
@@ -110,9 +110,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_検査結果_ギャップのNは支持を問わない()
         {
-            var l_真値 = Get_乱数配列(2000, p_種: 20260916);
+            var l_真値 = Get_乱数配列(2_000, p_種: 20_260_916);
             var l_リード = this.Get_リード("reads.fq", l_真値);
-            var l_FASTA = this.Get_FASTA(("SEQ1", l_真値[..1000] + new string('N', 50) + l_真値[1000..]));
+            var l_FASTA = this.Get_FASTA(("SEQ1", l_真値[..1_000] + new string('N', 50) + l_真値[1_000..]));
 
             var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, l_リード, null, r長);
 
@@ -127,7 +127,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_検査結果_rが長すぎる場合は調べない()
         {
-            var l_真値 = Get_乱数配列(500, p_種: 20260917);
+            var l_真値 = Get_乱数配列(500, p_種: 20_260_917);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 

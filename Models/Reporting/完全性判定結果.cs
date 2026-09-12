@@ -89,7 +89,7 @@ namespace Tsumiki.Models.Reporting
         自己検査を行えなかった,
 
         /// <summary>
-        /// スキャフォールドのギャップが埋まらずに残っている
+        /// scaffold のギャップが埋まらずに残っている
         /// </summary>
         未解決のギャップが残る,
 
@@ -153,9 +153,9 @@ namespace Tsumiki.Models.Reporting
     /// 完全長は「長い配列が出た」ことではなく、必要な検査を全て通ったことを指す<br/>
     /// 情報が足りない箇所を推測で埋めて完全長を名乗らせないための型
     /// </remarks>
-    /// <param name="A_完全長か"></param>
+    /// <param name="A_Is完全長"></param>
     /// <param name="A_品質保証レベル"></param>
     /// <param name="A_検査項目"></param>
     /// <param name="A_未達理由"></param>
-    internal sealed record 完全性判定結果(bool A_完全長か, 品質保証レベル A_品質保証レベル, IReadOnlyList<検査項目> A_検査項目, IReadOnlyList<未達理由> A_未達理由);
+    internal sealed record 完全性判定結果(bool A_Is完全長, 品質保証レベル A_品質保証レベル, IReadOnlyList<検査項目> A_検査項目, IReadOnlyList<未達理由> A_未達理由);
 }

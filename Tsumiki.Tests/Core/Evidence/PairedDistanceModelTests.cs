@@ -40,7 +40,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_モデル = Get_モデル();
             List<int> l_峰 = [295, 300, 302, 298, 305, 300];
-            List<int> l_裾 = [2300, 4100, 6907, 8000, 11269, 15000, 3050, 5200];
+            List<int> l_裾 = [2_300, 4_100, 6_907, 8_000, 11_269, 15_000, 3_050, 5_200];
 
             var (l_本数, l_ギャップ) = l_モデル.Get_一貫した支持([.. l_峰, .. l_裾]);
 
@@ -114,8 +114,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_モデルは標本が無ければ使えない()
         {
-            Assert.False(new PairedDistanceModel([], p_リード長: 100).A_使えるか);
-            Assert.True(Get_モデル().A_使えるか);
+            Assert.False(new PairedDistanceModel([], p_リード長: 100).A_Is使用可能);
+            Assert.True(Get_モデル().A_Is使用可能);
         }
 
         #endregion
@@ -127,9 +127,9 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         /// <param name="p_件数"></param>
         /// <returns></returns>
-        private static List<int> Get_分布(int p_件数 = 2000)
+        private static List<int> Get_分布(int p_件数 = 2_000)
         {
-            var l_乱数 = new Random(4649);
+            var l_乱数 = new Random(4_649);
             return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
         }
 

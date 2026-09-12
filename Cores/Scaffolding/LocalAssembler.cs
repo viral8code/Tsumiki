@@ -8,15 +8,8 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Scaffolding
 {
     /// <summary>
-    /// GapFiller が埋められなかったスキャフォールドのギャップを、局所アセンブリ (MEGAHIT/IDBA の localasm 型) で埋める
+    /// GapFiller が埋められなかった scaffold のギャップを、局所アセンブリ (MEGAHIT/IDBA の localasm 型) で埋める
     /// </summary>
-    /// <remarks>
-    /// AssemblyMerger (-mg) の安全な代替<br/>
-    /// -mg は他の k のアセンブリ結果 (=既に確定した結論) を持ち込むため、同じリードから作った別 k のアセンブリが同じ反復配列で同じ誤りをするリスクを抱える (統合は誤りを打ち消さず、両方の誤りを取り込む) <br/>
-    /// 局所アセンブリはそれと違い、ギャップの両端に実際にマップされたリードだけを集め、そのリードだけからその場でミニアセンブリを組む<br/>
-    /// これは「グローバルなグラフでは低カバレッジに埋もれて削られてしまった領域を、その領域だけのリードに限定して相対的に高いカバレッジとして扱い直す」 (IDBA-UD の局所カバレッジ閾値と同じ思想) ことで、新しい証拠を持ち込む<br/>
-    /// GapFiller が使う信頼できる k-mer 集合はグローバルなカットオフを既に適用済みだが、ここではローカルに集めたリードに対してカットオフ 1 (=1 回でも読まれていれば信頼する) で再構築する
-    /// </remarks>
     internal static class LocalAssembler
     {
         #region 定数
@@ -41,7 +34,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 残ったギャップを、その両端に付いたリードだけで組み直して埋める
         /// </summary>
-        /// <param name="p_スキャフォールドパス">対象のスキャフォールドのパス</param>
+        /// <param name="p_スキャフォールドパス">対象の scaffold のパス</param>
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス</param>
         /// <param name="p_k長">k 長</param>
@@ -155,7 +148,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 埋める対象になるギャップを集めて返す
         /// </summary>
-        /// <param name="p_スキャフォールド群">対象のスキャフォールド</param>
+        /// <param name="p_スキャフォールド群">対象の scaffold</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>対象のギャップ</returns>
         private static List<局所ギャップ> Get_対象ギャップ一覧(List<(string A_ID, string A_配列)> p_スキャフォールド群, int p_k長)
@@ -222,7 +215,7 @@ namespace Tsumiki.Cores.Scaffolding
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
             {
-                if (Get_曖昧塩基を含むか(p_配列, i, p_k長))
+                if (Has曖昧塩基(p_配列, i, p_k長))
                 {
                     continue;
                 }
@@ -248,11 +241,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_開始">調べ始める位置</param>
         /// <param name="p_長さ">調べる長さ</param>
         /// <returns>含まれれば true</returns>
-        private static bool Get_曖昧塩基を含むか(string p_配列, int p_開始, int p_長さ)
+        private static bool Has曖昧塩基(string p_配列, int p_開始, int p_長さ)
         {
             for (var j = 0; j < p_長さ; j++)
             {
-                if (Util.Get_曖昧塩基か(p_配列[p_開始 + j]))
+                if (Util.Is曖昧塩基(p_配列[p_開始 + j]))
                 {
                     return true;
                 }
@@ -287,7 +280,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
                 using var l_読み込み = new FastqReader(l_パス);
-                while (l_読み込み.Get_続きがあるか())
+                while (l_読み込み.Has続き())
                 {
                     var l_リード = l_読み込み.Get_次のリード().A_生リード;
                     if (l_リード is null || l_リード.Length < p_k長)
@@ -318,7 +311,7 @@ namespace Tsumiki.Cores.Scaffolding
             HashSet<int>? l_見つかった = null;
             for (var i = 0; i + p_k長 <= p_リード.Length; i++)
             {
-                if (Get_曖昧塩基を含むか(p_リード, i, p_k長))
+                if (Has曖昧塩基(p_リード, i, p_k長))
                 {
                     continue;
                 }
@@ -412,7 +405,7 @@ namespace Tsumiki.Cores.Scaffolding
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
             {
-                if (Get_曖昧塩基を含むか(p_配列, i, p_k長))
+                if (Has曖昧塩基(p_配列, i, p_k長))
                 {
                     continue;
                 }
@@ -452,10 +445,10 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 埋まったギャップを反映してスキャフォールドを書き直す
+        /// 埋まったギャップを反映して scaffold を書き直す
         /// </summary>
         /// <param name="p_スキャフォールドパス">書き出し先</param>
-        /// <param name="p_スキャフォールド群">対象のスキャフォールド</param>
+        /// <param name="p_スキャフォールド群">対象の scaffold</param>
         /// <param name="p_ギャップ一覧">埋めたギャップ</param>
         /// <param name="p_結果"></param>
         private static void V_書き戻し(string p_スキャフォールドパス, List<(string A_ID, string A_配列)> p_スキャフォールド群, List<局所ギャップ> p_ギャップ一覧, string?[] p_結果)

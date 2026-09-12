@@ -7,10 +7,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// k-mer のカウントが、シャード数 (スレッド数) に依らず正確であることを確認する
     /// </summary>
-    /// <remarks>
-    /// k-mer をワーカー単位ではなくハッシュ値でシャードへ振り分けるようにした際、実データでカウントがちょうど 2 倍になる不具合が出た (ヒストグラムが偶数のカウントしか持たない、という形で表面化した) <br/>
-    /// スレッド数を変えて同じ答えになることを固定しておく
-    /// </remarks>
     public class CountingShardTests : IDisposable
     {
         #region 内部変数
@@ -91,7 +87,7 @@ namespace Tsumiki.Tests.Utility
 
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
 
-            var l_乱数 = new Random(1234);
+            var l_乱数 = new Random(1_234);
             var l_配列 = string.Concat(Enumerable.Range(0, 500).Select(_ => "ACGT"[l_乱数.Next(4)]));
             var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();
 

@@ -153,7 +153,7 @@ namespace Tsumiki.Tests.Core
             var l_候補 = MultiKAssembler.Get_k候補一覧(Get_引数(), p_リード長: null);
 
             Assert.NotEmpty(l_候補);
-            Assert.Equal(Consts.k長の既定値, l_候補[^1]);
+            Assert.Equal(31, l_候補[^1]);
         }
 
         /// <summary>

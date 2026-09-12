@@ -10,7 +10,7 @@
     /// <param name="A_クオリティ1"></param>
     /// <param name="A_配列2"></param>
     /// <param name="A_クオリティ2"></param>
-    /// <param name="A_アダプタを検出したか"></param>
+    /// <param name="A_Hasアダプタ検出"></param>
     /// <param name="A_訂正塩基数"></param>
-    internal readonly record struct ペア前処理結果(string A_配列1, string A_クオリティ1, string A_配列2, string A_クオリティ2, bool A_アダプタを検出したか, int A_訂正塩基数);
+    internal readonly record struct ペア前処理結果(string A_配列1, string A_クオリティ1, string A_配列2, string A_クオリティ2, bool A_Hasアダプタ検出, int A_訂正塩基数);
 }

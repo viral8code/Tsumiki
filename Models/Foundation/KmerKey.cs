@@ -15,9 +15,28 @@ namespace Tsumiki.Models.Foundation
         private readonly int _長さ;
 
         /// <summary>
+        /// 先頭の 32 塩基
+        /// </summary>
+        private readonly ulong _先頭語;
+
+        /// <summary>
+        /// 続く 32 塩基
+        /// </summary>
+        private readonly ulong _第2語;
+
+        /// <summary>
+        /// 64 塩基を超える場合のパック済みデータ
+        /// </summary>
+        private readonly ulong[]? _長いパック済みデータ;
+
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
         /// パック済みデータ
         /// </summary>
-        public readonly ulong[] A_パック済みデータ;
+        public ulong[] A_パック済みデータ => this._長いパック済みデータ ?? (this._長さ <= 32 ? [this._先頭語] : [this._先頭語, this._第2語]);
 
         #endregion
 
@@ -30,7 +49,9 @@ namespace Tsumiki.Models.Foundation
         public KmerKey(ReadOnlySpan<char> p_kmer)
         {
             this._長さ = p_kmer.Length;
-            this.A_パック済みデータ = new ulong[(p_kmer.Length + 31) >> 5];
+            this._先頭語 = 0UL;
+            this._第2語 = 0UL;
+            this._長いパック済みデータ = p_kmer.Length > 64 ? new ulong[(p_kmer.Length + 31) >> 5] : null;
             for (var i = 0; i < p_kmer.Length; i++)
             {
                 var l_要素位置 = i >> 5;
@@ -44,7 +65,18 @@ namespace Tsumiki.Models.Foundation
                 // 塩基の情報が上書きで消えてしまう
                 // (この不具合により、同じ ulong 要素に収まる k-mer 同士が
                 // 実質「末尾の数文字だけで同一視される」形になっていた)
-                this.A_パック済みデータ[l_要素位置] |= l_値 << l_シフト量;
+                if (this._長いパック済みデータ is not null)
+                {
+                    this._長いパック済みデータ[l_要素位置] |= l_値 << l_シフト量;
+                }
+                else if (l_要素位置 == 0)
+                {
+                    this._先頭語 |= l_値 << l_シフト量;
+                }
+                else
+                {
+                    this._第2語 |= l_値 << l_シフト量;
+                }
             }
         }
 
@@ -58,13 +90,26 @@ namespace Tsumiki.Models.Foundation
         public KmerKey(ReadOnlySpan<byte> p_kmer)
         {
             this._長さ = p_kmer.Length;
-            this.A_パック済みデータ = new ulong[(p_kmer.Length + 31) >> 5];
+            this._先頭語 = 0UL;
+            this._第2語 = 0UL;
+            this._長いパック済みデータ = p_kmer.Length > 64 ? new ulong[(p_kmer.Length + 31) >> 5] : null;
             for (var i = 0; i < p_kmer.Length; i++)
             {
                 var l_要素位置 = i >> 5;
                 var l_シフト量 = (31 ^ (i & 31)) << 1;
                 var l_値 = p_kmer[i] - 1UL;
-                this.A_パック済みデータ[l_要素位置] |= l_値 << l_シフト量;
+                if (this._長いパック済みデータ is not null)
+                {
+                    this._長いパック済みデータ[l_要素位置] |= l_値 << l_シフト量;
+                }
+                else if (l_要素位置 == 0)
+                {
+                    this._先頭語 |= l_値 << l_シフト量;
+                }
+                else
+                {
+                    this._第2語 |= l_値 << l_シフト量;
+                }
             }
         }
 
@@ -82,7 +127,7 @@ namespace Tsumiki.Models.Foundation
         public KmerKey Get_正規形()
         {
             var l_逆相補 = this.Get_逆相補();
-            return Get_比較結果(this.A_パック済みデータ, l_逆相補.A_パック済みデータ) <= 0 ? this : l_逆相補;
+            return Get_比較結果(this, l_逆相補) <= 0 ? this : l_逆相補;
         }
 
         /// <summary>
@@ -95,7 +140,11 @@ namespace Tsumiki.Models.Foundation
         /// <returns></returns>
         public KmerKey Get_逆相補()
         {
-            var l_逆相補 = Util.V_逆相補(this.Get_塩基列(this._長さ).AsSpan());
+            Span<byte> l_逆相補 = this._長さ <= 128 ? stackalloc byte[this._長さ] : new byte[this._長さ];
+            for (var i = 0; i < this._長さ; i++)
+            {
+                l_逆相補[this._長さ - 1 - i] = Util.Get_相補塩基ID(this.Get_塩基ID(i));
+            }
             return new KmerKey(l_逆相補);
         }
 
@@ -113,10 +162,7 @@ namespace Tsumiki.Models.Foundation
             var l_塩基列 = new byte[p_長さ];
             for (var i = 0; i < p_長さ; i++)
             {
-                var l_要素位置 = i >> 5;
-                var l_シフト量 = (31 ^ (i & 31)) << 1;
-                var l_値 = (byte)((this.A_パック済みデータ[l_要素位置] >> l_シフト量) & 0x3UL);
-                l_塩基列[i] = (byte)(l_値 + 1);
+                l_塩基列[i] = this.Get_塩基ID(i);
             }
             return l_塩基列;
         }
@@ -128,7 +174,19 @@ namespace Tsumiki.Models.Foundation
         /// <returns>同じなら true</returns>
         public bool Equals(KmerKey p_比較対象)
         {
-            return this._長さ == p_比較対象._長さ && this.A_パック済みデータ.AsSpan().SequenceEqual(p_比較対象.A_パック済みデータ);
+            if (this._長さ != p_比較対象._長さ)
+            {
+                return false;
+            }
+            var l_語数 = (this._長さ + 31) >> 5;
+            for (var i = 0; i < l_語数; i++)
+            {
+                if (this.Get_語(i) != p_比較対象.Get_語(i))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -147,11 +205,12 @@ namespace Tsumiki.Models.Foundation
         /// <returns></returns>
         public override int GetHashCode()
         {
-            var l_ハッシュ = 1469598103934665603UL ^ (ulong)this._長さ;
-            foreach (var l_要素 in this.A_パック済みデータ.AsSpan())
+            var l_ハッシュ = 1_469_598_103_934_665_603UL ^ (ulong)this._長さ;
+            var l_語数 = (this._長さ + 31) >> 5;
+            for (var i = 0; i < l_語数; i++)
             {
-                l_ハッシュ ^= l_要素;
-                l_ハッシュ *= 1099511628211UL;
+                l_ハッシュ ^= this.Get_語(i);
+                l_ハッシュ *= 1_099_511_628_211UL;
             }
             return (int)(l_ハッシュ ^ (l_ハッシュ >> 32));
         }
@@ -166,16 +225,40 @@ namespace Tsumiki.Models.Foundation
         /// <param name="p_左">比べるパック済みデータ</param>
         /// <param name="p_右">比べるパック済みデータ</param>
         /// <returns>左が小さければ -1、大きければ 1、等しければ 0</returns>
-        private static int Get_比較結果(ulong[] p_左, ulong[] p_右)
+        private static int Get_比較結果(KmerKey p_左, KmerKey p_右)
         {
-            for (var i = 0; i < p_左.Length; i++)
+            var l_語数 = (p_左._長さ + 31) >> 5;
+            for (var i = 0; i < l_語数; i++)
             {
-                if (p_左[i] != p_右[i])
+                var l_左語 = p_左.Get_語(i);
+                var l_右語 = p_右.Get_語(i);
+                if (l_左語 != l_右語)
                 {
-                    return p_左[i] < p_右[i] ? -1 : 1;
+                    return l_左語 < l_右語 ? -1 : 1;
                 }
             }
             return 0;
+        }
+
+        /// <summary>
+        /// 指定位置のパック済み語を返す
+        /// </summary>
+        /// <param name="p_位置">語の位置</param>
+        /// <returns>パック済み語</returns>
+        private ulong Get_語(int p_位置)
+        {
+            return this._長いパック済みデータ is not null ? this._長いパック済みデータ[p_位置] : p_位置 == 0 ? this._先頭語 : this._第2語;
+        }
+
+        /// <summary>
+        /// 指定位置の塩基 ID を返す
+        /// </summary>
+        /// <param name="p_位置">塩基の位置</param>
+        /// <returns>塩基 ID</returns>
+        private byte Get_塩基ID(int p_位置)
+        {
+            var l_シフト量 = (31 ^ (p_位置 & 31)) << 1;
+            return (byte)(((this.Get_語(p_位置 >> 5) >> l_シフト量) & 0x3UL) + 1UL);
         }
 
         #endregion

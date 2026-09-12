@@ -17,7 +17,7 @@
         /// <summary>
         /// 標本全体を通して ASCII コードが一切変化しなかったか (実機のシーケンサ出力では通常あり得ない、人工的/ビニング済みのクオリティである可能性を示す)
         /// </summary>
-        public bool A_一様か => this.A_標本文字数 > 0 && this.A_最小ASCII == this.A_最大ASCII;
+        public bool A_Is一様 => this.A_標本文字数 > 0 && this.A_最小ASCII == this.A_最大ASCII;
 
         #endregion
     }

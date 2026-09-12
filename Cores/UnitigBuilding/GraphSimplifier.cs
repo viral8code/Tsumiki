@@ -7,17 +7,17 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// de Bruijn グラフの簡略化
     /// </summary>
-    /// <remarks>
-    /// 2 種類のアーティファクトを除去する<br/>
-    /// 1. tip 除去: 短い行き止まりの unitig を丸ごと除去する<br/>
-    /// 行き止まりは定義上どこにも合流しないので、他の経路が使う配列を壊さない<br/>
-    /// 2. 低カバレッジ端のトリミング: 合流点を特定せず、各 unitig の両端からカバレッジが基準値比で著しく低い k-mer が続く間だけ剥がす<br/>
-    /// unitig 全体の平均で判定してはいけない<br/>
-    /// SNP 様の短い分岐では共有部分の高カバレッジに平均が引きずられて検出できず、仮に検出できても unitig 全体を除去すると合流後の共有配列まで消して別の経路を壊す<br/>
-    /// エラー由来の分岐は合流点までの区間だけが低カバレッジなので、そこだけ剥がす
-    /// </remarks>
     internal static class GraphSimplifier
     {
+        #region 定数
+
+        /// <summary>
+        /// tip とみなすカバレッジ比
+        /// </summary>
+        private const double tipとみなすカバレッジ比 = 0.5D;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -30,15 +30,8 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_最大反復数"></param>
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_tipカバレッジ比"></param>
-        /// <remarks>
-        /// 除去のたびに unitig を再構築して次数とカバレッジを評価し直すため反復する<br/>
-        /// 長さ閾値は tip 除去にのみ適用する<br/>
-        /// 低カバレッジ端のトリミングは合流先の長さに依存せず判定できるため、長さによらず全件に適用する<br/>
-        /// カバレッジの基準値は長さ加重中央値を使う<br/>
-        /// 単純平均や単純中央値だと本数の多い短い断片に引きずられ、主経路の水準から外れる
-        /// </remarks>
         /// <returns></returns>
-        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = Consts.tipとみなすカバレッジ比)
+        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = tipとみなすカバレッジ比)
         {
             // k がリード長の半分を超えると、k を基準にした閾値は実配列まで
             // 巻き込むほど長くなるため min (k, リード長/2) を基準に取る
@@ -87,9 +80,9 @@ namespace Tsumiki.Cores.UnitigBuilding
                             // 同じモデルから求めた絶対値なので、そのぶれを踏まない
                             // 安全弁になる
                             var l_信頼下限 = ConfigurationManager.A_スペクトルモデル?.A_信頼下限;
-                            var l_無条件に信頼できるか = l_信頼下限 is { } l_下限 && l_平均カバレッジ >= l_下限;
+                            var l_Is無条件信頼 = l_信頼下限 is { } l_下限 && l_平均カバレッジ >= l_下限;
 
-                            if (!l_無条件に信頼できるか
+                            if (!l_Is無条件信頼
                                 && (l_基準値 <= 0D || l_平均カバレッジ < l_基準値 * p_tipカバレッジ比))
                             {
                                 V_除去_ユニティグ全体(p_kmerインデックス, l_塩基列, p_k長);
@@ -104,7 +97,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         continue;
                     }
 
-                    var l_剥がした数 = Get_剥がした数_低カバレッジ端(p_kmerインデックス, l_塩基列, p_k長, l_低カバレッジ閾値);
+                    var l_剥がした数 = Get_低カバレッジ端除去数(p_kmerインデックス, l_塩基列, p_k長, l_低カバレッジ閾値);
                     if (l_剥がした数 > 0)
                     {
                         l_剥がしたkmer数 += l_剥がした数;
@@ -131,11 +124,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         #region 内部メソッド
 
         /// <summary>
-        /// 開始 k-mer から walk して、いまのユニティグを列挙する
+        /// 開始 k-mer から walk して、いまの unitig を列挙する
         /// </summary>
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <param name="p_開始kmer">walk を始める k-mer</param>
-        /// <returns>ユニティグの配列</returns>
+        /// <returns>unitig の配列</returns>
         private static List<string> Get_ユニティグ群(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
@@ -166,7 +159,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 先頭側と末尾側で除去範囲が重ならないよう互いの残り長で制限する
         /// </remarks>
         /// <returns></returns>
-        private static int Get_剥がした数_低カバレッジ端(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長, double p_閾値)
+        private static int Get_低カバレッジ端除去数(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長, double p_閾値)
         {
             var l_kmer数 = p_塩基列.Length - p_k長 + 1;
             if (l_kmer数 <= 0)
@@ -260,10 +253,10 @@ namespace Tsumiki.Cores.UnitigBuilding
         }
 
         /// <summary>
-        /// ユニティグを構成する k-mer をすべて集合から外す
+        /// unitig を構成する k-mer をすべて集合から外す
         /// </summary>
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
-        /// <param name="p_塩基列">ユニティグの塩基 ID 列</param>
+        /// <param name="p_塩基列">unitig の塩基 ID 列</param>
         /// <param name="p_k長">k 長</param>
         private static void V_除去_ユニティグ全体(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {

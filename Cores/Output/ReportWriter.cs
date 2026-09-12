@@ -11,12 +11,6 @@ namespace Tsumiki.Cores.Output
     /// <summary>
     /// 完全長の判定と、その根拠になった数値をファイルへ書き出す
     /// </summary>
-    /// <remarks>
-    /// ログは流れて消えるが、レポートは後から読み返せる<br/>
-    /// 特に「なぜ完全長ではないのか」は、次に何を足せば解けるのかを決める材料になる<br/>
-    /// JSON は項目が固定なので直接組み立てる<br/>
-    /// 反射に頼るシリアライザは AOT で落ちる可能性があり、この程度の構造のために持ち込む価値がない
-    /// </remarks>
     internal static class ReportWriter
     {
         #region 公開メソッド
@@ -39,7 +33,7 @@ namespace Tsumiki.Cores.Output
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine("{");
             V_追加(l_文, "  \"tsumiki_version\": {0},", Get_文字列(Consts.バージョン));
-            V_追加(l_文, "  \"complete\": {0},", p_判定.A_完全長か ? "true" : "false");
+            V_追加(l_文, "  \"complete\": {0},", p_判定.A_Is完全長 ? "true" : "false");
             V_追加(l_文, "  \"quality_level\": {0},", Get_文字列("Q" + (int)p_判定.A_品質保証レベル));
             V_追加(l_文, "  \"reason_codes\": [{0}],", string.Join(", ", p_判定.A_未達理由.Select(x => Get_文字列(CompletenessValidator.Get_理由コード(x)))));
             V_追加(l_文, "  \"k\": {0},", p_k長);
@@ -80,7 +74,7 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_出力パス">書き出し先</param>
         /// <param name="p_区間">支持のない区間</param>
         /// <param name="p_r長">支持を問うた r-mer の長さ</param>
-        public static void V_書き出し_支持のない箇所(string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
+        public static void V_書き出し_未支持箇所(string p_出力パス, IReadOnlyList<支持のない区間> p_区間, int p_r長)
         {
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine(string.Join('\t', "sequence", "start", "end", "length", "r"));
@@ -189,7 +183,7 @@ namespace Tsumiki.Cores.Output
             {
                 var l_検証 = p_閉鎖検証[i];
                 var l_末尾 = i == p_閉鎖検証.Count - 1 ? string.Empty : ",";
-                V_追加(p_文, "    {{\"id\": {0}, \"length\": {1}, \"spanning_reads\": {2}, \"required\": {3}, \"supported\": {4}}}{5}", Get_文字列(l_検証.A_配列ID), l_検証.A_長さ, l_検証.A_跨いだリード数, l_検証.A_必要本数, l_検証.A_支持されたか ? "true" : "false", l_末尾);
+                V_追加(p_文, "    {{\"id\": {0}, \"length\": {1}, \"spanning_reads\": {2}, \"required\": {3}, \"supported\": {4}}}{5}", Get_文字列(l_検証.A_配列ID), l_検証.A_長さ, l_検証.A_跨いだリード数, l_検証.A_必要本数, l_検証.A_Has支持 ? "true" : "false", l_末尾);
             }
             _ = p_文.AppendLine("  ],");
         }

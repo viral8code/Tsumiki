@@ -25,7 +25,7 @@
             var l_長さ標本 = new List<int>();
             using (var l_読み込み = new FastqReader(p_ファイルパス))
             {
-                while (l_長さ標本.Count < p_標本上限 && l_読み込み.Get_続きがあるか())
+                while (l_長さ標本.Count < p_標本上限 && l_読み込み.Has続き())
                 {
                     l_長さ標本.Add(l_読み込み.Get_次のリード_軽量().A_生リード!.Length);
                 }

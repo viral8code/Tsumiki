@@ -8,13 +8,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 環状の複製単位に同じ反復が 2 回現れる形の解きほぐしを固定する
     /// </summary>
-    /// <remarks>
-    /// 環状のゲノムに反復 R が 2 回あると、その間に挟まれる領域は必ず 2 つ (A と B) になり、ゲノムは A R B R を 1 周する形になる<br/>
-    /// このとき R へ入ってくるのも A と B、R から出ていくのも A と B で、同じ unitig が入口と出口の両方に立つ<br/>
-    /// これは退化した構造ではなく、細菌のゲノムで最もありふれた反復の形<br/>
-    /// 「A の次は B」なのか「A の次は A」なのかはペアエンドで区別でき、前者なら 1 本の環、後者なら 2 本の環になる<br/>
-    /// 同じ unitig が 2 つの役回りに立つことだけを理由に触らずにいると、証拠が揃っていても解けない
-    /// </remarks>
     public class CircularRepeatResolutionTests
     {
         #region 定数
@@ -34,17 +27,17 @@ namespace Tsumiki.Tests.Core
         // R の末尾 k-1 塩基で始まる (= R が入次数 2 ・出次数 2 になる)
 
         /// <summary>
-        /// ユニティグ R
+        /// unitig R
         /// </summary>
         private const string ユニティグR = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
         /// <summary>
-        /// ユニティグ A
+        /// unitig A
         /// </summary>
         private const string ユニティグA = "GAGCAGAGTCGTTCTGCGAGGACAGTTCGCGAGCCCTCCGTC";
 
         /// <summary>
-        /// ユニティグ B
+        /// unitig B
         /// </summary>
         private const string ユニティグB = "GAGCAGACCGTCTGTAACAGCTGTATTGAGGTCGTCTCCGTC";
 
@@ -53,7 +46,7 @@ namespace Tsumiki.Tests.Core
         #region 公開メソッド
 
         /// <summary>
-        /// A の次は B、B の次は A というペア証拠があれば、入口と出口が同じユニティグの環でも 1 本道に解ける
+        /// A の次は B、B の次は A というペア証拠があれば、入口と出口が同じ unitig の環でも 1 本道に解ける
         /// </summary>
         [Fact]
         public void V_解決_短い反復_入口と出口に同じユニティグが立つ環でも解ける()
@@ -180,7 +173,7 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// A ・ B ・ R のユニティグ配列と、それらから作った kmer 辞書を組み立てる
+        /// A ・ B ・ R の unitig 配列と、それらから作った kmer 辞書を組み立てる
         /// </summary>
         /// <returns></returns>
         private static (List<string> A_ユニティグ配列, Dictionary<KmerKey, (int, int)> A_kmer辞書) Get_構成()
@@ -207,12 +200,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存))

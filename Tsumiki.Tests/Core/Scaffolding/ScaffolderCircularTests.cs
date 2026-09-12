@@ -8,7 +8,7 @@ using Tsumiki.Models.Foundation;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// 環状であることの目印がスキャフォールドまで残ることを固定する
+    /// 環状であることの目印が scaffold まで残ることを固定する
     /// </summary>
     /// <remarks>
     /// 環状かどうかは ContigMaker が名前に書き込み、AssemblyScorer と閉じ目の検証がその名前を根拠に数える<br/>
@@ -26,7 +26,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 円周
         /// </summary>
-        private const int 円周 = 1200;
+        private const int 円周 = 1_200;
 
         // 環をちょうど 1 周する 3 本
         // 隣り合う unitig が k-1 塩基ずつ重なり、
@@ -37,20 +37,20 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 環
         /// </summary>
-        private static readonly string 環 = Get_乱数配列(円周, p_種: 20250908);
+        private static readonly string 環 = Get_乱数配列(円周, p_種: 20_250_908);
 
         /// <summary>
-        /// ユニティグ A
+        /// unitig A
         /// </summary>
         private static readonly string ユニティグA = 環[..(400 + k長 - 1)];
 
         /// <summary>
-        /// ユニティグ B
+        /// unitig B
         /// </summary>
         private static readonly string ユニティグB = 環[400..(800 + k長 - 1)];
 
         /// <summary>
-        /// ユニティグ C
+        /// unitig C
         /// </summary>
         private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
 
@@ -93,7 +93,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 単独で出た環状コンティグが、スキャフォールディング後も環状の目印を名前に保つことを検証する
+        /// 単独で出た環状 contig が、スキャフォールディング後も環状の目印を名前に保つことを検証する
         /// </summary>
         [Fact]
         public void V_実行_単独で出た環状コンティグは環状のまま名前に残る()
@@ -110,7 +110,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// コンティグ側の環状判定が、スキャフォールディング後もそのまま引き継がれることを検証する
+        /// contig 側の環状判定が、スキャフォールディング後もそのまま引き継がれることを検証する
         /// </summary>
         [Fact]
         public void V_実行_コンティグ側の環状判定がそのまま引き継がれる()
@@ -141,7 +141,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// スキャフォールディングまで通して、その出力を返す
         /// </summary>
-        /// <returns>スキャフォールドの配列</returns>
+        /// <returns>scaffold の配列</returns>
         private string Get_スキャフォールド出力()
         {
             ConfigurationManager.A_実行時引数 = new Parameters

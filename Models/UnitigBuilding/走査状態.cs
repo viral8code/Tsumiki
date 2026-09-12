@@ -7,26 +7,23 @@ namespace Tsumiki.Models.UnitigBuilding
     /// <summary>
     /// ワーカーごとに持つ走査用の状態
     /// </summary>
-    /// <remarks>
-    /// k &lt;= 64 なら転がし更新の実装を使い、それを超える場合だけ従来の実装へ落ちる
-    /// </remarks>
     /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
     internal sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)
     {
         #region 内部変数
 
         /// <summary>
-        /// 転がし
+        /// 固定幅キーを転がす高速 walk
         /// </summary>
-        private readonly UnitigWalk? _転がし =
-            UnitigWalk.Get_扱えるか(ConfigurationManager.A_実行時引数.A_k長)
+        private readonly UnitigWalk? _高速walk =
+            UnitigWalk.Is対応k長(ConfigurationManager.A_実行時引数.A_k長)
                 ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長)
                 : null;
 
         /// <summary>
-        /// 従来
+        /// 固定幅キーを使えない k 長向けの参照実装
         /// </summary>
-        private readonly UnitigMaker _従来 = new(p_kmerインデックス);
+        private readonly UnitigMaker _参照実装 = new(p_kmerインデックス);
 
         /// <summary>
         /// 訪問済み
@@ -44,11 +41,11 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <returns>組み上がった配列</returns>
         public string Get_配列(byte[] p_開始kmer)
         {
-            if (this._転がし is not { } l_転がし)
+            if (this._高速walk is not { } l_高速walk)
             {
-                return this._従来.Get_ユニティグ(p_開始kmer).A_配列;
+                return this._参照実装.Get_ユニティグ(p_開始kmer).A_配列;
             }
-            var l_塩基列 = l_転がし.Get_塩基列(p_開始kmer, this._訪問済み);
+            var l_塩基列 = l_高速walk.Get_塩基列(p_開始kmer, this._訪問済み);
             return string.Create(l_塩基列.Count, l_塩基列,
                 static (l_文字, l_元) =>
                 {

@@ -35,7 +35,7 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(l_配列1, l_結果.A_配列1);
             Assert.Equal(l_配列2, l_結果.A_配列2);
-            Assert.False(l_結果.A_アダプタを検出したか);
+            Assert.False(l_結果.A_Hasアダプタ検出);
             Assert.Equal(0, l_結果.A_訂正塩基数);
         }
 
@@ -61,7 +61,7 @@ namespace Tsumiki.Tests.Core
 
             var l_結果 = Preprocessor.Get_前処理結果(l_配列1, l_クオリティ1, l_配列2, l_クオリティ2, Phredオフセット);
 
-            Assert.True(l_結果.A_アダプタを検出したか);
+            Assert.True(l_結果.A_Hasアダプタ検出);
             Assert.Equal(l_真の断片, l_結果.A_配列1);
             Assert.Equal(Tsumiki.Commons.Util.V_逆相補(l_真の断片), l_結果.A_配列2);
             Assert.Equal(l_真の断片.Length, l_結果.A_クオリティ1.Length);
@@ -91,7 +91,7 @@ namespace Tsumiki.Tests.Core
 
             var l_結果 = Preprocessor.Get_前処理結果(l_配列1, l_クオリティ1, l_配列2, l_クオリティ2, Phredオフセット);
 
-            Assert.False(l_結果.A_アダプタを検出したか);
+            Assert.False(l_結果.A_Hasアダプタ検出);
             Assert.Equal(1, l_結果.A_訂正塩基数);
             Assert.Equal(l_真の断片, l_結果.A_配列1);
             Assert.Equal(l_配列2, l_結果.A_配列2);

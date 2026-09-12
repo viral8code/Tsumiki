@@ -9,12 +9,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// 環状に閉じたと判定された配列について、その閉じ目を元リードが実際に読んでいるかを確かめる
     /// </summary>
-    /// <remarks>
-    /// グラフ上で始点へ戻れたことは、閉じ目に k-mer が 1 つ通っていることしか意味しない<br/>
-    /// それは de Bruijn グラフの辺があるという主張と同じで、閉じ目そのものの裏付けにはならない<br/>
-    /// ここでは k より長い窓を取り、閉じ目の両側へ十分踏み込んだリードだけを支持として数える<br/>
-    /// この一点を間違えると、見かけ上の完全長が実際には線状の断片になる
-    /// </remarks>
     internal static class CircularClosureVerifier
     {
         #region 定数
@@ -72,7 +66,7 @@ namespace Tsumiki.Cores.Evaluation
                 // 環状なので末尾の続きは先頭になる
                 // その繋ぎ目を跨ぐ窓を作る
                 var l_窓 = string.Concat(l_配列.AsSpan(l_配列.Length - 接合フランク長), l_配列.AsSpan(0, 接合フランク長));
-                if (!KmerPacking.Get_パック(l_窓, 0, 接合窓長, out var l_順鎖))
+                if (!KmerPacking.TryGet_パック(l_窓, 0, 接合窓長, out var l_順鎖))
                 {
                     continue;
                 }
@@ -89,7 +83,7 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_支持数 = new int[l_対象.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, _) => V_数える_1リード(l_リード, l_接合窓, l_支持数));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, _) => V_集計_接合支持(l_リード, l_接合窓, l_支持数));
 
             List<環状閉鎖検証結果> l_結果 = [];
             for (var i = 0; i < l_対象.Count; i++)
@@ -113,7 +107,7 @@ namespace Tsumiki.Cores.Evaluation
 
             foreach (var l_結果 in p_結果群)
             {
-                Logger.V_出力(l_結果.A_支持されたか ? メッセージID.閉じ目を裏付けた : メッセージID.閉じ目を裏付けられず, l_結果.A_配列ID, l_結果.A_長さ, l_結果.A_跨いだリード数, l_結果.A_必要本数);
+                Logger.V_出力(l_結果.A_Has支持 ? メッセージID.閉じ目を裏付けた : メッセージID.閉じ目を裏付けられず, l_結果.A_配列ID, l_結果.A_長さ, l_結果.A_跨いだリード数, l_結果.A_必要本数);
             }
         }
 
@@ -130,7 +124,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 同じリードが同じ配列を何度支持しても 1 本と数える
         /// </remarks>
-        private static void V_数える_1リード(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
+        private static void V_集計_接合支持(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
             if (p_リード.Length < 接合窓長)
             {
@@ -147,11 +141,11 @@ namespace Tsumiki.Cores.Evaluation
             for (var i = 0; i < p_リード.Length; i++)
             {
                 var l_塩基ID = Util.Get_塩基ID(p_リード[i]);
-                var l_有効か = l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T;
-                var l_コドン = (UInt128)(l_有効か ? l_塩基ID - 1 : 0);
+                var l_Is有効 = l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T;
+                var l_コドン = (UInt128)(l_Is有効 ? l_塩基ID - 1 : 0);
                 l_順鎖 = ((l_順鎖 << 2) | l_コドン) & l_マスク;
                 l_逆鎖 = (l_逆鎖 >> 2) | ((l_コドン ^ 3) << l_最上位へ);
-                if (!l_有効か)
+                if (!l_Is有効)
                 {
                     l_直近の曖昧位置 = i;
                 }

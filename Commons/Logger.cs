@@ -14,6 +14,11 @@ namespace Tsumiki.Commons
         #region 定数
 
         /// <summary>
+        /// CallerMemberName が置換する既定値
+        /// </summary>
+        private const string 呼び出し元の既定値 = "";
+
+        /// <summary>
         /// 控えの上限
         /// </summary>
         /// <remarks>
@@ -72,7 +77,7 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_メソッド名">呼び出し元のメソッド名、コンパイラが埋める</param>
         /// <returns>呼び出し元のメソッド名</returns>
-        public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = "")
+        public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = 呼び出し元の既定値)
         {
             return p_メソッド名;
         }
@@ -115,7 +120,7 @@ namespace Tsumiki.Commons
         /// </remarks>
         public static void V_出力(メッセージID p_ID, params object?[] p_引数)
         {
-            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: false);
+            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_Is標準エラー: false);
         }
 
         /// <summary>
@@ -125,7 +130,7 @@ namespace Tsumiki.Commons
         /// <param name="p_引数"></param>
         public static void V_出力_標準エラー(メッセージID p_ID, params object?[] p_引数)
         {
-            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_標準エラーか: true);
+            V_書き出し(Messages.Get_文言(p_ID, p_引数), p_Is標準エラー: true);
         }
 
         /// <summary>
@@ -137,7 +142,7 @@ namespace Tsumiki.Commons
         /// </remarks>
         public static void V_出力_そのまま(string p_文)
         {
-            V_書き出し(p_文, p_標準エラーか: false);
+            V_書き出し(p_文, p_Is標準エラー: false);
         }
 
         /// <summary>
@@ -151,7 +156,7 @@ namespace Tsumiki.Commons
             V_出力_標準エラー(メッセージID.例外を無視_メソッド, p_メソッド名);
 
             // 例外の内容そのものは訳す対象ではない
-            V_書き出し(p_例外.ToString(), p_標準エラーか: true);
+            V_書き出し(p_例外.ToString(), p_Is標準エラー: true);
         }
 
         /// <summary>
@@ -163,7 +168,7 @@ namespace Tsumiki.Commons
         {
             V_出力_標準エラー(メッセージID.停止_見出し);
             V_出力_標準エラー(メッセージID.停止_メソッド, p_メソッド名);
-            V_書き出し(p_例外.ToString(), p_標準エラーか: true);
+            V_書き出し(p_例外.ToString(), p_Is標準エラー: true);
         }
 
         /// <summary>
@@ -182,16 +187,12 @@ namespace Tsumiki.Commons
         /// </remarks>
         public static void V_出力_空行()
         {
-            V_書き出し(string.Empty, p_標準エラーか: false);
+            V_書き出し(string.Empty, p_Is標準エラー: false);
         }
 
         /// <summary>
         /// この場を抜けるまで、画面にもファイルにも何も出さない
         /// </summary>
-        /// <remarks>
-        /// 局所アセンブリのように、小さな使い捨ての処理を数百回繰り返す区間で使う<br/>
-        /// 1 回あたりの索引の統計は、集めても読む意味が無い割に本来のログを埋め尽くす (実データでは k=21 だけで千行を超えた)
-        /// </remarks>
         /// <returns></returns>
         public static IDisposable V_止める_記録()
         {
@@ -221,11 +222,11 @@ namespace Tsumiki.Commons
         /// 1 行を、必要ならば画面へ出し、常にファイルへ残す
         /// </summary>
         /// <param name="p_行"></param>
-        /// <param name="p_標準エラーか"></param>
+        /// <param name="p_Is標準エラー"></param>
         /// <remarks>
         /// 標準エラーへ出すもの (警告・エラー) は水準によらず必ず画面にも出す
         /// </remarks>
-        private static void V_書き出し(string p_行, bool p_標準エラーか)
+        private static void V_書き出し(string p_行, bool p_Is標準エラー)
         {
             lock (_錠)
             {
@@ -243,7 +244,7 @@ namespace Tsumiki.Commons
                     _書き出し待ち.Add(p_行);
                 }
 
-                if (p_標準エラーか)
+                if (p_Is標準エラー)
                 {
                     Console.Error.WriteLine(p_行);
                     return;

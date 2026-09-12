@@ -10,20 +10,14 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Scaffolding
 {
     /// <summary>
-    /// スキャフォールドの N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える
+    /// scaffold の N を、グラフ上で両側を繋ぐ経路を探して実配列に置き換える
     /// </summary>
-    /// <remarks>
-    /// contig が途切れる原因は配列の不在ではなく分岐の未解決であることが多く、その場合ギャップを埋める配列は k-mer 集合の中に実在する<br/>
-    /// 経路がちょうど 1 本に定まったときだけ埋める<br/>
-    /// 複数見つかった場合はどれが正しいか決められないため N のまま残す<br/>
-    /// 誤った配列で埋めるより、分からないことが分かる状態のほうが下流の解析にとって安全
-    /// </remarks>
     internal static class GapFiller
     {
         #region 公開メソッド
 
         /// <summary>
-        /// スキャフォールドを読み込み、埋められるギャップを埋めて同じパスへ書き戻す
+        /// scaffold を読み込み、埋められるギャップを埋めて同じパスへ書き戻す
         /// </summary>
         /// <param name="p_スキャフォールドパス"></param>
         /// <param name="p_kmerインデックス"></param>
@@ -62,7 +56,7 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
 
-                    var l_埋めた配列 = Get_ギャップを埋める配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定);
+                    var l_埋めた配列 = Get_ギャップ充填配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定);
                     if (l_埋めた配列 != null)
                     {
                         _ = l_出力.Append(l_埋めた配列);
@@ -129,7 +123,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <remarks>
         /// 見つからない/一意に定まらない場合は null を返す
         /// </remarks>
-        private static string? Get_ギャップを埋める配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定)
+        private static string? Get_ギャップ充填配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定)
         {
             p_判定 = ギャップ充填判定.到達不能;
 
@@ -163,7 +157,7 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
-            if (!p_kmerインデックス.Get_含まれるか(l_左のkmer) || !p_kmerインデックス.Get_含まれるか(l_目標kmer))
+            if (!p_kmerインデックス.Haskmer(l_左のkmer) || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
                 // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない
                 return null;

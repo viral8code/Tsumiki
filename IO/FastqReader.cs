@@ -23,7 +23,7 @@ namespace Tsumiki.IO
             var l_行 = this.Get_次の行_生();
             while (string.IsNullOrWhiteSpace(l_行))
             {
-                if (l_行 is null && !this.Get_続きがあるか())
+                if (l_行 is null && !this.Has続き())
                 {
                     throw new InvalidDataException($"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
                 }
@@ -49,7 +49,7 @@ namespace Tsumiki.IO
                     continue;
                 }
                 using var l_読み込み = new FastqReader(l_パス);
-                while (l_読み込み.Get_続きがあるか())
+                while (l_読み込み.Has続き())
                 {
                     yield return l_読み込み.Get_次のレコード().A_配列;
                 }

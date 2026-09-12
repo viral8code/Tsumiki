@@ -8,9 +8,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// unitig 間の隣接を de Bruijn グラフから厳密に構築する UnitigGraph の検証
     /// </summary>
-    /// <remarks>
-    /// 旧実装 (リードマッピング由来の隣接候補 + 任意長オーバーラップ探索) は実データで平均 2.96 塩基という偶然の一致で unitig を接着していたため、「辺が張られる条件」そのものをここで固定する
-    /// </remarks>
     public class UnitigGraphTests
     {
         #region 定数
@@ -366,7 +363,7 @@ namespace Tsumiki.Tests.Core
         /// </remarks>
         /// <param name="p_kmer長">k-mer 長</param>
         /// <param name="p_ユニティグ群">登録する unitig 配列群</param>
-        /// <returns>ユニティグ一覧と kmer 辞書</returns>
+        /// <returns>unitig 一覧と kmer 辞書</returns>
         private static (List<string> A_ユニティグ一覧, Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> A_kmer辞書) V_構築(int p_kmer長, params string[] p_ユニティグ群)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
@@ -394,12 +391,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録_kmer(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存値))

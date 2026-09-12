@@ -117,7 +117,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
             {
-                var l_信頼状況 = Get_窓ごとの信頼状況(l_塩基列, p_k長, p_kmerインデックス);
+                var l_信頼状況 = Get_窓別信頼状況(l_塩基列, p_k長, p_kmerインデックス);
                 if (Array.TrueForAll(l_信頼状況, x => x))
                 {
                     break;
@@ -137,16 +137,16 @@ namespace Tsumiki.Cores.Preprocessing
                     var l_窓開始 = Math.Max(0, l_位置 - p_k長 + 1);
                     var l_窓終了 = Math.Min(l_窓数 - 1, l_位置);
 
-                    var l_信頼できない窓があるか = false;
+                    var l_Has未信頼窓 = false;
                     for (var w = l_窓開始; w <= l_窓終了; w++)
                     {
                         if (!l_信頼状況[w])
                         {
-                            l_信頼できない窓があるか = true;
+                            l_Has未信頼窓 = true;
                             break;
                         }
                     }
-                    if (!l_信頼できない窓があるか)
+                    if (!l_Has未信頼窓)
                     {
                         continue;
                     }
@@ -159,7 +159,7 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
 
-                        var l_改善数 = Get_置換の改善数(l_塩基列, l_位置, l_候補, l_窓開始, l_窓終了, p_k長, l_信頼状況, p_kmerインデックス);
+                        var l_改善数 = Get_置換改善数(l_塩基列, l_位置, l_候補, l_窓開始, l_窓終了, p_k長, l_信頼状況, p_kmerインデックス);
                         if (l_改善数 > l_最良改善数)
                         {
                             l_最良改善数 = l_改善数;
@@ -215,10 +215,10 @@ namespace Tsumiki.Cores.Preprocessing
             var l_塩基列群 = new byte[訂正バッチサイズ][];
             var l_結果群 = new 訂正結果[訂正バッチサイズ];
 
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_件数 = 0;
-                while (l_件数 < 訂正バッチサイズ && l_読み込み.Get_続きがあるか())
+                while (l_件数 < 訂正バッチサイズ && l_読み込み.Has続き())
                 {
                     var l_リード = l_読み込み.Get_次のリード_軽量();
                     l_ID群[l_件数] = l_リード.A_ID;
@@ -274,7 +274,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
             {
-                V_計算_窓の状態(p_塩基列, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況);
+                V_計算_窓状態(p_塩基列, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況);
 
                 l_未信頼累積[0] = 0;
                 for (var w = 0; w < l_窓数; w++)
@@ -312,7 +312,7 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
 
-                        var l_改善数 = Get_置換の改善数_パック(l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
+                        var l_改善数 = Get_置換改善数_パック(l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
                         if (l_改善数 > l_最良改善数)
                         {
                             l_最良改善数 = l_改善数;
@@ -347,7 +347,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 曖昧塩基はコドン 0 として詰めておき、判定では曖昧塩基の数で弾く (窓から出れば残りのコドンはそのまま正しい)
         /// </remarks>
-        private static void V_計算_窓の状態(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
+        private static void V_計算_窓状態(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
         {
             var l_マスク = Get_マスク(p_k長);
             var l_最上位への移動 = 2 * (p_k長 - 1);
@@ -387,7 +387,7 @@ namespace Tsumiki.Cores.Preprocessing
                 p_逆相補[w] = l_逆相補;
                 p_無効数[w] = l_無効数;
                 p_信頼状況[w] = l_無効数 == 0
-                    && Get_含まれるか(p_kmerインデックス, p_k長, l_パック, l_逆相補);
+                    && Haskmer(p_kmerインデックス, p_k長, l_パック, l_逆相補);
             }
         }
 
@@ -412,7 +412,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 改善数が同じ候補は元から採用されない)
         /// </remarks>
         /// <returns></returns>
-        private static int Get_置換の改善数_パック(int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況, int[] p_未信頼累積, int p_最良改善数)
+        private static int Get_置換改善数_パック(int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況, int[] p_未信頼累積, int p_最良改善数)
         {
             var l_コドン = Get_コドン(p_候補);
             var l_相補コドン = Get_相補コドン(p_候補);
@@ -428,10 +428,10 @@ namespace Tsumiki.Cores.Preprocessing
                     return l_改善数;
                 }
 
-                bool l_信頼できるか;
+                bool l_Is信頼可能;
                 if (p_無効数[w] > 0)
                 {
-                    l_信頼できるか = false;
+                    l_Is信頼可能 = false;
                 }
                 else
                 {
@@ -441,14 +441,14 @@ namespace Tsumiki.Cores.Preprocessing
                     var l_パック = (p_パック[w] & ~((UInt128)3 << l_移動)) | (l_コドン << l_移動);
                     var l_逆相補 =
                         (p_逆相補[w] & ~((UInt128)3 << l_逆相補の移動)) | (l_相補コドン << l_逆相補の移動);
-                    l_信頼できるか = Get_含まれるか(p_kmerインデックス, p_k長, l_パック, l_逆相補);
+                    l_Is信頼可能 = Haskmer(p_kmerインデックス, p_k長, l_パック, l_逆相補);
                 }
 
-                if (l_信頼できるか && !p_信頼状況[w])
+                if (l_Is信頼可能 && !p_信頼状況[w])
                 {
                     l_改善数++;
                 }
-                else if (!l_信頼できるか && p_信頼状況[w])
+                else if (!l_Is信頼可能 && p_信頼状況[w])
                 {
                     l_改善数--;
                 }
@@ -465,12 +465,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_パック"></param>
         /// <param name="p_逆相補"></param>
         /// <returns></returns>
-        private static bool Get_含まれるか(TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
+        private static bool Haskmer(TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
         {
             var l_正規形 = p_パック < p_逆相補 ? p_パック : p_逆相補;
             return p_k長 <= 32
-                ? p_kmerインデックス.Get_含まれるか_小((ulong)l_正規形)
-                : p_kmerインデックス.Get_含まれるか_中(l_正規形);
+                ? p_kmerインデックス.Haskmer_小((ulong)l_正規形)
+                : p_kmerインデックス.Haskmer_中(l_正規形);
         }
 
         /// <summary>
@@ -513,13 +513,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">k 長</param>
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <returns>窓ごとに信頼できるか</returns>
-        private static bool[] Get_窓ごとの信頼状況(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス)
+        private static bool[] Get_窓別信頼状況(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス)
         {
             var l_窓数 = p_塩基列.Length - p_k長 + 1;
             var l_信頼状況 = new bool[l_窓数];
             for (var w = 0; w < l_窓数; w++)
             {
-                l_信頼状況[w] = Get_窓が信頼できるか(p_塩基列, w, p_k長, p_kmerインデックス);
+                l_信頼状況[w] = Is信頼窓(p_塩基列, w, p_k長, p_kmerインデックス);
             }
             return l_信頼状況;
         }
@@ -532,7 +532,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">k 長</param>
         /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
         /// <returns>信頼できれば true</returns>
-        private static bool Get_窓が信頼できるか(byte[] p_塩基列, int p_窓開始, int p_k長, TrustedKmerIndex p_kmerインデックス)
+        private static bool Is信頼窓(byte[] p_塩基列, int p_窓開始, int p_k長, TrustedKmerIndex p_kmerインデックス)
         {
             for (var i = p_窓開始; i < p_窓開始 + p_k長; i++)
             {
@@ -541,7 +541,7 @@ namespace Tsumiki.Cores.Preprocessing
                     return false;
                 }
             }
-            return p_kmerインデックス.Get_含まれるか(p_塩基列.AsSpan(p_窓開始, p_k長));
+            return p_kmerインデックス.Haskmer(p_塩基列.AsSpan(p_窓開始, p_k長));
         }
 
         /// <summary>
@@ -559,7 +559,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 塩基列は評価後、呼び出し前の状態に戻す (副作用を残さない)
         /// </remarks>
         /// <returns></returns>
-        private static int Get_置換の改善数(byte[] p_塩基列, int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, bool[] p_置換前の信頼状況, TrustedKmerIndex p_kmerインデックス)
+        private static int Get_置換改善数(byte[] p_塩基列, int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, bool[] p_置換前の信頼状況, TrustedKmerIndex p_kmerインデックス)
         {
             var l_元の塩基 = p_塩基列[p_位置];
             p_塩基列[p_位置] = p_候補;
@@ -567,12 +567,12 @@ namespace Tsumiki.Cores.Preprocessing
             var l_改善数 = 0;
             for (var w = p_窓開始; w <= p_窓終了; w++)
             {
-                var l_信頼できるか = Get_窓が信頼できるか(p_塩基列, w, p_k長, p_kmerインデックス);
-                if (l_信頼できるか && !p_置換前の信頼状況[w])
+                var l_Is信頼可能 = Is信頼窓(p_塩基列, w, p_k長, p_kmerインデックス);
+                if (l_Is信頼可能 && !p_置換前の信頼状況[w])
                 {
                     l_改善数++;
                 }
-                else if (!l_信頼できるか && p_置換前の信頼状況[w])
+                else if (!l_Is信頼可能 && p_置換前の信頼状況[w])
                 {
                     l_改善数--;
                 }

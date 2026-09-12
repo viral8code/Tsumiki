@@ -72,7 +72,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        public bool Get_含まれるか(Span<byte> p_kmer)
+        public bool Haskmer(Span<byte> p_kmer)
         {
             return this._小 is { } l_小
                 ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer))

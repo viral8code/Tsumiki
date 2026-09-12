@@ -7,7 +7,7 @@ namespace Tsumiki.Utilities
     /// </summary>
     /// <remarks>
     /// 集計のキーに文字列を使うとアセンブリ規模で 1 GB を超えるため、k-mer を数える処理は常にこのパック済みの値をキーにする<br/>
-    /// パックは k &lt;= 64 でしか使えないので、それを超える長さには <see cref="Get_正規化キー(ReadOnlySpan{byte})"/> を使う
+    /// パックは k &lt;= 64 でしか使えないので、それを超える長さには <see cref="TryGet_正規化キー(ReadOnlySpan{byte})"/> を使う
     /// </remarks>
     internal static class KmerPacking
     {
@@ -21,7 +21,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_k長">パックする長さ</param>
         /// <param name="p_正規形">パックした正規形</param>
         /// <returns>曖昧塩基 (N など) を含む場合は false</returns>
-        public static bool Get_正規化パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_正規形)
+        public static bool TryGet_正規化パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_正規形)
         {
             UInt128 l_順鎖 = 0;
             for (var i = 0; i < p_k長; i++)
@@ -43,7 +43,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>パックした正規形</returns>
-        public static UInt128 Get_正規化パック(ReadOnlySpan<byte> p_kmer)
+        public static UInt128 TryGet_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_順鎖 = 0;
             foreach (var l_塩基ID in p_kmer)
@@ -62,9 +62,9 @@ namespace Tsumiki.Utilities
         /// </remarks>
         /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>k &lt;= 64 ならパック済みの正規形そのもの、それを超えるなら正規形の 128 bit ハッシュ</returns>
-        public static UInt128 Get_正規化キー(ReadOnlySpan<byte> p_kmer)
+        public static UInt128 TryGet_正規化キー(ReadOnlySpan<byte> p_kmer)
         {
-            return p_kmer.Length <= 64 ? Get_正規化パック(p_kmer) : Get_正規化ハッシュ(p_kmer);
+            return p_kmer.Length <= 64 ? TryGet_正規化パック(p_kmer) : Get_正規化ハッシュ(p_kmer);
         }
 
         /// <summary>
@@ -75,11 +75,11 @@ namespace Tsumiki.Utilities
         /// <param name="p_k長">キーにする長さ</param>
         /// <param name="p_キー">作った集計キー</param>
         /// <returns>曖昧塩基を含む場合は false</returns>
-        public static bool Get_正規化キー(string p_配列, int p_開始位置, int p_k長, out UInt128 p_キー)
+        public static bool TryGet_正規化キー(string p_配列, int p_開始位置, int p_k長, out UInt128 p_キー)
         {
             if (p_k長 <= 64)
             {
-                return Get_正規化パック(p_配列, p_開始位置, p_k長, out p_キー);
+                return TryGet_正規化パック(p_配列, p_開始位置, p_k長, out p_キー);
             }
 
             var l_塩基列 = new byte[p_k長];
@@ -108,7 +108,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_k長">パックする長さ</param>
         /// <param name="p_順鎖">パックした順鎖の値</param>
         /// <returns>曖昧塩基を含む場合は false</returns>
-        public static bool Get_パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_順鎖)
+        public static bool TryGet_パック(string p_配列, int p_開始位置, int p_k長, out UInt128 p_順鎖)
         {
             UInt128 l_順鎖 = 0;
             for (var i = 0; i < p_k長; i++)
@@ -170,7 +170,7 @@ namespace Tsumiki.Utilities
         /// <returns>畳んだ値</returns>
         public static ulong Get_正規化ハッシュ_64(ReadOnlySpan<byte> p_kmer)
         {
-            return p_kmer.Length <= 32 ? (ulong)Get_正規化パック(p_kmer) : (ulong)Get_正規化ハッシュ(p_kmer);
+            return p_kmer.Length <= 32 ? (ulong)TryGet_正規化パック(p_kmer) : (ulong)Get_正規化ハッシュ(p_kmer);
         }
 
         #endregion
@@ -187,16 +187,16 @@ namespace Tsumiki.Utilities
         /// <returns>畳んだ値</returns>
         private static UInt128 Get_正規化ハッシュ(ReadOnlySpan<byte> p_kmer)
         {
-            var l_順鎖が小さいか = Get_順鎖が小さいか(p_kmer);
-            var l_上位 = 14695981039346656037UL;
-            var l_下位 = 1099511628211UL;
+            var l_Is順鎖最小 = Is順鎖最小(p_kmer);
+            var l_上位 = 14_695_981_039_346_656_037UL;
+            var l_下位 = 1_099_511_628_211UL;
             for (var i = 0; i < p_kmer.Length; i++)
             {
-                var l_塩基 = l_順鎖が小さいか
+                var l_塩基 = l_Is順鎖最小
                     ? p_kmer[i]
                     : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
-                l_上位 = (l_上位 ^ l_塩基) * 1099511628211UL;
-                l_下位 = (l_下位 ^ l_塩基) * 14695981039346656037UL;
+                l_上位 = (l_上位 ^ l_塩基) * 1_099_511_628_211UL;
+                l_下位 = (l_下位 ^ l_塩基) * 14_695_981_039_346_656_037UL;
             }
             return ((UInt128)l_上位 << 64) | l_下位;
         }
@@ -209,7 +209,7 @@ namespace Tsumiki.Utilities
         /// </remarks>
         /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>順鎖のほうが小さいか等しければ true</returns>
-        private static bool Get_順鎖が小さいか(ReadOnlySpan<byte> p_kmer)
+        private static bool Is順鎖最小(ReadOnlySpan<byte> p_kmer)
         {
             for (var i = 0; i < p_kmer.Length; i++)
             {

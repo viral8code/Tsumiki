@@ -10,18 +10,19 @@ namespace Tsumiki.Cores.Preprocessing
     /// <summary>
     /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード (SuperRead) に統合する
     /// </summary>
-    /// <remarks>
-    /// MaSuRCA の SuperReads に相当する<br/>
-    /// 重なりが一つに定まるペアはそれで繋ぎ、繋げないペアは read1 の末尾 k-mer から RC (read2) の先頭 k-mer まで信頼できる k-mer 集合の中で経路を探す<br/>
-    /// 使う探索エンジンは GapFiller (スキャフォールドのギャップ埋め) と共通の ConstrainedPathFinder で、対象をスキャフォールドのギャップからリードペアに変えただけになる<br/>
-    /// Tsumiki のマルチ k は自動選択の上限がリード長に縛られている (<see cref="Consts.マルチk上限のリード長比"/>) <br/>
-    /// 合成リードは元のリードより長いため、KmerCarryOver 経由で次の k へ渡せばこの上限を実効的に外せる<br/>
-    /// 統合に失敗したペアは単に対象から外れるだけで、元のリードは通常どおり k-mer カウントに使われ続ける<br/>
-    /// 失敗が増えても元のペアのままに退化するだけで、悪化はしない
-    /// </remarks>
     internal static class SuperReadJoiner
     {
         #region 定数
+
+        /// <summary>
+        /// ペア結合に必要な最小重なり長
+        /// </summary>
+        private const int ペア結合の最小重なり長 = 60;
+
+        /// <summary>
+        /// ペア結合で許す不一致率
+        /// </summary>
+        private const double ペア結合の許容不一致率 = 0.05D;
 
         /// <summary>
         /// 橋渡しする長さの上限
@@ -85,12 +86,12 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_配列1群 = new string[バッチサイズ];
             var l_配列2群 = new string[バッチサイズ];
-            var l_統合結果群 = new (string? A_配列, bool A_重なりで結合したか, int A_曖昧で捨てた数)[バッチサイズ];
+            var l_統合結果群 = new (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数)[バッチサイズ];
 
-            while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
                 var l_件数 = 0;
-                while (l_件数 < バッチサイズ && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+                while (l_件数 < バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
                 {
                     l_配列1群[l_件数] = l_読み込み1.Get_次のリード_軽量().A_生リード;
                     l_配列2群[l_件数] = l_読み込み2.Get_次のリード_軽量().A_生リード;
@@ -111,7 +112,7 @@ namespace Tsumiki.Cores.Preprocessing
                         continue;
                     }
                     l_統合数++;
-                    if (l_統合結果群[i].A_重なりで結合したか)
+                    if (l_統合結果群[i].A_Is重なり結合)
                     {
                         l_重なり結合数++;
                     }
@@ -183,7 +184,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
         /// <returns>合成配列と、重なりで繋いだかどうか、重なりが曖昧で捨てた数</returns>
-        internal static (string? A_配列, bool A_重なりで結合したか, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ)
+        internal static (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ)
         {
             var l_曖昧 = 0;
             if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, ref l_曖昧) is { } l_重なり結合)
@@ -208,7 +209,7 @@ namespace Tsumiki.Cores.Preprocessing
         private static string? Get_重なりで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数)
         {
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
-            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), Consts.ペア結合の最小重なり長, Consts.ペア結合の許容不一致率, out var l_対抗馬があるか);
+            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), ペア結合の最小重なり長, ペア結合の許容不一致率, out var l_対抗馬があるか);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
@@ -230,7 +231,7 @@ namespace Tsumiki.Cores.Preprocessing
             }
 
             var l_合成 = p_配列1 + l_RC配列2[(p_配列1.Length - l_位置合わせ.A_offset)..];
-            return l_合成.Length >= p_k長 && Get_継ぎ目が支持されているか(l_合成, p_配列1.Length, p_kmerインデックス, p_k長)
+            return l_合成.Length >= p_k長 && Has継ぎ目支持(l_合成, p_配列1.Length, p_kmerインデックス, p_k長)
                 ? l_合成
                 : null;
         }
@@ -248,7 +249,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <returns>継ぎ目を跨ぐ k-mer がすべて集合にあれば true</returns>
-        private static bool Get_継ぎ目が支持されているか(string p_合成, int p_継ぎ目, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        private static bool Has継ぎ目支持(string p_合成, int p_継ぎ目, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_開始 = Math.Max(0, p_継ぎ目 - p_k長 + 1);
             var l_終了 = Math.Min(p_継ぎ目, p_合成.Length - p_k長);
@@ -256,7 +257,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 var l_kmer = Util.V_変換_塩基列(p_合成.Substring(l_位置, p_k長));
                 if (Array.IndexOf(l_kmer, Consts.無効な塩基) >= 0
-                    || !p_kmerインデックス.Get_含まれるか(l_kmer))
+                    || !p_kmerインデックス.Haskmer(l_kmer))
                 {
                     return false;
                 }
@@ -283,7 +284,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return null;
             }
 
-            var l_最大長 = Get_橋渡し長の上限(p_配列1.Length, p_配列2.Length, p_インサートサイズ);
+            var l_最大長 = Get_橋渡し長上限(p_配列1.Length, p_配列2.Length, p_インサートサイズ);
             if (l_最大長 < 0)
             {
                 return null;
@@ -292,7 +293,7 @@ namespace Tsumiki.Cores.Preprocessing
             // 端の k-mer が集合に無いペアが大半を占めるので、全長の変換と RC を先に作ると、その大半で捨てるだけの配列を確保することになる
             var l_左のkmer = Util.V_変換_塩基列(p_配列1[^p_k長..]);
             if (Array.IndexOf(l_左のkmer, Consts.無効な塩基) >= 0
-                || !p_kmerインデックス.Get_含まれるか(l_左のkmer))
+                || !p_kmerインデックス.Haskmer(l_左のkmer))
             {
                 return null;
             }
@@ -300,7 +301,7 @@ namespace Tsumiki.Cores.Preprocessing
             // RC (read2) の先頭 k-mer は、read2 の末尾 k 塩基の逆相補と一致する
             var l_目標kmer = Util.V_変換_塩基列(Util.V_逆相補_曖昧塩基あり(p_配列2[^p_k長..]));
             if (Array.IndexOf(l_目標kmer, Consts.無効な塩基) >= 0
-                || !p_kmerインデックス.Get_含まれるか(l_目標kmer))
+                || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
                 return null;
             }
@@ -321,7 +322,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_長さ2">read2 の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
         /// <returns>探索してよい橋渡し長の上限</returns>
-        private static int Get_橋渡し長の上限(int p_長さ1, int p_長さ2, int? p_インサートサイズ)
+        private static int Get_橋渡し長上限(int p_長さ1, int p_長さ2, int? p_インサートサイズ)
         {
             if (p_インサートサイズ is not { } l_インサートサイズ)
             {

@@ -8,7 +8,7 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// スキャフォールドのギャップ (N の連続) を、de Bruijn グラフ上で両端を繋ぐ経路を探して実配列に置き換える処理の検証
+    /// scaffold のギャップ (N の連続) を、de Bruijn グラフ上で両端を繋ぐ経路を探して実配列に置き換える処理の検証
     /// </summary>
     /// <remarks>
     /// contig が途切れるのは配列が存在しないからではなく、分岐でどちらへ進むか決められなかったからであることが多い<br/>
@@ -60,11 +60,11 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             // 200 bp の非反復的な配列
             // k=21 なので偶然の重複はまず起きない
-            var l_正解配列 = V_生成_ランダム配列(200, p_シード: 20260903);
+            var l_正解配列 = V_生成_ランダム配列(200, p_シード: 20_260_903);
 
             using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
 
-            // 真ん中 40 bp を N に置き換えたスキャフォールドを作る
+            // 真ん中 40 bp を N に置き換えた scaffold を作る
             const int l_ギャップ開始 = 80;
             const int l_ギャップ長 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
@@ -218,7 +218,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// スキャフォールドを FASTA として書き出す
+        /// scaffold を FASTA として書き出す
         /// </summary>
         /// <param name="p_名前">ファイル名</param>
         /// <param name="p_配列">書き出す配列</param>
@@ -241,7 +241,7 @@ namespace Tsumiki.Tests.Core
         private static string V_読み込み_単一配列(string p_パス)
         {
             using var l_リーダー = new FastaReader(p_パス);
-            Assert.True(l_リーダー.Get_続きがあるか());
+            Assert.True(l_リーダー.Has続き());
             return l_リーダー.Get_次の配列().A_配列;
         }
 

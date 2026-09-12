@@ -10,10 +10,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかを確かめる自己検査の検証
     /// </summary>
-    /// <remarks>
-    /// リファレンス配列なしで「取りこぼし」と「出しすぎ」を検出できることを固定する<br/>
-    /// 「出しすぎ」の検出は特に重要で、総延長が実際のゲノムサイズより大きくなる原因はほぼこれ (実際、修正前は同じ配列を順鎖と逆鎖の両方で出力していて総長がちょうど 2.009 倍に膨れていた)
-    /// </remarks>
     public class AssemblyValidatorTests : IDisposable
     {
         #region 定数

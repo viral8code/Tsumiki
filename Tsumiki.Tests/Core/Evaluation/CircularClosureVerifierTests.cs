@@ -68,7 +68,7 @@ namespace Tsumiki.Tests.Core
 
             var l_1件 = Assert.Single(l_結果);
             Assert.Equal(6, l_1件.A_跨いだリード数);
-            Assert.True(l_1件.A_支持されたか);
+            Assert.True(l_1件.A_Has支持);
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Tsumiki.Tests.Core
 
             var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null);
 
-            Assert.True(Assert.Single(l_結果).A_支持されたか);
+            Assert.True(Assert.Single(l_結果).A_Has支持);
         }
 
         /// <summary>
@@ -105,7 +105,7 @@ namespace Tsumiki.Tests.Core
 
             var l_1件 = Assert.Single(l_結果);
             Assert.Equal(0, l_1件.A_跨いだリード数);
-            Assert.False(l_1件.A_支持されたか);
+            Assert.False(l_1件.A_Has支持);
         }
 
         /// <summary>

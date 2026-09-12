@@ -27,7 +27,7 @@ namespace Tsumiki.Commons
         #region 公開メソッド
 
         /// <summary>
-        /// 名前・作者・バージョン
+        /// 名前とバージョン
         /// </summary>
         /// <remarks>
         /// 引数なしの起動と -v で出す
@@ -38,7 +38,6 @@ namespace Tsumiki.Commons
             return new StringBuilder()
                 .AppendLine()
                 .AppendLine(Messages.Get_文言(メッセージID.概要_説明))
-                .AppendLine(Messages.Get_文言(メッセージID.概要_作者, string.Join(", ", Consts.作者一覧)))
                 .AppendLine(Messages.Get_文言(メッセージID.概要_バージョン, Consts.バージョン))
                 .ToString();
         }

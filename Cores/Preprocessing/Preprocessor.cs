@@ -90,10 +90,10 @@ namespace Tsumiki.Cores.Preprocessing
             var l_クオリティ2群 = new string[前処理バッチサイズ];
             var l_結果群 = new ペア前処理結果[前処理バッチサイズ];
 
-            while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
                 var l_件数 = 0;
-                while (l_件数 < 前処理バッチサイズ && l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+                while (l_件数 < 前処理バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
                 {
                     var l_リード1 = l_読み込み1.Get_次のリード_軽量();
                     var l_リード2 = l_読み込み2.Get_次のリード_軽量();
@@ -115,7 +115,7 @@ namespace Tsumiki.Cores.Preprocessing
                 for (var i = 0; i < l_件数; i++)
                 {
                     var l_結果 = l_結果群[i];
-                    if (l_結果.A_アダプタを検出したか)
+                    if (l_結果.A_Hasアダプタ検出)
                     {
                         l_アダプタ検出ペア数++;
                     }
@@ -195,7 +195,7 @@ namespace Tsumiki.Cores.Preprocessing
                 if (l_スコア1 >= 高信頼スコア && l_スコア2 <= 低信頼スコア)
                 {
                     // RC (R2) 側は既に R1 と同じ向きの塩基になっているので、そのまま写す
-                    l_配列2文字[l_位置2] = Get_相補文字(l_RC配列2[l_位置2RC]);
+                    l_配列2文字[l_位置2] = Util.Get_相補塩基(l_RC配列2[l_位置2RC]);
                     l_訂正数++;
                 }
                 else if (l_スコア2 >= 高信頼スコア && l_スコア1 <= 低信頼スコア)
@@ -208,9 +208,9 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_新長さ1 = Math.Min(p_配列1.Length, l_フラグメント長);
             var l_新長さ2 = Math.Min(p_配列2.Length, l_フラグメント長);
-            var l_アダプタを検出したか = l_新長さ1 < p_配列1.Length || l_新長さ2 < p_配列2.Length;
+            var l_Hasアダプタ検出 = l_新長さ1 < p_配列1.Length || l_新長さ2 < p_配列2.Length;
 
-            return new ペア前処理結果(new string(l_配列1文字, 0, l_新長さ1), p_クオリティ1[..l_新長さ1], new string(l_配列2文字, 0, l_新長さ2), p_クオリティ2[..l_新長さ2], l_アダプタを検出したか, l_訂正数);
+            return new ペア前処理結果(new string(l_配列1文字, 0, l_新長さ1), p_クオリティ1[..l_新長さ1], new string(l_配列2文字, 0, l_新長さ2), p_クオリティ2[..l_新長さ2], l_Hasアダプタ検出, l_訂正数);
         }
 
         /// <summary>
@@ -224,14 +224,14 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_塩基列2RC">RC (R2) の塩基 ID 列</param>
         /// <param name="p_最小重なり長">重なりとみなすために要求する最小長</param>
         /// <param name="p_許容不一致率">重なりとみなすために許す不一致率</param>
-        /// <param name="p_対抗馬があるか">条件を満たすオフセットが 2 つ以上あったか</param>
+        /// <param name="p_Has対抗馬">条件を満たすオフセットが 2 つ以上あったか</param>
         /// <returns>
         /// 条件を満たすもののなかで重なりが最長のもの (同点なら不一致数が少ないもの) <br/>
         /// 見つからなければ null (通常の、フラグメント長がリード長を超える場合)
         /// </returns>
-        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_対抗馬があるか)
+        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_Has対抗馬)
         {
-            p_対抗馬があるか = false;
+            p_Has対抗馬 = false;
             var l_n1 = p_塩基列1.Length;
             var l_n2 = p_塩基列2RC.Length;
 
@@ -269,7 +269,7 @@ namespace Tsumiki.Cores.Preprocessing
                     continue;
                 }
 
-                p_対抗馬があるか = true;
+                p_Has対抗馬 = true;
                 if (l_重なり長 > l_現在最良.A_重なり長
                     || (l_重なり長 == l_現在最良.A_重なり長 && l_不一致数 < l_現在最良.A_不一致数))
                 {
@@ -297,9 +297,9 @@ namespace Tsumiki.Cores.Preprocessing
         private static int Get_不一致数_語単位(PackedBases p_詰め1, PackedBases p_詰め2, int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
         {
             var l_不一致数 = 0;
-            for (var i = 0; i < p_重なり長; i += PackedBases.語あたりの塩基数)
+            for (var i = 0; i < p_重なり長; i += Consts.語あたりの塩基数)
             {
-                var l_今回 = Math.Min(PackedBases.語あたりの塩基数, p_重なり長 - i);
+                var l_今回 = Math.Min(Consts.語あたりの塩基数, p_重なり長 - i);
                 l_不一致数 += PackedBases.Get_不一致数(p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
                 if (l_不一致数 > p_許容不一致数)
                 {
@@ -337,23 +337,6 @@ namespace Tsumiki.Cores.Preprocessing
                 }
             }
             return l_不一致数;
-        }
-
-        /// <summary>
-        /// 塩基文字の相補を返す
-        /// </summary>
-        /// <param name="p_塩基">元の塩基文字</param>
-        /// <returns>相補の塩基文字、塩基でなければそのまま</returns>
-        private static char Get_相補文字(char p_塩基)
-        {
-            return p_塩基 switch
-            {
-                'A' => 'T',
-                'T' => 'A',
-                'C' => 'G',
-                'G' => 'C',
-                var l_文字 => l_文字,
-            };
         }
 
         #endregion

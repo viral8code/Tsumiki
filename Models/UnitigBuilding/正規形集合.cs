@@ -45,7 +45,7 @@ namespace Tsumiki.Models.UnitigBuilding
         {
             if (this._小 is { } l_小)
             {
-                _ = l_小.Add(KmerPacking.Get_正規化パック(p_kmer));
+                _ = l_小.Add(KmerPacking.TryGet_正規化パック(p_kmer));
                 return;
             }
             _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
@@ -56,10 +56,10 @@ namespace Tsumiki.Models.UnitigBuilding
         /// </summary>
         /// <param name="p_kmer">塩基 ID 列</param>
         /// <returns>訪問済みなら true</returns>
-        public bool Get_含まれるか(ReadOnlySpan<byte> p_kmer)
+        public bool Haskmer(ReadOnlySpan<byte> p_kmer)
         {
             return this._小 is { } l_小
-                ? l_小.Contains(KmerPacking.Get_正規化パック(p_kmer))
+                ? l_小.Contains(KmerPacking.TryGet_正規化パック(p_kmer))
                 : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
         }
 
@@ -70,10 +70,10 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <param name="p_右">比較する k-mer のもう片方</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>同じ座位を指すなら true</returns>
-        public static bool Get_同じ座位か(ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
+        public static bool Is同一座位(ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
         {
             return p_k長 <= 64
-                ? KmerPacking.Get_正規化パック(p_左) == KmerPacking.Get_正規化パック(p_右)
+                ? KmerPacking.TryGet_正規化パック(p_左) == KmerPacking.TryGet_正規化パック(p_右)
                 : new KmerKey(p_左).Get_正規形().Equals(new KmerKey(p_右).Get_正規形());
         }
 

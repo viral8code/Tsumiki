@@ -35,7 +35,7 @@ namespace Tsumiki.Core
         /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本
         /// </summary>
         /// <remarks>
-        /// 同一ユニティグ標本のような長さバイアスを受けない
+        /// 同一 unitig 標本のような長さバイアスを受けない
         /// </remarks>
         public List<int> A_確定辺標本 { get; } = [];
 
@@ -57,7 +57,7 @@ namespace Tsumiki.Core
         public IReadOnlyDictionary<int, int> A_ユニティグ長 => this._ユニティグ長;
 
         /// <summary>
-        /// ユニティグ配置
+        /// unitig 配置
         /// </summary>
         public IReadOnlyDictionary<int, ユニティグ配置> A_ユニティグ配置 => this._ユニティグ配置;
 
@@ -99,11 +99,11 @@ namespace Tsumiki.Core
                 // 互いに逆向き (FR 相当、Illumina ペアエンドの通常配置)
                 // 順鎖側ヒットのリードがフラグメントの左端、
                 // 逆鎖側ヒットのリードが右端を占める
-                var l_ヒット1が順鎖か = p_ヒット1.A_ユニティグID > 0;
-                var l_順鎖側の端 = Get_順鎖座標(l_ヒット1が順鎖か ? p_ヒット1 : p_ヒット2);
-                var l_逆鎖側の端 = Get_順鎖座標(l_ヒット1が順鎖か ? p_ヒット2 : p_ヒット1);
-                var l_順鎖側リード長 = l_ヒット1が順鎖か ? p_リード1.Length : p_リード2.Length;
-                var l_逆鎖側リード長 = l_ヒット1が順鎖か ? p_リード2.Length : p_リード1.Length;
+                var l_Isヒット1順鎖 = p_ヒット1.A_ユニティグID > 0;
+                var l_順鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット1 : p_ヒット2);
+                var l_逆鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット2 : p_ヒット1);
+                var l_順鎖側リード長 = l_Isヒット1順鎖 ? p_リード1.Length : p_リード2.Length;
+                var l_逆鎖側リード長 = l_Isヒット1順鎖 ? p_リード2.Length : p_リード1.Length;
 
                 // フラグメントの左端 = 順鎖リードの開始位置、
                 // 右端 = 逆鎖リードの終了位置
@@ -133,7 +133,7 @@ namespace Tsumiki.Core
             var l_キー = (p_ヒット1.A_ユニティグID, -p_ヒット2.A_ユニティグID);
 
             var l_残り1 = p_ヒット1.A_末尾までの残り長;
-            var l_残り2 = Get_反転後の残り長(p_ヒット2);
+            var l_残り2 = Get_反転後残長(p_ヒット2);
             var l_既知長 = l_残り1 + l_残り2 + p_リード1.Length + p_リード2.Length;
 
             if (p_ローカルペア経路.TryGetValue(l_キー, out var l_一覧))
@@ -154,7 +154,7 @@ namespace Tsumiki.Core
         /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
         /// </remarks>
         /// <returns></returns>
-        private static int Get_反転後の残り長(代表ユニティグヒット p_ヒット)
+        private static int Get_反転後残長(代表ユニティグヒット p_ヒット)
         {
             return Math.Max(0, p_ヒット.A_最終一致終端位置);
         }

@@ -64,7 +64,7 @@ namespace Tsumiki.Tests.Core
         /// 分岐のない閉路は、通常の開始点判定 (開始 k-mer 一覧) では 1 つも拾えない
         /// </summary>
         [Fact]
-        public void Get_閉路の開始kmer_分岐のない閉路は通常の開始点判定では拾えない()
+        public void Get_閉路開始kmer_分岐のない閉路は通常の開始点判定では拾えない()
         {
             var l_環状 = Get_乱数配列(300, 31);
             using var l_インデックス = this.Get_インデックス(l_環状, null);
@@ -77,12 +77,12 @@ namespace Tsumiki.Tests.Core
         /// 分岐のない閉路を 1 つだけ回収し、1 周ぶんの配列に復元する
         /// </summary>
         [Fact]
-        public void Get_閉路の開始kmer_閉路を1つだけ回収して1周ぶんの配列にする()
+        public void Get_閉路開始kmer_閉路を1つだけ回収して1周ぶんの配列にする()
         {
             var l_環状 = Get_乱数配列(300, 31);
             using var l_インデックス = this.Get_インデックス(l_環状, null);
 
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(l_インデックス, UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧()), k長);
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧()), k長);
 
             _ = Assert.Single(l_開始kmer);
 
@@ -90,14 +90,14 @@ namespace Tsumiki.Tests.Core
 
             // 環を 1 周し、次の k-mer で出発点に戻る手前まで伸びる
             Assert.Equal(l_環状.Length + k長 - 1, l_配列.Length);
-            Assert.True(Get_環の1周か(l_配列, l_環状), "環の1周になっていない");
+            Assert.True(Is環1周(l_配列, l_環状), "環の1周になっていない");
         }
 
         /// <summary>
         /// 線状の配列だけなら、閉路の開始 k-mer は 1 つも返さない
         /// </summary>
         [Fact]
-        public void Get_閉路の開始kmer_線状の配列だけなら何も返さない()
+        public void Get_閉路開始kmer_線状の配列だけなら何も返さない()
         {
             var l_線状 = Get_乱数配列(300, 32);
             using var l_インデックス = this.Get_インデックス(null, l_線状);
@@ -105,14 +105,14 @@ namespace Tsumiki.Tests.Core
             var l_通常の走査 = UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧());
             Assert.NotEmpty(l_通常の走査);
 
-            Assert.Empty(CyclicUnitigFinder.Get_閉路の開始kmer(l_インデックス, l_通常の走査, k長));
+            Assert.Empty(CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, k長));
         }
 
         /// <summary>
         /// 線状の配列と混ざっていても、閉路の開始 k-mer だけを拾う
         /// </summary>
         [Fact]
-        public void Get_閉路の開始kmer_線状の配列と混ざっていても閉路だけを拾う()
+        public void Get_閉路開始kmer_線状の配列と混ざっていても閉路だけを拾う()
         {
             var l_環状 = Get_乱数配列(300, 33);
             var l_線状 = Get_乱数配列(300, 34);
@@ -120,18 +120,18 @@ namespace Tsumiki.Tests.Core
 
             var l_通常の走査 = UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧());
 
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(l_インデックス, l_通常の走査, k長);
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, k長);
 
             _ = Assert.Single(l_開始kmer);
             var l_配列 = Assert.Single(UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer));
-            Assert.True(Get_環の1周か(l_配列, l_環状), "拾ったのが環ではない");
+            Assert.True(Is環1周(l_配列, l_環状), "拾ったのが環ではない");
         }
 
         /// <summary>
         /// 独立した閉路が 2 つあれば、それぞれ 1 つずつ開始 k-mer を返す
         /// </summary>
         [Fact]
-        public void Get_閉路の開始kmer_閉路が2つあればそれぞれ1つずつ返す()
+        public void Get_閉路開始kmer_閉路が2つあればそれぞれ1つずつ返す()
         {
             var l_環状1 = Get_乱数配列(300, 35);
             var l_環状2 = Get_乱数配列(250, 36);
@@ -148,7 +148,7 @@ namespace Tsumiki.Tests.Core
             }
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(l_インデックス, [], k長);
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, [], k長);
 
             Assert.Equal(2, l_開始kmer.Count);
             var l_長さ = UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer)
@@ -209,7 +209,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_インデックス">登録先の索引</param>
         /// <param name="p_kmer">登録する k-mer</param>
@@ -227,7 +227,7 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_配列"></param>
         /// <param name="p_環状配列"></param>
         /// <returns></returns>
-        private static bool Get_環の1周か(string p_配列, string p_環状配列)
+        private static bool Is環1周(string p_配列, string p_環状配列)
         {
             var l_二周 = p_環状配列 + p_環状配列;
             return l_二周.Contains(p_配列, StringComparison.Ordinal)

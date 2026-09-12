@@ -9,12 +9,6 @@ namespace Tsumiki.Cores.Preprocessing
     /// <summary>
     /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に挟まれているものを救い上げる
     /// </summary>
-    /// <remarks>
-    /// カットオフは出現回数だけを見るため、カバレッジがたまたま薄い領域の真の k-mer もエラーと一緒に落ちる<br/>
-    /// 落ちた場所ではグラフが千切れ、その領域は以降どの工程からも見えなくなる<br/>
-    /// 前後が信頼できる k-mer で同じリードの中で連続しているという条件は出現回数とは独立した証拠で、単独の低頻度 k-mer とは区別できる<br/>
-    /// ただし通常の信頼 k-mer より根拠は弱いため、観測した回数をそのままカバレッジとして与え、名目値で水増ししない
-    /// </remarks>
     internal static class MercyKmerRescuer
     {
         #region 定数
@@ -63,7 +57,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     continue;
                 }
-                if (p_kmerインデックス.V_追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
+                if (p_kmerインデックス.Try追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
                 {
                     l_追加数++;
                 }
@@ -125,7 +119,7 @@ namespace Tsumiki.Cores.Preprocessing
                     }
                 }
                 l_有効[i] = l_曖昧数 == 0;
-                l_信頼[i] = l_有効[i] && p_kmerインデックス.Get_含まれるか(l_塩基列.AsSpan(i, p_k長));
+                l_信頼[i] = l_有効[i] && p_kmerインデックス.Haskmer(l_塩基列.AsSpan(i, p_k長));
             }
 
             for (var i = 1; i < l_窓数 - 1; i++)
@@ -146,7 +140,7 @@ namespace Tsumiki.Cores.Preprocessing
                     for (var j = i; j < l_終わり; j++)
                     {
                         var l_窓 = l_塩基列.AsSpan(j, p_k長);
-                        var l_キー = KmerPacking.Get_正規化キー(l_窓);
+                        var l_キー = KmerPacking.TryGet_正規化キー(l_窓);
                         var l_控え = l_窓.ToArray();
                         _ = p_候補.AddOrUpdate(l_キー, _ => (1, l_控え), (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
                     }

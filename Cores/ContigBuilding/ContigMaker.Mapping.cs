@@ -28,32 +28,32 @@ namespace Tsumiki.Core
         #region 内部変数
 
         /// <summary>
-        /// k-mer から、それが載るユニティグと開始位置を引く辞書
+        /// k-mer から、それが載る unitig と開始位置を引く辞書
         /// </summary>
         private readonly Dictionary<KmerKey, (int A_ユニティグID, int A_開始位置)> _kmer辞書;
 
         /// <summary>
-        /// ユニティグ長
+        /// unitig 長
         /// </summary>
         private readonly Dictionary<int, int> _ユニティグ長;
 
         /// <summary>
-        /// ユニティグファイルパス
+        /// 正逆両鎖の unitig 配列
         /// </summary>
-        private readonly string _ユニティグファイルパス;
+        private readonly List<string> _ユニティグ配列;
 
         /// <summary>
-        /// リードが跨いだユニティグの組と、その本数
+        /// リードが跨いだ unitig の組と、その本数
         /// </summary>
         private readonly Dictionary<(int, int), ulong> _リード隣接;
 
         /// <summary>
-        /// ペアが跨いだユニティグの組と、その間に通った頂点
+        /// ペアが跨いだ unitig の組と、その間に通った頂点
         /// </summary>
         private readonly Dictionary<(int, int), List<int>> _ペア経路;
 
         /// <summary>
-        /// ユニティグ配置
+        /// unitig 配置
         /// </summary>
         private readonly Dictionary<int, ユニティグ配置> _ユニティグ配置 = [];
 
@@ -67,9 +67,9 @@ namespace Tsumiki.Core
         /// <param name="p_ユニティグファイルパス"></param>
         public ContigMaker(string p_ユニティグファイルパス)
         {
-            this._ユニティグファイルパス = p_ユニティグファイルパス;
             this._kmer辞書 = [];
             this._ユニティグ長 = [];
+            this._ユニティグ配列 = [string.Empty, string.Empty];
             this._リード隣接 = [];
             this._ペア経路 = [];
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -77,10 +77,12 @@ namespace Tsumiki.Core
             var l_ID = 1;
             var l_短すぎるユニティグ数 = 0;
             var l_曖昧数 = 0;
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_ユニティグ = l_読み込み.Get_次の配列();
                 this._ユニティグ長[l_ID] = l_ユニティグ.A_配列.Length;
+                this._ユニティグ配列.Add(l_ユニティグ.A_配列);
+                this._ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ.A_配列));
 
                 if (l_ユニティグ.A_配列.Length < l_k長)
                 {
@@ -135,22 +137,11 @@ namespace Tsumiki.Core
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
-            using (FastaReader l_読み込み = new(this._ユニティグファイルパス))
-            {
-                while (l_読み込み.Get_続きがあるか())
-                {
-                    var l_ユニティグ = l_読み込み.Get_次の配列().A_配列;
-                    l_ユニティグ配列.Add(l_ユニティグ);
-                    l_ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ));
-                }
-            }
-
-            return UnitigGraph.Get_グラフ(l_ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+            return UnitigGraph.Get_グラフ(this._ユニティグ配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
         }
 
         /// <summary>
-        /// リードをユニティグへ貼り付け、隣接とペアの支持を集める
+        /// リードを unitig へ貼り付け、隣接とペアの支持を集める
         /// </summary>
         /// <param name="p_リードパス">貼り付けるリードのパス</param>
         public void V_マッピング_リード(string p_リードパス)
@@ -340,14 +331,14 @@ namespace Tsumiki.Core
             var l_曖昧塩基数 = 0;
             for (var i = 0; i < l_k長; i++)
             {
-                if (Util.Get_曖昧塩基か(p_リード[i]))
+                if (Util.Is曖昧塩基(p_リード[i]))
                 {
                     l_曖昧塩基数++;
                 }
             }
             for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.Get_曖昧塩基か(p_リード[i - l_k長]))
+                if (Util.Is曖昧塩基(p_リード[i - l_k長]))
                 {
                     l_曖昧塩基数--;
                 }
@@ -398,18 +389,18 @@ namespace Tsumiki.Core
             using var l_読み込み1 = new FastqReader(p_リード1のパス);
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
 
-            var l_不一致を警告済みか = false;
-            while (l_読み込み1.Get_続きがあるか() && l_読み込み2.Get_続きがあるか())
+            var l_Is不一致警告済み = false;
+            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
                 var l_データ1 = l_読み込み1.Get_次のリード();
                 var l_データ2 = l_読み込み2.Get_次のリード();
 
                 if (Util.Get_ペア共通ID(l_データ1.A_ID) != Util.Get_ペア共通ID(l_データ2.A_ID))
                 {
-                    if (!l_不一致を警告済みか)
+                    if (!l_Is不一致警告済み)
                     {
                         Logger.V_出力(メッセージID.ペアリードIDの不一致, l_データ1.A_ID, l_データ2.A_ID);
-                        l_不一致を警告済みか = true;
+                        l_Is不一致警告済み = true;
                     }
 
                     // お互いを誤ってペアとして扱わないよう、別々に流す
@@ -422,11 +413,11 @@ namespace Tsumiki.Core
             }
 
             // 片方のファイルだけ残っている場合は単一リードとして処理する
-            while (l_読み込み1.Get_続きがあるか())
+            while (l_読み込み1.Has続き())
             {
                 yield return (l_読み込み1.Get_次のリード().A_生リード!, string.Empty);
             }
-            while (l_読み込み2.Get_続きがあるか())
+            while (l_読み込み2.Has続き())
             {
                 yield return (l_読み込み2.Get_次のリード().A_生リード!, string.Empty);
             }
@@ -475,7 +466,7 @@ namespace Tsumiki.Core
         private static IEnumerable<string> Get_生リード列(string p_リードパス)
         {
             using var l_読み込み = new FastqReader(p_リードパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 yield return l_読み込み.Get_次のリード().A_生リード!;
             }
@@ -498,29 +489,20 @@ namespace Tsumiki.Core
                 return;
             }
 
-            // FASTQ の生リードには N 等の曖昧塩基が混入しうるため、
-            // A/C/G/T のみを前提とする厳密版ではなく曖昧塩基を許容する版を使う
-            // 曖昧塩基を含む区間の k-mer は後段のカウントによるスキップで除外される
-            var l_逆鎖リード = Util.V_逆相補_曖昧塩基あり(p_リード);
             var l_直前 = 0;
-            var l_逆鎖の直前 = 0;
             var l_曖昧塩基数 = 0;
-            var l_逆鎖の曖昧塩基数 = 0;
+
+            // 索引には両鎖があり、辺重みは後段で逆鎖対称にするため入力方向だけを走査する
             for (var i = 0; i < l_k長; i++)
             {
-                if (Util.Get_曖昧塩基か(p_リード[i]))
+                if (Util.Is曖昧塩基(p_リード[i]))
                 {
                     l_曖昧塩基数++;
-                }
-
-                if (Util.Get_曖昧塩基か(l_逆鎖リード[i]))
-                {
-                    l_逆鎖の曖昧塩基数++;
                 }
             }
             for (var i = l_k長; i <= p_リード.Length; i++)
             {
-                if (Util.Get_曖昧塩基か(p_リード[i - l_k長]))
+                if (Util.Is曖昧塩基(p_リード[i - l_k長]))
                 {
                     l_曖昧塩基数--;
                 }
@@ -550,31 +532,6 @@ namespace Tsumiki.Core
                     }
                 }
 
-                if (Util.Get_曖昧塩基か(l_逆鎖リード[i - l_k長]))
-                {
-                    l_逆鎖の曖昧塩基数--;
-                }
-
-                if (l_逆鎖の曖昧塩基数 == 0)
-                {
-                    var l_逆鎖キー = new KmerKey(l_逆鎖リード.AsSpan(i - l_k長, l_k長));
-
-                    if (this._kmer辞書.TryGetValue(l_逆鎖キー, out var l_逆鎖項目) && l_逆鎖項目.A_ユニティグID != 曖昧kmerの番兵)
-                    {
-                        var l_逆鎖ID = l_逆鎖項目.A_ユニティグID;
-
-                        if (l_逆鎖の直前 == 0)
-                        {
-                            l_逆鎖の直前 = l_逆鎖ID;
-                        }
-                        else if (l_逆鎖の直前 != l_逆鎖ID)
-                        {
-                            var l_経路キー = (l_逆鎖の直前, l_逆鎖ID);
-                            p_ローカル隣接[l_経路キー] = p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1UL : 1UL;
-                            l_逆鎖の直前 = l_逆鎖ID;
-                        }
-                    }
-                }
             }
         }
 

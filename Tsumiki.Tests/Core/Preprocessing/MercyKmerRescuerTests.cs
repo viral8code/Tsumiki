@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Core
             const int l_穴の長さ = 3;
 
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, l_穴の開始, l_穴の長さ);
-            Assert.False(Get_含まれるか(l_インデックス, l_配列, l_穴の開始));
+            Assert.False(Haskmer(l_インデックス, l_配列, l_穴の開始));
 
             // 穴を跨いで両側の信頼できる窓まで届くリードを 2 本与える
             var l_リード = l_配列.Substring(l_穴の開始 - 30, 100);
@@ -83,7 +83,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_穴の長さ, l_救済数);
             for (var i = 0; i < l_穴の長さ; i++)
             {
-                Assert.True(Get_含まれるか(l_インデックス, l_配列, l_穴の開始 + i), $"穴の窓 {i} が救済されていない");
+                Assert.True(Haskmer(l_インデックス, l_配列, l_穴の開始 + i), $"穴の窓 {i} が救済されていない");
             }
         }
 
@@ -209,10 +209,10 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_配列">元の配列</param>
         /// <param name="p_位置">k-mer の開始位置</param>
         /// <returns>集合にあれば true</returns>
-        private static bool Get_含まれるか(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
+        private static bool Haskmer(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
         {
             var l_kmer = p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID).ToArray();
-            return p_インデックス.Get_含まれるか(l_kmer);
+            return p_インデックス.Haskmer(l_kmer);
         }
 
         #endregion

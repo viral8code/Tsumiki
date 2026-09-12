@@ -78,7 +78,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other.fasta", 31, l_真の配列);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.True(l_繋いだか);
             var l_結果 = V_読み込み_配列群(l_出力);
@@ -101,7 +101,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_rc.fasta", 31, l_真の配列);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_rc.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.True(l_繋いだか);
             var l_結果 = V_読み込み_配列群(l_出力);
@@ -126,7 +126,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_none.fasta", 31, l_左, l_右);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_none.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.False(l_繋いだか);
             Assert.False(File.Exists(l_出力));
@@ -151,7 +151,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_amb.fasta", 31, l_共通の左 + l_中間 + l_右候補1, l_共通の左 + l_中間 + l_右候補2);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_amb.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.False(l_繋いだか);
         }
@@ -176,7 +176,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_chain.fasta", 31, l_真の配列);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_chain.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.True(l_繋いだか);
             var l_結果 = V_読み込み_配列群(l_出力);
@@ -199,7 +199,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_iso.fasta", 31, l_左 + l_中間 + l_右);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_iso.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            var l_繋いだか = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             Assert.True(l_繋いだか);
             var l_結果 = V_読み込み_配列群(l_出力);
@@ -211,10 +211,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 既定では、1 つの k だけが主張する隣接は採らないこと
         /// </summary>
-        /// <remarks>
-        /// 骨格が途切れているのは繋ぐ根拠が足りないと判断した結果であることが多く、それを 1 本の配列で覆すと、その配列自身が誤アセンブリだった場合にそのまま持ち込む<br/>
-        /// 実データでは、証拠に使ったアセンブリ由来の誤アセンブリが骨格の 21 箇所から 60 箇所へ増えた
-        /// </remarks>
         [Fact]
         public void V_支持するkが1つだけの接合は既定では採用しない()
         {
@@ -227,7 +223,7 @@ namespace Tsumiki.Tests.Core
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_sup.fasta");
 
-            Assert.False(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力));
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力));
         }
 
         /// <summary>
@@ -247,7 +243,7 @@ namespace Tsumiki.Tests.Core
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_two.fasta");
 
-            Assert.True(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, l_出力));
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, l_出力));
             Assert.Equal(l_真の配列, V_読み込み_配列群(l_出力)[0]);
         }
 
@@ -258,7 +254,7 @@ namespace Tsumiki.Tests.Core
         /// 配列を落とすなら統合しないほうがましなので、これは不変条件
         /// </remarks>
         [Fact]
-        public void V_統合結果の総延長は骨格を下回らない()
+        public void Try統合結果の総延長は骨格を下回らない()
         {
             var l_先頭配列 = V_生成_乱数配列(4_000, p_シード: 661);
             var l_g = V_生成_乱数配列(150, p_シード: 662);
@@ -269,7 +265,7 @@ namespace Tsumiki.Tests.Core
             var l_他 = this.V_書き込み_アセンブリ("other_len.fasta", 31, l_先頭配列 + l_g + l_中間配列);
 
             var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_len.fasta");
-            _ = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+            _ = AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
 
             var l_骨格の総延長 = l_先頭配列.Length + l_中間配列.Length + l_孤立.Length;
             Assert.True(V_読み込み_配列群(l_出力).Sum(x => x.Length) >= l_骨格の総延長);
@@ -326,7 +322,7 @@ namespace Tsumiki.Tests.Core
         {
             List<string> l_結果 = [];
             using var l_リーダー = new FastaReader(p_パス);
-            while (l_リーダー.Get_続きがあるか())
+            while (l_リーダー.Has続き())
             {
                 l_結果.Add(l_リーダー.Get_次の配列().A_配列);
             }

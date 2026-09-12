@@ -19,16 +19,43 @@ namespace Tsumiki.Commons
             var l_結果 = new byte[p_塩基列.Length];
             for (var i = 0; i < p_塩基列.Length; i++)
             {
-                l_結果[p_塩基列.Length - 1 - i] = p_塩基列[i] switch
-                {
-                    Consts.塩基ID.A => Consts.塩基ID.T,
-                    Consts.塩基ID.C => Consts.塩基ID.G,
-                    Consts.塩基ID.G => Consts.塩基ID.C,
-                    Consts.塩基ID.T => Consts.塩基ID.A,
-                    _ => p_塩基列[i]
-                };
+                l_結果[p_塩基列.Length - 1 - i] = Get_相補塩基ID(p_塩基列[i]);
             }
             return l_結果.AsSpan();
+        }
+
+        /// <summary>
+        /// 塩基 ID の相補を返す
+        /// </summary>
+        /// <param name="p_塩基ID">元の塩基 ID</param>
+        /// <returns>相補の塩基 ID、塩基でなければそのまま</returns>
+        public static byte Get_相補塩基ID(byte p_塩基ID)
+        {
+            return p_塩基ID switch
+            {
+                Consts.塩基ID.A => Consts.塩基ID.T,
+                Consts.塩基ID.C => Consts.塩基ID.G,
+                Consts.塩基ID.G => Consts.塩基ID.C,
+                Consts.塩基ID.T => Consts.塩基ID.A,
+                _ => p_塩基ID,
+            };
+        }
+
+        /// <summary>
+        /// 塩基文字の相補を返す
+        /// </summary>
+        /// <param name="p_塩基">元の塩基文字</param>
+        /// <returns>相補の塩基文字、塩基でなければそのまま</returns>
+        public static char Get_相補塩基(char p_塩基)
+        {
+            return p_塩基 switch
+            {
+                'A' => 'T',
+                'C' => 'G',
+                'G' => 'C',
+                'T' => 'A',
+                var l_文字 => l_文字,
+            };
         }
 
         /// <summary>
@@ -38,12 +65,15 @@ namespace Tsumiki.Commons
         /// <returns>逆相補の配列</returns>
         public static string V_逆相補(string p_配列)
         {
-            StringBuilder l_結果 = new();
+            var l_結果 = new char[p_配列.Length];
             for (var i = 0; i < p_配列.Length; i++)
             {
-                _ = l_結果.Append(p_配列[i] switch { 'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A', _ => throw new ArgumentException($"{p_配列[i]} is not the expected value for a base") });
+                var l_塩基 = Get_相補塩基(p_配列[i]);
+                l_結果[p_配列.Length - 1 - i] = l_塩基 == p_配列[i] && p_配列[i] is not ('A' or 'C' or 'G' or 'T')
+                    ? throw new ArgumentException($"{p_配列[i]} is not the expected value for a base")
+                    : l_塩基;
             }
-            return string.Join(string.Empty, l_結果.ToString().Reverse());
+            return new string(l_結果);
         }
 
         /// <summary>
@@ -61,7 +91,7 @@ namespace Tsumiki.Commons
             {
                 return p_配列;
             }
-            var l_開始位置 = Get_最小回転の開始位置(p_配列);
+            var l_開始位置 = Get_最小回転開始位置(p_配列);
             return l_開始位置 == 0 ? p_配列 : p_配列[l_開始位置..] + p_配列[..l_開始位置];
         }
 
@@ -77,12 +107,12 @@ namespace Tsumiki.Commons
         /// <returns></returns>
         public static string V_逆相補_曖昧塩基あり(string p_配列)
         {
-            StringBuilder l_結果 = new();
+            var l_結果 = new char[p_配列.Length];
             for (var i = 0; i < p_配列.Length; i++)
             {
-                _ = l_結果.Append(p_配列[i] switch { 'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A', var l_文字 => l_文字, });
+                l_結果[p_配列.Length - 1 - i] = Get_相補塩基(p_配列[i]);
             }
-            return string.Join(string.Empty, l_結果.ToString().Reverse());
+            return new string(l_結果);
         }
 
         /// <summary>
@@ -93,7 +123,7 @@ namespace Tsumiki.Commons
         /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
         /// </remarks>
         /// <returns></returns>
-        public static bool Get_曖昧塩基か(char p_塩基文字)
+        public static bool Is曖昧塩基(char p_塩基文字)
         {
             return p_塩基文字 switch
             {
@@ -196,7 +226,7 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_ストリーム">読み込み中のストリーム</param>
         /// <returns>続きがあれば true</returns>
-        public static bool Get_続きがあるか(BinaryReader p_ストリーム)
+        public static bool Has続き(BinaryReader p_ストリーム)
         {
             return p_ストリーム.BaseStream.Position < p_ストリーム.BaseStream.Length;
         }
@@ -223,23 +253,23 @@ namespace Tsumiki.Commons
                 l_本体 = l_本体[..^1];
             }
 
-            var l_倍率 = 1024L * 1024L; // 接尾辞なしは MB
+            var l_倍率 = 1_024L * 1_024L; // 接尾辞なしは MB
             switch (l_本体[^1])
             {
                 case 'K' or 'k':
-                    l_倍率 = 1024L;
+                    l_倍率 = 1_024L;
                     l_本体 = l_本体[..^1];
                     break;
                 case 'M' or 'm':
-                    l_倍率 = 1024L * 1024L;
+                    l_倍率 = 1_024L * 1_024L;
                     l_本体 = l_本体[..^1];
                     break;
                 case 'G' or 'g':
-                    l_倍率 = 1024L * 1024L * 1024L;
+                    l_倍率 = 1_024L * 1_024L * 1_024L;
                     l_本体 = l_本体[..^1];
                     break;
                 case 'T' or 't':
-                    l_倍率 = 1024L * 1024L * 1024L * 1024L;
+                    l_倍率 = 1_024L * 1_024L * 1_024L * 1_024L;
                     l_本体 = l_本体[..^1];
                     break;
                 default:
@@ -265,9 +295,9 @@ namespace Tsumiki.Commons
             string[] l_単位 = ["", "K", "M", "G", "T"];
             double l_サイズ = p_バイト数;
             var l_単位位置 = 0;
-            while (l_サイズ >= 1024D && l_単位位置 < l_単位.Length - 1)
+            while (l_サイズ >= 1_024D && l_単位位置 < l_単位.Length - 1)
             {
-                l_サイズ /= 1024D;
+                l_サイズ /= 1_024D;
                 l_単位位置++;
             }
             return $"{l_サイズ:0.#} {l_単位[l_単位位置]}B";
@@ -322,14 +352,7 @@ namespace Tsumiki.Commons
                 var l_変換後 = new byte[l_候補.Length];
                 for (var j = 0; j < l_候補.Length; j++)
                 {
-                    l_変換後[j] = l_候補[j] switch
-                    {
-                        Consts.塩基ID.A => Consts.塩基ID.T,
-                        Consts.塩基ID.C => Consts.塩基ID.G,
-                        Consts.塩基ID.G => Consts.塩基ID.C,
-                        Consts.塩基ID.T => Consts.塩基ID.A,
-                        _ => l_候補[j]
-                    };
+                    l_変換後[j] = Get_相補塩基ID(l_候補[j]);
                 }
                 l_結果[i] = l_変換後;
             }
@@ -408,7 +431,7 @@ namespace Tsumiki.Commons
         /// p_配列 を 2 つ繋げた仮想文字列の上で KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める
         /// </remarks>
         /// <returns></returns>
-        private static int Get_最小回転の開始位置(string p_配列)
+        private static int Get_最小回転開始位置(string p_配列)
         {
             var l_長さ = p_配列.Length;
             var l_二重化 = p_配列 + p_配列;

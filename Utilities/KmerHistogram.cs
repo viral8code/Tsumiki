@@ -112,14 +112,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_走査上限">谷・山を探す出現回数の上限</param>
-        /// <remarks>
-        /// 判定できない場合は null<br/>
-        /// 谷をそのまま使ってはいけない<br/>
-        /// 谷はエラー由来とゲノム由来の曲線が交わる点なので、そこで切るとゲノム側の左裾まで削り落とす<br/>
-        /// 欠けた k-mer の箇所すべてでグラフが切れる一方、偽の枝は tip 除去とバブル除去が落とせる<br/>
-        /// 両者は対称ではないので低く切るのが原則<br/>
-        /// それでも下限に貼り付けにしないのは、高カバレッジではエラー由来の k-mer が絶対数として増え、品質を落とさずメモリを減らせるため
-        /// </remarks>
         /// <returns></returns>
         public static ulong? Get_推奨カットオフ(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {

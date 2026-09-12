@@ -8,7 +8,7 @@ using Tsumiki.Models.Scaffolding;
 namespace Tsumiki.Tests.Core
 {
     /// <summary>
-    /// GapFiller が埋められなかったスキャフォールドのギャップを、その両端に実際にマップされた局所リードだけで再アセンブリして埋める処理の検証
+    /// GapFiller が埋められなかった scaffold のギャップを、その両端に実際にマップされた局所リードだけで再アセンブリして埋める処理の検証
     /// </summary>
     /// <remarks>
     /// AssemblyMerger (-mg) と違い、他の k の「既に確定した結論」を持ち込むのではなく、生リードから新しく証拠を集める<br/>
@@ -170,7 +170,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// スキャフォールドにギャップが無いときは、対象ギャップ数をゼロとして報告することを検証する
+        /// scaffold にギャップが無いときは、対象ギャップ数をゼロとして報告することを検証する
         /// </summary>
         [Fact]
         public void V_スキャフォールドにギャップが無いときは対象ギャップ数をゼロとして報告する()
@@ -203,7 +203,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// スキャフォールドを FASTA として書き出す
+        /// scaffold を FASTA として書き出す
         /// </summary>
         /// <param name="p_ファイル名">ファイル名</param>
         /// <param name="p_配列">書き出す配列</param>
@@ -250,7 +250,7 @@ namespace Tsumiki.Tests.Core
         private static string Get_単一配列(string p_パス)
         {
             using var l_読み込み = new FastaReader(p_パス);
-            Assert.True(l_読み込み.Get_続きがあるか());
+            Assert.True(l_読み込み.Has続き());
             return l_読み込み.Get_次の配列().A_配列;
         }
 

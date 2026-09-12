@@ -11,6 +11,20 @@ namespace Tsumiki.Utilities
     /// </remarks>
     internal static class KmerLengthSelector
     {
+        #region 定数
+
+        /// <summary>
+        /// 自動選択する k 長のリード長に対する比
+        /// </summary>
+        private const double 自動k長のリード長比 = 0.6D;
+
+        /// <summary>
+        /// k 長の自動選択に必要な最小リード長
+        /// </summary>
+        private const int 自動k長に必要な最小リード長 = 32;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -29,7 +43,7 @@ namespace Tsumiki.Utilities
                 return;
             }
 
-            if (p_引数.A_k長が明示指定されたか)
+            if (p_引数.A_Isk長明示指定)
             {
                 if (p_引数.A_k長 >= l_リード長)
                 {
@@ -64,12 +78,12 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public static int? Get_推奨k長(int p_リード長)
         {
-            if (p_リード長 < Consts.自動k長に必要な最小リード長)
+            if (p_リード長 < 自動k長に必要な最小リード長)
             {
                 return null;
             }
 
-            var l_候補 = (int)(p_リード長 * Consts.自動k長のリード長比);
+            var l_候補 = (int)(p_リード長 * 自動k長のリード長比);
             l_候補 = Math.Min(l_候補, Consts.自動k長の上限);
             if (l_候補 % 2 == 0)
             {

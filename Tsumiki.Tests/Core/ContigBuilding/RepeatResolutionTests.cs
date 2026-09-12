@@ -8,12 +8,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 短い反復配列の解きほぐし (repeat resolution) の検証
     /// </summary>
-    /// <remarks>
-    /// 反復配列 R がゲノム中に 2 回現れ、それぞれ A→R→C と B→R→D という文脈を持つ場合、de Bruijn グラフ上では R は 1 個の頂点に潰れて入次数 2 ・出次数 2 になる<br/>
-    /// R の内部から読まれたリードはどちらのコピー由来か区別できないため、分岐でのリード支持は原理的に 5 割前後にしかならず解けない<br/>
-    /// R を丸ごと跨いだフラグメントだけが手がかりになる<br/>
-    /// 実データ (k=63) ではこの形の unitig が 151 本あり、うち 143 本がフラグメント長の中央値 (245 bp) より短かった
-    /// </remarks>
     public class RepeatResolutionTests
     {
         #region 定数
@@ -231,10 +225,10 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// 与えたユニティグ配列群から、グラフ構築に使うユニティグ一覧と kmer 辞書を組み立てる
+        /// 与えた unitig 配列群から、グラフ構築に使う unitig 一覧と kmer 辞書を組み立てる
         /// </summary>
-        /// <param name="p_ユニティグ配列">構築元にするユニティグの配列</param>
-        /// <returns>ユニティグ一覧と kmer 辞書の組</returns>
+        /// <param name="p_ユニティグ配列">構築元にする unitig の配列</param>
+        /// <returns>unitig 一覧と kmer 辞書の組</returns>
         private static (List<string> A_ユニティグ一覧, Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> A_kmer辞書) V_構築(params string[] p_ユニティグ配列)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
@@ -259,12 +253,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_kmer">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_kmer, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_kmer, out var l_既存))

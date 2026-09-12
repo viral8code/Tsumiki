@@ -19,7 +19,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 小経路か
         /// </summary>
-        private readonly bool _小経路か = p_k長 <= 32;
+        private readonly bool _Is小経路 = p_k長 <= 32;
 
         /// <summary>
         /// マスク
@@ -40,7 +40,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_k長">k 長</param>
         /// <returns>扱えれば true</returns>
-        public static bool Get_扱えるか(int p_k長)
+        public static bool Is対応k長(int p_k長)
         {
             return p_k長 <= 64;
         }
@@ -83,7 +83,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     var (l_順, l_逆) = this.Get_後続(l_順鎖, l_逆鎖, i);
-                    if (!this.Get_含まれるか(l_順, l_逆))
+                    if (!this.Haskmer(l_順, l_逆))
                     {
                         continue;
                     }
@@ -99,7 +99,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 // 出次数が 1 でなければ、ここが unitig の終端
                 // 次の k-mer の入次数が 2 以上なら別の経路が合流しており、
                 // そこからは別の unitig が始まるのでやはり終端になる
-                if (l_候補数 != 1 || !this.Get_入次数が1か(l_次順, l_次逆))
+                if (l_候補数 != 1 || !this.Is入次数1(l_次順, l_次逆))
                 {
                     return l_配列;
                 }
@@ -119,12 +119,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_順鎖">順鎖のパック値</param>
         /// <param name="p_逆鎖">逆鎖のパック値</param>
         /// <returns>通っていれば true</returns>
-        private bool Get_含まれるか(UInt128 p_順鎖, UInt128 p_逆鎖)
+        private bool Haskmer(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_正規形 = p_順鎖 < p_逆鎖 ? p_順鎖 : p_逆鎖;
-            return this._小経路か
-                ? p_kmerインデックス.Get_含まれるか_小((ulong)l_正規形)
-                : p_kmerインデックス.Get_含まれるか_中(l_正規形);
+            return this._Is小経路
+                ? p_kmerインデックス.Haskmer_小((ulong)l_正規形)
+                : p_kmerインデックス.Haskmer_中(l_正規形);
         }
 
         /// <summary>
@@ -166,13 +166,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと予測元は c + kmer[..^1] になる
         /// </remarks>
         /// <returns></returns>
-        private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
+        private bool Is入次数1(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_件数 = 0;
             for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
                 var (l_元順, l_元逆) = this.Get_予測元(p_順鎖, p_逆鎖, i);
-                if (this.Get_含まれるか(l_元順, l_元逆) && ++l_件数 > 1)
+                if (this.Haskmer(l_元順, l_元逆) && ++l_件数 > 1)
                 {
                     return false;
                 }

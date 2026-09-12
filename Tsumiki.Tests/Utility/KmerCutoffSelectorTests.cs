@@ -7,10 +7,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// k-mer スペクトルの谷からの -kc 自動選択を、実際に数えた k-mer から一気通貫で検証する
     /// </summary>
-    /// <remarks>
-    /// 既定値の 2 はどのカバレッジ帯にも合わない<br/>
-    /// 実測では同じ検体でも 35 x で 4、100 x で 6〜11 が谷であり、2 のままだとエラー由来の k-mer が大量に残る (35 x の実データで「良い k-mer」が 12.9 M と、ゲノムサイズの倍に膨れていた)
-    /// </remarks>
     public class KmerCutoffSelectorTests : IDisposable
     {
         #region 定数
@@ -51,7 +47,7 @@ namespace Tsumiki.Tests.Utility
         /// 出現回数 8 を底とする谷と、15 を頂点とする単一コピーの山を持つ、連続した二峰性スペクトルになるように組んである
         /// </remarks>
         private static readonly (ulong A_出現回数, int A_種類数)[] スペクトルの形 = [
-            (1UL, 2000), (2UL, 700), (3UL, 300), (4UL, 150), (5UL, 90),
+            (1UL, 2_000), (2UL, 700), (3UL, 300), (4UL, 150), (5UL, 90),
             (6UL, 70), (7UL, 60), (8UL, 58), (9UL, 70), (10UL, 120),
             (11UL, 220), (12UL, 400), (13UL, 600), (14UL, 800), (15UL, 900),
             (16UL, 800), (17UL, 600), (18UL, 400), (19UL, 220), (20UL, 120),
@@ -93,7 +89,7 @@ namespace Tsumiki.Tests.Utility
         {
             using var l_インデックス = this.V_構築_索引();
             var l_param = new Parameters();
-            Assert.False(l_param.A_kmerカットオフが明示指定されたか);
+            Assert.False(l_param.A_Iskmerカットオフ明示指定);
 
             KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_インデックス);
 
@@ -103,7 +99,7 @@ namespace Tsumiki.Tests.Utility
             // 削れてグラフが切れる (実データで N50 が半分以下になった)
             Assert.True(l_param.A_kmerカットオフ < 谷の位置);
             // 自動適用は「明示指定された」扱いにしない
-            Assert.False(l_param.A_kmerカットオフが明示指定されたか);
+            Assert.False(l_param.A_Iskmerカットオフ明示指定);
         }
 
         /// <summary>
@@ -156,7 +152,7 @@ namespace Tsumiki.Tests.Utility
             var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
 
             var l_種類数の合計 = スペクトルの形.Sum(x => x.A_種類数);
-            var l_乱数生成器 = new Random(20260904);
+            var l_乱数生成器 = new Random(20_260_904);
             var l_bases = string.Concat(Enumerable.Range(0, l_種類数の合計 + k長 - 1).Select(_ => "ACGT"[l_乱数生成器.Next(4)]))
                 .Select(Util.Get_塩基ID).ToArray();
 

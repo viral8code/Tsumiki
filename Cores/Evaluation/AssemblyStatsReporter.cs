@@ -111,7 +111,7 @@ namespace Tsumiki.Cores.Evaluation
         private static IEnumerable<string> Get_配列群(string p_FASTAパス)
         {
             using var l_読み込み = new FastaReader(p_FASTAパス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 yield return l_読み込み.Get_次の配列().A_配列;
             }

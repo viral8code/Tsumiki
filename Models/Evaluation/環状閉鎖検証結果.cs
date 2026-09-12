@@ -17,7 +17,7 @@
         /// <summary>
         /// 閉じ目を直接読んだリードが必要本数に達しているか
         /// </summary>
-        public bool A_支持されたか => this.A_跨いだリード数 >= this.A_必要本数;
+        public bool A_Has支持 => this.A_跨いだリード数 >= this.A_必要本数;
 
         #endregion
     }

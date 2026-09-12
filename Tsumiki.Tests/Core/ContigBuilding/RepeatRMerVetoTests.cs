@@ -9,11 +9,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 提案 F: 短い反復解決に対する r-mer 拒否権 (ABySS RResolver 型) の検証
     /// </summary>
-    /// <remarks>
-    /// 反復配列 R が A→R→C, B→R→D という文脈を持つ場合 (RepeatResolutionTests と同じ構造)、A-R ・ R-D (逆に言えば B-R ・ R-C も) はどちらの対応付けを検証する場合でも de Bruijn グラフ上の本物の辺であり、正しい方の組み合わせ (A-R-C, B-R-D) のリードだけからも個々の接合点の存在は独立に確認できてしまう<br/>
-    /// したがって「個々の接合点が存在するか」の確認だけでは、A-R-C/B-R-D と A-R-D/B-R-C のどちらの対応付けが正しいかを区別できない -- これは実装の欠陥ではなく、反復配列がまさに「局所的な文脈だけでは区別できない」ことの裏返しである (区別できるならそもそも反復として 1 頂点に潰れていない) <br/>
-    /// この拒否権が実際に効くのは、ペア支持が示す対応付けについて個々の接合点すら生リードに一切裏付けられない (=そもそもその unitig 同士が隣接している根拠が生データに無い、破損したデータや完全に的外れなペア支持を想定) 場合である
-    /// </remarks>
     public class RepeatRMerVetoTests
     {
         #region 定数
@@ -206,7 +201,7 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// A ・ B ・ R ・ C ・ D のユニティグ配列と、それらから作った kmer 辞書を組み立てる
+        /// A ・ B ・ R ・ C ・ D の unitig 配列と、それらから作った kmer 辞書を組み立てる
         /// </summary>
         /// <returns></returns>
         private static (List<string> A_ユニティグ一覧, Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> A_kmer辞書) V_構築()
@@ -233,12 +228,12 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// k-mer を、それが載るユニティグと開始位置の辞書へ登録する
+        /// k-mer を、それが載る unitig と開始位置の辞書へ登録する
         /// </summary>
         /// <param name="p_辞書">登録先の辞書</param>
         /// <param name="p_キー">登録する k-mer</param>
-        /// <param name="p_ID">ユニティグ ID</param>
-        /// <param name="p_位置">ユニティグ内の開始位置</param>
+        /// <param name="p_ID">unitig ID</param>
+        /// <param name="p_位置">unitig 内の開始位置</param>
         private static void V_登録(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存))

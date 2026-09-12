@@ -140,12 +140,12 @@ namespace Tsumiki.Tests.Core
 
             var l_塩基列 = l_正解.Select(Util.Get_塩基ID).ToArray();
             var l_中央 = l_塩基列.AsSpan(1_400, l_次のk);
-            Assert.False(l_次段.Get_含まれるか(l_中央));
+            Assert.False(l_次段.Haskmer(l_中央));
 
             var l_追加数 = KmerCarryOver.V_引き継ぎ(l_引き継ぎ, l_次段, l_次のk, p_リード長: null);
 
             Assert.True(l_追加数 > 0);
-            Assert.True(l_次段.Get_含まれるか(l_中央));
+            Assert.True(l_次段.Haskmer(l_中央));
             Assert.True(l_次段.Get_カバレッジ(l_中央) > 0UL);
         }
 

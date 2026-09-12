@@ -62,13 +62,13 @@ namespace Tsumiki.Cores.Pipeline
             Messages.A_言語 = l_引数.A_言語;
             Logger.A_水準 = l_引数.A_ログ水準;
 
-            if (l_引数.A_バージョンモードか)
+            if (l_引数.A_Isバージョンモード)
             {
                 Console.WriteLine(HelpText.Get_概要());
                 return;
             }
 
-            if (l_引数.A_ヘルプモードか)
+            if (l_引数.A_Isヘルプモード)
             {
                 Console.WriteLine(HelpText.Get_ヘルプ());
                 return;
@@ -106,7 +106,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 // 中身を上書きすると、前回の成果と今回の成果が混ざった状態になる
                 // 再開を明示されたときだけ、残っているものを使うことを許す
-                if (!l_引数.A_再開するか)
+                if (!l_引数.A_Is再開)
                 {
                     Logger.V_出力(メッセージID.一時ディレクトリが既にある, l_引数.A_一時ディレクトリ);
                     Logger.V_出力(メッセージID.パスの確認);
@@ -126,10 +126,10 @@ namespace Tsumiki.Cores.Pipeline
 
             // -k に複数指定するのは「これらを試して選べ」という意味なので、
             // -mk を別途書かせない
-            var l_結果 = (l_引数.A_マルチkか || l_引数.A_k長一覧.Count > 1 ? MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長, l_原入力) : AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力)) ?? throw new InvalidOperationException("Assembly could not produce a result");
+            var l_結果 = (l_引数.A_Isマルチk || l_引数.A_k長一覧.Count > 1 ? MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長, l_原入力) : AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力)) ?? throw new InvalidOperationException("Assembly could not produce a result");
             FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長);
 
-            if (l_引数.A_一時ディレクトリを削除するか)
+            if (l_引数.A_Is一時ディレクトリ削除)
             {
                 AssemblyWorkspace.V_削除_中間ファイル(l_一時ディレクトリ);
             }

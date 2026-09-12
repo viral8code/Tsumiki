@@ -23,7 +23,7 @@ namespace Tsumiki.IO
         {
             List<(string, string)> l_結果 = [];
             using var l_読み込み = new FastaReader(p_パス);
-            while (l_読み込み.Get_続きがあるか())
+            while (l_読み込み.Has続き())
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
                 l_結果.Add((l_エントリ.A_ID.TrimStart('>'), l_エントリ.A_配列));

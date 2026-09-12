@@ -7,11 +7,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// 短い反復解決の拒否権 (-rv) が使う r-mer 検証器そのものの検証
     /// </summary>
-    /// <remarks>
-    /// head→repeat→tail の接合点を実際に跨いだリードが無ければ支持は得られず、跨ぐリードがあれば支持が得られること、接合点を跨がない (=各配列の内部だけに収まる) リードだけでは支持にならないことを確認する<br/>
-    /// フィクスチャの head/repeat/tail は (このアセンブリの) k=8 で隣接する unitig 同士なので k-1=7 塩基を共有している<br/>
-    /// r をこの重なりより確実に長く取らないと、跨ぐ窓も共有区間の内側に収まってしまい判定にならない (RepeatRMerVerifier のクラスコメント参照) ため、ここでは r=18 (=k+10、AssemblyPipeline の既定の決め方と同じ) を使う
-    /// </remarks>
     public class RepeatRMerVerifierTests : IDisposable
     {
         #region 定数
@@ -125,7 +120,7 @@ namespace Tsumiki.Tests.Utility
             var l_支持 = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 反復後配列);
 
             Assert.True(l_支持 >= Consts.r_mer接合点支持の閾値の既定値, $"expected support ({l_支持}) to reach the default threshold when reads truly cross the junctions");
-            Assert.True(l_検証器.Get_接合点に支持があるか(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.True(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
@@ -148,7 +143,7 @@ namespace Tsumiki.Tests.Utility
             var l_支持 = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 反復後配列);
 
             Assert.True(l_支持 < Consts.r_mer接合点支持の閾値の既定値, $"expected support ({l_支持}) to stay below the threshold when no read actually crosses a junction");
-            Assert.False(l_検証器.Get_接合点に支持があるか(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
@@ -168,7 +163,7 @@ namespace Tsumiki.Tests.Utility
             var l_withOnlyHeadSideCrossable = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 無関係な後続配列);
 
             Assert.True(l_withOnlyHeadSideCrossable > 0);
-            Assert.False(l_検証器.Get_接合点に支持があるか(反復前配列, 反復配列, 無関係な後続配列, 1));
+            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 無関係な後続配列, 1));
 
             var l_bothWalk = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
             var l_bothPath = this.V_書き込み_fastq("both_sides.fq", V_生成_スライドリード(l_bothWalk, 25));
@@ -190,7 +185,7 @@ namespace Tsumiki.Tests.Utility
 
             var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
 
-            Assert.True(l_検証器.Get_接合点に支持があるか(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.True(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
@@ -201,7 +196,7 @@ namespace Tsumiki.Tests.Utility
         {
             var l_検証器 = RepeatRMerVerifier.V_構築([string.Empty, Path.Combine(this._作業ディレクトリ, "does_not_exist.fq")], r長);
 
-            Assert.False(l_検証器.Get_接合点に支持があるか(反復前配列, 反復配列, 反復後配列, 1));
+            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, 1));
         }
 
         /// <summary>
@@ -224,9 +219,9 @@ namespace Tsumiki.Tests.Utility
         public void V_rmer長が2bitパックに収まらなくても判定できる()
         {
             const int l_長いR = 40;
-            var l_先頭 = V_生成_乱数配列(120, p_乱数種: 20260922);
-            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20260923);
-            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20260924);
+            var l_先頭 = V_生成_乱数配列(120, p_乱数種: 20_260_922);
+            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_923);
+            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_924);
 
             var l_跨ぐ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
             var l_跨ぐパス = this.V_書き込み_fastq("long_cross.fq", V_生成_スライドリード(l_跨ぐ, 100));
@@ -235,7 +230,7 @@ namespace Tsumiki.Tests.Utility
             var l_跨ぐ検証器 = RepeatRMerVerifier.V_構築([l_跨ぐパス, string.Empty], l_長いR);
             var l_跨がない検証器 = RepeatRMerVerifier.V_構築([l_跨がないパス, string.Empty], l_長いR);
 
-            Assert.True(l_跨ぐ検証器.Get_接合点に支持があるか(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.True(l_跨ぐ検証器.Has接合点支持(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
             Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_先頭, l_反復配列, l_末尾));
         }
 

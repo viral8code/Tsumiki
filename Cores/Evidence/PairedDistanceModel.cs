@@ -11,6 +11,20 @@ namespace Tsumiki.Cores.Evidence
     /// </remarks>
     internal sealed class PairedDistanceModel
     {
+        #region 定数
+
+        /// <summary>
+        /// フラグメント長の経験分布を刻むビン幅
+        /// </summary>
+        private const int フラグメント長のビン幅 = 5;
+
+        /// <summary>
+        /// 既知長のばらつき幅の下限
+        /// </summary>
+        private const int 既知長のばらつき幅の下限 = 25;
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -43,7 +57,7 @@ namespace Tsumiki.Cores.Evidence
         /// <summary>
         /// 使えるか
         /// </summary>
-        public bool A_使えるか => this._分布.Length > 0;
+        public bool A_Is使用可能 => this._分布.Length > 0;
 
         #endregion
 
@@ -70,7 +84,7 @@ namespace Tsumiki.Cores.Evidence
             var l_下限 = Get_分位(l_並び, 0.01D);
             var l_上限 = Get_分位(l_並び, 0.99D);
             this._中央フラグメント長 = Get_分位(l_並び, 0.5D);
-            this._窓幅 = Math.Max((l_上限 - l_下限) / 2, Consts.既知長のばらつき幅の下限);
+            this._窓幅 = Math.Max((l_上限 - l_下限) / 2, 既知長のばらつき幅の下限);
 
             var l_件数 = new Dictionary<int, int>();
             var l_総数 = 0;
@@ -80,7 +94,7 @@ namespace Tsumiki.Cores.Evidence
                 {
                     continue;
                 }
-                var l_ビン = l_長さ / Consts.フラグメント長のビン幅 * Consts.フラグメント長のビン幅;
+                var l_ビン = l_長さ / フラグメント長のビン幅 * フラグメント長のビン幅;
                 l_件数[l_ビン] = l_件数.GetValueOrDefault(l_ビン) + 1;
                 l_総数++;
             }

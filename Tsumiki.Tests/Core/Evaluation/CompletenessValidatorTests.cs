@@ -25,7 +25,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: Get_良好な自己検査(), p_閉鎖検証: Get_裏付けのある閉鎖(), p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            Assert.True(l_判定.A_完全長か);
+            Assert.True(l_判定.A_Is完全長);
             Assert.Equal(品質保証レベル.完全長, l_判定.A_品質保証レベル);
             Assert.Empty(l_判定.A_未達理由);
         }
@@ -33,19 +33,19 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// リード支持が不合格または未検査なら完全長と判定しないことを確かめる
         /// </summary>
-        /// <param name="p_検査済みか">支持のない位置を検出した検査結果を渡すか</param>
+        /// <param name="p_Is検査済み">支持のない位置を検出した検査結果を渡すか</param>
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public void Get_判定結果_リード支持が合格しなければグラフ整合で止まる(bool p_検査済みか)
+        public void Get_判定結果_リード支持が合格しなければグラフ整合で止まる(bool p_Is検査済み)
         {
-            支持検査結果? l_支持 = p_検査済みか ? new 支持検査結果(31, 100000L, 1L, [new 支持のない区間("contig", 50, 50)]) : null;
+            支持検査結果? l_支持 = p_Is検査済み ? new 支持検査結果(31, 100_000L, 1L, [new 支持のない区間("contig", 50, 50)]) : null;
             var l_判定 = CompletenessValidator.Get_判定結果(0, Get_良好な自己検査(), Get_裏付けのある閉鎖(), Get_良好な深度(), [], l_支持);
 
-            Assert.False(l_判定.A_完全長か);
+            Assert.False(l_判定.A_Is完全長);
             Assert.Equal(品質保証レベル.グラフ整合, l_判定.A_品質保証レベル);
-            Assert.Equal(p_検査済みか ? 検査判定.不合格 : 検査判定.判定不能, Get_判定(l_判定, "read_support"));
-            Assert.Contains(p_検査済みか ? 未達理由.リードに裏付けの無い箇所がある : 未達理由.リードの支持を調べていない, l_判定.A_未達理由);
+            Assert.Equal(p_Is検査済み ? 検査判定.不合格 : 検査判定.判定不能, Get_判定(l_判定, "read_support"));
+            Assert.Contains(p_Is検査済み ? 未達理由.リードに裏付けの無い箇所がある : 未達理由.リードの支持を調べていない, l_判定.A_未達理由);
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: Get_良好な自己検査(), p_閉鎖検証: null, p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            Assert.False(l_判定.A_完全長か);
+            Assert.False(l_判定.A_Is完全長);
             Assert.Equal(品質保証レベル.接合点が支持済み, l_判定.A_品質保証レベル);
             Assert.Equal(検査判定.判定不能, Get_判定(l_判定, "circular_closure"));
             Assert.Contains(未達理由.環状閉鎖を検証していない, l_判定.A_未達理由);
@@ -68,7 +68,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_判定結果_閉じ目に裏付けが無い場合は不合格として区別する()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: Get_良好な自己検査(), p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 1000, 1, 5)], p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: Get_良好な自己検査(), p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 1_000, 1, 5)], p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
             Assert.Equal(検査判定.不合格, Get_判定(l_判定, "circular_closure"));
             Assert.Contains(未達理由.閉じ目がリードで裏付けられない, l_判定.A_未達理由);
@@ -144,7 +144,7 @@ namespace Tsumiki.Tests.Core
         public void Get_判定結果_取りこぼしが多ければグラフ被覆で落ちる()
         {
             // 取りこぼし 20%
-            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: new 整合性検査結果(1000L, 1000L, 1000L, 200L, 0L, 0L), p_閉鎖検証: Get_裏付けのある閉鎖(), p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: new 整合性検査結果(1_000L, 1_000L, 1_000L, 200L, 0L, 0L), p_閉鎖検証: Get_裏付けのある閉鎖(), p_ポリッシュ: Get_良好な深度(), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
             Assert.Equal(品質保証レベル.出力のみ, l_判定.A_品質保証レベル);
             Assert.Contains(未達理由.取りこぼしが多い, l_判定.A_未達理由);
@@ -174,7 +174,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>支持検査の結果</returns>
         private static 支持検査結果 Get_良好な支持()
         {
-            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000L, A_支持のない位置数: 0L, A_区間: []);
+            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100_000L, A_支持のない位置数: 0L, A_区間: []);
         }
 
         /// <summary>
@@ -184,7 +184,7 @@ namespace Tsumiki.Tests.Core
         private static 整合性検査結果 Get_良好な自己検査()
         {
             // 取りこぼし 1%、出しすぎ 0%
-            return new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L);
+            return new 整合性検査結果(1_000L, 1_000L, 1_000L, 10L, 0L, 0L);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>ポリッシュの結果</returns>
         private static ポリッシュ統計 Get_良好な深度()
         {
-            return new ポリッシュ統計(1, 1000L, 1000L, 0L, 0L, 0L, 1000L, 80D);
+            return new ポリッシュ統計(1, 1_000L, 1_000L, 0L, 0L, 0L, 1_000L, 80D);
         }
 
         /// <summary>
@@ -202,7 +202,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>環状閉鎖の検証結果</returns>
         private static IReadOnlyList<環状閉鎖検証結果> Get_裏付けのある閉鎖()
         {
-            return [new 環状閉鎖検証結果("scaffold1_circular", 1000, 12, 5)];
+            return [new 環状閉鎖検証結果("scaffold1_circular", 1_000, 12, 5)];
         }
 
         /// <summary>

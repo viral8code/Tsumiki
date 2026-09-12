@@ -19,7 +19,7 @@ namespace Tsumiki.Cores.Pipeline
         public static string Get_入力署名(Parameters p_引数)
         {
             var l_設定 = p_引数.Get_複製();
-            l_設定.A_再開するか = false;
+            l_設定.A_Is再開 = false;
             var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + "\n" + l_設定 + "\n" + Get_ハッシュ(l_設定.A_リード1のパス) + "\n" + Get_ハッシュ(l_設定.A_リード2のパス);
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(l_本文)));
         }
@@ -46,7 +46,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_出力">工程の主出力</param>
         /// <param name="p_対出力">対になる出力</param>
         /// <returns>完全に一致すれば true</returns>
-        public static bool Get_再利用可能(string p_署名, string p_出力, string? p_対出力)
+        public static bool Is再利用可能(string p_署名, string p_出力, string? p_対出力)
         {
             return File.Exists(p_出力 + ".sha256") && File.Exists(p_出力) && (p_対出力 is null || File.Exists(p_対出力)) && File.ReadAllText(p_出力 + ".sha256") == p_署名 + "\n" + Get_ハッシュ(p_出力) + "\n" + Get_ハッシュ(p_対出力);
         }

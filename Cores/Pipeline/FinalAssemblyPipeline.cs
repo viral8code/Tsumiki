@@ -16,6 +16,25 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     internal static class FinalAssemblyPipeline
     {
+        #region 定数
+
+        /// <summary>
+        /// 支持のない箇所のファイル名
+        /// </summary>
+        private const string 支持のない箇所ファイル名 = "assembly.unsupported.tsv";
+
+        /// <summary>
+        /// リード支持検査の r 長
+        /// </summary>
+        private const int 支持検査のr長 = 31;
+
+        /// <summary>
+        /// ポリッシュ結果の一時ファイル名
+        /// </summary>
+        private const string ポリッシュ済みファイル名 = "polished.fasta";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -72,7 +91,7 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(p_原入力, l_最終パス);
-            var l_支持検査 = V_検査_リードの支持(p_原入力, l_最終パス);
+            var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
 
             p_結果 = p_結果 with { A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ) };
             V_記録_出所(p_原入力, l_最終パス, p_一時ディレクトリ);
@@ -100,14 +119,14 @@ namespace Tsumiki.Cores.Pipeline
             var l_元モデル = ConfigurationManager.A_スペクトルモデル;
             var l_設定 = p_原入力.Get_複製();
             l_設定.Set_推定k長(p_k長);
-            l_設定.A_曖昧塩基を許容するか = false;
+            l_設定.A_Is曖昧塩基許容 = false;
             try
             {
                 ConfigurationManager.A_実行時引数 = l_設定;
                 var l_検査パス = Path.Combine(p_作業パス, "validation");
                 _ = Directory.CreateDirectory(l_検査パス);
                 using var l_索引 = new TrustedKmerIndex(l_検査パス);
-                KmerCounting.V_読込_リードペア(l_設定, l_索引, p_進行状況を出力するか: false);
+                KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
                 var l_分布 = l_索引.Get_出現回数ヒストグラム();
                 var l_基準 = KmerSpectrumMixtureModel.Get_解析結果(l_分布)?.A_単一コピー平均
                     ?? KmerHistogram.Get_解析結果(l_分布)?.A_ピーク出現回数 ?? 0D;
@@ -165,11 +184,11 @@ namespace Tsumiki.Cores.Pipeline
         /// ギャップ充填・局所アセンブリ・ポリッシュはどれも組み立て後に配列を書き換えるので、それより前に調べても最後に手が入った箇所を見ないことになる<br/>
         /// 加工前のリードを使うが、組み立てと同じライブラリなので独立した検証データではない
         /// </remarks>
-        private static 支持検査結果? V_検査_リードの支持(Parameters p_引数, string p_最終パス)
+        private static 支持検査結果? V_検査_リード支持(Parameters p_引数, string p_最終パス)
         {
             Logger.V_出力_空行();
-            Logger.V_出力(メッセージID.支持検査の開始, Consts.支持検査のr長);
-            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, Consts.支持検査のr長);
+            Logger.V_出力(メッセージID.支持検査の開始, 支持検査のr長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, 支持検査のr長);
             ReadSupportChecker.V_出力_検査結果(l_結果);
             return l_結果;
         }
@@ -187,20 +206,20 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         private static ポリッシュ統計? V_磨く(Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
         {
-            if (!p_引数.A_ポリッシュするか)
+            if (!p_引数.A_Isポリッシュ)
             {
                 return null;
             }
 
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.ポリッシュ開始);
-            var l_出力先 = Path.Combine(p_一時ディレクトリ, Consts.ポリッシュ済みファイル名);
+            var l_出力先 = Path.Combine(p_一時ディレクトリ, ポリッシュ済みファイル名);
             var l_統計 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先);
             Polisher.V_出力_統計(l_統計);
             if (l_統計 is not null)
             {
                 File.Copy(l_出力先, p_最終パス, overwrite: true);
-                var l_最終深度 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先, p_訂正するか: false);
+                var l_最終深度 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先, p_Is訂正: false);
                 l_統計 = l_最終深度 is { } l_測定 ? l_測定 with { A_訂正した塩基数 = l_統計.Value.A_訂正した塩基数 } : null;
             }
             Logger.V_出力_タイムスタンプ();
@@ -219,7 +238,7 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         private static IReadOnlyList<環状閉鎖検証結果>? V_検証_環状閉鎖(Parameters p_引数, string p_最終パス)
         {
-            if (!p_引数.A_環状閉鎖を検証するか)
+            if (!p_引数.A_Is環状閉鎖検証)
             {
                 return null;
             }
@@ -260,8 +279,8 @@ namespace Tsumiki.Cores.Pipeline
 
             if (p_支持検査 is { } l_支持検査)
             {
-                var l_支持パス = Path.Combine(p_出力ディレクトリ, Consts.支持のない箇所ファイル名);
-                ReportWriter.V_書き出し_支持のない箇所(l_支持パス, l_支持検査.A_区間, l_支持検査.A_r長);
+                var l_支持パス = Path.Combine(p_出力ディレクトリ, 支持のない箇所ファイル名);
+                ReportWriter.V_書き出し_未支持箇所(l_支持パス, l_支持検査.A_区間, l_支持検査.A_r長);
                 Logger.V_出力(メッセージID.支持のない箇所を書き出した, l_支持検査.A_区間.Count, l_支持パス);
             }
         }

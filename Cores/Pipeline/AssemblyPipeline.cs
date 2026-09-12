@@ -12,10 +12,44 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Pipeline
 {
     /// <summary>
-    /// 指定した k 長で、k-mer カウントからスキャフォールドまでを一通り実行する
+    /// 指定した k 長で、k-mer カウントから scaffold までを一通り実行する
     /// </summary>
     internal static class AssemblyPipeline
     {
+        #region 定数
+
+        /// <summary>
+        /// r-mer 長を k より長くする量
+        /// </summary>
+        private const int rMer長のk超過分の既定値 = 10;
+
+        /// <summary>
+        /// r-mer 検証に必要な窓数
+        /// </summary>
+        private const int rMer検証に必要な窓数 = 20;
+
+        /// <summary>
+        /// unitig ファイル名
+        /// </summary>
+        private const string ユニティグファイル名 = "unitigs.fasta";
+
+        /// <summary>
+        /// contig ファイル名
+        /// </summary>
+        private const string コンティグファイル名 = "contigs.fasta";
+
+        /// <summary>
+        /// 最終アセンブリファイル名
+        /// </summary>
+        private const string 最終アセンブリファイル名 = "assembly.fasta";
+
+        /// <summary>
+        /// unitig 数の上限
+        /// </summary>
+        private const int ユニティグ数の上限 = 100_000;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -49,12 +83,12 @@ namespace Tsumiki.Cores.Pipeline
 
             AmbiguityRecorder.V_開始(p_k長);
 
-            var l_ユニティグパス = Path.Combine(l_作業ディレクトリ, Consts.ユニティグファイル名);
-            var l_コンティグパス = Path.Combine(l_作業ディレクトリ, Consts.コンティグファイル名);
+            var l_ユニティグパス = Path.Combine(l_作業ディレクトリ, ユニティグファイル名);
+            var l_コンティグパス = Path.Combine(l_作業ディレクトリ, コンティグファイル名);
             var l_スキャフォールドパス = Path.Combine(l_作業ディレクトリ, Consts.スキャフォールドファイル名);
             var l_GFAパス = Path.Combine(l_作業ディレクトリ, Consts.GFAファイル名);
 
-            // 再実行で今回生成されなかった前回のスキャフォールドを採用しない
+            // 再実行で今回生成されなかった前回の scaffold を採用しない
             if (File.Exists(l_スキャフォールドパス))
             {
                 File.Delete(l_スキャフォールドパス);
@@ -64,7 +98,7 @@ namespace Tsumiki.Cores.Pipeline
             using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_kmerインデックス;
 
-            KmerCounting.V_読込_リードペア(p_引数, l_kmerインデックス, p_進行状況を出力するか: true);
+            KmerCounting.V_読込_リードペア(p_引数, l_kmerインデックス, p_Is進行状況出力: true);
 
             Logger.V_出力_タイムスタンプ();
 
@@ -78,7 +112,7 @@ namespace Tsumiki.Cores.Pipeline
             // スペクトルを出し終えてからにするのは、
             // 救済した k-mer を混ぜたヒストグラムがカバレッジ推定の材料に
             // 使われないようにするため
-            if (p_引数.A_救済kmerを使うか)
+            if (p_引数.A_Is救済kmer使用)
             {
                 Logger.V_出力(メッセージID.救済kmerの開始);
                 _ = MercyKmerRescuer.Get_救済数(p_引数, l_kmerインデックス, p_k長);
@@ -113,7 +147,7 @@ namespace Tsumiki.Cores.Pipeline
 
             if (l_上限に達したか)
             {
-                Logger.V_出力(メッセージID.グラフが複雑すぎる, p_k長, Consts.ユニティグ数の上限);
+                Logger.V_出力(メッセージID.グラフが複雑すぎる, p_k長, ユニティグ数の上限);
                 return null;
             }
 
@@ -125,7 +159,7 @@ namespace Tsumiki.Cores.Pipeline
             // k-mer インデックスが生きている今しか計算できない
             // 接続構造 (排他的な鎖) による補正のため、ContigMaker が厳密な
             // de Bruijn グラフから構築した隣接情報も使う (コピー数推定専用に
-            // 作る使い捨てのグラフで、V_結合_コンティグ が後で作るものとは別)
+            // 作る使い捨てのグラフで、V_結合_contig が後で作るものとは別)
             var l_ユニティグ長 = l_ユニティグ配列.ToDictionary(x => x.Key, x => x.Value.Length);
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_ユニティグ配列, p_k長);
             var l_グラフ = l_コンティグ構築.Get_グラフ();
@@ -166,9 +200,9 @@ namespace Tsumiki.Cores.Pipeline
             // 取らないと共有区間の内側に収まってしまい判定にならないため、
             // k + 余剰分で決め、リード内に十分な窓を取れる場合に検証する
             RepeatRMerVerifier? l_r_mer検証器 = null;
-            if (p_引数.A_反復をrMerで検証するか)
+            if (p_引数.A_Is反復rMer検証)
             {
-                var l_r長 = p_k長 + Consts.rMer長のk超過分の既定値;
+                var l_r長 = p_k長 + rMer長のk超過分の既定値;
 
                 // r は k より長くないと拒否権として働かない (窓が k-1 の共有区間に
                 // 収まってしまい常に真になる)
@@ -176,7 +210,7 @@ namespace Tsumiki.Cores.Pipeline
                 // リード長 - r + 1 なので、r がリード長に近づくと r-mer の
                 // カバレッジが痩せて正しい経路まで棄却しはじめる
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
-                if (l_窓数 >= Consts.rMer検証に必要な窓数)
+                if (l_窓数 >= rMer検証に必要な窓数)
                 {
                     l_r_mer検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], l_r長);
                 }
@@ -186,7 +220,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_GFAを出力するか ? l_GFAパス : null);
+            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null);
             Logger.V_出力(メッセージID.コンティグ構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_コンティグパス);
 
@@ -194,24 +228,24 @@ namespace Tsumiki.Cores.Pipeline
 
             // スキャフォールディングはペアエンド情報を前提とする
             // インサートサイズが推定できず作られないこともある
-            var l_スキャフォールドを作ったか = false;
+            var l_Isスキャフォールド作成済み = false;
 
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 Logger.V_出力(メッセージID.スキャフォールディング開始);
                 var l_スキャフォールド構築 = new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長);
                 l_スキャフォールド構築.V_実行(l_スキャフォールドパス);
-                l_スキャフォールドを作ったか = File.Exists(l_スキャフォールドパス);
+                l_Isスキャフォールド作成済み = File.Exists(l_スキャフォールドパス);
             }
 
-            if (!l_スキャフォールドを作ったか)
+            if (!l_Isスキャフォールド作成済み)
             {
                 var l_コンティグの検査 = AssemblyValidator.Get_検査結果(l_コンティグパス, l_kmerインデックス, p_k長, l_コピー数推定.A_単一コピー基準値);
                 AssemblyValidator.V_出力_検査結果("contigs", l_コンティグの検査);
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次への引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
-                var l_コンティグのみの結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_GFAを出力するか ? l_GFAパス : null, l_コンティグの検査);
+                V_用意_次段引き継ぎ(p_次への引き継ぎ, l_コンティグパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+                var l_コンティグのみの結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_コンティグの検査);
                 V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_コンティグのみの結果;
             }
@@ -230,7 +264,7 @@ namespace Tsumiki.Cores.Pipeline
 
             // GapFiller が埋めきれなかった残りを、その両端に実際にマップされた
             // 局所リードだけの使い捨てミニアセンブリで埋める (-la、-mg の安全な代替)
-            if (p_引数.A_局所アセンブリするか)
+            if (p_引数.A_Is局所アセンブリ)
             {
                 var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールドパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長);
                 LocalAssembler.V_出力_統計(l_局所統計);
@@ -245,8 +279,8 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次への引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
-            var l_結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_GFAを出力するか ? l_GFAパス : null, l_スキャフォールドの検査);
+            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_スキャフォールドパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+            var l_結果 = new アセンブリ実行結果(p_k長, l_ユニティグパス, l_コンティグパス, l_スキャフォールドパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_スキャフォールドの検査);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
         }
@@ -264,8 +298,8 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
-            V_複製(p_結果.A_ユニティグパス, Path.Combine(p_出力ディレクトリ, Consts.ユニティグファイル名));
-            V_複製(p_結果.A_コンティグパス, Path.Combine(p_出力ディレクトリ, Consts.コンティグファイル名));
+            V_複製(p_結果.A_ユニティグパス, Path.Combine(p_出力ディレクトリ, ユニティグファイル名));
+            V_複製(p_結果.A_コンティグパス, Path.Combine(p_出力ディレクトリ, コンティグファイル名));
             if (p_結果.A_スキャフォールドパス is { } l_スキャフォールドパス)
             {
                 V_複製(l_スキャフォールドパス, Path.Combine(p_出力ディレクトリ, Consts.スキャフォールドファイル名));
@@ -275,7 +309,7 @@ namespace Tsumiki.Cores.Pipeline
                 V_複製(l_GFAパス, Path.Combine(p_出力ディレクトリ, Consts.GFAファイル名));
             }
 
-            var l_最終パス = Path.Combine(p_出力ディレクトリ, Consts.最終アセンブリファイル名);
+            var l_最終パス = Path.Combine(p_出力ディレクトリ, 最終アセンブリファイル名);
             V_複製(p_結果.A_最終パス, l_最終パス);
             return l_最終パス;
         }
@@ -317,14 +351,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数"></param>
         /// <param name="p_バブル敗者"></param>
         /// <param name="p_合成リードの控え"></param>
-        /// <remarks>
-        /// k-mer インデックスが破棄される前でなければ作れない<br/>
-        /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして作った合成リード (SuperRead) も足す<br/>
-        /// 元のリードの 2〜4 倍の長さを持つため、マルチ k の上限 (リード長で頭打ちになる) を実効的に外せる<br/>
-        /// バブル除去で外れた側の配列 (careful_bubble) も足す<br/>
-        /// この k での敗者判定は次の k を拘束しない
-        /// </remarks>
-        private static void V_用意_次への引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
+        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -350,7 +377,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.引き継ぎの準備完了, p_次への引き継ぎ.Count);
             Logger.V_出力_タイムスタンプ();
 
-            if (!p_引数.A_SuperReadを作るか || string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            if (!p_引数.A_IsSuperRead作成 || string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 return;
             }
@@ -402,19 +429,19 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_開始kmer"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_出力パス"></param>
-        /// <param name="p_上限に達したか"></param>
+        /// <param name="p_Is上限到達"></param>
         /// <returns></returns>
         /// <remarks>
         /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く
         /// </remarks>
-        private static Dictionary<int, string> Get_ユニティグ(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_上限に達したか)
+        private static Dictionary<int, string> Get_ユニティグ(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_Is上限到達)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
 
             // 分岐を 1 つも持たない閉路は開始点の条件を満たす k-mer を持たず、
             // ここまでの走査から丸ごと漏れる
             // 覆い残しを拾って足す
-            var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路の開始kmer(p_kmerインデックス, l_walk結果, p_k長);
+            var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(p_kmerインデックス, l_walk結果, p_k長);
             if (l_閉路の開始kmer.Count > 0)
             {
                 Logger.V_出力(メッセージID.分岐のない閉路, l_閉路の開始kmer.Count);
@@ -439,14 +466,14 @@ namespace Tsumiki.Cores.Pipeline
                     l_ユニティグ配列[l_ID] = l_配列;
                     l_書き込み.V_書き込み(l_ID++, l_配列);
 
-                    if (l_ID > Consts.ユニティグ数の上限)
+                    if (l_ID > ユニティグ数の上限)
                     {
                         break;
                     }
                 }
             }
 
-            p_上限に達したか = l_ID > Consts.ユニティグ数の上限;
+            p_Is上限到達 = l_ID > ユニティグ数の上限;
             return l_ユニティグ配列;
         }
 

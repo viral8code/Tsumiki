@@ -58,9 +58,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_書き出し_レポート_完全長の判定をそのまま載せる()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], p_ポリッシュ: new ポリッシュ統計(3, 5_000_000L, 1000L, 0L, 12L, 0L, 5_000_000L, 90D), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: new 整合性検査結果(1_000L, 1_000L, 1_000L, 10L, 0L, 0L), p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], p_ポリッシュ: new ポリッシュ統計(3, 5_000_000L, 1_000L, 0L, 12L, 0L, 5_000_000L, 90D), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], new ポリッシュ統計(3, 5_000_000L, 1000L, 0L, 12L, 0L, 5_000_000L, 90D));
+            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1_000L, 1_000L, 1_000L, 10L, 0L, 0L), [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], new ポリッシュ統計(3, 5_000_000L, 1_000L, 0L, 12L, 0L, 5_000_000L, 90D));
 
             Assert.True(l_JSON.GetProperty("complete").GetBoolean());
             Assert.Equal("Q5", l_JSON.GetProperty("quality_level").GetString());
@@ -78,9 +78,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_書き出し_レポート_未達の理由をコードで載せる()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 2, p_整合性: new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), p_閉鎖検証: null, p_ポリッシュ: null, p_曖昧箇所: [], p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 2, p_整合性: new 整合性検査結果(1_000L, 1_000L, 1_000L, 10L, 0L, 0L), p_閉鎖検証: null, p_ポリッシュ: null, p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L));
+            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1_000L, 1_000L, 1_000L, 10L, 0L, 0L));
 
             Assert.False(l_JSON.GetProperty("complete").GetBoolean());
 
@@ -138,7 +138,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>支持検査の結果</returns>
         private static 支持検査結果 Get_良好な支持()
         {
-            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000L, A_支持のない位置数: 0L, A_区間: []);
+            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100_000L, A_支持のない位置数: 0L, A_区間: []);
         }
 
         /// <summary>

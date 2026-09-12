@@ -16,7 +16,7 @@
         #region カスタムプロパティ
 
         /// <summary>
-        /// ペアエンドならスキャフォールド、シングルエンドならコンティグ
+        /// ペアエンドなら scaffold、シングルエンドなら contig
         /// </summary>
         public string A_最終パス => this.A_スキャフォールドパス ?? this.A_コンティグパス;
 

@@ -7,13 +7,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// リード長が k より短いリードが混ざっていても処理が破綻しないことを固定する
     /// </summary>
-    /// <remarks>
-    /// トリミング済みのデータではリード長がばらつく<br/>
-    /// GAGE-B の R. sphaeroides MiSeq (trimmed) では 755,847 本のうち 8% 以上が k=63 未満で、最短は 19 bp だった<br/>
-    /// マッピング側に長さの判定が無く、19 bp のリードに対して添字 62 までアクセスして例外になっていた<br/>
-    /// しかもその例外はワーカースレッドの中で起き、キューが満杯になったプロデューサーが永久に待ち続けたため、ログも例外も出ないまま 2 時間以上プロセスが停止した<br/>
-    /// 長さの判定と、ワーカーの例外を伝える仕組み (ReadPipelineTests) の両方が要る
-    /// </remarks>
     public class VariableLengthReadTests : IDisposable
     {
         #region 定数

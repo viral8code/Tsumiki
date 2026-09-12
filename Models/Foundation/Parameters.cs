@@ -7,6 +7,25 @@ namespace Tsumiki.Models.Foundation
     /// </summary>
     internal class Parameters
     {
+        #region 定数
+
+        /// <summary>
+        /// インサートサイズ未指定表示
+        /// </summary>
+        private const string インサートサイズ未指定表示 = "unspecified";
+
+        /// <summary>
+        /// k-mer カットオフの既定値
+        /// </summary>
+        private const int kmerカットオフの既定値 = 2;
+
+        /// <summary>
+        /// k 長の既定値
+        /// </summary>
+        private const int k長の既定値 = 31;
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -22,7 +41,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k 長
         /// </summary>
-        private int _k長 = Consts.k長の既定値;
+        private int _k長 = k長の既定値;
 
         /// <summary>
         /// -k に指定された k の一覧
@@ -32,7 +51,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k-mer カットオフ
         /// </summary>
-        private ulong _kmerカットオフ = Consts.kmerカットオフの既定値;
+        private ulong _kmerカットオフ = kmerカットオフの既定値;
 
         /// <summary>
         /// Phred オフセット
@@ -96,7 +115,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 指定されていない場合に限り、実際のリード長から求めた k を自動採用する
         /// </remarks>
-        public bool A_k長が明示指定されたか { get; private set; }
+        public bool A_Isk長明示指定 { get; private set; }
 
         /// <summary>
         /// k 長
@@ -111,7 +130,7 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException("Please make the value of kmer a positive integer");
                 }
                 this._k長 = value;
-                this.A_k長が明示指定されたか = true;
+                this.A_Isk長明示指定 = true;
             }
         }
 
@@ -130,7 +149,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 指定されていない場合に限り、k-mer スペクトルの谷から求めたカットオフを自動採用する
         /// </remarks>
-        public bool A_kmerカットオフが明示指定されたか { get; private set; }
+        public bool A_Iskmerカットオフ明示指定 { get; private set; }
 
         /// <summary>
         /// k-mer カットオフ
@@ -145,7 +164,7 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException("Please make the value of kmer cut off a positive integer");
                 }
                 this._kmerカットオフ = value;
-                this.A_kmerカットオフが明示指定されたか = true;
+                this.A_Iskmerカットオフ明示指定 = true;
             }
         }
 
@@ -156,7 +175,7 @@ namespace Tsumiki.Models.Foundation
         /// 指定されていない場合に限り、FASTQ のクオリティ文字列から推定したオフセットを自動採用する<br/>
         /// 明示指定はユーザーの判断なので、推定結果で上書きはしない
         /// </remarks>
-        public bool A_Phredが明示指定されたか { get; private set; }
+        public bool A_IsPhred明示指定 { get; private set; }
 
         /// <summary>
         /// Phred オフセット
@@ -171,7 +190,7 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.許容Phredオフセット)}");
                 }
                 this._Phredオフセット = value;
-                this.A_Phredが明示指定されたか = true;
+                this.A_IsPhred明示指定 = true;
             }
         }
 
@@ -214,12 +233,12 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// ヘルプモードか
         /// </summary>
-        public bool A_ヘルプモードか { get; set; } = false;
+        public bool A_Isヘルプモード { get; set; } = false;
 
         /// <summary>
         /// バージョンだけ表示して終わるか
         /// </summary>
-        public bool A_バージョンモードか { get; set; } = false;
+        public bool A_Isバージョンモード { get; set; } = false;
 
         /// <summary>
         /// 進行状況メッセージの言語
@@ -237,17 +256,17 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 曖昧塩基を許容するか
         /// </summary>
-        public bool A_曖昧塩基を許容するか { get; set; } = false;
+        public bool A_Is曖昧塩基許容 { get; set; } = false;
 
         /// <summary>
         /// エラー訂正するか
         /// </summary>
-        public bool A_エラー訂正するか { get; set; } = false;
+        public bool A_Isエラー訂正 { get; set; } = false;
 
         /// <summary>
         /// ペアエンドのオーバーラップ解析 (アダプタ除去 + 相互訂正) をエラー訂正・アセンブリの前に行うか
         /// </summary>
-        public bool A_前処理するか { get; set; } = false;
+        public bool A_Is前処理 { get; set; } = false;
 
         /// <summary>
         /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか
@@ -256,7 +275,7 @@ namespace Tsumiki.Models.Foundation
         /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、精度を求めるなら試すしかない<br/>
         /// 実行時間と引き換えになるので既定は false
         /// </remarks>
-        public bool A_マルチkか { get; set; } = false;
+        public bool A_Isマルチk { get; set; } = false;
 
         /// <summary>
         /// multi-k で、前段の k の配列を次の k へ引き継ぐか
@@ -264,12 +283,12 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 引き継ぐのは配列だけで、繋ぐという決定は引き継がない
         /// </remarks>
-        public bool A_引き継ぐか { get; set; } = true;
+        public bool A_Is引き継ぎ { get; set; } = true;
 
         /// <summary>
         /// multi-k で、各 k の信頼できる k-mer 集合の中でペアを橋渡しして合成リード (SuperRead) を作り、次の k への引き継ぎに加えるか
         /// </summary>
-        public bool A_SuperReadを作るか { get; set; } = false;
+        public bool A_IsSuperRead作成 { get; set; } = false;
 
         /// <summary>
         /// 短い反復の解決 (V_解決_短い反復) で、対応付けを確定させる前に r-mer (アセンブリの k とは独立の短い長さ) による接合点の検証を課すか
@@ -277,15 +296,15 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 生リードの追加走査が 1 回 k 毎に要る (既定は false)
         /// </remarks>
-        public bool A_反復をrMerで検証するか { get; set; } = false;
+        public bool A_Is反復rMer検証 { get; set; } = false;
 
         /// <summary>
-        /// GapFiller が埋められなかったスキャフォールドのギャップを、その両端に実際にマップされた局所リードだけを使う局所アセンブリ (LocalAssembler) で埋めるか
+        /// GapFiller が埋められなかった scaffold のギャップを、その両端に実際にマップされた局所リードだけを使う局所アセンブリ (LocalAssembler) で埋めるか
         /// </summary>
         /// <remarks>
         /// AssemblyMerger (-mg) の安全な代替
         /// </remarks>
-        public bool A_局所アセンブリするか { get; set; } = false;
+        public bool A_Is局所アセンブリ { get; set; } = false;
 
         /// <summary>
         /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか
@@ -293,7 +312,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等のビューアで直接確認できるようにする
         /// </remarks>
-        public bool A_GFAを出力するか { get; set; } = false;
+        public bool A_IsGFA出力 { get; set; } = false;
 
         /// <summary>
         /// multi-k の結果を統合するか
@@ -302,7 +321,7 @@ namespace Tsumiki.Models.Foundation
         /// 既定は false<br/>
         /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる
         /// </remarks>
-        public bool A_マージするか { get; set; } = false;
+        public bool A_Isマージ { get; set; } = false;
 
         /// <summary>
         /// 最終成果物に元リードを貼り直し、多数決で置換を直すか
@@ -310,7 +329,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// リードを 1 回余分に走査するぶん時間がかかるため既定は false
         /// </remarks>
-        public bool A_ポリッシュするか { get; set; } = false;
+        public bool A_Isポリッシュ { get; set; } = false;
 
         /// <summary>
         /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが実在するかを確かめるか
@@ -318,12 +337,12 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 完全長を名乗るには必須の検査だが、リードの追加走査が要るため既定は false
         /// </remarks>
-        public bool A_環状閉鎖を検証するか { get; set; } = false;
+        public bool A_Is環状閉鎖検証 { get; set; } = false;
 
         /// <summary>
         /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に挟まれているものを救い上げるか
         /// </summary>
-        public bool A_救済kmerを使うか { get; set; } = false;
+        public bool A_Is救済kmer使用 { get; set; } = false;
 
         /// <summary>
         /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか
@@ -331,7 +350,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// 同じ入力・同じオプションで作り終えた k だけを飛ばす
         /// </remarks>
-        public bool A_再開するか { get; set; } = false;
+        public bool A_Is再開 { get; set; } = false;
 
         /// <summary>
         /// 一時ディレクトリ
@@ -344,7 +363,7 @@ namespace Tsumiki.Models.Foundation
         /// <remarks>
         /// k ごとの成果物が入っており後から見比べたくなるため、既定では残す
         /// </remarks>
-        public bool A_一時ディレクトリを削除するか { get; set; } = false;
+        public bool A_Is一時ディレクトリ削除 { get; set; } = false;
 
         /// <summary>
         /// 並列に使うスレッド数
@@ -437,13 +456,13 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_k長">推定して得られた k 長</param>
         /// <remarks>
-        /// A_k長が明示指定されたか は立てないため、「ユーザーが明示指定した」扱いにはならない
+        /// A_Isk長明示指定 は立てないため、「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
         public void Set_推定k長(int p_k長)
         {
-            var l_明示指定済みか = this.A_k長が明示指定されたか;
+            var l_Is明示指定済み = this.A_Isk長明示指定;
             this.A_k長 = p_k長;
-            this.A_k長が明示指定されたか = l_明示指定済みか;
+            this.A_Isk長明示指定 = l_Is明示指定済み;
         }
 
         /// <summary>
@@ -451,13 +470,13 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_カットオフ">推定して得られたカットオフ</param>
         /// <remarks>
-        /// A_kmerカットオフが明示指定されたか は立てない
+        /// A_Iskmerカットオフ明示指定 は立てない
         /// </remarks>
         public void Set_推定kmerカットオフ(ulong p_カットオフ)
         {
-            var l_明示指定済みか = this.A_kmerカットオフが明示指定されたか;
+            var l_Is明示指定済み = this.A_Iskmerカットオフ明示指定;
             this.A_kmerカットオフ = p_カットオフ;
-            this.A_kmerカットオフが明示指定されたか = l_明示指定済みか;
+            this.A_Iskmerカットオフ明示指定 = l_Is明示指定済み;
         }
 
         /// <summary>
@@ -465,13 +484,13 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
         /// <remarks>
-        /// A_Phredが明示指定されたか は立てないため、「ユーザーが明示指定した」扱いにはならない
+        /// A_IsPhred明示指定 は立てないため、「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
         public void Set_推定Phredオフセット(int p_オフセット)
         {
-            var l_明示指定済みか = this.A_Phredが明示指定されたか;
+            var l_Is明示指定済み = this.A_IsPhred明示指定;
             this.A_Phredオフセット = p_オフセット;
-            this.A_Phredが明示指定されたか = l_明示指定済みか;
+            this.A_IsPhred明示指定 = l_Is明示指定済み;
         }
 
         /// <summary>
@@ -491,23 +510,23 @@ namespace Tsumiki.Models.Foundation
                 phred: {this.A_Phredオフセット}
                 quality cutoff: {this.A_クオリティカットオフ}
                 counting memory budget: {this.A_メモリ予算}
-                insert size: {this.A_インサートサイズ?.ToString() ?? Consts.インサートサイズ未指定表示}
-                allow ambiguous bases : {this.A_曖昧塩基を許容するか}
-                error correction : {this.A_エラー訂正するか}
-                preprocess (adapter trim + pair correction) : {this.A_前処理するか}
-                multi-k : {this.A_マルチkか}
-                carry sequence between k : {this.A_引き継ぐか}
-                build SuperReads : {this.A_SuperReadを作るか}
-                verify repeat resolution with r-mers : {this.A_反復をrMerで検証するか}
-                local assembly for remaining gaps : {this.A_局所アセンブリするか}
-                write GFA of the unitig graph : {this.A_GFAを出力するか}
-                merge multi-k results : {this.A_マージするか}
-                rescue mercy k-mers : {this.A_救済kmerを使うか}
-                polish final assembly with reads : {this.A_ポリッシュするか}
-                verify circular closure with reads : {this.A_環状閉鎖を検証するか}
-                resume from temp directory : {this.A_再開するか}
+                insert size: {this.A_インサートサイズ?.ToString() ?? インサートサイズ未指定表示}
+                allow ambiguous bases : {this.A_Is曖昧塩基許容}
+                error correction : {this.A_Isエラー訂正}
+                preprocess (adapter trim + pair correction) : {this.A_Is前処理}
+                multi-k : {this.A_Isマルチk}
+                carry sequence between k : {this.A_Is引き継ぎ}
+                build SuperReads : {this.A_IsSuperRead作成}
+                verify repeat resolution with r-mers : {this.A_Is反復rMer検証}
+                local assembly for remaining gaps : {this.A_Is局所アセンブリ}
+                write GFA of the unitig graph : {this.A_IsGFA出力}
+                merge multi-k results : {this.A_Isマージ}
+                rescue mercy k-mers : {this.A_Is救済kmer使用}
+                polish final assembly with reads : {this.A_Isポリッシュ}
+                verify circular closure with reads : {this.A_Is環状閉鎖検証}
+                resume from temp directory : {this.A_Is再開}
                 temp directory : {this.A_一時ディレクトリ}
-                delete temp directory when finished : {this.A_一時ディレクトリを削除するか}
+                delete temp directory when finished : {this.A_Is一時ディレクトリ削除}
                 thread count : {this.A_スレッド数}
                 message language : {Get_言語名(this.A_言語)}
                 console log level : {Get_ログ水準名(this.A_ログ水準)}

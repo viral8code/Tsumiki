@@ -1,15 +1,8 @@
 ﻿namespace Tsumiki.Models.UnitigBuilding
 {
     /// <summary>
-    /// ContigMaker.Get_代表ユニティグ の結果
+    /// ContigMaker.Get_代表unitig の結果
     /// </summary>
-    /// <remarks>
-    /// リードが代表としてマップされた unitig の ID (符号は向きを表す<br/>
-    /// 正=順鎖、負=逆鎖として一致) に加え、スキャフォールディングのギャップ長推定に使うためのオフセット情報を持つ<br/>
-    /// Read1 側で使う場合: unitig の「順方向」で見たときに、リードが最後にヒットした k-mer の終端位置 (unitig 内 0-based, 末尾からの残り塩基数を求めるのに使う) <br/>
-    /// Read2 側で使う場合も同様に、read2 の逆相補鎖を unitig の順方向に揃えたうえでの最後のヒット位置を保持する<br/>
-    /// これにより「read が unitig の末尾からどれだけ内側で止まっているか」を双方について計算し、ギャップ長 = インサートサイズ - 内側距離 1 - 内側距離 2 という見積りに使える
-    /// </remarks>
     /// <param name="p_ユニティグID"></param>
     /// <param name="p_一致kmer数"></param>
     /// <param name="p_最終一致終端位置"></param>
@@ -42,10 +35,10 @@
         public readonly int A_一致kmer数 = p_一致kmer数;
 
         /// <summary>
-        /// ユニティグの向きに揃えた最後の一致 k-mer の終端位置 (末尾の添字 + 1)
+        /// unitig の向きに揃えた最後の一致 k-mer の終端位置 (末尾の添字 + 1)
         /// </summary>
         /// <remarks>
-        /// この値をユニティグ先頭からの既知長として使う
+        /// この値を unitig 先頭からの既知長として使う
         /// </remarks>
         public readonly int A_最終一致終端位置 = p_最終一致終端位置;
 

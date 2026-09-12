@@ -14,13 +14,6 @@ namespace Tsumiki.Core
     /// <summary>
     /// unitig を辺で結合して contig を組み立てる
     /// </summary>
-    /// <remarks>
-    /// 責務がいくつかの部分ファイルに分かれている:<br/>
-    /// - ContigMaker.cs (このファイル) : 辺の選択・簡略化・結合確定の中核ロジック<br/>
-    /// - ContigMaker.Mapping.cs: k-mer 索引構築とリードマッピング<br/>
-    /// - ContigMaker.FragmentSampling.cs: フラグメント長・インサートサイズの標本収集<br/>
-    /// - ContigMaker.Walk.cs: 確定した結合を辿って配列を組み立てる処理
-    /// </remarks>
     internal partial class ContigMaker
     {
         #region 定数
@@ -35,7 +28,7 @@ namespace Tsumiki.Core
         #region 公開メソッド
 
         /// <summary>
-        /// unitig グラフから辺を選び結合を確定して、コンティグを FASTA へ書き出す
+        /// unitig グラフから辺を選び結合を確定して、contig を FASTA へ書き出す
         /// </summary>
         /// <param name="p_コンティグパス">出力先の FASTA パス</param>
         /// <param name="p_優勢閾値">分岐選択で優勢とみなす正規化支持の割合</param>
@@ -51,7 +44,7 @@ namespace Tsumiki.Core
         /// </param>
         /// <param name="p_リード長">
         /// 分岐選択・先読みスコアを生カウントではなく期待本数との比で測るための較正器の構築に使う<br/>
-        /// 渡さない (あるいは同一ユニティグ標本が無い) 場合は較正器が使えないものとして扱われ、従来どおりの生カウント方式になる
+        /// 渡さない場合は生カウント方式になる
         /// </param>
         /// <param name="p_r_mer検証器">
         /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/>
@@ -65,7 +58,7 @@ namespace Tsumiki.Core
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
 
-            var l_ユニティグ配列 = this.Get_ユニティグ配列読み込み();
+            var l_ユニティグ配列 = this._ユニティグ配列;
 
             // 隣接は de Bruijn グラフから厳密に導く (UnitigGraph の説明を参照)
             // リードマッピング由来の隣接情報は「辺を作る」ためではなく、
@@ -129,23 +122,6 @@ namespace Tsumiki.Core
         #region 内部メソッド
 
         /// <summary>
-        /// ユニティグの配列を読み込んで返す
-        /// </summary>
-        /// <returns>ユニティグ ID 順の配列</returns>
-        private List<string> Get_ユニティグ配列読み込み()
-        {
-            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
-            using FastaReader l_読み込み = new(this._ユニティグファイルパス);
-            while (l_読み込み.Get_続きがあるか())
-            {
-                var l_ユニティグ = l_読み込み.Get_次の配列().A_配列;
-                l_ユニティグ配列.Add(l_ユニティグ);
-                l_ユニティグ配列.Add(Util.V_逆相補(l_ユニティグ));
-            }
-            return l_ユニティグ配列;
-        }
-
-        /// <summary>
         /// リード隣接・ペア経路から、辺選択に使う支持数 (逆鎖対称に集計) と反復解決に使うペア連結を組み立てる
         /// </summary>
         /// <param name="p_グラフ"></param>
@@ -206,12 +182,6 @@ namespace Tsumiki.Core
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_r_mer検証器"></param>
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
-        /// <remarks>
-        /// 相互一意性を課す以上、再合流点の入次数が 2 以上のまま残っているとその経路全体が結合されなくなるため、先に枝を 1 本に絞っておく必要がある<br/>
-        /// バブル除去と反復解決は 1 回ずつでは互いを取りこぼす<br/>
-        /// バブルを潰すと隣接構造が変わって新たな反復 (入次数 2 ・出次数 2) が露出することがあり、逆に反復を解きほぐすと新たに単純化できるバブルが現れることがある<br/>
-        /// どちらも変化が無くなるまで (MEGAHIT の cleaning_rounds に倣い既定 5 ラウンドを上限に) 交互に繰り返す
-        /// </remarks>
         private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
         {
             var l_除去バブル数 = 0;
@@ -299,7 +269,7 @@ namespace Tsumiki.Core
                     // 較正器が使えない場合は生カウントをそのまま正規化値として扱う
                     // これにより以下の判定式は較正器が無かった従来のロジックと
                     // 完全に同じ結果になる
-                    var l_正規化 = p_較正器.A_使えるか ? p_較正器.Get_正規化済み支持(l_件数, l_始点長, l_終点長, p_ギャップ長: 0) : l_件数;
+                    var l_正規化 = p_較正器.A_Is使用可能 ? p_較正器.Get_正規化済み支持(l_件数, l_始点長, l_終点長, p_ギャップ長: 0) : l_件数;
                     l_正規化合計 += l_正規化;
                     if (l_正規化 > l_最良の正規化)
                     {
@@ -357,7 +327,7 @@ namespace Tsumiki.Core
                 // 片側だけ許すと結合の対称性が
                 // 崩れ、walk の始点判定が壊れるため、
                 // どちらかが通り抜け不可なら対ごと採用しない
-                if (!p_グラフ.Get_通り抜けてよいか(p_コピー数, v) || !p_グラフ.Get_通り抜けてよいか(p_コピー数, l_終点 ^ 1))
+                if (!p_グラフ.Is通過可能(p_コピー数, v) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1))
                 {
                     l_反復通り抜けで棄却した数++;
                     continue;
@@ -397,12 +367,12 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 確定した結合を辿ってコンティグを組み立て、FASTA へ書き出す
+        /// 確定した結合を辿って contig を組み立て、FASTA へ書き出す
         /// </summary>
-        /// <param name="p_グラフ">ユニティググラフ</param>
-        /// <param name="p_ユニティグ配列">ユニティグ ID 順の配列</param>
+        /// <param name="p_グラフ">unitig グラフ</param>
+        /// <param name="p_ユニティグ配列">unitig ID 順の配列</param>
         /// <param name="p_結合">頂点ごとの結合先</param>
-        /// <param name="p_重なり長">隣り合うユニティグが共有する長さ</param>
+        /// <param name="p_重なり長">隣り合う unitig が共有する長さ</param>
         /// <param name="p_コンティグパス">書き出し先</param>
         private void V_walk実行してFASTA書き出し(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int[] p_結合, int p_重なり長, string p_コンティグパス)
         {
@@ -446,16 +416,16 @@ namespace Tsumiki.Core
                 var l_コンティグ = l_コンティグ群[c];
                 var l_walk順 = l_walk順群[c];
                 var l_逆相補 = Util.V_逆相補(l_コンティグ);
-                var l_逆相補を採用するか = string.CompareOrdinal(l_コンティグ, l_逆相補) > 0;
+                var l_Is逆相補採用 = string.CompareOrdinal(l_コンティグ, l_逆相補) > 0;
 
                 // 環状に閉じた contig は、その複製単位 (染色体・プラスミド) を
                 // 完全に組み上げられたことを意味するため、名前に明示する
                 // 閉じていても、複製単位と呼べる長さが無ければ目印は付けない
                 // ホモポリマー由来の 1 bp の閉路まで環状のレプリコンとして数えると、
                 // 候補選択も完全性の判定もその雑音に従ってしまう
-                var l_複製単位か = l_環状フラグ群[c] && l_コンティグ群[c].Length >= Consts.環状として数える最小長;
-                var l_名前 = l_複製単位か ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
-                var l_出力配列 = l_逆相補を採用するか ? l_逆相補 : l_コンティグ;
+                var l_Is複製単位 = l_環状フラグ群[c] && l_コンティグ群[c].Length >= Consts.環状として数える最小長;
+                var l_名前 = l_Is複製単位 ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
+                var l_出力配列 = l_Is逆相補採用 ? l_逆相補 : l_コンティグ;
 
                 if (l_環状フラグ群[c])
                 {
@@ -465,7 +435,7 @@ namespace Tsumiki.Core
                     // 最小になる回転へ正規化する (鎖の向きは上の比較で既に
                     // 決めているため、ここでは回転のみ
                     // 鎖の選択まで変えると
-                    // 下の ユニティグ配置 (逆相補か) の記録と食い違う)
+                    // 下の unitig 配置 (逆相補か) の記録と食い違う)
                     l_出力配列 = Util.Get_最小回転(l_出力配列);
                 }
                 l_書き込み.V_書き込み(l_名前, l_出力配列);
@@ -475,7 +445,7 @@ namespace Tsumiki.Core
                 for (var w = 0; w < l_walk順.Count; w++)
                 {
                     var l_頂点番号 = l_walk順[w];
-                    this._ユニティグ配置[l_頂点番号 >> 1] = new ユニティグ配置(l_ID, l_逆相補を採用するか, w, l_walk順.Count, (l_頂点番号 & 1) == 1);
+                    this._ユニティグ配置[l_頂点番号 >> 1] = new ユニティグ配置(l_ID, l_Is逆相補採用, w, l_walk順.Count, (l_頂点番号 & 1) == 1);
                 }
 
                 l_ID++;

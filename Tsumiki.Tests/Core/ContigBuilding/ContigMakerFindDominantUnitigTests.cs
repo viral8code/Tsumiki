@@ -7,10 +7,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// ContigMaker.FindDominantUnitig が返す LastMatchEndOffset が、「read 内での位置」ではなく「unitig 内での正しい位置」を指すことを直接検証する
     /// </summary>
-    /// <remarks>
-    /// 以前は kmerDict が (unitigId のみ) しか保持しておらず、FindDominantUnitig は read 内の最終ヒット k-mer の終端位置 (read 基準) をそのまま unitig 内終端位置として誤用していた<br/>
-    /// unitig が read より十分短い間は両者がたまたま近い値になり問題が表面化しなかったが、tip clipping 導入後に unitig が大幅に長くなり、インサートサイズ自動推定 (この値を使う) が明後日の値 (中央値 30 bp 等) を返すようになったことで発覚した
-    /// </remarks>
     public class ContigMakerFindDominantUnitigTests : IDisposable
     {
         #region 定数
@@ -18,7 +14,7 @@ namespace Tsumiki.Tests.Core
         // k=8 で内部に k-mer 重複のないことを確認済みの 100 bp 配列
 
         /// <summary>
-        /// 検証に使う唯一のユニティグ
+        /// 検証に使う唯一の unitig
         /// </summary>
         private const string ユニティグ配列 = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
 
@@ -120,10 +116,10 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// ユニティグ 1 本だけを持つコンティグ構築を組み立てる
+        /// unitig 1 本だけを持つ contig 構築を組み立てる
         /// </summary>
         /// <param name="p_k長">k 長</param>
-        /// <returns>組み立てたコンティグ構築</returns>
+        /// <returns>組み立てた contig 構築</returns>
         private ContigMaker Get_コンティグ構築_単一ユニティグ(int p_k長)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };

@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Models.Scaffolding
 {
     /// <summary>
-    /// スキャフォールドのギャップ充填の集計
+    /// scaffold のギャップ充填の集計
     /// </summary>
     /// <param name="A_総ギャップ数"></param>
     /// <param name="A_埋めたギャップ数"></param>

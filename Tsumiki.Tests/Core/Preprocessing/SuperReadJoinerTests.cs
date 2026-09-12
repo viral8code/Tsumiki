@@ -56,7 +56,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_ペア間の経路が一意なら真のフラグメントを復元する()
         {
             const int l_k長 = 21;
-            var l_正解 = V_生成_ランダム配列(200, p_シード: 20260907);
+            var l_正解 = V_生成_ランダム配列(200, p_シード: 20_260_907);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
@@ -158,7 +158,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_ペアが重なるときは重なりから真のフラグメントを復元する()
         {
             const int l_k長 = 21;
-            var l_正解 = V_生成_ランダム配列(225, p_シード: 20260909);
+            var l_正解 = V_生成_ランダム配列(225, p_シード: 20_260_909);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
@@ -180,7 +180,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_継ぎ目に未観測のkmerができる重なりは棄却する()
         {
             const int l_k長 = 21;
-            var l_正解 = V_生成_ランダム配列(225, p_シード: 20260910);
+            var l_正解 = V_生成_ランダム配列(225, p_シード: 20_260_910);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
@@ -199,7 +199,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_断片がリードより短いときは重なりで統合しない()
         {
             const int l_k長 = 21;
-            var l_正解 = V_生成_ランダム配列(120, p_シード: 20260911);
+            var l_正解 = V_生成_ランダム配列(120, p_シード: 20_260_911);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
@@ -216,7 +216,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_重なりが最小長未満のときは統合しない()
         {
             const int l_k長 = 121;
-            var l_正解 = V_生成_ランダム配列(280, p_シード: 20260912);
+            var l_正解 = V_生成_ランダム配列(280, p_シード: 20_260_912);
 
             // 重なりは 20 bp (Consts.ペア結合の最小重なり長 = 40 未満)
             // k を read1 より長くして、経路探索の側も走らないようにする
@@ -238,9 +238,9 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_複数のオフセットで同程度に合う重なりは統合しない()
         {
             const int l_k長 = 21;
-            var l_単位 = V_生成_ランダム配列(30, p_シード: 20260918);
-            var l_左 = V_生成_ランダム配列(40, p_シード: 20260919);
-            var l_右 = V_生成_ランダム配列(30, p_シード: 20260920);
+            var l_単位 = V_生成_ランダム配列(30, p_シード: 20_260_918);
+            var l_左 = V_生成_ランダム配列(40, p_シード: 20_260_919);
+            var l_右 = V_生成_ランダム配列(30, p_シード: 20_260_920);
             var l_正解 = l_左 + string.Concat(Enumerable.Repeat(l_単位, 5)) + l_右;
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
@@ -262,7 +262,7 @@ namespace Tsumiki.Tests.Core
         public void Get_合成配列_引き上げた最小重なり長に届かないときは統合しない()
         {
             const int l_k長 = 121;
-            var l_正解 = V_生成_ランダム配列(260, p_シード: 20260921);
+            var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_921);
 
             // 重なりは 40 bp
             // Consts.ペア結合の最小重なり長 (60) に届かない

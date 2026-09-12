@@ -37,12 +37,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_開始kmer"></param>
-        /// <remarks>
-        /// walk はカットオフ後の読み取り専用な k-mer 集合しか触らないので互いに独立<br/>
-        /// UnitigMaker 自身は呼び出しごとにクリアする訪問済み集合を持つため、ワーカーごとに 1 つ用意する<br/>
-        /// 重複排除は呼び出し側が元の順序で行う<br/>
-        /// どちらの向きが先に登録されるかで採用される表現が変わるため、ここで並列に潰すと結果が実行ごとに変わる
-        /// </remarks>
         /// <returns></returns>
         public static string[] Get_walk結果(TrustedKmerIndex p_kmerインデックス, IReadOnlyList<byte[]> p_開始kmer)
         {
@@ -59,14 +53,14 @@ namespace Tsumiki.Cores.UnitigBuilding
         }
 
         /// <summary>
-        /// 開始 k-mer から walk してユニティグを返す
+        /// 開始 k-mer から walk して unitig を返す
         /// </summary>
         /// <param name="p_開始kmer">walk を始める k-mer</param>
-        /// <returns>組み上がったユニティグ</returns>
+        /// <returns>組み上がった unitig</returns>
         public ユニティグ Get_ユニティグ(Span<byte> p_開始kmer)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            var l_パック経路を使うか = l_k長 <= 64;
+            var l_Isパック経路使用 = l_k長 <= 64;
 
             this._訪問済み_パック.Clear();
             this._訪問済み_文字列.Clear();
@@ -78,10 +72,10 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 var l_現在のkmer = CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..];
 
-                var l_未訪問か = l_パック経路を使うか
-                    ? this._訪問済み_パック.Add(Get_パック(l_現在のkmer))
+                var l_Is未訪問 = l_Isパック経路使用
+                    ? this._訪問済み_パック.Add(TryGet_パック(l_現在のkmer))
                     : this._訪問済み_文字列.Add(string.Join(string.Empty, l_現在のkmer.ToArray().Select(Util.V_変換_塩基文字)));
-                if (!l_未訪問か)
+                if (!l_Is未訪問)
                 {
                     // 循環
                     // 従来実装は「この k-mer の最後の 1 塩基を付ける前」に
@@ -99,7 +93,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     l_配列[^1] = i;
-                    if (this._kmerインデックス.Get_含まれるか(CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..]))
+                    if (this._kmerインデックス.Haskmer(CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..]))
                     {
                         l_候補数++;
                         if (l_候補数 > 1)
@@ -146,7 +140,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 循環検出は「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
         /// </remarks>
         /// <returns></returns>
-        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
+        private static UInt128 TryGet_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
             foreach (var l_塩基ID in p_kmer)

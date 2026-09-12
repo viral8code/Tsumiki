@@ -17,6 +17,30 @@ namespace Tsumiki.Cores.Pipeline
     /// </remarks>
     internal static class MultiKAssembler
     {
+        #region 定数
+
+        /// <summary>
+        /// 自動で試す k のリード長に対する上限比
+        /// </summary>
+        private const double マルチk上限のリード長比 = 0.9D;
+
+        /// <summary>
+        /// 自動で試す k の下限
+        /// </summary>
+        private const int マルチkの下限 = 21;
+
+        /// <summary>
+        /// アンカー k を候補の最小 k から下げる量
+        /// </summary>
+        private const int アンカーk長の候補からの差 = 2;
+
+        /// <summary>
+        /// アンカー k の下限
+        /// </summary>
+        private const int アンカーk長の下限 = 11;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -49,7 +73,7 @@ namespace Tsumiki.Cores.Pipeline
 
             foreach (var l_k長 in l_k候補)
             {
-                if (Get_薄すぎるか(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
+                if (Is薄すぎる(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
                 {
                     Logger.V_出力(メッセージID.kが薄すぎて省略, l_k長, l_予測, Consts.マルチkの最小kmerカバレッジ);
                     continue;
@@ -57,7 +81,7 @@ namespace Tsumiki.Cores.Pipeline
 
                 Logger.V_出力_空行();
                 Logger.V_出力(メッセージID.kの開始見出し, l_k長);
-                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_引き継ぐか ? l_引き継ぎ : null, p_引数.A_引き継ぐか ? l_次への引き継ぎ : null, l_合成リードの控え, p_原入力);
+                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_Is引き継ぎ ? l_引き継ぎ : null, p_引数.A_Is引き継ぎ ? l_次への引き継ぎ : null, l_合成リードの控え, p_原入力);
                 if (l_結果 is null)
                 {
                     Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
@@ -123,7 +147,7 @@ namespace Tsumiki.Cores.Pipeline
             AssemblySelector.V_出力_候補一覧(l_候補, l_最良.A_実行結果);
             Logger.V_出力(メッセージID.採用したk, l_最良.A_実行結果.A_k長);
 
-            var l_採用 = (p_引数.A_マージするか
+            var l_採用 = (p_引数.A_Isマージ
                     ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ)
                     : null)
                 ?? l_最良.A_実行結果;
@@ -136,12 +160,6 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数">実行時引数</param>
         /// <param name="p_リード長">リード長、不明なら null</param>
         /// <returns>試す k の一覧</returns>
-        /// <remarks>
-        /// -k にカンマ区切りで指定されていればそれをそのまま使う<br/>
-        /// 自動の場合は 21 からリード長の <see cref="Consts.マルチk上限のリード長比"/> 倍までを等比で刻む<br/>
-        /// 等比にするのは、k を 21 から 42 に上げたときと 110 から 131 に上げたときでは、跨げるようになる反復配列の範囲が桁で違うため<br/>
-        /// 上限をリード長近くまで取るのは、カバレッジが十分あればリード長に近い k のほうが良い場合があるため
-        /// </remarks>
         public static List<int> Get_k候補一覧(Parameters p_引数, int? p_リード長)
         {
             if (p_引数.A_k長一覧.Count > 0)
@@ -154,8 +172,8 @@ namespace Tsumiki.Cores.Pipeline
                 return [p_引数.A_k長];
             }
 
-            var l_上限 = Get_奇数((int)(l_リード長 * Consts.マルチk上限のリード長比));
-            var l_下限 = Consts.マルチkの下限;
+            var l_上限 = Get_奇数((int)(l_リード長 * マルチk上限のリード長比));
+            var l_下限 = マルチkの下限;
             if (l_下限 >= l_上限)
             {
                 return [Get_奇数(Math.Min(l_上限, l_リード長 - 1))];
@@ -182,14 +200,14 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns></returns>
         public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
         {
-            var l_k長 = p_k候補[0] - Consts.アンカーk長の候補からの差;
+            var l_k長 = p_k候補[0] - アンカーk長の候補からの差;
 
             // 偶数の k は k-mer 自身がその逆相補と一致しうるため避ける
             if (l_k長 % 2 == 0)
             {
                 l_k長--;
             }
-            return Math.Max(Consts.アンカーk長の下限, l_k長);
+            return Math.Max(アンカーk長の下限, l_k長);
         }
 
         /// <summary>
@@ -238,7 +256,7 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_統合パス = Path.Combine(p_一時ディレクトリ, "merged_" + Consts.スキャフォールドファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
-            if (!AssemblyMerger.V_統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
+            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
             {
                 return null;
             }
@@ -288,7 +306,7 @@ namespace Tsumiki.Cores.Pipeline
         /// 判断できる材料が無い (まだ 1 つも走っていない、リード長が不明、-k で明示指定された) 場合は捨てない
         /// </remarks>
         /// <returns></returns>
-        private static bool Get_薄すぎるか(アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
+        private static bool Is薄すぎる(アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
         {
             p_予測 = 0D;
             if (p_直前 is null || p_リード長 is not { } l_リード長 || p_引数.A_k長一覧.Count > 0)

@@ -63,7 +63,7 @@ namespace Tsumiki.Tests.Core
         {
             var l_乱数 = new Random(p_k長);
             const string l_塩基 = "ACGT";
-            var l_真の配列 = string.Concat(Enumerable.Range(0, 4000).Select(_ => l_塩基[l_乱数.Next(4)]));
+            var l_真の配列 = string.Concat(Enumerable.Range(0, 4_000).Select(_ => l_塩基[l_乱数.Next(4)]));
 
             using var l_インデックス = this.Get_インデックス(l_真の配列, p_k長);
 

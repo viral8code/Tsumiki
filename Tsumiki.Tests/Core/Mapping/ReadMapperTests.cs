@@ -35,7 +35,7 @@ namespace Tsumiki.Tests.Core.Mapping
             var l_配置 = l_マッパー.Get_配置(l_参照.Substring(120, 100));
 
             Assert.Equal(0, l_配置.A_配列番号);
-            Assert.False(l_配置.A_逆鎖か);
+            Assert.False(l_配置.A_Is逆鎖);
             Assert.True(l_配置.A_信頼度 > 0);
             Assert.Equal(100, l_配置.A_整列位置群.Count);
             Assert.Equal(120, l_配置.A_整列位置群[0].A_参照位置);
@@ -53,7 +53,7 @@ namespace Tsumiki.Tests.Core.Mapping
             var l_配置 = l_マッパー.Get_配置(l_リード);
 
             Assert.Equal(0, l_配置.A_配列番号);
-            Assert.True(l_配置.A_逆鎖か);
+            Assert.True(l_配置.A_Is逆鎖);
             Assert.True(l_配置.A_信頼度 > 0);
             Assert.Equal(140, l_配置.A_整列位置群[0].A_参照位置);
         }

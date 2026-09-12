@@ -7,12 +7,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// ペアエンドから推定される「インサートサイズ」が、リードに挟まれた内側の未読区間ではなく、真のフラグメント長 (左リードの 5'端から右リードの 3'端まで) の単位になっていることを検証する
     /// </summary>
-    /// <remarks>
-    /// 実データ (150 bp リード・ IS350 ライブラリ) で同一 unitig 由来サンプルの中央値が 58 と報告されていた<br/>
-    /// リード長 150 bp より短いフラグメントは physically ありえないため、これは単位の取り違えを示していた<br/>
-    /// 内側距離 58 に両リード長を足すと 358 となりライブラリ名と一致する<br/>
-    /// この取り違えはギャップ長推定 (ギャップ = インサートサイズ - 既知長) にもそのまま伝播するため、単位を明示的に固定しておく
-    /// </remarks>
     public class InsertSizeEstimationTests : IDisposable
     {
         #region 内部変数
@@ -64,7 +58,7 @@ namespace Tsumiki.Tests.Core
 
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
 
-            var l_ユニティグ配列 = V_生成_乱数配列(l_ユニティグ長, p_シード: 12345);
+            var l_ユニティグ配列 = V_生成_乱数配列(l_ユニティグ長, p_シード: 12_345);
             var l_ユニティグパス = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
             File.WriteAllText(l_ユニティグパス, $">1\n{l_ユニティグ配列}\n");
 

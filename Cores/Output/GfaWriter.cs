@@ -5,19 +5,12 @@ namespace Tsumiki.Cores.Output
     /// <summary>
     /// unitig グラフを GFA1 形式で書き出す (SPAdes/Unicycler と同様の診断出力)
     /// </summary>
-    /// <remarks>
-    /// 決められない分岐は、現状では walk の打ち切り点になるだけで「なぜそこで切れたか」の情報が contigs.fasta には残らない<br/>
-    /// GFA としてグラフそのものを出力すれば、Bandage 等のビューアで「あと何が解ければ閉じるのか」を直接見られる<br/>
-    /// 完全長を目指す作業は本質的に反復的であり、診断可能性そのものが機能である<br/>
-    /// 出力するのは V_結合_コンティグ がバブル除去・反復解決を終えた後のグラフの状態 (=最終的な walk がどの分岐を残したまま打ち切られたかを反映する) <br/>
-    /// バブル除去前の生の de Bruijn グラフではない
-    /// </remarks>
     internal static class GfaWriter
     {
         #region 公開メソッド
 
         /// <summary>
-        /// p_ユニティグ配列・p_グラフ の状態を GFA1 として p_パス へ書き出す
+        /// p_unitig配列・p_グラフ の状態を GFA1 として p_パス へ書き出す
         /// </summary>
         /// <param name="p_パス"></param>
         /// <param name="p_ユニティグ配列"></param>

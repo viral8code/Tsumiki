@@ -15,7 +15,7 @@
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        bool Get_含まれるか(Span<byte> p_kmer);
+        bool Haskmer(Span<byte> p_kmer);
 
         #endregion
     }

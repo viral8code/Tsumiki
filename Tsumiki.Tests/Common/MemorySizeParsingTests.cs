@@ -21,15 +21,15 @@ namespace Tsumiki.Tests.Common
         /// <param name="p_文字列"></param>
         /// <param name="p_期待値"></param>
         [Theory]
-        [InlineData("2G", 2L * 1024L * 1024L * 1024L)]
-        [InlineData("2g", 2L * 1024L * 1024L * 1024L)]
-        [InlineData("2GB", 2L * 1024L * 1024L * 1024L)]
-        [InlineData("512M", 512L * 1024L * 1024L)]
-        [InlineData("512m", 512L * 1024L * 1024L)]
-        [InlineData("1024K", 1024L * 1024L)]
-        [InlineData("1T", 1024L * 1024L * 1024L * 1024L)]
-        [InlineData("1.5G", (long)(1.5D * 1024D * 1024D * 1024D))]
-        [InlineData("0.5G", 512L * 1024L * 1024L)]
+        [InlineData("2G", 2L * 1_024L * 1_024L * 1_024L)]
+        [InlineData("2g", 2L * 1_024L * 1_024L * 1_024L)]
+        [InlineData("2GB", 2L * 1_024L * 1_024L * 1_024L)]
+        [InlineData("512M", 512L * 1_024L * 1_024L)]
+        [InlineData("512m", 512L * 1_024L * 1_024L)]
+        [InlineData("1024K", 1_024L * 1_024L)]
+        [InlineData("1T", 1_024L * 1_024L * 1_024L * 1_024L)]
+        [InlineData("1.5G", (long)(1.5D * 1_024D * 1_024D * 1_024D))]
+        [InlineData("0.5G", 512L * 1_024L * 1_024L)]
         public void V_接尾辞付きサイズを読み取る(string p_文字列, long p_期待値)
         {
             Assert.Equal(p_期待値, Util.V_変換_メモリサイズ(p_文字列));
@@ -44,8 +44,8 @@ namespace Tsumiki.Tests.Common
         /// <param name="p_文字列"></param>
         /// <param name="p_期待値"></param>
         [Theory]
-        [InlineData("768", 768L * 1024L * 1024L)]
-        [InlineData("2048", 2048L * 1024L * 1024L)]
+        [InlineData("768", 768L * 1_024L * 1_024L)]
+        [InlineData("2048", 2_048L * 1_024L * 1_024L)]
         public void V_接尾辞なしはメガバイト扱い(string p_文字列, long p_期待値)
         {
             Assert.Equal(p_期待値, Util.V_変換_メモリサイズ(p_文字列));
@@ -74,7 +74,7 @@ namespace Tsumiki.Tests.Common
         public void V_メモリ予算に接尾辞付き指定を受け付ける()
         {
             var l_パラメータ = new Parameters { A_メモリ予算 = "2G" };
-            Assert.Equal(2L * 1024L * 1024L * 1024L, l_パラメータ.A_メモリ予算バイト数);
+            Assert.Equal(2L * 1_024L * 1_024L * 1_024L, l_パラメータ.A_メモリ予算バイト数);
         }
 
         /// <summary>
@@ -83,9 +83,9 @@ namespace Tsumiki.Tests.Common
         /// <param name="p_バイト数"></param>
         /// <param name="p_期待値"></param>
         [Theory]
-        [InlineData(2L * 1024L * 1024L * 1024L, "2 GB")]
-        [InlineData(768L * 1024L * 1024L, "768 MB")]
-        [InlineData(1536L * 1024L * 1024L, "1.5 GB")]
+        [InlineData(2L * 1_024L * 1_024L * 1_024L, "2 GB")]
+        [InlineData(768L * 1_024L * 1_024L, "768 MB")]
+        [InlineData(1_536L * 1_024L * 1_024L, "1.5 GB")]
         public void V_読みやすい形式へ変換する(long p_バイト数, string p_期待値)
         {
             Assert.Equal(p_期待値, Util.Get_表示用メモリサイズ(p_バイト数));

@@ -7,13 +7,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// 分岐を 1 つも持たない閉路を拾い、そこからの走査の開始点を返す
     /// </summary>
-    /// <remarks>
-    /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」k-mer として選ぶ<br/>
-    /// 閉路の全頂点が入次数 1 ・出次数 1 で、予測元も分岐していない場合、この条件を満たす k-mer が 1 つも存在せず、閉路が丸ごと走査対象から外れる<br/>
-    /// エラーの少ない小さなプラスミドや、きれいな環状染色体がそのまま出力から消える<br/>
-    /// 閉路には始点が無いので、どの頂点から始めても同じ環を 1 周する<br/>
-    /// 覆われずに残った k-mer を 1 つ選んで開始点にすればよい
-    /// </remarks>
     internal static class CyclicUnitigFinder
     {
         #region 公開メソッド
@@ -25,7 +18,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_walk結果"></param>
         /// <param name="p_k長"></param>
         /// <returns>覆い残しが無ければ空</returns>
-        public static List<byte[]> Get_閉路の開始kmer(TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
+        public static List<byte[]> Get_閉路開始kmer(TrustedKmerIndex p_kmerインデックス, IReadOnlyList<string> p_walk結果, int p_k長)
         {
             var l_覆済み = new 正規形集合(p_k長);
             foreach (var l_配列 in p_walk結果)
@@ -36,11 +29,11 @@ namespace Tsumiki.Cores.UnitigBuilding
             List<byte[]> l_開始kmer = [];
             foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
             {
-                if (l_覆済み.Get_含まれるか(l_kmer))
+                if (l_覆済み.Haskmer(l_kmer))
                 {
                     continue;
                 }
-                if (V_辿る_閉路(p_kmerインデックス, l_kmer, p_k長, l_覆済み))
+                if (Try走査_閉路(p_kmerインデックス, l_kmer, p_k長, l_覆済み))
                 {
                     l_開始kmer.Add(l_kmer);
                 }
@@ -87,11 +80,11 @@ namespace Tsumiki.Cores.UnitigBuilding
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基ID = Util.Get_塩基ID(p_配列[i]);
-                var l_有効か = l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T;
-                var l_コドン = (UInt128)(l_有効か ? l_塩基ID - 1 : 0);
+                var l_Is有効 = l_塩基ID is >= Consts.塩基ID.A and <= Consts.塩基ID.T;
+                var l_コドン = (UInt128)(l_Is有効 ? l_塩基ID - 1 : 0);
                 l_順鎖 = ((l_順鎖 << 2) | l_コドン) & l_マスク;
                 l_逆鎖 = (l_逆鎖 >> 2) | ((3 - l_コドン) << l_上位シフト);
-                if (!l_有効か)
+                if (!l_Is有効)
                 {
                     l_直近の曖昧位置 = i;
                 }
@@ -117,7 +110,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_k長"></param>
         /// <param name="p_覆済み"></param>
         /// <returns>閉路であれば true</returns>
-        private static bool V_辿る_閉路(TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
+        private static bool Try走査_閉路(TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
         {
             var l_現在 = (byte[])p_開始kmer.Clone();
             var l_次 = new byte[p_k長];
@@ -132,7 +125,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
                 {
                     l_次[^1] = i;
-                    if (p_kmerインデックス.Get_含まれるか(l_次))
+                    if (p_kmerインデックス.Haskmer(l_次))
                     {
                         l_候補数++;
                         l_次の塩基 = i;
@@ -144,11 +137,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 l_次[^1] = l_次の塩基;
-                if (p_覆済み.Get_含まれるか(l_次))
+                if (p_覆済み.Haskmer(l_次))
                 {
                     // 既に通った所へ戻った
                     // それが出発点なら 1 周できている
-                    return 正規形集合.Get_同じ座位か(l_次, p_開始kmer, p_k長);
+                    return 正規形集合.Is同一座位(l_次, p_開始kmer, p_k長);
                 }
                 l_次.CopyTo(l_現在, 0);
             }

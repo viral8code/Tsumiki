@@ -9,16 +9,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// 相互一意性の判定で決めきれなかった分岐を、先読み (ビームサーチ) で解く
     /// </summary>
-    /// <remarks>
-    /// 相互一意性は 1 歩だけを見るため、分岐の直後は五分五分でも数歩先で片方だけがペアエンドの証拠と整合する状況を取りこぼす<br/>
-    /// 各候補から複数の経路を並行して伸ばし、その間のペアエンドの支持を積算して比べる<br/>
-    /// 安全側に倒す設計:- 上位の経路群が最初の 1 歩から割れていれば何もしない<br/>
-    /// ビームサーチの利点は有力な仮説が一致する部分にだけコミットすることで、僅差で 1 本を選ぶことではない<br/>
-    /// - どの候補にも支持が無ければ何もしない<br/>
-    /// - コピー数を予算とし、反復配列を予算以上に通らない<br/>
-    /// 予算が無いと同じ反復を何度でも通れてしまい、ありもしない長い経路ができる<br/>
-    /// ゲノム全体を 1 本のオイラー路として探すと正解以外の経路も同数だけ存在し誤アセンブリを量産するため、あくまで局所的な近似に留める
-    /// </remarks>
     internal static class BeamSearchExtender
     {
         #region 定数
@@ -93,7 +83,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_最良 = Get_最良の1歩(p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
+                var l_最良 = Get_最良1歩(p_グラフ, p_ユニティグ配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
                 if (l_最良 is not { } l_選択)
                 {
                     continue;
@@ -111,7 +101,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
                 // R を 1 回しか使えない walk でこれを連鎖させると中間の B が
                 // 飛ばされる (詳細は ContigMaker 側の同名の判定を参照)
-                if (!p_グラフ.Get_通り抜けてよいか(p_コピー数, v) || !p_グラフ.Get_通り抜けてよいか(p_コピー数, l_選択 ^ 1))
+                if (!p_グラフ.Is通過可能(p_コピー数, v) || !p_グラフ.Is通過可能(p_コピー数, l_選択 ^ 1))
                 {
                     continue;
                 }
@@ -146,7 +136,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 var l_件数 = p_ペア連結.GetValueOrDefault((l_足場頂点, p_候補));
                 l_生スコア += (long)l_件数;
-                l_正規化スコア += p_較正器 is { A_使えるか: true } l_較正器
+                l_正規化スコア += p_較正器 is { A_Is使用可能: true } l_較正器
                     ? l_較正器.Get_正規化済み支持(l_件数, p_ユニティグ配列[l_足場頂点].Length, l_候補長, p_ギャップ長: l_足場距離 + p_前進距離 - Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1))
                     : l_件数;
             }
@@ -160,13 +150,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// contig 末尾のインサートサイズぶんの頂点のうち、単一コピーのものだけを集める
         /// </summary>
-        /// <remarks>
-        /// ここに載ったリードの相方が続きの証拠になる<br/>
-        /// 直前の頂点は逆鎖対称性より 結合[v^1] の双子で辿れる<br/>
-        /// 多コピーを足場から外すのが要点<br/>
-        /// 反復内部から読まれたリードはどのコピー由来か区別できず、その証拠はどの行き先にも付くため、標本が少ないと偶然の偏りで誤った側を選ぶ<br/>
-        /// 通過はするが足場には数えない (多コピー領域の向こう側にある単一コピー領域は証拠として有効なため)
-        /// </remarks>
         /// <param name="p_頂点"></param>
         /// <param name="p_ユニティグ配列"></param>
         /// <param name="p_結合"></param>
@@ -227,7 +210,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_較正器"></param>
         /// <returns>最初の 1 歩として最も支持される頂点、決めきれない場合は null</returns>
-        private static int? Get_最良の1歩(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int p_分岐元, List<(int A_頂点, int A_距離)> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器)
+        private static int? Get_最良1歩(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, int p_分岐元, List<(int A_頂点, int A_距離)> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器)
         {
             List<先読み探索状態> l_ビーム = [];
             foreach (var l_候補 in p_グラフ.A_出辺[p_分岐元])
@@ -249,7 +232,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             Dictionary<int, (double A_正規化, long A_生)> l_1歩ごとの最良 = [];
             foreach (var l_状態 in l_ビーム)
             {
-                V_更新_1歩ごとの最良(l_1歩ごとの最良, l_状態);
+                V_更新_各歩最良(l_1歩ごとの最良, l_状態);
             }
 
             for (var l_ステップ = 0; l_ステップ < 経路あたりの最大ステップ数 && l_ビーム.Count > 0; l_ステップ++)
@@ -292,7 +275,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 foreach (var l_状態 in l_ビーム)
                 {
-                    V_更新_1歩ごとの最良(l_1歩ごとの最良, l_状態);
+                    V_更新_各歩最良(l_1歩ごとの最良, l_状態);
                 }
             }
 
@@ -327,7 +310,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </remarks>
         /// <param name="p_1歩ごとの最良"></param>
         /// <param name="p_状態"></param>
-        private static void V_更新_1歩ごとの最良(Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
+        private static void V_更新_各歩最良(Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)
         {
             if (!p_1歩ごとの最良.TryGetValue(p_状態.A_最初の1歩, out var l_既存) || p_状態.A_スコア > l_既存.A_正規化)
             {

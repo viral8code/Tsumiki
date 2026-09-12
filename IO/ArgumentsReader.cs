@@ -59,7 +59,7 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.引数キー.一時ディレクトリ削除:
-                            l_引数.A_一時ディレクトリを削除するか = true;
+                            l_引数.A_Is一時ディレクトリ削除 = true;
                             break;
 
                         case Consts.引数キー.一時ディレクトリ:
@@ -79,47 +79,47 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.引数キー.ヘルプ:
-                            l_引数.A_ヘルプモードか = true;
+                            l_引数.A_Isヘルプモード = true;
                             break;
 
                         case Consts.引数キー.バージョン:
-                            l_引数.A_バージョンモードか = true;
+                            l_引数.A_Isバージョンモード = true;
                             break;
 
                         case Consts.引数キー.曖昧塩基を許容:
-                            l_引数.A_曖昧塩基を許容するか = true;
+                            l_引数.A_Is曖昧塩基許容 = true;
                             break;
 
                         case Consts.引数キー.エラー訂正:
-                            l_引数.A_エラー訂正するか = true;
+                            l_引数.A_Isエラー訂正 = true;
                             break;
 
                         case Consts.引数キー.前処理:
-                            l_引数.A_前処理するか = true;
+                            l_引数.A_Is前処理 = true;
                             break;
 
                         case Consts.引数キー.マルチk:
-                            l_引数.A_マルチkか = true;
+                            l_引数.A_Isマルチk = true;
                             break;
 
                         case Consts.引数キー.マージ:
-                            l_引数.A_マージするか = true;
+                            l_引数.A_Isマージ = true;
                             break;
 
                         case Consts.引数キー.引き継ぎなし:
-                            l_引数.A_引き継ぐか = false;
+                            l_引数.A_Is引き継ぎ = false;
                             break;
 
                         case Consts.引数キー.SuperRead:
-                            l_引数.A_SuperReadを作るか = true;
+                            l_引数.A_IsSuperRead作成 = true;
                             break;
 
                         case Consts.引数キー.反復r_mer検証:
-                            l_引数.A_反復をrMerで検証するか = true;
+                            l_引数.A_Is反復rMer検証 = true;
                             break;
 
                         case Consts.引数キー.局所アセンブリ:
-                            l_引数.A_局所アセンブリするか = true;
+                            l_引数.A_Is局所アセンブリ = true;
                             break;
 
                         case Consts.引数キー.言語:
@@ -131,23 +131,23 @@ namespace Tsumiki.IO
                             break;
 
                         case Consts.引数キー.GFA出力:
-                            l_引数.A_GFAを出力するか = true;
+                            l_引数.A_IsGFA出力 = true;
                             break;
 
                         case Consts.引数キー.ポリッシュ:
-                            l_引数.A_ポリッシュするか = true;
+                            l_引数.A_Isポリッシュ = true;
                             break;
 
                         case Consts.引数キー.環状閉鎖検証:
-                            l_引数.A_環状閉鎖を検証するか = true;
+                            l_引数.A_Is環状閉鎖検証 = true;
                             break;
 
                         case Consts.引数キー.救済kmer:
-                            l_引数.A_救済kmerを使うか = true;
+                            l_引数.A_Is救済kmer使用 = true;
                             break;
 
                         case Consts.引数キー.再開:
-                            l_引数.A_再開するか = true;
+                            l_引数.A_Is再開 = true;
                             break;
 
                         case Consts.引数キー.ログ水準:
@@ -168,7 +168,7 @@ namespace Tsumiki.IO
             // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない
             // (以前は -h のみを指定してもここで「Please set read path」エラーになり
             // ヘルプが表示できなかった)
-            if (l_引数.A_ヘルプモードか || l_引数.A_バージョンモードか)
+            if (l_引数.A_Isヘルプモード || l_引数.A_Isバージョンモード)
             {
                 return l_引数;
             }
