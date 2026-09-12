@@ -105,7 +105,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 ConfigurationManager.A_実行時引数 = l_設定;
                 var l_検査パス = Path.Combine(p_作業パス, "validation");
-                Directory.CreateDirectory(l_検査パス);
+                _ = Directory.CreateDirectory(l_検査パス);
                 using var l_索引 = new TrustedKmerIndex(l_検査パス);
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_進行状況を出力するか: false);
                 var l_分布 = l_索引.Get_出現回数ヒストグラム();

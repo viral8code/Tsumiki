@@ -289,7 +289,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_スキャフォールド = this.Get_スキャフォールド配列(l_確定辺, l_始点, l_訪問済み, out var l_連結数);
                 if (l_スキャフォールド != null)
                 {
-                    l_スキャフォールド群.Add(( l_スキャフォールド, l_連結数 == 1 && this.Get_環状か(l_始点 >> 1)));
+                    l_スキャフォールド群.Add((l_スキャフォールド, l_連結数 == 1 && this.Get_環状か(l_始点 >> 1)));
                 }
             }
 

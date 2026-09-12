@@ -131,8 +131,8 @@ namespace Tsumiki.Utilities
         /// <returns>閾値に届いていれば true</returns>
         public bool Get_接合点に支持があるか(string p_head配列, string p_repeat配列, string p_tail配列, int p_閾値)
         {
-            var l_支持 = this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列);
-            return l_支持.A_入口 > 0 && l_支持.A_出口 > 0 && l_支持.A_全体 >= p_閾値;
+            var (A_全体, A_入口, A_出口) = this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列);
+            return A_入口 > 0 && A_出口 > 0 && A_全体 >= p_閾値;
         }
 
         /// <summary>

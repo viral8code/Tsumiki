@@ -38,7 +38,7 @@ namespace Tsumiki.Models.Foundation
                 // Get_塩基 ID 候補 は曖昧塩基対応のため List を確保するが、
                 // ContigMaker 側では曖昧塩基を含む区間はそもそも KmerKey 化されない
                 // (呼ばれない) ため、ここでは List 確保のない軽量な単一塩基変換で十分
-                var l_値 = (ulong)Util.Get_塩基ID(p_kmer[i]) - 1UL;
+                var l_値 = Util.Get_塩基ID(p_kmer[i]) - 1UL;
                 // 32 塩基ごとに同じ ulong 要素 (2 bit x 32 = 64 bit) を共有するため、
                 // 代入ではなく OR で詰め込まないと、直前までに書き込んだ
                 // 塩基の情報が上書きで消えてしまう
@@ -63,7 +63,7 @@ namespace Tsumiki.Models.Foundation
             {
                 var l_要素位置 = i >> 5;
                 var l_シフト量 = (31 ^ (i & 31)) << 1;
-                var l_値 = (ulong)p_kmer[i] - 1UL;
+                var l_値 = p_kmer[i] - 1UL;
                 this.A_パック済みデータ[l_要素位置] |= l_値 << l_シフト量;
             }
         }
@@ -128,12 +128,7 @@ namespace Tsumiki.Models.Foundation
         /// <returns>同じなら true</returns>
         public bool Equals(KmerKey p_比較対象)
         {
-            if (this._長さ != p_比較対象._長さ)
-            {
-                return false;
-            }
-
-            return this.A_パック済みデータ.AsSpan().SequenceEqual(p_比較対象.A_パック済みデータ);
+            return this._長さ == p_比較対象._長さ && this.A_パック済みデータ.AsSpan().SequenceEqual(p_比較対象.A_パック済みデータ);
         }
 
         /// <summary>

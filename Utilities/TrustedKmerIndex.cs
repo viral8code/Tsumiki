@@ -265,7 +265,7 @@ namespace Tsumiki.Utilities
             var l_値 = 0UL;
             foreach (var l_塩基ID in p_kmer)
             {
-                l_値 = (l_値 << 2) | ((ulong)l_塩基ID - 1UL);
+                l_値 = (l_値 << 2) | (l_塩基ID - 1UL);
             }
             return l_値;
         }
