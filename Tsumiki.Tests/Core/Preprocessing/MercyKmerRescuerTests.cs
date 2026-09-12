@@ -10,27 +10,42 @@ namespace Tsumiki.Tests.Core
     /// カットオフで落ちた k-mer の救済を固定する
     /// </summary>
     /// <remarks>
-    /// 救うべきもの (信頼できる k-mer に挟まれた低頻度) と、救ってはいけないもの
-    /// (端に生えているだけの低頻度) の線引きが要点
+    /// 救うべきもの (信頼できる k-mer に挟まれた低頻度) と、救ってはいけないもの (端に生えているだけの低頻度) の線引きが要点
     /// </remarks>
     public class MercyKmerRescuerTests : IDisposable
     {
+        #region 定数
+
         /// <summary>
         /// k 長
         /// </summary>
         private const int k長 = 21;
+
+        #endregion
+
+        #region 内部変数
 
         /// <summary>
         /// 一時ディレクトリ
         /// </summary>
         private readonly string _一時ディレクトリ;
 
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// 検証用の状態を初期化する
+        /// </summary>
         public MercyKmerRescuerTests()
         {
-            this._一時ディレクトリ = Path.Combine(
-                Path.GetTempPath(), "tsumiki_mercy_" + Guid.NewGuid().ToString("N"));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_mercy_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 一時ディレクトリを片付ける
@@ -45,103 +60,30 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 種を決めた乱数から塩基配列を作る
-        /// </summary>
-        /// <param name="p_長さ">作る長さ</param>
-        /// <param name="p_種">乱数の種</param>
-        /// <returns>塩基配列</returns>
-        private static string Get_乱数配列(int p_長さ, int p_種)
-        {
-            var l_乱数 = new Random(p_種);
-            const string 塩基 = "ACGT";
-            return string.Concat(
-                Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
-        }
-
-        /// <summary>
-        /// リードを FASTQ として書き出す
-        /// </summary>
-        /// <param name="p_名前">ファイル名</param>
-        /// <param name="p_リード群">書き出すリード</param>
-        /// <returns>書き出したパス</returns>
-        private string V_書き出し_FASTQ(string p_名前, IEnumerable<string> p_リード群)
-        {
-            var l_パス = Path.Combine(this._一時ディレクトリ, p_名前);
-            using var l_書き込み = new StreamWriter(l_パス);
-            var l_番号 = 0;
-            foreach (var l_リード in p_リード群)
-            {
-                l_書き込み.WriteLine($"@read{l_番号++}");
-                l_書き込み.WriteLine(l_リード);
-                l_書き込み.WriteLine("+");
-                l_書き込み.WriteLine(new string('I', l_リード.Length));
-            }
-            return l_パス;
-        }
-
-        /// <summary>
-        /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る
-        /// </summary>
-        /// <remarks>
-        /// カットオフ 2 で、その窓だけが落ちた状態になる
-        /// </remarks>
-        private TrustedKmerIndex Get_穴のあるインデックス(string p_配列, int p_穴の開始, int p_穴の長さ)
-        {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
-            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
-            var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
-            for (var i = 0; i + k長 <= l_塩基列.Length; i++)
-            {
-                var l_穴か = i >= p_穴の開始 && i < p_穴の開始 + p_穴の長さ;
-                for (var l_回 = 0; l_回 < (l_穴か ? 1 : 5); l_回++)
-                {
-                    l_インデックス.V_登録(l_塩基列.AsSpan(i, k長));
-                }
-            }
-            _ = l_インデックス.V_カットオフ(p_カットオフ: 2);
-            return l_インデックス;
-        }
-
-        /// <summary>
-        /// 指定した位置の k-mer が信頼できる集合にあるか
-        /// </summary>
-        /// <param name="p_インデックス">信頼できる k-mer 集合</param>
-        /// <param name="p_配列">元の配列</param>
-        /// <param name="p_位置">k-mer の開始位置</param>
-        /// <returns>集合にあれば true</returns>
-        private static bool Get_含まれるか(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
-        {
-            var l_kmer = p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID).ToArray();
-            return p_インデックス.Get_含まれるか(l_kmer);
-        }
-
-        /// <summary>
         /// 信頼できる k-mer に両側から挟まれた低頻度 k-mer を救済することを検証する
         /// </summary>
         [Fact]
         public void Get_救済数_信頼できるkmerに挟まれた低頻度kmerを救う()
         {
             var l_配列 = Get_乱数配列(300, 21);
-            const int 穴の開始 = 100;
-            const int 穴の長さ = 3;
+            const int l_穴の開始 = 100;
+            const int l_穴の長さ = 3;
 
-            using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 穴の開始, 穴の長さ);
-            Assert.False(Get_含まれるか(l_インデックス, l_配列, 穴の開始));
+            using var l_インデックス = this.Get_穴のあるインデックス(l_配列, l_穴の開始, l_穴の長さ);
+            Assert.False(Get_含まれるか(l_インデックス, l_配列, l_穴の開始));
 
             // 穴を跨いで両側の信頼できる窓まで届くリードを 2 本与える
-            var l_リード = l_配列.Substring(穴の開始 - 30, 100);
+            var l_リード = l_配列.Substring(l_穴の開始 - 30, 100);
             var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
             var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
             ConfigurationManager.A_実行時引数 = l_引数;
 
             var l_救済数 = MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長);
 
-            Assert.Equal(穴の長さ, l_救済数);
-            for (var i = 0; i < 穴の長さ; i++)
+            Assert.Equal(l_穴の長さ, l_救済数);
+            for (var i = 0; i < l_穴の長さ; i++)
             {
-                Assert.True(
-                    Get_含まれるか(l_インデックス, l_配列, 穴の開始 + i),
-                    $"穴の窓 {i} が救済されていない");
+                Assert.True(Get_含まれるか(l_インデックス, l_配列, l_穴の開始 + i), $"穴の窓 {i} が救済されていない");
             }
         }
 
@@ -194,5 +136,86 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, p_k長: 65));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
+        private static string Get_乱数配列(int p_長さ, int p_種)
+        {
+            var l_乱数 = new Random(p_種);
+            const string l_塩基 = "ACGT";
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
+        }
+
+        /// <summary>
+        /// リードを FASTQ として書き出す
+        /// </summary>
+        /// <param name="p_名前">ファイル名</param>
+        /// <param name="p_リード群">書き出すリード</param>
+        /// <returns>書き出したパス</returns>
+        private string V_書き出し_FASTQ(string p_名前, IEnumerable<string> p_リード群)
+        {
+            var l_パス = Path.Combine(this._一時ディレクトリ, p_名前);
+            using var l_書き込み = new StreamWriter(l_パス);
+            var l_番号 = 0;
+            foreach (var l_リード in p_リード群)
+            {
+                l_書き込み.WriteLine($"@read{l_番号++}");
+                l_書き込み.WriteLine(l_リード);
+                l_書き込み.WriteLine("+");
+                l_書き込み.WriteLine(new string('I', l_リード.Length));
+            }
+            return l_パス;
+        }
+
+        /// <summary>
+        /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る
+        /// </summary>
+        /// <remarks>
+        /// カットオフ 2 で、その窓だけが落ちた状態になる
+        /// </remarks>
+        /// <param name="p_配列"></param>
+        /// <param name="p_穴の開始"></param>
+        /// <param name="p_穴の長さ"></param>
+        /// <returns></returns>
+        private TrustedKmerIndex Get_穴のあるインデックス(string p_配列, int p_穴の開始, int p_穴の長さ)
+        {
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
+            var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
+            for (var i = 0; i + k長 <= l_塩基列.Length; i++)
+            {
+                var l_穴か = i >= p_穴の開始 && i < p_穴の開始 + p_穴の長さ;
+                for (var l_回 = 0; l_回 < (l_穴か ? 1 : 5); l_回++)
+                {
+                    l_インデックス.V_登録(l_塩基列.AsSpan(i, k長));
+                }
+            }
+            _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
+            return l_インデックス;
+        }
+
+        /// <summary>
+        /// 指定した位置の k-mer が信頼できる集合にあるか
+        /// </summary>
+        /// <param name="p_インデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_位置">k-mer の開始位置</param>
+        /// <returns>集合にあれば true</returns>
+        private static bool Get_含まれるか(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
+        {
+            var l_kmer = p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID).ToArray();
+            return p_インデックス.Get_含まれるか(l_kmer);
+        }
+
+        #endregion
+
     }
 }

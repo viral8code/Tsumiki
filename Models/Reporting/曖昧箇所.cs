@@ -29,8 +29,7 @@
         /// 分岐元が多コピーで、いまどのコピーの上にいるのかを区別できなかった
         /// </summary>
         /// <remarks>
-        /// 反復の内側から読まれたリードはどの行き先にも支持を付けるため、
-        /// 選ぶ根拠が原理的に存在しない
+        /// 反復の内側から読まれたリードはどの行き先にも支持を付けるため、選ぶ根拠が原理的に存在しない
         /// </remarks>
         反復の内側,
     }
@@ -39,9 +38,15 @@
     /// 決めきれなかった 1 箇所の記録
     /// </summary>
     /// <remarks>
-    /// N で埋めて黙って落とすと、後から
-    /// 人や別のツールが再解析するための手掛かりが残らない
+    /// N で埋めて黙って落とすと、後から人や別のツールが再解析するための手掛かりが残らない
     /// </remarks>
+    /// <param name="A_k長"></param>
+    /// <param name="A_種別"></param>
+    /// <param name="A_場所"></param>
+    /// <param name="A_首位の支持"></param>
+    /// <param name="A_次点の支持"></param>
+    /// <param name="A_首位の生支持数"></param>
+    /// <param name="A_確信度"></param>
     internal readonly record struct 曖昧箇所(int A_k長, 曖昧箇所の種別 A_種別, string A_場所, double A_首位の支持, double A_次点の支持, long A_首位の生支持数, double A_確信度)
     {
         #region カスタムプロパティ

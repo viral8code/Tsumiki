@@ -8,8 +8,7 @@ namespace Tsumiki.Models.UnitigBuilding
     /// ワーカーごとに持つ走査用の状態
     /// </summary>
     /// <remarks>
-    /// k &lt;= 64 なら転がし更新の実装を使い、
-    /// それを超える場合だけ従来の実装へ落ちる
+    /// k &lt;= 64 なら転がし更新の実装を使い、それを超える場合だけ従来の実装へ落ちる
     /// </remarks>
     /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
     internal sealed class 走査状態(TrustedKmerIndex p_kmerインデックス)

@@ -7,25 +7,11 @@ namespace Tsumiki.Tests.Core
     /// ペアの隣接証拠を期待本数との比で測るためのモデル
     /// </summary>
     /// <remarks>
-    /// 観測本数をそのまま固定の下限と比べると幾何的な偏りを拾うため、
-    /// 期待位置数の算出と、裾に強いギャップ長推定を固定する
+    /// 観測本数をそのまま固定の下限と比べると幾何的な偏りを拾うため、期待位置数の算出と、裾に強いギャップ長推定を固定する
     /// </remarks>
     public class PairedDistanceModelTests
     {
-        /// <summary>
-        /// 中央 400、おおよそ 350-450 に広がるフラグメント長分布
-        /// </summary>
-        private static List<int> Get_分布(int p_件数 = 2000)
-        {
-            var l_乱数 = new Random(4649);
-            return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
-        }
-
-        /// <summary>
-        /// 検証に使う断片長のモデル
-        /// </summary>
-        /// <returns>断片長のモデル</returns>
-        private static PairedDistanceModel Get_モデル() => new(Get_分布(), p_リード長: 100);
+        #region 公開メソッド
 
         /// <summary>
         /// きれいなクラスタからギャップ長を見つけられることを確かめる
@@ -44,8 +30,7 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 誤マップ由来の裾が過半を占めても、峰から出るギャップ長と本数が
-        /// 変わらないこと
+        /// 誤マップ由来の裾が過半を占めても、峰から出るギャップ長と本数が変わらないこと
         /// </summary>
         /// <remarks>
         /// 中央値で測るとここが壊れる
@@ -83,27 +68,23 @@ namespace Tsumiki.Tests.Core
         {
             var l_モデル = Get_モデル();
 
-            var l_短い辺 = l_モデル.Get_期待位置数(200, 200, 0);
-            var l_長い辺 = l_モデル.Get_期待位置数(50_000, 50_000, 0);
+            var l_短い辺 = l_モデル.Get_期待位置数(200L, 200L, 0);
+            var l_長い辺 = l_モデル.Get_期待位置数(50_000L, 50_000L, 0);
             Assert.True(l_長い辺 > l_短い辺);
 
-            var l_広いギャップ = l_モデル.Get_期待位置数(50_000, 50_000, 200);
+            var l_広いギャップ = l_モデル.Get_期待位置数(50_000L, 50_000L, 200);
             Assert.True(l_長い辺 > l_広いギャップ);
         }
 
         /// <summary>
-        /// 接合点から 1 フラグメント長ぶんの窓しか寄与しないので、それより長い
-        /// 配列では期待位置数は増えない
+        /// 接合点から 1 フラグメント長ぶんの窓しか寄与しないので、それより長い配列では期待位置数は増えない
         /// </summary>
         [Fact]
         public void Get_期待位置数_フラグメント長を超えると増えなくなる()
         {
             var l_モデル = Get_モデル();
 
-            Assert.Equal(
-                l_モデル.Get_期待位置数(50_000, 50_000, 0),
-                l_モデル.Get_期待位置数(5_000, 5_000, 0),
-                6);
+            Assert.Equal(l_モデル.Get_期待位置数(50_000L, 50_000L, 0), l_モデル.Get_期待位置数(5_000L, 5_000L, 0), 6);
         }
 
         /// <summary>
@@ -112,7 +93,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_期待位置数_フラグメント長を超えるギャップは0になる()
         {
-            Assert.Equal(0, Get_モデル().Get_期待位置数(50_000, 50_000, 1_000), 6);
+            Assert.Equal(0D, Get_モデル().Get_期待位置数(50_000L, 50_000L, 1_000), 6);
         }
 
         /// <summary>
@@ -123,18 +104,42 @@ namespace Tsumiki.Tests.Core
         {
             var l_モデル = Get_モデル();
 
-            Assert.Equal(0, l_モデル.Get_期待位置数_単一(100), 6);
-            Assert.True(l_モデル.Get_期待位置数_単一(10_000) > 9_000);
+            Assert.Equal(0D, l_モデル.Get_期待位置数_単一(100L), 6);
+            Assert.True(l_モデル.Get_期待位置数_単一(10_000L) > 9_000D);
         }
 
         /// <summary>
         /// モデルは標本が無ければ使えないことを確かめる
         /// </summary>
         [Fact]
-        public void モデルは標本が無ければ使えない()
+        public void V_モデルは標本が無ければ使えない()
         {
             Assert.False(new PairedDistanceModel([], p_リード長: 100).A_使えるか);
             Assert.True(Get_モデル().A_使えるか);
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 中央 400、おおよそ 350-450 に広がるフラグメント長分布
+        /// </summary>
+        /// <param name="p_件数"></param>
+        /// <returns></returns>
+        private static List<int> Get_分布(int p_件数 = 2000)
+        {
+            var l_乱数 = new Random(4649);
+            return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];
+        }
+
+        /// <summary>
+        /// 検証に使う断片長のモデル
+        /// </summary>
+        /// <returns>断片長のモデル</returns>
+        private static PairedDistanceModel Get_モデル() => new(Get_分布(), p_リード長: 100);
+
+        #endregion
+
     }
 }

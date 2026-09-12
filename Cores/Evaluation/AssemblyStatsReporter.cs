@@ -57,20 +57,13 @@ namespace Tsumiki.Cores.Evaluation
 
             if (l_長さ一覧.Count == 0)
             {
-                return new アセンブリ統計(0, 0, 0, 0, 0, 0, 0D);
+                return new アセンブリ統計(0, 0L, 0, 0, 0, 0, 0D);
             }
 
             var (l_N50, l_L50) = StatsUtil.Get_N50([.. l_長さ一覧.Select(x => (long)x)]);
             var l_GC率 = l_塩基数 == 0D ? 0D : (100D * l_GC数 / l_塩基数);
 
-            return new アセンブリ統計(
-                A_配列数: l_長さ一覧.Count,
-                A_総延長: l_総延長,
-                A_最大長: l_長さ一覧.Max(),
-                A_最小長: l_長さ一覧.Min(),
-                A_N50: (int)l_N50,
-                A_L50: l_L50,
-                A_GC率: l_GC率);
+            return new アセンブリ統計(A_配列数: l_長さ一覧.Count, A_総延長: l_総延長, A_最大長: l_長さ一覧.Max(), A_最小長: l_長さ一覧.Min(), A_N50: (int)l_N50, A_L50: l_L50, A_GC率: l_GC率);
         }
 
         /// <summary>
@@ -89,8 +82,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_ラベル">出力の見出しに使うラベル</param>
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
         /// <remarks>
-        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう
-        /// 比較用の最小長以上の配列だけに絞った統計も併記する
+        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう比較用の最小長以上の配列だけに絞った統計も併記する
         /// </remarks>
         public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
         {

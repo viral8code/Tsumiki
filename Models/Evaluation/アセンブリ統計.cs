@@ -6,6 +6,13 @@
     /// <remarks>
     /// リファレンスなしで計算できる範囲の指標のみを対象とする
     /// </remarks>
+    /// <param name="A_配列数"></param>
+    /// <param name="A_総延長"></param>
+    /// <param name="A_最大長"></param>
+    /// <param name="A_最小長"></param>
+    /// <param name="A_N50"></param>
+    /// <param name="A_L50"></param>
+    /// <param name="A_GC率"></param>
     internal readonly record struct アセンブリ統計(int A_配列数, long A_総延長, int A_最大長, int A_最小長, int A_N50, int A_L50, double A_GC率)
     {
         #region 継承メソッド

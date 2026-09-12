@@ -7,16 +7,12 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Preprocessing
 {
     /// <summary>
-    /// ペアエンドの 2 本 (R1 と RC(R2)) を重ね合わせて、アダプタリードスルーのトリムと、
-    /// 高信頼と低信頼が明確に分かれる位置でのペア相互訂正を行う
+    /// ペアエンドの 2 本 (R1 と RC (R2)) を重ね合わせて、アダプタリードスルーのトリムと、高信頼と低信頼が明確に分かれる位置でのペア相互訂正を行う
     /// </summary>
     /// <remarks>
-    /// k-mer カウントより前段の、fastp 型の前処理層になる (ErrorCorrector のさらに前段)<br/>
-    /// ErrorCorrector (k-mer スペクトルに基づく訂正) とは独立な証拠源、
-    /// つまり同じ断片を両端から 2 回読んだという事実そのものを使うため、
-    /// 両方を通して初めて捕まえられる誤りがある<br/>
-    /// アダプタ配列は全リードで共通のため、カットオフでは絶対に落ちない
-    /// 高カバレッジな偽 k-mer としてグラフに定着するので、ここで先に取り除く
+    /// k-mer カウントより前段の、fastp 型の前処理層になる (ErrorCorrector のさらに前段) <br/>
+    /// ErrorCorrector (k-mer スペクトルに基づく訂正) とは独立な証拠源、つまり同じ断片を両端から 2 回読んだという事実そのものを使うため、両方を通して初めて捕まえられる誤りがある<br/>
+    /// アダプタ配列は全リードで共通のため、カットオフでは絶対に落ちない高カバレッジな偽 k-mer としてグラフに定着するので、ここで先に取り除く
     /// </remarks>
     internal static class Preprocessor
     {
@@ -56,8 +52,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 1 バッチあたりのペア数
         /// </summary>
         /// <remarks>
-        /// ErrorCorrector と同じ理由 (出力の行順を入力と厳密に一致させる必要がある) で、
-        /// まとめて読み並列に処理し順番通りに書く形にしている
+        /// ErrorCorrector と同じ理由 (出力の行順を入力と厳密に一致させる必要がある) で、まとめて読み並列に処理し順番通りに書く形にしている
         /// </remarks>
         private const int 前処理バッチサイズ = 20000;
 
@@ -148,8 +143,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <remarks>
         /// 副作用のない純粋関数<br/>
-        /// R1 と RC(R2) を重ね合わせ、重なりが見つかった場合のみ
-        /// アダプタ読み過ごし分のトリムと、重なり領域内の相互訂正を行う<br/>
+        /// R1 と RC (R2) を重ね合わせ、重なりが見つかった場合のみアダプタ読み過ごし分のトリムと、重なり領域内の相互訂正を行う<br/>
         /// 重なりが見つからない (フラグメント長がリード長を上回る、通常の) 場合は元のリードをそのまま返す
         /// </remarks>
         /// <param name="p_配列1">read1 の配列</param>
@@ -170,7 +164,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return new ペア前処理結果(p_配列1, p_クオリティ1, p_配列2, p_クオリティ2, false, 0);
             }
 
-            // R1 は断片の先頭から、RC(R2) は断片上の (offset) 位置から始まる
+            // R1 は断片の先頭から、RC (R2) は断片上の (offset) 位置から始まる
             // ([[オーバーラップ結果]] 参照) したがってフラグメント長は offset + R2 の長さ で求まる
             var l_フラグメント長 = l_重なり.A_offset + p_配列2.Length;
             var l_開始1 = Math.Max(0, l_重なり.A_offset);
@@ -201,7 +195,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                 if (l_スコア1 >= 高信頼スコア && l_スコア2 <= 低信頼スコア)
                 {
-                    // RC(R2) 側は既に R1 と同じ向きの塩基になっているので、そのまま写す
+                    // RC (R2) 側は既に R1 と同じ向きの塩基になっているので、そのまま写す
                     l_配列2文字[l_位置2] = Get_相補文字(l_RC配列2[l_位置2RC]);
                     l_訂正数++;
                 }
@@ -221,20 +215,19 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// R1 と RC(R2) の最良の重なり位置を探す
+        /// R1 と RC (R2) の最良の重なり位置を探す
         /// </summary>
         /// <remarks>
-        /// 反復配列の中では周期のぶんだけずれた位置が同じくらい良く合うため、
-        /// 最良を 1 つ選ぶだけでは取り違えに気づけない<br/>
+        /// 反復配列の中では周期のぶんだけずれた位置が同じくらい良く合うため、最良を 1 つ選ぶだけでは取り違えに気づけない<br/>
         /// 重ねた結果を 1 本の配列として下流へ渡す用途では、この曖昧さを見て捨てる必要がある
         /// </remarks>
         /// <param name="p_塩基列1">R1 の塩基 ID 列</param>
-        /// <param name="p_塩基列2RC">RC(R2) の塩基 ID 列</param>
+        /// <param name="p_塩基列2RC">RC (R2) の塩基 ID 列</param>
         /// <param name="p_最小重なり長">重なりとみなすために要求する最小長</param>
         /// <param name="p_許容不一致率">重なりとみなすために許す不一致率</param>
         /// <param name="p_対抗馬があるか">条件を満たすオフセットが 2 つ以上あったか</param>
         /// <returns>
-        /// 条件を満たすもののなかで重なりが最長のもの (同点なら不一致数が少ないもの)<br/>
+        /// 条件を満たすもののなかで重なりが最長のもの (同点なら不一致数が少ないもの) <br/>
         /// 見つからなければ null (通常の、フラグメント長がリード長を超える場合)
         /// </returns>
         internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_対抗馬があるか)
@@ -262,7 +255,7 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_許容不一致数 = (int)(l_重なり長 * p_許容不一致率);
 
                 // 早期打ち切り: 大半のオフセットは無関係な配列同士の比較になるため、
-                // 閾値を超えた時点でやめないと全ペア × 全オフセットが O(read 長) のままになる
+                // 閾値を超えた時点でやめないと全ペア × 全オフセットが O (read 長) のままになる
                 var l_不一致数 = l_詰め1 is { } l_詰めA && l_詰め2 is { } l_詰めB
                     ? Get_不一致数_語単位(l_詰めA, l_詰めB, l_開始1, l_開始2, l_重なり長, l_許容不一致数)
                     : Get_不一致数_1塩基ずつ(p_塩基列1, p_塩基列2RC, l_開始1, l_開始2, l_重なり長, l_許容不一致数);
@@ -296,9 +289,9 @@ namespace Tsumiki.Cores.Preprocessing
         /// 重なり区間の不一致数を 32 塩基ずつ数える
         /// </summary>
         /// <param name="p_詰め1">R1 を詰めたもの</param>
-        /// <param name="p_詰め2">RC(R2) を詰めたもの</param>
+        /// <param name="p_詰め2">RC (R2) を詰めたもの</param>
         /// <param name="p_開始1">R1 側で比べ始める位置</param>
-        /// <param name="p_開始2">RC(R2) 側で比べ始める位置</param>
+        /// <param name="p_開始2">RC (R2) 側で比べ始める位置</param>
         /// <param name="p_重なり長">比べる長さ</param>
         /// <param name="p_許容不一致数">許容する不一致の数</param>
         /// <returns>不一致の数、許容数を超えた時点で打ち切るのでその場合は許容数より大きい値</returns>
@@ -321,13 +314,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// 曖昧塩基を含んで詰められない場合に、1 塩基ずつ不一致の数を数える
         /// </summary>
         /// <remarks>
-        /// 曖昧塩基同士は一致として扱う
-        /// (2 bit に落とすとこの区別ができないため、詰められる場合と結果が変わりうる)
+        /// 曖昧塩基同士は一致として扱う (2 bit に落とすとこの区別ができないため、詰められる場合と結果が変わりうる)
         /// </remarks>
         /// <param name="p_塩基列1">R1 の塩基 ID 列</param>
-        /// <param name="p_塩基列2RC">RC(R2) の塩基 ID 列</param>
+        /// <param name="p_塩基列2RC">RC (R2) の塩基 ID 列</param>
         /// <param name="p_開始1">R1 側で比べ始める位置</param>
-        /// <param name="p_開始2">RC(R2) 側で比べ始める位置</param>
+        /// <param name="p_開始2">RC (R2) 側で比べ始める位置</param>
         /// <param name="p_重なり長">比べる長さ</param>
         /// <param name="p_許容不一致数">許容する不一致の数</param>
         /// <returns>不一致の数、許容数を超えた時点で打ち切るのでその場合は許容数より大きい値</returns>

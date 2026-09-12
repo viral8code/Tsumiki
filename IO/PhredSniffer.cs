@@ -7,8 +7,7 @@ namespace Tsumiki.IO
     /// FASTQ のクオリティ文字列から Phred オフセット (33 or 64) を推定する
     /// </summary>
     /// <remarks>
-    /// -p が明示指定されていない場合に限り推定値を自動採用し、明示指定されて
-    /// いる場合は (ユーザーの判断を尊重して) 警告のみに留める
+    /// -p が明示指定されていない場合に限り推定値を自動採用し、明示指定されている場合は (ユーザーの判断を尊重して) 警告のみに留める
     /// </remarks>
     internal static class PhredSniffer
     {
@@ -19,7 +18,7 @@ namespace Tsumiki.IO
         /// </summary>
         /// <remarks>
         /// 実データで現実的にありうる最大の Phred スコア<br/>
-        /// (Illumina/MGI/BGI いずれも通常は 40 強が上限)<br/>
+        /// (Illumina/MGI/BGI いずれも通常は 40 強が上限) <br/>
         /// これを大きく超えるスコアが観測された場合は、オフセットの取り違えを疑う
         /// </remarks>
         private const int 現実的なQ上限 = 45;
@@ -68,14 +67,14 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 標本が p_有効オフセット(現在有効な -p 値)と矛盾していそうな
-        /// 場合に警告文を返す
+        /// 標本が p_有効オフセット (現在有効な -p 値) と矛盾していそうな場合に警告文を返す
         /// </summary>
         /// <param name="p_標本"></param>
         /// <param name="p_有効オフセット"></param>
         /// <remarks>
         /// 問題なさそうな場合は null を返す
         /// </remarks>
+        /// <returns></returns>
         public static string? Get_警告文(Phred標本 p_標本, int p_有効オフセット)
         {
             if (p_標本.A_標本文字数 == 0)
@@ -109,6 +108,7 @@ namespace Tsumiki.IO
         /// 片方だけが妥当な場合にそのオフセットを返す<br/>
         /// 両方妥当/両方不当な場合は判別できないため null を返す
         /// </remarks>
+        /// <returns></returns>
         public static int? Get_推定オフセット(Phred標本 p_標本)
         {
             if (p_標本.A_標本文字数 == 0)
@@ -131,9 +131,7 @@ namespace Tsumiki.IO
         /// <remarks>
         /// -p で明示指定されている場合は、利用者の判断を優先して推定結果で上書きしない<br/>
         /// 警告だけでは足りない<br/>
-        /// Phred64 のデータを Phred33 として読むと
-        /// すべてのスコアが 31 以上に見え、品質フィルタが完全に無効化されるが、
-        /// その事実はログを読まない限り気付けない<br/>
+        /// Phred64 のデータを Phred33 として読むとすべてのスコアが 31 以上に見え、品質フィルタが完全に無効化されるが、その事実はログを読まない限り気付けない<br/>
         /// read1 と read2 で推定が食い違う場合は自信が持てないため警告に留める
         /// </remarks>
         public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
@@ -193,11 +191,11 @@ namespace Tsumiki.IO
         #region 内部メソッド
 
         /// <summary>
-        /// その標本を p_オフセット で解釈したとき、Q が負にならず、かつ
-        /// 現実的な上限を超えないかどうか
+        /// その標本を p_オフセット で解釈したとき、Q が負にならず、かつ現実的な上限を超えないかどうか
         /// </summary>
         /// <param name="p_標本"></param>
         /// <param name="p_オフセット"></param>
+        /// <returns></returns>
         private static bool Get_妥当なオフセットか(Phred標本 p_標本, int p_オフセット)
         {
             return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= 現実的なQ上限;
@@ -207,6 +205,7 @@ namespace Tsumiki.IO
         /// 推定できなかった場合も含めた、表示用のオフセット
         /// </summary>
         /// <param name="p_推定"></param>
+        /// <returns></returns>
         private static string Get_表示用オフセット(int? p_推定)
         {
             return p_推定?.ToString() ?? Messages.Get_文言(メッセージID.Phred_未確定);

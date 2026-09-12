@@ -43,8 +43,7 @@ namespace Tsumiki.Core
         /// ペアエンド由来の隣接候補
         /// </summary>
         /// <remarks>
-        /// キーは (始点, 終点) の unitig ID (符号は向き)、
-        /// 値は各観測ペアの既知長の一覧<br/>
+        /// キーは (始点, 終点) の unitig ID (符号は向き)、値は各観測ペアの既知長の一覧<br/>
         /// Scaffolder から参照される
         /// </remarks>
         public IReadOnlyDictionary<(int, int), List<int>> A_ペア経路 => this._ペア経路;
@@ -76,10 +75,8 @@ namespace Tsumiki.Core
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
         /// <remarks>
-        /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた
-        /// 内側の未読区間 (inner distance) である<br/>
-        /// FR 配置では「フラグメント長 = 内側距離 + 両リード長」なので、ここで足し戻して
-        /// 以降の推定値の単位をフラグメント長に揃える
+        /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた内側の未読区間 (inner distance) である<br/>
+        /// FR 配置では「フラグメント長 = 内側距離 + 両リード長」なので、ここで足し戻して以降の推定値の単位をフラグメント長に揃える
         /// </remarks>
         private static void V_収集_同一ユニティグ標本(代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2, string p_リード1, string p_リード2, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
@@ -129,9 +126,7 @@ namespace Tsumiki.Core
         /// <param name="p_ローカルペア経路"></param>
         /// <remarks>
         /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには read2 側の unitig ID の符号を反転させる<br/>
-        /// 記録するのは「フラグメントのうち既に見えている分の長さ」
-        /// (read1 長 + unitig1 末端までの残り + unitig2 先頭からの残り + read2 長) で、
-        /// ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = -(k-1))
+        /// 記録するのは「フラグメントのうち既に見えている分の長さ」 (read1 長 + unitig1 末端までの残り + unitig2 先頭からの残り + read2 長) で、ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = - (k-1))
         /// </remarks>
         private static void V_収集_ペア経路(代表ユニティグヒット p_ヒット1, 代表ユニティグヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
@@ -158,6 +153,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
         /// </remarks>
+        /// <returns></returns>
         private static int Get_反転後の残り長(代表ユニティグヒット p_ヒット)
         {
             return Math.Max(0, p_ヒット.A_最終一致終端位置);
@@ -170,14 +166,14 @@ namespace Tsumiki.Core
         /// <remarks>
         /// 同一 unitig 上の 2 ヒット間の距離を求めるのに使う
         /// </remarks>
+        /// <returns></returns>
         private static int Get_順鎖座標(代表ユニティグヒット p_ヒット)
         {
             return p_ヒット.A_ユニティグID > 0 ? p_ヒット.A_最終一致終端位置 : p_ヒット.A_ユニティグ長 - p_ヒット.A_最終一致終端位置;
         }
 
         /// <summary>
-        /// 結合が確定した辺について、ペア経路の既知長から
-        /// 「フラグメント長 = 既知長 - (k-1)」を計算して標本に積む
+        /// 結合が確定した辺について、ペア経路の既知長から「フラグメント長 = 既知長 - (k-1) 」を計算して標本に積む
         /// </summary>
         /// <param name="p_結合"></param>
         private void V_収集_確定辺標本(int[] p_結合)
@@ -206,7 +202,7 @@ namespace Tsumiki.Core
                 foreach (var l_既知長 in l_既知長標本)
                 {
                     // 直接結合された辺では 2 つの unitig が k-1 塩基重なるので、
-                    // 未知区間の長さは G = -(k-1)
+                    // 未知区間の長さは G = - (k-1)
                     // よって
                     // フラグメント長 = 既知長 - (k-1)
                     var l_フラグメント長 = l_既知長 - l_重なり長;
@@ -236,19 +232,20 @@ namespace Tsumiki.Core
         /// フラグメント長分布の分位点
         /// </summary>
         /// <remarks>
-        /// 橋渡しできる未知区間の長さを決めるのは
-        /// 中央値ではなく分布の上側の裾なので、そこまで出す
+        /// 橋渡しできる未知区間の長さを決めるのは中央値ではなく分布の上側の裾なので、そこまで出す
         /// </remarks>
+        /// <param name="p_値一覧"></param>
+        /// <returns></returns>
         private static string Get_分布要約(List<int> p_値一覧)
         {
             var l_整列済み = p_値一覧.OrderBy(x => x).ToList();
-            var l_p01 = StatsUtil.Get_分位点(l_整列済み, 0.01);
-            var l_p10 = StatsUtil.Get_分位点(l_整列済み, 0.10);
-            var l_p25 = StatsUtil.Get_分位点(l_整列済み, 0.25);
-            var l_p50 = StatsUtil.Get_分位点(l_整列済み, 0.50);
-            var l_p75 = StatsUtil.Get_分位点(l_整列済み, 0.75);
-            var l_p90 = StatsUtil.Get_分位点(l_整列済み, 0.90);
-            var l_p99 = StatsUtil.Get_分位点(l_整列済み, 0.99);
+            var l_p01 = StatsUtil.Get_分位点(l_整列済み, 0.01D);
+            var l_p10 = StatsUtil.Get_分位点(l_整列済み, 0.10D);
+            var l_p25 = StatsUtil.Get_分位点(l_整列済み, 0.25D);
+            var l_p50 = StatsUtil.Get_分位点(l_整列済み, 0.50D);
+            var l_p75 = StatsUtil.Get_分位点(l_整列済み, 0.75D);
+            var l_p90 = StatsUtil.Get_分位点(l_整列済み, 0.90D);
+            var l_p99 = StatsUtil.Get_分位点(l_整列済み, 0.99D);
             return $"p1={l_p01}, p10={l_p10}, p25={l_p25}, p50={l_p50}, p75={l_p75}, p90={l_p90}, p99={l_p99}, max={l_整列済み[^1]}";
         }
 

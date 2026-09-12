@@ -12,8 +12,7 @@ namespace Tsumiki.Cores.Preprocessing
     /// <remarks>
     /// カットオフは出現回数だけを見るため、カバレッジがたまたま薄い領域の真の k-mer もエラーと一緒に落ちる<br/>
     /// 落ちた場所ではグラフが千切れ、その領域は以降どの工程からも見えなくなる<br/>
-    /// 前後が信頼できる k-mer で同じリードの中で連続しているという条件は
-    /// 出現回数とは独立した証拠で、単独の低頻度 k-mer とは区別できる<br/>
+    /// 前後が信頼できる k-mer で同じリードの中で連続しているという条件は出現回数とは独立した証拠で、単独の低頻度 k-mer とは区別できる<br/>
     /// ただし通常の信頼 k-mer より根拠は弱いため、観測した回数をそのままカバレッジとして与え、名目値で水増ししない
     /// </remarks>
     internal static class MercyKmerRescuer
@@ -24,8 +23,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 救済の対象とする、信頼できない窓の連続長の上限
         /// </summary>
         /// <remarks>
-        /// 長く途切れている箇所は、カバレッジが薄いのではなく
-        /// そもそも別の配列を読んでいる可能性が高くなる
+        /// 長く途切れている箇所は、カバレッジが薄いのではなくそもそも別の配列を読んでいる可能性が高くなる
         /// </remarks>
         private const int 救済する連の上限 = 8;
 
@@ -56,11 +54,7 @@ namespace Tsumiki.Cores.Preprocessing
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(
-                l_スレッド数,
-                l_スレッド数 * 256,
-                FastqReader.Get_生リード列(p_引数.A_リード1のパス, p_引数.A_リード2のパス),
-                (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_引数.A_リード1のパス, p_引数.A_リード2のパス), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
 
             var l_追加数 = 0;
             foreach (var (_, l_候補中身) in l_候補)
@@ -153,10 +147,7 @@ namespace Tsumiki.Cores.Preprocessing
                         var l_窓 = l_塩基列.AsSpan(j, p_k長);
                         var l_キー = KmerPacking.Get_正規化キー(l_窓);
                         var l_控え = l_窓.ToArray();
-                        _ = p_候補.AddOrUpdate(
-                            l_キー,
-                            _ => (1, l_控え),
-                            (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
+                        _ = p_候補.AddOrUpdate(l_キー, _ => (1, l_控え), (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
                     }
                 }
                 i = l_終わり;

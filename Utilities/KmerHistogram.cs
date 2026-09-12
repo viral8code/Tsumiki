@@ -4,8 +4,7 @@ using Tsumiki.Models.Foundation;
 namespace Tsumiki.Utilities
 {
     /// <summary>
-    /// k-mer の出現回数の分布から、エラー由来と真のゲノム由来を分ける「谷」と、
-    /// 1 コピーあたりのカバレッジに相当する「山」を推定する
+    /// k-mer の出現回数の分布から、エラー由来と真のゲノム由来を分ける「谷」と、1 コピーあたりのカバレッジに相当する「山」を推定する
     /// </summary>
     internal static class KmerHistogram
     {
@@ -15,8 +14,7 @@ namespace Tsumiki.Utilities
         /// 推奨カットオフの下限
         /// </summary>
         /// <remarks>
-        /// 出現回数 1 の k-mer はほぼ全てエラー由来で、
-        /// 残すとメモリを食ったうえでグラフが偽の枝だらけになる
+        /// 出現回数 1 の k-mer はほぼ全てエラー由来で、残すとメモリを食ったうえでグラフが偽の枝だらけになる
         /// </remarks>
         public const ulong 推奨カットオフの下限 = 2UL;
 
@@ -24,8 +22,7 @@ namespace Tsumiki.Utilities
         /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか
         /// </summary>
         /// <remarks>
-        /// ゲノム由来の種類数はゲノムサイズをやや下回る (反復が 1 種類に潰れる) ため、
-        /// この比を超えたぶんはほぼエラー由来の混入とみなせる
+        /// ゲノム由来の種類数はゲノムサイズをやや下回る (反復が 1 種類に潰れる) ため、この比を超えたぶんはほぼエラー由来の混入とみなせる
         /// </remarks>
         private const double 許容するエラー混入比 = 1.2D;
 
@@ -33,8 +30,7 @@ namespace Tsumiki.Utilities
         /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)
         /// </summary>
         /// <remarks>
-        /// これを超えるものはアダプタやコンタミ由来である公算が高く、
-        /// 足し込むとゲノムサイズが大きく水増しされる
+        /// これを超えるものはアダプタやコンタミ由来である公算が高く、足し込むとゲノムサイズが大きく水増しされる
         /// </remarks>
         private const int ゲノムサイズ推定に含める倍率の上限 = 100;
 
@@ -58,6 +54,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 二峰性がはっきりしない (カバレッジが低すぎる等) 場合は null を返す
         /// </remarks>
+        /// <returns></returns>
         public static スペクトル解析結果? Get_解析結果(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {
             if (p_ヒストグラム.Count == 0)
@@ -67,7 +64,7 @@ namespace Tsumiki.Utilities
 
             var l_最大キー = p_ヒストグラム.Keys.Max();
             var l_走査上限 = Math.Min(l_最大キー, p_走査上限);
-            if (l_走査上限 < 3)
+            if (l_走査上限 < 3UL)
             {
                 return null;
             }
@@ -77,7 +74,7 @@ namespace Tsumiki.Utilities
                 return null;
             }
 
-            var l_ピーク = Get_ピーク(p_ヒストグラム, l_粗い谷 + 1, l_走査上限);
+            var l_ピーク = Get_ピーク(p_ヒストグラム, l_粗い谷 + 1UL, l_走査上限);
 
             // 粗い谷はノイズに引きずられるため、山が分かった時点で取り直す
             var l_谷 = Get_谷(p_ヒストグラム, l_ピーク);
@@ -106,14 +103,7 @@ namespace Tsumiki.Utilities
                 }
             }
 
-            return new スペクトル解析結果(
-                A_谷: l_谷,
-                A_ピーク出現回数: l_ピーク,
-                A_谷の頻度: l_谷の頻度,
-                A_ピークの頻度: l_ピークの頻度,
-                A_ゲノム由来の延べ数: l_ゲノム由来の延べ数,
-                A_延べ数の総和: l_延べ数の総和,
-                A_推定ゲノムサイズ: l_ゲノム由来の延べ数 / (long)l_ピーク);
+            return new スペクトル解析結果(A_谷: l_谷, A_ピーク出現回数: l_ピーク, A_谷の頻度: l_谷の頻度, A_ピークの頻度: l_ピークの頻度, A_ゲノム由来の延べ数: l_ゲノム由来の延べ数, A_延べ数の総和: l_延べ数の総和, A_推定ゲノムサイズ: l_ゲノム由来の延べ数 / (long)l_ピーク);
         }
 
         /// <summary>
@@ -124,15 +114,12 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 判定できない場合は null<br/>
         /// 谷をそのまま使ってはいけない<br/>
-        /// 谷はエラー由来とゲノム由来の曲線が
-        /// 交わる点なので、そこで切るとゲノム側の左裾まで削り落とす<br/>
-        /// 欠けた
-        /// k-mer の箇所すべてでグラフが切れる一方、偽の枝は tip 除去と
-        /// バブル除去が落とせる<br/>
+        /// 谷はエラー由来とゲノム由来の曲線が交わる点なので、そこで切るとゲノム側の左裾まで削り落とす<br/>
+        /// 欠けた k-mer の箇所すべてでグラフが切れる一方、偽の枝は tip 除去とバブル除去が落とせる<br/>
         /// 両者は対称ではないので低く切るのが原則<br/>
-        /// それでも下限に貼り付けにしないのは、高カバレッジではエラー由来の
-        /// k-mer が絶対数として増え、品質を落とさずメモリを減らせるため
+        /// それでも下限に貼り付けにしないのは、高カバレッジではエラー由来の k-mer が絶対数として増え、品質を落とさずメモリを減らせるため
         /// </remarks>
+        /// <returns></returns>
         public static ulong? Get_推奨カットオフ(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {
             if (Get_解析結果(p_ヒストグラム, p_走査上限) is not { } l_解析)
@@ -167,8 +154,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
         /// <remarks>
-        /// 推定ゲノムサイズとカバレッジは、
-        /// 自動選択された k と -kc の妥当性を利用者が確かめる材料になる
+        /// 推定ゲノムサイズとカバレッジは、自動選択された k と -kc の妥当性を利用者が確かめる材料になる
         /// </remarks>
         public static void V_出力_スペクトル(IReadOnlyDictionary<ulong, long> p_ヒストグラム, int p_k長, int? p_リード長)
         {
@@ -188,7 +174,7 @@ namespace Tsumiki.Utilities
                 // リードのカバレッジを山の位置から逆算してはいけない
                 // エラーを含む
                 // k-mer は山ではなく低頻度側へ落ちるため、大きく過小評価になる
-                // 延べ数 = Σ(リードごとの L-k+1) からリード本数を復元すれば、
+                // 延べ数 = Σ (リードごとの L-k+1) からリード本数を復元すれば、
                 // エラーを含む k-mer も勘定に入る
                 var l_リード本数 = l_解析.A_延べ数の総和 / (double)(l_リード長 - p_k長 + 1);
                 var l_リードカバレッジ = l_リード本数 * l_リード長 / l_解析.A_推定ゲノムサイズ;
@@ -199,15 +185,15 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 出現回数 1 から上限までのヒストグラムを 1 行にまとめた要約文字列を作る
-        /// (ログ表示用)
+        /// 出現回数 1 から上限までのヒストグラムを 1 行にまとめた要約文字列を作る (ログ表示用)
         /// </summary>
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_表示上限">表示する出現回数の上限</param>
+        /// <returns></returns>
         public static string Get_要約(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_表示上限 = 20UL)
         {
             var l_項目 = new List<string>();
-            var l_上限 = Math.Min(p_表示上限, p_ヒストグラム.Count == 0 ? 0 : p_ヒストグラム.Keys.Max());
+            var l_上限 = Math.Min(p_表示上限, p_ヒストグラム.Count == 0 ? 0UL : p_ヒストグラム.Keys.Max());
             for (var l_出現回数 = 1UL; l_出現回数 <= l_上限; l_出現回数++)
             {
                 l_項目.Add($"{l_出現回数}:{p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L)}");
@@ -228,13 +214,14 @@ namespace Tsumiki.Utilities
         /// 単調減少のままなら null<br/>
         /// 1 段だけの増加はノイズでも起きるため、2 つ先まで見て上昇の継続を確かめる
         /// </remarks>
+        /// <returns></returns>
         private static ulong? Get_粗い谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限)
         {
-            for (var l_出現回数 = 1UL; l_出現回数 + 2 <= p_走査上限; l_出現回数++)
+            for (var l_出現回数 = 1UL; l_出現回数 + 2UL <= p_走査上限; l_出現回数++)
             {
                 var l_頻度 = p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L);
-                var l_次 = p_ヒストグラム.GetValueOrDefault(l_出現回数 + 1, 0L);
-                var l_次の次 = p_ヒストグラム.GetValueOrDefault(l_出現回数 + 2, 0L);
+                var l_次 = p_ヒストグラム.GetValueOrDefault(l_出現回数 + 1UL, 0L);
+                var l_次の次 = p_ヒストグラム.GetValueOrDefault(l_出現回数 + 2UL, 0L);
                 if (l_次 > l_頻度 && l_次の次 > l_頻度)
                 {
                     return l_出現回数;
@@ -272,10 +259,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_ピーク">山の位置</param>
         /// <remarks>
-        /// 観測された出現回数だけを
-        /// 候補にする (疎なヒストグラムでは「データが無いだけ」の穴が
-        /// 最小値として選ばれ、谷が山の直前まで押し上げられるため)
+        /// 観測された出現回数だけを候補にする (疎なヒストグラムでは「データが無いだけ」の穴が最小値として選ばれ、谷が山の直前まで押し上げられるため)
         /// </remarks>
+        /// <returns></returns>
         private static ulong Get_谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_ピーク)
         {
             var l_谷 = 1UL;

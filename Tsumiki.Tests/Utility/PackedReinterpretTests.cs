@@ -4,15 +4,54 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// ディスク上のパック済みバイト列を、塩基列へ展開せずそのままパック値として
-    /// 読み替えられることを固定する
+    /// ディスク上のパック済みバイト列を、塩基列へ展開せずそのままパック値として読み替えられることを固定する
     /// </summary>
     /// <remarks>
-    /// 並びの規約が同じなので余りビット分の
-    /// シフトだけで一致するはずで、ここがずれると信頼 k-mer 集合が丸ごと変わる
+    /// 並びの規約が同じなので余りビット分のシフトだけで一致するはずで、ここがずれると信頼 k-mer 集合が丸ごと変わる
     /// </remarks>
     public class PackedReinterpretTests
     {
+        #region 公開メソッド
+
+        /// <summary>
+        /// 展開した塩基列をパックした結果と、読み替え_小の結果が一致する
+        /// </summary>
+        /// <param name="p_k長"></param>
+        [Theory]
+        [InlineData(21)]
+        [InlineData(31)]
+        [InlineData(32)]
+        public void V_読み替え_小はパックした結果と一致する(int p_k長)
+        {
+            var l_塩基 = Get_塩基ID列(p_k長, 7 + p_k長);
+            var l_パック = Get_パック済み(l_塩基);
+            var l_余り = (8 * l_パック.Length) - (2 * p_k長);
+
+            Assert.Equal(TrustedKmerIndex.Get_パック_小(l_塩基), TrustedKmerIndex.Get_読み替え_小(l_パック, l_余り));
+        }
+
+        /// <summary>
+        /// 展開した塩基列をパックした結果と、読み替え_中の結果が一致する
+        /// </summary>
+        /// <param name="p_k長"></param>
+        [Theory]
+        [InlineData(33)]
+        [InlineData(41)]
+        [InlineData(63)]
+        [InlineData(64)]
+        public void V_読み替え_中はパックした結果と一致する(int p_k長)
+        {
+            var l_塩基 = Get_塩基ID列(p_k長, 11 + p_k長);
+            var l_パック = Get_パック済み(l_塩基);
+            var l_余り = (8 * l_パック.Length) - (2 * p_k長);
+
+            Assert.Equal(TrustedKmerIndex.Get_パック_中(l_塩基), TrustedKmerIndex.Get_読み替え_中(l_パック, l_余り));
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
         /// <summary>
         /// 塩基 ID 列を、ディスク上と同じ並びのバイト列へ詰める
         /// </summary>
@@ -50,41 +89,7 @@ namespace Tsumiki.Tests.Utility
             return [.. Enumerable.Range(0, p_長さ).Select(_ => (byte)(l_乱数.Next(4) + 1))];
         }
 
-        /// <summary>
-        /// 展開した塩基列をパックした結果と、読み替え_小の結果が一致する
-        /// </summary>
-        [Theory]
-        [InlineData(21)]
-        [InlineData(31)]
-        [InlineData(32)]
-        public void 読み替え_小はパックした結果と一致する(int p_k長)
-        {
-            var l_塩基 = Get_塩基ID列(p_k長, 7 + p_k長);
-            var l_パック = Get_パック済み(l_塩基);
-            var l_余り = (8 * l_パック.Length) - (2 * p_k長);
+        #endregion
 
-            Assert.Equal(
-                TrustedKmerIndex.Get_パック_小(l_塩基),
-                TrustedKmerIndex.Get_読み替え_小(l_パック, l_余り));
-        }
-
-        /// <summary>
-        /// 展開した塩基列をパックした結果と、読み替え_中の結果が一致する
-        /// </summary>
-        [Theory]
-        [InlineData(33)]
-        [InlineData(41)]
-        [InlineData(63)]
-        [InlineData(64)]
-        public void 読み替え_中はパックした結果と一致する(int p_k長)
-        {
-            var l_塩基 = Get_塩基ID列(p_k長, 11 + p_k長);
-            var l_パック = Get_パック済み(l_塩基);
-            var l_余り = (8 * l_パック.Length) - (2 * p_k長);
-
-            Assert.Equal(
-                TrustedKmerIndex.Get_パック_中(l_塩基),
-                TrustedKmerIndex.Get_読み替え_中(l_パック, l_余り));
-        }
     }
 }

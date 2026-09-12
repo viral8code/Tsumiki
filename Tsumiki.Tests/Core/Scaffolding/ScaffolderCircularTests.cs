@@ -11,13 +11,13 @@ namespace Tsumiki.Tests.Core
     /// 環状であることの目印がスキャフォールドまで残ることを固定する
     /// </summary>
     /// <remarks>
-    /// 環状かどうかは ContigMaker が名前に書き込み、AssemblyScorer と
-    /// 閉じ目の検証がその名前を根拠に数える<br/>
-    /// 間のスキャフォールディングで
-    /// 名前を付け替えて目印を落とすと、下流は黙って「環状は 0 本」と答える
+    /// 環状かどうかは ContigMaker が名前に書き込み、AssemblyScorer と閉じ目の検証がその名前を根拠に数える<br/>
+    /// 間のスキャフォールディングで名前を付け替えて目印を落とすと、下流は黙って「環状は 0 本」と答える
     /// </remarks>
     public class ScaffolderCircularTests : IDisposable
     {
+        #region 定数
+
         /// <summary>
         /// k 長
         /// </summary>
@@ -27,30 +27,6 @@ namespace Tsumiki.Tests.Core
         /// 円周
         /// </summary>
         private const int 円周 = 1200;
-
-        /// <summary>
-        /// 一時ディレクトリ
-        /// </summary>
-        private readonly string _一時ディレクトリ;
-
-        public ScaffolderCircularTests()
-        {
-            this._一時ディレクトリ = Path.Combine(
-                Path.GetTempPath(), "tsumiki_scaffold_circ_" + Guid.NewGuid().ToString("N"));
-            _ = Directory.CreateDirectory(this._一時ディレクトリ);
-        }
-
-        /// <summary>
-        /// 一時ディレクトリを片付ける
-        /// </summary>
-        public void Dispose()
-        {
-            if (Directory.Exists(this._一時ディレクトリ))
-            {
-                Directory.Delete(this._一時ディレクトリ, recursive: true);
-            }
-            GC.SuppressFinalize(this);
-        }
 
         // 環をちょうど 1 周する 3 本
         // 隣り合う unitig が k-1 塩基ずつ重なり、
@@ -78,45 +54,42 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
 
+        #endregion
+
+        #region 内部変数
+
         /// <summary>
-        /// 種を決めた乱数から塩基配列を作る
+        /// 一時ディレクトリ
         /// </summary>
-        /// <param name="p_長さ">作る長さ</param>
-        /// <param name="p_種">乱数の種</param>
-        /// <returns>塩基配列</returns>
-        private static string Get_乱数配列(int p_長さ, int p_種)
+        private readonly string _一時ディレクトリ;
+
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// 検証用の状態を初期化する
+        /// </summary>
+        public ScaffolderCircularTests()
         {
-            var l_乱数 = new Random(p_種);
-            const string 塩基 = "ACGT";
-            return string.Concat(
-                Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_scaffold_circ_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
+        #endregion
+
+        #region 公開メソッド
+
         /// <summary>
-        /// スキャフォールディングまで通して、その出力を返す
+        /// 一時ディレクトリを片付ける
         /// </summary>
-        /// <returns>スキャフォールドの配列</returns>
-        private string Get_スキャフォールド出力()
+        public void Dispose()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters
+            if (Directory.Exists(this._一時ディレクトリ))
             {
-                A_k長 = k長,
-                A_スレッド数 = 1,
-                A_インサートサイズ = 40,
-            };
-
-            var l_ユニティグパス = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(
-                l_ユニティグパス, $">1\n{ユニティグA}\n>2\n{ユニティグB}\n>3\n{ユニティグC}\n");
-
-            var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
-            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1);
-
-            var l_スキャフォールドパス = Path.Combine(this._一時ディレクトリ, "scaffolds.fasta");
-            new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長: 30)
-                .V_実行(l_スキャフォールドパス);
-            return l_スキャフォールドパス;
+                Directory.Delete(this._一時ディレクトリ, recursive: true);
+            }
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -145,9 +118,53 @@ namespace Tsumiki.Tests.Core
             var l_スキャフォールドパス = this.Get_スキャフォールド出力();
             var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
 
-            Assert.Equal(
-                CompletenessValidator.Get_環状本数(l_コンティグパス),
-                CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
+            Assert.Equal(CompletenessValidator.Get_環状本数(l_コンティグパス), CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 種を決めた乱数から塩基配列を作る
+        /// </summary>
+        /// <param name="p_長さ">作る長さ</param>
+        /// <param name="p_種">乱数の種</param>
+        /// <returns>塩基配列</returns>
+        private static string Get_乱数配列(int p_長さ, int p_種)
+        {
+            var l_乱数 = new Random(p_種);
+            const string l_塩基 = "ACGT";
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
+        }
+
+        /// <summary>
+        /// スキャフォールディングまで通して、その出力を返す
+        /// </summary>
+        /// <returns>スキャフォールドの配列</returns>
+        private string Get_スキャフォールド出力()
+        {
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = k長,
+                A_スレッド数 = 1,
+                A_インサートサイズ = 40,
+            };
+
+            var l_ユニティグパス = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
+            File.WriteAllText(l_ユニティグパス, $">1\n{ユニティグA}\n>2\n{ユニティグB}\n>3\n{ユニティグC}\n");
+
+            var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
+            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
+            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
+
+            var l_スキャフォールドパス = Path.Combine(this._一時ディレクトリ, "scaffolds.fasta");
+            new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長: 30)
+                .V_実行(l_スキャフォールドパス);
+            return l_スキャフォールドパス;
+        }
+
+        #endregion
+
     }
 }

@@ -3,24 +3,22 @@
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// プロデューサー/コンシューマが、ワーカーの例外で無言のハングに
-    /// 陥らないことを固定する
+    /// プロデューサー/コンシューマが、ワーカーの例外で無言のハングに陥らないことを固定する
     /// </summary>
     /// <remarks>
-    /// 素朴に書くとこうなる: キューには容量上限があるため、ワーカーが例外で
-    /// 落ちるとキューを引き取る者がいなくなり、プロデューサーは Add で永久に
-    /// 待ち続ける<br/>
-    /// Task.WaitAll に到達しないのでワーカーの例外は誰にも
-    /// 観測されず、ログも例外も出ないままプロセスが CPU 0% で止まる<br/>
+    /// 素朴に書くとこうなる: キューには容量上限があるため、ワーカーが例外で落ちるとキューを引き取る者がいなくなり、プロデューサーは Add で永久に待ち続ける<br/>
+    /// Task.WaitAll に到達しないのでワーカーの例外は誰にも観測されず、ログも例外も出ないままプロセスが CPU 0% で止まる<br/>
     /// 実際に GAGE-B のデータで 2 時間以上まったく無言でハングした
     /// </remarks>
     public class ReadPipelineTests
     {
+        #region 公開メソッド
+
         /// <summary>
         /// 全ての項目をちょうど 1 回ずつ処理する
         /// </summary>
         [Fact]
-        public void 全ての項目をちょうど1回ずつ処理する()
+        public void V_全ての項目をちょうど1回ずつ処理する()
         {
             var l_入力 = Enumerable.Range(0, 5000).ToList();
             var l_結果 = new System.Collections.Concurrent.ConcurrentBag<int>();
@@ -35,7 +33,7 @@ namespace Tsumiki.Tests.Utility
         /// ワーカー番号を範囲内で渡す
         /// </summary>
         [Fact]
-        public void ワーカー番号を範囲内で渡す()
+        public void V_ワーカー番号を範囲内で渡す()
         {
             const int l_スレッド数 = 4;
             var l_観測した番号 = new System.Collections.Concurrent.ConcurrentBag<int>();
@@ -49,11 +47,10 @@ namespace Tsumiki.Tests.Utility
         /// ワーカーが例外を投げたら、供給が残っていても呼び出し元へ伝わること
         /// </summary>
         /// <remarks>
-        /// 入力数はキュー容量よりずっと多くしてあり、対策が無ければ
-        /// プロデューサーが満杯のキューで待ち続けてこのテストはタイムアウトする
+        /// 入力数はキュー容量よりずっと多くしてあり、対策が無ければプロデューサーが満杯のキューで待ち続けてこのテストはタイムアウトする
         /// </remarks>
         [Fact]
-        public void ワーカーが例外を投げると呼び出し元に伝わる()
+        public void V_ワーカーが例外を投げると呼び出し元に伝わる()
         {
             var l_例外 = Assert.Throws<AggregateException>(() =>
                 ReadPipeline.V_実行(4, 8, Enumerable.Range(0, 100_000), (l_項目, _) =>
@@ -72,11 +69,10 @@ namespace Tsumiki.Tests.Utility
         /// 一部のワーカーだけが落ちた場合も、放置せずに伝えること
         /// </summary>
         /// <remarks>
-        /// 残ったワーカーが処理を続けられてしまうと、結果が中途半端なまま
-        /// 「成功」として先へ進んでしまう
+        /// 残ったワーカーが処理を続けられてしまうと、結果が中途半端なまま「成功」として先へ進んでしまう
         /// </remarks>
         [Fact]
-        public void 一部のワーカーだけが例外を投げても伝わる()
+        public void V_一部のワーカーだけが例外を投げても伝わる()
         {
             var l_処理数 = 0;
 
@@ -93,17 +89,20 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 供給側が例外を投げた場合も、スタックトレースを保ったまま伝わること
-        /// (壊れた FASTQ を読んだ場合などがこれに当たる)
+        /// 供給側が例外を投げた場合も、スタックトレースを保ったまま伝わること (壊れた FASTQ を読んだ場合などがこれに当たる)
         /// </summary>
         [Fact]
-        public void 供給側が例外を投げても伝わる()
+        public void V_供給側が例外を投げても伝わる()
         {
             var l_例外 = Assert.Throws<FormatException>(() =>
                 ReadPipeline.V_実行(4, 8, Get_途中で壊れる入力(), (_, _) => { }));
 
             Assert.Equal("broken input", l_例外.Message);
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// 途中で例外を投げる入力を返す
@@ -117,5 +116,8 @@ namespace Tsumiki.Tests.Utility
             }
             throw new FormatException("broken input");
         }
+
+        #endregion
+
     }
 }

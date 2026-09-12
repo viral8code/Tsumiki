@@ -6,6 +6,7 @@ namespace Tsumiki.IO
     /// <summary>
     /// FASTQ を 1 リードずつ読み込む
     /// </summary>
+    /// <param name="p_パス"></param>
     internal class FastqReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         #region 公開メソッド
@@ -15,8 +16,7 @@ namespace Tsumiki.IO
         /// </summary>
         /// <returns></returns>
         /// <remarks>
-        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF という
-        /// ケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
+        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF というケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
         /// </remarks>
         protected override string Get_次の行()
         {
@@ -37,9 +37,9 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_パス群"></param>
         /// <remarks>
-        /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、
-        /// ID もクオリティも要らない全走査のための入口
+        /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、ID もクオリティも要らない全走査のための入口
         /// </remarks>
+        /// <returns></returns>
         public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)
         {
             foreach (var l_パス in p_パス群)
@@ -73,9 +73,9 @@ namespace Tsumiki.IO
                     A_クオリティ = l_クオリティ,
                 };
             }
-            catch (Exception ex)
+            catch (Exception l_例外)
             {
-                Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
+                Logger.V_出力_警告(Logger.Get_メソッド名(), l_例外);
                 throw;
             }
         }
@@ -84,10 +84,10 @@ namespace Tsumiki.IO
         /// 曖昧塩基を無視する経路向けの軽量版
         /// </summary>
         /// <remarks>
-        /// A_塩基候補列(List&lt;byte[]&gt;)の
-        /// 代わりに A_塩基列(byte[])のみを構築する<br/>
+        /// A_塩基候補列 (List&lt;byte[]&gt;) の代わりに A_塩基列 (byte[]) のみを構築する<br/>
         /// KmerCounting.V_読込_リードファイル から使用する
         /// </remarks>
+        /// <returns></returns>
         public リードデータ Get_次のリード_軽量()
         {
             try
@@ -101,9 +101,9 @@ namespace Tsumiki.IO
                     A_クオリティ = l_クオリティ,
                 };
             }
-            catch (Exception ex)
+            catch (Exception l_例外)
             {
-                Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
+                Logger.V_出力_警告(Logger.Get_メソッド名(), l_例外);
                 throw;
             }
         }
@@ -113,8 +113,7 @@ namespace Tsumiki.IO
         #region 内部メソッド
 
         /// <summary>
-        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると
-        /// 品質判定が配列の範囲外を触って落ちる
+        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると品質判定が配列の範囲外を触って落ちる
         /// </summary>
         /// <param name="p_ID"></param>
         /// <param name="p_配列"></param>
@@ -131,7 +130,7 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// ID・配列・クオリティの 1 レコードを読み込んで返す
+        /// ID ・配列・クオリティの 1 レコードを読み込んで返す
         /// </summary>
         /// <returns></returns>
         private (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()

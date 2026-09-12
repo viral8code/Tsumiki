@@ -12,22 +12,33 @@ namespace Tsumiki.Tests.Core
     /// レポートの書き出しを固定する
     /// </summary>
     /// <remarks>
-    /// JSON は手で組み立てているので、
-    /// 実際に構文として通ることと、判定の要点が載っていることを確かめる
+    /// JSON は手で組み立てているので、実際に構文として通ることと、判定の要点が載っていることを確かめる
     /// </remarks>
     public class ReportWriterTests : IDisposable
     {
+        #region 内部変数
+
         /// <summary>
         /// 一時ディレクトリ
         /// </summary>
         private readonly string _一時ディレクトリ;
 
+        #endregion
+
+        #region コンストラクタ
+
+        /// <summary>
+        /// 検証用の状態を初期化する
+        /// </summary>
         public ReportWriterTests()
         {
-            this._一時ディレクトリ = Path.Combine(
-                Path.GetTempPath(), "tsumiki_report_" + Guid.NewGuid().ToString("N"));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_report_" + Guid.NewGuid().ToString("N"));
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 一時ディレクトリを片付ける
@@ -42,64 +53,14 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// リードに裏付けの無い位置が一つも無い検査結果
-        /// </summary>
-        /// <returns>支持検査の結果</returns>
-        private static 支持検査結果 Get_良好な支持()
-        {
-            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000, A_支持のない位置数: 0, A_区間: []);
-        }
-
-        /// <summary>
-        /// 検証に使うアセンブリ統計
-        /// </summary>
-        /// <returns>アセンブリ統計</returns>
-        private static アセンブリ統計 Get_統計()
-        {
-            return new アセンブリ統計(3, 5_000_000, 4_800_000, 900, 4_800_000, 1, 50.5);
-        }
-
-        /// <summary>
-        /// レポートを書き出し、その JSON を読み直して返す
-        /// </summary>
-        /// <param name="p_判定">完全長の判定結果</param>
-        /// <param name="p_整合性">自己検査の結果</param>
-        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
-        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
-        /// <returns>書き出した JSON</returns>
-        private JsonElement Get_書き出したJSON(
-            完全性判定結果 p_判定,
-            整合性検査結果? p_整合性 = null,
-            IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証 = null,
-            ポリッシュ統計? p_ポリッシュ = null,
-            IReadOnlyList<曖昧箇所>? p_曖昧箇所 = null)
-        {
-            var l_パス = Path.Combine(this._一時ディレクトリ, "assembly.report.json");
-            ReportWriter.V_書き出し_レポート(
-                l_パス, 63, Get_統計(), 2, 1, p_判定,
-                p_整合性, p_閉鎖検証, p_ポリッシュ, p_曖昧箇所 ?? []);
-            return JsonDocument.Parse(File.ReadAllText(l_パス)).RootElement.Clone();
-        }
-
-        /// <summary>
         /// 完全長の判定をそのまま JSON へ載せることを確かめる
         /// </summary>
         [Fact]
         public void V_書き出し_レポート_完全長の判定をそのまま載せる()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(
-                p_未解決ギャップ数: 0,
-                p_整合性: new 整合性検査結果(1000, 1000, 1000, 10, 0, 0),
-                p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)],
-                p_ポリッシュ: new ポリッシュ統計(3, 5_000_000, 1000, 0, 12, 0, 5_000_000, 90),
-                p_曖昧箇所: [],
-                p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 0, p_整合性: new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), p_閉鎖検証: [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], p_ポリッシュ: new ポリッシュ統計(3, 5_000_000L, 1000L, 0L, 12L, 0L, 5_000_000L, 90D), p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            var l_JSON = this.Get_書き出したJSON(
-                l_判定,
-                new 整合性検査結果(1000, 1000, 1000, 10, 0, 0),
-                [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)],
-                new ポリッシュ統計(3, 5_000_000, 1000, 0, 12, 0, 5_000_000, 90));
+            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), [new 環状閉鎖検証結果("scaffold1_circular", 4_800_000, 30, 5)], new ポリッシュ統計(3, 5_000_000L, 1000L, 0L, 12L, 0L, 5_000_000L, 90D));
 
             Assert.True(l_JSON.GetProperty("complete").GetBoolean());
             Assert.Equal("Q5", l_JSON.GetProperty("quality_level").GetString());
@@ -108,9 +69,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(2, l_JSON.GetProperty("unresolved_gaps").GetInt32());
             Assert.Equal(1, l_JSON.GetProperty("circular_replicons").GetInt32());
             Assert.Equal(12, l_JSON.GetProperty("polish").GetProperty("corrected_bases").GetInt32());
-            Assert.Equal(
-                30,
-                l_JSON.GetProperty("circular_closure")[0].GetProperty("spanning_reads").GetInt32());
+            Assert.Equal(30, l_JSON.GetProperty("circular_closure")[0].GetProperty("spanning_reads").GetInt32());
         }
 
         /// <summary>
@@ -119,16 +78,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_書き出し_レポート_未達の理由をコードで載せる()
         {
-            var l_判定 = CompletenessValidator.Get_判定結果(
-                p_未解決ギャップ数: 2,
-                p_整合性: new 整合性検査結果(1000, 1000, 1000, 10, 0, 0),
-                p_閉鎖検証: null,
-                p_ポリッシュ: null,
-                p_曖昧箇所: [],
-                p_支持検査: Get_良好な支持());
+            var l_判定 = CompletenessValidator.Get_判定結果(p_未解決ギャップ数: 2, p_整合性: new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L), p_閉鎖検証: null, p_ポリッシュ: null, p_曖昧箇所: [], p_支持検査: Get_良好な支持());
 
-            var l_JSON = this.Get_書き出したJSON(
-                l_判定, new 整合性検査結果(1000, 1000, 1000, 10, 0, 0));
+            var l_JSON = this.Get_書き出したJSON(l_判定, new 整合性検査結果(1000L, 1000L, 1000L, 10L, 0L, 0L));
 
             Assert.False(l_JSON.GetProperty("complete").GetBoolean());
 
@@ -150,12 +102,9 @@ namespace Tsumiki.Tests.Core
         public void V_書き出し_レポート_引用符を含むIDでも壊れない()
         {
             var l_判定 = CompletenessValidator.Get_判定結果(0, null, null, null, [], null);
-            var l_JSON = this.Get_書き出したJSON(
-                l_判定, null, [new 環状閉鎖検証結果("seq\"with\\quotes", 100, 1, 5)]);
+            var l_JSON = this.Get_書き出したJSON(l_判定, null, [new 環状閉鎖検証結果("seq\"with\\quotes", 100, 1, 5)]);
 
-            Assert.Equal(
-                "seq\"with\\quotes",
-                l_JSON.GetProperty("circular_closure")[0].GetProperty("id").GetString());
+            Assert.Equal("seq\"with\\quotes", l_JSON.GetProperty("circular_closure")[0].GetProperty("id").GetString());
         }
 
         /// <summary>
@@ -165,12 +114,7 @@ namespace Tsumiki.Tests.Core
         public void V_書き出し_曖昧箇所_見出しと各行を出す()
         {
             var l_パス = Path.Combine(this._一時ディレクトリ, "assembly.ambiguous.tsv");
-            ReportWriter.V_書き出し_曖昧箇所(
-                l_パス,
-                [
-                    new 曖昧箇所(63, 曖昧箇所の種別.僅差, "unitig7+", 1.5, 1.4, 9, 0.95),
-                    new 曖昧箇所(63, 曖昧箇所の種別.到達不能, "scaffold1:100-140", 0, 0, 0, 0),
-                ]);
+            ReportWriter.V_書き出し_曖昧箇所(l_パス, [ new 曖昧箇所(63, 曖昧箇所の種別.僅差, "unitig7+", 1.5D, 1.4D, 9L, 0.95D), new 曖昧箇所(63, 曖昧箇所の種別.到達不能, "scaffold1:100-140", 0D, 0D, 0L, 0D), ]);
 
             var l_行 = File.ReadAllLines(l_パス);
             Assert.Equal(3, l_行.Length);
@@ -183,5 +127,46 @@ namespace Tsumiki.Tests.Core
             var l_列数 = l_行[0].Split('\t').Length;
             Assert.All(l_行, x => Assert.Equal(l_列数, x.Split('\t').Length));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// リードに裏付けの無い位置が一つも無い検査結果
+        /// </summary>
+        /// <returns>支持検査の結果</returns>
+        private static 支持検査結果 Get_良好な支持()
+        {
+            return new 支持検査結果(A_r長: 31, A_調べた位置数: 100000L, A_支持のない位置数: 0L, A_区間: []);
+        }
+
+        /// <summary>
+        /// 検証に使うアセンブリ統計
+        /// </summary>
+        /// <returns>アセンブリ統計</returns>
+        private static アセンブリ統計 Get_統計()
+        {
+            return new アセンブリ統計(3, 5_000_000L, 4_800_000, 900, 4_800_000, 1, 50.5D);
+        }
+
+        /// <summary>
+        /// レポートを書き出し、その JSON を読み直して返す
+        /// </summary>
+        /// <param name="p_判定">完全長の判定結果</param>
+        /// <param name="p_整合性">自己検査の結果</param>
+        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
+        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
+        /// <returns>書き出した JSON</returns>
+        /// <param name="p_曖昧箇所"></param>
+        private JsonElement Get_書き出したJSON(完全性判定結果 p_判定, 整合性検査結果? p_整合性 = null, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証 = null, ポリッシュ統計? p_ポリッシュ = null, IReadOnlyList<曖昧箇所>? p_曖昧箇所 = null)
+        {
+            var l_パス = Path.Combine(this._一時ディレクトリ, "assembly.report.json");
+            ReportWriter.V_書き出し_レポート(l_パス, 63, Get_統計(), 2, 1, p_判定, p_整合性, p_閉鎖検証, p_ポリッシュ, p_曖昧箇所 ?? []);
+            return JsonDocument.Parse(File.ReadAllText(l_パス)).RootElement.Clone();
+        }
+
+        #endregion
+
     }
 }

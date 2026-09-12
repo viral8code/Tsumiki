@@ -155,15 +155,14 @@ namespace Tsumiki.IO
                             break;
 
                         default:
-                            Logger.V_出力_警告(Logger.Get_メソッド名(), new ArgumentException($"Unknown argment: {l_キー}"));
-                            break;
+                            throw new ArgumentException($"Unknown argument: {l_キー}");
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception l_例外)
             {
-                Logger.V_出力_エラー(Logger.Get_メソッド名(), ex);
-                Environment.Exit(1);
+                Logger.V_出力_エラー(Logger.Get_メソッド名(), l_例外);
+                throw;
             }
 
             // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない
@@ -174,7 +173,7 @@ namespace Tsumiki.IO
                 return l_引数;
             }
 
-            if (string.IsNullOrWhiteSpace(l_引数.A_リード1のパス))
+            if (string.IsNullOrWhiteSpace(l_引数.A_リード1のパス) && !string.IsNullOrWhiteSpace(l_引数.A_リード2のパス))
             {
                 l_引数.A_リード1のパス = l_引数.A_リード2のパス;
                 l_引数.A_リード2のパス = string.Empty;
@@ -183,7 +182,7 @@ namespace Tsumiki.IO
             if (string.IsNullOrWhiteSpace(l_引数.A_リード1のパス))
             {
                 Logger.V_出力_エラー(Logger.Get_メソッド名(), new ArgumentException("Please set read path"));
-                Environment.Exit(0);
+                throw new ArgumentException("Please set read path");
             }
 
             return l_引数;
@@ -197,6 +196,7 @@ namespace Tsumiki.IO
         /// -lang に渡された言語名を解釈する
         /// </summary>
         /// <param name="p_言語名"></param>
+        /// <returns></returns>
         private static 言語 Get_言語(string p_言語名)
         {
             return p_言語名 switch
@@ -212,6 +212,7 @@ namespace Tsumiki.IO
         /// -log に渡された水準名を解釈する
         /// </summary>
         /// <param name="p_水準名"></param>
+        /// <returns></returns>
         private static ログ水準 Get_ログ水準(string p_水準名)
         {
             return p_水準名 switch
@@ -224,14 +225,12 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// -pu (優勢閾値) と -pc (支持数閾値) を、完全性/正確性のどちらに倒すかの
-        /// 1 軸で束ねて適用する
+        /// -pu (優勢閾値) と -pc (支持数閾値) を、完全性/正確性のどちらに倒すかの 1 軸で束ねて適用する
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_モード名"></param>
         /// <remarks>
-        /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる
-        /// (通常の CLI 引数と同じく、後に書いたものが勝つ)
+        /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる (通常の CLI 引数と同じく、後に書いたものが勝つ)
         /// </remarks>
         private static void V_適用_積極性モード(Parameters p_引数, string p_モード名)
         {

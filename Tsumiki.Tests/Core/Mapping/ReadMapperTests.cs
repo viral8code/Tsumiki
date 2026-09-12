@@ -88,8 +88,8 @@ namespace Tsumiki.Tests.Core.Mapping
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            const string 塩基 = "ACGT";
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => 塩基[l_乱数.Next(4)]));
+            const string l_塩基 = "ACGT";
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
         }
 
         #endregion

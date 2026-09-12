@@ -8,9 +8,10 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// </summary>
     /// <remarks>
     /// walk は 1 塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる<br/>
-    /// Span から毎回詰め直すと、1 歩あたり O(k) の詰め直しが所属判定と
-    /// 入次数判定の回数だけ走る
+    /// Span から毎回詰め直すと、1 歩あたり O (k) の詰め直しが所属判定と入次数判定の回数だけ走る
     /// </remarks>
+    /// <param name="p_kmerインデックス"></param>
+    /// <param name="p_k長"></param>
     internal sealed class UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)
     {
         #region 内部変数
@@ -132,6 +133,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_順鎖"></param>
         /// <param name="p_逆鎖"></param>
         /// <param name="p_塩基ID"></param>
+        /// <returns></returns>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_後続(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
             var l_コドン = (UInt128)(p_塩基ID - 1);
@@ -146,6 +148,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_順鎖"></param>
         /// <param name="p_逆鎖"></param>
         /// <param name="p_塩基ID"></param>
+        /// <returns></returns>
         private (UInt128 A_順鎖, UInt128 A_逆鎖) Get_予測元(UInt128 p_順鎖, UInt128 p_逆鎖, byte p_塩基ID)
         {
             var l_コドン = (UInt128)(p_塩基ID - 1);
@@ -160,9 +163,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_順鎖"></param>
         /// <param name="p_逆鎖"></param>
         /// <remarks>
-        /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと
-        /// 予測元は c + kmer[..^1] になる
+        /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと予測元は c + kmer[..^1] になる
         /// </remarks>
+        /// <returns></returns>
         private bool Get_入次数が1か(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_件数 = 0;

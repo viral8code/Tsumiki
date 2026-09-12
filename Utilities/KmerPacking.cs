@@ -6,10 +6,8 @@ namespace Tsumiki.Utilities
     /// k-mer を 2 bit へパックし、逆相補と比べて小さいほう (正規形) へ寄せる
     /// </summary>
     /// <remarks>
-    /// 集計のキーに文字列を使うとアセンブリ規模で 1 GB を超えるため、
-    /// k-mer を数える処理は常にこのパック済みの値をキーにする<br/>
-    /// パックは k &lt;= 64 でしか使えないので、
-    /// それを超える長さには <see cref="Get_正規化キー(ReadOnlySpan{byte})"/> を使う
+    /// 集計のキーに文字列を使うとアセンブリ規模で 1 GB を超えるため、k-mer を数える処理は常にこのパック済みの値をキーにする<br/>
+    /// パックは k &lt;= 64 でしか使えないので、それを超える長さには <see cref="Get_正規化キー(ReadOnlySpan{byte})"/> を使う
     /// </remarks>
     internal static class KmerPacking
     {
@@ -43,7 +41,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 塩基 ID 列を 2 bit パックし、正規形を返す
         /// </summary>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>パックした正規形</returns>
         public static UInt128 Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
@@ -62,7 +60,7 @@ namespace Tsumiki.Utilities
         /// ハッシュに落とすのは、数える、存在を問うだけで配列を戻さない用途に限る<br/>
         /// 128 bit なら数千万種類でも衝突は事実上起きない
         /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>k &lt;= 64 ならパック済みの正規形そのもの、それを超えるなら正規形の 128 bit ハッシュ</returns>
         public static UInt128 Get_正規化キー(ReadOnlySpan<byte> p_kmer)
         {
@@ -105,7 +103,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 32 塩基以下なら 2 bit パックそのもので、衝突は起きない
         /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>畳んだ値</returns>
         public static ulong Get_正規化ハッシュ_64(ReadOnlySpan<byte> p_kmer)
         {
@@ -116,8 +114,7 @@ namespace Tsumiki.Utilities
         /// 配列の位置から k 塩基を、正規化せず順鎖のまま 2 bit パックする
         /// </summary>
         /// <remarks>
-        /// 向きを区別したい索引 (どちらの鎖に載ったのかで座標の解釈が変わる場合) では正規形を使えないため、
-        /// 順鎖と逆相補を別々のキーとして扱う
+        /// 向きを区別したい索引 (どちらの鎖に載ったのかで座標の解釈が変わる場合) では正規形を使えないため、順鎖と逆相補を別々のキーとして扱う
         /// </remarks>
         /// <param name="p_配列">元の配列</param>
         /// <param name="p_開始位置">パックを始める位置</param>
@@ -182,7 +179,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 逆相補は実際には作らず、どちら向きが小さいかを決めてからその向きで畳む
         /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>畳んだ値</returns>
         private static UInt128 Get_正規化ハッシュ(ReadOnlySpan<byte> p_kmer)
         {
@@ -206,7 +203,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 塩基 ID は A = 1 .. T = 4 で、相補は 5 - ID になる
         /// </remarks>
-        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_kmer">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>順鎖のほうが小さいか等しければ true</returns>
         private static bool Get_順鎖が小さいか(ReadOnlySpan<byte> p_kmer)
         {

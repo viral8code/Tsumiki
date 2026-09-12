@@ -3,6 +3,7 @@
     /// <summary>
     /// FASTA を 1 配列ずつ書き出す
     /// </summary>
+    /// <param name="p_ファイル名"></param>
     internal class FastaWriter(string p_ファイル名) : IDisposable
     {
         #region 内部変数

@@ -6,6 +6,7 @@ namespace Tsumiki.IO
     /// <summary>
     /// FASTA を 1 配列ずつ読み込む
     /// </summary>
+    /// <param name="p_パス"></param>
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
         #region 公開メソッド
@@ -17,6 +18,7 @@ namespace Tsumiki.IO
         /// <remarks>
         /// ID の先頭 '>' は取り除く
         /// </remarks>
+        /// <returns></returns>
         public static List<(string A_ID, string A_配列)> Get_全エントリ(string p_パス)
         {
             List<(string, string)> l_結果 = [];
@@ -42,9 +44,9 @@ namespace Tsumiki.IO
 
                 return new 配列エントリ(l_ID, l_配列);
             }
-            catch (Exception ex)
+            catch (Exception l_例外)
             {
-                Logger.V_出力_警告(Logger.Get_メソッド名(), ex);
+                Logger.V_出力_警告(Logger.Get_メソッド名(), l_例外);
                 throw;
             }
         }

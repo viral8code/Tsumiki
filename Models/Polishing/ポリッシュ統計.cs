@@ -6,6 +6,14 @@
     /// <remarks>
     /// 位置ごとの深度もここで得られるため、カバレッジの連続性の判定にも使う
     /// </remarks>
+    /// <param name="A_配列数"></param>
+    /// <param name="A_総延長"></param>
+    /// <param name="A_マップされたリード数"></param>
+    /// <param name="A_棄却されたリード数"></param>
+    /// <param name="A_訂正した塩基数"></param>
+    /// <param name="A_深度不足の位置数"></param>
+    /// <param name="A_評価できた位置数"></param>
+    /// <param name="A_深度の中央値"></param>
     internal readonly record struct ポリッシュ統計(int A_配列数, long A_総延長, long A_マップされたリード数, long A_棄却されたリード数, long A_訂正した塩基数, long A_深度不足の位置数, long A_評価できた位置数, double A_深度の中央値)
     {
         #region カスタムプロパティ

@@ -8,8 +8,7 @@ namespace Tsumiki.Commons
     /// </summary>
     /// <remarks>
     /// 文言を呼び出し側に直接書かないのは、出す場所と訳す場所を分けるため<br/>
-    /// 書式は <see cref="MessageCatalog"/> が言語ごとに持ち、ここは
-    /// 現在の言語を選んで差し込むだけにする
+    /// 書式は <see cref="MessageCatalog"/> が言語ごとに持ち、ここは現在の言語を選んで差し込むだけにする
     /// </remarks>
     internal static class Messages
     {
@@ -29,6 +28,7 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_ID"></param>
         /// <param name="p_引数"></param>
+        /// <returns></returns>
         public static string Get_文言(メッセージID p_ID, params object?[] p_引数)
         {
             var l_書式 = MessageCatalog.Get_書式(A_言語, p_ID);

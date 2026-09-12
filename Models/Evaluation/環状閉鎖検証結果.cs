@@ -4,9 +4,12 @@
     /// 環状に閉じた 1 本について、閉じ目が元リードから裏付けられるかを調べた結果
     /// </summary>
     /// <remarks>
-    /// グラフ上で閉じたことと、その閉じ目を実際にリードが読んでいることは
-    /// 別の主張であり、後者が無い環状は線状の断片と区別できない
+    /// グラフ上で閉じたことと、その閉じ目を実際にリードが読んでいることは別の主張であり、後者が無い環状は線状の断片と区別できない
     /// </remarks>
+    /// <param name="A_配列ID"></param>
+    /// <param name="A_長さ"></param>
+    /// <param name="A_跨いだリード数"></param>
+    /// <param name="A_必要本数"></param>
     internal readonly record struct 環状閉鎖検証結果(string A_配列ID, int A_長さ, int A_跨いだリード数, int A_必要本数)
     {
         #region カスタムプロパティ

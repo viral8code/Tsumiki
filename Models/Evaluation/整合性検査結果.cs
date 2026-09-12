@@ -3,6 +3,12 @@
     /// <summary>
     /// アセンブリが観測された k-mer とその出現回数に対して辻褄が合っているかの検査結果
     /// </summary>
+    /// <param name="A_信頼kmer数"></param>
+    /// <param name="A_アセンブリ内の延べ数"></param>
+    /// <param name="A_アセンブリ内の種類数"></param>
+    /// <param name="A_取りこぼし数"></param>
+    /// <param name="A_出しすぎkmer種類数"></param>
+    /// <param name="A_余分な延べ数"></param>
     internal readonly record struct 整合性検査結果(long A_信頼kmer数, long A_アセンブリ内の延べ数, long A_アセンブリ内の種類数, long A_取りこぼし数, long A_出しすぎkmer種類数, long A_余分な延べ数)
     {
         #region カスタムプロパティ
@@ -13,8 +19,7 @@
         public double A_取りこぼし率 => this.A_信頼kmer数 == 0L ? 0D : 100D * this.A_取りこぼし数 / this.A_信頼kmer数;
 
         /// <summary>
-        /// アセンブリ中の k-mer 延べ数のうち、コピー数の推定を超えて
-        /// 余分に現れている分の割合
+        /// アセンブリ中の k-mer 延べ数のうち、コピー数の推定を超えて余分に現れている分の割合
         /// </summary>
         /// <remarks>
         /// 総延長の水増し量にほぼ対応する

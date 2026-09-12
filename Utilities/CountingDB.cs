@@ -6,8 +6,7 @@ namespace Tsumiki.Utilities
     /// 外部ソートで k-mer の出現回数を数えるデータベース
     /// </summary>
     /// <remarks>
-    /// メモリ上の Dictionary で集約しつつ、閾値を超えたらソート済みファイルへ
-    /// フラッシュし、最後にペアワイズマージして 1 本の整列済みファイルへ統合する
+    /// メモリ上の Dictionary で集約しつつ、閾値を超えたらソート済みファイルへフラッシュし、最後にペアワイズマージして 1 本の整列済みファイルへ統合する
     /// </remarks>
     internal class CountingDB : IDisposable
     {
@@ -31,7 +30,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// IO バッファサイズ
         /// </summary>
-        private const int IOバッファサイズ = 1 << 20; // 1MB
+        private const int IOバッファサイズ = 1 << 20; // 1 MB
 
         #endregion
 
@@ -103,7 +102,7 @@ namespace Tsumiki.Utilities
             this._パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
-            this._フラッシュ閾値 = (int)Math.Max(1024, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
+            this._フラッシュ閾値 = (int)Math.Max(1024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
             this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
             this._ファイル連番 = 0;
         }
@@ -140,20 +139,18 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_パック済みkmer"></param>
         /// <remarks>
-        /// 従来はここで即ディスクに書き込んでいたが、
-        /// メモリ上の Dictionary でカウントを集約することで、同一 k-mer の
-        /// 再出現をディスク書き込みに変換しないようにする<br/>
+        /// 従来はここで即ディスクに書き込んでいたが、メモリ上の Dictionary でカウントを集約することで、同一 k-mer の再出現をディスク書き込みに変換しないようにする<br/>
         /// 閾値に達したら整列済みの状態でディスクへフラッシュする
         /// </remarks>
         public void V_登録_パック済み(byte[] p_パック済みkmer)
         {
             if (this._バッファ.TryGetValue(p_パック済みkmer, out var l_出現回数))
             {
-                this._バッファ[p_パック済みkmer] = l_出現回数 + 1;
+                this._バッファ[p_パック済みkmer] = l_出現回数 + 1UL;
             }
             else
             {
-                this._バッファ[p_パック済みkmer] = 1;
+                this._バッファ[p_パック済みkmer] = 1UL;
                 if (this._バッファ.Count >= this._フラッシュ閾値)
                 {
                     this.V_フラッシュ();
@@ -164,6 +161,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// このシャードのフラッシュ済みファイルをすべて 1 本にマージし、そのパスを返す
         /// </summary>
+        /// <returns></returns>
         public string Get_統合ファイル()
         {
             // メモリ上に残っている未フラッシュ分を書き出す
@@ -186,8 +184,8 @@ namespace Tsumiki.Utilities
             }
 
             // フラッシュ済みファイルが 1 件のみだった場合、マージが一度も走らず
-            // その元ファイル (_フラッシュ済みファイル に登録済み)がそのまま返される
-            // 登録したままだと、この直後に Dispose() が呼ばれた際
+            // その元ファイル (_フラッシュ済みファイル に登録済み) がそのまま返される
+            // 登録したままだと、この直後に Dispose () が呼ばれた際
             // _フラッシュ済みファイル を掃除する処理で削除されてしまい、
             // 呼び出し元に返したパスが消える (FileNotFoundException の原因)
             // 呼び出し元へ所有権を渡すため、返す前に登録を外しておく
@@ -213,11 +211,11 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 各シャードの CountingDB が Get_統合ファイル() で出力した
-        /// ソート済み・集約済みファイルを、さらにペアワイズマージして 1 本に統合する
+        /// 各シャードの CountingDB が Get_統合ファイル () で出力したソート済み・集約済みファイルを、さらにペアワイズマージして 1 本に統合する
         /// </summary>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_ファイル一覧"></param>
+        /// <returns></returns>
         public static (string A_ファイルパス, Dictionary<ulong, long>? A_ヒストグラム) Get_統合結果_シャード間(string p_一時ディレクトリ, List<string> p_ファイル一覧)
         {
             var l_比較器 = new ByteArrayComparer();
@@ -279,8 +277,7 @@ namespace Tsumiki.Utilities
         /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す
         /// </summary>
         /// <remarks>
-        /// フラッシュ後のファイルは常にソート済み・集約済みであるため、
-        /// 統合側では再集計 (Dictionary への読み直し) が不要になる
+        /// フラッシュ後のファイルは常にソート済み・集約済みであるため、統合側では再集計 (Dictionary への読み直し) が不要になる
         /// </remarks>
         private void V_フラッシュ()
         {
@@ -319,8 +316,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_ヒストグラム"></param>
         /// <remarks>
         /// 同じキーが両方に現れた場合はカウントを合算する<br/>
-        /// シャード内統合とシャード間統合で共有する (二重に持つと
-        /// 片方だけ直したときに静かに食い違う)
+        /// シャード内統合とシャード間統合で共有する (二重に持つと片方だけ直したときに静かに食い違う)
         /// </remarks>
         private static void V_マージ_2ファイル(string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器, Dictionary<ulong, long>? p_ヒストグラム = null)
         {
@@ -387,13 +383,12 @@ namespace Tsumiki.Utilities
         /// <param name="p_出現回数"></param>
         /// <param name="p_ヒストグラム"></param>
         /// <remarks>
-        /// 最終マージの書き出しで集計しておけば、-kc の自動決定のために
-        /// 統合ファイルをもう一度読む必要がなくなる
+        /// 最終マージの書き出しで集計しておけば、-kc の自動決定のために統合ファイルをもう一度読む必要がなくなる
         /// </remarks>
         private static void V_書き込み_出現回数(BinaryWriter p_書き込み, ulong p_出現回数, Dictionary<ulong, long>? p_ヒストグラム)
         {
             p_書き込み.Write(p_出現回数);
-            p_ヒストグラム?[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1;
+            p_ヒストグラム?[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1L;
         }
 
         /// <summary>
@@ -404,6 +399,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 登録が 1 件も無かったシャードでも、統合処理に渡せる形を保つために使う
         /// </remarks>
+        /// <returns></returns>
         private static string Get_空ファイル(string p_一時ディレクトリ, string p_接頭辞)
         {
             var l_ファイル名 = Path.Combine(p_一時ディレクトリ, $"{p_接頭辞}_empty");

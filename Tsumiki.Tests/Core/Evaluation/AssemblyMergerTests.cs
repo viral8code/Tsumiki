@@ -10,40 +10,274 @@ namespace Tsumiki.Tests.Core
     /// 複数の k のアセンブリを統合する処理の検証
     /// </summary>
     /// <remarks>
-    /// 統合は誤った連結を持ち込みうる操作なので、繋ぐべきときに繋ぐことと
-    /// 同じくらい、根拠が無いときに繋がないことを固定しておく必要がある
+    /// 統合は誤った連結を持ち込みうる操作なので、繋ぐべきときに繋ぐことと同じくらい、根拠が無いときに繋がないことを固定しておく必要がある
     /// </remarks>
     public class AssemblyMergerTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// アンカー k 長
+        /// </summary>
+        private const int アンカーk長 = 31;
+
+        #endregion
+
+        #region 内部変数
+
         /// <summary>
         /// 一時ディレクトリのパス
         /// </summary>
-        private readonly string _tempDir;
+        private readonly string _作業ディレクトリ;
+
+        #endregion
+
+        #region コンストラクタ
 
         /// <summary>
         /// 一時ディレクトリを作る
         /// </summary>
         public AssemblyMergerTests()
         {
-            this._tempDir = Path.Combine(Path.GetTempPath(), "tsumiki_merger_tests_" + Guid.NewGuid().ToString("N"));
-            _ = Directory.CreateDirectory(this._tempDir);
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_merger_tests_" + Guid.NewGuid().ToString("N"));
+            _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 一時ディレクトリを片付ける
         /// </summary>
         public void Dispose()
         {
-            if (Directory.Exists(this._tempDir))
+            if (Directory.Exists(this._作業ディレクトリ))
             {
-                Directory.Delete(this._tempDir, recursive: true);
+                Directory.Delete(this._作業ディレクトリ, recursive: true);
             }
         }
 
         /// <summary>
-        /// アンカー k 長
+        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合
         /// </summary>
-        private const int アンカーk長 = 31;
+        /// <remarks>
+        /// 繋いだ結果が元のゲノムそのものに戻ること
+        /// </remarks>
+        [Fact]
+        public void V_別のkが骨格の切れ目を跨ぐと繋いで元の配列に戻る()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 601);
+            var l_中間 = V_生成_乱数配列(400, p_シード: 602);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 603);
+            var l_真の配列 = l_左 + l_中間 + l_右;
+
+            // 骨格は中間で切れている
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone.fasta", 63, l_左, l_右);
+            // 別の k は切れ目を跨いでいる (両端に十分なアンカーを持つ)
+            var l_他 = this.V_書き込み_アセンブリ("other.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.True(l_繋いだか);
+            var l_結果 = V_読み込み_配列群(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.Equal(l_真の配列, l_結果[0]);
+        }
+
+        /// <summary>
+        /// 骨格側の片方が逆向きに出力されていても、向きを揃えて繋げること
+        /// </summary>
+        [Fact]
+        public void V_骨格の片方が逆相補でも正しく繋がる()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 611);
+            var l_中間 = V_生成_乱数配列(300, p_シード: 612);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 613);
+            var l_真の配列 = l_左 + l_中間 + l_右;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_rc.fasta", 63, l_左, Util.V_逆相補(l_右));
+            var l_他 = this.V_書き込み_アセンブリ("other_rc.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_rc.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.True(l_繋いだか);
+            var l_結果 = V_読み込み_配列群(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.True(l_結果[0] == l_真の配列 || l_結果[0] == Util.V_逆相補(l_真の配列), "merged sequence should be the truth in one orientation or the other");
+        }
+
+        /// <summary>
+        /// 跨いでいる配列が無ければ何もしないこと
+        /// </summary>
+        /// <remarks>
+        /// 根拠が無いのに繋ぐのが最も避けたい失敗
+        /// </remarks>
+        [Fact]
+        public void V_跨ぐ配列が無ければ何もしない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 621);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 622);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_none.fasta", 63, l_左, l_右);
+            // 別の k も同じところで切れている
+            var l_他 = this.V_書き込み_アセンブリ("other_none.fasta", 31, l_左, l_右);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_none.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.False(l_繋いだか);
+            Assert.False(File.Exists(l_出力));
+        }
+
+        /// <summary>
+        /// 反復配列のせいで行き先が 2 つある場合は繋がないこと
+        /// </summary>
+        /// <remarks>
+        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる
+        /// </remarks>
+        [Fact]
+        public void V_行き先が2つ有り得るときは繋がない()
+        {
+            var l_共通の左 = V_生成_乱数配列(5_000, p_シード: 631);
+            var l_右候補1 = V_生成_乱数配列(5_000, p_シード: 632);
+            var l_右候補2 = V_生成_乱数配列(5_000, p_シード: 633);
+            var l_中間 = V_生成_乱数配列(200, p_シード: 634);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_amb.fasta", 63, l_共通の左, l_右候補1, l_右候補2);
+            // 同じ左から 2 つの異なる右へ繋がる証拠が両方ある
+            var l_他 = this.V_書き込み_アセンブリ("other_amb.fasta", 31, l_共通の左 + l_中間 + l_右候補1, l_共通の左 + l_中間 + l_右候補2);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_amb.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.False(l_繋いだか);
+        }
+
+        /// <summary>
+        /// 3 本を 2 箇所で繋ぐ連鎖
+        /// </summary>
+        /// <remarks>
+        /// 1 回の統合で最後まで繋がること
+        /// </remarks>
+        [Fact]
+        public void V_連鎖する3本を1回の統合で全て繋ぐ()
+        {
+            var l_先頭配列 = V_生成_乱数配列(4_000, p_シード: 641);
+            var l_g1 = V_生成_乱数配列(200, p_シード: 642);
+            var l_中間配列 = V_生成_乱数配列(4_000, p_シード: 643);
+            var l_g2 = V_生成_乱数配列(200, p_シード: 644);
+            var l_末尾配列 = V_生成_乱数配列(4_000, p_シード: 645);
+            var l_真の配列 = l_先頭配列 + l_g1 + l_中間配列 + l_g2 + l_末尾配列;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_chain.fasta", 63, l_先頭配列, l_中間配列, l_末尾配列);
+            var l_他 = this.V_書き込み_アセンブリ("other_chain.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_chain.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.True(l_繋いだか);
+            var l_結果 = V_読み込み_配列群(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.Equal(l_真の配列, l_結果[0]);
+        }
+
+        /// <summary>
+        /// 繋がらなかった骨格配列も、統合結果から失われないこと
+        /// </summary>
+        [Fact]
+        public void V_繋がらなかった骨格配列も出力に残る()
+        {
+            var l_左 = V_生成_乱数配列(4_000, p_シード: 651);
+            var l_中間 = V_生成_乱数配列(200, p_シード: 652);
+            var l_右 = V_生成_乱数配列(4_000, p_シード: 653);
+            var l_孤立 = V_生成_乱数配列(3_000, p_シード: 654);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_iso.fasta", 63, l_左, l_右, l_孤立);
+            var l_他 = this.V_書き込み_アセンブリ("other_iso.fasta", 31, l_左 + l_中間 + l_右);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_iso.fasta");
+            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            Assert.True(l_繋いだか);
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Equal(2, l_結果.Count);
+            Assert.Contains(l_結果, x => x == l_左 + l_中間 + l_右);
+            Assert.Contains(l_結果, x => x == l_孤立 || x == Util.V_逆相補(l_孤立));
+        }
+
+        /// <summary>
+        /// 既定では、1 つの k だけが主張する隣接は採らないこと
+        /// </summary>
+        /// <remarks>
+        /// 骨格が途切れているのは繋ぐ根拠が足りないと判断した結果であることが多く、それを 1 本の配列で覆すと、その配列自身が誤アセンブリだった場合にそのまま持ち込む<br/>
+        /// 実データでは、証拠に使ったアセンブリ由来の誤アセンブリが骨格の 21 箇所から 60 箇所へ増えた
+        /// </remarks>
+        [Fact]
+        public void V_支持するkが1つだけの接合は既定では採用しない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 671);
+            var l_中間 = V_生成_乱数配列(300, p_シード: 672);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 673);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_sup.fasta", 63, l_左, l_右);
+            var l_他 = this.V_書き込み_アセンブリ("other_sup.fasta", 31, l_左 + l_中間 + l_右);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_sup.fasta");
+
+            Assert.False(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力));
+        }
+
+        /// <summary>
+        /// 2 つの k が同じ隣接を主張していれば採ること
+        /// </summary>
+        [Fact]
+        public void V_独立した2つのkが一致すれば採用する()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 681);
+            var l_中間 = V_生成_乱数配列(300, p_シード: 682);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 683);
+            var l_真の配列 = l_左 + l_中間 + l_右;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_two.fasta", 63, l_左, l_右);
+            var l_他1 = this.V_書き込み_アセンブリ("other_two_a.fasta", 31, l_真の配列);
+            var l_他2 = this.V_書き込み_アセンブリ("other_two_b.fasta", 41, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_two.fasta");
+
+            Assert.True(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, l_出力));
+            Assert.Equal(l_真の配列, V_読み込み_配列群(l_出力)[0]);
+        }
+
+        /// <summary>
+        /// 統合の総延長が、骨格の総延長を下回らないこと
+        /// </summary>
+        /// <remarks>
+        /// 配列を落とすなら統合しないほうがましなので、これは不変条件
+        /// </remarks>
+        [Fact]
+        public void V_統合結果の総延長は骨格を下回らない()
+        {
+            var l_先頭配列 = V_生成_乱数配列(4_000, p_シード: 661);
+            var l_g = V_生成_乱数配列(150, p_シード: 662);
+            var l_中間配列 = V_生成_乱数配列(4_000, p_シード: 663);
+            var l_孤立 = V_生成_乱数配列(2_000, p_シード: 664);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_len.fasta", 63, l_先頭配列, l_中間配列, l_孤立);
+            var l_他 = this.V_書き込み_アセンブリ("other_len.fasta", 31, l_先頭配列 + l_g + l_中間配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_len.fasta");
+            _ = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
+
+            var l_骨格の総延長 = l_先頭配列.Length + l_中間配列.Length + l_孤立.Length;
+            Assert.True(V_読み込み_配列群(l_出力).Sum(x => x.Length) >= l_骨格の総延長);
+        }
+
+        #endregion
+
+        #region 内部メソッド
 
         // 既定では 2 つ以上の k による裏付けを求める
         // 以下の多くのテストは
@@ -71,7 +305,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>アセンブリの実行結果</returns>
         private アセンブリ実行結果 V_書き込み_アセンブリ(string p_ファイル名, int p_k長, params string[] p_配列群)
         {
-            var l_パス = Path.Combine(this._tempDir, p_ファイル名);
+            var l_パス = Path.Combine(this._作業ディレクトリ, p_ファイル名);
             using (var l_ライター = new FastaWriter(l_パス))
             {
                 var l_通し番号 = 1;
@@ -80,7 +314,7 @@ namespace Tsumiki.Tests.Core
                     l_ライター.V_書き込み($"NODE{l_通し番号++}", l_配列);
                 }
             }
-            return new アセンブリ実行結果(p_k長, l_パス, l_パス, null, 2, 20.0);
+            return new アセンブリ実行結果(p_k長, l_パス, l_パス, null, 2UL, 20.0D);
         }
 
         /// <summary>
@@ -99,227 +333,7 @@ namespace Tsumiki.Tests.Core
             return l_結果;
         }
 
-        /// <summary>
-        /// 骨格が途切れている箇所を、別の k の配列が跨いでいる場合
-        /// </summary>
-        /// <remarks>
-        /// 繋いだ結果が元のゲノムそのものに戻ること
-        /// </remarks>
-        [Fact]
-        public void 別のkが骨格の切れ目を跨ぐと繋いで元の配列に戻る()
-        {
-            var l_左 = V_生成_乱数配列(5_000, p_シード: 601);
-            var l_中間 = V_生成_乱数配列(400, p_シード: 602);
-            var l_右 = V_生成_乱数配列(5_000, p_シード: 603);
-            var l_真の配列 = l_左 + l_中間 + l_右;
+        #endregion
 
-            // 骨格は中間で切れている
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone.fasta", 63, l_左, l_右);
-            // 別の k は切れ目を跨いでいる (両端に十分なアンカーを持つ)
-            var l_他 = this.V_書き込み_アセンブリ("other.fasta", 31, l_真の配列);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.True(l_繋いだか);
-            var l_結果 = V_読み込み_配列群(l_出力);
-            _ = Assert.Single(l_結果);
-            Assert.Equal(l_真の配列, l_結果[0]);
-        }
-
-        /// <summary>
-        /// 骨格側の片方が逆向きに出力されていても、向きを揃えて繋げること
-        /// </summary>
-        [Fact]
-        public void 骨格の片方が逆相補でも正しく繋がる()
-        {
-            var l_左 = V_生成_乱数配列(5_000, p_シード: 611);
-            var l_中間 = V_生成_乱数配列(300, p_シード: 612);
-            var l_右 = V_生成_乱数配列(5_000, p_シード: 613);
-            var l_真の配列 = l_左 + l_中間 + l_右;
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_rc.fasta", 63, l_左, Util.V_逆相補(l_右));
-            var l_他 = this.V_書き込み_アセンブリ("other_rc.fasta", 31, l_真の配列);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_rc.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.True(l_繋いだか);
-            var l_結果 = V_読み込み_配列群(l_出力);
-            _ = Assert.Single(l_結果);
-            Assert.True(l_結果[0] == l_真の配列 || l_結果[0] == Util.V_逆相補(l_真の配列),
-                "merged sequence should be the truth in one orientation or the other");
-        }
-
-        /// <summary>
-        /// 跨いでいる配列が無ければ何もしないこと
-        /// </summary>
-        /// <remarks>
-        /// 根拠が無いのに繋ぐのが最も避けたい失敗
-        /// </remarks>
-        [Fact]
-        public void 跨ぐ配列が無ければ何もしない()
-        {
-            var l_左 = V_生成_乱数配列(5_000, p_シード: 621);
-            var l_右 = V_生成_乱数配列(5_000, p_シード: 622);
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_none.fasta", 63, l_左, l_右);
-            // 別の k も同じところで切れている
-            var l_他 = this.V_書き込み_アセンブリ("other_none.fasta", 31, l_左, l_右);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_none.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.False(l_繋いだか);
-            Assert.False(File.Exists(l_出力));
-        }
-
-        /// <summary>
-        /// 反復配列のせいで行き先が 2 つある場合は繋がないこと
-        /// </summary>
-        /// <remarks>
-        /// 片方を選ぶ根拠が無く、選べば誤アセンブリになる
-        /// </remarks>
-        [Fact]
-        public void 行き先が2つ有り得るときは繋がない()
-        {
-            var l_共通の左 = V_生成_乱数配列(5_000, p_シード: 631);
-            var l_右候補1 = V_生成_乱数配列(5_000, p_シード: 632);
-            var l_右候補2 = V_生成_乱数配列(5_000, p_シード: 633);
-            var l_中間 = V_生成_乱数配列(200, p_シード: 634);
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_amb.fasta", 63, l_共通の左, l_右候補1, l_右候補2);
-            // 同じ左から 2 つの異なる右へ繋がる証拠が両方ある
-            var l_他 = this.V_書き込み_アセンブリ("other_amb.fasta", 31,
-                l_共通の左 + l_中間 + l_右候補1,
-                l_共通の左 + l_中間 + l_右候補2);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_amb.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.False(l_繋いだか);
-        }
-
-        /// <summary>
-        /// 3 本を 2 箇所で繋ぐ連鎖
-        /// </summary>
-        /// <remarks>
-        /// 1 回の統合で最後まで繋がること
-        /// </remarks>
-        [Fact]
-        public void 連鎖する3本を1回の統合で全て繋ぐ()
-        {
-            var l_a = V_生成_乱数配列(4_000, p_シード: 641);
-            var l_g1 = V_生成_乱数配列(200, p_シード: 642);
-            var l_b = V_生成_乱数配列(4_000, p_シード: 643);
-            var l_g2 = V_生成_乱数配列(200, p_シード: 644);
-            var l_c = V_生成_乱数配列(4_000, p_シード: 645);
-            var l_真の配列 = l_a + l_g1 + l_b + l_g2 + l_c;
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_chain.fasta", 63, l_a, l_b, l_c);
-            var l_他 = this.V_書き込み_アセンブリ("other_chain.fasta", 31, l_真の配列);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_chain.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.True(l_繋いだか);
-            var l_結果 = V_読み込み_配列群(l_出力);
-            _ = Assert.Single(l_結果);
-            Assert.Equal(l_真の配列, l_結果[0]);
-        }
-
-        /// <summary>
-        /// 繋がらなかった骨格配列も、統合結果から失われないこと
-        /// </summary>
-        [Fact]
-        public void 繋がらなかった骨格配列も出力に残る()
-        {
-            var l_左 = V_生成_乱数配列(4_000, p_シード: 651);
-            var l_中間 = V_生成_乱数配列(200, p_シード: 652);
-            var l_右 = V_生成_乱数配列(4_000, p_シード: 653);
-            var l_孤立 = V_生成_乱数配列(3_000, p_シード: 654);
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_iso.fasta", 63, l_左, l_右, l_孤立);
-            var l_他 = this.V_書き込み_アセンブリ("other_iso.fasta", 31, l_左 + l_中間 + l_右);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_iso.fasta");
-            var l_繋いだか = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            Assert.True(l_繋いだか);
-            var l_結果 = V_読み込み_配列群(l_出力);
-            Assert.Equal(2, l_結果.Count);
-            Assert.Contains(l_結果, x => x == l_左 + l_中間 + l_右);
-            Assert.Contains(l_結果, x => x == l_孤立 || x == Util.V_逆相補(l_孤立));
-        }
-
-        /// <summary>
-        /// 既定では、1 つの k だけが主張する隣接は採らないこと
-        /// </summary>
-        /// <remarks>
-        /// 骨格が途切れているのは繋ぐ根拠が足りないと判断した結果であることが多く、
-        /// それを 1 本の配列で覆すと、その配列自身が誤アセンブリだった場合に
-        /// そのまま持ち込む<br/>
-        /// 実データでは、証拠に使ったアセンブリ由来の
-        /// 誤アセンブリが骨格の 21 箇所から 60 箇所へ増えた
-        /// </remarks>
-        [Fact]
-        public void 支持するkが1つだけの接合は既定では採用しない()
-        {
-            var l_左 = V_生成_乱数配列(5_000, p_シード: 671);
-            var l_中間 = V_生成_乱数配列(300, p_シード: 672);
-            var l_右 = V_生成_乱数配列(5_000, p_シード: 673);
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_sup.fasta", 63, l_左, l_右);
-            var l_他 = this.V_書き込み_アセンブリ("other_sup.fasta", 31, l_左 + l_中間 + l_右);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_sup.fasta");
-
-            Assert.False(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力));
-        }
-
-        /// <summary>
-        /// 2 つの k が同じ隣接を主張していれば採ること
-        /// </summary>
-        [Fact]
-        public void 独立した2つのkが一致すれば採用する()
-        {
-            var l_左 = V_生成_乱数配列(5_000, p_シード: 681);
-            var l_中間 = V_生成_乱数配列(300, p_シード: 682);
-            var l_右 = V_生成_乱数配列(5_000, p_シード: 683);
-            var l_真の配列 = l_左 + l_中間 + l_右;
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_two.fasta", 63, l_左, l_右);
-            var l_他1 = this.V_書き込み_アセンブリ("other_two_a.fasta", 31, l_真の配列);
-            var l_他2 = this.V_書き込み_アセンブリ("other_two_b.fasta", 41, l_真の配列);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_two.fasta");
-
-            Assert.True(AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, l_出力));
-            Assert.Equal(l_真の配列, V_読み込み_配列群(l_出力)[0]);
-        }
-
-        /// <summary>
-        /// 統合の総延長が、骨格の総延長を下回らないこと
-        /// </summary>
-        /// <remarks>
-        /// 配列を落とすなら統合しないほうがましなので、これは不変条件
-        /// </remarks>
-        [Fact]
-        public void 統合結果の総延長は骨格を下回らない()
-        {
-            var l_a = V_生成_乱数配列(4_000, p_シード: 661);
-            var l_g = V_生成_乱数配列(150, p_シード: 662);
-            var l_b = V_生成_乱数配列(4_000, p_シード: 663);
-            var l_孤立 = V_生成_乱数配列(2_000, p_シード: 664);
-
-            var l_骨格 = this.V_書き込み_アセンブリ("backbone_len.fasta", 63, l_a, l_b, l_孤立);
-            var l_他 = this.V_書き込み_アセンブリ("other_len.fasta", 31, l_a + l_g + l_b);
-
-            var l_出力 = Path.Combine(this._tempDir, "merged_len.fasta");
-            _ = AssemblyMerger.V_統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1);
-
-            var l_骨格の総延長 = l_a.Length + l_b.Length + l_孤立.Length;
-            Assert.True(V_読み込み_配列群(l_出力).Sum(x => x.Length) >= l_骨格の総延長);
-        }
     }
 }

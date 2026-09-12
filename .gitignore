@@ -366,3 +366,7 @@ FodyWeavers.xsd
 
 # 検証用の補助スクリプト群はリポジトリに含めない
 /tools/
+
+# ローカルの調査資料と評価データ
+/docs/
+/local-data/

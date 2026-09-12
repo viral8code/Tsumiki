@@ -28,14 +28,14 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引き継ぎ"></param>
         /// <param name="p_次への引き継ぎ"></param>
         /// <param name="p_合成リードの控え"></param>
+        /// <param name="p_原入力">反復検査に使う加工前の入力</param>
         /// <returns></returns>
         /// <remarks>
         /// unitig 数が上限を超えた場合は null<br/>
         /// 生成物は k ごとの作業ディレクトリに置く<br/>
-        /// 最終的に採用したものだけを
-        /// V_複製_最終成果物 が作業ディレクトリの直下へ複製する
+        /// 最終的に採用したものだけを V_複製_最終成果物 が作業ディレクトリの直下へ複製する
         /// </remarks>
-        public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長, IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null, List<引き継ぎ配列>? p_次への引き継ぎ = null, List<引き継ぎ配列>? p_合成リードの控え = null)
+        public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長, IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null, List<引き継ぎ配列>? p_次への引き継ぎ = null, List<引き継ぎ配列>? p_合成リードの控え = null, Parameters? p_原入力 = null)
         {
             // 以降の全処理は ConfigurationManager 経由で k 長を参照する
             // 明示指定の印は立てない (自動選択された値のままとして扱う)
@@ -53,6 +53,12 @@ namespace Tsumiki.Cores.Pipeline
             var l_コンティグパス = Path.Combine(l_作業ディレクトリ, Consts.コンティグファイル名);
             var l_スキャフォールドパス = Path.Combine(l_作業ディレクトリ, Consts.スキャフォールドファイル名);
             var l_GFAパス = Path.Combine(l_作業ディレクトリ, Consts.GFAファイル名);
+
+            // 再実行で今回生成されなかった前回のスキャフォールドを採用しない
+            if (File.Exists(l_スキャフォールドパス))
+            {
+                File.Delete(l_スキャフォールドパス);
+            }
 
             Logger.V_出力(メッセージID.kmerインデックス構築開始);
             using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ);
@@ -156,7 +162,7 @@ namespace Tsumiki.Cores.Pipeline
             // あるか」を確かめる
             // r はこの k の k-1 重なりより確実に長く
             // 取らないと共有区間の内側に収まってしまい判定にならないため、
-            // k + 余剰分で決める (32 塩基を超える k では意味を持てないため見送る)
+            // k + 余剰分で決め、リード内に十分な窓を取れる場合に検証する
             RepeatRMerVerifier? l_r_mer検証器 = null;
             if (p_引数.A_反復をrMerで検証するか)
             {
@@ -170,7 +176,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
                 if (l_窓数 >= Consts.rMer検証に必要な窓数)
                 {
-                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([p_引数.A_リード1のパス, p_引数.A_リード2のパス], l_r長);
+                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], l_r長);
                 }
                 else
                 {
@@ -249,10 +255,8 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_出力ディレクトリ"></param>
         /// <returns></returns>
         /// <remarks>
-        /// k ごとの成果物は
-        /// k のサブディレクトリに残したまま、利用者が受け取る 1 組だけを上へ出す<br/>
-        /// unitigs/contigs/scaffolds はここまでの各段階の出力で、最後に手が
-        /// 入る前の姿<br/>
+        /// k ごとの成果物は k のサブディレクトリに残したまま、利用者が受け取る 1 組だけを上へ出す<br/>
+        /// unitigs/contigs/scaffolds はここまでの各段階の出力で、最後に手が入る前の姿<br/>
         /// 利用者が使うべき 1 本は assembly.fasta のほうになる
         /// </remarks>
         public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
@@ -312,13 +316,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_合成リードの控え"></param>
         /// <remarks>
         /// k-mer インデックスが破棄される前でなければ作れない<br/>
-        /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして
-        /// 作った合成リード (SuperRead) も足す<br/>
-        /// 元のリードの 2〜4 倍の長さを持つため、
-        /// マルチ k の上限 (リード長で頭打ちになる) を実効的に外せる<br/>
-        /// バブル除去で外れた側の配列 (careful_bubble)も足す<br/>
-        /// この k での
-        /// 敗者判定は次の k を拘束しない
+        /// -sr が有効なら、この k の信頼できる k-mer 集合の中でペアを橋渡しして作った合成リード (SuperRead) も足す<br/>
+        /// 元のリードの 2〜4 倍の長さを持つため、マルチ k の上限 (リード長で頭打ちになる) を実効的に外せる<br/>
+        /// バブル除去で外れた側の配列 (careful_bubble) も足す<br/>
+        /// この k での敗者判定は次の k を拘束しない
         /// </remarks>
         private static void V_用意_次への引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
         {
@@ -355,7 +356,7 @@ namespace Tsumiki.Cores.Pipeline
             //
             // 橋渡しはその k の信頼できる k-mer 集合を通るので k ごとに
             // 作り直していたが、実データでは本数がほとんど動かなかった
-            // (7.4 Mbp・170 x で 556,352 -> 557,761 -> 557,867 -> 558,026 -> 557,931)
+            // (7.4 Mbp ・ 170 x で 556,352 -> 557,761 -> 557,867 -> 558,026 -> 557,931)
             // 一方で費用は k とともに増え、6 つの k の合計で実行時間の
             // 3 分の 1 を占めていた
             // 狙いは次の k のためにリードを実効的に

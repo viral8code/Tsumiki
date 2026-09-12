@@ -12,9 +12,7 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     /// <remarks>
     /// 最適な k はゲノムの反復配列の量で決まる<br/>
-    /// 反復が短ければ k を上げるほど
-    /// 跨げて有利になり、長ければ跨げないまま k-mer カバレッジとゲノム被覆を
-    /// 失うだけになる<br/>
+    /// 反復が短ければ k を上げるほど跨げて有利になり、長ければ跨げないまま k-mer カバレッジとゲノム被覆を失うだけになる<br/>
     /// 反復の量はリードからは事前に分からないため、試すしかない
     /// </remarks>
     internal static class MultiKAssembler
@@ -36,10 +34,12 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数"></param>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_リード長"></param>
+        /// <param name="p_原入力">反復検査に使う加工前の入力</param>
         /// <remarks>
         /// どの k でもアセンブリできなかった場合は null
         /// </remarks>
-        public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, string p_一時ディレクトリ, int? p_リード長)
+        /// <returns></returns>
+        public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, string p_一時ディレクトリ, int? p_リード長, Parameters? p_原入力 = null)
         {
             var l_k候補 = Get_k候補一覧(p_引数, p_リード長);
             Logger.V_出力(メッセージID.試すk一覧, string.Join(", ", l_k候補));
@@ -66,7 +66,7 @@ namespace Tsumiki.Cores.Pipeline
 
                 Logger.V_出力_空行();
                 Logger.V_出力(メッセージID.kの開始見出し, l_k長);
-                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_引き継ぐか ? l_引き継ぎ : null, p_引数.A_引き継ぐか ? l_次への引き継ぎ : null, l_合成リードの控え);
+                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_引き継ぐか ? l_引き継ぎ : null, p_引数.A_引き継ぐか ? l_次への引き継ぎ : null, l_合成リードの控え, p_原入力);
                 if (l_結果 is null)
                 {
                     Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
@@ -89,7 +89,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             // アンカーの k-mer カウントは、候補の評価と (-mg 指定時の) 統合評価の
-            // 両方が同じ条件 (同じ k・同じカットオフ) で必要とする
+            // 両方が同じ条件 (同じ k ・同じカットオフ) で必要とする
             // 生リードの
             // 走査とカウントはコストが高いため、1 つのインデックスを両方で
             // 使い回す (以前は統合評価のたびに同じ内容をもう一度数え直していた)
@@ -147,12 +147,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns>試す k の一覧</returns>
         /// <remarks>
         /// -k にカンマ区切りで指定されていればそれをそのまま使う<br/>
-        /// 自動の場合は 21 からリード長の <see cref="Consts.マルチk上限のリード長比"/> 倍までを
-        /// 等比で刻む<br/>
-        /// 等比にするのは、k を 21 から 42 に上げたときと 110 から 131 に
-        /// 上げたときでは、跨げるようになる反復配列の範囲が桁で違うため<br/>
-        /// 上限をリード長近くまで取るのは、カバレッジが十分あれば
-        /// リード長に近い k のほうが良い場合があるため
+        /// 自動の場合は 21 からリード長の <see cref="Consts.マルチk上限のリード長比"/> 倍までを等比で刻む<br/>
+        /// 等比にするのは、k を 21 から 42 に上げたときと 110 から 131 に上げたときでは、跨げるようになる反復配列の範囲が桁で違うため<br/>
+        /// 上限をリード長近くまで取るのは、カバレッジが十分あればリード長に近い k のほうが良い場合があるため
         /// </remarks>
         public static List<int> Get_k候補一覧(Parameters p_引数, int? p_リード長)
         {
@@ -188,11 +185,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_k候補"></param>
         /// <remarks>
         /// 候補のどれとも一致しない値にする<br/>
-        /// 候補と同じ k を使うと、その候補だけが自分と同じ k・同じカットオフで
-        /// 作った k-mer 集合を物差しに測られ、他の k の候補と条件が揃わない<br/>
-        /// 候補より小さく取るのは、短い k-mer ほど断片化の影響を受けにくく、
-        /// 「ゲノムのどこを出せているか」を測る物差しとして素直なため
+        /// 候補と同じ k を使うと、その候補だけが自分と同じ k ・同じカットオフで作った k-mer 集合を物差しに測られ、他の k の候補と条件が揃わない<br/>
+        /// 候補より小さく取るのは、短い k-mer ほど断片化の影響を受けにくく、「ゲノムのどこを出せているか」を測る物差しとして素直なため
         /// </remarks>
+        /// <returns></returns>
         public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
         {
             var l_k長 = p_k候補[0] - Consts.アンカーk長の候補からの差;
@@ -215,6 +211,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <remarks>
         /// 1 リードから取れる k-mer は リード長 - k + 1 本なので、その比で縮む
         /// </remarks>
+        /// <returns></returns>
         public static double Get_予測kmerカバレッジ(double p_直前の基準値, int p_直前のk長, int p_次のk長, int p_リード長)
         {
             var l_直前の本数 = p_リード長 - p_直前のk長 + 1;
@@ -239,10 +236,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ"></param>
         /// <remarks>
         /// 良くならなければ null を返して骨格をそのまま使う<br/>
-        /// 統合は誤った連結を持ち込みうるので、必ず同じ物差しで測り直して
-        /// 骨格に勝ったときだけ採る<br/>
+        /// 統合は誤った連結を持ち込みうるので、必ず同じ物差しで測り直して骨格に勝ったときだけ採る<br/>
         /// 勝敗の判定は候補選びと同じ規則に任せる
         /// </remarks>
+        /// <returns></returns>
         private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ)
         {
             Logger.V_出力_空行();
@@ -261,7 +258,7 @@ namespace Tsumiki.Cores.Pipeline
                 A_スキャフォールドパス = l_統合パス,
             };
 
-            // 統合評価は候補評価と全く同じアンカー k-mer 集合 (同じ k・同じ
+            // 統合評価は候補評価と全く同じアンカー k-mer 集合 (同じ k ・同じ
             // カットオフで数え終えた既存のインデックス) を使い回す
             // 以前は
             // ここで生リードの走査・カウント・カットオフをもう一度
@@ -277,8 +274,8 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
             Logger.V_出力(メッセージID.統合後の評価, l_統合の評価);
 
-            var (A_実行結果, A_評価) = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
-            if (A_実行結果.A_最終パス != l_統合パス)
+            var (l_実行結果, l_評価) = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
+            if (l_実行結果.A_最終パス != l_統合パス)
             {
                 Logger.V_出力(メッセージID.統合が骨格に勝てず);
                 return null;
@@ -297,9 +294,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数"></param>
         /// <param name="p_予測"></param>
         /// <remarks>
-        /// 判断できる材料が無い (まだ 1 つも走っていない、リード長が不明、
-        /// -k で明示指定された) 場合は捨てない
+        /// 判断できる材料が無い (まだ 1 つも走っていない、リード長が不明、-k で明示指定された) 場合は捨てない
         /// </remarks>
+        /// <returns></returns>
         private static bool Get_薄すぎるか(アセンブリ実行結果? p_直前, int p_k長, int? p_リード長, Parameters p_引数, out double p_予測)
         {
             p_予測 = 0D;
@@ -320,11 +317,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_解析"></param>
         /// <remarks>
-        /// k が違えば k-mer 集合の大きさも意味も変わるため、各アセンブリを
-        /// 自身の k で測ったのでは比較にならない<br/>
-        /// アンカーは呼び出し側が
-        /// 既に構築済みのものを渡す (-mg 指定時の統合評価とも共有するため)
+        /// k が違えば k-mer 集合の大きさも意味も変わるため、各アセンブリを自身の k で測ったのでは比較にならない<br/>
+        /// アンカーは呼び出し側が既に構築済みのものを渡す (-mg 指定時の統合評価とも共有するため)
         /// </remarks>
+        /// <returns></returns>
         private static List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> Get_評価済み候補(List<アセンブリ実行結果> p_実行結果一覧, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析)
         {
             var l_候補 = new List<(アセンブリ実行結果, アセンブリ評価)>();
@@ -344,9 +340,9 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_値"></param>
         /// <remarks>
-        /// 偶数の k は k-mer 自身がその逆相補と一致しうるため、
-        /// 正規形が縮退して隣接判定が壊れる
+        /// 偶数の k は k-mer 自身がその逆相補と一致しうるため、正規形が縮退して隣接判定が壊れる
         /// </remarks>
+        /// <returns></returns>
         private static int Get_奇数(int p_値)
         {
             return p_値 % 2 == 0 ? p_値 - 1 : p_値;

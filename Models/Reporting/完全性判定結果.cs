@@ -6,8 +6,7 @@ namespace Tsumiki.Models.Reporting
     /// 品質保証の段階
     /// </summary>
     /// <remarks>
-    /// 完全長を名乗れるのは最上位だけとし、
-    /// それ以外は「どこまでは言えるのか」を段階で示す
+    /// 完全長を名乗れるのは最上位だけとし、それ以外は「どこまでは言えるのか」を段階で示す
     /// </remarks>
     internal enum 品質保証レベル
     {
@@ -139,9 +138,12 @@ namespace Tsumiki.Models.Reporting
     /// 検査 1 項目
     /// </summary>
     /// <remarks>
-    /// A_キー はレポートに出す固定の英語キー、
-    /// A_見出し はログに出す訳語
+    /// A_キー はレポートに出す固定の英語キー、A_見出し はログに出す訳語
     /// </remarks>
+    /// <param name="A_キー"></param>
+    /// <param name="A_見出し"></param>
+    /// <param name="A_判定"></param>
+    /// <param name="A_内訳"></param>
     internal readonly record struct 検査項目(string A_キー, メッセージID A_見出し, 検査判定 A_判定, string A_内訳);
 
     /// <summary>
@@ -151,5 +153,9 @@ namespace Tsumiki.Models.Reporting
     /// 完全長は「長い配列が出た」ことではなく、必要な検査を全て通ったことを指す<br/>
     /// 情報が足りない箇所を推測で埋めて完全長を名乗らせないための型
     /// </remarks>
+    /// <param name="A_完全長か"></param>
+    /// <param name="A_品質保証レベル"></param>
+    /// <param name="A_検査項目"></param>
+    /// <param name="A_未達理由"></param>
     internal sealed record 完全性判定結果(bool A_完全長か, 品質保証レベル A_品質保証レベル, IReadOnlyList<検査項目> A_検査項目, IReadOnlyList<未達理由> A_未達理由);
 }

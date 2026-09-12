@@ -4,13 +4,11 @@ using Tsumiki.Models.Foundation;
 namespace Tsumiki.Utilities
 {
     /// <summary>
-    /// k-mer の出現回数カウントと、カットオフを通過した信頼できる k-mer の
-    /// 厳密な集合を保持する
+    /// k-mer の出現回数カウントと、カットオフを通過した信頼できる k-mer の厳密な集合を保持する
     /// </summary>
     /// <remarks>
     /// Bloom filter のような近似判定は使わない<br/>
-    /// フォールスポジティブによる
-    /// グラフ構造の誤判定 (偽の分岐点・偽の隣接) を原理的に排除できないため<br/>
+    /// フォールスポジティブによるグラフ構造の誤判定 (偽の分岐点・偽の隣接) を原理的に排除できないため<br/>
     /// 細菌ゲノム規模なら厳密な集合をメモリに載せられる
     /// </remarks>
     internal class TrustedKmerIndex : IDisposable, IKmerLookup
@@ -97,6 +95,16 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly int _k長;
 
+        /// <summary>
+        /// 64 bit のキーで所属を調べるか
+        /// </summary>
+        private readonly bool _小経路を使うか;
+
+        /// <summary>
+        /// 128 bit のキーで所属を調べるか
+        /// </summary>
+        private readonly bool _中経路を使うか;
+
         #endregion
 
         #region プロパティ
@@ -122,6 +130,8 @@ namespace Tsumiki.Utilities
         public TrustedKmerIndex(string p_一時ディレクトリ)
         {
             this._k長 = ConfigurationManager.A_実行時引数.A_k長;
+            this._小経路を使うか = this._k長 <= 32;
+            this._中経路を使うか = this._k長 is > 32 and <= 64;
             this._一時ディレクトリ = p_一時ディレクトリ;
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
@@ -144,14 +154,22 @@ namespace Tsumiki.Utilities
         /// <param name="p_ワーカー番号"></param>
         /// <remarks>
         /// 展開は塩基 ID の空間で行い、1 件ずつ通常の登録へ渡す<br/>
-        /// パック済みバイト列を
-        /// 自前で組み立てると正規化とシャード振り分けが通常経路とずれる
+        /// パック済みバイト列を自前で組み立てると正規化とシャード振り分けが通常経路とずれる
         /// </remarks>
         public void V_登録_曖昧塩基あり(Span<byte[]> p_塩基候補列, int p_ワーカー番号)
         {
             if (this._カウンタ群 is null)
             {
                 return;
+            }
+            var l_組み合わせ数 = 1;
+            foreach (var l_候補 in p_塩基候補列)
+            {
+                if (l_候補.Length == 0 || l_候補.Length > Consts.曖昧塩基の展開上限 / l_組み合わせ数)
+                {
+                    return;
+                }
+                l_組み合わせ数 *= l_候補.Length;
             }
             var l_kmer = new byte[p_塩基候補列.Length];
             this.V_登録_組み合わせ展開(p_塩基候補列, 0, l_kmer, p_ワーカー番号);
@@ -164,8 +182,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 振り分けはワーカー番号ではなく k-mer 自身のハッシュで行う<br/>
         /// ワーカー単位だと同じ k-mer がスレッド数ぶんの辞書に重複して載る<br/>
-        /// 数える前に正規形へ寄せるのも同じ理由で、両向きを別キーにすると
-        /// エントリ数と書き出し量が倍になる
+        /// 数える前に正規形へ寄せるのも同じ理由で、両向きを別キーにするとエントリ数と書き出し量が倍になる
         /// </remarks>
         public void V_登録(Span<byte> p_kmer)
         {
@@ -183,15 +200,15 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// kmer(順鎖・逆鎖いずれの向きでもよい) がカットオフを通過した
-        /// 信頼できる k-mer 集合に含まれるかどうかを厳密に判定する
+        /// kmer (順鎖・逆鎖いずれの向きでもよい) がカットオフを通過した信頼できる k-mer 集合に含まれるかどうかを厳密に判定する
         /// </summary>
         /// <param name="p_kmer"></param>
+        /// <returns></returns>
         public bool Get_含まれるか(Span<byte> p_kmer)
         {
-            return this.小経路を使うか
+            return this._小経路を使うか
                 ? this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer))
-                : this.中経路を使うか ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
+                : this._中経路を使うか ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -200,8 +217,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_正規形"></param>
         /// <remarks>
         /// walk は 1 塩基ずつ進むためパック値を転がして更新できる<br/>
-        /// Span を受ける版だと呼ぶたびに O(k) の詰め直しが要る
+        /// Span を受ける版だと呼ぶたびに O (k) の詰め直しが要る
         /// </remarks>
+        /// <returns></returns>
         public bool Get_含まれるか_小(ulong p_正規形)
         {
             return this._信頼kmer_小!.ContainsKey(p_正規形);
@@ -211,41 +229,43 @@ namespace Tsumiki.Utilities
         /// 正規形にパック済みの値で所属を判定する (33 &lt;= k &lt;= 64)
         /// </summary>
         /// <param name="p_正規形"></param>
+        /// <returns></returns>
         public bool Get_含まれるか_中(UInt128 p_正規形)
         {
             return this._信頼kmer_中!.ContainsKey(p_正規形);
         }
 
         /// <summary>
-        /// kmerの出現回数 (カバレッジ) を返す
+        /// kmer の出現回数 (カバレッジ) を返す
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
-        /// 信頼できる k-mer 集合に
-        /// 含まれない場合は 0 を返す
+        /// 信頼できる k-mer 集合に含まれない場合は 0 を返す
         /// </remarks>
+        /// <returns></returns>
         public ulong Get_カバレッジ(Span<byte> p_kmer)
         {
-            return this.小経路を使うか
+            return this._小経路を使うか
                 ? this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL)
-                : this.中経路を使うか
+                : this._中経路を使うか
                 ? this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL)
                 : this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
         }
 
         /// <summary>
-        /// kmer(塩基ID 1-4、長さ 32 以下) を2 bit/塩基で ulong1個にパックする
+        /// kmer (塩基 ID 1-4、長さ 32 以下) を 2 bit/塩基で ulong1 個にパックする
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
         /// 先頭塩基が最上位側、末尾塩基が最下位側に来る (空きビットは下位側に残る)
         /// </remarks>
+        /// <returns></returns>
         internal static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_値 = 0UL;
             foreach (var l_塩基ID in p_kmer)
             {
-                l_値 = (l_値 << 2) | ((ulong)l_塩基ID - 1);
+                l_値 = (l_値 << 2) | ((ulong)l_塩基ID - 1UL);
             }
             return l_値;
         }
@@ -258,6 +278,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 並びの規約が同じなので、塩基列へ展開して詰め直す必要はない
         /// </remarks>
+        /// <returns></returns>
         internal static ulong Get_読み替え_小(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
         {
             var l_値 = 0UL;
@@ -273,6 +294,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_余りビット"></param>
+        /// <returns></returns>
         internal static UInt128 Get_読み替え_中(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
         {
             UInt128 l_値 = 0;
@@ -288,9 +310,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
-        /// ビット配置の規約は同じで、
-        /// kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る
+        /// ビット配置の規約は同じで、kmer の先頭塩基が最上位側、末尾塩基が最下位側に来る
         /// </remarks>
+        /// <returns></returns>
         internal static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
@@ -302,24 +324,23 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// カットオフを通過した信頼できる k-merを (正規化された、いずれかの向きの)
-        /// byte 配列として 1 件ずつ列挙する
+        /// カットオフを通過した信頼できる k-mer を (正規化された、いずれかの向きの) byte 配列として 1 件ずつ列挙する
         /// </summary>
         /// <remarks>
-        /// GraphSimplifier の tip 除去等、
-        /// 集合全体を舐めて再判定する処理から使う
+        /// GraphSimplifier の tip 除去等、集合全体を舐めて再判定する処理から使う
         /// </remarks>
+        /// <returns></returns>
         public IEnumerable<byte[]> Get_信頼kmer一覧()
         {
             var l_k長 = this._k長;
-            if (this.小経路を使うか)
+            if (this._小経路を使うか)
             {
                 foreach (var l_パック済み in this._信頼kmer_小!.Keys)
                 {
                     yield return Get_復元_小(l_パック済み, l_k長);
                 }
             }
-            else if (this.中経路を使うか)
+            else if (this._中経路を使うか)
             {
                 foreach (var l_パック済み in this._信頼kmer_中!.Keys)
                 {
@@ -336,8 +357,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// kmer を信頼できる k-mer集合から除去する (順鎖・逆鎖どちらの向きで
-        /// 渡してもよい)
+        /// kmer を信頼できる k-mer 集合から除去する (順鎖・逆鎖どちらの向きで渡してもよい)
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
@@ -345,9 +365,9 @@ namespace Tsumiki.Utilities
         /// </remarks>
         public void V_除去(ReadOnlySpan<byte> p_kmer)
         {
-            _ = this.小経路を使うか
+            _ = this._小経路を使うか
                 ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer))
-                : this.中経路を使うか ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
+                : this._中経路を使うか ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -358,16 +378,16 @@ namespace Tsumiki.Utilities
         /// 前段の k のアセンブリから配列を引き継ぐときに使う<br/>
         /// 戻り値は実際に足したかどうか<br/>
         /// カバレッジは呼び出し側が与える<br/>
-        /// ここを名目値で埋めると、
-        /// コピー数推定と低カバレッジ端のトリミングが揃って壊れる
+        /// ここを名目値で埋めると、コピー数推定と低カバレッジ端のトリミングが揃って壊れる
         /// </remarks>
         /// <param name="p_kmer"></param>
         /// <param name="p_カバレッジ"></param>
+        /// <returns></returns>
         public bool V_追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
         {
-            return this.小経路を使うか
+            return this._小経路を使うか
                 ? this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ)
-                : this.中経路を使うか
+                : this._中経路を使うか
                 ? this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ)
                 : this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
         }
@@ -377,10 +397,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <remarks>
         /// 各座位について両方の向きを個別に判定する<br/>
-        /// 開始点判定は向き依存
-        /// (その k-mer 自身の入次数を見る) なので、正規形側だけを調べると
-        /// 「順鎖では分岐点の直後だが逆鎖ではそうでない」座位を見逃す
+        /// 開始点判定は向き依存 (その k-mer 自身の入次数を見る) なので、正規形側だけを調べると「順鎖では分岐点の直後だが逆鎖ではそうでない」座位を見逃す
         /// </remarks>
+        /// <returns></returns>
         public List<byte[]> Get_開始kmer一覧()
         {
             // 判定は 1 件あたり最大 8 回のハッシュ引きを要し、それを全 k-mer の
@@ -403,10 +422,10 @@ namespace Tsumiki.Utilities
         /// 出現回数ヒストグラムだけを作る
         /// </summary>
         /// <remarks>
-        /// -kc が未指定のとき、
-        /// カットオフを決めるために先に呼ぶ<br/>
+        /// -kc が未指定のとき、カットオフを決めるために先に呼ぶ<br/>
         /// k-mer の中身は読み捨てる
         /// </remarks>
+        /// <returns></returns>
         public Dictionary<ulong, long> Get_出現回数ヒストグラム()
         {
             var l_ファイルパス = this.Get_統合済みファイル();
@@ -424,7 +443,7 @@ namespace Tsumiki.Utilities
             {
                 _ = l_読み込み.Read(l_読み捨てバッファ, 0, l_パック長);
                 var l_出現回数 = l_読み込み.ReadUInt64();
-                l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
+                l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1L;
             }
             return l_ヒストグラム;
         }
@@ -439,8 +458,8 @@ namespace Tsumiki.Utilities
             var l_ファイルパス = this.Get_統合済みファイル();
 
             var l_パック長 = (this._k長 + 3) / 4;
-            var l_小経路 = this.小経路を使うか;
-            var l_中経路 = this.中経路を使うか;
+            var l_小経路 = this._小経路を使うか;
+            var l_中経路 = this._中経路を使うか;
             Dictionary<KmerKey, ulong>? l_信頼kmer_大;
             Dictionary<ulong, ulong>? l_信頼kmer_小;
             Dictionary<UInt128, ulong>? l_信頼kmer_中;
@@ -457,7 +476,7 @@ namespace Tsumiki.Utilities
                 var l_総エントリ数 = new FileInfo(l_ファイルパス).Length / l_エントリ長;
 
                 // 数千万件を入れるので、伸ばしながらのリハッシュを避けて先に確保する
-                var l_見込み = (int)Math.Min(int.MaxValue / 2, Math.Max(1024, l_総エントリ数 / 4));
+                var l_見込み = (int)Math.Min(int.MaxValue / 2, Math.Max(1024L, l_総エントリ数 / 4L));
                 l_信頼kmer_小 = l_小経路 ? new Dictionary<ulong, ulong>(l_見込み) : null;
                 l_信頼kmer_中 = l_中経路 ? new Dictionary<UInt128, ulong>(l_見込み) : null;
                 l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>(l_見込み);
@@ -482,14 +501,14 @@ namespace Tsumiki.Utilities
                         var l_出現回数 = BitConverter.ToUInt64(l_バッファ, l_位置 + l_パック長);
                         l_位置 += l_エントリ長;
 
-                        l_総種類数 += 1;
-                        l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1;
+                        l_総種類数 += 1UL;
+                        l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1L;
                         if (l_出現回数 < p_カットオフ)
                         {
                             continue;
                         }
 
-                        l_採用数 += 1;
+                        l_採用数 += 1UL;
                         // カウント段階で既に正規形へ寄せてあるため、同じ正規形が
                         // 複数エントリとして現れることはない
                         // それでも加算で受けて
@@ -552,9 +571,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         /// <remarks>
         /// 入次数が 1 でも、唯一の予測元が分岐点なら開始点として扱う<br/>
-        /// 前進 walk は予測元の時点で停止するため、この k-mer は誰からも
-        /// 訪れてもらえず、扱わないと配列が丸ごと欠落する
+        /// 前進 walk は予測元の時点で停止するため、この k-mer は誰からも訪れてもらえず、扱わないと配列が丸ごと欠落する
         /// </remarks>
+        /// <returns></returns>
         public bool Get_開始kmerか(Span<byte> p_kmer)
         {
             var l_入次数 = this.Get_入次数(p_kmer, out var l_唯一の予測元);
@@ -566,12 +585,10 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
-        /// 前進伸長が 後続 = kmer[1..] + c である以上、その逆を解くと
-        /// 予測元は P = c + kmer[..^1] になる<br/>
-        /// kmer[1..] を使うと
-        /// c = kmer[0] のとき候補が kmer 自身と一致して常に自己ヒットし、
-        /// 入次数 0 が検出できなくなる
+        /// 前進伸長が 後続 = kmer[1..] + c である以上、その逆を解くと予測元は P = c + kmer[..^1] になる<br/>
+        /// kmer[1..] を使うと c = kmer[0] のとき候補が kmer 自身と一致して常に自己ヒットし、入次数 0 が検出できなくなる
         /// </remarks>
+        /// <returns></returns>
         public int Get_入次数(Span<byte> p_kmer)
         {
             return this.Get_入次数(p_kmer, out _);
@@ -583,8 +600,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         /// <remarks>
         /// UnitigMaker の前進伸長規則 (kmer[1..] + c) そのものを試す<br/>
-        /// GraphSimplifier がunitigの末尾端の次数 (=tip 判定) を見る際に使う
+        /// GraphSimplifier が unitig の末尾端の次数 (=tip 判定) を見る際に使う
         /// </remarks>
+        /// <returns></returns>
         public int Get_出次数(Span<byte> p_kmer)
         {
             var l_候補 = new byte[p_kmer.Length];
@@ -620,16 +638,6 @@ namespace Tsumiki.Utilities
         #region 内部メソッド
 
         /// <summary>
-        /// 小経路を使うか
-        /// </summary>
-        private bool 小経路を使うか => this._k長 <= 32;
-
-        /// <summary>
-        /// 中経路を使うか
-        /// </summary>
-        private bool 中経路を使うか => this._k長 is > 32 and <= 64;
-
-        /// <summary>
         /// 曖昧塩基の候補をすべて展開して登録する
         /// </summary>
         /// <param name="p_塩基候補列">位置ごとの塩基候補</param>
@@ -655,9 +663,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <remarks>
-        /// 先頭塩基が上位ビットに来るためバイト列の辞書順が塩基列の辞書順と
-        /// 一致し、外部マージソートの順序と整合する
+        /// 先頭塩基が上位ビットに来るためバイト列の辞書順が塩基列の辞書順と一致し、外部マージソートの順序と整合する
         /// </remarks>
+        /// <returns></returns>
         private static byte[] Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
             var l_順鎖を使うか = Get_順鎖が正規形か(p_kmer);
@@ -665,7 +673,7 @@ namespace Tsumiki.Utilities
             for (var i = 0; i < p_kmer.Length; i++)
             {
                 // 逆鎖側を採用する場合は、末尾から相補塩基を取り出す
-                // 相補は A(1)<->T(4), C(2)<->G(3) なので 5 - x で得られる
+                // 相補は A (1) <->T (4), C (2) <->G (3) なので 5 - x で得られる
                 var l_塩基ID = l_順鎖を使うか ? p_kmer[i] : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
                 l_パック済み[i >> 2] |= (byte)((l_塩基ID - 1) << ((3 - (i & 3)) << 1));
             }
@@ -679,19 +687,20 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 確保なしで判定する
         /// </remarks>
+        /// <returns></returns>
         private static bool Get_順鎖が正規形か(ReadOnlySpan<byte> p_kmer)
         {
-            int i = 0, j = p_kmer.Length - 1;
-            while (i <= j)
+            int l_i = 0, l_j = p_kmer.Length - 1;
+            while (l_i <= l_j)
             {
-                var l_順鎖 = p_kmer[i];
-                var l_逆鎖 = (byte)(5 - p_kmer[j]);
+                var l_順鎖 = p_kmer[l_i];
+                var l_逆鎖 = (byte)(5 - p_kmer[l_j]);
                 if (l_順鎖 != l_逆鎖)
                 {
                     return l_順鎖 < l_逆鎖;
                 }
-                i++;
-                j--;
+                l_i++;
+                l_j--;
             }
             // 回文 (自身が逆相補と一致)
             // どちらでも同じなので順鎖扱い
@@ -705,6 +714,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// シャードの振り分けに使う
         /// </remarks>
+        /// <returns></returns>
         private static uint Get_ハッシュ(byte[] p_パック済みkmer)
         {
             var l_ハッシュ = 2166136261U;
@@ -722,9 +732,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
         /// <remarks>
-        /// 2bitコドンごとに相補を取り (A&lt;-&gt;T, C&lt;-&gt;G)、
-        /// 下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる
+        /// 2 bit コドンごとに相補を取り (A&lt;-&gt;T, C&lt;-&gt;G)、下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる
         /// </remarks>
+        /// <returns></returns>
         internal static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
@@ -751,10 +761,11 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// パック済みバイト列から塩基ID列を復元する (k &gt; 64 の経路用)
+        /// パック済みバイト列から塩基 ID 列を復元する (k &gt; 64 の経路用)
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_k長"></param>
+        /// <returns></returns>
         private static byte[] Get_復元_塩基列(ReadOnlySpan<byte> p_パック済み, int p_k長)
         {
             var l_塩基列 = new byte[p_k長];
@@ -775,12 +786,13 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 末尾塩基が最下位ビット側にあるため、末尾から復元する
         /// </remarks>
+        /// <returns></returns>
         private static byte[] Get_復元_小(ulong p_パック済み, int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];
             for (var i = p_長さ - 1; i >= 0; i--)
             {
-                l_塩基列[i] = (byte)((p_パック済み & 0x3UL) + 1);
+                l_塩基列[i] = (byte)((p_パック済み & 0x3UL) + 1UL);
                 p_パック済み >>= 2;
             }
             return l_塩基列;
@@ -791,6 +803,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
+        /// <returns></returns>
         internal static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
         {
             var l_残り = p_パック済み;
@@ -821,12 +834,13 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
+        /// <returns></returns>
         private static byte[] Get_復元_中(UInt128 p_パック済み, int p_長さ)
         {
             var l_塩基列 = new byte[p_長さ];
             for (var i = p_長さ - 1; i >= 0; i--)
             {
-                l_塩基列[i] = (byte)((ulong)(p_パック済み & 3) + 1);
+                l_塩基列[i] = (byte)((ulong)(p_パック済み & 3) + 1UL);
                 p_パック済み >>= 2;
             }
             return l_塩基列;
@@ -839,6 +853,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 開始点判定は向き依存なので、両方の向きを個別に見る必要がある
         /// </remarks>
+        /// <returns></returns>
         private IEnumerable<byte[]> Get_開始kmer候補(byte[] p_kmer)
         {
             if (this.Get_開始kmerか(p_kmer))
@@ -857,9 +872,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <remarks>
         /// 結果は使い回す<br/>
-        /// -kc の自動決定がカットオフ前にヒストグラムを
-        /// 読むため、やり直すとディスク I/O が丸ごと二重になる
+        /// -kc の自動決定がカットオフ前にヒストグラムを読むため、やり直すとディスク I/O が丸ごと二重になる
         /// </remarks>
+        /// <returns></returns>
         private string Get_統合済みファイル()
         {
             if (this._統合ファイルパス != null)
@@ -887,9 +902,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         /// <param name="p_唯一の予測元">入次数がちょうど 1 だった場合の、その唯一の予測元</param>
         /// <remarks>
-        /// 入次数がちょうど 1 だった場合、その唯一の
-        /// 予測元 (kmer 長の byte 配列) も同時に返す (開始点判定が使う)
+        /// 入次数がちょうど 1 だった場合、その唯一の予測元 (kmer 長の byte 配列) も同時に返す (開始点判定が使う)
         /// </remarks>
+        /// <returns></returns>
         private int Get_入次数(Span<byte> p_kmer, out byte[]? p_唯一の予測元)
         {
             var l_候補 = new byte[p_kmer.Length];

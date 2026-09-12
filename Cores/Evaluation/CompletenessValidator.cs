@@ -12,11 +12,8 @@ namespace Tsumiki.Cores.Evaluation
     /// </summary>
     /// <remarks>
     /// 完全長は「最長の配列がゲノムサイズに近い」ことではない<br/>
-    /// 必要な検査を
-    /// すべて通ったことを指し、材料が足りない項目は不合格ではなく判定不能として
-    /// 区別する<br/>
-    /// 情報が足りないところを推測で埋めて完全長を名乗らせないための
-    /// 仕組みであり、判定できないことが分かる状態のほうが下流にとって安全
+    /// 必要な検査をすべて通ったことを指し、材料が足りない項目は不合格ではなく判定不能として区別する<br/>
+    /// 情報が足りないところを推測で埋めて完全長を名乗らせないための仕組みであり、判定できないことが分かる状態のほうが下流にとって安全
     /// </remarks>
     internal static class CompletenessValidator
     {
@@ -41,10 +38,8 @@ namespace Tsumiki.Cores.Evaluation
         /// リードに裏付けの無い位置として許す数
         /// </summary>
         /// <remarks>
-        /// 割合ではなく数で見るのは、この検査が「そう繋いだ読みが一つも無い」
-        /// という白黒のはっきりした事実を数えているため<br/>
-        /// 総延長で薄めると
-        /// 数箇所の捏造が見えなくなる
+        /// 割合ではなく数で見るのは、この検査が「そう繋いだ読みが一つも無い」という白黒のはっきりした事実を数えているため<br/>
+        /// 総延長で薄めると数箇所の捏造が見えなくなる
         /// </remarks>
         private const int 支持のない位置の許容数 = 0;
 
@@ -63,8 +58,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_支持検査">リード支持の検査結果、調べていない場合は null</param>
         /// <returns>完全性判定結果</returns>
         /// <remarks>
-        /// p_閉鎖検証 が null なら閉じ目を調べていない、p_ポリッシュ が null なら
-        /// 深度を測っていないことを意味し、いずれも判定不能として扱う
+        /// p_閉鎖検証 が null なら閉じ目を調べていない、p_ポリッシュ が null なら深度を測っていないことを意味し、いずれも判定不能として扱う
         /// </remarks>
         public static 完全性判定結果 Get_判定結果(int p_未解決ギャップ数, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, 支持検査結果? p_支持検査)
         {
@@ -107,7 +101,7 @@ namespace Tsumiki.Cores.Evaluation
             var (l_閉鎖, l_閉鎖の内訳) = Get_閉鎖の判定(p_閉鎖検証, l_理由);
             l_項目.Add(new 検査項目("circular_closure", メッセージID.検査項目_環状閉鎖, l_閉鎖, l_閉鎖の内訳));
 
-            var l_レベル = Get_品質保証レベル(l_取りこぼし, l_出しすぎ, l_深度, l_ギャップ, l_接合点, l_代替経路, l_閉鎖);
+            var l_レベル = Get_品質保証レベル(l_取りこぼし, l_出しすぎ, l_深度, l_支持, l_ギャップ, l_接合点, l_代替経路, l_閉鎖);
 
             return new 完全性判定結果(A_完全長か: l_レベル == 品質保証レベル.完全長, A_品質保証レベル: l_レベル, A_検査項目: l_項目, A_未達理由: [.. l_理由.Distinct()]);
         }
@@ -138,6 +132,8 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 訳さない
         /// </remarks>
+        /// <param name="p_理由"></param>
+        /// <returns></returns>
         public static string Get_理由コード(未達理由 p_理由)
         {
             return p_理由 switch
@@ -163,6 +159,8 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 訳さない
         /// </remarks>
+        /// <param name="p_判定"></param>
+        /// <returns></returns>
         public static string Get_判定コード(検査判定 p_判定)
         {
             return p_判定 switch
@@ -198,8 +196,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
         /// <returns>埋まらずに残った N の連続区間の数</returns>
         /// <remarks>
-        /// 埋められなかったギャップは
-        /// 「そこを繋いだ根拠が無い」ことをそのまま表している
+        /// 埋められなかったギャップは「そこを繋いだ根拠が無い」ことをそのまま表している
         /// </remarks>
         public static int Get_未解決ギャップ数(string p_FASTAパス)
         {
@@ -304,6 +301,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_取りこぼし">グラフ被覆の判定</param>
         /// <param name="p_出しすぎ">コピー数整合の判定</param>
         /// <param name="p_深度">深度の連続性の判定</param>
+        /// <param name="p_支持">リード支持の判定</param>
         /// <param name="p_ギャップ">未解決のギャップの判定</param>
         /// <param name="p_接合点">接合点の支持の判定</param>
         /// <param name="p_代替経路">競合経路の判定</param>
@@ -312,11 +310,11 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 下の段が通っていない限り上の段は名乗れない
         /// </remarks>
-        private static 品質保証レベル Get_品質保証レベル(検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度, 検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
+        private static 品質保証レベル Get_品質保証レベル(検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度, 検査判定 p_支持, 検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
         {
             return p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格
                 ? 品質保証レベル.出力のみ
-                : p_深度 != 検査判定.合格
+                : p_深度 != 検査判定.合格 || p_支持 != 検査判定.合格
                 ? 品質保証レベル.グラフ整合
                 : p_ギャップ != 検査判定.合格
                 ? 品質保証レベル.マッピング整合

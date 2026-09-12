@@ -6,12 +6,8 @@ namespace Tsumiki.Utilities
     /// 局所アセンブリ用の、ディスクを使わないインメモリの k-mer 集合
     /// </summary>
     /// <remarks>
-    /// LocalAssembler は 1 ギャップあたり高々数千リード・数十万 k-mer 程度しか
-    /// 扱わないため、TrustedKmerIndex のシャード分割・外部ソート・ディスクマージは
-    /// 過剰でしかない (ギャップの数だけ一時ディレクトリの作成とファイルの生成・
-    /// マージ・削除が走り、それ自体が支配的なコストになっていた)<br/>
-    /// この規模ならインメモリの HashSet で完結できるため、カウントは持たず
-    /// 「見たことがあるか」だけを覚える
+    /// LocalAssembler は 1 ギャップあたり高々数千リード・数十万 k-mer 程度しか扱わないため、TrustedKmerIndex のシャード分割・外部ソート・ディスクマージは過剰でしかない (ギャップの数だけ一時ディレクトリの作成とファイルの生成・マージ・削除が走り、それ自体が支配的なコストになっていた) <br/>
+    /// この規模ならインメモリの HashSet で完結できるため、カウントは持たず「見たことがあるか」だけを覚える
     /// </remarks>
     internal sealed class LocalKmerSet : IKmerLookup
     {
@@ -72,9 +68,10 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// kmer(順鎖・逆鎖いずれの向きでもよい) が集合に含まれるかどうかを判定する
+        /// kmer (順鎖・逆鎖いずれの向きでもよい) が集合に含まれるかどうかを判定する
         /// </summary>
         /// <param name="p_kmer"></param>
+        /// <returns></returns>
         public bool Get_含まれるか(Span<byte> p_kmer)
         {
             return this._小 is { } l_小

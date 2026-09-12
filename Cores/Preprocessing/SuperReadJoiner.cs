@@ -12,11 +12,9 @@ namespace Tsumiki.Cores.Preprocessing
     /// </summary>
     /// <remarks>
     /// MaSuRCA の SuperReads に相当する<br/>
-    /// 重なりが一つに定まるペアはそれで繋ぎ、繋げないペアは read1 の末尾 k-mer から
-    /// RC(read2) の先頭 k-mer まで信頼できる k-mer 集合の中で経路を探す<br/>
-    /// 使う探索エンジンは GapFiller (スキャフォールドのギャップ埋め) と共通の
-    /// ConstrainedPathFinder で、対象をスキャフォールドのギャップからリードペアに変えただけになる<br/>
-    /// Tsumiki のマルチ k は自動選択の上限がリード長に縛られている (<see cref="Consts.マルチk上限のリード長比"/>)<br/>
+    /// 重なりが一つに定まるペアはそれで繋ぎ、繋げないペアは read1 の末尾 k-mer から RC (read2) の先頭 k-mer まで信頼できる k-mer 集合の中で経路を探す<br/>
+    /// 使う探索エンジンは GapFiller (スキャフォールドのギャップ埋め) と共通の ConstrainedPathFinder で、対象をスキャフォールドのギャップからリードペアに変えただけになる<br/>
+    /// Tsumiki のマルチ k は自動選択の上限がリード長に縛られている (<see cref="Consts.マルチk上限のリード長比"/>) <br/>
     /// 合成リードは元のリードより長いため、KmerCarryOver 経由で次の k へ渡せばこの上限を実効的に外せる<br/>
     /// 統合に失敗したペアは単に対象から外れるだけで、元のリードは通常どおり k-mer カウントに使われ続ける<br/>
     /// 失敗が増えても元のペアのままに退化するだけで、悪化はしない
@@ -29,9 +27,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 橋渡しする長さの上限
         /// </summary>
         /// <remarks>
-        /// 細菌ゲノムの一般的なライブラリではフラグメント長は高々 1 kb 程度に収まるため、
-        /// これを大きく超える探索は時間をかけても一意に定まる見込みが薄い
-        /// (GapFiller のギャップ長上限と同じ考え方)
+        /// 細菌ゲノムの一般的なライブラリではフラグメント長は高々 1 kb 程度に収まるため、これを大きく超える探索は時間をかけても一意に定まる見込みが薄い (GapFiller のギャップ長上限と同じ考え方)
         /// </remarks>
         private const int 橋渡し長の上限 = 500;
 
@@ -44,8 +40,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 1 ペアあたりに展開してよい探索状態の上限
         /// </summary>
         /// <remarks>
-        /// ギャップ充填は数千箇所だが橋渡しはリードペアの数だけ走るため、
-        /// 1 件あたりの上限を絞らないと解けない少数のペアに全体の時間を持っていかれる
+        /// ギャップ充填は数千箇所だが橋渡しはリードペアの数だけ走るため、1 件あたりの上限を絞らないと解けない少数のペアに全体の時間を持っていかれる
         /// </remarks>
         private const int 橋渡しの状態数上限 = 20_000;
 
@@ -106,8 +101,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                 _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                 {
-                    l_統合結果群[i] = Get_合成配列_内訳つき(
-                        l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ);
+                    l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ);
                 });
 
                 for (var i = 0; i < l_件数; i++)
@@ -181,8 +175,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 1 ペア分の統合を、どちらの手段で繋いだかと一緒に返す
         /// </summary>
         /// <remarks>
-        /// 先にペアの重なりを試すのは、断片長がリード長の 2 倍を下回るライブラリでは
-        /// read1 と RC(read2) が重なり、橋渡しに必要な長さが負になるため<br/>
+        /// 先にペアの重なりを試すのは、断片長がリード長の 2 倍を下回るライブラリでは read1 と RC (read2) が重なり、橋渡しに必要な長さが負になるため<br/>
         /// この場合グラフ探索は前向きにしか進めないので構造的に解けない
         /// </remarks>
         /// <param name="p_配列1">read1 の配列</param>
@@ -202,7 +195,7 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// read1 と RC(read2) の重なりから断片を復元する
+        /// read1 と RC (read2) の重なりから断片を復元する
         /// </summary>
         /// <param name="p_配列1">read1 の配列</param>
         /// <param name="p_配列2">read2 の配列</param>
@@ -216,10 +209,7 @@ namespace Tsumiki.Cores.Preprocessing
         private static string? Get_重なりで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数)
         {
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
-            var l_重なり = Preprocessor.Get_最適オーバーラップ(
-                Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2),
-                Consts.ペア結合の最小重なり長, Consts.ペア結合の許容不一致率,
-                out var l_対抗馬があるか);
+            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), Consts.ペア結合の最小重なり長, Consts.ペア結合の許容不一致率, out var l_対抗馬があるか);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
@@ -247,18 +237,15 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// 合成配列の継ぎ目 (read1 から RC(read2) へ切り替わる位置) を跨ぐ k-mer が、
-        /// 信頼できる k-mer 集合に入っているか
+        /// 合成配列の継ぎ目 (read1 から RC (read2) へ切り替わる位置) を跨ぐ k-mer が、信頼できる k-mer 集合に入っているか
         /// </summary>
         /// <remarks>
-        /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列にはどちらのリードとも違う塩基が入り、
-        /// 継ぎ目を跨ぐ k-mer だけがどのリードにも存在しないものになる<br/>
+        /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列にはどちらのリードとも違う塩基が入り、継ぎ目を跨ぐ k-mer だけがどのリードにも存在しないものになる<br/>
         /// 存在しない配列をグラフへ持ち込まないための関門になる<br/>
-        /// 重なりが完全一致なら継ぎ目の k-mer は read2 側の k-mer と一致するため、
-        /// 反復配列の別コピーを掴む取り違えはここでは防げず、それは重なりの一意性で抑える
+        /// 重なりが完全一致なら継ぎ目の k-mer は read2 側の k-mer と一致するため、反復配列の別コピーを掴む取り違えはここでは防げず、それは重なりの一意性で抑える
         /// </remarks>
         /// <param name="p_合成">継ぎ目を含む合成配列</param>
-        /// <param name="p_継ぎ目">read1 から RC(read2) へ切り替わる位置</param>
+        /// <param name="p_継ぎ目">read1 から RC (read2) へ切り替わる位置</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <returns>継ぎ目を跨ぐ k-mer がすべて集合にあれば true</returns>
@@ -279,7 +266,7 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// read1 の末尾 k-mer から RC(read2) の先頭 k-mer まで、信頼できる k-mer 集合の中で経路を探して繋ぐ
+        /// read1 の末尾 k-mer から RC (read2) の先頭 k-mer まで、信頼できる k-mer 集合の中で経路を探して繋ぐ
         /// </summary>
         /// <param name="p_配列1">read1 の配列</param>
         /// <param name="p_配列2">read2 の配列</param>
@@ -311,7 +298,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return null;
             }
 
-            // RC(read2) の先頭 k-mer は、read2 の末尾 k 塩基の逆相補と一致する
+            // RC (read2) の先頭 k-mer は、read2 の末尾 k 塩基の逆相補と一致する
             var l_目標kmer = Util.V_変換_塩基列(Util.V_逆相補_曖昧塩基あり(p_配列2[^p_k長..]));
             if (Array.IndexOf(l_目標kmer, Consts.無効な塩基) >= 0
                 || !p_kmerインデックス.Get_含まれるか(l_目標kmer))
@@ -319,9 +306,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return null;
             }
 
-            var (l_橋渡し配列, l_判定) = ConstrainedPathFinder.Get_経路(
-                l_左のkmer, l_目標kmer, p_最小長: 0, p_最大長: l_最大長, p_kmerインデックス, p_k長,
-                橋渡しの状態数上限);
+            var (l_橋渡し配列, l_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, p_最小長: 0, p_最大長: l_最大長, p_kmerインデックス, p_k長, 橋渡しの状態数上限);
             return l_判定 == ギャップ充填判定.充填済み
                 ? p_配列1 + l_橋渡し配列 + Util.V_逆相補_曖昧塩基あり(p_配列2)
                 : null;

@@ -9,13 +9,10 @@ namespace Tsumiki.Cores.Preprocessing
     /// 前段の k で組み上がった配列を、次の k の k-mer 集合へ引き継ぐ
     /// </summary>
     /// <remarks>
-    /// k を上げるとカバレッジが痩せてグラフが千切れるが、前段の配列は
-    /// その領域を既に通っている<br/>
+    /// k を上げるとカバレッジが痩せてグラフが千切れるが、前段の配列はその領域を既に通っている<br/>
     /// 配列を渡せば連結が保たれる<br/>
     /// 渡すのは配列であって、繋ぐという決定ではない<br/>
-    /// 決定を渡すと前段の
-    /// 誤アセンブリをそのまま継承するが、配列を渡すだけなら次の k が
-    /// 自分の証拠で経路を決め直せる
+    /// 決定を渡すと前段の誤アセンブリをそのまま継承するが、配列を渡すだけなら次の k が自分の証拠で経路を決め直せる
     /// </remarks>
     internal static class KmerCarryOver
     {
@@ -25,8 +22,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 引き継ぐ配列の最小長
         /// </summary>
         /// <remarks>
-        /// 前段で短く切れた断片は連結の役に立たないうえ、
-        /// エラー由来の残骸である可能性が相対的に高い
+        /// 前段で短く切れた断片は連結の役に立たないうえ、エラー由来の残骸である可能性が相対的に高い
         /// </remarks>
         private const int 引き継ぐ配列の最小長 = 500;
 
@@ -43,6 +39,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// k-mer インデックスが生きているうちにしか作れない
         /// </remarks>
+        /// <returns></returns>
         public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             List<引き継ぎ配列> l_結果 = [];
@@ -60,8 +57,7 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_カバレッジ = new int[l_配列.Length - p_k長 + 1];
                 for (var i = 0; i < l_カバレッジ.Length; i++)
                 {
-                    l_カバレッジ[i] = (int)Math.Min(
-                        int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
+                    l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
                 l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長));
             }
@@ -76,9 +72,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
         /// <remarks>
-        /// 既にある k-mer は触らない (実際のリード由来の観測を優先する)<br/>
+        /// 既にある k-mer は触らない (実際のリード由来の観測を優先する) <br/>
         /// 戻り値は足した k-mer の数
         /// </remarks>
+        /// <returns></returns>
         public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
             var l_追加数 = 0;
@@ -101,12 +98,12 @@ namespace Tsumiki.Cores.Preprocessing
                     continue;
                 }
 
-                // Array.IndexOf を窓ごとに呼ぶと窓 1 つあたり O(k) かかり、
-                // 配列全体では O(n*k) になる
+                // Array.IndexOf を窓ごとに呼ぶと窓 1 つあたり O (k) かかり、
+                // 配列全体では O (n*k) になる
                 // 窓をスライドさせる際に新しく入る 1 塩基だけを見て
                 // 「直近に見た無効塩基の位置」を更新すれば、
                 // その位置が現在の窓の左端以降にある間は判定を使い回せる
-                // (無効塩基は稀なので償却 O(n) で済む)
+                // (無効塩基は稀なので償却 O (n) で済む)
                 var l_塩基列 = Util.V_変換_塩基列(l_引き継ぎ.A_配列);
                 var l_直近の無効塩基位置 = -1;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
@@ -133,7 +130,7 @@ namespace Tsumiki.Cores.Preprocessing
                     }
 
                     var l_カバレッジ = Get_引き継ぐカバレッジ(l_引き継ぎ, i, p_k長, p_リード長);
-                    if (l_カバレッジ > 0
+                    if (l_カバレッジ > 0UL
                         && p_kmerインデックス.V_追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
                     {
                         l_追加数++;
@@ -152,21 +149,18 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_リード長"></param>
         /// <remarks>
         /// 前段の k-mer のうちこの窓に重なるものの最小値を取る<br/>
-        /// 長い k-mer は
-        /// 構成する短い k-mer すべてを含むので、最も弱い部分より強くはなれない<br/>
+        /// 長い k-mer は構成する短い k-mer すべてを含むので、最も弱い部分より強くはなれない<br/>
         /// そのうえで k の差ぶんスケールする<br/>
-        /// 1 リードから取れる k-mer は
-        /// リード長 - k + 1 本なので、k を上げれば同じ座位のカバレッジは
-        /// その比で下がる<br/>
-        /// スケールしないと、引き継いだ領域だけカバレッジが
-        /// 高く見えてコピー数を過大に推定する
+        /// 1 リードから取れる k-mer はリード長 - k + 1 本なので、k を上げれば同じ座位のカバレッジはその比で下がる<br/>
+        /// スケールしないと、引き継いだ領域だけカバレッジが高く見えてコピー数を過大に推定する
         /// </remarks>
+        /// <returns></returns>
         public static ulong Get_引き継ぐカバレッジ(引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
         {
             var l_終端 = Math.Min(p_引き継ぎ.A_カバレッジ.Length - 1, p_位置 + p_k長 - p_引き継ぎ.A_k長);
             if (p_位置 > l_終端)
             {
-                return 0;
+                return 0UL;
             }
 
             var l_最小 = int.MaxValue;
@@ -176,7 +170,7 @@ namespace Tsumiki.Cores.Preprocessing
             }
             if (l_最小 <= 0)
             {
-                return 0;
+                return 0UL;
             }
 
             if (p_リード長 is not { } l_リード長 || l_リード長 <= p_k長)

@@ -13,8 +13,7 @@ namespace Tsumiki.Cores.Output
     /// </summary>
     /// <remarks>
     /// ログは流れて消えるが、レポートは後から読み返せる<br/>
-    /// 特に
-    /// 「なぜ完全長ではないのか」は、次に何を足せば解けるのかを決める材料になる<br/>
+    /// 特に「なぜ完全長ではないのか」は、次に何を足せば解けるのかを決める材料になる<br/>
     /// JSON は項目が固定なので直接組み立てる<br/>
     /// 反射に頼るシリアライザは AOT で落ちる可能性があり、この程度の構造のために持ち込む価値がない
     /// </remarks>
@@ -119,6 +118,7 @@ namespace Tsumiki.Cores.Output
         /// <remarks>
         /// 訳さない
         /// </remarks>
+        /// <returns></returns>
         private static string Get_種別コード(曖昧箇所の種別 p_種別)
         {
             return p_種別 switch
@@ -222,6 +222,7 @@ namespace Tsumiki.Cores.Output
         /// <remarks>
         /// ID には引用符も含まれうる
         /// </remarks>
+        /// <returns></returns>
         private static string Get_文字列(string? p_値)
         {
             if (p_値 is null)

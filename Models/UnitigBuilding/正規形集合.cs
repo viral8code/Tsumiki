@@ -7,8 +7,7 @@ namespace Tsumiki.Models.UnitigBuilding
     /// 逆相補を同一視して k-mer を覚える集合
     /// </summary>
     /// <remarks>
-    /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが
-    /// UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
+    /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
     /// </remarks>
     /// <param name="p_k長">k 長</param>
     internal sealed class 正規形集合(int p_k長)

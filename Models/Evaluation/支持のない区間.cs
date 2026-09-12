@@ -6,6 +6,9 @@
     /// <remarks>
     /// 位置は 1 始まり・両端を含む
     /// </remarks>
+    /// <param name="A_配列ID"></param>
+    /// <param name="A_開始"></param>
+    /// <param name="A_終了"></param>
     internal readonly record struct 支持のない区間(string A_配列ID, int A_開始, int A_終了)
     {
         #region カスタムプロパティ

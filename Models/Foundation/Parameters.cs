@@ -66,7 +66,7 @@ namespace Tsumiki.Models.Foundation
             get => this._リード1のパス;
             set
             {
-                if (!Path.Exists(value))
+                if (!File.Exists(value))
                 {
                     throw new ArgumentException($"Read1's path {value} is not found");
                 }
@@ -82,7 +82,7 @@ namespace Tsumiki.Models.Foundation
             get => this._リード2のパス;
             set
             {
-                if (!Path.Exists(value))
+                if (!string.IsNullOrEmpty(value) && !File.Exists(value))
                 {
                     throw new ArgumentException($"Read2's path {value} is not found");
                 }
@@ -94,8 +94,7 @@ namespace Tsumiki.Models.Foundation
         /// -k が明示的に指定されたかどうか
         /// </summary>
         /// <remarks>
-        /// 指定されていない場合に限り、
-        /// 実際のリード長から求めた k を自動採用する
+        /// 指定されていない場合に限り、実際のリード長から求めた k を自動採用する
         /// </remarks>
         public bool A_k長が明示指定されたか { get; private set; }
 
@@ -129,8 +128,7 @@ namespace Tsumiki.Models.Foundation
         /// -kc が明示的に指定されたかどうか
         /// </summary>
         /// <remarks>
-        /// 指定されていない場合に限り、
-        /// k-mer スペクトルの谷から求めたカットオフを自動採用する
+        /// 指定されていない場合に限り、k-mer スペクトルの谷から求めたカットオフを自動採用する
         /// </remarks>
         public bool A_kmerカットオフが明示指定されたか { get; private set; }
 
@@ -142,7 +140,7 @@ namespace Tsumiki.Models.Foundation
             get => this._kmerカットオフ;
             set
             {
-                if (value <= 0)
+                if (value <= 0UL)
                 {
                     throw new ArgumentException("Please make the value of kmer cut off a positive integer");
                 }
@@ -155,8 +153,7 @@ namespace Tsumiki.Models.Foundation
         /// -p が明示的に指定されたかどうか
         /// </summary>
         /// <remarks>
-        /// 指定されていない場合に限り、
-        /// FASTQ のクオリティ文字列から推定したオフセットを自動採用する<br/>
+        /// 指定されていない場合に限り、FASTQ のクオリティ文字列から推定したオフセットを自動採用する<br/>
         /// 明示指定はユーザーの判断なので、推定結果で上書きはしない
         /// </remarks>
         public bool A_Phredが明示指定されたか { get; private set; }
@@ -196,7 +193,7 @@ namespace Tsumiki.Models.Foundation
         /// メモリ量の指定
         /// </summary>
         /// <remarks>
-        /// "2G" / "512M" / "1024"(接尾辞なしは MB) を受け付ける
+        /// "2G" / "512M" / "1024" (接尾辞なしは MB) を受け付ける
         /// </remarks>
         public string A_メモリ予算
         {
@@ -208,10 +205,8 @@ namespace Tsumiki.Models.Foundation
         /// 期待インサートサイズ
         /// </summary>
         /// <remarks>
-        /// CLI で明示指定されなかった場合は null のままとし、
-        /// スキャフォールディング実行時にマップ済みペアから標本推定を試みる<br/>
-        /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で
-        /// 別途保持する<br/>
+        /// CLI で明示指定されなかった場合は null のままとし、スキャフォールディング実行時にマップ済みペアから標本推定を試みる<br/>
+        /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で別途保持する<br/>
         /// CLI 指定値と自動推定値を区別するため)
         /// </remarks>
         public int? A_インサートサイズ { get; set; } = null;
@@ -235,8 +230,7 @@ namespace Tsumiki.Models.Foundation
         /// 画面へ出す量
         /// </summary>
         /// <remarks>
-        /// ファイルへの記録はこれに関わらず全量を残すので、
-        /// 静かにしても後から原因を追う手掛かりは失われない
+        /// ファイルへの記録はこれに関わらず全量を残すので、静かにしても後から原因を追う手掛かりは失われない
         /// </remarks>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
 
@@ -251,8 +245,7 @@ namespace Tsumiki.Models.Foundation
         public bool A_エラー訂正するか { get; set; } = false;
 
         /// <summary>
-        /// ペアエンドのオーバーラップ解析 (アダプタ除去 + 相互訂正) を
-        /// エラー訂正・アセンブリの前に行うか
+        /// ペアエンドのオーバーラップ解析 (アダプタ除去 + 相互訂正) をエラー訂正・アセンブリの前に行うか
         /// </summary>
         public bool A_前処理するか { get; set; } = false;
 
@@ -260,8 +253,7 @@ namespace Tsumiki.Models.Foundation
         /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか
         /// </summary>
         /// <remarks>
-        /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、
-        /// 精度を求めるなら試すしかない<br/>
+        /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、精度を求めるなら試すしかない<br/>
         /// 実行時間と引き換えになるので既定は false
         /// </remarks>
         public bool A_マルチkか { get; set; } = false;
@@ -275,15 +267,12 @@ namespace Tsumiki.Models.Foundation
         public bool A_引き継ぐか { get; set; } = true;
 
         /// <summary>
-        /// multi-k で、各 k の信頼できる k-mer 集合の中でペアを橋渡しして
-        /// 合成リード (SuperRead) を作り、次の k への引き継ぎに加えるか
+        /// multi-k で、各 k の信頼できる k-mer 集合の中でペアを橋渡しして合成リード (SuperRead) を作り、次の k への引き継ぎに加えるか
         /// </summary>
         public bool A_SuperReadを作るか { get; set; } = false;
 
         /// <summary>
-        /// 短い反復の解決 (V_解決_短い反復) で、対応付けを確定させる前に
-        /// r-mer (アセンブリの k とは独立の短い長さ) による接合点の検証を
-        /// 課すか
+        /// 短い反復の解決 (V_解決_短い反復) で、対応付けを確定させる前に r-mer (アセンブリの k とは独立の短い長さ) による接合点の検証を課すか
         /// </summary>
         /// <remarks>
         /// 生リードの追加走査が 1 回 k 毎に要る (既定は false)
@@ -291,9 +280,7 @@ namespace Tsumiki.Models.Foundation
         public bool A_反復をrMerで検証するか { get; set; } = false;
 
         /// <summary>
-        /// GapFiller が埋められなかったスキャフォールドのギャップを、
-        /// その両端に実際にマップされた局所リードだけを使う局所アセンブリ
-        /// (LocalAssembler) で埋めるか
+        /// GapFiller が埋められなかったスキャフォールドのギャップを、その両端に実際にマップされた局所リードだけを使う局所アセンブリ (LocalAssembler) で埋めるか
         /// </summary>
         /// <remarks>
         /// AssemblyMerger (-mg) の安全な代替
@@ -304,8 +291,7 @@ namespace Tsumiki.Models.Foundation
         /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか
         /// </summary>
         /// <remarks>
-        /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等の
-        /// ビューアで直接確認できるようにする
+        /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等のビューアで直接確認できるようにする
         /// </remarks>
         public bool A_GFAを出力するか { get; set; } = false;
 
@@ -314,8 +300,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <remarks>
         /// 既定は false<br/>
-        /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、
-        /// 統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる
+        /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる
         /// </remarks>
         public bool A_マージするか { get; set; } = false;
 
@@ -328,18 +313,15 @@ namespace Tsumiki.Models.Foundation
         public bool A_ポリッシュするか { get; set; } = false;
 
         /// <summary>
-        /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが
-        /// 実在するかを確かめるか
+        /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが実在するかを確かめるか
         /// </summary>
         /// <remarks>
-        /// 完全長を名乗るには必須の検査だが、
-        /// リードの追加走査が要るため既定は false
+        /// 完全長を名乗るには必須の検査だが、リードの追加走査が要るため既定は false
         /// </remarks>
         public bool A_環状閉鎖を検証するか { get; set; } = false;
 
         /// <summary>
-        /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に
-        /// 挟まれているものを救い上げるか
+        /// カットオフで落ちた k-mer のうち、リードの中で信頼できる k-mer に挟まれているものを救い上げるか
         /// </summary>
         public bool A_救済kmerを使うか { get; set; } = false;
 
@@ -360,8 +342,7 @@ namespace Tsumiki.Models.Foundation
         /// 実行後に一時ディレクトリを消すか
         /// </summary>
         /// <remarks>
-        /// k ごとの成果物が入っており
-        /// 後から見比べたくなるため、既定では残す
+        /// k ごとの成果物が入っており後から見比べたくなるため、既定では残す
         /// </remarks>
         public bool A_一時ディレクトリを削除するか { get; set; } = false;
 
@@ -389,7 +370,7 @@ namespace Tsumiki.Models.Foundation
             get => this._ペア結合閾値;
             set
             {
-                if (value is <= 0 or > 1)
+                if (value is <= 0M or > 1M)
                 {
                     throw new ArgumentException("Please make the value of pair unite threshold a ratio between 0 (exclusive) and 1");
                 }
@@ -405,7 +386,7 @@ namespace Tsumiki.Models.Foundation
             get => this._ペア支持数閾値;
             set
             {
-                if (value <= 0)
+                if (value <= 0UL)
                 {
                     throw new ArgumentException("Please make the value of pair count threshold a positive integer");
                 }
@@ -416,6 +397,18 @@ namespace Tsumiki.Models.Foundation
         #endregion
 
         #region 公開メソッド
+
+        /// <summary>
+        /// 明示指定の状態を保って作業用設定を複製する
+        /// </summary>
+        /// <returns>元の設定と k 長一覧を共有しない複製</returns>
+        public Parameters Get_複製()
+        {
+            var l_複製 = (Parameters)this.MemberwiseClone();
+            l_複製._k長一覧 = [.. this._k長一覧];
+            return l_複製;
+        }
+
 
         /// <summary>
         /// k の一覧を設定する
@@ -444,8 +437,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_k長">推定して得られた k 長</param>
         /// <remarks>
-        /// A_k長が明示指定されたか は立てないため、
-        /// 「ユーザーが明示指定した」扱いにはならない
+        /// A_k長が明示指定されたか は立てないため、「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
         public void Set_推定k長(int p_k長)
         {
@@ -473,8 +465,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
         /// <remarks>
-        /// A_Phredが明示指定されたか は
-        /// 立てないため、「ユーザーが明示指定した」扱いにはならない
+        /// A_Phredが明示指定されたか は立てないため、「ユーザーが明示指定した」扱いにはならない
         /// </remarks>
         public void Set_推定Phredオフセット(int p_オフセット)
         {

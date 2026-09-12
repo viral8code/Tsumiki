@@ -1,12 +1,10 @@
 ﻿namespace Tsumiki.Commons
 {
     /// <summary>
-    /// 中央値・分位点・N50・長さ加重中央値など、複数箇所で必要になる
-    /// 分布の要約統計をまとめる
+    /// 中央値・分位点・ N50 ・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
     /// </summary>
     /// <remarks>
-    /// 「整列してから累積和が半分を超えた点を採る」
-    /// という同じ骨格の実装がファイルごとに個別に書かれていたのを 1 箇所にする
+    /// 「整列してから累積和が半分を超えた点を採る」という同じ骨格の実装がファイルごとに個別に書かれていたのを 1 箇所にする
     /// </remarks>
     internal static class StatsUtil
     {
@@ -41,6 +39,7 @@
         /// </summary>
         /// <param name="p_整列済み"></param>
         /// <param name="p_分位"></param>
+        /// <returns></returns>
         public static int Get_分位点(IReadOnlyList<int> p_整列済み, double p_分位)
         {
             return p_整列済み[Math.Clamp((int)(p_分位 * (p_整列済み.Count - 1)), 0, p_整列済み.Count - 1)];
@@ -51,12 +50,10 @@
         /// </summary>
         /// <param name="p_組"></param>
         /// <remarks>
-        /// 累積長が総延長の半分を超えた点の
-        /// 値を採る<br/>
-        /// 短い断片が本数で多数を占めていても、実際の塩基の
-        /// 大部分が属する水準を代表させたい場面 (単一コピー領域の
-        /// カバレッジ基準値など) で使う
+        /// 累積長が総延長の半分を超えた点の値を採る<br/>
+        /// 短い断片が本数で多数を占めていても、実際の塩基の大部分が属する水準を代表させたい場面 (単一コピー領域のカバレッジ基準値など) で使う
         /// </remarks>
+        /// <returns></returns>
         public static double Get_長さ加重中央値(IEnumerable<(long A_長さ, double A_値)> p_組)
         {
             var l_整列済み = p_組.OrderBy(x => x.A_値).ToList();
@@ -84,9 +81,9 @@
         /// </summary>
         /// <param name="p_長さ一覧"></param>
         /// <remarks>
-        /// N50 は「この長さ以上の配列だけで
-        /// 総延長の半分に達する」最小の長さ、L50 はそのために必要な本数
+        /// N50 は「この長さ以上の配列だけで総延長の半分に達する」最小の長さ、L50 はそのために必要な本数
         /// </remarks>
+        /// <returns></returns>
         public static (long A_N50, int A_L50) Get_N50(IReadOnlyCollection<long> p_長さ一覧)
         {
             if (p_長さ一覧.Count == 0)

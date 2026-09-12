@@ -3,6 +3,10 @@
     /// <summary>
     /// ペアを合成リードへ統合する処理 1 回分の集計
     /// </summary>
+    /// <param name="A_総ペア数"></param>
+    /// <param name="A_統合数"></param>
+    /// <param name="A_重なり結合数"></param>
+    /// <param name="A_曖昧で捨てた数"></param>
     internal readonly record struct SuperRead統計(int A_総ペア数, int A_統合数, int A_重なり結合数, int A_曖昧で捨てた数)
     {
         #region カスタムプロパティ

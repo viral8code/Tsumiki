@@ -16,6 +16,7 @@ namespace Tsumiki.Core
         /// 符号付き unitig ID (正=順鎖、負=逆鎖) をグラフの頂点番号に変換する
         /// </summary>
         /// <param name="p_符号付きユニティグID"></param>
+        /// <returns></returns>
         public static int Get_頂点番号(int p_符号付きユニティグID)
         {
             return (Math.Abs(p_符号付きユニティグID) << 1) | (p_符号付きユニティグID > 0 ? 0 : 1);
@@ -57,6 +58,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// 経路が始点へ戻ってきた場合は環状として報告する
         /// </remarks>
+        /// <returns></returns>
         private static (string A_配列, bool A_環状か) Get_walk結果(List<string> p_ユニティグ配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点, List<int> p_walk順)
         {
             var l_出力 = new StringBuilder(p_ユニティグ配列[p_始点]);
@@ -119,6 +121,7 @@ namespace Tsumiki.Core
         /// <param name="p_出力"></param>
         /// <param name="p_ユニティグ"></param>
         /// <param name="p_重なり長"></param>
+        /// <returns></returns>
         private static bool Get_重なりが一致するか(StringBuilder p_出力, string p_ユニティグ, int p_重なり長)
         {
             var l_開始位置 = p_出力.Length - p_重なり長;

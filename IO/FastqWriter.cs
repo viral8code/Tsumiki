@@ -3,6 +3,7 @@
     /// <summary>
     /// FASTQ を 1 リードずつ書き出す
     /// </summary>
+    /// <param name="p_ファイル名"></param>
     internal class FastqWriter(string p_ファイル名) : IDisposable
     {
         #region 内部変数
@@ -24,7 +25,7 @@
         /// <param name="p_クオリティ"></param>
         /// <remarks>
         /// p_ID は先頭の "@" を含む形で渡すこと<br/>
-        /// (FastqReader.Get_次のリード().A_ID がそのまま使える)
+        /// (FastqReader.Get_次のリード () .A_ID がそのまま使える)
         /// </remarks>
         public void V_書き込み(string p_ID, string p_配列, string p_クオリティ)
         {

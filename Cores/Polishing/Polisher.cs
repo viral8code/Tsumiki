@@ -11,16 +11,12 @@ namespace Tsumiki.Cores.Polishing
     /// 最終配列に元リードを貼り直し、各位置の塩基の多数決で置換を直す
     /// </summary>
     /// <remarks>
-    /// グラフから組み立てた配列の塩基は k-mer 集合が根拠であり、カットオフを
-    /// 通り抜けたエラー k-mer がそのまま残ることがある<br/>
-    /// リードそのものの
-    /// 多数決は k-mer とは独立した証拠で、そこを最後に均す<br/>
+    /// グラフから組み立てた配列の塩基は k-mer 集合が根拠であり、カットオフを通り抜けたエラー k-mer がそのまま残ることがある<br/>
+    /// 同じライブラリのリードを再利用するため、k-mer と独立した証拠ではない<br/>
     /// 直すのは置換だけとする<br/>
-    /// 挿入・欠失を含むリードは帯域制限整列で位置を対応付け、
-    /// 参照と対応した塩基だけを投票に使う<br/>
+    /// 挿入・欠失を含むリードは帯域制限整列で位置を対応付け、参照と対応した塩基だけを投票に使う<br/>
     /// 併せて位置ごとの深度が得られる<br/>
-    /// 連結の裏付けが無い接合点はその前後で
-    /// 深度が不連続になるため、完全長の判定にも使う
+    /// 連結の裏付けが無い接合点はその前後で深度が不連続になるため、完全長の判定にも使う
     /// </remarks>
     internal static class Polisher
     {
@@ -30,8 +26,7 @@ namespace Tsumiki.Cores.Polishing
         /// リードの置き場所を探す種にする長さ
         /// </summary>
         /// <remarks>
-        /// 短いほど反復配列で曖昧になり、
-        /// 長いほどエラーを 1 つ含んだだけで種が潰れる
+        /// 短いほど反復配列で曖昧になり、長いほどエラーを 1 つ含んだだけで種が潰れる
         /// </remarks>
         private const int シード長 = 21;
 
@@ -49,8 +44,7 @@ namespace Tsumiki.Cores.Polishing
         /// 置換を認めるのに必要な、対立塩基の占有率
         /// </summary>
         /// <remarks>
-        /// 元の塩基が少数派というだけでは足りず、対立塩基が明確に
-        /// 多数派でなければ動かさない
+        /// 元の塩基が少数派というだけでは足りず、対立塩基が明確に多数派でなければ動かさない
         /// </remarks>
         private const double 訂正に必要な占有率 = 0.7D;
 
@@ -78,10 +72,12 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_リード1のパス"></param>
         /// <param name="p_リード2のパス"></param>
         /// <param name="p_出力パス"></param>
+        /// <param name="p_訂正するか">false なら配列を変更せず深度を再測定する</param>
         /// <remarks>
         /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
         /// </remarks>
-        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス)
+        /// <returns></returns>
+        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス, bool p_訂正するか = true)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
             if (l_エントリ群.Count == 0)
@@ -101,7 +97,7 @@ namespace Tsumiki.Cores.Polishing
             }
 
             // 位置ごとの塩基の得票
-            // 塩基 ID は 1..4 なので (位置 * 4 + 塩基ID - 1)
+            // 塩基 ID は 1..4 なので (位置 * 4 + 塩基 ID - 1)
             var l_得票 = l_配列群.Select(x => new int[x.Length * 4]).ToArray();
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -124,7 +120,7 @@ namespace Tsumiki.Cores.Polishing
             var l_中央値 = Get_深度の中央値(l_配列群, l_得票);
             Logger.V_出力(メッセージID.ポリッシュの深度中央値, l_中央値);
 
-            var l_訂正数 = V_訂正_多数決(l_配列群, l_得票, l_中央値, out var l_深度不足数, out var l_評価位置数);
+            var l_訂正数 = V_訂正_多数決(l_配列群, l_得票, l_中央値, out var l_深度不足数, out var l_評価位置数, p_訂正するか);
 
             using (var l_書き込み = new FastaWriter(p_出力パス))
             {
@@ -150,7 +146,7 @@ namespace Tsumiki.Cores.Polishing
             }
             Logger.V_出力(メッセージID.ポリッシュのマッピング結果, l_統計.A_マップされたリード数, l_統計.A_棄却されたリード数);
             Logger.V_出力(メッセージID.ポリッシュの訂正結果, l_統計.A_訂正した塩基数, l_統計.A_総延長);
-            Logger.V_出力(メッセージID.ポリッシュの深度不足, l_統計.A_深度不足の位置数, l_統計.A_評価できた位置数, l_統計.A_深度不足率 * 100);
+            Logger.V_出力(メッセージID.ポリッシュの深度不足, l_統計.A_深度不足の位置数, l_統計.A_評価できた位置数, l_統計.A_深度不足率 * 100D);
         }
 
         #endregion
@@ -168,10 +164,11 @@ namespace Tsumiki.Cores.Polishing
         /// 得票は複数のワーカーが同じ配列を触るため Interlocked で足す<br/>
         /// 加算は順序に依らないので、並列でも結果は毎回同じになる
         /// </remarks>
+        /// <returns></returns>
         private static bool V_貼り付け_1リード(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
         {
             var l_配置 = p_マッパー.Get_配置(p_リード);
-            if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0)
+            if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0 || l_配置.A_整列位置群.Count < 最小整列長)
             {
                 return false;
             }
@@ -207,14 +204,11 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_配列群"></param>
         /// <param name="p_得票"></param>
         /// <remarks>
-        /// ヒストグラムから求めるのは、
-        /// 位置ごとの値をすべて並べるとゲノムサイズぶんの配列をもう 1 本
-        /// 持つことになるため<br/>
+        /// ヒストグラムから求めるのは、位置ごとの値をすべて並べるとゲノムサイズぶんの配列をもう 1 本持つことになるため<br/>
         /// 深度 0 の位置を混ぜないのが要点<br/>
-        /// 混ぜると、覆われていない範囲が
-        /// 広いアセンブリほど中央値が 0 へ引き寄せられ、本来そこを咎めるはずの
-        /// 深度不足の判定が何も引っ掛けなくなる
+        /// 混ぜると、覆われていない範囲が広いアセンブリほど中央値が 0 へ引き寄せられ、本来そこを咎めるはずの深度不足の判定が何も引っ掛けなくなる
         /// </remarks>
+        /// <returns></returns>
         private static double Get_深度の中央値(List<char[]> p_配列群, int[][] p_得票)
         {
             var l_ヒストグラム = new long[深度ヒストグラムの上限 + 1];
@@ -236,21 +230,21 @@ namespace Tsumiki.Cores.Polishing
                     l_総数++;
                 }
             }
-            if (l_総数 == 0)
+            if (l_総数 == 0L)
             {
-                return 0;
+                return 0D;
             }
 
             var l_累積 = 0L;
             for (var l_深度 = 0; l_深度 <= 深度ヒストグラムの上限; l_深度++)
             {
                 l_累積 += l_ヒストグラム[l_深度];
-                if (l_累積 * 2 >= l_総数)
+                if (l_累積 * 2L >= l_総数)
                 {
                     return l_深度;
                 }
             }
-            return 0;
+            return 0D;
         }
 
         /// <summary>
@@ -273,19 +267,20 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_深度の中央値"></param>
         /// <param name="p_深度不足数"></param>
         /// <param name="p_評価位置数"></param>
+        /// <param name="p_訂正するか">置換を適用するか</param>
         /// <remarks>
         /// 併せて深度不足の位置を数える<br/>
         /// N の位置は触らない<br/>
-        /// ギャップの長さは推定値であり、
-        /// そこを塩基で埋めるのは多数決の仕事ではない
+        /// ギャップの長さは推定値であり、そこを塩基で埋めるのは多数決の仕事ではない
         /// </remarks>
-        private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数)
+        /// <returns></returns>
+        private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数, bool p_訂正するか)
         {
             var l_深度不足の閾値 = p_深度の中央値 * 深度不足とみなす比;
 
             var l_訂正数 = 0L;
-            p_深度不足数 = 0;
-            p_評価位置数 = 0;
+            p_深度不足数 = 0L;
+            p_評価位置数 = 0L;
 
             for (var i = 0; i < p_配列群.Count; i++)
             {
@@ -300,11 +295,11 @@ namespace Tsumiki.Cores.Polishing
                     p_評価位置数++;
 
                     var l_深度 = Get_深度(l_票, l_位置);
-                    if (l_深度 < l_深度不足の閾値)
+                    if (l_深度 == 0 || l_深度 < l_深度不足の閾値)
                     {
                         p_深度不足数++;
                     }
-                    if (l_深度 < 訂正に必要な深度)
+                    if (!p_訂正するか || l_深度 < 訂正に必要な深度)
                     {
                         continue;
                     }

@@ -16,10 +16,10 @@
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_標本上限"></param>
         /// <remarks>
-        /// トリミング済みデータでは長さがばらつくため、
-        /// 平均や最大値より中央値のほうが実態に近い<br/>
+        /// トリミング済みデータでは長さがばらつくため、平均や最大値より中央値のほうが実態に近い<br/>
         /// 1 リードも読めなければ null
         /// </remarks>
+        /// <returns></returns>
         public static int? Get_代表リード長(string p_ファイルパス, int p_標本上限 = 20_000)
         {
             var l_長さ標本 = new List<int>();
@@ -47,9 +47,9 @@
         /// <param name="p_リード2のパス"></param>
         /// <param name="p_標本上限"></param>
         /// <remarks>
-        /// 長いほうに合わせると
-        /// 短い側のリードが丸ごと使えなくなりうる
+        /// 長いほうに合わせると短い側のリードが丸ごと使えなくなりうる
         /// </remarks>
+        /// <returns></returns>
         public static int? Get_代表リード長(string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_リード長1 = Get_代表リード長(p_リード1のパス, p_標本上限);

@@ -4,8 +4,7 @@
     /// 画面に出す文言の識別子
     /// </summary>
     /// <remarks>
-    /// 文言そのものは <see cref="Common.MessageCatalog"/> が
-    /// 言語ごとに持つ<br/>
+    /// 文言そのものは <see cref="Tsumiki.Commons.MessageCatalog"/> が言語ごとに持つ<br/>
     /// 呼び出し側はこの ID だけを指す
     /// </remarks>
     internal enum メッセージID

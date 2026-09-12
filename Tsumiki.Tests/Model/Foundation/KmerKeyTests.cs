@@ -8,24 +8,33 @@ namespace Tsumiki.Tests.Model
     /// </summary>
     public class KmerKeyTests
     {
+        #region 公開メソッド
+
         /// <summary>
-        /// 実行時引数の k 長を差し替える
+        /// 大域 k の変更が既存キーの意味を変えない
         /// </summary>
-        /// <param name="p_k長">設定する k 長</param>
-        private static void V_設定_k長(int p_k長)
+        [Fact]
+        public void V_生成後のk変更に影響されない()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長 };
+            V_設定_k長(31);
+            var l_配列 = "ACG" + new string('T', 64);
+            var l_キー = new KmerKey(l_配列);
+            V_設定_k長(93);
+            Assert.Equal(new KmerKey(Util.V_逆相補(l_配列)), l_キー.Get_逆相補());
+            Assert.NotEqual(new KmerKey("A"), new KmerKey("AA"));
+            Assert.Equal(default(KmerKey), default(KmerKey));
         }
 
         /// <summary>
         /// バイト列版と char 版のコンストラクタが同じキーを作る
         /// </summary>
+        /// <param name="p_k長"></param>
         [Theory]
-        [InlineData(4)]   // 1つの ulong に収まる短いk-mer
-        [InlineData(31)]  // デフォルトのk-mer長
-        [InlineData(33)]  // 32境界をまたぐ長さ(Dataが複数ulongになる)
-        [InlineData(64)]  // ちょうど2 ulong 分
-        public void バイト列版とchar版で同じキーになる(int p_k長)
+        [InlineData(4)]   // 1 つの ulong に収まる短い k-mer
+        [InlineData(31)]  // デフォルトの k-mer 長
+        [InlineData(33)]  // 32 境界をまたぐ長さ (Data が複数 ulong になる)
+        [InlineData(64)]  // ちょうど 2 ulong 分
+        public void V_バイト列版とchar版で同じキーになる(int p_k長)
         {
             V_設定_k長(p_k長);
             var l_塩基列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..p_k長];
@@ -52,12 +61,13 @@ namespace Tsumiki.Tests.Model
         /// <summary>
         /// 逆相補が文字列版の逆相補と一致する
         /// </summary>
+        /// <param name="p_k長"></param>
         [Theory]
         [InlineData(4)]
         [InlineData(31)]
         [InlineData(33)]
         [InlineData(64)]
-        public void 逆相補が文字列版と一致する(int p_k長)
+        public void V_逆相補が文字列版と一致する(int p_k長)
         {
             V_設定_k長(p_k長);
             var l_フォワード = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"[..p_k長];
@@ -71,11 +81,12 @@ namespace Tsumiki.Tests.Model
         /// <summary>
         /// 正規形は kmer とその逆相補で同じになる
         /// </summary>
+        /// <param name="p_k長"></param>
         [Theory]
         [InlineData(4)]
         [InlineData(31)]
         [InlineData(33)]
-        public void 正規形はkmerと逆相補で一致する(int p_k長)
+        public void V_正規形はkmerと逆相補で一致する(int p_k長)
         {
             V_設定_k長(p_k長);
             var l_フォワード = "ACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAAACGTGGCCTTAA"[..p_k長];
@@ -91,7 +102,7 @@ namespace Tsumiki.Tests.Model
         /// 正規形はべき等
         /// </summary>
         [Fact]
-        public void 正規形はべき等()
+        public void V_正規形はべき等()
         {
             V_設定_k長(31);
             var l_キー = new KmerKey("ACGTGGCCTTAAACGTGGCCTTAAACGTG".PadRight(31, 'A').AsSpan());
@@ -105,7 +116,7 @@ namespace Tsumiki.Tests.Model
         /// 異なる kmer の正規形は区別される
         /// </summary>
         [Fact]
-        public void 異なるkmerの正規形は区別される()
+        public void V_異なるkmerの正規形は区別される()
         {
             V_設定_k長(4);
             var l_甲 = new KmerKey("ACGT".AsSpan()).Get_正規形();
@@ -113,5 +124,21 @@ namespace Tsumiki.Tests.Model
 
             Assert.False(l_甲.Equals(l_乙));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 実行時引数の k 長を差し替える
+        /// </summary>
+        /// <param name="p_k長">設定する k 長</param>
+        private static void V_設定_k長(int p_k長)
+        {
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長 };
+        }
+
+        #endregion
+
     }
 }

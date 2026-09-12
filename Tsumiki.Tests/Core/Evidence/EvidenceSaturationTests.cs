@@ -11,33 +11,35 @@ namespace Tsumiki.Tests.Core
     /// </remarks>
     public class EvidenceSaturationTests
     {
+        #region 公開メソッド
+
         /// <summary>
-        /// 支持が無ければ飽和支持は0になること
+        /// 支持が無ければ飽和支持は 0 になること
         /// </summary>
         [Fact]
         public void Get_飽和支持_支持が無ければ0になる()
         {
-            Assert.Equal(0, 証拠較正器.Get_飽和支持(0));
-            Assert.Equal(0, 証拠較正器.Get_飽和支持(-5));
+            Assert.Equal(0D, 証拠較正器.Get_飽和支持(0D));
+            Assert.Equal(0D, 証拠較正器.Get_飽和支持(-5));
         }
 
         /// <summary>
-        /// 飽和支持は本数の増加とともに単調に増えるが1を超えないこと
+        /// 飽和支持は本数の増加とともに単調に増えるが 1 を超えないこと
         /// </summary>
         [Fact]
         public void Get_飽和支持_単調に増えるが1を超えない()
         {
-            var l_直前 = 0.0;
+            var l_直前 = 0.0D;
             foreach (var l_支持 in new[] { 1, 2, 3, 5, 10, 100 })
             {
                 var l_値 = 証拠較正器.Get_飽和支持(l_支持);
                 Assert.True(l_値 > l_直前, $"支持 {l_支持} で単調性が崩れた");
-                Assert.True(l_値 < 1.0, $"支持 {l_支持} で 1 を超えた");
+                Assert.True(l_値 < 1.0D, $"支持 {l_支持} で 1 を超えた");
                 l_直前 = l_値;
             }
 
             // 極端な本数では倍精度の分解能で 1 に到達するが、超えることはない
-            Assert.True(証拠較正器.Get_飽和支持(10000) <= 1.0);
+            Assert.True(証拠較正器.Get_飽和支持(10000D) <= 1.0D);
         }
 
         /// <summary>
@@ -47,16 +49,16 @@ namespace Tsumiki.Tests.Core
         public void Get_飽和支持_本数を増やしても頭打ちになる()
         {
             // 3 本から 10 本への伸びより、1 本から 3 本への伸びのほうが大きい
-            var l_1から3 = 証拠較正器.Get_飽和支持(3) - 証拠較正器.Get_飽和支持(1);
-            var l_3から10 = 証拠較正器.Get_飽和支持(10) - 証拠較正器.Get_飽和支持(3);
+            var l_1から3 = 証拠較正器.Get_飽和支持(3D) - 証拠較正器.Get_飽和支持(1D);
+            var l_3から10 = 証拠較正器.Get_飽和支持(10D) - 証拠較正器.Get_飽和支持(3D);
             Assert.True(l_1から3 > l_3から10);
 
             // 1000 本と 10000 本はほぼ区別が付かない
-            Assert.True(証拠較正器.Get_飽和支持(10000) - 証拠較正器.Get_飽和支持(1000) < 0.001);
+            Assert.True(証拠較正器.Get_飽和支持(10000D) - 証拠較正器.Get_飽和支持(1000D) < 0.001D);
         }
 
         /// <summary>
-        /// 同じ距離を示す観測はまとめて1つの独立支持として数えること
+        /// 同じ距離を示す観測はまとめて 1 つの独立支持として数えること
         /// </summary>
         [Fact]
         public void Get_独立支持数_同じ距離を示す観測は1つに畳む()
@@ -75,12 +77,15 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 観測が無ければ独立支持数は0になること
+        /// 観測が無ければ独立支持数は 0 になること
         /// </summary>
         [Fact]
         public void Get_独立支持数_観測が無ければ0になる()
         {
             Assert.Equal(0, 証拠較正器.Get_独立支持数([]));
         }
+
+        #endregion
+
     }
 }

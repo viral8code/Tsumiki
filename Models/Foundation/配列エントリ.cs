@@ -3,6 +3,8 @@
     /// <summary>
     /// FASTA の 1 エントリ (ヘッダ行の ID と塩基配列)
     /// </summary>
+    /// <param name="p_ID"></param>
+    /// <param name="p_配列"></param>
     internal readonly struct 配列エントリ(string p_ID, string p_配列)
     {
         #region 内部変数

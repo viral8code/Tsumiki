@@ -7,8 +7,7 @@ namespace Tsumiki.Utilities
     /// 塩基列を 2 bit / 塩基 で 64 bit 語に詰めたもの
     /// </summary>
     /// <remarks>
-    /// 重なりの探索はずらしながら 2 本を突き合わせる形をしており、
-    /// 1 塩基ずつ比べると 1 ペアあたり数万回の比較になる<br/>
+    /// 重なりの探索はずらしながら 2 本を突き合わせる形をしており、1 塩基ずつ比べると 1 ペアあたり数万回の比較になる<br/>
     /// 語単位で XOR して不一致のレーンを数えれば、同じことが 32 塩基まとめて片付く<br/>
     /// 曖昧塩基は 2 bit に収まらないため、含む配列は作れない
     /// </remarks>
@@ -69,7 +68,7 @@ namespace Tsumiki.Utilities
         /// <remarks>
         /// 窓の取り出しで次の語を無条件に読めるよう、末尾に空き語を 1 つ足す
         /// </remarks>
-        /// <param name="p_塩基列">塩基 ID 列 (A = 1 .. T = 4)</param>
+        /// <param name="p_塩基列">塩基 ID 列 (A = 1 .. T = 4) </param>
         /// <returns>詰めた結果、曖昧塩基を含む場合は null</returns>
         public static PackedBases? Get_作る(ReadOnlySpan<byte> p_塩基列)
         {

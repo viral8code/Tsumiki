@@ -7,10 +7,8 @@ namespace Tsumiki.Commons
     /// 概要表示 (引数なし・-v) とヘルプ (-h) の本文を組み立てる
     /// </summary>
     /// <remarks>
-    /// 1 つの大きな文字列として持たせると言語ごとに全文を複製することになり、
-    /// 既定値やオプション名の変更が全言語に波及する<br/>
-    /// ここでは「オプション名と既定値はコード側、説明文だけカタログ側」に分けて、
-    /// 行ごとに組み立てる
+    /// 1 つの大きな文字列として持たせると言語ごとに全文を複製することになり、既定値やオプション名の変更が全言語に波及する<br/>
+    /// ここでは「オプション名と既定値はコード側、説明文だけカタログ側」に分けて、行ごとに組み立てる
     /// </remarks>
     internal static class HelpText
     {
@@ -34,6 +32,7 @@ namespace Tsumiki.Commons
         /// <remarks>
         /// 引数なしの起動と -v で出す
         /// </remarks>
+        /// <returns></returns>
         public static string Get_概要()
         {
             return new StringBuilder()

@@ -8,12 +8,9 @@ namespace Tsumiki.Cores.Evaluation
     /// 決めきれずに打ち切った箇所を、その場で書き留めておくための収集器
     /// </summary>
     /// <remarks>
-    /// 打ち切った事実は「N を入れた」「繋がなかった」という結果にしか残らず、
-    /// なぜそこで止めたのかは失われる<br/>
-    /// 後から人や別のツールが再解析できるよう、
-    /// 判断に使った数値ごと残す<br/>
-    /// k ごとに分けて持つのは、multi-k では採用しなかった k の記録まで
-    /// 混ざるため<br/>
+    /// 打ち切った事実は「N を入れた」「繋がなかった」という結果にしか残らず、なぜそこで止めたのかは失われる<br/>
+    /// 後から人や別のツールが再解析できるよう、判断に使った数値ごと残す<br/>
+    /// k ごとに分けて持つのは、multi-k では採用しなかった k の記録まで混ざるため<br/>
     /// レポートには採用した k のぶんだけを出す
     /// </remarks>
     internal static class AmbiguityRecorder
@@ -76,8 +73,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_次点の支持"></param>
         /// <param name="p_首位の生支持数"></param>
         /// <remarks>
-        /// 確信度は独立な支持本数を飽和関数に通した値で、
-        /// 同じ種類の証拠がいくら積み上がっても 1 に近づくだけになる
+        /// 確信度は独立な支持本数を飽和関数に通した値で、同じ種類の証拠がいくら積み上がっても 1 に近づくだけになる
         /// </remarks>
         public static void V_記録(曖昧箇所の種別 p_種別, string p_場所, double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L)
         {
@@ -96,6 +92,7 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_頂点"></param>
         /// <param name="p_接頭辞"></param>
+        /// <returns></returns>
         public static string Get_場所名(int p_頂点, string p_接頭辞 = "unitig")
         {
             return $"{p_接頭辞}{p_頂点 >> 1}{((p_頂点 & 1) == 0 ? '+' : '-')}";
@@ -107,8 +104,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_作業ディレクトリ"></param>
         /// <param name="p_k長"></param>
         /// <remarks>
-        /// 再開でこの k を飛ばしたときに、
-        /// 決めきれなかった箇所だけが失われてレポートが実態より綺麗に見えるのを防ぐ
+        /// 再開でこの k を飛ばしたときに、決めきれなかった箇所だけが失われてレポートが実態より綺麗に見えるのを防ぐ
         /// </remarks>
         public static void V_保存(string p_作業ディレクトリ, int p_k長)
         {
@@ -127,6 +123,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 記録が無ければ空
         /// </remarks>
+        /// <returns></returns>
         public static IReadOnlyList<曖昧箇所> Get_記録(int p_k長)
         {
             lock (_錠)

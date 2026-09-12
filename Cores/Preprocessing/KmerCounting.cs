@@ -7,12 +7,10 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Preprocessing
 {
     /// <summary>
-    /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理
-    /// (曖昧塩基を無視する既定経路)
+    /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理 (曖昧塩基を無視する既定経路)
     /// </summary>
     /// <remarks>
-    /// 本パイプラインと ErrorCorrector の
-    /// 事前カウントパスの両方から呼べるよう切り出したもの
+    /// 本パイプラインと ErrorCorrector の事前カウントパスの両方から呼べるよう切り出したもの
     /// </remarks>
     internal static class KmerCounting
     {
@@ -42,7 +40,7 @@ namespace Tsumiki.Cores.Preprocessing
                     lock (l_カウンタロック)
                     {
                         l_総リード数++;
-                        if (l_総リード数 % Consts.進捗ログ間隔 == 0)
+                        if (l_総リード数 % Consts.進捗ログ間隔 == 0UL)
                         {
                             l_ログ回数++;
                             l_ログ出力するか = true;
@@ -59,16 +57,13 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// リード 1(・指定があればリード 2) を、-ab の有無に応じた経路で
-        /// TrustedKmerIndex へ読み込む
+        /// リード 1 (・指定があればリード 2) を、-ab の有無に応じた経路で TrustedKmerIndex へ読み込む
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_進行状況を出力するか"></param>
         /// <remarks>
-        /// AssemblyPipeline と MultiKAssembler の
-        /// どちらも (単一 k・複数 k の違いだけで) 同じ読み込み手順を必要とするため
-        /// ここにまとめる
+        /// AssemblyPipeline と MultiKAssembler のどちらも (単一 k ・複数 k の違いだけで) 同じ読み込み手順を必要とするためここにまとめる
         /// </remarks>
         public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_進行状況を出力するか = false)
         {
@@ -120,7 +115,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     if (l_リード.A_クオリティ[i] - l_Phredオフセット - l_クオリティカットオフ < 0)
                     {
-                        l_塩基候補[i] = [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T];
+                        l_塩基候補[i] = [];
                     }
                 }
                 p_kmerインデックス.V_登録_曖昧塩基あり(l_塩基候補[..l_k長], 0);
@@ -131,7 +126,7 @@ namespace Tsumiki.Cores.Preprocessing
                 if (++l_件数 == Consts.進捗ログ間隔)
                 {
                     Logger.V_出力(メッセージID.リード読込の進捗, ++l_ログ回数 * Consts.進捗ログ間隔);
-                    l_件数 = 0;
+                    l_件数 = 0UL;
                 }
             }
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
@@ -163,6 +158,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// FASTQ を順に読み進めてリードを返す
         /// </summary>
         /// <param name="p_ファイルパス"></param>
+        /// <returns></returns>
         private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
@@ -179,8 +175,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// 逆相補側を別途登録してはいけない<br/>
-        /// TrustedKmerIndex.V_登録 が
-        /// 正規形へ寄せて数えるため、二重計上になる
+        /// TrustedKmerIndex.V_登録 が正規形へ寄せて数えるため、二重計上になる
         /// </remarks>
         private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス)
         {

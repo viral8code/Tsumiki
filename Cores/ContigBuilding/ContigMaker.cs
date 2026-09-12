@@ -16,7 +16,7 @@ namespace Tsumiki.Core
     /// </summary>
     /// <remarks>
     /// 責務がいくつかの部分ファイルに分かれている:<br/>
-    /// - ContigMaker.cs (このファイル): 辺の選択・簡略化・結合確定の中核ロジック<br/>
+    /// - ContigMaker.cs (このファイル) : 辺の選択・簡略化・結合確定の中核ロジック<br/>
     /// - ContigMaker.Mapping.cs: k-mer 索引構築とリードマッピング<br/>
     /// - ContigMaker.FragmentSampling.cs: フラグメント長・インサートサイズの標本収集<br/>
     /// - ContigMaker.Walk.cs: 確定した結合を辿って配列を組み立てる処理
@@ -46,21 +46,19 @@ namespace Tsumiki.Core
         /// 渡さない場合はすべて 1 コピーとして扱い、先読み探索も控えめになる
         /// </param>
         /// <param name="p_バブル敗者への引き継ぎ先">
-        /// 渡すと、バブル除去で外れた側の経路の配列 (careful_bubble)をここへ集める<br/>
+        /// 渡すと、バブル除去で外れた側の経路の配列 (careful_bubble) をここへ集める<br/>
         /// 呼び出し側がマルチ k の次の k への引き継ぎに足すことを想定している
         /// </param>
         /// <param name="p_リード長">
         /// 分岐選択・先読みスコアを生カウントではなく期待本数との比で測るための較正器の構築に使う<br/>
-        /// 渡さない (あるいは同一ユニティグ標本が無い) 場合は
-        /// 較正器が使えないものとして扱われ、従来どおりの生カウント方式になる
+        /// 渡さない (あるいは同一ユニティグ標本が無い) 場合は較正器が使えないものとして扱われ、従来どおりの生カウント方式になる
         /// </param>
         /// <param name="p_r_mer検証器">
         /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/>
         /// 詳細は UnitigGraph.V_解決_短い反復 を参照
         /// </param>
         /// <param name="p_GFAパス">
-        /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを
-        /// GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
+        /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
         /// </param>
         public void V_結合_コンティグ(string p_コンティグパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null)
         {
@@ -105,7 +103,7 @@ namespace Tsumiki.Core
             var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数);
 
             // 1 歩だけを見る相互一意性の判定では決めきれなかった分岐を、
-            // 数kb先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
+            // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
             // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
             // ペアエンドの証拠と整合する、という状況を拾える
             var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器);
@@ -148,10 +146,10 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// リード隣接・ペア経路から、辺選択に使う支持数 (逆鎖対称に集計) と
-        /// 反復解決に使うペア連結を組み立てる
+        /// リード隣接・ペア経路から、辺選択に使う支持数 (逆鎖対称に集計) と反復解決に使うペア連結を組み立てる
         /// </summary>
         /// <param name="p_グラフ"></param>
+        /// <returns></returns>
         private (Dictionary<(int, int), ulong> A_支持, Dictionary<(int, int), ulong> A_ペア連結) Get_辺重み(UnitigGraph p_グラフ)
         {
             // リード由来の支持数を逆鎖対称に集計する
@@ -165,10 +163,10 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                var v = Get_頂点番号(l_始点);
-                var w = Get_頂点番号(l_終点);
-                l_支持[(v, w)] = l_支持.GetValueOrDefault((v, w)) + l_件数;
-                l_支持[(w ^ 1, v ^ 1)] = l_支持.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
+                var l_始点番号 = Get_頂点番号(l_始点);
+                var l_終点番号 = Get_頂点番号(l_終点);
+                l_支持[(l_始点番号, l_終点番号)] = l_支持.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
+                l_支持[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_支持.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
             }
 
             // 1 本のリードでは跨げない長さの反復も、フラグメント長なら跨げる
@@ -182,13 +180,13 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
-                var v = Get_頂点番号(l_始点);
-                var w = Get_頂点番号(l_終点);
+                var l_始点番号 = Get_頂点番号(l_始点);
+                var l_終点番号 = Get_頂点番号(l_終点);
                 var l_件数 = (ulong)l_標本.Count;
-                l_支持[(v, w)] = l_支持.GetValueOrDefault((v, w)) + l_件数;
-                l_支持[(w ^ 1, v ^ 1)] = l_支持.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
-                l_ペア連結[(v, w)] = l_ペア連結.GetValueOrDefault((v, w)) + l_件数;
-                l_ペア連結[(w ^ 1, v ^ 1)] = l_ペア連結.GetValueOrDefault((w ^ 1, v ^ 1)) + l_件数;
+                l_支持[(l_始点番号, l_終点番号)] = l_支持.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
+                l_支持[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_支持.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
+                l_ペア連結[(l_始点番号, l_終点番号)] = l_ペア連結.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
+                l_ペア連結[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_ペア連結.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
                 l_ペア支持を足した数++;
             }
             Logger.V_出力(メッセージID.分岐選択の重み内訳, this._リード隣接.Count, l_ペア支持を足した数);
@@ -209,11 +207,9 @@ namespace Tsumiki.Core
         /// <param name="p_r_mer検証器"></param>
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
         /// <remarks>
-        /// 相互一意性を課す以上、再合流点の入次数が 2 以上のまま残っているとその経路全体が
-        /// 結合されなくなるため、先に枝を 1 本に絞っておく必要がある<br/>
+        /// 相互一意性を課す以上、再合流点の入次数が 2 以上のまま残っているとその経路全体が結合されなくなるため、先に枝を 1 本に絞っておく必要がある<br/>
         /// バブル除去と反復解決は 1 回ずつでは互いを取りこぼす<br/>
-        /// バブルを潰すと隣接構造が変わって新たな反復 (入次数 2・出次数 2) が
-        /// 露出することがあり、逆に反復を解きほぐすと新たに単純化できるバブルが現れることがある<br/>
+        /// バブルを潰すと隣接構造が変わって新たな反復 (入次数 2 ・出次数 2) が露出することがあり、逆に反復を解きほぐすと新たに単純化できるバブルが現れることがある<br/>
         /// どちらも変化が無くなるまで (MEGAHIT の cleaning_rounds に倣い既定 5 ラウンドを上限に) 交互に繰り返す
         /// </remarks>
         private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_ユニティグ配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
@@ -254,6 +250,7 @@ namespace Tsumiki.Core
         /// <param name="p_コピー数"></param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
+        /// <returns></returns>
         private int[] Get_辺選択(UnitigGraph p_グラフ, Dictionary<(int, int), ulong> p_支持, 証拠較正器 p_較正器, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数)
         {
             var l_選択 = new int[p_グラフ.A_出辺.Count];
@@ -333,8 +330,7 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// v→w を結合してよいのは v の唯一の行き先が w で、かつ w の唯一の
-        /// 来訪元が v のときだけ (後者は逆鎖対称性より 選択[w^1] == v^1)
+        /// v→w を結合してよいのは v の唯一の行き先が w で、かつ w の唯一の来訪元が v のときだけ (後者は逆鎖対称性より 選択[w^1] == v^1)
         /// </summary>
         /// <param name="p_グラフ"></param>
         /// <param name="p_選択"></param>
@@ -342,6 +338,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// これを欠くと、同じ行き先を指す複数の unitig のうち先着だけが 結合され、残りが根拠なく千切れる
         /// </remarks>
+        /// <returns></returns>
         private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数)
         {
             var l_結合 = new int[p_グラフ.A_出辺.Count];
@@ -350,8 +347,8 @@ namespace Tsumiki.Core
             var l_反復通り抜けで棄却した数 = 0;
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
-                var w = p_選択[v];
-                if (w < 0 || p_選択[w ^ 1] != (v ^ 1))
+                var l_終点 = p_選択[v];
+                if (l_終点 < 0 || p_選択[l_終点 ^ 1] != (v ^ 1))
                 {
                     continue;
                 }
@@ -360,12 +357,12 @@ namespace Tsumiki.Core
                 // 片側だけ許すと結合の対称性が
                 // 崩れ、walk の始点判定が壊れるため、
                 // どちらかが通り抜け不可なら対ごと採用しない
-                if (!p_グラフ.Get_通り抜けてよいか(p_コピー数, v) || !p_グラフ.Get_通り抜けてよいか(p_コピー数, w ^ 1))
+                if (!p_グラフ.Get_通り抜けてよいか(p_コピー数, v) || !p_グラフ.Get_通り抜けてよいか(p_コピー数, l_終点 ^ 1))
                 {
                     l_反復通り抜けで棄却した数++;
                     continue;
                 }
-                l_結合[v] = w;
+                l_結合[v] = l_終点;
                 l_結合数++;
             }
 
@@ -375,13 +372,13 @@ namespace Tsumiki.Core
             // 他に出入りが無い孤立した頂点に限って結合として明示し、
             // walk に環として閉じさせる (閉じないと重なりの k-1 塩基が余分に残り、環状であることも分からないまま線状の断片になる)
             var l_孤立した環の数 = 0;
-            foreach (var v in p_グラフ.A_自己ループ)
+            foreach (var l_始点 in p_グラフ.A_自己ループ)
             {
-                if (l_結合[v] != -1 || p_グラフ.A_出辺[v].Count != 0 || p_グラフ.Get_入次数(v) != 0)
+                if (l_結合[l_始点] != -1 || p_グラフ.A_出辺[l_始点].Count != 0 || p_グラフ.Get_入次数(l_始点) != 0)
                 {
                     continue;
                 }
-                l_結合[v] = v;
+                l_結合[l_始点] = l_始点;
                 l_孤立した環の数++;
             }
 

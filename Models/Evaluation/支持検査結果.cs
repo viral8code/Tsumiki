@@ -3,6 +3,10 @@
     /// <summary>
     /// 出した配列がリードに裏付けられているかの検査結果
     /// </summary>
+    /// <param name="A_r長"></param>
+    /// <param name="A_調べた位置数"></param>
+    /// <param name="A_支持のない位置数"></param>
+    /// <param name="A_区間"></param>
     internal readonly record struct 支持検査結果(int A_r長, long A_調べた位置数, long A_支持のない位置数, IReadOnlyList<支持のない区間> A_区間)
     {
         #region カスタムプロパティ

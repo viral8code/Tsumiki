@@ -17,8 +17,7 @@ namespace Tsumiki.Commons
         /// 控えの上限
         /// </summary>
         /// <remarks>
-        /// 通常は一時ディレクトリを作るまでの数十行しか溜まらないが、
-        /// ファイルを開かないまま使われ続けても際限なく積まないようにする
+        /// 通常は一時ディレクトリを作るまでの数十行しか溜まらないが、ファイルを開かないまま使われ続けても際限なく積まないようにする
         /// </remarks>
         private const int 控えの上限 = 10_000;
 
@@ -48,8 +47,7 @@ namespace Tsumiki.Commons
         /// 一時ディレクトリを作る前に出た行の控え
         /// </summary>
         /// <remarks>
-        /// Phred の推定やパラメータ一覧はディレクトリの用意より前に出るため、
-        /// そのままでは記録から漏れる
+        /// Phred の推定やパラメータ一覧はディレクトリの用意より前に出るため、そのままでは記録から漏れる
         /// </remarks>
         private static readonly List<string> _書き出し待ち = [];
 
@@ -84,8 +82,7 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_一時ディレクトリ"></param>
         /// <remarks>
-        /// 既にあれば追記する
-        /// (再開したときに前回までの経過が消えないようにする)
+        /// 既にあれば追記する (再開したときに前回までの経過が消えないようにする)
         /// </remarks>
         public static void V_開始_ファイル出力(string p_一時ディレクトリ)
         {
@@ -192,11 +189,10 @@ namespace Tsumiki.Commons
         /// この場を抜けるまで、画面にもファイルにも何も出さない
         /// </summary>
         /// <remarks>
-        /// 局所アセンブリのように、小さな使い捨ての処理を数百回繰り返す
-        /// 区間で使う<br/>
-        /// 1 回あたりの索引の統計は、集めても読む意味が無い割に
-        /// 本来のログを埋め尽くす (実データでは k=21 だけで千行を超えた)
+        /// 局所アセンブリのように、小さな使い捨ての処理を数百回繰り返す区間で使う<br/>
+        /// 1 回あたりの索引の統計は、集めても読む意味が無い割に本来のログを埋め尽くす (実データでは k=21 だけで千行を超えた)
         /// </remarks>
+        /// <returns></returns>
         public static IDisposable V_止める_記録()
         {
             return new 記録の休止();
@@ -268,6 +264,7 @@ namespace Tsumiki.Commons
         /// 行頭の目印で決まる<br/>
         /// 目印を持たない行 (進行状況の見出しなど) は標準扱いとする
         /// </remarks>
+        /// <returns></returns>
         private static ログ水準 Get_水準(string p_行)
         {
             return p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal)

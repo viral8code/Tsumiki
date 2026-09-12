@@ -7,10 +7,8 @@ namespace Tsumiki.Commons
     /// </summary>
     /// <remarks>
     /// <see cref="Messages"/> から引く<br/>
-    /// 言語を増やすときは、その言語の辞書をここに足して <see cref="Get_辞書"/> に
-    /// 繋ぐだけでよい<br/>
-    /// 訳が無い ID は英語にそのまま落ちるので、部分的に訳した
-    /// 状態でも表示が壊れない
+    /// 言語を増やすときは、その言語の辞書をここに足して <see cref="Get_辞書"/> に繋ぐだけでよい<br/>
+    /// 訳が無い ID は英語にそのまま落ちるので、部分的に訳した状態でも表示が壊れない
     /// </remarks>
     internal static class MessageCatalog
     {
@@ -727,6 +725,7 @@ namespace Tsumiki.Commons
         /// <remarks>
         /// 指定言語に無ければ英語を返す
         /// </remarks>
+        /// <returns></returns>
         public static string Get_書式(言語 p_言語, メッセージID p_ID)
         {
             var l_辞書 = Get_辞書(p_言語);
@@ -741,6 +740,7 @@ namespace Tsumiki.Commons
         /// <remarks>
         /// 訳の入れ忘れの検査に使う
         /// </remarks>
+        /// <returns></returns>
         public static bool Get_訳があるか(言語 p_言語, メッセージID p_ID)
         {
             return Get_辞書(p_言語)?.ContainsKey(p_ID) == true;
@@ -757,6 +757,7 @@ namespace Tsumiki.Commons
         /// <remarks>
         /// まだ用意していない言語は null
         /// </remarks>
+        /// <returns></returns>
         private static Dictionary<メッセージID, string>? Get_辞書(言語 p_言語)
         {
             return p_言語 switch

@@ -13,14 +13,10 @@ namespace Tsumiki.Cores.Evaluation
     /// </summary>
     /// <remarks>
     /// k を変えると壊れ方が逆になる<br/>
-    /// 低い k は反復配列を潰して短く切れ、
-    /// 高い k はカバレッジが薄くなってグラフが千切れる<br/>
-    /// したがって片方が
-    /// 途切れている場所を、もう片方が繋いでいることがある<br/>
-    /// 最も良い 1 本を骨格に選び、他の k の配列がその骨格の 2 本を跨いでいる箇所を
-    /// 隣接の証拠として集める<br/>
-    /// 採否は相互一意性で判定し、跨いだ配列を
-    /// そのまま繋ぎ目に使う
+    /// 低い k は反復配列を潰して短く切れ、高い k はカバレッジが薄くなってグラフが千切れる<br/>
+    /// したがって片方が途切れている場所を、もう片方が繋いでいることがある<br/>
+    /// 最も良い 1 本を骨格に選び、他の k の配列がその骨格の 2 本を跨いでいる箇所を隣接の証拠として集める<br/>
+    /// 採否は相互一意性で判定し、跨いだ配列をそのまま繋ぎ目に使う
     /// </remarks>
     internal static class AssemblyMerger
     {
@@ -30,8 +26,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 骨格側の末端でアンカーを探す長さ
         /// </summary>
         /// <remarks>
-        /// ここより内側でしか一致しない配列は、
-        /// 末端を跨いでいる証拠にならない
+        /// ここより内側でしか一致しない配列は、末端を跨いでいる証拠にならない
         /// </remarks>
         private const int 末端とみなす長さ = 2000;
 
@@ -39,9 +34,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 橋渡しとして認める最大の挟み込み長
         /// </summary>
         /// <remarks>
-        /// これを超える隙間を 1 本の配列で
-        /// 埋めるのは、骨格側が丸ごと取りこぼした領域を持ち込むことになり、
-        /// 骨格を選んだ判断と矛盾する
+        /// これを超える隙間を 1 本の配列で埋めるのは、骨格側が丸ごと取りこぼした領域を持ち込むことになり、骨格を選んだ判断と矛盾する
         /// </remarks>
         private const int 橋渡し長の上限 = 50_000;
 
@@ -49,10 +42,8 @@ namespace Tsumiki.Cores.Evaluation
         /// 連結を認めるために必要な、独立に同じ隣接を主張した k の数
         /// </summary>
         /// <remarks>
-        /// 骨格が途切れているのは、そこで繋ぐ根拠が足りないと判断した結果である
-        /// ことが多い<br/>
-        /// 1 つの k の 1 本の配列だけでその判断を覆すと、その配列自身が
-        /// 誤アセンブリだった場合にそのまま持ち込むことになる
+        /// 骨格が途切れているのは、そこで繋ぐ根拠が足りないと判断した結果であることが多い<br/>
+        /// 1 つの k の 1 本の配列だけでその判断を覆すと、その配列自身が誤アセンブリだった場合にそのまま持ち込むことになる
         /// </remarks>
         private const int 必要な独立支持数の既定値 = 2;
 
@@ -71,6 +62,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 繋げた箇所が 1 つも無ければ false を返す (その場合、出力は行わない)
         /// </remarks>
+        /// <returns></returns>
         public static bool V_統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = 必要な独立支持数の既定値)
         {
             var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
@@ -110,6 +102,7 @@ namespace Tsumiki.Cores.Evaluation
         /// FASTA から名前と配列の一覧を読み込む
         /// </summary>
         /// <param name="p_パス"></param>
+        /// <returns></returns>
         private static (List<string> A_名前, List<string> A_配列) Get_配列一覧(string p_パス)
         {
             List<string> l_名前 = [];
@@ -125,14 +118,14 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 骨格の各配列の両端について、アンカー k-mer から
-        /// (配列番号, その k-mer の開始位置, 順鎖で一致したか) を引ける索引を作る
+        /// 骨格の各配列の両端について、アンカー k-mer から (配列番号, その k-mer の開始位置, 順鎖で一致したか) を引ける索引を作る
         /// </summary>
         /// <param name="p_骨格配列"></param>
         /// <param name="p_アンカーk長"></param>
         /// <remarks>
         /// 複数の配列に現れる k-mer は行き先を一意に決められないため捨てる
         /// </remarks>
+        /// <returns></returns>
         private static Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_順鎖か)> Get_骨格索引(List<string> p_骨格配列, int p_アンカーk長)
         {
             Dictionary<UInt128, (int, int, bool)> l_索引 = [];
@@ -210,13 +203,13 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 他の k の配列を走査し、骨格の異なる 2 本の末端を順に跨いでいるものを
-        /// 隣接の証拠として拾う
+        /// 他の k の配列を走査し、骨格の異なる 2 本の末端を順に跨いでいるものを隣接の証拠として拾う
         /// </summary>
         /// <param name="p_他"></param>
         /// <param name="p_索引"></param>
         /// <param name="p_骨格配列"></param>
         /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
         private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_順鎖か)> p_索引, List<string> p_骨格配列, int p_アンカーk長)
         {
             List<橋渡し候補> l_結果 = [];
@@ -250,9 +243,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_由来のk長"></param>
         /// <remarks>
-        /// 切り替わりの直前・直後の当たりが、それぞれの骨格配列の「出口」と
-        /// 「入口」に当たっているときだけ隣接の証拠になる
+        /// 切り替わりの直前・直後の当たりが、それぞれの骨格配列の「出口」と「入口」に当たっているときだけ隣接の証拠になる
         /// </remarks>
+        /// <returns></returns>
         private static IEnumerable<橋渡し候補> Get_連続する2本の跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
         {
             for (var i = 1; i < p_当たり.Count; i++)
@@ -295,6 +288,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 順鎖で当たって末尾側にあるなら 2 i、逆鎖で当たって先頭側にあるなら 2 i+1
         /// </remarks>
+        /// <returns></returns>
         private static int? Get_出口頂点((int A_自分の位置, int A_配列番号, int A_位置, bool A_同じ向きか) p_当たり, List<string> p_骨格配列, int p_アンカーk長)
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
@@ -323,11 +317,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格の本数"></param>
         /// <param name="p_必要な独立支持数"></param>
         /// <remarks>
-        /// 始点から見て行き先が 1 つに定まり、かつ
-        /// 終点から見た来訪元も 1 つに定まるときだけ採用する<br/>
-        /// これを課さないと、
-        /// 同じ行き先を指す複数の候補のうち先着だけが繋がれ、残りが根拠なく落ちる
+        /// 始点から見て行き先が 1 つに定まり、かつ終点から見た来訪元も 1 つに定まるときだけ採用する<br/>
+        /// これを課さないと、同じ行き先を指す複数の候補のうち先着だけが繋がれ、残りが根拠なく落ちる
         /// </remarks>
+        /// <returns></returns>
         private static Dictionary<int, 橋渡し候補> Get_相互一意な橋渡し(List<橋渡し候補> p_候補, int p_骨格の本数, int p_必要な独立支持数)
         {
             // 同じ隣接を何個の k が独立に主張しているかを数える
@@ -469,6 +462,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// あれば連結の起点にはしない
         /// </remarks>
+        /// <returns></returns>
         private static bool Get_来訪元があるか(Dictionary<int, 橋渡し候補> p_確定, int p_番号)
         {
             // v へ入る辺は、双子 v^1 から出る辺と同値

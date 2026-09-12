@@ -49,12 +49,12 @@
         /// <summary>
         /// バイト列のハッシュ値を返す
         /// </summary>
-        /// <param name="p_obj">対象のバイト列</param>
+        /// <param name="p_対象">対象のバイト列</param>
         /// <returns>ハッシュ値</returns>
-        public int GetHashCode(byte[] p_obj)
+        public int GetHashCode(byte[] p_対象)
         {
             var l_ハッシュ = 17;
-            foreach (var l_バイト in p_obj)
+            foreach (var l_バイト in p_対象)
             {
                 l_ハッシュ = (l_ハッシュ * 31) + l_バイト;
             }

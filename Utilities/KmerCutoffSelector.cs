@@ -9,13 +9,9 @@ namespace Tsumiki.Utilities
     /// <remarks>
     /// 方針は「エラー由来が集合を支配しない範囲でできるだけ低く」<br/>
     /// まず 2 成分混合モデル (<see cref="KmerSpectrumMixtureModel"/>) の適合を試みる<br/>
-    /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど
-    /// 谷が視認できないデータでも働く<br/>
-    /// 適合に失敗した場合のみ、谷検出
-    /// (<see cref="KmerHistogram.Get_推奨カットオフ"/>)にフォールバックする<br/>
-    /// 混合モデルが適合できた場合、その単一コピー平均・信頼下限を
-    /// ConfigurationManager.A_スペクトルモデル に公開し、CopyNumberEstimator の
-    /// 単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする
+    /// これは谷の目視判定に頼らず事後誤り確率から閾値を導くため、低カバレッジなど谷が視認できないデータでも働く<br/>
+    /// 適合に失敗した場合のみ、谷検出 (<see cref="KmerHistogram.Get_推奨カットオフ"/>) にフォールバックする<br/>
+    /// 混合モデルが適合できた場合、その単一コピー平均・信頼下限をConfigurationManager.A_スペクトルモデル に公開し、CopyNumberEstimator の単一コピー基準値と GraphSimplifier の tip 判定が同じモデルを共有できるようにする
     /// </remarks>
     internal static class KmerCutoffSelector
     {
@@ -27,8 +23,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_引数"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <remarks>
-        /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルを
-        /// もう一度走査するが、明示指定時はこの走査自体を行わない
+        /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルをもう一度走査するが、明示指定時はこの走査自体を行わない
         /// </remarks>
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
@@ -51,8 +46,7 @@ namespace Tsumiki.Utilities
                 {
                     p_引数.Set_推定kmerカットオフ(l_混合モデル.A_カットオフ);
                 }
-                Logger.V_出力(
-                    メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_混合モデル.A_信頼下限, l_混合モデル.A_反復回数);
+                Logger.V_出力(メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_混合モデル.A_信頼下限, l_混合モデル.A_反復回数);
                 return;
             }
 
