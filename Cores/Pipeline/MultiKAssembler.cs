@@ -81,7 +81,7 @@ namespace Tsumiki.Cores.Pipeline
 
                 Logger.V_出力_空行();
                 Logger.V_出力(メッセージID.kの開始見出し, l_k長);
-                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_Is引き継ぎ ? l_引き継ぎ : null, p_引数.A_Is引き継ぎ ? l_次への引き継ぎ : null, l_合成リードの控え, p_原入力);
+                var l_結果 = AssemblyPipeline.Get_実行結果(p_引数, l_k長, p_一時ディレクトリ, p_リード長, p_引数.A_Is引き継ぎ ? l_引き継ぎ : null, Is次段引き継ぎ必要(p_引数, l_k候補, l_k長) ? l_次への引き継ぎ : null, l_合成リードの控え, p_原入力);
                 if (l_結果 is null)
                 {
                     Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
@@ -186,6 +186,18 @@ namespace Tsumiki.Cores.Pipeline
                 _ = l_候補.Add(Get_奇数((int)Math.Round(l_下限 * Math.Pow(l_比, i))));
             }
             return [.. l_候補];
+        }
+
+        /// <summary>
+        /// 次段で使用する引き継ぎ配列を準備する必要があるか判定する
+        /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_k候補"></param>
+        /// <param name="p_現在k"></param>
+        /// <returns></returns>
+        internal static bool Is次段引き継ぎ必要(Parameters p_引数, IReadOnlyList<int> p_k候補, int p_現在k)
+        {
+            return p_引数.A_Is引き継ぎ && p_k候補.Any(x => x > p_現在k);
         }
 
         /// <summary>

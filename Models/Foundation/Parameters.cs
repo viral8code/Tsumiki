@@ -481,6 +481,35 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// CLI の実行機能をプロファイルで設定する
+        /// </summary>
+        /// <param name="p_名前"></param>
+        public void V_適用_実行プロファイル(string p_名前)
+        {
+            var l_Is標準 = p_名前 switch
+            {
+                "standard" => true,
+                "legacy" => false,
+                _ => throw new ArgumentException($"Unknown profile \"{p_名前}\": expected standard or legacy"),
+            };
+
+            this.A_Is前処理 = l_Is標準;
+            this.A_Isエラー訂正 = l_Is標準;
+            this.A_Isマルチk = l_Is標準;
+            this.A_Is引き継ぎ = true;
+            this.A_IsSuperRead作成 = l_Is標準;
+            this.A_Is反復rMer検証 = l_Is標準;
+            this.A_Is局所アセンブリ = l_Is標準;
+            this.A_IsGFA出力 = l_Is標準;
+            this.A_Isポリッシュ = l_Is標準;
+            this.A_Is環状閉鎖検証 = l_Is標準;
+            this.A_Is救済kmer使用 = l_Is標準;
+            this.A_Isマージ = false;
+            this.A_コピー数基準の出所 = l_Is標準 ? Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted : Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum;
+            this.A_Is低カバレッジ端トリミング = true;
+        }
+
+        /// <summary>
         /// 推定結果から k 長を設定する
         /// </summary>
         /// <param name="p_k長">推定して得られた k 長</param>

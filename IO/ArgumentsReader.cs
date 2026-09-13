@@ -18,6 +18,7 @@ namespace Tsumiki.IO
         public static Parameters Get_実行時引数(string[] p_引数列)
         {
             var l_引数 = new Parameters();
+            l_引数.V_適用_実行プロファイル("standard");
             try
             {
                 var l_位置 = 0;
@@ -26,6 +27,9 @@ namespace Tsumiki.IO
                     var l_キー = p_引数列[l_位置++];
                     switch (l_キー)
                     {
+                        case Consts.引数キー.実行プロファイル:
+                            l_引数.V_適用_実行プロファイル(p_引数列[l_位置++]);
+                            break;
                         case Consts.引数キー.リード1のパス:
                             l_引数.A_リード1のパス = p_引数列[l_位置++];
                             break;

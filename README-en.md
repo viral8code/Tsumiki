@@ -1,4 +1,6 @@
-﻿# Tsumiki
+# Tsumiki
+
+The default CLI profile is standard. `Tsumiki.exe -1 reads.1.fq -2 reads.2.fq -t run` enables preprocessing, correction, multi-k, SuperReads, repeat verification, local assembly, GFA, polishing, closure checks and mercy rescue. The copy baseline is weighted; end trimming is on and merging is off. Use `-profile legacy` for the previous opt-in defaults. Put the profile before individual overrides such as `-cnb spectrum`, `-nt` or `-mg`. `-k 49` selects a single k. The final k does not generate carry-over SuperReads. The weighted default is an operational choice, not a claim of validated whole-genome accuracy improvement.
 
 Tsumiki is an experimental genome assembler for single-end and paired-end short reads. It builds a de Bruijn graph from trusted k-mers, resolves supported connections, and produces contigs, scaffolds, and an evidence report. The implementation is written in C#.
 
@@ -76,18 +78,18 @@ Input files must be FASTQ, optionally gzip-compressed. Supply mates in correspon
 | `-pu <ratio>` | Dominance required for paired connections | 0.8 |
 | `-pc <n>` | Minimum pair support for short-repeat resolution | 10 |
 | `-mode <conservative|normal|bold>` | Preset for pair thresholds | `normal` |
-| `-pp` | Adapter read-through trimming and overlap correction | Off |
-| `-ec` | k-mer-spectrum read correction | Off |
-| `-mk` | Generate and evaluate multiple k candidates | Off |
+| `-pp` | Adapter read-through trimming and overlap correction | On |
+| `-ec` | k-mer-spectrum read correction | On |
+| `-mk` | Generate and evaluate multiple k candidates | On |
 | `-nc` | Disable sequence carry-over between k runs | Carry-over enabled |
-| `-sr` | Carry synthetic sequences from overlapping pairs | Off |
+| `-sr` | Carry synthetic sequences from overlapping pairs | On |
 | `-mg` | Merge sequence from alternative k assemblies | Off |
-| `-rv` | Require exact r-mer evidence at both repeat junctions | Off |
-| `-la` | Local gap assembly, retrying ambiguous regions at longer k | Off |
-| `-my` | Rescue some low-count k-mers between trusted anchors | Off |
-| `-po` | Polish substitutions in the final assembly | Off |
-| `-cc` | Check reads spanning circular junctions | Off |
-| `-gfa` | Write a GFA1 unitig graph | Off |
+| `-rv` | Require exact r-mer evidence at both repeat junctions | On |
+| `-la` | Local gap assembly, retrying ambiguous regions at longer k | On |
+| `-my` | Rescue some low-count k-mers between trusted anchors | On |
+| `-po` | Polish substitutions in the final assembly | On |
+| `-cc` | Check reads spanning circular junctions | On |
+| `-gfa` | Write a GFA1 unitig graph | On |
 | `-t <path>` | Output and intermediate directory | `temp` |
 | `-rs` | Reuse verified preprocessing/correction outputs | Off |
 | `-rt` | Remove recognized intermediates after a successful run | Off |

@@ -17,6 +17,20 @@ namespace Tsumiki.Tests.Core
         #region 公開メソッド
 
         /// <summary>
+        /// 最後の k と引き継ぎ無効時には次段用処理を要求しないことを検証する
+        /// </summary>
+        [Fact]
+        public void V_最後のkではSuperRead用の引き継ぎを要求しない()
+        {
+            var l_引数 = new Parameters();
+            Assert.False(MultiKAssembler.Is次段引き継ぎ必要(l_引数, [49], 49));
+            Assert.True(MultiKAssembler.Is次段引き継ぎ必要(l_引数, [21, 49], 21));
+            Assert.False(MultiKAssembler.Is次段引き継ぎ必要(l_引数, [21, 49], 49));
+            l_引数.A_Is引き継ぎ = false;
+            Assert.False(MultiKAssembler.Is次段引き継ぎ必要(l_引数, [21, 49], 21));
+        }
+
+        /// <summary>
         /// 一般的な Illumina リードでは、実測で最適だった範囲の両端を候補が含むことを確かめる
         /// </summary>
         [Fact]

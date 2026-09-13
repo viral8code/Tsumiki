@@ -343,6 +343,11 @@
             public const string コピー数基準 = "-cnb";
 
             /// <summary>
+            /// 実行機能のプリセット
+            /// </summary>
+            public const string 実行プロファイル = "-profile";
+
+            /// <summary>
             /// 低カバレッジ端トリミングなし
             /// </summary>
             public const string 低カバレッジ端トリミングなし = "-nt";

@@ -49,6 +49,8 @@ namespace Tsumiki.Commons
         public static string Get_ヘルプ()
         {
             var l_文 = new StringBuilder();
+            _ = l_文.AppendLine("Default CLI profile: standard (preprocess, correction, multi-k, carry-over, SuperReads, repeat verification, local assembly, GFA, polishing, closure verification, mercy rescue; copy baseline=weighted; end trimming=on; merge=off)")
+                .AppendLine("-profile standard|legacy : reset assembly features; put before individual overrides (legacy restores the previous opt-in defaults)");
             _ = l_文.AppendLine(Get_概要())
                 .AppendLine(Messages.Get_文言(メッセージID.ヘルプ_使い方, Consts.引数キー.リード1のパス, Consts.引数キー.リード2のパス));
 

@@ -33,6 +33,46 @@ namespace Tsumiki.Tests.IO
         #region 公開メソッド
 
         /// <summary>
+        /// 入力だけの CLI が標準機能を有効にすることを検証する
+        /// </summary>
+        [Fact]
+        public void V_入力だけで標準プロファイルを使用する()
+        {
+            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス]);
+            Assert.True(l_引数.A_Is前処理);
+            Assert.True(l_引数.A_Isエラー訂正);
+            Assert.True(l_引数.A_Isマルチk);
+            Assert.True(l_引数.A_Is引き継ぎ);
+            Assert.True(l_引数.A_IsSuperRead作成);
+            Assert.True(l_引数.A_Is反復rMer検証);
+            Assert.True(l_引数.A_Is局所アセンブリ);
+            Assert.True(l_引数.A_IsGFA出力);
+            Assert.True(l_引数.A_Isポリッシュ);
+            Assert.True(l_引数.A_Is環状閉鎖検証);
+            Assert.True(l_引数.A_Is救済kmer使用);
+            Assert.False(l_引数.A_Isマージ);
+            Assert.True(l_引数.A_Is低カバレッジ端トリミング);
+            Assert.Equal(コピー数基準の出所.Weighted, l_引数.A_コピー数基準の出所);
+        }
+
+        /// <summary>
+        /// 従来プロファイルと後続の個別指定を検証する
+        /// </summary>
+        [Fact]
+        public void V_従来プロファイルに個別設定を追加できる()
+        {
+            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-profile", "legacy", "-cnb", "weighted", "-nt"]);
+            Assert.False(l_引数.A_Is前処理);
+            Assert.False(l_引数.A_Isエラー訂正);
+            Assert.False(l_引数.A_Isマルチk);
+            Assert.False(l_引数.A_IsSuperRead作成);
+            Assert.False(l_引数.A_Isポリッシュ);
+            Assert.Equal(コピー数基準の出所.Weighted, l_引数.A_コピー数基準の出所);
+            Assert.False(l_引数.A_Is低カバレッジ端トリミング);
+            Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-profile", "invalid"]));
+        }
+
+        /// <summary>
         /// 一時ディレクトリを片付ける
         /// </summary>
         public void Dispose()
