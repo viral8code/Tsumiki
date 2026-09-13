@@ -413,6 +413,14 @@ namespace Tsumiki.Models.Foundation
             }
         }
 
+        /// <summary>
+        /// v0.2 仕上げ経路の設定
+        /// </summary>
+        /// <remarks>
+        /// T01 では内部からだけ設定し、旧 CLI の引数なし動作を維持する
+        /// </remarks>
+        public 仕上げ設定 A_仕上げ設定 { get; set; } = new();
+
         #endregion
 
         #region 公開メソッド
@@ -425,9 +433,14 @@ namespace Tsumiki.Models.Foundation
         {
             var l_複製 = (Parameters)this.MemberwiseClone();
             l_複製._k長一覧 = [.. this._k長一覧];
+            l_複製.A_仕上げ設定 = new()
+            {
+                A_Is有効 = this.A_仕上げ設定.A_Is有効,
+                A_schemaバージョン = this.A_仕上げ設定.A_schemaバージョン,
+                A_設定revision = this.A_仕上げ設定.A_設定revision,
+            };
             return l_複製;
         }
-
 
         /// <summary>
         /// k の一覧を設定する
