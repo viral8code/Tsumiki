@@ -75,7 +75,7 @@ namespace Tsumiki.Tests.Core
             var l_ユニティグ群 = new List<string>();
             foreach (var l_kmer in l_simplifiedFirstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_ユニティグ(l_kmer);
+                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;
@@ -112,6 +112,23 @@ namespace Tsumiki.Tests.Core
             _ = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2);
 
             Assert.Equal(l_before, l_インデックス.Get_信頼kmer一覧().Count());
+        }
+
+        /// <summary>
+        /// E2 では低カバレッジ端トリミングだけを独立に止められることを確かめる
+        /// </summary>
+        [Fact]
+        public void V_E2は端トリミングを止めてもtip除去の判定を変えない()
+        {
+            const string l_主配列 = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
+            const int l_k長 = 8;
+
+            using var l_インデックス = this.V_構築_tip付き索引(l_主配列, l_k長, 20, 4);
+            var l_前 = l_インデックス.Get_信頼kmer一覧().Count();
+
+            _ = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2, p_Is低カバレッジ端トリミング: false);
+
+            Assert.True(l_インデックス.Get_信頼kmer一覧().Count() < l_前);
         }
 
         /// <summary>
@@ -171,7 +188,7 @@ namespace Tsumiki.Tests.Core
             var l_ユニティグ群 = new List<string>();
             foreach (var l_kmer in l_simplifiedFirstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_ユニティグ(l_kmer);
+                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;
@@ -217,7 +234,7 @@ namespace Tsumiki.Tests.Core
             var l_ユニティグ群 = new List<string>();
             foreach (var l_kmer in l_firstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_ユニティグ(l_kmer);
+                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;

@@ -67,6 +67,29 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
+        /// N 連続区間で分割した contig の統計を求めて返す
+        /// </summary>
+        /// <param name="p_配列群"></param>
+        /// <remarks>
+        /// scaffold の N50 と実配列 contig の N50 を混同しないため、N が 1 個以上連続する箇所で分割する<br/>
+        /// 空の断片は数えず、大文字小文字の N を同じものとして扱う
+        /// </remarks>
+        /// <returns></returns>
+        public static アセンブリ統計 Get_N分割統計(IEnumerable<string> p_配列群, int p_最小長 = 0)
+        {
+            if (p_最小長 < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(p_最小長));
+            }
+            List<string> l_断片群 = [];
+            foreach (var l_配列 in p_配列群)
+            {
+                l_断片群.AddRange(l_配列.Split(['N', 'n'], StringSplitOptions.RemoveEmptyEntries).Where(x => x.Length >= p_最小長));
+            }
+            return Get_統計(l_断片群);
+        }
+
+        /// <summary>
         /// FASTA から統計を求めて返す
         /// </summary>
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
@@ -97,6 +120,9 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= 比較用の最小長));
             Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, 比較用の最小長, l_絞り込み統計);
+
+            var l_N分割統計 = Get_N分割統計(Get_配列群(p_FASTAパス), 比較用の最小長);
+            Logger.V_出力_そのまま($"[Stats] {p_ラベル} (N-split, >= {比較用の最小長}bp): {l_N分割統計}");
         }
 
         #endregion

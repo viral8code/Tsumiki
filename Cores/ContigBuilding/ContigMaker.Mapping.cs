@@ -392,8 +392,8 @@ namespace Tsumiki.Core
             var l_Is不一致警告済み = false;
             while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
-                var l_データ1 = l_読み込み1.Get_次のリード();
-                var l_データ2 = l_読み込み2.Get_次のリード();
+                var l_データ1 = l_読み込み1.Get_次のレコード();
+                var l_データ2 = l_読み込み2.Get_次のレコード();
 
                 if (Util.Get_ペア共通ID(l_データ1.A_ID) != Util.Get_ペア共通ID(l_データ2.A_ID))
                 {
@@ -404,22 +404,22 @@ namespace Tsumiki.Core
                     }
 
                     // お互いを誤ってペアとして扱わないよう、別々に流す
-                    yield return (l_データ1.A_生リード!, string.Empty);
-                    yield return (l_データ2.A_生リード!, string.Empty);
+                    yield return (l_データ1.A_配列, string.Empty);
+                    yield return (l_データ2.A_配列, string.Empty);
                     continue;
                 }
 
-                yield return (l_データ1.A_生リード!, l_データ2.A_生リード!);
+                yield return (l_データ1.A_配列, l_データ2.A_配列);
             }
 
             // 片方のファイルだけ残っている場合は単一リードとして処理する
             while (l_読み込み1.Has続き())
             {
-                yield return (l_読み込み1.Get_次のリード().A_生リード!, string.Empty);
+                yield return (l_読み込み1.Get_次のレコード().A_配列, string.Empty);
             }
             while (l_読み込み2.Has続き())
             {
-                yield return (l_読み込み2.Get_次のリード().A_生リード!, string.Empty);
+                yield return (l_読み込み2.Get_次のレコード().A_配列, string.Empty);
             }
         }
 
@@ -468,7 +468,7 @@ namespace Tsumiki.Core
             using var l_読み込み = new FastqReader(p_リードパス);
             while (l_読み込み.Has続き())
             {
-                yield return l_読み込み.Get_次のリード().A_生リード!;
+                yield return l_読み込み.Get_次のレコード().A_配列;
             }
         }
 

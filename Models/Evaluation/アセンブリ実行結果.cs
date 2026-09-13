@@ -11,7 +11,7 @@
     /// <param name="A_単一コピー基準値"></param>
     /// <param name="A_GFAパス"></param>
     /// <param name="A_整合性検査"></param>
-    internal record アセンブリ実行結果(int A_k長, string A_unitigパス, string A_contigパス, string? A_scaffoldパス, ulong A_kmerカットオフ, double A_単一コピー基準値, string? A_GFAパス = null, 整合性検査結果? A_整合性検査 = null)
+    internal record アセンブリ実行結果(int A_k長, string A_unitigパス, string A_contigパス, string? A_scaffoldパス, ulong A_kmerカットオフ, double A_単一コピー基準値, string? A_GFAパス = null, 整合性検査結果? A_整合性検査 = null, Tsumiki.Models.UnitigBuilding.コピー数基準の出所 A_実際のコピー数基準 = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum)
     {
         #region カスタムプロパティ
 

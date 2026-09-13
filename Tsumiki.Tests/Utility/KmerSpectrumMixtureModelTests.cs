@@ -10,6 +10,15 @@ namespace Tsumiki.Tests.Utility
     /// </remarks>
     public class KmerSpectrumMixtureModelTests
     {
+        [Fact]
+        public void V_事後誤り確率が観測域で再上昇したら信頼下限をunknownにする()
+        {
+            var l_事後 = new[] { 0.9D, 0.4D, 0.2D, 0.7D };
+            var l_頻度 = new[] { 100D, 80D, 10D, 1D };
+
+            Assert.Equal(ulong.MaxValue, KmerSpectrumMixtureModel.Get_単調な信頼下限(l_事後, l_頻度, 2UL));
+            Assert.Equal(2UL, KmerSpectrumMixtureModel.Get_単調な信頼下限(l_事後, new[] { 100D, 80D, 10D, 0D }, 2UL));
+        }
         #region 公開メソッド
 
         /// <summary>

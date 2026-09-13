@@ -358,6 +358,17 @@ namespace Tsumiki.Utilities
                 : this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
         }
 
+        /// <summary>64 塩基までのパック済み正準キーを引き継ぐ</summary>
+        /// <param name="p_正規形">パック済みのキー</param>
+        /// <param name="p_カバレッジ">未登録の場合に設定する観測回数</param>
+        /// <returns>未登録のキーを追加した場合は true</returns>
+        internal bool Try追加_信頼kmer_パック済み(UInt128 p_正規形, ulong p_カバレッジ)
+        {
+            return this._Is小経路使用
+                ? this._信頼kmer_小!.TryAdd((ulong)p_正規形, p_カバレッジ)
+                : this._信頼kmer_中!.TryAdd(p_正規形, p_カバレッジ);
+        }
+
         /// <summary>
         /// 信頼できる k-mer 集合を走査し、unitig の開始点をすべて再検出する
         /// </summary>

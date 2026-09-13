@@ -22,6 +22,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         private const int IOバッファサイズ = 1 << 20;
 
+        /// <summary>実際の種類数が分かる前に確保する辞書容量の上限</summary>
+        private const int 初期容量の上限 = 16_384;
+
         #endregion
 
         #region 内部変数
@@ -93,7 +96,7 @@ namespace Tsumiki.Utilities
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
             this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
-            this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
+            this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
             this._ファイル連番 = 0;
         }
 
@@ -288,7 +291,7 @@ namespace Tsumiki.Utilities
             }
 
             this._フラッシュ済みファイル.Add(l_ファイル名);
-            this._バッファ = new Dictionary<byte[], ulong>(this._フラッシュ閾値, this._等価比較器);
+            this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
         }
 
         /// <summary>

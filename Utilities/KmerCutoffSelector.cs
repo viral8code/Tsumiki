@@ -39,7 +39,8 @@ namespace Tsumiki.Utilities
                 {
                     p_引数.Set_推定kmerカットオフ(l_混合モデル.A_カットオフ);
                 }
-                Logger.V_出力(メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_混合モデル.A_信頼下限, l_混合モデル.A_反復回数);
+                var l_信頼下限 = l_混合モデル.A_信頼下限 == ulong.MaxValue ? "unknown (non-monotonic posterior)" : l_混合モデル.A_信頼下限.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Logger.V_出力(メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_信頼下限, l_混合モデル.A_反復回数);
                 return;
             }
 

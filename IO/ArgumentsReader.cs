@@ -146,6 +146,14 @@ namespace Tsumiki.IO
                             l_引数.A_Is救済kmer使用 = true;
                             break;
 
+                        case Consts.引数キー.コピー数基準:
+                            l_引数.A_コピー数基準の出所 = Get_コピー数基準の出所(p_引数列[l_位置++]);
+                            break;
+
+                        case Consts.引数キー.低カバレッジ端トリミングなし:
+                            l_引数.A_Is低カバレッジ端トリミング = false;
+                            break;
+
                         case Consts.引数キー.再開:
                             l_引数.A_Is再開 = true;
                             break;
@@ -221,6 +229,21 @@ namespace Tsumiki.IO
                 Consts.ログ水準名.標準 => ログ水準.標準,
                 Consts.ログ水準名.詳細 => ログ水準.詳細,
                 _ => throw new ArgumentException($"Unknown log level \"{p_水準名}\": expected one of {Consts.ログ水準名.最小}, {Consts.ログ水準名.標準}, {Consts.ログ水準名.詳細}"),
+            };
+        }
+
+        /// <summary>
+        /// -cnb に渡された単一コピー基準の出所を解釈する
+        /// </summary>
+        /// <param name="p_出所名"></param>
+        /// <returns></returns>
+        private static Tsumiki.Models.UnitigBuilding.コピー数基準の出所 Get_コピー数基準の出所(string p_出所名)
+        {
+            return p_出所名 switch
+            {
+                "spectrum" => Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum,
+                "weighted" => Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted,
+                _ => throw new ArgumentException($"Unknown copy-number baseline \"{p_出所名}\": expected spectrum or weighted"),
             };
         }
 

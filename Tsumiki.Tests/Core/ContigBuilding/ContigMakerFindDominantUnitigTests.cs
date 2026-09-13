@@ -68,11 +68,11 @@ namespace Tsumiki.Tests.Core
             // unitig 内での終端位置 (70) が返るはず
             var l_read = ユニティグ配列.Substring(40, 30);
 
-            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
+            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
 
-            Assert.Equal(1, l_ヒット.A_ユニティグID); // 正の値 = 順鎖でのヒット
+            Assert.Equal(1, l_ヒット.A_unitigID); // 正の値 = 順鎖でのヒット
             Assert.Equal(70, l_ヒット.A_最終一致終端位置);
-            Assert.Equal(ユニティグ配列.Length, l_ヒット.A_ユニティグ長);
+            Assert.Equal(ユニティグ配列.Length, l_ヒット.A_unitig長);
         }
 
         /// <summary>
@@ -88,9 +88,9 @@ namespace Tsumiki.Tests.Core
             // 元の区間 [40,70) は [100-70, 100-40) = [30,60) に写る
             var l_read = Util.V_逆相補(ユニティグ配列.Substring(40, 30));
 
-            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
+            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
 
-            Assert.Equal(-1, l_ヒット.A_ユニティグID); // 負の値 = 逆鎖でのヒット
+            Assert.Equal(-1, l_ヒット.A_unitigID); // 負の値 = 逆鎖でのヒット
             Assert.Equal(60, l_ヒット.A_最終一致終端位置);
         }
 
@@ -104,9 +104,9 @@ namespace Tsumiki.Tests.Core
 
             var l_read = ユニティグ配列[^20..]; // unitig の末尾 20 bp
 
-            var l_ヒット = l_コンティグ構築.Get_代表ユニティグ(l_read);
+            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
 
-            Assert.Equal(1, l_ヒット.A_ユニティグID);
+            Assert.Equal(1, l_ヒット.A_unitigID);
             Assert.Equal(ユニティグ配列.Length, l_ヒット.A_最終一致終端位置);
             Assert.Equal(0, l_ヒット.A_末尾までの残り長);
         }

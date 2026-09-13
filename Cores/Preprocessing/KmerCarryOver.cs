@@ -72,9 +72,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns></returns>
         public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
+            using var l_計測 = new StageTimer($"carry-over k={p_k長}");
             var l_追加数 = 0;
             var l_処理数 = 0;
             var l_出力済みの区切り = 0UL;
+            int[] l_最小値列 = [];
+            int[] l_待ち行列 = [];
             foreach (var l_引き継ぎ in p_引き継ぎ配列)
             {
                 // -sr を使うと引き継ぎ配列はリードペアの数まで増える
@@ -99,6 +102,33 @@ namespace Tsumiki.Cores.Preprocessing
                 // その位置が現在の窓の左端以降にある間は判定を使い回せる
                 // (無効塩基は稀なので償却 O (n) で済む)
                 var l_塩基列 = Util.V_変換_塩基列(l_引き継ぎ.A_配列);
+                var l_窓数 = l_塩基列.Length - p_k長 + 1;
+                if (l_最小値列.Length < l_窓数)
+                {
+                    l_最小値列 = new int[l_窓数];
+                }
+                if (l_待ち行列.Length < l_引き継ぎ.A_カバレッジ.Length)
+                {
+                    l_待ち行列 = new int[l_引き継ぎ.A_カバレッジ.Length];
+                }
+                V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
+                if (p_k長 <= 64)
+                {
+                    var l_窓 = new RollingKmer(p_k長);
+                    for (var i = 0; i < l_引き継ぎ.A_配列.Length; i++)
+                    {
+                        if (!l_窓.Try追加(l_引き継ぎ.A_配列[i], out var l_キー))
+                        {
+                            continue;
+                        }
+                        var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i - p_k長 + 1], l_引き継ぎ.A_k長, p_k長, p_リード長);
+                        if (l_カバレッジ > 0UL && p_kmerインデックス.Try追加_信頼kmer_パック済み(l_キー.A_下位, l_カバレッジ))
+                        {
+                            l_追加数++;
+                        }
+                    }
+                    continue;
+                }
                 var l_直近の無効塩基位置 = -1;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
                 {
@@ -123,7 +153,7 @@ namespace Tsumiki.Cores.Preprocessing
                         continue;
                     }
 
-                    var l_カバレッジ = Get_引き継ぐカバレッジ(l_引き継ぎ, i, p_k長, p_リード長);
+                    var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i], l_引き継ぎ.A_k長, p_k長, p_リード長);
                     if (l_カバレッジ > 0UL
                         && p_kmerインデックス.Try追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
                     {
@@ -155,19 +185,63 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 l_最小 = Math.Min(l_最小, p_引き継ぎ.A_カバレッジ[i]);
             }
-            if (l_最小 <= 0)
+            return Get_換算カバレッジ(l_最小, p_引き継ぎ.A_k長, p_k長, p_リード長);
+        }
+
+        /// <summary>各窓の最小値を単調な待ち行列で求める</summary>
+        /// <param name="p_値">元のカバレッジ</param>
+        /// <param name="p_幅">窓の幅</param>
+        /// <param name="p_結果">位置ごとの最小値</param>
+        /// <param name="p_待ち行列">元のカバレッジ以上の長さの作業領域</param>
+        internal static void V_計算_最小値列(int[] p_値, int p_幅, Span<int> p_結果, Span<int> p_待ち行列)
+        {
+            var l_先頭 = 0;
+            var l_末尾 = 0;
+            var l_読込位置 = 0;
+            for (var i = 0; i < p_結果.Length; i++)
+            {
+                while (l_先頭 < l_末尾 && p_待ち行列[l_先頭] < i)
+                {
+                    l_先頭++;
+                }
+                var l_終端 = Math.Min(p_値.Length, i + p_幅);
+                while (l_読込位置 < l_終端)
+                {
+                    while (l_先頭 < l_末尾 && p_値[p_待ち行列[l_末尾 - 1]] >= p_値[l_読込位置])
+                    {
+                        l_末尾--;
+                    }
+                    p_待ち行列[l_末尾++] = l_読込位置++;
+                }
+                p_結果[i] = p_幅 <= 0 || i >= p_値.Length || l_先頭 == l_末尾 ? 0 : p_値[p_待ち行列[l_先頭]];
+            }
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>最小カバレッジを次の k の観測本数へ換算する</summary>
+        /// <param name="p_最小">最小カバレッジ</param>
+        /// <param name="p_前k長">前段の k</param>
+        /// <param name="p_k長">次段の k</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <returns>換算したカバレッジ</returns>
+        private static ulong Get_換算カバレッジ(int p_最小, int p_前k長, int p_k長, int? p_リード長)
+        {
+            if (p_最小 <= 0)
             {
                 return 0UL;
             }
 
             if (p_リード長 is not { } l_リード長 || l_リード長 <= p_k長)
             {
-                return (ulong)l_最小;
+                return (ulong)p_最小;
             }
 
-            var l_前段の本数 = l_リード長 - p_引き継ぎ.A_k長 + 1;
+            var l_前段の本数 = l_リード長 - p_前k長 + 1;
             var l_今の本数 = l_リード長 - p_k長 + 1;
-            return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)l_最小 : (ulong)Math.Max(1L, (long)Math.Round((double)l_最小 * l_今の本数 / l_前段の本数));
+            return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)p_最小 : (ulong)Math.Max(1L, (long)Math.Round((double)p_最小 * l_今の本数 / l_前段の本数));
         }
 
         #endregion

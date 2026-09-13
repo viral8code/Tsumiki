@@ -119,7 +119,7 @@ namespace Tsumiki.Tests.Core
 
             // リードを与えなくても、環状の 3 本は各頂点の出次数がちょうど 1 なので
             // 相互一意性を満たし、そのまま 1 周に結合されるはず
-            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
+            l_コンティグ構築.V_結合_Contig(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
 
             List<(string A_ID, string A_配列)> l_コンティグ群 = [];
             using (var l_読み込み = new FastaReader(l_コンティグパス))
@@ -158,7 +158,7 @@ namespace Tsumiki.Tests.Core
 
             var l_コンティグパス = Path.Combine(this._作業ディレクトリ, "contigs_linear.fasta");
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_結合_コンティグ(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
+            l_コンティグ構築.V_結合_Contig(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
 
             List<(string A_ID, string A_配列)> l_コンティグ群 = [];
             using (var l_読み込み = new FastaReader(l_コンティグパス))

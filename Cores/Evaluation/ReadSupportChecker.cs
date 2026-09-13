@@ -161,10 +161,11 @@ namespace Tsumiki.Cores.Evaluation
             _ = Parallel.For(0, p_件数, new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, i =>
             {
                 var l_リード = p_バッチ[i];
-                for (var p = 0; p + p_r長 <= l_リード.Length; p++)
+                var l_窓 = new RollingKmer(p_r長);
+                foreach (var l_塩基 in l_リード)
                 {
-                    if (KmerPacking.TryGet_正規化キー(l_リード, p, p_r長, out var l_正規形)
-                        && p_表.TryGetValue(l_正規形, out var l_番号))
+                    if (l_窓.Try追加(l_塩基, out var l_正規形)
+                        && p_表.TryGetValue(l_正規形.A_下位, out var l_番号))
                     {
                         p_観測状態[l_番号] = 1;
                     }

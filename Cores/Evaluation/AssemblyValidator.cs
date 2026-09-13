@@ -23,6 +23,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>自己検査の結果</returns>
         public static 整合性検査結果? Get_検査結果(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, double p_単一コピー基準値)
         {
+            using var l_計測 = new StageTimer($"assembly-validation k={p_k長}");
             // 逆相補は同一視して数える
             // キーは 2 bit パックした UInt128 で、k が 64 を超えるとパックが収まらないので正規形のハッシュに切り替える
             // 数えるだけで配列を戻さないので、ハッシュで足りる

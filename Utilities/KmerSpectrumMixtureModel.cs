@@ -128,17 +128,30 @@ namespace Tsumiki.Utilities
                 return null;
             }
 
-            var l_信頼下限 = 1UL;
-            for (var i = l_走査上限 - 1; i >= 0; i--)
-            {
-                if (l_事後誤り確率[i] >= 有意水準)
-                {
-                    l_信頼下限 = (ulong)l_出現回数[i] + 1UL;
-                    break;
-                }
-            }
+            var l_信頼下限 = Get_単調な信頼下限(l_事後誤り確率, l_頻度, l_確定カットオフ);
 
             return new 混合スペクトル解析結果(A_単一コピー平均: l_採用.A_λ, A_カットオフ: l_確定カットオフ, A_信頼下限: l_信頼下限, A_誤り成分の混合比: l_採用.A_誤り混合比, A_誤り成分の平均: l_採用.A_誤り平均, A_反復回数: l_採用.A_反復回数);
+        }
+
+        /// <summary>
+        /// 「この深度以上はすべて信頼できる」と言える一方向境界だけを返す
+        /// </summary>
+        /// <remarks>
+        /// 有限コピー数の Poisson 混合は未観測 tail で真成分が先に減衰し、事後誤り確率が再上昇しうる。
+        /// 観測された bin 内で一度でも再上昇する場合、最後の交差点を巨大な下限として報告せず unknown
+        /// (ulong.MaxValue) にする。この値は GraphSimplifier では「無条件に保護できる深度なし」として働く。
+        /// </remarks>
+        internal static ulong Get_単調な信頼下限(IReadOnlyList<double> p_事後誤り確率, IReadOnlyList<double> p_頻度, ulong p_カットオフ)
+        {
+            var l_開始 = checked((int)Math.Max(0UL, p_カットオフ - 1UL));
+            for (var i = l_開始; i < p_事後誤り確率.Count && i < p_頻度.Count; i++)
+            {
+                if (p_頻度[i] > 0D && p_事後誤り確率[i] >= 有意水準)
+                {
+                    return ulong.MaxValue;
+                }
+            }
+            return p_カットオフ;
         }
 
         #endregion

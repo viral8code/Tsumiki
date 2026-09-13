@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.IO;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Tests.IO
 {
@@ -89,6 +90,20 @@ namespace Tsumiki.Tests.IO
             Assert.Equal(0.5M, l_引数.A_ペア結合閾値);
             // -pc は指定していないので保守的モードの値のまま
             Assert.Equal(Consts.保守的モードのペア支持数閾値, l_引数.A_ペア支持数閾値);
+        }
+
+        [Fact]
+        public void V_cnbとntは解析され複製と設定表示に残る()
+        {
+            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-cnb", "weighted", "-nt"]);
+            var l_複製 = l_引数.Get_複製();
+
+            Assert.Equal(コピー数基準の出所.Weighted, l_複製.A_コピー数基準の出所);
+            Assert.False(l_複製.A_Is低カバレッジ端トリミング);
+            Assert.Contains("copy-number baseline requested : Weighted", l_複製.ToString());
+            Assert.Contains("trim low-coverage graph ends : False", l_複製.ToString());
+            Assert.Contains("-cnb", HelpText.Get_ヘルプ());
+            Assert.Contains("-nt", HelpText.Get_ヘルプ());
         }
 
         #endregion

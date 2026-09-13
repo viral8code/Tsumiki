@@ -77,10 +77,10 @@ namespace Tsumiki.Tests.Core
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
             l_コンティグ構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
 
-            Assert.NotEmpty(l_コンティグ構築.A_同一ユニティグ標本);
+            Assert.NotEmpty(l_コンティグ構築.A_同一unitig標本);
             // 内側距離 (= 350 - 50 - 50 = 250) ではなく、フラグメント長 350 が
             // 得られなければならない
-            Assert.All(l_コンティグ構築.A_同一ユニティグ標本, l_標本 => Assert.Equal(l_真の断片長, l_標本));
+            Assert.All(l_コンティグ構築.A_同一unitig標本, l_標本 => Assert.Equal(l_真の断片長, l_標本));
         }
 
         /// <summary>
@@ -115,8 +115,8 @@ namespace Tsumiki.Tests.Core
             var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
             l_コンティグ構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
 
-            Assert.NotEmpty(l_コンティグ構築.A_同一ユニティグ標本);
-            Assert.All(l_コンティグ構築.A_同一ユニティグ標本, l_標本 => Assert.Equal(p_真の断片長, l_標本));
+            Assert.NotEmpty(l_コンティグ構築.A_同一unitig標本);
+            Assert.All(l_コンティグ構築.A_同一unitig標本, l_標本 => Assert.Equal(p_真の断片長, l_標本));
         }
 
         #endregion

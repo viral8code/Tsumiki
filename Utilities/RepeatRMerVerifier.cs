@@ -70,6 +70,7 @@ namespace Tsumiki.Utilities
         /// <returns>構築した検証器</returns>
         public static RepeatRMerVerifier V_構築(IEnumerable<string> p_リードパス一覧, int p_r長)
         {
+            using var l_計測 = new StageTimer($"repeat-index r={p_r長}");
             if (p_r長 <= 0)
             {
                 throw new ArgumentException("r-mer length must be positive");
@@ -83,10 +84,8 @@ namespace Tsumiki.Utilities
 
             foreach (var l_パス in l_パス群)
             {
-                using var l_読み込み = new FastqReader(l_パス);
-                while (l_読み込み.Has続き())
+                foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
                 {
-                    var l_リード = l_読み込み.Get_次のリード().A_生リード;
                     if (l_リード is not null)
                     {
                         l_検証器.V_登録_rMer(l_リード, p_r長);
@@ -275,6 +274,19 @@ namespace Tsumiki.Utilities
         /// </remarks>
         private void V_登録_rMer(string p_リード, int p_r長)
         {
+            if (p_r長 <= 128)
+            {
+                var l_窓 = new RollingKmer(p_r長);
+                foreach (var l_塩基 in p_リード)
+                {
+                    if (l_窓.Try追加(l_塩基, out var l_キー))
+                    {
+                        this.V_登録(l_キー);
+                    }
+                }
+                return;
+            }
+
             var l_直近の曖昧位置 = -1;
             for (var i = 0; i + p_r長 <= p_リード.Length; i++)
             {

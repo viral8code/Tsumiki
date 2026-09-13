@@ -71,6 +71,7 @@ namespace Tsumiki.Cores.Polishing
         /// <returns></returns>
         public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス, bool p_Is訂正 = true)
         {
+            using var l_計測 = new StageTimer("polishing");
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
             if (l_エントリ群.Count == 0)
             {

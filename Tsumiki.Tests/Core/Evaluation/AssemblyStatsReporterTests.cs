@@ -86,6 +86,20 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// N の連続で分けた断片だけから contig N50 を求めることを確かめる
+        /// </summary>
+        [Fact]
+        public void V_N分割統計は分割後に最小長を適用する()
+        {
+            var l_統計 = AssemblyStatsReporter.Get_N分割統計([new string('A', 600) + "N" + new string('C', 400), new string('G', 300) + "N" + new string('T', 300)], 500);
+
+            Assert.Equal(1, l_統計.A_配列数);
+            Assert.Equal(600L, l_統計.A_総延長);
+            Assert.Equal(600, l_統計.A_最小長);
+            Assert.Equal(600, l_統計.A_N50);
+        }
+
+        /// <summary>
         /// FASTA ファイルから配列を読み込んで統計を求めることを確かめる
         /// </summary>
         [Fact]

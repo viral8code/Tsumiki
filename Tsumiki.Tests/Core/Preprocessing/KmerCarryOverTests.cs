@@ -243,6 +243,38 @@ namespace Tsumiki.Tests.Core
 
         #endregion
 
+        #region 速度改善の回帰検証
+
+        /// <summary>窓の差分更新後も元の最小カバレッジと既存キーの優先を保つ</summary>
+        /// <param name="p_k長">引き継ぎ先の k</param>
+        [Theory]
+        [InlineData(29)]
+        [InlineData(43)]
+        [InlineData(63)]
+        [InlineData(93)]
+        [InlineData(135)]
+        public void V_高速引き継ぎを窓ごとの計算と比較(int p_k長)
+        {
+            var l_配列 = V_生成_ランダム配列(500, 1901) + "N" + V_生成_ランダム配列(300, 1902);
+            var l_カバレッジ = Enumerable.Range(0, l_配列.Length - 20).Select(i => 20 + i % 29).ToArray();
+            l_カバレッジ[180] = 0;
+            var l_引き継ぎ = new 引き継ぎ配列(l_配列, l_カバレッジ, 21);
+            using var l_索引 = this.V_構築_インデックス(p_k長, 40, l_配列[..p_k長]);
+            _ = KmerCarryOver.V_引き継ぎ([l_引き継ぎ], l_索引, p_k長, 150);
+            var l_塩基 = Util.V_変換_塩基列(l_配列);
+            for (var i = 0; i + p_k長 <= l_塩基.Length; i++)
+            {
+                if (l_配列.Substring(i, p_k長).Contains('N'))
+                {
+                    continue;
+                }
+                var l_期待 = i == 0 ? 40UL : KmerCarryOver.Get_引き継ぐカバレッジ(l_引き継ぎ, i, p_k長, 150);
+                Assert.Equal(l_期待, l_索引.Get_カバレッジ(l_塩基.AsSpan(i, p_k長)));
+            }
+        }
+
+        #endregion
+
         #region 内部メソッド
 
         /// <summary>

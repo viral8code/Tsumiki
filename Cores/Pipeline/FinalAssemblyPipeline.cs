@@ -94,8 +94,8 @@ namespace Tsumiki.Cores.Pipeline
             var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
 
             p_結果 = p_結果 with { A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ) };
-            V_記録_出所(p_原入力, l_最終パス, p_一時ディレクトリ);
-            V_出力_完全性レポート(p_結果, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, p_一時ディレクトリ);
+            V_記録_出所(p_原入力, p_結果, l_最終パス, p_一時ディレクトリ);
+            V_出力_完全性レポート(p_結果, p_原入力, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, p_一時ディレクトリ);
 
             Logger.V_出力(メッセージID.最終成果物, l_最終パス);
 
@@ -147,7 +147,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_原入力">加工前の設定</param>
         /// <param name="p_最終パス">最終配列</param>
         /// <param name="p_作業パス">出力先</param>
-        private static void V_記録_出所(Parameters p_原入力, string p_最終パス, string p_作業パス)
+        private static void V_記録_出所(Parameters p_原入力, アセンブリ実行結果 p_結果, string p_最終パス, string p_作業パス)
         {
             using var l_出力 = File.Create(Path.Combine(p_作業パス, "assembly.provenance.json"));
             using var l_JSON = new System.Text.Json.Utf8JsonWriter(l_出力, new System.Text.Json.JsonWriterOptions { Indented = true });
@@ -157,6 +157,11 @@ namespace Tsumiki.Cores.Pipeline
             l_JSON.WriteString("validation_source", "uncorrected reads from the assembly library; not independent holdout data");
             l_JSON.WriteString("assembly_sha256", StageCheckpoint.Get_ハッシュ(p_最終パス));
             l_JSON.WriteString("settings", p_原入力.ToString());
+            l_JSON.WriteStartObject("assembly_settings");
+            l_JSON.WriteString("copy_number_baseline_requested", p_原入力.A_コピー数基準の出所.ToString());
+            l_JSON.WriteString("copy_number_baseline_actual", p_結果.A_実際のコピー数基準.ToString());
+            l_JSON.WriteBoolean("trim_low_coverage_ends", p_原入力.A_Is低カバレッジ端トリミング);
+            l_JSON.WriteEndObject();
             l_JSON.WriteStartArray("inputs");
             foreach (var l_入力 in new[] { p_原入力.A_リード1のパス, p_原入力.A_リード2のパス })
             {
@@ -259,7 +264,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果、実行していなければ null</param>
         /// <param name="p_支持検査">リード支持の検査結果</param>
         /// <param name="p_出力ディレクトリ">レポートの出力先ディレクトリ</param>
-        private static void V_出力_完全性レポート(アセンブリ実行結果 p_結果, string p_最終パス, ポリッシュ統計? p_ポリッシュ統計, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, 支持検査結果? p_支持検査, string p_出力ディレクトリ)
+        private static void V_出力_完全性レポート(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_最終パス, ポリッシュ統計? p_ポリッシュ統計, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, 支持検査結果? p_支持検査, string p_出力ディレクトリ)
         {
             var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
             var l_未解決ギャップ数 = CompletenessValidator.Get_未解決ギャップ数(p_最終パス);
@@ -271,7 +276,11 @@ namespace Tsumiki.Cores.Pipeline
             var l_レポートパス = Path.Combine(p_出力ディレクトリ, Consts.レポートファイル名);
             var l_曖昧箇所パス = Path.Combine(p_出力ディレクトリ, Consts.曖昧箇所ファイル名);
 
-            ReportWriter.V_書き出し_レポート(l_レポートパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計_FASTA(p_最終パス), l_未解決ギャップ数, l_環状本数, l_判定, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所);
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス).Select(x => x.A_配列).ToList();
+            const int l_統計の最小長 = 500;
+            ReportWriter.V_書き出し_レポート(l_レポートパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計(l_配列群), l_未解決ギャップ数, l_環状本数, l_判定, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所,
+                AssemblyStatsReporter.Get_N分割統計(l_配列群, l_統計の最小長), l_統計の最小長, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_原入力.A_Is低カバレッジ端トリミング,
+                AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)));
             Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
 
             ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);

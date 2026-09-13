@@ -345,6 +345,22 @@ namespace Tsumiki.Models.Foundation
         public bool A_Is救済kmer使用 { get; set; } = false;
 
         /// <summary>
+        /// コピー数推定に使う単一コピー深度基準
+        /// </summary>
+        /// <remarks>
+        /// cutoff の選択とは独立に保持し、既定値は従来どおり spectrum にする
+        /// </remarks>
+        public Tsumiki.Models.UnitigBuilding.コピー数基準の出所 A_コピー数基準の出所 { get; set; } = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum;
+
+        /// <summary>
+        /// 低カバレッジ unitig 端をトリミングするか
+        /// </summary>
+        /// <remarks>
+        /// E2 用の切替で、false は tip 除去と cutoff を変えず端トリミングだけを止める
+        /// </remarks>
+        public bool A_Is低カバレッジ端トリミング { get; set; } = true;
+
+        /// <summary>
         /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか
         /// </summary>
         /// <remarks>
@@ -535,6 +551,8 @@ namespace Tsumiki.Models.Foundation
                 write GFA of the unitig graph : {this.A_IsGFA出力}
                 merge multi-k results : {this.A_Isマージ}
                 rescue mercy k-mers : {this.A_Is救済kmer使用}
+                copy-number baseline requested : {this.A_コピー数基準の出所}
+                trim low-coverage graph ends : {this.A_Is低カバレッジ端トリミング}
                 polish final assembly with reads : {this.A_Isポリッシュ}
                 verify circular closure with reads : {this.A_Is環状閉鎖検証}
                 resume from temp directory : {this.A_Is再開}

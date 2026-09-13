@@ -70,6 +70,8 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, l_JSON.GetProperty("circular_replicons").GetInt32());
             Assert.Equal(12, l_JSON.GetProperty("polish").GetProperty("corrected_bases").GetInt32());
             Assert.Equal(30, l_JSON.GetProperty("circular_closure")[0].GetProperty("spanning_reads").GetInt32());
+            Assert.Equal(500, l_JSON.GetProperty("n_split_contig_stats").GetProperty("minimum_sequence_length").GetInt32());
+            Assert.Equal(3, l_JSON.GetProperty("scaffold_stats").GetProperty("sequences").GetInt32());
         }
 
         /// <summary>

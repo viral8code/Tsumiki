@@ -338,6 +338,16 @@
             public const string 救済kmer = "-my";
 
             /// <summary>
+            /// コピー数基準
+            /// </summary>
+            public const string コピー数基準 = "-cnb";
+
+            /// <summary>
+            /// 低カバレッジ端トリミングなし
+            /// </summary>
+            public const string 低カバレッジ端トリミングなし = "-nt";
+
+            /// <summary>
             /// 再開
             /// </summary>
             public const string 再開 = "-rs";

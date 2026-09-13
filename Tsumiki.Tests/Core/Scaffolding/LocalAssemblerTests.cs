@@ -65,6 +65,56 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_正解, Get_単一配列(l_パス));
         }
 
+        /// <summary>高 k ではリード間が切れる低深度橋を低 k で回復する</summary>
+        [Fact]
+        public void V_非連結なら低kで真の橋を回復する()
+        {
+            const int l_基準k = 37;
+            var l_左 = V_生成_ランダム配列(300, 501);
+            var l_充填 = V_生成_ランダム配列(90, 502);
+            var l_右 = V_生成_ランダム配列(300, 503);
+            var l_正解 = l_左 + l_充填 + l_右;
+            var l_局所リード = new List<string>();
+            for (var i = l_左.Length - 35; i <= l_左.Length + l_充填.Length - 20; i += 5)
+            {
+                l_局所リード.Add(l_正解.Substring(i, 50));
+            }
+
+            var l_ギャップ = new 局所ギャップ(0, l_左.Length, l_充填.Length, l_左, l_右);
+            Assert.Null(LocalAssembler.Get_固定kの局所結果(l_ギャップ, l_局所リード, l_基準k, out var l_固定判定));
+            Assert.Equal(ギャップ充填判定.到達不能, l_固定判定);
+
+            var l_結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, l_局所リード, l_基準k, out var l_判定);
+            Assert.Equal(ギャップ充填判定.充填済み, l_判定);
+            Assert.Equal(l_充填, l_結果);
+        }
+
+        /// <summary>片側だけがアンカーに当たるペアでは mate も回収して橋へ使う</summary>
+        [Fact]
+        public void V_アンカーに当たったリードのmateも回収する()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, 601);
+            var l_充填 = V_生成_ランダム配列(100, 602);
+            var l_右 = V_生成_ランダム配列(300, 603);
+            var l_正解 = l_左 + l_充填 + l_右;
+            var l_scaffold = this.V_書き出し_スキャフォールド("mate.fasta", l_左 + new string('N', l_充填.Length) + l_右);
+
+            var l_アンカー側 = new List<string>();
+            var l_mate側 = new List<string>();
+            for (var i = l_左.Length - 20; i <= l_左.Length + l_充填.Length - 30; i += 10)
+            {
+                l_アンカー側.Add(l_左.Substring(100 + l_アンカー側.Count, 50));
+                l_mate側.Add(l_正解.Substring(i, 50));
+            }
+            var (l_read1, l_read2) = this.V_書き出し_リードペア("mate", l_アンカー側, l_mate側);
+
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_read1, l_read2, l_k長);
+
+            Assert.Equal(1, l_統計.A_埋めたギャップ数);
+            Assert.Equal(l_正解, Get_単一配列(l_scaffold));
+        }
+
         /// <summary>
         /// 一時ディレクトリを片付ける
         /// </summary>
@@ -240,6 +290,21 @@ namespace Tsumiki.Tests.Core
                 }
             }
             return l_パス;
+        }
+
+        private (string A_リード1, string A_リード2) V_書き出し_リードペア(string p_接頭辞, IReadOnlyList<string> p_リード1, IReadOnlyList<string> p_リード2)
+        {
+            Assert.Equal(p_リード1.Count, p_リード2.Count);
+            var l_パス1 = Path.Combine(this._作業ディレクトリ, p_接頭辞 + ".1.fq");
+            var l_パス2 = Path.Combine(this._作業ディレクトリ, p_接頭辞 + ".2.fq");
+            using var l_書き込み1 = new StreamWriter(l_パス1);
+            using var l_書き込み2 = new StreamWriter(l_パス2);
+            for (var i = 0; i < p_リード1.Count; i++)
+            {
+                l_書き込み1.WriteLine($"@pair{i}/1\n{p_リード1[i]}\n+\n{new string('I', p_リード1[i].Length)}");
+                l_書き込み2.WriteLine($"@pair{i}/2\n{p_リード2[i]}\n+\n{new string('I', p_リード2[i].Length)}");
+            }
+            return (l_パス1, l_パス2);
         }
 
         /// <summary>

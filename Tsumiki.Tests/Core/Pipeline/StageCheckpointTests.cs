@@ -4,6 +4,7 @@ using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Evaluation;
 using Tsumiki.Commons;
 using System.Text.Json;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Tests.Core
 {
@@ -48,18 +49,24 @@ namespace Tsumiki.Tests.Core
             File.WriteAllText(l_入力, string.Concat(Enumerable.Range(0, 8).Select(i => $"@read{i}\n{new string('A', 250)}\n+\n{new string('I', 250)}\n")));
             File.WriteAllText(l_配列, $">contig\n{new string('C', 250)}\n");
             var l_原設定 = ConfigurationManager.A_実行時引数;
-            var l_設定 = new Parameters { A_リード1のパス = l_入力, A_k長 = 31, A_スレッド数 = 1 };
+            var l_設定 = new Parameters { A_リード1のパス = l_入力, A_k長 = 31, A_スレッド数 = 1, A_コピー数基準の出所 = コピー数基準の出所.Weighted, A_Is低カバレッジ端トリミング = false };
             try
             {
                 ConfigurationManager.A_実行時引数 = l_設定;
-                var l_結果 = new アセンブリ実行結果(31, l_配列, l_配列, null, 2UL, 100D, A_整合性検査: new 整合性検査結果(1L, 1L, 1L, 0L, 0L, 0L));
+                var l_結果 = new アセンブリ実行結果(31, l_配列, l_配列, null, 2UL, 100D, A_整合性検査: new 整合性検査結果(1L, 1L, 1L, 0L, 0L, 0L), A_実際のコピー数基準: コピー数基準の出所.Weighted);
                 FinalAssemblyPipeline.V_実行(l_結果, l_設定, l_出力, 100);
                 using var l_レポート = JsonDocument.Parse(File.ReadAllText(Path.Combine(l_出力, "assembly.report.json")));
                 Assert.False(l_レポート.RootElement.GetProperty("complete").GetBoolean());
                 Assert.True(l_レポート.RootElement.GetProperty("self_check").GetProperty("missing_kmers").GetInt64() > 0L);
                 Assert.Contains(l_レポート.RootElement.GetProperty("checks").EnumerateArray(), x => x.GetProperty("name").GetString() == "read_support" && x.GetProperty("result").GetString() == "fail");
+                Assert.Equal("Weighted", l_レポート.RootElement.GetProperty("assembly_settings").GetProperty("copy_number_baseline_requested").GetString());
+                Assert.Equal("Weighted", l_レポート.RootElement.GetProperty("assembly_settings").GetProperty("copy_number_baseline_actual").GetString());
+                Assert.False(l_レポート.RootElement.GetProperty("assembly_settings").GetProperty("trim_low_coverage_ends").GetBoolean());
                 using var l_出所 = JsonDocument.Parse(File.ReadAllText(Path.Combine(l_出力, "assembly.provenance.json")));
                 Assert.Equal(StageCheckpoint.Get_ハッシュ(Path.Combine(l_出力, "assembly.fasta")), l_出所.RootElement.GetProperty("assembly_sha256").GetString());
+                Assert.Equal("Weighted", l_出所.RootElement.GetProperty("assembly_settings").GetProperty("copy_number_baseline_requested").GetString());
+                Assert.Equal("Weighted", l_出所.RootElement.GetProperty("assembly_settings").GetProperty("copy_number_baseline_actual").GetString());
+                Assert.False(l_出所.RootElement.GetProperty("assembly_settings").GetProperty("trim_low_coverage_ends").GetBoolean());
             }
             finally
             {

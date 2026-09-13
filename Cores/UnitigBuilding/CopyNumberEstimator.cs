@@ -78,7 +78,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_unitig長"></param>
         /// <param name="p_グラフ"></param>
         /// <returns></returns>
-        public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, UnitigGraph? p_グラフ = null)
+        public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, UnitigGraph? p_グラフ = null, コピー数基準の出所? p_基準の出所 = null)
         {
             // k-mer スペクトルの 2 成分混合モデルが適合できていれば、その単一コピー平均を
             // 基準値に使う
@@ -87,10 +87,11 @@ namespace Tsumiki.Cores.UnitigBuilding
             // (KmerCutoffSelector.V_解決_kmerカットオフ 参照)
             // 適合に失敗している場合は
             // 従来どおり unitig カバレッジの長さ加重中央値にフォールバックする
+            var l_希望する出所 = p_基準の出所 ?? コピー数基準の出所.Spectrum;
             var l_モデル基準値 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均;
-            var l_基準値 = l_モデル基準値 is { } l_値 && l_値 > 0D
-                ? l_値
-                : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
+            var l_モデルを使える = l_モデル基準値 is { } l_値 && l_値 > 0D;
+            var l_実際の出所 = l_希望する出所 == コピー数基準の出所.Spectrum && l_モデルを使える ? コピー数基準の出所.Spectrum : コピー数基準の出所.Weighted;
+            var l_基準値 = l_実際の出所 == コピー数基準の出所.Spectrum ? l_モデル基準値!.Value : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
 
             Dictionary<int, int> l_コピー数 = [];
             foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
@@ -120,7 +121,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 V_修正_接続による単一コピー再判定(l_グラフ, p_カバレッジ, l_コピー数);
             }
 
-            return new コピー数推定結果(l_基準値, p_カバレッジ, l_コピー数);
+            return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数);
         }
 
         /// <summary>
@@ -134,6 +135,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_unitig長)
         {
             Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);
+            Logger.V_出力_そのまま($"[Copy number] baseline_source={p_推定結果.A_基準の出所}");
 
             var l_コピー数別 = p_推定結果.A_コピー数
                 .GroupBy(x => x.Value)

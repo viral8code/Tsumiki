@@ -67,6 +67,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_Is進行状況出力 = false)
         {
+            using var l_計測 = new StageTimer($"kmer-count k={p_引数.A_k長}");
             var l_Isペアエンド = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
             if (p_Is進行状況出力)
             {

@@ -28,7 +28,7 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
         /// <param name="p_ポリッシュ">ポリッシュの結果</param>
         /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
-        public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所)
+        public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, アセンブリ統計? p_N分割統計 = null, int p_統計の最小長 = 500, string? p_要求コピー数基準 = null, string? p_実際のコピー数基準 = null, bool? p_Is低カバレッジ端トリミング = null, アセンブリ統計? p_scaffold比較統計 = null)
         {
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine("{");
@@ -43,6 +43,13 @@ namespace Tsumiki.Cores.Output
             V_追加(l_文, "  \"n50\": {0},", p_統計.A_N50);
             V_追加(l_文, "  \"l50\": {0},", p_統計.A_L50);
             V_追加(l_文, "  \"gc_percent\": {0},", Get_数値(p_統計.A_GC率));
+            V_追加_統計(l_文, "scaffold_stats", p_scaffold比較統計 ?? p_統計, p_統計の最小長);
+            V_追加_統計(l_文, "n_split_contig_stats", p_N分割統計 ?? p_統計, p_統計の最小長);
+            _ = l_文.AppendLine("  \"assembly_settings\": {");
+            V_追加(l_文, "    \"copy_number_baseline_requested\": {0},", Get_文字列(p_要求コピー数基準));
+            V_追加(l_文, "    \"copy_number_baseline_actual\": {0},", Get_文字列(p_実際のコピー数基準));
+            V_追加(l_文, "    \"trim_low_coverage_ends\": {0}", p_Is低カバレッジ端トリミング is { } l_trim ? (l_trim ? "true" : "false") : "null");
+            _ = l_文.AppendLine("  },");
             V_追加(l_文, "  \"circular_replicons\": {0},", p_環状本数);
             V_追加(l_文, "  \"unresolved_gaps\": {0},", p_未解決ギャップ数);
 
@@ -104,6 +111,20 @@ namespace Tsumiki.Cores.Output
         #endregion
 
         #region 内部メソッド
+
+        private static void V_追加_統計(StringBuilder p_文, string p_名前, アセンブリ統計 p_統計, int p_最小長)
+        {
+            V_追加(p_文, "  \"{0}\": {{", p_名前);
+            V_追加(p_文, "    \"minimum_sequence_length\": {0},", p_最小長);
+            V_追加(p_文, "    \"sequences\": {0},", p_統計.A_配列数);
+            V_追加(p_文, "    \"total_length\": {0},", p_統計.A_総延長);
+            V_追加(p_文, "    \"largest\": {0},", p_統計.A_最大長);
+            V_追加(p_文, "    \"smallest\": {0},", p_統計.A_最小長);
+            V_追加(p_文, "    \"n50\": {0},", p_統計.A_N50);
+            V_追加(p_文, "    \"l50\": {0},", p_統計.A_L50);
+            V_追加(p_文, "    \"gc_percent\": {0}", Get_数値(p_統計.A_GC率));
+            _ = p_文.AppendLine("  },");
+        }
 
         /// <summary>
         /// TSV に出す固定の種別名

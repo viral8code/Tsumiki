@@ -31,7 +31,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_tipカバレッジ比"></param>
         /// <returns></returns>
-        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = tipとみなすカバレッジ比)
+        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true)
         {
             // k がリード長の半分を超えると、k を基準にした閾値は実配列まで
             // 巻き込むほど長くなるため min (k, リード長/2) を基準に取る
@@ -97,7 +97,9 @@ namespace Tsumiki.Cores.UnitigBuilding
                         continue;
                     }
 
-                    var l_剥がした数 = Get_低カバレッジ端除去数(p_kmerインデックス, l_塩基列, p_k長, l_低カバレッジ閾値);
+                    // E2 では cutoff と短い dead-end tip の判定をそのままにし、
+                    // 接続構造を見ずに行っていた端トリミングだけを止める
+                    var l_剥がした数 = p_Is低カバレッジ端トリミング ? Get_低カバレッジ端除去数(p_kmerインデックス, l_塩基列, p_k長, l_低カバレッジ閾値) : 0;
                     if (l_剥がした数 > 0)
                     {
                         l_剥がしたkmer数 += l_剥がした数;

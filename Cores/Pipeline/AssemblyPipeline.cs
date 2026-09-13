@@ -71,6 +71,7 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長, IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null, List<引き継ぎ配列>? p_次への引き継ぎ = null, List<引き継ぎ配列>? p_合成リードの控え = null, Parameters? p_原入力 = null)
         {
+            using var l_計測 = new StageTimer($"assembly k={p_k長}");
             // 以降の全処理は ConfigurationManager 経由で k 長を参照する
             // 明示指定の印は立てない (自動選択された値のままとして扱う)
             if (p_引数.A_k長 != p_k長)
@@ -136,7 +137,7 @@ namespace Tsumiki.Cores.Pipeline
             // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
             // 数え直す必要がある
             // 除去側が最終状態のものを返す
-            var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長);
+            var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長, p_Is低カバレッジ端トリミング: p_引数.A_Is低カバレッジ端トリミング);
 
             Logger.V_出力_タイムスタンプ();
 
@@ -163,7 +164,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_unitig長 = l_unitig配列.ToDictionary(x => x.Key, x => x.Value.Length);
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_unitig配列, p_k長);
             var l_グラフ = l_contig構築.Get_グラフ();
-            var l_コピー数推定 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_unitig長, l_グラフ);
+            var l_コピー数推定 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_unitig長, l_グラフ, p_引数.A_コピー数基準の出所);
             CopyNumberEstimator.V_出力_推定結果(l_コピー数推定, l_unitig長);
 
             Logger.V_出力_タイムスタンプ();
@@ -245,7 +246,7 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力_タイムスタンプ();
 
                 V_用意_次段引き継ぎ(p_次への引き継ぎ, l_contigパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
-                var l_contigのみの結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_contig検査);
+                var l_contigのみの結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_contig検査, l_コピー数推定.A_基準の出所);
                 V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_contigのみの結果;
             }
@@ -280,7 +281,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_タイムスタンプ();
 
             V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
-            var l_結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, l_scaffoldパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_scaffoldの検査);
+            var l_結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, l_scaffoldパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_scaffoldの検査, l_コピー数推定.A_基準の出所);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
         }

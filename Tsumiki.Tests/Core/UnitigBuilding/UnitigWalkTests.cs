@@ -129,7 +129,7 @@ namespace Tsumiki.Tests.Core
             Assert.Empty(l_索引.Get_開始kmer一覧());
 
             var l_開始 = l_配列[..l_k長].Select(Util.Get_塩基ID).ToArray();
-            var l_期待 = new UnitigMaker(l_索引).Get_ユニティグ(l_開始).A_配列;
+            var l_期待 = new UnitigMaker(l_索引).Get_Unitig(l_開始).A_配列;
             var l_実際 = string.Concat(new UnitigWalk(l_索引, l_k長).Get_塩基列(l_開始, []).Select(Util.Get_塩基文字));
 
             Assert.Equal(l_期待, l_実際);
@@ -215,7 +215,7 @@ namespace Tsumiki.Tests.Core
 
             foreach (var l_開始 in l_開始kmer)
             {
-                var l_期待 = l_従来.Get_ユニティグ(l_開始).A_配列;
+                var l_期待 = l_従来.Get_Unitig(l_開始).A_配列;
                 var l_実際 = string.Concat(l_転がし.Get_塩基列(l_開始, l_訪問済み).Select(Util.Get_塩基文字));
                 Assert.Equal(l_期待, l_実際);
             }

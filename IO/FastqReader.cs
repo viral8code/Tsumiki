@@ -133,7 +133,7 @@ namespace Tsumiki.IO
         /// ID ・配列・クオリティの 1 レコードを読み込んで返す
         /// </summary>
         /// <returns></returns>
-        private (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
+        internal (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
         {
             var l_ID = this.Get_次の行();
             var l_配列 = this.Get_次の行();
