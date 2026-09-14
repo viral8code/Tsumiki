@@ -79,7 +79,8 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_原入力">加工前のリードを保持した設定</param>
         /// <param name="p_一時ディレクトリ">成果物の出力先</param>
         /// <param name="p_リード長">代表リード長</param>
-        public static void V_実行(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_一時ディレクトリ, int? p_リード長)
+        /// <param name="p_処理済み設定">前処理・エラー訂正後のパスを保持した設定、無ければ null</param>
+        public static void V_実行(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_一時ディレクトリ, int? p_リード長, Parameters? p_処理済み設定 = null)
         {
             // 採用した 1 組だけを作業ディレクトリの直下へ出す (k ごとの成果物は
             // k のサブディレクトリに残る)
@@ -94,7 +95,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
 
             p_結果 = p_結果 with { A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ) };
-            V_記録_出所(p_原入力, p_結果, l_最終パス, p_一時ディレクトリ);
+            V_記録_出所(p_原入力, p_結果, l_最終パス, p_一時ディレクトリ, p_処理済み設定);
             V_出力_完全性レポート(p_結果, p_原入力, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, p_一時ディレクトリ);
 
             Logger.V_出力(メッセージID.最終成果物, l_最終パス);
@@ -147,7 +148,8 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_原入力">加工前の設定</param>
         /// <param name="p_最終パス">最終配列</param>
         /// <param name="p_作業パス">出力先</param>
-        private static void V_記録_出所(Parameters p_原入力, アセンブリ実行結果 p_結果, string p_最終パス, string p_作業パス)
+        /// <param name="p_処理済み設定">前処理・エラー訂正後のパスを保持した設定、無ければ null</param>
+        private static void V_記録_出所(Parameters p_原入力, アセンブリ実行結果 p_結果, string p_最終パス, string p_作業パス, Parameters? p_処理済み設定)
         {
             using var l_出力 = File.Create(Path.Combine(p_作業パス, "assembly.provenance.json"));
             using var l_JSON = new System.Text.Json.Utf8JsonWriter(l_出力, new System.Text.Json.JsonWriterOptions { Indented = true });
@@ -156,6 +158,7 @@ namespace Tsumiki.Cores.Pipeline
             l_JSON.WriteString("build_id", typeof(FinalAssemblyPipeline).Assembly.ManifestModule.ModuleVersionId);
             l_JSON.WriteString("validation_source", "uncorrected reads from the assembly library; not independent holdout data");
             l_JSON.WriteString("assembly_sha256", StageCheckpoint.Get_ハッシュ(p_最終パス));
+            l_JSON.WriteNumber("thread_count", p_原入力.A_スレッド数);
             l_JSON.WriteString("settings", p_原入力.ToString());
             l_JSON.WriteStartObject("assembly_settings");
             l_JSON.WriteString("copy_number_baseline_requested", p_原入力.A_コピー数基準の出所.ToString());
@@ -175,6 +178,30 @@ namespace Tsumiki.Cores.Pipeline
                 l_JSON.WriteEndObject();
             }
             l_JSON.WriteEndArray();
+
+            // 前処理・エラー訂正が有効なら、それらを経た後のリードの内容がグラフ構築の
+            // 実際の入力になる。生 read のハッシュだけでは、EC の設定変更による違いを追えない
+            if (p_処理済み設定 is { } l_処理済み設定)
+            {
+                l_JSON.WriteStartArray("corrected_read_hashes");
+                foreach (var l_入力 in new[] { l_処理済み設定.A_リード1のパス, l_処理済み設定.A_リード2のパス })
+                {
+                    if (string.IsNullOrWhiteSpace(l_入力) || !File.Exists(l_入力))
+                    {
+                        continue;
+                    }
+                    l_JSON.WriteStartObject();
+                    l_JSON.WriteString("path", Path.GetFullPath(l_入力));
+                    l_JSON.WriteString("sha256", StageCheckpoint.Get_ハッシュ(l_入力));
+                    l_JSON.WriteEndObject();
+                }
+                l_JSON.WriteEndArray();
+
+                // build_id・設定全文・処理済み read の内容から求めた、この実行を再現条件ごと
+                // 特定するための指紋 (StageCheckpoint が再開判定に使うものと同じ計算)
+                l_JSON.WriteString("pipeline_fingerprint", StageCheckpoint.Get_入力署名(l_処理済み設定));
+            }
+
             l_JSON.WriteEndObject();
         }
 
@@ -280,11 +307,13 @@ namespace Tsumiki.Cores.Pipeline
             const int l_統計の最小長 = 500;
             ReportWriter.V_書き出し_レポート(l_レポートパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計(l_配列群), l_未解決ギャップ数, l_環状本数, l_判定, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所,
                 AssemblyStatsReporter.Get_N分割統計(l_配列群, l_統計の最小長), l_統計の最小長, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_原入力.A_Is低カバレッジ端トリミング,
-                AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)));
+                AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)), p_結果.A_固定アンカー評価, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
 
             ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);
             Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, l_曖昧箇所パス);
+
+            AmbiguityRecorder.V_保存_履歴(p_出力ディレクトリ);
 
             if (p_支持検査 is { } l_支持検査)
             {

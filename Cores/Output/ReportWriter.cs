@@ -28,10 +28,13 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
         /// <param name="p_ポリッシュ">ポリッシュの結果</param>
         /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
-        public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, アセンブリ統計? p_N分割統計 = null, int p_統計の最小長 = 500, string? p_要求コピー数基準 = null, string? p_実際のコピー数基準 = null, bool? p_Is低カバレッジ端トリミング = null, アセンブリ統計? p_scaffold比較統計 = null)
+        /// <param name="p_固定アンカー評価">採用した k・コピー数基準に依らない固定アンカーでの独立評価</param>
+        /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
+        public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, アセンブリ統計? p_N分割統計 = null, int p_統計の最小長 = 500, string? p_要求コピー数基準 = null, string? p_実際のコピー数基準 = null, bool? p_Is低カバレッジ端トリミング = null, アセンブリ統計? p_scaffold比較統計 = null, アセンブリ評価? p_固定アンカー評価 = null, IReadOnlyList<フェーズ計測>? p_フェーズ計測 = null)
         {
             var l_文 = new StringBuilder();
             _ = l_文.AppendLine("{");
+            V_追加(l_文, "  \"schema_version\": {0},", 1);
             V_追加(l_文, "  \"tsumiki_version\": {0},", Get_文字列(Consts.バージョン));
             V_追加(l_文, "  \"complete\": {0},", p_判定.A_Is完全長 ? "true" : "false");
             V_追加(l_文, "  \"quality_level\": {0},", Get_文字列("Q" + (int)p_判定.A_品質保証レベル));
@@ -63,9 +66,11 @@ namespace Tsumiki.Cores.Output
             _ = l_文.AppendLine("  ],");
 
             V_追加_自己検査(l_文, p_整合性);
+            V_追加_アンカー評価(l_文, p_固定アンカー評価);
             V_追加_ポリッシュ(l_文, p_ポリッシュ);
             V_追加_閉鎖検証(l_文, p_閉鎖検証);
-            V_追加(l_文, "  \"ambiguous_junctions\": {0}", p_曖昧箇所.Count);
+            V_追加(l_文, "  \"ambiguous_junctions\": {0},", p_曖昧箇所.Count);
+            V_追加_フェーズ計測(l_文, p_フェーズ計測 ?? []);
 
             _ = l_文.AppendLine("}");
 
@@ -100,10 +105,10 @@ namespace Tsumiki.Cores.Output
         public static void V_書き出し_曖昧箇所(string p_出力パス, IReadOnlyList<曖昧箇所> p_曖昧箇所)
         {
             var l_文 = new StringBuilder();
-            _ = l_文.AppendLine(string.Join('\t', "k", "type", "location", "top_support", "second_support", "margin", "raw_support", "confidence"));
+            _ = l_文.AppendLine(string.Join('\t', "k", "type", "location", "stable_id", "top_support", "second_support", "margin", "raw_support", "confidence"));
             foreach (var l_箇所 in p_曖昧箇所)
             {
-                _ = l_文.AppendLine(string.Join('\t', l_箇所.A_k長, Get_種別コード(l_箇所.A_種別), l_箇所.A_場所, Get_数値(l_箇所.A_首位の支持), Get_数値(l_箇所.A_次点の支持), Get_数値(l_箇所.A_余裕), l_箇所.A_首位の生支持数, Get_数値(l_箇所.A_確信度)));
+                _ = l_文.AppendLine(string.Join('\t', l_箇所.A_k長, Get_種別コード(l_箇所.A_種別), l_箇所.A_場所, l_箇所.A_安定ID, Get_数値(l_箇所.A_首位の支持), Get_数値(l_箇所.A_次点の支持), Get_数値(l_箇所.A_余裕), l_箇所.A_首位の生支持数, Get_数値(l_箇所.A_確信度)));
             }
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
@@ -142,8 +147,32 @@ namespace Tsumiki.Cores.Output
                 曖昧箇所の種別.僅差 => "insufficient-margin",
                 曖昧箇所の種別.経路が一意でない => "multiple-paths",
                 曖昧箇所の種別.到達不能 => "unreachable",
+                曖昧箇所の種別.アンカー不足 => "anchor-missing",
+                曖昧箇所の種別.リード無し => "no-local-reads",
+                曖昧箇所の種別.探索打切り => "search-cutoff",
                 _ => "inside-repeat",
             };
+        }
+
+        /// <summary>
+        /// 工程ごとの資源使用量をレポートへ足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
+        /// <remarks>
+        /// レポートの最後の項目のため、末尾にカンマを付けない
+        /// </remarks>
+        private static void V_追加_フェーズ計測(StringBuilder p_文, IReadOnlyList<フェーズ計測> p_フェーズ計測)
+        {
+            _ = p_文.AppendLine("  \"phase_timings\": [");
+            for (var i = 0; i < p_フェーズ計測.Count; i++)
+            {
+                var l_計測 = p_フェーズ計測[i];
+                var l_末尾 = i == p_フェーズ計測.Count - 1 ? string.Empty : ",";
+                V_追加(p_文, "    {{\"stage\": {0}, \"elapsed_s\": {1}, \"cpu_s\": {2}, \"allocated_mb\": {3}, \"working_set_mb\": {4}, \"peak_working_set_mb\": {5}, \"gen2_gc\": {6}}}{7}",
+                    Get_文字列(l_計測.A_工程), Get_数値(l_計測.A_経過秒), Get_数値(l_計測.A_CPU秒), Get_数値(l_計測.A_確保MB), Get_数値(l_計測.A_ワーキングセットMB), Get_数値(l_計測.A_ピークワーキングセットMB), l_計測.A_世代2回収回数, l_末尾);
+            }
+            _ = p_文.AppendLine("  ]");
         }
 
         /// <summary>
@@ -163,6 +192,34 @@ namespace Tsumiki.Cores.Output
             V_追加(p_文, "    \"missing_kmers\": {0},", l_整合性.A_取りこぼし数);
             V_追加(p_文, "    \"missing_percent\": {0},", Get_数値(l_整合性.A_取りこぼし率));
             V_追加(p_文, "    \"excess_percent\": {0}", Get_数値(l_整合性.A_出しすぎ率));
+            _ = p_文.AppendLine("  },");
+        }
+
+        /// <summary>
+        /// 固定アンカーでの独立評価をレポートへ足す
+        /// </summary>
+        /// <param name="p_文">組み立て中のレポート</param>
+        /// <param name="p_評価">固定アンカーでの評価</param>
+        /// <remarks>
+        /// 採用した k やコピー数基準を選ぶ前段の候補比較とは無関係に、常に同じ物差しで測った値<br/>
+        /// アンカースペクトルが二峰でない等で測れなかった場合は null
+        /// </remarks>
+        private static void V_追加_アンカー評価(StringBuilder p_文, アセンブリ評価? p_評価)
+        {
+            if (p_評価 is not { } l_評価)
+            {
+                _ = p_文.AppendLine("  \"anchor_evaluation\": null,");
+                return;
+            }
+            _ = p_文.AppendLine("  \"anchor_evaluation\": {");
+            V_追加(p_文, "    \"expected_copies\": {0},", l_評価.A_期待延べ数);
+            V_追加(p_文, "    \"missing_copies\": {0},", l_評価.A_欠損延べ数);
+            V_追加(p_文, "    \"excess_copies\": {0},", l_評価.A_過剰延べ数);
+            V_追加(p_文, "    \"completeness\": {0},", Get_数値(l_評価.A_完全性));
+            V_追加(p_文, "    \"accuracy\": {0},", Get_数値(l_評価.A_正確性));
+            V_追加(p_文, "    \"ng50\": {0},", l_評価.A_NG50);
+            V_追加(p_文, "    \"circular_replicons\": {0},", l_評価.A_環状本数);
+            V_追加(p_文, "    \"circularized_fraction\": {0}", Get_数値(l_評価.A_環状化率));
             _ = p_文.AppendLine("  },");
         }
 

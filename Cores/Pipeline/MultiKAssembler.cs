@@ -97,17 +97,15 @@ namespace Tsumiki.Cores.Pipeline
                 return null;
             }
 
-            if (l_実行結果一覧.Count == 1)
-            {
-                Logger.V_出力(メッセージID.単一のkのみ成功);
-                return l_実行結果一覧[0];
-            }
-
             // アンカーの k-mer カウントは、候補の評価と (-mg 指定時の) 統合評価の
             // 両方が同じ条件 (同じ k ・同じカットオフ) で必要とする
             // 生リードの
             // 走査とカウントはコストが高いため、1 つのインデックスを両方で
             // 使い回す (以前は統合評価のたびに同じ内容をもう一度数え直していた)
+            // 候補が 1 つしか無い場合でも、採用した k やコピー数基準に依らない
+            // 独立した評価をレポートへ残すためにこの測定は必ず行う
+            // (以前は候補が 1 つの場合はここを丸ごと飛ばしており、比較用の評価が
+            // 一切残らなかった)
             var l_アンカーk長 = Get_アンカーk長(l_k候補);
             var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
             _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
@@ -130,8 +128,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 Logger.V_出力(メッセージID.アンカースペクトルが二峰でない);
                 Logger.V_出力(メッセージID.候補を評価できない);
-                var l_代替 = l_実行結果一覧[^1];
-                return l_代替;
+                return l_実行結果一覧[^1];
             }
 
             var l_候補 = Get_評価済み候補(l_実行結果一覧, l_アンカー, l_アンカーk長, l_解析);
@@ -139,8 +136,13 @@ namespace Tsumiki.Cores.Pipeline
             {
                 // 評価できない以上、根拠のある選択はできない
                 Logger.V_出力(メッセージID.候補を評価できない);
-                var l_代替 = l_実行結果一覧[^1];
-                return l_代替;
+                return l_実行結果一覧[^1];
+            }
+
+            if (l_実行結果一覧.Count == 1)
+            {
+                Logger.V_出力(メッセージID.単一のkのみ成功);
+                return l_候補[0].A_実行結果 with { A_固定アンカー評価 = l_候補[0].A_評価 };
             }
 
             var l_最良 = AssemblySelector.Get_最良(l_候補)!.Value;
@@ -150,8 +152,55 @@ namespace Tsumiki.Cores.Pipeline
             var l_採用 = (p_引数.A_Isマージ
                     ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ)
                     : null)
-                ?? l_最良.A_実行結果;
+                ?? l_最良.A_実行結果 with { A_固定アンカー評価 = l_最良.A_評価 };
             return l_採用;
+        }
+
+        /// <summary>
+        /// 単一 k 指定 (マルチk不使用) で得た結果に、固定アンカー k-mer 集合による独立評価を付ける
+        /// </summary>
+        /// <param name="p_結果">単一 k で得たアセンブリ実行結果</param>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_一時ディレクトリ">一時ディレクトリ</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <remarks>
+        /// マルチk実行時は候補比較のためにこの評価を必ず行うが、単一 k 指定時は比較対象が無いため
+        /// Get_実行結果を経由しない<br/>
+        /// それでも、採用した k やコピー数基準に依らない固定の物差しでの評価をレポートへ残す価値があるため、ここで同じ測定を行う
+        /// </remarks>
+        /// <returns>評価を付けた結果、アンカースペクトルが二峰でない等で測れなければ元の結果をそのまま返す</returns>
+        public static アセンブリ実行結果 Get_固定アンカー評価を付与(アセンブリ実行結果 p_結果, Parameters p_引数, string p_一時ディレクトリ, int? p_リード長)
+        {
+            var l_アンカーk長 = Get_アンカーk長([p_結果.A_k長]);
+            var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
+            _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
+
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
+            p_引数.Set_推定k長(l_アンカーk長);
+            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
+            ConfigurationManager.A_kmerインデックス = l_アンカー;
+
+            KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
+            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
+            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
+            KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
+
+            var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
+            if (l_解析 is null)
+            {
+                Logger.V_出力(メッセージID.アンカースペクトルが二峰でない);
+                Logger.V_出力(メッセージID.候補を評価できない);
+                return p_結果;
+            }
+
+            var l_評価 = AssemblyScorer.Get_評価(p_結果.A_最終パス, l_アンカー, l_アンカーk長, l_解析.A_ピーク出現回数, l_解析.A_推定ゲノムサイズ);
+            if (l_評価 is null)
+            {
+                Logger.V_出力(メッセージID.候補を評価できない);
+                return p_結果;
+            }
+            return p_結果 with { A_固定アンカー評価 = l_評価 };
         }
 
         /// <summary>
@@ -291,6 +340,7 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.統合結果を評価できない);
                 return null;
             }
+            l_統合結果 = l_統合結果 with { A_固定アンカー評価 = l_統合の評価 };
 
             Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
             Logger.V_出力(メッセージID.統合後の評価, l_統合の評価);

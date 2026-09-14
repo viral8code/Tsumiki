@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Tsumiki.Commons;
 using Tsumiki.IO;
+using Tsumiki.Models.Evaluation;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Utilities;
 
@@ -124,10 +125,25 @@ namespace Tsumiki.Cores.Pipeline
             var l_原入力 = l_引数.Get_複製();
             ReadPreparationPipeline.V_実行(l_引数, l_一時ディレクトリ);
 
+            // アンカー評価が推定k長を書き換える前に、前処理・エラー訂正後のパスを持つ
+            // 時点の設定を控えておく (出所記録で使う)
+            var l_処理済み設定 = l_引数.Get_複製();
+
             // -k に複数指定するのは「これらを試して選べ」という意味なので、
             // -mk を別途書かせない
-            var l_結果 = (l_引数.A_Isマルチk || l_引数.A_k長一覧.Count > 1 ? MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長, l_原入力) : AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力)) ?? throw new InvalidOperationException("Assembly could not produce a result");
-            FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長);
+            アセンブリ実行結果 l_結果;
+            if (l_引数.A_Isマルチk || l_引数.A_k長一覧.Count > 1)
+            {
+                l_結果 = MultiKAssembler.Get_実行結果(l_引数, l_一時ディレクトリ, l_リード長, l_原入力) ?? throw new InvalidOperationException("Assembly could not produce a result");
+            }
+            else
+            {
+                // マルチk比較が無くても、採用した k やコピー数基準に依らない固定の物差しでの
+                // 評価をレポートへ残す (以前は単一 k 指定時にこの評価が一切残らなかった)
+                var l_単一結果 = AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力) ?? throw new InvalidOperationException("Assembly could not produce a result");
+                l_結果 = MultiKAssembler.Get_固定アンカー評価を付与(l_単一結果, l_引数, l_一時ディレクトリ, l_リード長);
+            }
+            FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長, l_処理済み設定);
 
             if (l_引数.A_Is一時ディレクトリ削除)
             {

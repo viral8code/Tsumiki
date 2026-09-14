@@ -104,7 +104,7 @@ namespace Tsumiki.Utilities
 
                 if (l_節点.Count > p_状態数上限)
                 {
-                    return (null, ギャップ充填判定.一意でない);
+                    return (null, ギャップ充填判定.探索打切り);
                 }
 
                 for (var l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)

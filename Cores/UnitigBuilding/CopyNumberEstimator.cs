@@ -35,6 +35,20 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </remarks>
         private const int 孤立複製単位とみなす最小合計長 = 500;
 
+        /// <summary>
+        /// 分散指数 (分散 ÷ 平均) がこれを超えたら、ポアソン仮定では説明が付かない過分散とみなす
+        /// </summary>
+        /// <remarks>
+        /// ポアソン分布は分散指数が 1 に近づく<br/>
+        /// 診断のみに使い、この値だけでコピー数判定のロジックを変えることはしない
+        /// </remarks>
+        private const double 過分散とみなす分散指数の下限 = 1.5D;
+
+        /// <summary>
+        /// 分散診断を求めるために要求する単一コピー unitig の最小標本数
+        /// </summary>
+        private const int 分散診断に使う最小標本数 = 5;
+
         #endregion
 
         #region 公開メソッド
@@ -121,7 +135,44 @@ namespace Tsumiki.Cores.UnitigBuilding
                 V_修正_接続による単一コピー再判定(l_グラフ, p_カバレッジ, l_コピー数);
             }
 
-            return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数);
+            var l_分散診断 = Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数);
+            return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数, l_分散診断);
+        }
+
+        /// <summary>
+        /// 単一コピーと判定された unitig 集団のカバレッジが、ポアソン仮定で説明できる範囲に収まっているかを診断する
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_unitig長"></param>
+        /// <param name="p_コピー数"></param>
+        /// <remarks>
+        /// 短い unitig は平均カバレッジ自体のばらつきが大きく分散を汚すため、
+        /// 孤立複製単位の判定と同じ長さの下限で足切りする<br/>
+        /// 標本が少なすぎる場合は診断せず null を返す (根拠のない診断を出さない)
+        /// </remarks>
+        /// <returns>診断結果、求められない場合は null</returns>
+        private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
+        {
+            var l_単一コピー集団 = p_コピー数
+                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= 孤立複製単位とみなす最小合計長)
+                .Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D))
+                .Where(x => x > 0D)
+                .ToList();
+
+            if (l_単一コピー集団.Count < 分散診断に使う最小標本数)
+            {
+                return null;
+            }
+
+            var l_平均 = l_単一コピー集団.Average();
+            if (l_平均 <= 0D)
+            {
+                return null;
+            }
+
+            var l_分散 = l_単一コピー集団.Sum(x => (x - l_平均) * (x - l_平均)) / l_単一コピー集団.Count;
+            var l_分散指数 = l_分散 / l_平均;
+            return new カバレッジ分散診断(l_平均, l_分散, l_分散指数, l_分散指数 > 過分散とみなす分散指数の下限);
         }
 
         /// <summary>
@@ -136,6 +187,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);
             Logger.V_出力_そのまま($"[Copy number] baseline_source={p_推定結果.A_基準の出所}");
+            if (p_推定結果.A_分散診断 is { } l_診断)
+            {
+                var l_注記 = l_診断.A_Is過分散 ? " (overdispersed for a Poisson assumption; ratio-based copy number may be less reliable here)" : "";
+                Logger.V_出力_そのまま(FormattableString.Invariant($"[Copy number] single-copy coverage dispersion: mean={l_診断.A_平均:F2}, variance={l_診断.A_分散:F2}, index={l_診断.A_分散指数:F2}{l_注記}"));
+            }
 
             var l_コピー数別 = p_推定結果.A_コピー数
                 .GroupBy(x => x.Value)

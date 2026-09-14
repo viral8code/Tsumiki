@@ -1,4 +1,6 @@
 ﻿using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using Tsumiki.Cores.Evidence;
 using Tsumiki.Models.Reporting;
 
@@ -20,6 +22,14 @@ namespace Tsumiki.Cores.Evaluation
         private const string 保存ファイル名 = "ambiguous.tsv";
 
         /// <summary>
+        /// 全 k を通じた累積履歴のファイル名
+        /// </summary>
+        /// <remarks>
+        /// 同じ k を再実行すると保存ファイル名側は上書きされるが、こちらは追記し続けるため、再実行前の判定も後から追える
+        /// </remarks>
+        private const string 履歴ファイル名 = "ambiguous.history.tsv";
+
+        /// <summary>
         /// 場所名の既定接頭辞
         /// </summary>
         private const string 既定接頭辞 = "unitig";
@@ -39,6 +49,11 @@ namespace Tsumiki.Cores.Evaluation
         private static readonly Dictionary<int, List<曖昧箇所>> _k長ごとの記録 = [];
 
         /// <summary>
+        /// 再実行で上書きされる前の判定も含めた、全 k を通じた累積履歴
+        /// </summary>
+        private static readonly List<曖昧箇所> _履歴 = [];
+
+        /// <summary>
         /// いま記録している k の長さ
         /// </summary>
         private static int _現在のk長;
@@ -52,7 +67,8 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_k長"></param>
         /// <remarks>
-        /// 同じ k を再実行した場合は上書きする
+        /// この k の「最終状態」ビュー(Get_記録/V_保存が返す分)は同じ k を再実行すると上書きする<br/>
+        /// 累積履歴(V_保存_履歴が書き出す分)は上書きされず、再実行前の判定も残る
         /// </remarks>
         public static void V_開始(int p_k長)
         {
@@ -71,19 +87,36 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_首位の支持"></param>
         /// <param name="p_次点の支持"></param>
         /// <param name="p_首位の生支持数"></param>
+        /// <param name="p_安定ID">再実行や ID 採番替えをまたいで同じ箇所を追跡するための ID、無ければ空</param>
         /// <remarks>
         /// 確信度は独立な支持本数を飽和関数に通した値で、同じ種類の証拠がいくら積み上がっても 1 に近づくだけになる
         /// </remarks>
-        public static void V_記録(曖昧箇所の種別 p_種別, string p_場所, double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L)
+        public static void V_記録(曖昧箇所の種別 p_種別, string p_場所, double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L, string p_安定ID = "")
         {
             lock (_錠)
             {
-                if (!_k長ごとの記録.TryGetValue(_現在のk長, out var l_一覧))
+                var l_記録 = new 曖昧箇所(_現在のk長, p_種別, p_場所, p_首位の支持, p_次点の支持, p_首位の生支持数, 証拠較正器.Get_飽和支持(p_首位の生支持数), p_安定ID);
+                _履歴.Add(l_記録);
+                if (_k長ごとの記録.TryGetValue(_現在のk長, out var l_一覧))
                 {
-                    return;
+                    l_一覧.Add(l_記録);
                 }
-                l_一覧.Add(new 曖昧箇所(_現在のk長, p_種別, p_場所, p_首位の支持, p_次点の支持, p_首位の生支持数, 証拠較正器.Get_飽和支持(p_首位の生支持数)));
             }
+        }
+
+        /// <summary>
+        /// 左右アンカー配列から、座標に依らない安定 ID を作る
+        /// </summary>
+        /// <param name="p_左アンカー">左側の足場配列</param>
+        /// <param name="p_右アンカー">右側の足場配列</param>
+        /// <remarks>
+        /// contig ID や座標は再実行のたびに振り直されうるが、アンカー配列そのものは変わらない限り同じ ID になる
+        /// </remarks>
+        /// <returns>16 文字の16進ID</returns>
+        public static string Get_安定ID(string p_左アンカー, string p_右アンカー)
+        {
+            var l_ハッシュ = SHA256.HashData(Encoding.ASCII.GetBytes(p_左アンカー + "|" + p_右アンカー));
+            return Convert.ToHexStringLower(l_ハッシュ)[..16];
         }
 
         /// <summary>
@@ -107,12 +140,46 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         public static void V_保存(string p_作業ディレクトリ, int p_k長)
         {
-            var l_文 = new System.Text.StringBuilder();
-            foreach (var l_箇所 in Get_記録(p_k長))
+            File.WriteAllText(Path.Combine(p_作業ディレクトリ, 保存ファイル名), Get_行群(Get_記録(p_k長)));
+        }
+
+        /// <summary>
+        /// 再実行で上書きされた分も含む累積履歴を作業ディレクトリへ残す
+        /// </summary>
+        /// <param name="p_作業ディレクトリ"></param>
+        public static void V_保存_履歴(string p_作業ディレクトリ)
+        {
+            lock (_錠)
             {
-                _ = l_文.AppendLine(string.Join('	', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
+                File.WriteAllText(Path.Combine(p_作業ディレクトリ, 履歴ファイル名), Get_行群(_履歴));
             }
-            File.WriteAllText(Path.Combine(p_作業ディレクトリ, 保存ファイル名), l_文.ToString());
+        }
+
+        /// <summary>
+        /// 記録を TSV の本文へ整形する
+        /// </summary>
+        /// <param name="p_記録"></param>
+        /// <returns></returns>
+        private static string Get_行群(IReadOnlyList<曖昧箇所> p_記録)
+        {
+            var l_文 = new System.Text.StringBuilder();
+            foreach (var l_箇所 in p_記録)
+            {
+                _ = l_文.AppendLine(string.Join('	', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
+            }
+            return l_文.ToString();
+        }
+
+        /// <summary>
+        /// 再実行で上書きされた分も含む、全 k を通じた累積履歴
+        /// </summary>
+        /// <returns></returns>
+        public static IReadOnlyList<曖昧箇所> Get_履歴()
+        {
+            lock (_錠)
+            {
+                return [.. _履歴];
+            }
         }
 
         /// <summary>

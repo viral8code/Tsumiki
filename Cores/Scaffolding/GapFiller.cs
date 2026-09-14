@@ -14,6 +14,20 @@ namespace Tsumiki.Cores.Scaffolding
     /// </summary>
     internal static class GapFiller
     {
+        #region 定数
+
+        /// <summary>
+        /// 経路上の各 k-mer に求める最小カバレッジ
+        /// </summary>
+        /// <remarks>
+        /// LocalAssembler の Has経路支持 (2 本以上の異なるリードでの裏付け) と同じ趣旨の安全策を、
+        /// 局所リードを回収せずグローバルな TrustedKmerIndex のカバレッジだけで代替する<br/>
+        /// カバレッジ 1 は「1 本のリードにしか支持されていない」ことと概ね対応する
+        /// </remarks>
+        private const ulong 経路の最小カバレッジ = 2UL;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -56,7 +70,7 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
 
-                    var l_埋めた配列 = Get_ギャップ充填配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定);
+                    var l_埋めた配列 = Get_ギャップ充填配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定, out var l_Isアンカー不足, out var l_Is支持不足, out var l_安定ID);
                     if (l_埋めた配列 != null)
                     {
                         _ = l_出力.Append(l_埋めた配列);
@@ -73,7 +87,15 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             l_到達不能数++;
                         }
-                        AmbiguityRecorder.V_記録(l_判定 == ギャップ充填判定.一意でない ? 曖昧箇所の種別.経路が一意でない : 曖昧箇所の種別.到達不能, $"{l_ID.TrimStart('>')}:{l_ギャップ開始}-{l_位置}");
+                        var l_種別 = l_Isアンカー不足 ? 曖昧箇所の種別.アンカー不足
+                            : l_Is支持不足 ? 曖昧箇所の種別.支持なし
+                            : l_判定 switch
+                            {
+                                ギャップ充填判定.一意でない => 曖昧箇所の種別.経路が一意でない,
+                                ギャップ充填判定.探索打切り => 曖昧箇所の種別.探索打切り,
+                                _ => 曖昧箇所の種別.到達不能,
+                            };
+                        AmbiguityRecorder.V_記録(l_種別, $"{l_ID.TrimStart('>')}:{l_ギャップ開始}-{l_位置}", p_安定ID: l_安定ID);
                         _ = l_出力.Append('N', l_ギャップ長);
                     }
                 }
@@ -119,13 +141,19 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_判定"></param>
+        /// <param name="p_Isアンカー不足">足場そのものが信頼できる k-mer 集合に無く、探索を始められなかった場合 true</param>
+        /// <param name="p_Is支持不足">経路自体は一意に見つかったが、経路上の k-mer カバレッジが薄く採用を見送った場合 true</param>
+        /// <param name="p_安定ID">この箇所を再実行をまたいで追跡するための安定ID</param>
         /// <returns></returns>
         /// <remarks>
         /// 見つからない/一意に定まらない場合は null を返す
         /// </remarks>
-        private static string? Get_ギャップ充填配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定)
+        private static string? Get_ギャップ充填配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定, out bool p_Isアンカー不足, out bool p_Is支持不足, out string p_安定ID)
         {
             p_判定 = ギャップ充填判定.到達不能;
+            p_Isアンカー不足 = false;
+            p_Is支持不足 = false;
+            p_安定ID = "";
 
             if (p_ギャップ長 > Consts.ギャップ充填のギャップ長上限 || p_左側の出力.Length < p_k長)
             {
@@ -157,9 +185,12 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
+            p_安定ID = AmbiguityRecorder.Get_安定ID(new string([.. l_左のkmer.Select(Util.Get_塩基文字)]), new string([.. l_目標kmer.Select(Util.Get_塩基文字)]));
+
             if (!p_kmerインデックス.Haskmer(l_左のkmer) || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
                 // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない
+                p_Isアンカー不足 = true;
                 return null;
             }
 
@@ -167,7 +198,65 @@ namespace Tsumiki.Cores.Scaffolding
             var l_最大長 = p_ギャップ長 + Consts.ギャップ充填の長さの余裕幅;
 
             (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);
+            if (l_経路 is null)
+            {
+                return null;
+            }
+
+            if (!Has十分なカバレッジ支持(p_左側の出力, l_経路, p_配列, p_ギャップ終端, p_kmerインデックス, p_k長))
+            {
+                // LocalAssembler の Has経路支持 と同じ安全策: 一意な経路であっても、
+                // アンカー由来の k-mer だけで繋がっている (実際のリードにほとんど支持されていない) 場合は採用しない
+                p_Is支持不足 = true;
+                return null;
+            }
             return l_経路;
+        }
+
+        /// <summary>
+        /// 経路上のすべての k-mer が、最低限のカバレッジを持つことを確かめる
+        /// </summary>
+        /// <param name="p_左側の出力">既に書き出した配列</param>
+        /// <param name="p_経路">見つかった充填配列</param>
+        /// <param name="p_配列">元の scaffold 配列</param>
+        /// <param name="p_ギャップ終端">ギャップの終端位置</param>
+        /// <param name="p_kmerインデックス">信頼できる k-mer 集合</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>すべての k-mer が最小カバレッジ以上なら true</returns>
+        private static bool Has十分なカバレッジ支持(StringBuilder p_左側の出力, string p_経路, string p_配列, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        {
+            var l_接続 = p_左側の出力.ToString(p_左側の出力.Length - p_k長, p_k長) + p_経路 + p_配列.Substring(p_ギャップ終端, p_k長);
+            for (var i = 0; i + p_k長 <= l_接続.Length; i++)
+            {
+                var l_kmer = Get_kmerバイト列(l_接続, i, p_k長);
+                if (l_kmer is null || p_kmerインデックス.Get_カバレッジ(l_kmer) < 経路の最小カバレッジ)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 指定した位置の k-mer を塩基 ID 列にして返す
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_開始">k-mer の開始位置</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>塩基 ID 列、曖昧塩基を含む場合は null</returns>
+        private static byte[]? Get_kmerバイト列(string p_配列, int p_開始, int p_k長)
+        {
+            var l_kmer = new byte[p_k長];
+            for (var i = 0; i < p_k長; i++)
+            {
+                var l_塩基ID = Util.Get_塩基ID(p_配列[p_開始 + i]);
+                if (l_塩基ID is < Consts.塩基ID.A or > Consts.塩基ID.T)
+                {
+                    return null;
+                }
+                l_kmer[i] = l_塩基ID;
+            }
+            return l_kmer;
         }
 
         #endregion

@@ -290,6 +290,57 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, l_結果.A_コピー数[2]);
         }
 
+        /// <summary>
+        /// 単一コピー集団のカバレッジのばらつきが小さければ、過分散と診断しない
+        /// </summary>
+        [Fact]
+        public void V_分散診断_ばらつきが小さければ過分散と診断しない()
+        {
+            // 全て比 1.5 未満に収まる (=単一コピー扱いの) 均質なカバレッジ集団
+            Dictionary<int, double> l_カバレッジ = new() { [1] = 38D, [2] = 39D, [3] = 40D, [4] = 41D, [5] = 42D, [6] = 40D, [7] = 41D };
+            var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
+
+            var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
+
+            Assert.All(l_結果.A_コピー数.Values, x => Assert.Equal(1, x));
+            Assert.NotNull(l_結果.A_分散診断);
+            Assert.False(l_結果.A_分散診断!.Value.A_Is過分散);
+        }
+
+        /// <summary>
+        /// 単一コピー集団のカバレッジが分散指数の上限を大きく超えてばらついていれば、過分散と診断する
+        /// </summary>
+        /// <remarks>
+        /// この診断だけでコピー数判定や枝刈りのロジックは変えない (研究的な参考値に留める)
+        /// </remarks>
+        [Fact]
+        public void V_分散診断_ばらつきが大きければ過分散と診断する()
+        {
+            // 比はいずれも 1.5 未満に収めつつ (単一コピー扱いのまま)、値の広がりを大きくする
+            Dictionary<int, double> l_カバレッジ = new() { [1] = 25D, [2] = 30D, [3] = 35D, [4] = 40D, [5] = 45D, [6] = 50D, [7] = 55D };
+            var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
+
+            var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
+
+            Assert.All(l_結果.A_コピー数.Values, x => Assert.Equal(1, x));
+            Assert.NotNull(l_結果.A_分散診断);
+            Assert.True(l_結果.A_分散診断!.Value.A_Is過分散);
+        }
+
+        /// <summary>
+        /// 単一コピーの標本が少なすぎる場合は、根拠のない診断を出さず null を返す
+        /// </summary>
+        [Fact]
+        public void V_分散診断_標本が少なすぎる場合はnullを返す()
+        {
+            Dictionary<int, double> l_カバレッジ = new() { [1] = 40D, [2] = 41D };
+            var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
+
+            var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
+
+            Assert.Null(l_結果.A_分散診断);
+        }
+
         #endregion
 
         #region 内部メソッド

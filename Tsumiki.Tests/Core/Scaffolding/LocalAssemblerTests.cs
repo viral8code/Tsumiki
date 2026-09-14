@@ -2,6 +2,7 @@
 using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Core;
 using Tsumiki.IO;
+using Tsumiki.Models.Evidence;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Scaffolding;
 
@@ -57,7 +58,7 @@ namespace Tsumiki.Tests.Core
             var l_正解 = l_左 + l_充填 + l_右;
             var l_パス = this.V_書き出し_スキャフォールド("adaptive.fasta", l_左 + new string('N', l_充填.Length) + l_右);
             var l_リード = this.V_書き出し_リード("adaptive.fq", [l_正解], p_リード長: 150);
-            var l_固定結果 = LocalAssembler.Get_固定kの局所結果(new 局所ギャップ(0, 300, l_充填.Length, l_左, l_右), FastqReader.Get_生リード列(l_リード, null).ToList(), 21, out var l_固定判定);
+            var l_固定結果 = LocalAssembler.Get_固定kの局所結果(new 局所ギャップ(0, 300, l_充填.Length, l_左, l_右), Get_証拠(FastqReader.Get_生リード列(l_リード, null)), 21, out var l_固定判定);
             Assert.Null(l_固定結果);
             Assert.Equal(ギャップ充填判定.一意でない, l_固定判定);
             var l_結果 = LocalAssembler.V_充填_ギャップ(l_パス, l_リード, string.Empty, 21);
@@ -81,12 +82,124 @@ namespace Tsumiki.Tests.Core
             }
 
             var l_ギャップ = new 局所ギャップ(0, l_左.Length, l_充填.Length, l_左, l_右);
-            Assert.Null(LocalAssembler.Get_固定kの局所結果(l_ギャップ, l_局所リード, l_基準k, out var l_固定判定));
+            var l_証拠 = Get_証拠(l_局所リード);
+            Assert.Null(LocalAssembler.Get_固定kの局所結果(l_ギャップ, l_証拠, l_基準k, out var l_固定判定));
             Assert.Equal(ギャップ充填判定.到達不能, l_固定判定);
 
-            var l_結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, l_局所リード, l_基準k, out var l_判定);
+            var l_結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, l_証拠, l_基準k, out var l_判定);
             Assert.Equal(ギャップ充填判定.充填済み, l_判定);
             Assert.Equal(l_充填, l_結果);
+        }
+
+        /// <summary>
+        /// base-k の結果も、fallback 候補と同じ「複数リードの支持」ゲートを通すべきことを確かめる
+        /// </summary>
+        /// <remarks>
+        /// 現状は Get_適応kの局所結果 が base-k の非 null 結果を Has経路支持 を経ずに即返すため、
+        /// 橋渡し全体をまたぐリードが 1 本しかなくても採用してしまう (P1 で修正する非対称性)
+        /// </remarks>
+        [Fact]
+        public void Get_適応kの局所結果_base_kでも複数リードの支持が無ければ採用しない()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, 701);
+            var l_橋 = V_生成_ランダム配列(40, 702);
+            var l_右 = V_生成_ランダム配列(300, 703);
+            var l_正解 = l_左 + l_橋 + l_右;
+            // 橋渡し全体をまたぐリードが 1 本だけ (fallback 候補に課す「2 本以上」の基準を満たさない)
+            var l_単一リード = new List<string> { l_正解.Substring(l_左.Length - 30, 30 + l_橋.Length + 30) };
+
+            var l_ギャップ = new 局所ギャップ(0, l_左.Length, l_橋.Length, l_左, l_右);
+            var l_結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, Get_証拠(l_単一リード), l_k長, out _);
+
+            Assert.Null(l_結果);
+        }
+
+        /// <summary>
+        /// 逆相補で与えても同じ結果になることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// k-mer の正規化は順鎖・逆鎖どちらでも同じキーに寄せる設計のはずで、
+        /// 入力の鎖の向きだけで結果が変わってはいけない
+        /// </remarks>
+        [Fact]
+        public void Get_適応kの局所結果_逆相補でも同じ結果になる()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, 901);
+            var l_橋 = V_生成_ランダム配列(60, 902);
+            var l_右 = V_生成_ランダム配列(300, 903);
+            var l_正解 = l_左 + l_橋 + l_右;
+            var l_リード = new List<string>();
+            for (var i = 0; i + 100 <= l_正解.Length; i += 1)
+            {
+                l_リード.Add(l_正解.Substring(i, 100));
+            }
+
+            var l_ギャップ = new 局所ギャップ(0, l_左.Length, l_橋.Length, l_左, l_右);
+            var l_順鎖結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, Get_証拠(l_リード), l_k長, out var l_順鎖判定);
+
+            var l_逆相補ギャップ = new 局所ギャップ(0, l_左.Length, l_橋.Length, Util.V_逆相補(l_右), Util.V_逆相補(l_左));
+            var l_逆相補リード = l_リード.Select(Util.V_逆相補).ToList();
+            var l_逆鎖結果 = LocalAssembler.Get_適応kの局所結果(l_逆相補ギャップ, Get_証拠(l_逆相補リード), l_k長, out var l_逆鎖判定);
+
+            Assert.Equal(ギャップ充填判定.充填済み, l_順鎖判定);
+            Assert.Equal(l_橋, l_順鎖結果);
+            Assert.Equal(ギャップ充填判定.充填済み, l_逆鎖判定);
+            Assert.Equal(Util.V_逆相補(l_橋), l_逆鎖結果);
+        }
+
+        /// <summary>
+        /// 同じリードを重複させて渡しても、1本のときと同じ判定になることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// PCR 重複のような同一配列の繰り返しを、独立した追加の支持として数えてはいけない
+        /// </remarks>
+        [Fact]
+        public void Get_適応kの局所結果_同一リードの重複は追加の支持にならない()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, 911);
+            var l_橋 = V_生成_ランダム配列(40, 912);
+            var l_右 = V_生成_ランダム配列(300, 913);
+            var l_正解 = l_左 + l_橋 + l_右;
+            // 橋渡し全体をまたぐ「同じ」リードを重複させただけで、独立な証拠は1本ぶんしかない
+            var l_単一リード = l_正解.Substring(l_左.Length - 30, 30 + l_橋.Length + 30);
+            var l_重複リード群 = Enumerable.Repeat(l_単一リード, 50).ToList();
+
+            var l_ギャップ = new 局所ギャップ(0, l_左.Length, l_橋.Length, l_左, l_右);
+            var l_結果 = LocalAssembler.Get_適応kの局所結果(l_ギャップ, Get_証拠(l_重複リード群), l_k長, out _);
+
+            Assert.Null(l_結果);
+        }
+
+        /// <summary>
+        /// mate1・mate2 が両方とも橋渡し全体をまたいでいても、同一分子由来なので独立な証拠は1件にしかならない
+        /// </summary>
+        /// <remarks>
+        /// 短いインサートで両 mate が橋渡し領域を読み通した場合、配列自体は (向きが逆なので) 異なる文字列になる<br/>
+        /// pair ID を見ずに文字列の違いだけで独立性を数えると、この 2 本を誤って「2 件の独立した支持」として受理してしまう
+        /// </remarks>
+        [Fact]
+        public void V_mate1とmate2は同一分子として1件にしか数えない()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, 921);
+            var l_橋 = V_生成_ランダム配列(40, 922);
+            var l_右 = V_生成_ランダム配列(300, 923);
+            var l_正解 = l_左 + l_橋 + l_右;
+            var l_scaffold = this.V_書き出し_スキャフォールド("matepair_dup.fasta", l_左 + new string('N', l_橋.Length) + l_右);
+
+            // 同じ1組のペアの mate1・mate2 が両方とも橋渡し全体をまたぐ (短いインサートで読み通した状況)
+            // 内容は異なる (mate2 は逆相補・オフセット違い) が、同一分子由来なので独立な証拠は1件のみ
+            var l_mate1 = new List<string> { l_正解.Substring(l_左.Length - 30, 30 + l_橋.Length + 30) };
+            var l_mate2 = new List<string> { Util.V_逆相補(l_正解.Substring(l_左.Length - 25, 25 + l_橋.Length + 25)) };
+            var (l_read1, l_read2) = this.V_書き出し_リードペア("matepair_dup", l_mate1, l_mate2);
+
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_read1, l_read2, l_k長);
+
+            Assert.Equal(0, l_統計.A_埋めたギャップ数);
+            Assert.Contains('N', Get_単一配列(l_scaffold));
         }
 
         /// <summary>片側だけがアンカーに当たるペアでは mate も回収して橋へ使う</summary>
@@ -100,9 +213,11 @@ namespace Tsumiki.Tests.Core
             var l_正解 = l_左 + l_充填 + l_右;
             var l_scaffold = this.V_書き出し_スキャフォールド("mate.fasta", l_左 + new string('N', l_充填.Length) + l_右);
 
+            // 接合部の両端 (左アンカー末尾のk-mer から右アンカー先頭のk-mer まで) を
+            // 複数の異なるリードで覆うだけの余裕と密度を持たせる (Has経路支持 の基準を満たすため)
             var l_アンカー側 = new List<string>();
             var l_mate側 = new List<string>();
-            for (var i = l_左.Length - 20; i <= l_左.Length + l_充填.Length - 30; i += 10)
+            for (var i = l_左.Length - 40; i <= l_左.Length + l_充填.Length - 10; i += 3)
             {
                 l_アンカー側.Add(l_左.Substring(100 + l_アンカー側.Count, 50));
                 l_mate側.Add(l_正解.Substring(i, 50));
@@ -239,6 +354,16 @@ namespace Tsumiki.Tests.Core
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// pair 情報の無い単独読み取りとして、配列群を読取証拠のリストへ変換する
+        /// </summary>
+        /// <param name="p_配列群">元になる配列</param>
+        /// <returns>読取証拠のリスト</returns>
+        private static List<読取証拠> Get_証拠(IEnumerable<string> p_配列群)
+        {
+            return [.. p_配列群.Select(x => new 読取証拠(x, ""))];
+        }
 
         /// <summary>
         /// 種を決めた乱数から塩基配列を作る

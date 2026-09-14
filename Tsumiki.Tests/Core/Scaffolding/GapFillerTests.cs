@@ -136,6 +136,45 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 経路が一意に見つかっても、経路上の k-mer カバレッジが薄い (1本のリード相当) 場合は採用しない
+        /// </summary>
+        /// <remarks>
+        /// LocalAssembler の Has経路支持 と同じ安全策を、グローバルな TrustedKmerIndex のカバレッジで代替したもの<br/>
+        /// アンカー由来の k-mer だけで一意に繋がって見えても、中間配列そのものの裏付けが薄ければ採用してはいけない
+        /// </remarks>
+        [Fact]
+        public void V_経路は一意でもカバレッジが薄いときは採用しない()
+        {
+            const int l_k長 = 21;
+            var l_正解配列 = V_生成_ランダム配列(200, p_シード: 55);
+
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_バイト列 = l_正解配列.Select(Util.Get_塩基ID).ToArray();
+            for (var i = 0; i + l_k長 <= l_バイト列.Length; i++)
+            {
+                // 中間部分 (ギャップになる 80-120) だけカバレッジ 1、両端は十分なカバレッジにする
+                var l_登録回数 = i is >= 80 - l_k長 + 1 and < 120 ? 1 : 3;
+                for (var l_繰り返し = 0; l_繰り返し < l_登録回数; l_繰り返し++)
+                {
+                    l_索引.V_登録(l_バイト列.AsSpan(i, l_k長));
+                }
+            }
+            _ = l_索引.V_カットオフ(p_カットオフ: 1UL);
+
+            const int l_ギャップ開始 = 80;
+            const int l_ギャップ長 = 40;
+            var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
+            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_weak.fasta", l_ギャップ入り配列);
+
+            var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
+
+            Assert.Equal(1, l_統計.A_総ギャップ数);
+            Assert.Equal(0, l_統計.A_埋めたギャップ数);
+            Assert.Contains('N', V_読み込み_単一配列(l_パス));
+        }
+
+        /// <summary>
         /// 両端を繋ぐ経路がグラフ上に存在しない (本当に配列が無い) 場合は、当然埋められない
         /// </summary>
         [Fact]

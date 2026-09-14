@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using Tsumiki.Commons;
+using Tsumiki.Cores.Evaluation;
+using Tsumiki.Models.Reporting;
 
 namespace Tsumiki.Utilities
 {
@@ -42,7 +44,14 @@ namespace Tsumiki.Utilities
         public void Dispose()
         {
             this._プロセス.Refresh();
-            Logger.V_出力_そのまま(FormattableString.Invariant($"[Perf] {this._工程}: elapsed_s={this._時計.Elapsed.TotalSeconds:F3}, cpu_s={(this._プロセス.TotalProcessorTime - this._CPU).TotalSeconds:F3}, allocated_mb={(GC.GetTotalAllocatedBytes(false) - this._確保量) / 1048576D:F1}, working_set_mb={this._プロセス.WorkingSet64 / 1048576D:F1}, gen2_gc={GC.CollectionCount(2) - this._回収数}"));
+            var l_経過秒 = this._時計.Elapsed.TotalSeconds;
+            var l_CPU秒 = (this._プロセス.TotalProcessorTime - this._CPU).TotalSeconds;
+            var l_確保MB = (GC.GetTotalAllocatedBytes(false) - this._確保量) / 1048576D;
+            var l_ワーキングセットMB = this._プロセス.WorkingSet64 / 1048576D;
+            var l_ピークワーキングセットMB = this._プロセス.PeakWorkingSet64 / 1048576D;
+            var l_世代2回収回数 = GC.CollectionCount(2) - this._回収数;
+            Logger.V_出力_そのまま(FormattableString.Invariant($"[Perf] {this._工程}: elapsed_s={l_経過秒:F3}, cpu_s={l_CPU秒:F3}, allocated_mb={l_確保MB:F1}, working_set_mb={l_ワーキングセットMB:F1}, peak_working_set_mb={l_ピークワーキングセットMB:F1}, gen2_gc={l_世代2回収回数}"));
+            PhaseTimingRecorder.V_記録(new フェーズ計測(this._工程, l_経過秒, l_CPU秒, l_確保MB, l_ワーキングセットMB, l_ピークワーキングセットMB, l_世代2回収回数));
             this._プロセス.Dispose();
         }
 
