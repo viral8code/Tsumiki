@@ -322,25 +322,25 @@ namespace Tsumiki.Cores.Scaffolding
                 using var l_読み込み2 = new FastqReader(p_リード2のパス);
                 while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
                 {
-                    var l_レコード1 = l_読み込み1.Get_次のレコード();
-                    var l_レコード2 = l_読み込み2.Get_次のレコード();
-                    var l_一致1 = Get_一致するギャップ_候補選別付き(p_アンカー索引, l_レコード1.A_配列, p_k長, p_種集合, p_種長);
-                    var l_一致2 = Get_一致するギャップ_候補選別付き(p_アンカー索引, l_レコード2.A_配列, p_k長, p_種集合, p_種長);
+                    var (A_ID1, A_配列1, A_クオリティ1) = l_読み込み1.Get_次のレコード();
+                    var (A_ID2, A_配列2, A_クオリティ2) = l_読み込み2.Get_次のレコード();
+                    var l_一致1 = Get_一致するギャップ_候補選別付き(p_アンカー索引, A_配列1, p_k長, p_種集合, p_種長);
+                    var l_一致2 = Get_一致するギャップ_候補選別付き(p_アンカー索引, A_配列2, p_k長, p_種集合, p_種長);
 
-                    var l_pairID1 = Util.Get_ペア共通ID(l_レコード1.A_ID);
-                    var l_pairID2 = Util.Get_ペア共通ID(l_レコード2.A_ID);
+                    var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
+                    var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
 
                     // 対応 ID が崩れた FASTQ を mate として混ぜると、無関係な配列を局所グラフへ持ち込む。
                     // その場合は各リード自身が当たったギャップだけへ、pair 情報を持たない単独読み取りとして入れる。
                     if (l_pairID1 != l_pairID2)
                     {
-                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(l_レコード1.A_配列, ""));
-                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(l_レコード2.A_配列, ""));
+                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, ""));
+                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, ""));
                         continue;
                     }
 
-                    var l_証拠1 = new 読取証拠(l_レコード1.A_配列, l_pairID1);
-                    var l_証拠2 = new 読取証拠(l_レコード2.A_配列, l_pairID2);
+                    var l_証拠1 = new 読取証拠(A_配列1, l_pairID1);
+                    var l_証拠2 = new 読取証拠(A_配列2, l_pairID2);
                     var l_ペアの一致 = l_一致1.Concat(l_一致2).ToHashSet();
                     foreach (var l_g in l_ペアの一致)
                     {
@@ -501,7 +501,7 @@ namespace Tsumiki.Cores.Scaffolding
             string? l_一致した経路 = null;
             var l_候補k = p_判定 == ギャップ充填判定.到達不能
                 ? Get_低k候補(p_k長)
-                : new[] { p_k長 + 10, p_k長 + 20 };
+                : [p_k長 + 10, p_k長 + 20];
             var l_競合あり = false;
             foreach (var l_局所k in l_候補k)
             {
@@ -545,14 +545,15 @@ namespace Tsumiki.Cores.Scaffolding
             return null;
         }
 
-        /// <summary>高 k で非連結だった局所グラフを救済する低 k 候補</summary>
+        /// <summary>
+        /// 高 k で非連結だった局所グラフを救済する低 k 候補
+        /// </summary>
         internal static IReadOnlyList<int> Get_低k候補(int p_k長)
         {
-            return new[] { p_k長 - 10, p_k長 - 16, 27, 21 }
+            return [.. new[] { p_k長 - 10, p_k長 - 16, 27, 21 }
                 .Where(x => x >= 15 && x < p_k長)
                 .Distinct()
-                .OrderByDescending(x => x)
-                .ToList();
+                .OrderByDescending(x => x)];
         }
 
         /// <summary>

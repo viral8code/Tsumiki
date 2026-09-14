@@ -422,24 +422,24 @@ namespace Tsumiki.Core
             var l_Is不一致警告済み = false;
             while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
-                var l_データ1 = l_読み込み1.Get_次のレコード();
-                var l_データ2 = l_読み込み2.Get_次のレコード();
+                var (A_ID1, A_配列1, _) = l_読み込み1.Get_次のレコード();
+                var (A_ID2, A_配列2, _) = l_読み込み2.Get_次のレコード();
 
-                if (Util.Get_ペア共通ID(l_データ1.A_ID) != Util.Get_ペア共通ID(l_データ2.A_ID))
+                if (Util.Get_ペア共通ID(A_ID1) != Util.Get_ペア共通ID(A_ID2))
                 {
                     if (!l_Is不一致警告済み)
                     {
-                        Logger.V_出力(メッセージID.ペアリードIDの不一致, l_データ1.A_ID, l_データ2.A_ID);
+                        Logger.V_出力(メッセージID.ペアリードIDの不一致, A_ID1, A_ID2);
                         l_Is不一致警告済み = true;
                     }
 
                     // お互いを誤ってペアとして扱わないよう、別々に流す
-                    yield return (l_データ1.A_配列, string.Empty);
-                    yield return (l_データ2.A_配列, string.Empty);
+                    yield return (A_配列1, string.Empty);
+                    yield return (A_配列2, string.Empty);
                     continue;
                 }
 
-                yield return (l_データ1.A_配列, l_データ2.A_配列);
+                yield return (A_配列1, A_配列2);
             }
 
             // 片方のファイルだけ残っている場合は単一リードとして処理する
