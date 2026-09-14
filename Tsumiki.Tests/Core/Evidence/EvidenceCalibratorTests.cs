@@ -20,7 +20,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_較正器_リード長が不明なら使えない()
         {
-            var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: null, [1_000L, 2_000L]);
+            var l_較正器 = 証拠較正器.Get_較正器(Get_同一unitig標本(), p_リード長: null, [1_000L, 2_000L]);
 
             Assert.False(l_較正器.A_Is使用可能);
         }
@@ -43,9 +43,9 @@ namespace Tsumiki.Tests.Core
         /// すべての unitig がフラグメントより短いと、期待位置数の合計が 0 になり密度を較正できない (0 除算を避けて安全にフォールバックする)
         /// </remarks>
         [Fact]
-        public void V_較正器_全ユニティグがフラグメントより短いと使えない()
+        public void V_較正器_全unitigがフラグメントより短いと使えない()
         {
-            var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 100, [50L, 80L]);
+            var l_較正器 = 証拠較正器.Get_較正器(Get_同一unitig標本(), p_リード長: 100, [50L, 80L]);
 
             Assert.False(l_較正器.A_Is使用可能);
         }
@@ -68,11 +68,11 @@ namespace Tsumiki.Tests.Core
         /// これが「固定閾値 10 は短い辺には厳しく、長い辺には緩すぎる」という提案 D の問題意識そのものへの解答になっている
         /// </remarks>
         [Fact]
-        public void V_正規化済み支持_同じ観測本数でも隣接ユニティグが短いほど大きい()
+        public void V_正規化済み支持_同じ観測本数でも隣接unitigが短いほど大きい()
         {
             // 分岐元 (片側) の長さは固定し、行き先側の長さだけを短い/長いで変える
             // (現実の分岐選択でも、変わるのは行き先の unitig 長のほうである)
-            var l_標本 = Get_同一ユニティグ標本();
+            var l_標本 = Get_同一unitig標本();
             var l_較正器 = 証拠較正器.Get_較正器(l_標本, p_リード長: 100, [100_000L, 150L, 50_000L]);
 
             var l_短い辺への支持 = l_較正器.Get_正規化済み支持(p_観測本数: 8UL, p_長さ1: 100_000L, p_長さ2: 150L, p_ギャップ長: 0);
@@ -88,9 +88,9 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_正規化済み支持_観測本数が理想どおりならおよそ1()
         {
-            var l_標本 = Get_同一ユニティグ標本(20_000);
-            IReadOnlyList<long> l_ユニティグ長一覧 = [50_000L, 50_000L, 50_000L];
-            var l_較正器 = 証拠較正器.Get_較正器(l_標本, p_リード長: 100, l_ユニティグ長一覧);
+            var l_標本 = Get_同一unitig標本(20_000);
+            IReadOnlyList<long> l_unitig長一覧 = [50_000L, 50_000L, 50_000L];
+            var l_較正器 = 証拠較正器.Get_較正器(l_標本, p_リード長: 100, l_unitig長一覧);
 
             // 密度較正に使ったのと同じ長さの unitig 同士の辺なら、
             // 「観測本数 = 密度 x 期待位置数」を代入すれば比はちょうど 1 になる
@@ -112,7 +112,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         /// <param name="p_件数"></param>
         /// <returns></returns>
-        private static List<int> Get_同一ユニティグ標本(int p_件数 = 2_000)
+        private static List<int> Get_同一unitig標本(int p_件数 = 2_000)
         {
             var l_乱数 = new Random(20_260_908);
             return [.. Enumerable.Range(0, p_件数).Select(_ => 400 + l_乱数.Next(-50, 51))];

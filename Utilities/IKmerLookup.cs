@@ -17,6 +17,14 @@
         /// <returns></returns>
         bool Haskmer(Span<byte> p_kmer);
 
+        /// <summary>
+        /// 正規形の右詰めパック値 (k &lt;= 128) が集合に含まれるかどうかを判定する
+        /// </summary>
+        /// <param name="p_上位">128 bit を超える側、k &lt;= 64 なら 0</param>
+        /// <param name="p_下位"></param>
+        /// <returns></returns>
+        bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位);
+
         #endregion
     }
 }

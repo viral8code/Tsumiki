@@ -7,7 +7,7 @@ namespace Tsumiki.Models.UnitigBuilding
     /// 逆相補を同一視して k-mer を覚える集合
     /// </summary>
     /// <remarks>
-    /// k で表現を切り替えるのは、k &lt;= 64 なら 2 bit パックが UInt128 に収まり、鍵 1 つあたりの大きさが半分以下になるため
+    /// k で表現を切り替えるのは、2 bit パックが固定幅に収まればヒープ確保なしに鍵を作れるため
     /// </remarks>
     /// <param name="p_k長">k 長</param>
     internal sealed class 正規形集合(int p_k長)
@@ -20,9 +20,14 @@ namespace Tsumiki.Models.UnitigBuilding
         private readonly HashSet<UInt128>? _小 = p_k長 <= 64 ? [] : null;
 
         /// <summary>
+        /// 長
+        /// </summary>
+        private readonly HashSet<(UInt128 A_上位, UInt128 A_下位)>? _長 = p_k長 is > 64 and <= TrustedKmerIndex.パック値のk上限 ? [] : null;
+
+        /// <summary>
         /// 大
         /// </summary>
-        private readonly HashSet<KmerKey>? _大 = p_k長 > 64 ? [] : null;
+        private readonly HashSet<KmerKey>? _大 = p_k長 > TrustedKmerIndex.パック値のk上限 ? [] : null;
 
         #endregion
 
@@ -48,6 +53,11 @@ namespace Tsumiki.Models.UnitigBuilding
                 _ = l_小.Add(KmerPacking.TryGet_正規化パック(p_kmer));
                 return;
             }
+            if (this._長 is { } l_長)
+            {
+                _ = l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer));
+                return;
+            }
             _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
         }
 
@@ -60,7 +70,7 @@ namespace Tsumiki.Models.UnitigBuilding
         {
             return this._小 is { } l_小
                 ? l_小.Contains(KmerPacking.TryGet_正規化パック(p_kmer))
-                : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -74,6 +84,8 @@ namespace Tsumiki.Models.UnitigBuilding
         {
             return p_k長 <= 64
                 ? KmerPacking.TryGet_正規化パック(p_左) == KmerPacking.TryGet_正規化パック(p_右)
+                : p_k長 <= TrustedKmerIndex.パック値のk上限
+                ? TrustedKmerIndex.Get_正規形_長(p_左) == TrustedKmerIndex.Get_正規形_長(p_右)
                 : new KmerKey(p_左).Get_正規形().Equals(new KmerKey(p_右).Get_正規形());
         }
 

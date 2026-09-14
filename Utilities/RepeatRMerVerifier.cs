@@ -8,22 +8,44 @@ namespace Tsumiki.Utilities
     /// </summary>
     internal sealed class RepeatRMerVerifier
     {
+        #region 定数
+
+        /// <summary>
+        /// 集合を分割する数のビット数
+        /// </summary>
+        private const int 分割のビット数 = 6;
+
+        /// <summary>
+        /// 集合の分割数
+        /// </summary>
+        /// <remarks>
+        /// 分割ごとに錠を取ることで、リードの走査を並列にしても登録が 1 本の錠に詰まらない
+        /// </remarks>
+        private const int 分割数 = 1 << 分割のビット数;
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
         /// 長さに依存せず完全一致を判定する正準キー集合
         /// </summary>
-        private readonly HashSet<(UInt128 A_上位, UInt128 A_下位, string? A_長い配列)>? _rMer集合;
+        private readonly HashSet<(UInt128 A_上位, UInt128 A_下位, string? A_長い配列)>[]? _rMer集合;
 
         /// <summary>
         /// 32 塩基までの厳密キー集合
         /// </summary>
-        private readonly HashSet<ulong>? _小集合;
+        private readonly HashSet<ulong>[]? _小集合;
 
         /// <summary>
         /// 64 塩基までの厳密キー集合
         /// </summary>
-        private readonly HashSet<UInt128>? _中集合;
+        private readonly HashSet<UInt128>[]? _中集合;
+
+        /// <summary>
+        /// 分割ごとの錠
+        /// </summary>
+        private readonly Lock[] _分割錠;
 
         /// <summary>
         /// r-mer の長さ
@@ -41,17 +63,18 @@ namespace Tsumiki.Utilities
         private RepeatRMerVerifier(int p_r長)
         {
             this._r長 = p_r長;
+            this._分割錠 = [.. Enumerable.Range(0, 分割数).Select(_ => new Lock())];
             if (p_r長 <= 32)
             {
-                this._小集合 = [];
+                this._小集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<ulong>())];
             }
             else if (p_r長 <= 64)
             {
-                this._中集合 = [];
+                this._中集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<UInt128>())];
             }
             else
             {
-                this._rMer集合 = [];
+                this._rMer集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位, string? A_長い配列)>())];
             }
         }
 
@@ -63,12 +86,17 @@ namespace Tsumiki.Utilities
         /// 生リードファイル群を 1 回走査し、出現した r-mer (正準形) の集合を作る
         /// </summary>
         /// <remarks>
-        /// 空、存在しないパスは片側リードのみの実行に対応するため無視する
+        /// 空、存在しないパスは片側リードのみの実行に対応するため無視する<br/>
+        /// 検査する窓はこの k のグラフ上の経路なので、中の k-mer はすべて p_kmerインデックス にある<br/>
+        /// 両端の k-mer が集合に無い r-mer は照合されることがなく、登録を省いても判定は変わらない<br/>
+        /// 省けるのは主にリードのエラーを含む r-mer で、ゲノムの数十倍に膨らむ集合がゲノム規模に収まる
         /// </remarks>
         /// <param name="p_リードパス一覧">走査するリードファイルのパス</param>
         /// <param name="p_r長">r-mer の長さ</param>
+        /// <param name="p_kmerインデックス">登録する r-mer を両端の k-mer で絞り込む集合、null なら絞り込まない</param>
+        /// <param name="p_k長">p_kmerインデックス の k</param>
         /// <returns>構築した検証器</returns>
-        public static RepeatRMerVerifier V_構築(IEnumerable<string> p_リードパス一覧, int p_r長)
+        public static RepeatRMerVerifier V_構築(IEnumerable<string> p_リードパス一覧, int p_r長, TrustedKmerIndex? p_kmerインデックス = null, int p_k長 = 0)
         {
             using var l_計測 = new StageTimer($"repeat-index r={p_r長}");
             if (p_r長 <= 0)
@@ -81,16 +109,18 @@ namespace Tsumiki.Utilities
                 .ToList();
 
             var l_検証器 = new RepeatRMerVerifier(p_r長);
+            var l_絞り込み = p_k長 is > 0 and <= TrustedKmerIndex.パック値のk上限 && p_k長 < p_r長 && p_r長 <= 128 ? p_kmerインデックス : null;
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
             foreach (var l_パス in l_パス群)
             {
-                foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
+                ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(l_パス), (l_リード, _) =>
                 {
                     if (l_リード is not null)
                     {
-                        l_検証器.V_登録_rMer(l_リード, p_r長);
+                        l_検証器.V_登録_rMer(l_リード, p_r長, l_絞り込み, p_k長);
                     }
-                }
+                });
             }
             return l_検証器;
         }
@@ -250,17 +280,41 @@ namespace Tsumiki.Utilities
         /// <param name="p_値">正準化した r-mer の値</param>
         private void V_登録((UInt128 A_上位, UInt128 A_下位, string? A_長い配列) p_値)
         {
-            _ = this._小集合?.Add((ulong)p_値.A_下位) ?? this._中集合?.Add(p_値.A_下位) ?? this._rMer集合!.Add(p_値);
+            var l_分割 = Get_分割番号(p_値);
+            lock (this._分割錠[l_分割])
+            {
+                _ = this._小集合?[l_分割].Add((ulong)p_値.A_下位) ?? this._中集合?[l_分割].Add(p_値.A_下位) ?? this._rMer集合![l_分割].Add(p_値);
+            }
         }
 
         /// <summary>
         /// r-mer をリードで見たか
         /// </summary>
         /// <param name="p_値">正準化した r-mer の値</param>
+        /// <remarks>
+        /// 構築を終えた後は読み取りだけなので錠を取らない
+        /// </remarks>
         /// <returns>完全に一致する配列を見ていれば true</returns>
         private bool Has観測((UInt128 A_上位, UInt128 A_下位, string? A_長い配列) p_値)
         {
-            return this._小集合?.Contains((ulong)p_値.A_下位) ?? this._中集合?.Contains(p_値.A_下位) ?? this._rMer集合!.Contains(p_値);
+            var l_分割 = Get_分割番号(p_値);
+            return this._小集合?[l_分割].Contains((ulong)p_値.A_下位) ?? this._中集合?[l_分割].Contains(p_値.A_下位) ?? this._rMer集合![l_分割].Contains(p_値);
+        }
+
+        /// <summary>
+        /// r-mer の値から、登録先の分割を決める
+        /// </summary>
+        /// <param name="p_値">正準化した r-mer の値</param>
+        /// <remarks>
+        /// パック値の下位ビットは末尾の数塩基そのもので偏るため、混ぜてから上位ビットを使う
+        /// </remarks>
+        /// <returns></returns>
+        private static int Get_分割番号((UInt128 A_上位, UInt128 A_下位, string? A_長い配列) p_値)
+        {
+            var l_混合 = p_値.A_長い配列 is { } l_配列
+                ? (ulong)l_配列.GetHashCode()
+                : (ulong)p_値.A_下位 ^ (ulong)(p_値.A_下位 >> 64) ^ (ulong)p_値.A_上位;
+            return (int)((l_混合 * 0x9E37_79B9_7F4A_7C15UL) >> (64 - 分割のビット数));
         }
 
         /// <summary>
@@ -268,18 +322,39 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_r長">r-mer の長さ</param>
+        /// <param name="p_絞り込み">両端の k-mer がこの集合にある r-mer だけを登録する、null なら絞り込まない</param>
+        /// <param name="p_k長">p_絞り込み の k</param>
         /// <remarks>
         /// 窓ごとに Is曖昧塩基 を r 回呼ぶと全体で O (n*r) になる (この呼び出しは V_構築 から全リード分繰り返されるためリード規模でそのまま効く) <br/>
         /// 窓をスライドさせる際は新しく入る 1 塩基だけを見て「直近に見た曖昧塩基の位置」を更新すれば、その位置が現在の窓の左端以降にある間は判定を使い回せる (曖昧塩基は稀なので償却 O (n) で済む)
         /// </remarks>
-        private void V_登録_rMer(string p_リード, int p_r長)
+        private void V_登録_rMer(string p_リード, int p_r長, TrustedKmerIndex? p_絞り込み, int p_k長)
         {
             if (p_r長 <= 128)
             {
-                var l_窓 = new RollingKmer(p_r長);
-                foreach (var l_塩基 in p_リード)
+                Span<bool> l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];
+                if (p_絞り込み is not null)
                 {
-                    if (l_窓.Try追加(l_塩基, out var l_キー))
+                    var l_k窓 = new RollingKmer(p_k長);
+                    for (var i = 0; i < p_リード.Length; i++)
+                    {
+                        if (l_k窓.Try追加(p_リード[i], out var l_kキー))
+                        {
+                            l_k窓の信頼[i - p_k長 + 1] = p_絞り込み.Haskmer_正規形(l_kキー.A_上位, l_kキー.A_下位);
+                        }
+                    }
+                }
+
+                var l_窓 = new RollingKmer(p_r長);
+                for (var i = 0; i < p_リード.Length; i++)
+                {
+                    if (!l_窓.Try追加(p_リード[i], out var l_キー))
+                    {
+                        continue;
+                    }
+
+                    var l_開始 = i - p_r長 + 1;
+                    if (p_絞り込み is null || (l_k窓の信頼[l_開始] && l_k窓の信頼[l_開始 + p_r長 - p_k長]))
                     {
                         this.V_登録(l_キー);
                     }

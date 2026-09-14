@@ -69,6 +69,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns>統合できたペアの合成配列</returns>
         public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計)
         {
+            using var l_計測 = new StageTimer($"superread k={p_k長}");
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_インサートサイズ = ConfigurationManager.A_実行時引数.A_インサートサイズ;
 

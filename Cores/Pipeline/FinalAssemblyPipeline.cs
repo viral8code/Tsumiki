@@ -130,9 +130,9 @@ namespace Tsumiki.Cores.Pipeline
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
                 var l_分布 = l_索引.Get_出現回数ヒストグラム();
                 var l_基準 = KmerSpectrumMixtureModel.Get_解析結果(l_分布)?.A_単一コピー平均
-                    ?? KmerHistogram.Get_解析結果(l_分布)?.A_ピーク出現回数 ?? 0D;
+                    ?? KmerHistogram.Get_解析結果(l_分布)?.A_単一コピー基準値 ?? 0D;
                 KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_索引);
-                _ = l_索引.V_カットオフ(l_設定.A_kmerカットオフ);
+                l_索引.V_適用_カットオフ(l_設定.A_kmerカットオフ);
                 return l_基準 > 0D ? AssemblyValidator.Get_検査結果(p_最終パス, l_索引, p_k長, l_基準) : null;
             }
             finally

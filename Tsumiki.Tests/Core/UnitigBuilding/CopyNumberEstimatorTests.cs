@@ -82,16 +82,16 @@ namespace Tsumiki.Tests.Core
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Dictionary<int, string> l_ユニティグ群 = new()
+            Dictionary<int, string> l_unitig群 = new()
             {
                 [1] = l_先行単一配列,
                 [2] = l_後続単一配列,
                 [3] = l_二重配列,
                 [4] = l_四重配列,
             };
-            var l_長さ一覧 = l_ユニティグ群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
+            var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
 
-            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_ユニティグ群, l_k長);
+            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
 
             // 基準値は長さ加重中央値なので、長い単一コピー配列の水準になるはず
@@ -125,10 +125,10 @@ namespace Tsumiki.Tests.Core
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Dictionary<int, string> l_ユニティグ群 = new() { [1] = l_基準配列, [2] = l_微増配列 };
-            var l_長さ一覧 = l_ユニティグ群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
+            Dictionary<int, string> l_unitig群 = new() { [1] = l_基準配列, [2] = l_微増配列 };
+            var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
 
-            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_ユニティグ群, l_k長);
+            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
 
             Assert.Equal(1, l_結果.A_コピー数[2]);
@@ -150,10 +150,10 @@ namespace Tsumiki.Tests.Core
             V_登録_全kmer(l_インデックス, l_通常配列, 20, l_k長);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            Dictionary<int, string> l_ユニティグ群 = new() { [1] = l_通常配列, [2] = l_短すぎる配列 };
-            var l_長さ一覧 = l_ユニティグ群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
+            Dictionary<int, string> l_unitig群 = new() { [1] = l_通常配列, [2] = l_短すぎる配列 };
+            var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
 
-            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_ユニティグ群, l_k長);
+            var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
 
             Assert.Equal(0D, l_カバレッジ[2]);
@@ -194,8 +194,8 @@ namespace Tsumiki.Tests.Core
                 l_書き込み.V_書き込み(4, l_プラスミド末尾);
             }
 
-            var l_コンティグ構築 = new ContigMaker(l_FASTAパス);
-            var l_グラフ = l_コンティグ構築.Get_グラフ();
+            var l_contig構築 = new ContigMaker(l_FASTAパス);
+            var l_グラフ = l_contig構築.Get_グラフ();
 
             Dictionary<int, double> l_カバレッジ = new()
             {
@@ -245,8 +245,8 @@ namespace Tsumiki.Tests.Core
                 l_書き込み.V_書き込み(2, l_孤立反復);
             }
 
-            var l_コンティグ構築 = new ContigMaker(l_FASTAパス);
-            var l_グラフ = l_コンティグ構築.Get_グラフ();
+            var l_contig構築 = new ContigMaker(l_FASTAパス);
+            var l_グラフ = l_contig構築.Get_グラフ();
 
             Dictionary<int, double> l_カバレッジ = new() { [1] = 60.0D, [2] = 300.0D };
             Dictionary<int, int> l_長さ一覧 = new() { [1] = l_染色体.Length, [2] = l_孤立反復.Length };
@@ -279,8 +279,8 @@ namespace Tsumiki.Tests.Core
                 l_書き込み.V_書き込み(2, l_プラスミド);
             }
 
-            var l_コンティグ構築 = new ContigMaker(l_FASTAパス);
-            var l_グラフ = l_コンティグ構築.Get_グラフ();
+            var l_contig構築 = new ContigMaker(l_FASTAパス);
+            var l_グラフ = l_contig構築.Get_グラフ();
 
             Dictionary<int, double> l_カバレッジ = new() { [1] = 60.0D, [2] = 300.0D };
             Dictionary<int, int> l_長さ一覧 = new() { [1] = l_染色体.Length, [2] = l_プラスミド.Length };

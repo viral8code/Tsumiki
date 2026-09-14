@@ -59,7 +59,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_較正なしでは生カウントの差だけでは優勢と判定されない()
         {
-            var (l_ユニティグ一覧, l_グラフ, l_aId, l_bId, l_cId) = V_構築();
+            var (l_unitig一覧, l_グラフ, l_aId, l_bId, l_cId) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(l_aId);
             var l_中間配列 = ContigMaker.Get_頂点番号(l_bId);
             var l_末尾配列 = ContigMaker.Get_頂点番号(l_cId);
@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<int, int> l_copyNumber = new() { [l_aId] = 1, [l_bId] = 1, [l_cId] = 1 };
 
             var l_merge = V_構築_未結合表(l_グラフ);
-            _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3UL, p_較正器: null);
+            _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3UL, p_較正器: null);
 
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
@@ -84,7 +84,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_較正すると生カウントでは決められなかった短い側の分岐が選ばれる()
         {
-            var (l_ユニティグ一覧, l_グラフ, l_aId, l_bId, l_cId) = V_構築();
+            var (l_unitig一覧, l_グラフ, l_aId, l_bId, l_cId) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(l_aId);
             var l_中間配列 = ContigMaker.Get_頂点番号(l_bId);
             var l_末尾配列 = ContigMaker.Get_頂点番号(l_cId);
@@ -92,11 +92,11 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_中間配列)] = 3UL, [(l_先頭配列, l_末尾配列)] = 4UL };
             Dictionary<int, int> l_copyNumber = new() { [l_aId] = 1, [l_bId] = 1, [l_cId] = 1 };
 
-            var l_較正器 = 証拠較正器.Get_較正器(Get_同一ユニティグ標本(), p_リード長: 30, [(long)l_ユニティグ一覧[l_先頭配列].Length, (long)l_ユニティグ一覧[l_中間配列].Length, (long)l_ユニティグ一覧[l_末尾配列].Length]);
+            var l_較正器 = 証拠較正器.Get_較正器(Get_同一unitig標本(), p_リード長: 30, [(long)l_unitig一覧[l_先頭配列].Length, (long)l_unitig一覧[l_中間配列].Length, (long)l_unitig一覧[l_末尾配列].Length]);
             Assert.True(l_較正器.A_Is使用可能);
 
             var l_merge = V_構築_未結合表(l_グラフ);
-            var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3UL, p_較正器: l_較正器);
+            var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 3UL, p_較正器: l_較正器);
 
             Assert.True(l_committed > 0, "calibrated lookahead should have resolved the junction toward the short flank");
             Assert.Equal(l_中間配列, l_merge[l_先頭配列]);
@@ -147,7 +147,7 @@ namespace Tsumiki.Tests.Core
         /// A の末尾 20 塩基 (=k-1) を B ・ C 両方の先頭が共有することで分岐にする
         /// </remarks>
         /// <returns></returns>
-        private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ, int A_分岐元ID, int A_短い方ID, int A_長い方ID) V_構築()
+        private static (List<string> A_unitig一覧, UnitigGraph A_グラフ, int A_分岐元ID, int A_短い方ID, int A_長い方ID) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
 
@@ -156,14 +156,14 @@ namespace Tsumiki.Tests.Core
             var l_unitigB = l_anchor + V_生成_乱数配列(15, p_乱数種: 2); // 35 bp (短い)
             var l_unitigC = l_anchor + V_生成_乱数配列(2_000, p_乱数種: 3); // 2020 bp (長い)
 
-            List<string> l_ユニティグ一覧 = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> l_kmer辞書 = [];
+            List<string> l_unitig一覧 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
 
             var l_ID = 1;
             foreach (var l_配列 in new[] { l_unitigA, l_unitigB, l_unitigC })
             {
-                l_ユニティグ一覧.Add(l_配列);
-                l_ユニティグ一覧.Add(Util.V_逆相補(l_配列));
+                l_unitig一覧.Add(l_配列);
+                l_unitig一覧.Add(Util.V_逆相補(l_配列));
                 for (var i = k長; i <= l_配列.Length; i++)
                 {
                     var l_開始位置 = i - k長;
@@ -174,8 +174,8 @@ namespace Tsumiki.Tests.Core
                 l_ID++;
             }
 
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, k長, 曖昧kmer番号);
-            return (l_ユニティグ一覧, l_グラフ, 1, 2, 3);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号);
+            return (l_unitig一覧, l_グラフ, 1, 2, 3);
         }
 
         /// <summary>
@@ -195,7 +195,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         /// <param name="p_件数"></param>
         /// <returns></returns>
-        private static List<int> Get_同一ユニティグ標本(int p_件数 = 300) => [.. Enumerable.Repeat(150, p_件数)];
+        private static List<int> Get_同一unitig標本(int p_件数 = 300) => [.. Enumerable.Repeat(150, p_件数)];
 
         #endregion
 

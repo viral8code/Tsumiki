@@ -118,11 +118,10 @@ namespace Tsumiki.Cores.Pipeline
 
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
-            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
+            l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
             KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
 
-            // 山の位置が単一コピーのカバレッジ、面積÷山がゲノムサイズになる
-            // 前者はコピー数の換算に、後者は NG50 の分母に使う
+            // 単一コピーの基準はコピー数の換算に、推定ゲノムサイズは NG50 の分母に使う
             var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
             if (l_解析 is null)
             {
@@ -183,7 +182,7 @@ namespace Tsumiki.Cores.Pipeline
 
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
-            _ = l_アンカー.V_カットオフ(p_引数.A_kmerカットオフ);
+            l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
             KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
 
             var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
@@ -194,7 +193,7 @@ namespace Tsumiki.Cores.Pipeline
                 return p_結果;
             }
 
-            var l_評価 = AssemblyScorer.Get_評価(p_結果.A_最終パス, l_アンカー, l_アンカーk長, l_解析.A_ピーク出現回数, l_解析.A_推定ゲノムサイズ);
+            var l_評価 = AssemblyScorer.Get_評価(p_結果.A_最終パス, l_アンカー, l_アンカーk長, l_解析.A_単一コピー基準値, l_解析.A_推定ゲノムサイズ, l_解析.A_単一コピー上限);
             if (l_評価 is null)
             {
                 Logger.V_出力(メッセージID.候補を評価できない);
@@ -334,7 +333,7 @@ namespace Tsumiki.Cores.Pipeline
             // ここで生リードの走査・カウント・カットオフをもう一度
             // やり直しており、同一の結果を得るためだけに重複したコストを
             // 払っていた
-            var l_統合の評価 = AssemblyScorer.Get_評価(l_統合結果.A_最終パス, p_アンカー, p_アンカーk長, p_解析.A_ピーク出現回数, p_解析.A_推定ゲノムサイズ);
+            var l_統合の評価 = AssemblyScorer.Get_評価(l_統合結果.A_最終パス, p_アンカー, p_アンカーk長, p_解析.A_単一コピー基準値, p_解析.A_推定ゲノムサイズ, p_解析.A_単一コピー上限);
             if (l_統合の評価 is null)
             {
                 Logger.V_出力(メッセージID.統合結果を評価できない);
@@ -397,7 +396,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_候補 = new List<(アセンブリ実行結果, アセンブリ評価)>();
             foreach (var l_実行結果 in p_実行結果一覧)
             {
-                var l_評価 = AssemblyScorer.Get_評価(l_実行結果.A_最終パス, p_アンカー, p_アンカーk長, p_解析.A_ピーク出現回数, p_解析.A_推定ゲノムサイズ);
+                var l_評価 = AssemblyScorer.Get_評価(l_実行結果.A_最終パス, p_アンカー, p_アンカーk長, p_解析.A_単一コピー基準値, p_解析.A_推定ゲノムサイズ, p_解析.A_単一コピー上限);
                 if (l_評価 is not null)
                 {
                     l_候補.Add((l_実行結果, l_評価));

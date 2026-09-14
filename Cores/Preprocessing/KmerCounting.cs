@@ -28,30 +28,34 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
-            var l_ログ回数 = 0UL;
-            var l_カウンタロック = new object();
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_リード列(p_ファイルパス), (l_リード, _) =>
+            // 128 塩基までは正規形のパック値をリード上で転がして作り、ワーカーごとに束ねて渡す
+            var l_束群 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.パック値のk上限
+                ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray()
+                : null;
+
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_レコード列(p_ファイルパス), (l_レコード, l_ワーカー番号) =>
                 {
-                    V_登録_1リード(l_リード, p_kmerインデックス);
-
-                    var l_Isログ出力 = false;
-                    var l_ログ値 = 0UL;
-                    lock (l_カウンタロック)
+                    if (l_束群 is not null)
                     {
-                        l_総リード数++;
-                        if (l_総リード数 % Consts.進捗ログ間隔 == 0UL)
-                        {
-                            l_ログ回数++;
-                            l_Isログ出力 = true;
-                            l_ログ値 = l_ログ回数 * Consts.進捗ログ間隔;
-                        }
+                        V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号]);
                     }
-                    if (l_Isログ出力)
+                    else
                     {
-                        Logger.V_出力(メッセージID.リード読込の進捗, l_ログ値);
+                        V_登録_1リード(Util.V_変換_塩基列(l_レコード.A_配列), l_レコード.A_クオリティ, p_kmerインデックス);
+                    }
+
+                    var l_件数 = Interlocked.Increment(ref l_総リード数);
+                    if (l_件数 % Consts.進捗ログ間隔 == 0UL)
+                    {
+                        Logger.V_出力(メッセージID.リード読込の進捗, l_件数);
                     }
                 });
+
+            foreach (var l_束 in l_束群 ?? [])
+            {
+                l_束.V_吐き出し();
+            }
 
             Logger.V_出力(メッセージID.リード読込完了, l_総リード数, Path.GetFileName(p_ファイルパス));
         }
@@ -156,31 +160,62 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// FASTQ を順に読み進めてリードを返す
+        /// FASTQ を順に読み進めて塩基列とクオリティを返す
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <returns></returns>
-        private static IEnumerable<リードデータ> Get_リード列(string p_ファイルパス)
+        private static IEnumerable<(string A_配列, string A_クオリティ)> Get_レコード列(string p_ファイルパス)
         {
             using var l_読み込み = new FastqReader(p_ファイルパス);
             while (l_読み込み.Has続き())
             {
-                yield return l_読み込み.Get_次のリード_軽量();
+                var (_, l_配列, l_クオリティ) = l_読み込み.Get_次のレコード();
+                yield return (l_配列, l_クオリティ);
+            }
+        }
+
+        /// <summary>
+        /// 1 リード分の k-mer を、正規形のパック値を転がしながら束へ溜める (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <param name="p_クオリティ"></param>
+        /// <param name="p_束"></param>
+        /// <remarks>
+        /// 低品質の塩基は曖昧塩基と同じく窓を切る壁として渡し、V_登録_1リード と同じ k-mer だけを数える
+        /// </remarks>
+        private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束)
+        {
+            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            if (p_配列.Length < l_k長)
+            {
+                return;
+            }
+
+            var l_品質下限 = ConfigurationManager.A_実行時引数.A_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
+            var l_窓 = new RollingKmer(l_k長);
+            for (var i = 0; i < p_配列.Length; i++)
+            {
+                var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
+                if (l_窓.Try追加(l_塩基, out var l_キー))
+                {
+                    p_束.V_追加(l_キー.A_上位, l_キー.A_下位);
+                }
             }
         }
 
         /// <summary>
         /// 1 リード分の k-mer 抽出・品質フィルタリング・登録
         /// </summary>
-        /// <param name="p_リード"></param>
+        /// <param name="p_塩基列"></param>
+        /// <param name="p_クオリティ"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <remarks>
         /// 逆相補側を別途登録してはいけない<br/>
         /// TrustedKmerIndex.V_登録 が正規形へ寄せて数えるため、二重計上になる
         /// </remarks>
-        private static void V_登録_1リード(リードデータ p_リード, TrustedKmerIndex p_kmerインデックス)
+        private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス)
         {
-            var l_塩基列 = p_リード.A_塩基列!;
+            var l_塩基列 = p_塩基列;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             if (l_塩基列.Length < l_k長)
             {
@@ -191,7 +226,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
 
             var l_低品質数 = 0;
-            var l_クオリティ = p_リード.A_クオリティ.AsSpan();
+            var l_クオリティ = p_クオリティ.AsSpan();
             var l_塩基 = l_塩基列.AsSpan();
 
             for (var i = 0; i < l_k長; i++)

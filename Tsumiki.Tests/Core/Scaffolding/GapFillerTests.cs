@@ -68,7 +68,7 @@ namespace Tsumiki.Tests.Core
             const int l_ギャップ開始 = 80;
             const int l_ギャップ長 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds.fasta", l_ギャップ入り配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds.fasta", l_ギャップ入り配列);
 
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
@@ -97,7 +97,7 @@ namespace Tsumiki.Tests.Core
             const int l_ギャップ開始 = 80;
             const int l_実際の欠損 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', 30) + l_正解配列[(l_ギャップ開始 + l_実際の欠損)..];
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_off.fasta", l_ギャップ入り配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds_off.fasta", l_ギャップ入り配列);
 
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
@@ -124,7 +124,7 @@ namespace Tsumiki.Tests.Core
             using var l_索引 = this.V_構築_索引(l_k長, l_前半 + l_中間A + l_後半, l_前半 + l_中間B + l_後半);
 
             var l_ギャップ入り配列 = l_前半 + new string('N', 40) + l_後半;
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_ambiguous.fasta", l_ギャップ入り配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds_ambiguous.fasta", l_ギャップ入り配列);
 
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
@@ -165,7 +165,7 @@ namespace Tsumiki.Tests.Core
             const int l_ギャップ開始 = 80;
             const int l_ギャップ長 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_weak.fasta", l_ギャップ入り配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds_weak.fasta", l_ギャップ入り配列);
 
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
@@ -188,7 +188,7 @@ namespace Tsumiki.Tests.Core
             using var l_索引 = this.V_構築_索引(l_k長, l_左, l_右);
 
             var l_ギャップ入り配列 = l_左 + new string('N', 40) + l_右;
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_unreachable.fasta", l_ギャップ入り配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds_unreachable.fasta", l_ギャップ入り配列);
 
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
@@ -208,7 +208,7 @@ namespace Tsumiki.Tests.Core
             var l_正解配列 = V_生成_ランダム配列(150, p_シード: 31);
             using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
 
-            var l_パス = this.V_書き込み_スキャフォールド("scaffolds_nogap.fasta", l_正解配列);
+            var l_パス = this.V_書き込み_scaffold("scaffolds_nogap.fasta", l_正解配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
 
             Assert.Equal(0, l_統計.A_総ギャップ数);
@@ -262,7 +262,7 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_名前">ファイル名</param>
         /// <param name="p_配列">書き出す配列</param>
         /// <returns>書き出したパス</returns>
-        private string V_書き込み_スキャフォールド(string p_名前, string p_配列)
+        private string V_書き込み_scaffold(string p_名前, string p_配列)
         {
             var l_パス = Path.Combine(this._作業ディレクトリ, p_名前);
             using (var l_ライター = new FastaWriter(l_パス))

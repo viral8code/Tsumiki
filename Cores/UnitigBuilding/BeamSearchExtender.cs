@@ -106,7 +106,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
                 // R を 1 回しか使えない walk でこれを連鎖させると中間の B が
                 // 飛ばされる (詳細は ContigMaker 側の同名の判定を参照)
-                if (!p_グラフ.Is通過可能(p_コピー数, v) || !p_グラフ.Is通過可能(p_コピー数, l_選択 ^ 1))
+                if (!p_グラフ.Is構造上一意な辺(v, l_選択) && (!p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列) || !p_グラフ.Is通過可能(p_コピー数, l_選択 ^ 1, p_unitig配列)))
                 {
                     continue;
                 }
@@ -160,7 +160,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_コピー数区間">観測された分散を踏まえた区間、無ければ点推定をそのまま予算にする</param>
         /// <remarks>
         /// 区間の上限を使うのは、点推定の誤りで真に複数回通るべき反復の経路を早期に打ち切らないため<br/>
-        /// (分岐選択やスキャフォールド足場の判定のような保守的であるべき場面では、引き続き点推定を使う)
+        /// (分岐選択やscaffold足場の判定のような保守的であるべき場面では、引き続き点推定を使う)
         /// </remarks>
         /// <returns></returns>
         private static int Get_通行予算(int p_unitigID, IReadOnlyDictionary<int, int> p_コピー数, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間)

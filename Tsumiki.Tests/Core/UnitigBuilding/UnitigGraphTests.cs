@@ -34,8 +34,8 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = "GCTAAAGACAATTAC" + l_shared;      // 末尾が shared
             var l_中間配列 = l_shared + "GGATCCTTAGGCAAT";      // 先頭が shared
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_aForward = ContigMaker.Get_頂点番号(1);
             var l_bForward = ContigMaker.Get_頂点番号(2);
@@ -64,8 +64,8 @@ namespace Tsumiki.Tests.Core
             const string l_先頭配列 = "GCTAAAGACAATTACATAA";
             const string l_中間配列 = "TTGACCTGAATCCGGTTCA";
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
             {
@@ -87,8 +87,8 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = "GCTAAAGACAATTAC" + l_junction[..(l_k長 - 1)]; // 末尾 k-1 が junction の先頭 k-1
             var l_中間配列 = "TT" + l_junction + "CCTTAGGCAAT";          // junction は B の位置 2 に現れる
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_aForward = ContigMaker.Get_頂点番号(1);
             var l_bForward = ContigMaker.Get_頂点番号(2);
@@ -109,8 +109,8 @@ namespace Tsumiki.Tests.Core
             var l_中間配列 = l_shared + "GGATCCTTAGGCAAT";
             var l_末尾配列 = l_shared + "TGATCCTTAGGCAAT"; // 分岐点の 1 塩基だけ B と異なる
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列, l_末尾配列);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_中間配列, l_末尾配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_aForward = ContigMaker.Get_頂点番号(1);
             Assert.Equal(2, l_グラフ.A_出辺[l_aForward].Count);
@@ -134,8 +134,8 @@ namespace Tsumiki.Tests.Core
             const string l_b2 = "TTACGCACTTAGCATGCACGT"; // 分岐点の 1 塩基だけ b1 と異なる同長の枝
             const string l_終点 = "TGCACGTAAGGCTTACCA";
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_uV = ContigMaker.Get_頂点番号(1);
             var l_b1V = ContigMaker.Get_頂点番号(2);
@@ -153,7 +153,7 @@ namespace Tsumiki.Tests.Core
                 [(l_uV, l_b2V)] = 3UL,
             };
 
-            var l_popped = l_グラフ.V_除去_単純バブル(l_ユニティグ一覧, l_支持, l_k長);
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長);
 
             Assert.Equal(1, l_popped);
             Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
@@ -180,8 +180,8 @@ namespace Tsumiki.Tests.Core
             const string l_b2 = "TTACGCACTTAGCAGGTCCAATTGGACCAATGCACGT";
             const string l_終点 = "TGCACGTAAGGCTTACCA";
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_uV = ContigMaker.Get_頂点番号(1);
             Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
@@ -192,7 +192,7 @@ namespace Tsumiki.Tests.Core
                 [(l_uV, ContigMaker.Get_頂点番号(3))] = 3UL,
             };
 
-            var l_popped = l_グラフ.V_除去_単純バブル(l_ユニティグ一覧, l_支持, l_k長);
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長);
 
             Assert.Equal(0, l_popped);
             Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
@@ -228,8 +228,8 @@ namespace Tsumiki.Tests.Core
             var l_b2a = l_uTail + l_middleA2 + l_joint2;
             var l_b2b = l_joint2 + l_middleB2 + l_wHead;
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1a, l_b1b, l_b2a, l_b2b, l_終点);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1a, l_b1b, l_b2a, l_b2b, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_uV = ContigMaker.Get_頂点番号(1);
             var l_b1aV = ContigMaker.Get_頂点番号(2);
@@ -253,7 +253,7 @@ namespace Tsumiki.Tests.Core
 
             // 配列類似度の検証 (第 2 段階) は別のテストで確かめる
             // ここでは多段構造の検出・長さ帯の比較だけを見たいので無効にする
-            var l_popped = l_グラフ.V_除去_単純バブル(l_ユニティグ一覧, l_支持, l_k長, p_類似度の下限: 0.0D);
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_類似度の下限: 0.0D);
 
             Assert.Equal(1, l_popped);
             // 枝 1 (2 unitig とも) は生き残り、枝 2 (2 unitig とも) は取り除かれる
@@ -279,8 +279,8 @@ namespace Tsumiki.Tests.Core
             const string l_b2 = "TTACGCACTTAGCATGCACGT";
             const string l_終点 = "TGCACGTAAGGCTTACCA";
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_uV = ContigMaker.Get_頂点番号(1);
             var l_b2V = ContigMaker.Get_頂点番号(3);
@@ -292,7 +292,7 @@ namespace Tsumiki.Tests.Core
             };
 
             List<string> l_carryOver = [];
-            var l_popped = l_グラフ.V_除去_単純バブル(l_ユニティグ一覧, l_支持, l_k長, l_carryOver);
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, l_carryOver);
 
             Assert.Equal(1, l_popped);
             Assert.Equal([l_b2], l_carryOver);
@@ -314,8 +314,8 @@ namespace Tsumiki.Tests.Core
             var l_b1 = l_uTail + V_生成_乱数配列(20, p_乱数種: 601) + l_wHead;
             var l_b2 = l_uTail + V_生成_乱数配列(20, p_乱数種: 602) + l_wHead;
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_uV = ContigMaker.Get_頂点番号(1);
             Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
@@ -326,7 +326,7 @@ namespace Tsumiki.Tests.Core
                 [(l_uV, ContigMaker.Get_頂点番号(3))] = 3UL,
             };
 
-            var l_popped = l_グラフ.V_除去_単純バブル(l_ユニティグ一覧, l_支持, l_k長);
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長);
 
             Assert.Equal(0, l_popped);
             Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
@@ -344,11 +344,167 @@ namespace Tsumiki.Tests.Core
             const string l_反復単位 = "ACGGATCT";
             var l_先頭配列 = l_反復単位 + "GCTAAAGA" + l_反復単位[..(l_k長 - 1)];
 
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列);
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
 
             var l_aForward = ContigMaker.Get_頂点番号(1);
             Assert.DoesNotContain(l_aForward, l_グラフ.A_出辺[l_aForward]);
+        }
+
+        /// <summary>
+        /// 残る続きが一意な分岐から、行き止まりの短い枝を外す
+        /// </summary>
+        [Fact]
+        public void V_行き止まりの短い枝を外して続きを一意にする()
+        {
+            const int l_k長 = 8;
+            const string l_先頭配列 = "GCTAAAGACAATTAC";
+            var l_続き配列 = l_先頭配列[^(l_k長 - 1)..] + "GCATTGAGTCCA";
+            var l_枝配列 = l_先頭配列[^(l_k長 - 1)..] + "TGGA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_続き配列, l_枝配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var l_先頭 = ContigMaker.Get_頂点番号(1);
+            var l_続き = ContigMaker.Get_頂点番号(2);
+            var l_枝 = ContigMaker.Get_頂点番号(3);
+            Assert.Equal(2, l_グラフ.A_出辺[l_先頭].Count);
+
+            // 続き (19 bp) も行き止まりなので、枝 (11 bp) だけが対象になる上限にする
+            var l_外した数 = l_グラフ.V_除去_行き止まり枝(l_unitig一覧, p_枝長の上限: 12);
+
+            Assert.Equal(1, l_外した数);
+            Assert.Equal([l_続き], l_グラフ.A_出辺[l_先頭]);
+            Assert.Empty(l_グラフ.A_出辺[l_枝 ^ 1]);
+        }
+
+        /// <summary>
+        /// 続きの側に別の入口がある分岐は、反復の別コピーへの辺かもしれないので触らない
+        /// </summary>
+        [Fact]
+        public void V_続きに別の入口があれば行き止まりの枝を外さない()
+        {
+            const int l_k長 = 8;
+            const string l_先頭配列 = "GCTAAAGACAATTAC";
+            var l_続き配列 = l_先頭配列[^(l_k長 - 1)..] + "GCATTGAGTCCA";
+            var l_枝配列 = l_先頭配列[^(l_k長 - 1)..] + "TGGA";
+            var l_別の入口 = "CCGGTTGAG" + l_先頭配列[^(l_k長 - 1)..];
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_続き配列, l_枝配列, l_別の入口);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+
+            var l_外した数 = l_グラフ.V_除去_行き止まり枝(l_unitig一覧, p_枝長の上限: 12);
+
+            Assert.Equal(0, l_外した数);
+            Assert.Equal(2, l_グラフ.A_出辺[ContigMaker.Get_頂点番号(1)].Count);
+        }
+
+        /// <summary>
+        /// 反復に隣接する unitig にはペアが無くても、その先の一意な鎖を結ぶペアで反復を解く
+        /// </summary>
+        [Fact]
+        public void V_隣接unitigにペアが無くても足場のペアで短い反復を解く()
+        {
+            const int l_k長 = 8;
+            var l_反復 = V_生成_乱数配列(16, p_乱数種: 1001);
+            // 入口どうし・出口どうしは反復に接する 1 塩基を必ず変える
+            // 同じにすると末端の k-mer が 2 つの unitig に重なり、実際のグラフではありえない曖昧な形になる
+            var l_入1 = V_生成_乱数配列(11, p_乱数種: 1002) + "A" + l_反復[..(l_k長 - 1)];
+            var l_入2 = V_生成_乱数配列(11, p_乱数種: 1003) + "C" + l_反復[..(l_k長 - 1)];
+            var l_上流1 = V_生成_乱数配列(12, p_乱数種: 1004) + l_入1[..(l_k長 - 1)];
+            var l_上流2 = V_生成_乱数配列(12, p_乱数種: 1005) + l_入2[..(l_k長 - 1)];
+            var l_出1 = l_反復[^(l_k長 - 1)..] + "G" + V_生成_乱数配列(11, p_乱数種: 1006);
+            var l_出2 = l_反復[^(l_k長 - 1)..] + "T" + V_生成_乱数配列(11, p_乱数種: 1007);
+            var l_下流1 = l_出1[^(l_k長 - 1)..] + V_生成_乱数配列(12, p_乱数種: 1008);
+            var l_下流2 = l_出2[^(l_k長 - 1)..] + V_生成_乱数配列(12, p_乱数種: 1009);
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_上流1, l_上流2, l_入1, l_入2, l_反復, l_出1, l_出2, l_下流1, l_下流2);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var l_反復頂点 = ContigMaker.Get_頂点番号(5);
+            var l_隣接 = string.Join(" ", Enumerable.Range(2, l_グラフ.A_出辺.Count - 2).Select(v => $"{v}->[{string.Join(",", l_グラフ.A_出辺[v])}]"));
+            Assert.True(l_グラフ.A_出辺[l_反復頂点].Count == 2 && l_グラフ.Get_入次数(l_反復頂点) == 2, l_隣接);
+
+            // 反復の直前・直後の unitig 同士ではなく、さらに外側の上流と下流だけがペアで結ばれている
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(ContigMaker.Get_頂点番号(1), ContigMaker.Get_頂点番号(8))] = 30UL,
+                [(ContigMaker.Get_頂点番号(2), ContigMaker.Get_頂点番号(9))] = 30UL,
+            };
+
+            var l_解決数 = l_グラフ.V_解決_短い反復(l_unitig一覧, [], l_ペア連結, p_反復長の上限: 100, p_優勢閾値: 0.8M, p_最小証拠数: 10UL);
+
+            Assert.Equal(1, l_解決数);
+            var l_入1から = Assert.Single(l_グラフ.A_出辺[ContigMaker.Get_頂点番号(3)]);
+            var l_入2から = Assert.Single(l_グラフ.A_出辺[ContigMaker.Get_頂点番号(4)]);
+            Assert.NotEqual(l_入1から, l_入2から);
+            Assert.Equal([ContigMaker.Get_頂点番号(6)], l_グラフ.A_出辺[l_入1から]);
+            Assert.Equal([ContigMaker.Get_頂点番号(7)], l_グラフ.A_出辺[l_入2から]);
+        }
+
+        /// <summary>
+        /// 入口も出口も 2 本ある頂点は、コピー数が 1 と推定されていても通り抜けさせない
+        /// </summary>
+        [Fact]
+        public void Is通過可能_入口と出口が両方分岐する頂点はコピー数1でも通さない()
+        {
+            const int l_k長 = 8;
+            var l_反復 = V_生成_乱数配列(16, p_乱数種: 1101);
+            var l_入1 = V_生成_乱数配列(11, p_乱数種: 1102) + "A" + l_反復[..(l_k長 - 1)];
+            var l_入2 = V_生成_乱数配列(11, p_乱数種: 1103) + "C" + l_反復[..(l_k長 - 1)];
+            var l_出1 = l_反復[^(l_k長 - 1)..] + "G" + V_生成_乱数配列(11, p_乱数種: 1104);
+            var l_出2 = l_反復[^(l_k長 - 1)..] + "T" + V_生成_乱数配列(11, p_乱数種: 1105);
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_入1, l_入2, l_反復, l_出1, l_出2);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var l_反復頂点 = ContigMaker.Get_頂点番号(3);
+            Assert.True(l_グラフ.A_出辺[l_反復頂点].Count == 2 && l_グラフ.Get_入次数(l_反復頂点) == 2);
+            Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+
+            Assert.False(l_グラフ.Is通過可能(l_コピー数, l_反復頂点));
+            Assert.False(l_グラフ.Is通過可能(l_コピー数, l_反復頂点 ^ 1));
+            Assert.True(l_グラフ.Is通過可能(l_コピー数, ContigMaker.Get_頂点番号(1)));
+        }
+
+        /// <summary>
+        /// 入口 2・出口 2 の片方がこの頂点へ戻る短い脇道だけなら通り抜けを許し、脇道が長ければ許さない
+        /// </summary>
+        [Theory]
+        [InlineData("TC", true)]
+        [InlineData("TGACGGTAC", false)]
+        public void Is通過可能_短い脇道だけの分岐は通す(string p_脇道の中身, bool p_期待)
+        {
+            const int l_k長 = 8;
+            var l_反復 = V_生成_乱数配列(16, p_乱数種: 1201);
+            var l_入 = V_生成_乱数配列(11, p_乱数種: 1202) + "A" + l_反復[..(l_k長 - 1)];
+            var l_出 = l_反復[^(l_k長 - 1)..] + "G" + V_生成_乱数配列(11, p_乱数種: 1203);
+            var l_脇道 = l_反復[^(l_k長 - 1)..] + p_脇道の中身 + l_反復[..(l_k長 - 1)];
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_入, l_反復, l_出, l_脇道);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var l_反復頂点 = ContigMaker.Get_頂点番号(2);
+            var l_隣接 = string.Join(" ", Enumerable.Range(2, l_グラフ.A_出辺.Count - 2).Select(v => $"{v}->[{string.Join(",", l_グラフ.A_出辺[v])}]"));
+            Assert.True(l_グラフ.A_出辺[l_反復頂点].Count == 2 && l_グラフ.Get_入次数(l_反復頂点) == 2, l_隣接);
+            Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1 };
+
+            Assert.Equal(p_期待, l_グラフ.Is通過可能(l_コピー数, l_反復頂点, l_unitig一覧));
+            Assert.Equal(p_期待, l_グラフ.Is通過可能(l_コピー数, l_反復頂点 ^ 1, l_unitig一覧));
+            Assert.False(l_グラフ.Is通過可能(l_コピー数, l_反復頂点));
+        }
+
+        /// <summary>
+        /// 上限より長い行き止まりの枝は外さない
+        /// </summary>
+        [Fact]
+        public void V_長い行き止まりの枝は外さない()
+        {
+            const int l_k長 = 8;
+            const string l_先頭配列 = "GCTAAAGACAATTAC";
+            var l_続き配列 = l_先頭配列[^(l_k長 - 1)..] + "GCATTGAGTCCA";
+            var l_枝配列 = l_先頭配列[^(l_k長 - 1)..] + "TGGA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_先頭配列, l_続き配列, l_枝配列);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+
+            Assert.Equal(0, l_グラフ.V_除去_行き止まり枝(l_unitig一覧, p_枝長の上限: 5));
         }
 
         #endregion
@@ -362,19 +518,19 @@ namespace Tsumiki.Tests.Core
         /// 添字 2 u が unitig u の順鎖、2 u+1 が逆鎖
         /// </remarks>
         /// <param name="p_kmer長">k-mer 長</param>
-        /// <param name="p_ユニティグ群">登録する unitig 配列群</param>
+        /// <param name="p_unitig群">登録する unitig 配列群</param>
         /// <returns>unitig 一覧と kmer 辞書</returns>
-        private static (List<string> A_ユニティグ一覧, Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> A_kmer辞書) V_構築(int p_kmer長, params string[] p_ユニティグ群)
+        private static (List<string> A_unitig一覧, Dictionary<KmerKey, (int A_unitigID, int A_位置)> A_kmer辞書) V_構築(int p_kmer長, params string[] p_unitig群)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
-            List<string> l_ユニティグ一覧 = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> l_kmer辞書 = [];
+            List<string> l_unitig一覧 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
 
             var l_ID = 1;
-            foreach (var l_配列 in p_ユニティグ群)
+            foreach (var l_配列 in p_unitig群)
             {
-                l_ユニティグ一覧.Add(l_配列);
-                l_ユニティグ一覧.Add(Util.V_逆相補(l_配列));
+                l_unitig一覧.Add(l_配列);
+                l_unitig一覧.Add(Util.V_逆相補(l_配列));
 
                 for (var i = p_kmer長; i <= l_配列.Length; i++)
                 {
@@ -387,7 +543,7 @@ namespace Tsumiki.Tests.Core
                 }
                 l_ID++;
             }
-            return (l_ユニティグ一覧, l_kmer辞書);
+            return (l_unitig一覧, l_kmer辞書);
         }
 
         /// <summary>

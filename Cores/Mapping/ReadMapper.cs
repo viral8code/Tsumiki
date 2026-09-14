@@ -113,9 +113,11 @@ namespace Tsumiki.Cores.Mapping
             }
 
             List<リード配置> l_配置候補 = [];
+            string? l_逆相補リード = null;
             foreach (var l_候補 in l_候補数.OrderByDescending(x => x.Value).Take(種ヒット上限))
             {
-                l_配置候補.Add(this.Get_整列(p_リード, l_候補.Key));
+                var l_照合リード = l_候補.Key.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.Key));
             }
 
             var l_最良 = l_配置候補.MaxBy(x => x.A_スコア);
@@ -236,11 +238,12 @@ namespace Tsumiki.Cores.Mapping
         /// 候補の近傍で半大域整列を行う
         /// </summary>
         /// <param name="p_リード"></param>
+        /// <param name="p_照合リード">候補の向きに合わせたリード</param>
         /// <param name="p_候補"></param>
         /// <returns>整列した配置</returns>
-        private リード配置 Get_整列(string p_リード, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
+        private リード配置 Get_整列(string p_リード, string p_照合リード, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
         {
-            var l_照合リード = p_候補.A_Is逆鎖 ? Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+            var l_照合リード = p_照合リード;
             var l_参照 = this._参照配列群[p_候補.A_配列番号];
             var l_開始 = Math.Max(0, p_候補.A_対角線 - 帯域幅);
             var l_終了 = Math.Min(l_参照.Length, p_候補.A_対角線 + l_照合リード.Length + 帯域幅);
@@ -259,21 +262,34 @@ namespace Tsumiki.Cores.Mapping
                 var l_挿入得点 = l_得点領域.AsSpan(l_要素数, l_要素数);
                 var l_削除得点 = l_得点領域.AsSpan(l_要素数 * 2, l_要素数);
                 var l_経路 = l_経路領域.AsSpan(0, l_要素数);
-                l_得点.Fill(int.MinValue / 4);
-                l_挿入得点.Fill(int.MinValue / 4);
-                l_削除得点.Fill(int.MinValue / 4);
-                l_経路.Clear();
-                for (var j = 0; j <= l_幅; j++)
-                {
-                    l_得点[j] = 0;
-                    l_削除得点[j] = 0;
-                }
+                var l_列数 = l_幅 + 1;
+                var l_最小値 = int.MinValue / 4;
+                var l_行数 = l_照合リード.Length;
 
-                for (var i = 1; i <= l_照合リード.Length; i++)
+                // 帯域の外のセルは計算からもトレースバックからも読まれないので、行ごとに帯域とその両隣だけを初期化する
+                // 全面を埋めると、候補ごとの整列で計算そのものより初期化が重くなる
+                // 最終行だけは末尾位置を全列から選ぶので全面を初期化する
+                l_得点[..l_列数].Clear();
+                l_削除得点[..l_列数].Clear();
+                l_挿入得点[..l_列数].Fill(l_最小値);
+                l_経路[..l_列数].Clear();
+                for (var i = 1; i <= l_行数; i++)
                 {
-                    l_得点[i * (l_幅 + 1)] = ギャップ開始罰点 + (i - 1) * ギャップ延長罰点;
-                    l_挿入得点[i * (l_幅 + 1)] = l_得点[i * (l_幅 + 1)];
-                    l_経路[i * (l_幅 + 1)] = 1;
+                    var l_中心 = i + 帯域幅;
+                    var l_初期化左 = i == l_行数 ? 0 : Math.Max(0, l_中心 - (帯域幅 * 2) - 1);
+                    var l_初期化右 = i == l_行数 ? l_幅 : Math.Min(l_幅, l_中心 + (帯域幅 * 2) + 1);
+                    var l_行頭 = i * l_列数;
+                    // 参照の末端付近ではリードが窓より長く、帯域が行の右端を越えて空になる
+                    var l_初期化幅 = Math.Max(0, l_初期化右 - l_初期化左 + 1);
+                    l_得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
+                    l_挿入得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
+                    l_削除得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
+                    l_経路.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Clear();
+
+                    l_得点[l_行頭] = ギャップ開始罰点 + (i - 1) * ギャップ延長罰点;
+                    l_挿入得点[l_行頭] = l_得点[l_行頭];
+                    l_削除得点[l_行頭] = l_最小値;
+                    l_経路[l_行頭] = 1;
                 }
 
                 for (var i = 1; i <= l_照合リード.Length; i++)

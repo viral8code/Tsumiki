@@ -63,14 +63,46 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_コピー数"></param>
         /// <param name="p_頂点"></param>
+        /// <param name="p_unitig配列">渡すと、分岐の片方が短い脇道だけの頂点も通り抜けを許す</param>
         /// <remarks>
         /// A-R-B-R-C (R は 2 コピーの反復) で A→R と R→C はどちらも本物の隣接だが、walk は各 unitig を 1 回しか使えないため、連鎖させると中間の B を飛ばした A-R-C ができてしまう<br/>
         /// 通り抜けてよいのは反復が解きほぐされ入次数・出次数がどちらも 1 になった、どのコピーにいるか確定した状態だけ
         /// </remarks>
         /// <returns></returns>
-        public bool Is通過可能(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点)
+        public bool Is通過可能(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点, IReadOnlyList<string>? p_unitig配列 = null)
         {
-            return (p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1 || this.A_出辺[p_頂点].Count == 1 && this.Get_入次数(p_頂点) == 1;
+            var l_出次数 = this.A_出辺[p_頂点].Count;
+            var l_入次数 = this.Get_入次数(p_頂点);
+            if (l_出次数 == 1 && l_入次数 == 1)
+            {
+                return true;
+            }
+
+            // 入口も出口も複数ある頂点は、2 本の経路が同じ配列を共有している形そのものなので反復とみなす
+            // カバレッジのばらつきが大きいと 2 コピーの反復を 1 コピーと推定することがあり、コピー数だけで通すと入口と出口を取り違える
+            var l_Isコピー数1以下 = (p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1;
+            if (l_出次数 < 2 || l_入次数 < 2)
+            {
+                return l_Isコピー数1以下;
+            }
+
+            // 分岐の片方がこの頂点から出て戻ってくる短い脇道だけなら、残る入口と出口は 1 本ずつに決まる
+            return l_Isコピー数1以下 && p_unitig配列 is not null && this.Is短い脇道だけの分岐(p_頂点, p_unitig配列);
+        }
+
+        /// <summary>
+        /// 始点の唯一の出辺が終点で、終点の唯一の入辺が始点かを返す
+        /// </summary>
+        /// <param name="p_始点"></param>
+        /// <param name="p_終点"></param>
+        /// <remarks>
+        /// この辺だけで結合された頂点を walk が通り抜けるには入次数・出次数とも 1 である必要があり、それは Is通過可能 を満たすので、コピー数に関わらず結合してよい<br/>
+        /// カバレッジが高いだけの単一配列 (プラスミド等) を多コピーと誤推定しても、構造上一意な辺で千切らないため
+        /// </remarks>
+        /// <returns></returns>
+        public bool Is構造上一意な辺(int p_始点, int p_終点)
+        {
+            return this.A_出辺[p_始点].Count == 1 && this.Get_入次数(p_終点) == 1;
         }
 
         /// <summary>
@@ -178,20 +210,26 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             var l_解決数 = 0;
             var l_r_mer検証で棄却した数 = 0;
+            var l_長さで見送った数 = 0;
+            var l_形で見送った数 = 0;
+            var l_証拠不足の数 = 0;
+            var l_僅差の数 = 0;
+            var l_足場で解決した数 = 0;
             // 複製で頂点が増えるが、増えた分 (複製そのもの) は対象にしない
             var l_元の頂点数 = this.A_出辺.Count;
 
             for (var l_反復頂点 = 2; l_反復頂点 < l_元の頂点数; l_反復頂点 += 2)
             {
-                if (p_unitig配列[l_反復頂点].Length > p_反復長の上限)
-                {
-                    continue;
-                }
-
                 var l_出辺 = this.A_出辺[l_反復頂点];
                 var l_入辺の双子 = this.A_出辺[l_反復頂点 ^ 1];
                 if (l_出辺.Count != 2 || l_入辺の双子.Count != 2)
                 {
+                    continue;
+                }
+
+                if (p_unitig配列[l_反復頂点].Length > p_反復長の上限)
+                {
+                    l_長さで見送った数++;
                     continue;
                 }
 
@@ -215,24 +253,27 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (l_周囲.Contains(l_反復のID) || (l_入1 >> 1) == (l_入2 >> 1) || (l_出1 >> 1) == (l_出2 >> 1))
                 {
+                    l_形で見送った数++;
                     continue;
                 }
 
                 var l_平行 = p_ペア連結.GetValueOrDefault((l_入1, l_出1)) + p_ペア連結.GetValueOrDefault((l_入2, l_出2));
                 var l_交差 = p_ペア連結.GetValueOrDefault((l_入1, l_出2)) + p_ペア連結.GetValueOrDefault((l_入2, l_出1));
+                var l_Is足場使用 = false;
 
-                var l_合計 = l_平行 + l_交差;
-                if (l_合計 < p_最小証拠数)
+                if (!Is対応付け決着(l_平行, l_交差, p_優勢閾値, p_最小証拠数))
                 {
-                    continue;
-                }
-
-                var l_最良 = Math.Max(l_平行, l_交差);
-                if ((decimal)l_最良 / l_合計 < p_優勢閾値)
-                {
-                    // どちらの対応付けとも決めきれない
-                    // 無理に繋がない
-                    continue;
+                    // 反復に隣接する unitig が短いと、そこに両端が載ったペアはわずかしか無い
+                    // 反復から断片長の範囲にある一意な鎖まで足場を広げて数え直す
+                    (l_平行, l_交差) = this.Get_足場ペア支持(l_入1, l_入2, l_出1, l_出2, p_unitig配列, p_ペア連結, p_反復長の上限, l_反復のID);
+                    if (!Is対応付け決着(l_平行, l_交差, p_優勢閾値, p_最小証拠数))
+                    {
+                        // どちらの対応付けとも決めきれない
+                        // 無理に繋がない
+                        _ = l_平行 + l_交差 < p_最小証拠数 ? l_証拠不足の数++ : l_僅差の数++;
+                        continue;
+                    }
+                    l_Is足場使用 = true;
                 }
 
                 // 勝った対応付けのうち片方を元の反復頂点に残し、もう片方を複製へ移す
@@ -277,12 +318,17 @@ namespace Tsumiki.Cores.UnitigBuilding
                 p_支持[(l_移す出辺 ^ 1, l_複製 ^ 1)] = l_出辺の支持;
 
                 l_解決数++;
+                if (l_Is足場使用)
+                {
+                    l_足場で解決した数++;
+                }
             }
 
             if (p_r_mer検証器 is not null && l_r_mer検証で棄却した数 > 0)
             {
                 Logger.V_出力(メッセージID.rMer検証による棄却, l_r_mer検証で棄却した数);
             }
+            Logger.V_出力(メッセージID.短い反復の見送り内訳, l_長さで見送った数, l_形で見送った数, l_証拠不足の数, l_僅差の数, l_足場で解決した数);
 
             return l_解決数;
         }
@@ -387,9 +433,206 @@ namespace Tsumiki.Cores.UnitigBuilding
             return l_除去数;
         }
 
+        /// <summary>
+        /// 分岐のうち、行き止まりで終わる短い枝への辺を外す
+        /// </summary>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_枝長の上限">外してよい枝の unitig 長の上限</param>
+        /// <remarks>
+        /// 行き止まりの枝はゲノムをその先へ続けられず、残っていると分岐が一意にならないまま contig がそこで切れる<br/>
+        /// 残る続きが 1 本で、その続きへ他から入る辺が無いときに限る<br/>
+        /// 続きに別の入口があると、反復配列の別コピーへ入る辺である可能性を否定できない<br/>
+        /// 外した枝の配列は unitig として残る
+        /// </remarks>
+        /// <returns>外した辺の数</returns>
+        public int V_除去_行き止まり枝(List<string> p_unitig配列, int p_枝長の上限)
+        {
+            var l_除去数 = 0;
+            List<int> l_枝 = [];
+            for (var v = 2; v < this.A_出辺.Count; v++)
+            {
+                var l_出辺 = this.A_出辺[v];
+                if (l_出辺.Count < 2)
+                {
+                    continue;
+                }
+
+                l_枝.Clear();
+                var l_続き = -1;
+                var l_続き数 = 0;
+                foreach (var w in l_出辺)
+                {
+                    if (this.Is行き止まり枝(w, p_unitig配列, p_枝長の上限))
+                    {
+                        l_枝.Add(w);
+                    }
+                    else
+                    {
+                        l_続き = w;
+                        l_続き数++;
+                    }
+                }
+
+                if (l_枝.Count == 0 || l_続き数 != 1 || this.Get_入次数(l_続き) != 1)
+                {
+                    continue;
+                }
+
+                foreach (var w in l_枝)
+                {
+                    this.V_除去_双方向辺(v, w);
+                    l_除去数++;
+                }
+            }
+            return l_除去数;
+        }
+
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 2 通りの対応付けのどちらかに決着するだけの支持があるか
+        /// </summary>
+        /// <param name="p_平行"></param>
+        /// <param name="p_交差"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <returns></returns>
+        private static bool Is対応付け決着(ulong p_平行, ulong p_交差, decimal p_優勢閾値, ulong p_最小証拠数)
+        {
+            var l_合計 = p_平行 + p_交差;
+            return l_合計 >= p_最小証拠数 && (decimal)Math.Max(p_平行, p_交差) / l_合計 >= p_優勢閾値;
+        }
+
+        /// <summary>
+        /// 反復の入口・出口から一意な鎖を断片長ぶん広げ、その鎖どうしを結ぶペアで 2 通りの対応付けの支持を数える
+        /// </summary>
+        /// <param name="p_入1"></param>
+        /// <param name="p_入2"></param>
+        /// <param name="p_出1"></param>
+        /// <param name="p_出2"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_ペア連結"></param>
+        /// <param name="p_足場長">鎖を広げる長さ</param>
+        /// <param name="p_反復のID"></param>
+        /// <returns>平行な対応付けと交差する対応付けの支持</returns>
+        private (ulong A_平行, ulong A_交差) Get_足場ペア支持(int p_入1, int p_入2, int p_出1, int p_出2, List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_足場長, int p_反復のID)
+        {
+            var l_上流1 = this.Get_一意な鎖(p_入1, p_unitig配列, p_足場長, p_反復のID, p_Is上流: true);
+            var l_上流2 = this.Get_一意な鎖(p_入2, p_unitig配列, p_足場長, p_反復のID, p_Is上流: true);
+            var l_下流1 = this.Get_一意な鎖(p_出1, p_unitig配列, p_足場長, p_反復のID, p_Is上流: false);
+            var l_下流2 = this.Get_一意な鎖(p_出2, p_unitig配列, p_足場長, p_反復のID, p_Is上流: false);
+            var l_平行 = Get_鎖間ペア数(l_上流1, l_下流1, p_ペア連結) + Get_鎖間ペア数(l_上流2, l_下流2, p_ペア連結);
+            var l_交差 = Get_鎖間ペア数(l_上流1, l_下流2, p_ペア連結) + Get_鎖間ペア数(l_上流2, l_下流1, p_ペア連結);
+            return (l_平行, l_交差);
+        }
+
+        /// <summary>
+        /// 頂点から、他へ分かれも合流もしない辺だけを辿れる範囲の頂点を集める
+        /// </summary>
+        /// <param name="p_頂点">起点 (結果に含む)</param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_足場長">集める配列長の上限</param>
+        /// <param name="p_反復のID">辿らない反復の unitig</param>
+        /// <param name="p_Is上流">上流へ辿るか</param>
+        /// <remarks>
+        /// 分岐や合流を越えると、その先の配列は反復のどちらの側とも限らなくなる
+        /// </remarks>
+        /// <returns></returns>
+        private List<int> Get_一意な鎖(int p_頂点, List<string> p_unitig配列, int p_足場長, int p_反復のID, bool p_Is上流)
+        {
+            List<int> l_鎖 = [p_頂点];
+            var l_重なり長 = Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1);
+            var l_累積長 = Math.Max(0, p_unitig配列[p_頂点].Length - l_重なり長);
+            var l_現在 = p_頂点;
+            while (l_累積長 < p_足場長)
+            {
+                // 上流へは双子の出辺を辿る (v の入辺は v^1 の出辺の双子)
+                var l_辿る辺 = p_Is上流 ? this.A_出辺[l_現在 ^ 1] : this.A_出辺[l_現在];
+                if (l_辿る辺.Count != 1)
+                {
+                    break;
+                }
+
+                var l_次 = p_Is上流 ? l_辿る辺[0] ^ 1 : l_辿る辺[0];
+                var l_次の反対側の次数 = p_Is上流 ? this.A_出辺[l_次].Count : this.Get_入次数(l_次);
+                if (l_次の反対側の次数 != 1 || (l_次 >> 1) == p_反復のID || l_鎖.Contains(l_次))
+                {
+                    break;
+                }
+                l_鎖.Add(l_次);
+                l_累積長 += Math.Max(0, p_unitig配列[l_次].Length - l_重なり長);
+                l_現在 = l_次;
+            }
+            return l_鎖;
+        }
+
+        /// <summary>
+        /// 上流の鎖から下流の鎖へ向かうペアの総数
+        /// </summary>
+        /// <param name="p_上流"></param>
+        /// <param name="p_下流"></param>
+        /// <param name="p_ペア連結"></param>
+        /// <returns></returns>
+        private static ulong Get_鎖間ペア数(List<int> p_上流, List<int> p_下流, IReadOnlyDictionary<(int, int), ulong> p_ペア連結)
+        {
+            var l_合計 = 0UL;
+            foreach (var u in p_上流)
+            {
+                foreach (var w in p_下流)
+                {
+                    l_合計 += p_ペア連結.GetValueOrDefault((u, w));
+                }
+            }
+            return l_合計;
+        }
+
+        /// <summary>
+        /// 入口 2・出口 2 の分岐が、この頂点から出てこの頂点へ戻る短い脇道 1 本によるものか
+        /// </summary>
+        /// <param name="p_頂点"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <remarks>
+        /// 脇道を k の 2 倍までに限るのは、長い脇道は反復に挟まれた本物の配列で、通り抜けるとそれを落とすため
+        /// </remarks>
+        /// <returns></returns>
+        private bool Is短い脇道だけの分岐(int p_頂点, IReadOnlyList<string> p_unitig配列)
+        {
+            var l_出辺 = this.A_出辺[p_頂点];
+            if (l_出辺.Count != 2 || this.Get_入次数(p_頂点) != 2)
+            {
+                return false;
+            }
+
+            var l_脇道の長さ上限 = ConfigurationManager.A_実行時引数.A_k長 * 2;
+            var l_脇道数 = 0;
+            foreach (var w in l_出辺)
+            {
+                if ((w >> 1) == (p_頂点 >> 1) || !this.A_出辺[w].Contains(p_頂点))
+                {
+                    continue;
+                }
+                if (p_unitig配列[w].Length > l_脇道の長さ上限)
+                {
+                    return false;
+                }
+                l_脇道数++;
+            }
+            return l_脇道数 == 1;
+        }
+
+        /// <summary>
+        /// 頂点が、この先に続きを持たず入口も 1 つしかない短い枝か
+        /// </summary>
+        /// <param name="p_頂点"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_枝長の上限"></param>
+        /// <returns></returns>
+        private bool Is行き止まり枝(int p_頂点, List<string> p_unitig配列, int p_枝長の上限)
+        {
+            return this.A_出辺[p_頂点].Count == 0 && this.Get_入次数(p_頂点) == 1 && p_unitig配列[p_頂点].Length <= p_枝長の上限;
+        }
 
         /// <summary>
         /// 辺 v→w を、その逆鎖側の双子 w^1→v^1 と対にして取り除く

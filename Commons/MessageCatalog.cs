@@ -19,7 +19,7 @@ namespace Tsumiki.Commons
         /// </summary>
         private static readonly Dictionary<メッセージID, string> _英語 = new()
         {
-            [メッセージID.デブルーイングラフの要約] = "[Debug] Exact de Bruijn unitig graph: {0} directed edge(s), {1} branching vertex(es) out of {2}",
+            [メッセージID.deBruijnグラフの要約] = "[Debug] Exact de Bruijn unitig graph: {0} directed edge(s), {1} branching vertex(es) out of {2}",
             [メッセージID.先読みで解決した分岐数] = "[Debug] Beam-search lookahead resolved {0} additional junction(s) that mutual uniqueness could not decide",
             [メッセージID.GFA出力完了] = "[Info] Wrote unitig graph to {0} (GFA1)",
             [メッセージID.分岐選択の重み内訳] = "[Debug] Branch selection weights: {0} single-read adjacency pair(s) + {1} paired-end pair(s)",
@@ -231,6 +231,10 @@ namespace Tsumiki.Commons
             [メッセージID.救済kmerの開始] = "[Mercy] Rescuing sub-cutoff k-mers flanked by trusted k-mers within reads",
             [メッセージID.救済_対象外のk長] = "[Mercy] k={0} exceeds 64; rescue algorithm unavailable",
             [メッセージID.救済したkmer数] = "[Mercy] Rescued {0:N0} / {1:N0} candidate k-mer(s)",
+            [メッセージID.行き止まり枝の除去数] = "[Debug] Detached {0} short dead-end branch(es) from junctions whose remaining continuation is unambiguous",
+            [メッセージID.短い反復の見送り内訳] = "[Debug] Short 2-in/2-out repeats left unresolved: {0} too long, {1} degenerate, {2} insufficient pairs, {3} ambiguous ({4} resolved only with extended scaffold pairs)",
+            [メッセージID.低カバレッジ架橋開始] = "[Bridge] Reconnecting graph dead ends through sub-cutoff k-mers",
+            [メッセージID.低カバレッジ架橋結果] = "[Bridge] Bridged {0:N0} of {1:N0} dead end(s), adding {2:N0} k-mer(s)",
             [メッセージID.レポートを書き出した] = "[Report] Generated {0}",
             [メッセージID.曖昧箇所を書き出した] = "[Report] Wrote {0:N0} ambiguous site(s) to {1}",
             [メッセージID.再開_中間ファイルを再利用] = "[Resume] Reusing {0}",
@@ -255,7 +259,7 @@ namespace Tsumiki.Commons
         /// </summary>
         private static readonly Dictionary<メッセージID, string> _日本語 = new()
         {
-            [メッセージID.デブルーイングラフの要約] = "[Debug] de Bruijn unitig グラフ: 有向辺 {0} 本、分岐頂点 {1} 個 / 全 {2} 頂点",
+            [メッセージID.deBruijnグラフの要約] = "[Debug] de Bruijn unitig グラフ: 有向辺 {0} 本、分岐頂点 {1} 個 / 全 {2} 頂点",
             [メッセージID.先読みで解決した分岐数] = "[Debug] ビーム探索の先読みにより、相互一意判定で未確定の分岐をさらに {0} 箇所解決",
             [メッセージID.GFA出力完了] = "[Info] unitig グラフを出力: {0} (GFA1)",
             [メッセージID.分岐選択の重み内訳] = "[Debug] 分岐選択の重み: 単一リード由来隣接 {0} 件 + ペアエンド由来 {1} 件",
@@ -467,6 +471,10 @@ namespace Tsumiki.Commons
             [メッセージID.救済kmerの開始] = "[Mercy] リード内で信頼 k-mer に挟まれた閾値未満 k-mer の救済処理を実行中",
             [メッセージID.救済_対象外のk長] = "[Mercy] k={0} は 64 を超えるため救済処理の対象外です",
             [メッセージID.救済したkmer数] = "[Mercy] 候補 {1:N0} 個中 {0:N0} 個の k-mer を救済",
+            [メッセージID.行き止まり枝の除去数] = "[Debug] 残る続きが一意な分岐から、行き止まりの短い枝を {0} 本外した",
+            [メッセージID.短い反復の見送り内訳] = "[Debug] 入口 2・出口 2 の短い反復で解かなかったもの: 長さ超過 {0}、退化した形 {1}、ペア不足 {2}、僅差 {3} (足場を広げたペアで解決 {4})",
+            [メッセージID.低カバレッジ架橋開始] = "[Bridge] グラフの行き止まりをカットオフ未満の k-mer で繋ぎ直し中",
+            [メッセージID.低カバレッジ架橋結果] = "[Bridge] 行き止まり {1:N0} 箇所中 {0:N0} 箇所を架橋 (k-mer {2:N0} 個を追加)",
             [メッセージID.レポートを書き出した] = "[Report] {0} を出力完了",
             [メッセージID.曖昧箇所を書き出した] = "[Report] 曖昧箇所 {0:N0} 箇所を {1} に出力完了",
             [メッセージID.再開_中間ファイルを再利用] = "[Resume] {0} を再利用中",
@@ -491,7 +499,7 @@ namespace Tsumiki.Commons
         /// </summary>
         private static readonly Dictionary<メッセージID, string> _中国語 = new()
         {
-            [メッセージID.デブルーイングラフの要約] = "[Debug] 精确 de Bruijn unitig 图：{0} 条有向边，{1} 个分支顶点 / 共 {2} 个顶点",
+            [メッセージID.deBruijnグラフの要約] = "[Debug] 精确 de Bruijn unitig 图：{0} 条有向边，{1} 个分支顶点 / 共 {2} 个顶点",
             [メッセージID.先読みで解決した分岐数] = "[Debug] 束搜索前瞻额外解决 {0} 处单步互唯一性无法确定的连接点",
             [メッセージID.GFA出力完了] = "[Info] 已将 unitig 图写入 {0} (GFA1)",
             [メッセージID.分岐選択の重み内訳] = "[Debug] 分支选择权重：单端 read 相邻 {0} 对 + 双端 read {1} 对",
@@ -703,6 +711,10 @@ namespace Tsumiki.Commons
             [メッセージID.救済kmerの開始] = "[Mercy] 正在救回在 reads 内位于可信 k-mer 之间的截断值以下 k-mer",
             [メッセージID.救済_対象外のk長] = "[Mercy] k={0} 超过 64，救回算法不可用",
             [メッセージID.救済したkmer数] = "[Mercy] 已在 {1:N0} 个候选中救回 {0:N0} 个 k-mer",
+            [メッセージID.行き止まり枝の除去数] = "[Debug] 从剩余延续唯一的分支点上断开了 {0} 条短死端分支",
+            [メッセージID.短い反復の見送り内訳] = "[Debug] 未解决的双入双出短重复: 过长 {0}，退化结构 {1}，配对不足 {2}，差距过小 {3} (仅靠扩展支架配对解决 {4})",
+            [メッセージID.低カバレッジ架橋開始] = "[Bridge] 正在用低于阈值的 k-mer 重新连接图中的死端",
+            [メッセージID.低カバレッジ架橋結果] = "[Bridge] 在 {1:N0} 个死端中桥接了 {0:N0} 个 (新增 {2:N0} 个 k-mer)",
             [メッセージID.レポートを書き出した] = "[Report] 已生成 {0}",
             [メッセージID.曖昧箇所を書き出した] = "[Report] 已将 {0:N0} 处歧义位置写入 {1}",
             [メッセージID.再開_中間ファイルを再利用] = "[Resume] 复用 {0}",

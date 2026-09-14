@@ -40,25 +40,32 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
         {
-            // 各状態が「これまでに継ぎ足した塩基列」そのものを持つと、
-            // 状態数の上限 × 経路長ぶんのメモリと文字列コピーが発生する
-            // 代わりに親へのインデックスと追加した 1 塩基だけを持ち、
-            // 解が見つかったときに親を辿って復元する
-            // 1 状態あたり定数サイズで済む
+            return p_k長 <= TrustedKmerIndex.パック値のk上限
+                ? Get_経路_パック値(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限)
+                : Get_経路_参照(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限);
+        }
+
+        /// <summary>
+        /// 塩基列のまま状態を持つ探索 (パック値に収まらない k と、パック値版の検証用)
+        /// </summary>
+        /// <param name="p_左のkmer"></param>
+        /// <param name="p_目標kmer"></param>
+        /// <param name="p_最小長"></param>
+        /// <param name="p_最大長"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_状態数上限"></param>
+        /// <returns></returns>
+        internal static (string? A_経路, ギャップ充填判定 A_判定) Get_経路_参照(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = 既定状態数上限)
+        {
+            // 状態は親へのインデックスと追加した 1 塩基だけを持ち、解が見つかったときに親を辿って復元する
             var l_節点 = new List<(int A_親, byte A_塩基)>(1_024) { (-1, 0) };
             var l_kmer群 = new List<byte[]>(1_024) { p_左のkmer };
             var l_深さ群 = new List<int>(1_024) { 0 };
 
-            // 同じ k-mer に同じ深さで別経路から着いた状態を作らないための記録
-            // これをしないと分岐点の数だけ経路が掛け算で増え、同じ部分木を
-            // 何度も展開する (反復配列では容易に状態数上限に達する)
-            // 一意性の判定は捨てられないので、重ねて到達された状態には印を付け、
+            // 同じ k-mer に同じ深さで別経路から着いた状態は作らず、重ねて到達された印を付ける
             // 目標へ届いた経路がその印を通っていたら一意でないとみなす
-            // k <= 64 なら k-mer は UInt128 に詰められるので、鍵の生成に
-            // 割り当てが要らない
-            // それを超える k だけ文字列に落とす
-            var l_到達済み = p_k長 <= 64 ? new Dictionary<(UInt128, int), int>(1_024) : null;
-            var l_到達済み_長いk = p_k長 <= 64 ? null : new Dictionary<(string, int), int>(1_024);
+            var l_到達済み = new Dictionary<(string, int), int>(1_024);
             var l_多重到達 = new List<bool>(1_024) { false };
 
             var l_見つかった経路 = new List<string>();
@@ -73,13 +80,7 @@ namespace Tsumiki.Utilities
                 var l_現在のkmer = l_kmer群[l_現在];
                 var l_継ぎ足した数 = l_深さ群[l_現在];
 
-                // 継ぎ足した数は「左の k-mer の後ろに継ぎ足した塩基数」
-                // 目標 k-mer に
-                // 到達した時点では、その末尾 k 長 塩基が目標 k-mer 自身に
-                // あたる (呼び出し側が既に知っている) ので、実際に新しく埋まる
-                // 長さは 継ぎ足した数 - k 長 になる
-                // 打ち切りもこの「埋める長さ」で
-                // 判断しないと、正解の経路を目標到達の直前で切ってしまう
+                // 目標に着いた時点の末尾 k 塩基は目標 k-mer 自身なので、新しく埋まる長さは 継ぎ足した数 - k になり、打ち切りもこの長さで判断する
                 var l_埋める長さ = l_継ぎ足した数 - p_k長;
                 if (l_埋める長さ > p_最大長)
                 {
@@ -96,7 +97,6 @@ namespace Tsumiki.Utilities
                     l_見つかった経路.Add(Get_復元経路(l_節点, l_現在, l_埋める長さ));
                     if (l_見つかった経路.Count > 1)
                     {
-                        // 2 本見つかった時点で一意には定まらない
                         return (null, ギャップ充填判定.一意でない);
                     }
                     continue;
@@ -118,26 +118,13 @@ namespace Tsumiki.Utilities
                     }
 
                     var l_深さ = l_継ぎ足した数 + 1;
-                    if (l_到達済み is not null)
+                    var l_鍵 = (Get_状態の鍵(l_作業バッファ), l_深さ);
+                    if (l_到達済み.TryGetValue(l_鍵, out var l_既存))
                     {
-                        var l_鍵 = (TryGet_パック(l_作業バッファ), l_深さ);
-                        if (l_到達済み.TryGetValue(l_鍵, out var l_既存))
-                        {
-                            l_多重到達[l_既存] = true;
-                            continue;
-                        }
-                        l_到達済み[l_鍵] = l_節点.Count;
+                        l_多重到達[l_既存] = true;
+                        continue;
                     }
-                    else
-                    {
-                        var l_鍵 = (Get_状態の鍵(l_作業バッファ), l_深さ);
-                        if (l_到達済み_長いk!.TryGetValue(l_鍵, out var l_既存))
-                        {
-                            l_多重到達[l_既存] = true;
-                            continue;
-                        }
-                        l_到達済み_長いk[l_鍵] = l_節点.Count;
-                    }
+                    l_到達済み[l_鍵] = l_節点.Count;
                     l_節点.Add((l_現在, l_塩基));
                     l_kmer群.Add((byte[])l_作業バッファ.Clone());
                     l_深さ群.Add(l_深さ);
@@ -156,22 +143,139 @@ namespace Tsumiki.Utilities
         #region 内部メソッド
 
         /// <summary>
-        /// k-mer を 1 塩基 2 ビットで詰める (k &lt;= 64 でのみ使える)
+        /// 状態の k-mer を順鎖・逆鎖のパック値で持ち、1 塩基ずつ転がして探す (k &lt;= 128)
         /// </summary>
-        /// <param name="p_kmer"></param>
+        /// <param name="p_左のkmer"></param>
+        /// <param name="p_目標kmer"></param>
+        /// <param name="p_最小長"></param>
+        /// <param name="p_最大長"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_状態数上限"></param>
+        /// <remarks>
+        /// 探索の順序と判定は Get_経路_参照 と同じ<br/>
+        /// 塩基列のまま持つと、展開のたびに候補ごとの詰め直しと状態ごとの配列確保が走り、リードペアの数だけ繰り返す橋渡しでそれが支配的になる
+        /// </remarks>
         /// <returns></returns>
-        private static UInt128 TryGet_パック(ReadOnlySpan<byte> p_kmer)
+        private static (string? A_経路, ギャップ充填判定 A_判定) Get_経路_パック値(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限)
         {
-            UInt128 l_パック = 0;
-            foreach (var l_塩基 in p_kmer)
+            var l_下位マスク = p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
+            var l_上位マスク = p_k長 <= 64 ? 0 : p_k長 >= 128 ? UInt128.MaxValue : ((UInt128)1 << ((2 * p_k長) - 128)) - 1;
+            var l_先頭シフト = 2 * (p_k長 - 1);
+
+            var l_目標 = TrustedKmerIndex.TryGet_パック_長(p_目標kmer);
+            var l_左順 = TrustedKmerIndex.TryGet_パック_長(p_左のkmer);
+            var l_左逆 = Get_逆相補パック(p_左のkmer);
+
+            var l_節点 = new List<(int A_親, byte A_塩基)>(1_024) { (-1, 0) };
+            var l_状態群 = new List<(UInt128 A_順上, UInt128 A_順下, UInt128 A_逆上, UInt128 A_逆下)>(1_024) { (l_左順.A_上位, l_左順.A_下位, l_左逆.A_上位, l_左逆.A_下位) };
+            var l_深さ群 = new List<int>(1_024) { 0 };
+            var l_到達済み = new Dictionary<(UInt128, UInt128, int), int>(1_024);
+            var l_多重到達 = new List<bool>(1_024) { false };
+
+            var l_見つかった経路 = new List<string>();
+            var l_キュー = new Queue<int>();
+            l_キュー.Enqueue(0);
+
+            while (l_キュー.Count > 0)
             {
-                l_パック = (l_パック << 2) | (uint)(l_塩基 - 1);
+                var l_現在 = l_キュー.Dequeue();
+                var (l_順上, l_順下, l_逆上, l_逆下) = l_状態群[l_現在];
+                var l_継ぎ足した数 = l_深さ群[l_現在];
+
+                var l_埋める長さ = l_継ぎ足した数 - p_k長;
+                if (l_埋める長さ > p_最大長)
+                {
+                    continue;
+                }
+
+                if (l_埋める長さ >= p_最小長 && l_順上 == l_目標.A_上位 && l_順下 == l_目標.A_下位)
+                {
+                    if (Has多重到達(l_節点, l_多重到達, l_現在))
+                    {
+                        return (null, ギャップ充填判定.一意でない);
+                    }
+
+                    l_見つかった経路.Add(Get_復元経路(l_節点, l_現在, l_埋める長さ));
+                    if (l_見つかった経路.Count > 1)
+                    {
+                        return (null, ギャップ充填判定.一意でない);
+                    }
+                    continue;
+                }
+
+                if (l_節点.Count > p_状態数上限)
+                {
+                    return (null, ギャップ充填判定.探索打切り);
+                }
+
+                // 左へ 1 塩基ずらした後続の共通部分は塩基によらないので先に作る
+                var l_ずらし順上 = ((l_順上 << 2) | (l_順下 >> 126)) & l_上位マスク;
+                var l_ずらし順下 = (l_順下 << 2) & l_下位マスク;
+                var l_ずらし逆下 = (l_逆下 >> 2) | (l_逆上 << 126);
+                var l_ずらし逆上 = l_逆上 >> 2;
+
+                for (var l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)
+                {
+                    var l_コドン = (UInt128)(l_塩基 - 1);
+                    var l_新順下 = l_ずらし順下 | l_コドン;
+                    var l_新逆上 = l_ずらし逆上;
+                    var l_新逆下 = l_ずらし逆下;
+                    if (l_先頭シフト >= 128)
+                    {
+                        l_新逆上 |= (3 - l_コドン) << (l_先頭シフト - 128);
+                    }
+                    else
+                    {
+                        l_新逆下 |= (3 - l_コドン) << l_先頭シフト;
+                    }
+
+                    var l_Is順鎖 = l_ずらし順上 < l_新逆上 || (l_ずらし順上 == l_新逆上 && l_新順下 <= l_新逆下);
+                    if (!(l_Is順鎖 ? p_kmerインデックス.Haskmer_正規形(l_ずらし順上, l_新順下) : p_kmerインデックス.Haskmer_正規形(l_新逆上, l_新逆下)))
+                    {
+                        continue;
+                    }
+
+                    var l_深さ = l_継ぎ足した数 + 1;
+                    var l_鍵 = (l_ずらし順上, l_新順下, l_深さ);
+                    if (l_到達済み.TryGetValue(l_鍵, out var l_既存))
+                    {
+                        l_多重到達[l_既存] = true;
+                        continue;
+                    }
+                    l_到達済み[l_鍵] = l_節点.Count;
+                    l_節点.Add((l_現在, l_塩基));
+                    l_状態群.Add((l_ずらし順上, l_新順下, l_新逆上, l_新逆下));
+                    l_深さ群.Add(l_深さ);
+                    l_多重到達.Add(false);
+                    l_キュー.Enqueue(l_節点.Count - 1);
+                }
             }
-            return l_パック;
+
+            return l_見つかった経路.Count == 1
+                ? (l_見つかった経路[0], ギャップ充填判定.充填済み)
+                : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
         }
 
         /// <summary>
-        /// k &gt; 64 で k-mer を鍵にするための文字列表現
+        /// k-mer の逆相補を右詰めでパックする (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_kmer"></param>
+        /// <returns></returns>
+        private static (UInt128 A_上位, UInt128 A_下位) Get_逆相補パック(ReadOnlySpan<byte> p_kmer)
+        {
+            UInt128 l_上位 = 0;
+            UInt128 l_下位 = 0;
+            for (var i = p_kmer.Length - 1; i >= 0; i--)
+            {
+                l_上位 = (l_上位 << 2) | (l_下位 >> 126);
+                l_下位 = (l_下位 << 2) | (UInt128)(4 - p_kmer[i]);
+            }
+            return (l_上位, l_下位);
+        }
+
+        /// <summary>
+        /// k-mer を鍵にするための文字列表現
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>

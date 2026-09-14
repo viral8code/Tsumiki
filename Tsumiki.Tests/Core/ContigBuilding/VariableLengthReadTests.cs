@@ -64,9 +64,9 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
 
-            var l_ユニティグ配列 = V_生成_ランダム配列(600, p_シード: 987);
-            var l_ユニティグパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(l_ユニティグパス, $">1\n{l_ユニティグ配列}\n");
+            var l_unitig配列 = V_生成_ランダム配列(600, p_シード: 987);
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
 
             // 19 bp (最短の実例と同じ長さ) から 200 bp まで、k をまたぐ長さを混ぜる
             var l_長さ一覧 = new[] { 19, 30, k長 - 1, k長, k長 + 1, 120, 200 };
@@ -75,24 +75,24 @@ namespace Tsumiki.Tests.Core
             for (var i = 0; i < l_長さ一覧.Length; i++)
             {
                 var l_長さ = l_長さ一覧[i];
-                l_先行リード群.Add(($"pair{i}/1", l_ユニティグ配列[..l_長さ]));
-                l_後続リード群.Add(($"pair{i}/2", Util.V_逆相補(l_ユニティグ配列[^l_長さ..])));
+                l_先行リード群.Add(($"pair{i}/1", l_unitig配列[..l_長さ]));
+                l_後続リード群.Add(($"pair{i}/2", Util.V_逆相補(l_unitig配列[^l_長さ..])));
             }
 
             var l_先行パス = this.V_書き出し_FASTQ("short.1.fq", l_先行リード群);
             var l_後続パス = this.V_書き出し_FASTQ("short.2.fq", l_後続リード群);
 
-            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
+            var l_contig構築 = new ContigMaker(l_unitigパス);
 
             // 例外を投げずに完走すること
             // 対策前はここで
             // IndexOutOfRangeException がワーカー内で起き、
             // そのままハングしていた
-            l_コンティグ構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
+            l_contig構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
 
             // k 以上のリードからは標本が取れていること
             // (短いリードのせいで全部落ちてしまっていないことの確認)
-            Assert.NotEmpty(l_コンティグ構築.A_インサートサイズ標本);
+            Assert.NotEmpty(l_contig構築.A_インサートサイズ標本);
         }
 
         /// <summary>
@@ -103,21 +103,21 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
 
-            var l_ユニティグ配列 = V_生成_ランダム配列(400, p_シード: 654);
-            var l_ユニティグパス = Path.Combine(this._作業ディレクトリ, "unitigs_single.fasta");
-            File.WriteAllText(l_ユニティグパス, $">1\n{l_ユニティグ配列}\n");
+            var l_unitig配列 = V_生成_ランダム配列(400, p_シード: 654);
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs_single.fasta");
+            File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
 
             var l_リード群 = new List<(string, string)>();
             for (var i = 0; i < 50; i++)
             {
                 // 半分を k 未満にする
                 var l_長さ = i % 2 == 0 ? 19 : 150;
-                l_リード群.Add(($"read{i}", l_ユニティグ配列[..l_長さ]));
+                l_リード群.Add(($"read{i}", l_unitig配列[..l_長さ]));
             }
             var l_パス = this.V_書き出し_FASTQ("short_single.fq", l_リード群);
 
-            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_マッピング_リード(l_パス);
+            var l_contig構築 = new ContigMaker(l_unitigパス);
+            l_contig構築.V_マッピング_リード(l_パス);
         }
 
         /// <summary>
@@ -128,20 +128,20 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
 
-            var l_ユニティグ配列 = V_生成_ランダム配列(400, p_シード: 321);
-            var l_ユニティグパス = Path.Combine(this._作業ディレクトリ, "unitigs_allshort.fasta");
-            File.WriteAllText(l_ユニティグパス, $">1\n{l_ユニティグ配列}\n");
+            var l_unitig配列 = V_生成_ランダム配列(400, p_シード: 321);
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs_allshort.fasta");
+            File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
 
-            var l_先行リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/1", l_ユニティグ配列[..19]));
-            var l_後続リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/2", l_ユニティグ配列[..20]));
+            var l_先行リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/1", l_unitig配列[..19]));
+            var l_後続リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/2", l_unitig配列[..20]));
 
             var l_先行パス = this.V_書き出し_FASTQ("allshort.1.fq", l_先行リード群);
             var l_後続パス = this.V_書き出し_FASTQ("allshort.2.fq", l_後続リード群);
 
-            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
+            var l_contig構築 = new ContigMaker(l_unitigパス);
+            l_contig構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
 
-            Assert.Empty(l_コンティグ構築.A_インサートサイズ標本);
+            Assert.Empty(l_contig構築.A_インサートサイズ標本);
         }
 
         #endregion

@@ -50,6 +50,11 @@ namespace Tsumiki.Utilities
         private readonly string _ファイル接頭辞;
 
         /// <summary>
+        /// k 長
+        /// </summary>
+        private readonly int _k長;
+
+        /// <summary>
         /// パック長
         /// </summary>
         private readonly int _パック長;
@@ -65,9 +70,14 @@ namespace Tsumiki.Utilities
         private int _ファイル連番;
 
         /// <summary>
-        /// まだディスクへ書き出していない k-mer と出現回数
+        /// まだディスクへ書き出していない k-mer と出現回数 (パック済みバイト列で受けたもの)
         /// </summary>
         private Dictionary<byte[], ulong> _バッファ;
+
+        /// <summary>
+        /// まだディスクへ書き出していない k-mer と出現回数 (128 塩基までのパック値で受けたもの)
+        /// </summary>
+        private Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong> _値バッファ;
 
         /// <summary>
         /// フラッシュ済みファイル
@@ -92,11 +102,13 @@ namespace Tsumiki.Utilities
             this._比較器 = new();
             this._等価比較器 = new();
             this._一時ディレクトリ = p_一時ディレクトリ;
-            this._パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
+            this._k長 = ConfigurationManager.A_実行時引数.A_k長;
+            this._パック長 = (this._k長 + 3) / 4;
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
             this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
             this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
+            this._値バッファ = new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限));
             this._ファイル連番 = 0;
         }
 
@@ -136,14 +148,35 @@ namespace Tsumiki.Utilities
             if (this._バッファ.TryGetValue(p_パック済みkmer, out var l_出現回数))
             {
                 this._バッファ[p_パック済みkmer] = l_出現回数 + 1UL;
+                return;
             }
-            else
+
+            this._バッファ[p_パック済みkmer] = 1UL;
+            if (this.Is閾値到達())
             {
-                this._バッファ[p_パック済みkmer] = 1UL;
-                if (this._バッファ.Count >= this._フラッシュ閾値)
-                {
-                    this.V_フラッシュ();
-                }
+                this.V_フラッシュ();
+            }
+        }
+
+        /// <summary>
+        /// 右詰めのパック値で表した k-mer を 1 件登録する (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_値"></param>
+        /// <remarks>
+        /// バイト列のキーは k-mer ごとに配列を確保し、比較もバイト単位になる
+        /// </remarks>
+        public void V_登録_値((UInt128 A_上位, UInt128 A_下位) p_値)
+        {
+            if (this._値バッファ.TryGetValue(p_値, out var l_出現回数))
+            {
+                this._値バッファ[p_値] = l_出現回数 + 1UL;
+                return;
+            }
+
+            this._値バッファ[p_値] = 1UL;
+            if (this.Is閾値到達())
+            {
+                this.V_フラッシュ();
             }
         }
 
@@ -172,12 +205,7 @@ namespace Tsumiki.Utilities
                 l_対象ファイル.Add(l_出力先);
             }
 
-            // フラッシュ済みファイルが 1 件のみだった場合、マージが一度も走らず
-            // その元ファイル (_フラッシュ済みファイル に登録済み) がそのまま返される
-            // 登録したままだと、この直後に Dispose () が呼ばれた際
-            // _フラッシュ済みファイル を掃除する処理で削除されてしまい、
-            // 呼び出し元に返したパスが消える (FileNotFoundException の原因)
-            // 呼び出し元へ所有権を渡すため、返す前に登録を外しておく
+            // 1 件のみでマージが走らなかった場合、登録したままだと Dispose で消されてしまうため、所有権を呼び出し元へ渡す
             var l_最終ファイル = l_対象ファイル[0];
             _ = this._フラッシュ済みファイル.Remove(l_最終ファイル);
             return l_最終ファイル;
@@ -200,47 +228,40 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 各シャードの CountingDB が Get_統合ファイル () で出力したソート済み・集約済みファイルを、さらにペアワイズマージして 1 本に統合する
+        /// 右詰めのパック値を、ファイル上の並び (2 bit/塩基・先頭塩基が最上位・余りビットは下位) のバイト列にする
         /// </summary>
-        /// <param name="p_一時ディレクトリ"></param>
-        /// <param name="p_ファイル一覧"></param>
-        /// <returns></returns>
-        public static (string A_ファイルパス, Dictionary<ulong, long>? A_ヒストグラム) Get_統合結果_シャード間(string p_一時ディレクトリ, List<string> p_ファイル一覧)
+        /// <param name="p_値"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_出力">パック長ぶんの書き込み先</param>
+        internal static void V_変換_パック済みバイト列((UInt128 A_上位, UInt128 A_下位) p_値, int p_k長, Span<byte> p_出力)
         {
-            var l_比較器 = new ByteArrayComparer();
-            var l_パック長 = (ConfigurationManager.A_実行時引数.A_k長 + 3) / 4;
-            var l_対象ファイル = new List<string>(p_ファイル一覧);
-            var l_接頭辞 = Guid.NewGuid().ToString("N");
-            var l_連番 = 1;
-
-            if (l_対象ファイル.Count == 0)
+            var l_余りビット = (8 * p_出力.Length) - (2 * p_k長);
+            var (l_上位, l_下位) = p_値;
+            if (l_余りビット > 0)
             {
-                return (Get_空ファイル(p_一時ディレクトリ, l_接頭辞), []);
+                l_上位 = (l_上位 << l_余りビット) | (l_下位 >> (128 - l_余りビット));
+                l_下位 <<= l_余りビット;
             }
-
-            // 最後のマージで書き出される値だけが最終的な出現回数になる
-            // そこで集計しておけば、統合ファイルを読み直さずに済む
-            Dictionary<ulong, long>? l_ヒストグラム = null;
-            while (l_対象ファイル.Count > 1)
+            for (var i = p_出力.Length - 1; i >= 0; i--)
             {
-                var l_Is最後のマージ = l_対象ファイル.Count == 2;
-                if (l_Is最後のマージ)
-                {
-                    l_ヒストグラム = [];
-                }
-                var l_出力先 = Path.Combine(p_一時ディレクトリ, $"{l_接頭辞}_workermerge_{l_連番++}");
-                V_マージ_2ファイル(l_対象ファイル[0], l_対象ファイル[1], l_出力先, l_パック長, l_比較器, l_ヒストグラム);
-                l_対象ファイル.RemoveRange(0, 2);
-                l_対象ファイル.Add(l_出力先);
+                p_出力[i] = (byte)l_下位;
+                l_下位 = (l_下位 >> 8) | (l_上位 << 120);
+                l_上位 >>= 8;
             }
-
-            // マージが一度も走らなかった場合 (シャードが 1 つ) は集計できていない
-            return (l_対象ファイル[0], l_ヒストグラム);
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// メモリ上の件数がフラッシュ閾値に達したか
+        /// </summary>
+        /// <returns></returns>
+        private bool Is閾値到達()
+        {
+            return this._バッファ.Count + this._値バッファ.Count >= this._フラッシュ閾値;
+        }
 
         /// <summary>
         /// 書き込み用のストリームを開いて返す
@@ -266,32 +287,69 @@ namespace Tsumiki.Utilities
         /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す
         /// </summary>
         /// <remarks>
-        /// フラッシュ後のファイルは常にソート済み・集約済みであるため、統合側では再集計 (Dictionary への読み直し) が不要になる
+        /// フラッシュ後のファイルは常にソート済み・集約済みであるため、統合側では再集計 (Dictionary への読み直し) が不要になる<br/>
+        /// 2 種類のバッファは同じ並び規則の別ファイルとして書き、同じキーが両方にあってもマージで合算される
         /// </remarks>
         private void V_フラッシュ()
         {
-            if (this._バッファ.Count == 0)
+            if (this._バッファ.Count > 0)
             {
-                return;
-            }
+                var l_ファイル名 = this.Get_次のファイル名();
+                var l_エントリ = this._バッファ.ToArray();
+                Array.Sort(l_エントリ, (x, y) => this._比較器.Compare(x.Key, y.Key));
 
-            this._ファイル連番 += 1;
-            var l_ファイル名 = Path.Combine(this._一時ディレクトリ, $"{this._ファイル接頭辞}_{this._ファイル連番}");
-
-            var l_エントリ = this._バッファ.ToArray();
-            Array.Sort(l_エントリ, (x, y) => this._比較器.Compare(x.Key, y.Key));
-
-            using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
-            {
-                foreach (var l_項目 in l_エントリ)
+                using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
                 {
-                    l_書き込み.Write(l_項目.Key);
-                    l_書き込み.Write(l_項目.Value);
+                    foreach (var l_項目 in l_エントリ)
+                    {
+                        l_書き込み.Write(l_項目.Key);
+                        l_書き込み.Write(l_項目.Value);
+                    }
                 }
+
+                this._フラッシュ済みファイル.Add(l_ファイル名);
+                this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
             }
 
-            this._フラッシュ済みファイル.Add(l_ファイル名);
-            this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
+            if (this._値バッファ.Count > 0)
+            {
+                var l_ファイル名 = this.Get_次のファイル名();
+
+                // 右詰めのパック値の大小は、ファイル上のバイト列の辞書順と一致する
+                var l_キー = new (UInt128 A_上位, UInt128 A_下位)[this._値バッファ.Count];
+                var l_回数 = new ulong[l_キー.Length];
+                var l_位置 = 0;
+                foreach (var (l_値, l_出現回数) in this._値バッファ)
+                {
+                    l_キー[l_位置] = l_値;
+                    l_回数[l_位置++] = l_出現回数;
+                }
+                Array.Sort(l_キー, l_回数);
+
+                var l_バイト列 = new byte[this._パック長];
+                using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
+                {
+                    for (var i = 0; i < l_キー.Length; i++)
+                    {
+                        V_変換_パック済みバイト列(l_キー[i], this._k長, l_バイト列);
+                        l_書き込み.Write(l_バイト列);
+                        l_書き込み.Write(l_回数[i]);
+                    }
+                }
+
+                this._フラッシュ済みファイル.Add(l_ファイル名);
+                this._値バッファ = new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限));
+            }
+        }
+
+        /// <summary>
+        /// 次に書き出す一時ファイルのパス
+        /// </summary>
+        /// <returns></returns>
+        private string Get_次のファイル名()
+        {
+            this._ファイル連番 += 1;
+            return Path.Combine(this._一時ディレクトリ, $"{this._ファイル接頭辞}_{this._ファイル連番}");
         }
 
         /// <summary>
@@ -302,23 +360,17 @@ namespace Tsumiki.Utilities
         /// <param name="p_出力先"></param>
         /// <param name="p_パック長"></param>
         /// <param name="p_比較器"></param>
-        /// <param name="p_ヒストグラム"></param>
         /// <remarks>
-        /// 同じキーが両方に現れた場合はカウントを合算する<br/>
-        /// シャード内統合とシャード間統合で共有する (二重に持つと片方だけ直したときに静かに食い違う)
+        /// 同じキーが両方に現れた場合はカウントを合算する
         /// </remarks>
-        private static void V_マージ_2ファイル(string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器, Dictionary<ulong, long>? p_ヒストグラム = null)
+        private static void V_マージ_2ファイル(string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器)
         {
             using (var l_読み込み1 = new BinaryReader(Get_読み込みストリーム(p_ファイル1)))
             {
                 using var l_読み込み2 = new BinaryReader(Get_読み込みストリーム(p_ファイル2));
                 using var l_書き込み = new BinaryWriter(Get_書き込みストリーム(p_出力先));
 
-                // BinaryReader.ReadBytes は EOF でも null ではなく長さ 0 の配列を
-                // 返すため、初回読み取りを保護しないと空ファイルを
-                // 「まだ中身がある」と誤認し、続く ReadUInt64 で破綻する
-                // k-mer をハッシュでシャードへ振り分けるようにして以降、
-                // 空のシャードが普通に発生するようになったため必須
+                // BinaryReader.ReadBytes は EOF でも長さ 0 の配列を返すため、空ファイルを中身があると誤認しないよう先に確かめる
                 var l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                 var l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
 
@@ -328,20 +380,20 @@ namespace Tsumiki.Utilities
                     if (l_比較結果 == 0)
                     {
                         l_書き込み.Write(l_キー1);
-                        V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64(), p_ヒストグラム);
+                        l_書き込み.Write(l_読み込み1.ReadUInt64() + l_読み込み2.ReadUInt64());
                         l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                         l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                     else if (l_比較結果 < 0)
                     {
                         l_書き込み.Write(l_キー1);
-                        V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
+                        l_書き込み.Write(l_読み込み1.ReadUInt64());
                         l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                     }
                     else
                     {
                         l_書き込み.Write(l_キー2);
-                        V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
+                        l_書き込み.Write(l_読み込み2.ReadUInt64());
                         l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                     }
                 }
@@ -349,35 +401,20 @@ namespace Tsumiki.Utilities
                 while (l_キー1 != null)
                 {
                     l_書き込み.Write(l_キー1);
-                    V_書き込み_出現回数(l_書き込み, l_読み込み1.ReadUInt64(), p_ヒストグラム);
+                    l_書き込み.Write(l_読み込み1.ReadUInt64());
                     l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                 }
 
                 while (l_キー2 != null)
                 {
                     l_書き込み.Write(l_キー2);
-                    V_書き込み_出現回数(l_書き込み, l_読み込み2.ReadUInt64(), p_ヒストグラム);
+                    l_書き込み.Write(l_読み込み2.ReadUInt64());
                     l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
                 }
             }
 
             File.Delete(p_ファイル1);
             File.Delete(p_ファイル2);
-        }
-
-        /// <summary>
-        /// 出現回数を書き出し、ヒストグラムが渡されていれば同時に集計する
-        /// </summary>
-        /// <param name="p_書き込み"></param>
-        /// <param name="p_出現回数"></param>
-        /// <param name="p_ヒストグラム"></param>
-        /// <remarks>
-        /// 最終マージの書き出しで集計しておけば、-kc の自動決定のために統合ファイルをもう一度読む必要がなくなる
-        /// </remarks>
-        private static void V_書き込み_出現回数(BinaryWriter p_書き込み, ulong p_出現回数, Dictionary<ulong, long>? p_ヒストグラム)
-        {
-            p_書き込み.Write(p_出現回数);
-            p_ヒストグラム?[p_出現回数] = p_ヒストグラム.GetValueOrDefault(p_出現回数, 0L) + 1L;
         }
 
         /// <summary>

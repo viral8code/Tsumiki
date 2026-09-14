@@ -104,8 +104,13 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.kmerカットオフ適用);
-            KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
-            _ = l_kmerインデックス.V_カットオフ(p_引数.A_kmerカットオフ);
+            using (new StageTimer($"cutoff k={p_k長}"))
+            {
+                KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
+
+                // 架橋が使うため、カットオフ未満でも 1 回きりではない k-mer は控えておく
+                l_kmerインデックス.V_適用_カットオフ(p_引数.A_kmerカットオフ, p_引数.A_Is救済kmer使用 ? LowCoverageBridger.控えの最小出現回数 : 0UL);
+            }
 
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
 
@@ -130,6 +135,15 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.引き継ぎで追加したkmer数, l_追加数);
             }
 
+            // 架橋は引き継ぎの後に行う
+            // 前段の k が既に通った配列で繋がる行き止まりへ、控えの k-mer から推した経路を持ち込まない
+            // tip 除去より前に行うのは、繋がる前の行き止まりが短い tip として消されるため
+            if (p_引数.A_Is救済kmer使用)
+            {
+                Logger.V_出力(メッセージID.低カバレッジ架橋開始);
+                _ = LowCoverageBridger.Get_架橋kmer数(l_kmerインデックス, p_k長, p_リード長);
+            }
+
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.tip除去開始);
@@ -137,7 +151,11 @@ namespace Tsumiki.Cores.Pipeline
             // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
             // 数え直す必要がある
             // 除去側が最終状態のものを返す
-            var l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長, p_Is低カバレッジ端トリミング: p_引数.A_Is低カバレッジ端トリミング);
+            List<byte[]> l_開始kmer;
+            using (new StageTimer($"graph-simplify k={p_k長}"))
+            {
+                l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長, p_Is低カバレッジ端トリミング: p_引数.A_Is低カバレッジ端トリミング);
+            }
 
             Logger.V_出力_タイムスタンプ();
 
@@ -169,18 +187,21 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            using (new StageTimer($"read-mapping k={p_k長}"))
             {
-                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
-                l_contig構築.V_マッピング_リード(p_引数.A_リード1のパス);
-            }
-            else
-            {
-                // ペアエンドの場合、read1/read2 を同時に読み進めて
-                // インサートサイズによる隣接検出も行う
-                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
-                Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード2のパス);
-                l_contig構築.V_マッピング_ペアリード(p_引数.A_リード1のパス, p_引数.A_リード2のパス);
+                if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+                {
+                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
+                    l_contig構築.V_マッピング_リード(p_引数.A_リード1のパス);
+                }
+                else
+                {
+                    // ペアエンドの場合、read1/read2 を同時に読み進めて
+                    // インサートサイズによる隣接検出も行う
+                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
+                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード2のパス);
+                    l_contig構築.V_マッピング_ペアリード(p_引数.A_リード1のパス, p_引数.A_リード2のパス);
+                }
             }
 
             Logger.V_出力_タイムスタンプ();
@@ -213,7 +234,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
                 if (l_窓数 >= rMer検証に必要な窓数)
                 {
-                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], l_r長);
+                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], l_r長, l_kmerインデックス, p_k長);
                 }
                 else
                 {
@@ -224,7 +245,10 @@ namespace Tsumiki.Cores.Pipeline
             // 前段 k の確定済み経路 (scaffold/contig 全体由来のものだけ、バブル敗者や合成リードは除く) を
             // この k の分岐選択へ投影する (P2: multi-k を経路として機能させる)
             var l_引き継ぎ経路群 = p_引き継ぎ?.Where(x => x.A_Is確定経路).Select(x => x.A_配列).ToList();
-            l_contig構築.V_結合_Contig(l_contigパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_引き継ぎ経路群, l_コピー数推定.A_コピー数区間);
+            using (new StageTimer($"contig-join k={p_k長}"))
+            {
+                l_contig構築.V_結合_Contig(l_contigパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_引き継ぎ経路群, l_コピー数推定.A_コピー数区間);
+            }
             Logger.V_出力(メッセージID.Contig構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_contigパス);
 
@@ -237,8 +261,11 @@ namespace Tsumiki.Cores.Pipeline
             if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
             {
                 Logger.V_出力(メッセージID.Scaffolding開始);
-                var l_scaffold構築 = new Scaffolder(l_contig構築, l_contigパス, p_リード長);
-                l_scaffold構築.V_実行(l_scaffoldパス);
+                using (new StageTimer($"scaffolding k={p_k長}"))
+                {
+                    var l_scaffold構築 = new Scaffolder(l_contig構築, l_contigパス, p_リード長);
+                    l_scaffold構築.V_実行(l_scaffoldパス);
+                }
                 l_IsScaffold作成済み = File.Exists(l_scaffoldパス);
             }
 

@@ -10,7 +10,7 @@
         /// <summary>
         /// バージョン
         /// </summary>
-        public const string バージョン = "0.1.1";
+        public const string バージョン = "0.1.2";
 
         /// <summary>
         /// 保守的モードのペア結合閾値

@@ -45,6 +45,7 @@ namespace Tsumiki.Cores.Preprocessing
             // 候補は数百万件になりうるので、ワーカーごとに辞書を持つとその本数だけ複製することになるため、1 つを共有する
             // 値に塩基列そのものを持つのは、キーが k > 64 でハッシュになり配列を戻せなくなるためで、
             // 救済は集合へ足す処理なので実体が要る
+            using var l_計測 = new StageTimer($"mercy k={p_k長}");
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -96,30 +97,13 @@ namespace Tsumiki.Cores.Preprocessing
             // 信頼できるかどうかも見ないまま、連を切る壁として扱う
             var l_有効 = new bool[l_窓数];
             var l_信頼 = new bool[l_窓数];
-            var l_曖昧数 = 0;
-            for (var i = 0; i < p_k長; i++)
+            if (p_k長 <= TrustedKmerIndex.パック値のk上限)
             {
-                if (l_塩基列[i] is < Consts.塩基ID.A or > Consts.塩基ID.T)
-                {
-                    l_曖昧数++;
-                }
+                V_判定_窓_パック(p_リード, p_kmerインデックス, p_k長, l_有効, l_信頼);
             }
-            for (var i = 0; i < l_窓数; i++)
+            else
             {
-                if (i > 0)
-                {
-                    if (l_塩基列[i - 1] is < Consts.塩基ID.A or > Consts.塩基ID.T)
-                    {
-                        l_曖昧数--;
-                    }
-
-                    if (l_塩基列[i + p_k長 - 1] is < Consts.塩基ID.A or > Consts.塩基ID.T)
-                    {
-                        l_曖昧数++;
-                    }
-                }
-                l_有効[i] = l_曖昧数 == 0;
-                l_信頼[i] = l_有効[i] && p_kmerインデックス.Haskmer(l_塩基列.AsSpan(i, p_k長));
+                V_判定_窓(l_塩基列, p_kmerインデックス, p_k長, l_有効, l_信頼);
             }
 
             for (var i = 1; i < l_窓数 - 1; i++)
@@ -146,6 +130,70 @@ namespace Tsumiki.Cores.Preprocessing
                     }
                 }
                 i = l_終わり;
+            }
+        }
+
+        /// <summary>
+        /// 各窓が曖昧塩基を含まないか、信頼できる k-mer かを、転がしたパック値で判定する (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_k長">この k の長さ</param>
+        /// <param name="p_有効">曖昧塩基を含まない窓</param>
+        /// <param name="p_信頼">信頼できる k-mer の窓</param>
+        /// <remarks>
+        /// 窓ごとに k 塩基を詰め直すと、全リードの全窓で O (k) かかる
+        /// </remarks>
+        private static void V_判定_窓_パック(string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, bool[] p_有効, bool[] p_信頼)
+        {
+            var l_窓 = new RollingKmer(p_k長);
+            for (var i = 0; i < p_リード.Length; i++)
+            {
+                if (!l_窓.Try追加(p_リード[i], out var l_キー))
+                {
+                    continue;
+                }
+
+                var l_開始 = i - p_k長 + 1;
+                p_有効[l_開始] = true;
+                p_信頼[l_開始] = p_kmerインデックス.Haskmer_正規形(l_キー.A_上位, l_キー.A_下位);
+            }
+        }
+
+        /// <summary>
+        /// 各窓が曖昧塩基を含まないか、信頼できる k-mer かを判定する
+        /// </summary>
+        /// <param name="p_塩基列">リードの塩基 ID 列</param>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_k長">この k の長さ</param>
+        /// <param name="p_有効">曖昧塩基を含まない窓</param>
+        /// <param name="p_信頼">信頼できる k-mer の窓</param>
+        private static void V_判定_窓(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, bool[] p_有効, bool[] p_信頼)
+        {
+            var l_曖昧数 = 0;
+            for (var i = 0; i < p_k長; i++)
+            {
+                if (p_塩基列[i] is < Consts.塩基ID.A or > Consts.塩基ID.T)
+                {
+                    l_曖昧数++;
+                }
+            }
+            for (var i = 0; i < p_有効.Length; i++)
+            {
+                if (i > 0)
+                {
+                    if (p_塩基列[i - 1] is < Consts.塩基ID.A or > Consts.塩基ID.T)
+                    {
+                        l_曖昧数--;
+                    }
+
+                    if (p_塩基列[i + p_k長 - 1] is < Consts.塩基ID.A or > Consts.塩基ID.T)
+                    {
+                        l_曖昧数++;
+                    }
+                }
+                p_有効[i] = l_曖昧数 == 0;
+                p_信頼[i] = p_有効[i] && p_kmerインデックス.Haskmer(p_塩基列.AsSpan(i, p_k長));
             }
         }
 

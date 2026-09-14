@@ -58,6 +58,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </remarks>
         private const double 区間のz値 = 1.645D;
 
+        /// <summary>
+        /// 過分散のとき、単一コピーとみなす比の上限を決める片側の z 値 (99%)
+        /// </summary>
+        private const double 過分散時の片側z値 = 2.326D;
+
         #endregion
 
         #region 公開メソッド
@@ -116,26 +121,15 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_実際の出所 = l_希望する出所 == コピー数基準の出所.Spectrum && l_モデルを使える ? コピー数基準の出所.Spectrum : コピー数基準の出所.Weighted;
             var l_基準値 = l_実際の出所 == コピー数基準の出所.Spectrum ? l_モデル基準値!.Value : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
 
-            Dictionary<int, int> l_コピー数 = [];
-            foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
+            var l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, 多コピーとみなす比の下限);
+
+            // カバレッジが過分散なら単一コピーでも基準値の 1.5 倍を超える unitig が普通に現れ、反復と誤判定すると結合を拒まれる
+            // 観測したばらつきで単一コピーとして説明できる範囲まで下限を引き上げて判定し直す
+            if (l_基準値 > 0D && Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数) is { A_Is過分散: true } l_初回診断)
             {
-                if (l_基準値 <= 0D)
-                {
-                    l_コピー数[l_ID] = 1;
-                    continue;
-                }
-
-                var l_比 = l_カバレッジ値 / l_基準値;
-                if (l_比 < 多コピーとみなす比の下限)
-                {
-                    // 単一コピー (あるいは低カバレッジで判断できない)
-                    // 0 にはしない: 実際に配列は存在しており、経路から
-                    // 締め出してしまうと組み立てられなくなる
-                    l_コピー数[l_ID] = 1;
-                    continue;
-                }
-
-                l_コピー数[l_ID] = Math.Clamp((int)Math.Round(l_比), 1, コピー数の上限);
+                var l_引き上げた下限 = Math.Max(多コピーとみなす比の下限, 1D + (過分散時の片側z値 * Math.Sqrt(l_初回診断.A_分散指数 / l_基準値)));
+                l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, l_引き上げた下限);
+                Logger.V_出力_そのまま(FormattableString.Invariant($"[Copy number] multi-copy ratio threshold raised to {l_引き上げた下限:F2}x of baseline for overdispersed coverage"));
             }
 
             if (p_グラフ is { } l_グラフ)
@@ -265,6 +259,28 @@ namespace Tsumiki.Cores.UnitigBuilding
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 基準値との比からコピー数を決める
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_基準値"></param>
+        /// <param name="p_多コピーの下限比">これ未満の比を単一コピーとみなす</param>
+        /// <remarks>
+        /// 低カバレッジで判断できないものも 0 にはせず 1 にする<br/>
+        /// 実際に配列は存在しており、経路から締め出すと組み立てられなくなる
+        /// </remarks>
+        /// <returns></returns>
+        private static Dictionary<int, int> Get_比によるコピー数(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, double p_多コピーの下限比)
+        {
+            Dictionary<int, int> l_コピー数 = [];
+            foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
+            {
+                var l_比 = p_基準値 <= 0D ? 0D : l_カバレッジ値 / p_基準値;
+                l_コピー数[l_ID] = l_比 < p_多コピーの下限比 ? 1 : Math.Clamp((int)Math.Round(l_比), 2, コピー数の上限);
+            }
+            return l_コピー数;
+        }
 
         /// <summary>
         /// 染色体側と繋がりの無い「島」を、独立した複製単位の単一コピー領域とみなす

@@ -20,6 +20,16 @@ namespace Tsumiki.Utilities
         /// </summary>
         private const int 曖昧塩基の展開上限 = 64;
 
+        /// <summary>
+        /// パック値で扱える k の上限
+        /// </summary>
+        public const int パック値のk上限 = 128;
+
+        /// <summary>
+        /// ヒストグラムを配列で数える出現回数の上限
+        /// </summary>
+        private const int 配列で数える出現回数の上限 = 1 << 16;
+
         #endregion
 
         #region 内部変数
@@ -30,7 +40,7 @@ namespace Tsumiki.Utilities
         private readonly string _一時ディレクトリ;
 
         /// <summary>
-        /// ワーカーごとの k-mer カウンタ
+        /// シャードごとの k-mer カウンタ
         /// </summary>
         private CountingDB[]? _カウンタ群;
 
@@ -40,7 +50,7 @@ namespace Tsumiki.Utilities
         private readonly Lock[]? _シャードロック;
 
         /// <summary>
-        /// 信頼できる k-mer と出現回数 (k &gt; 64)
+        /// 信頼できる k-mer と出現回数 (k &gt; 128)
         /// </summary>
         private Dictionary<KmerKey, ulong>? _信頼kmer_大;
 
@@ -55,12 +65,37 @@ namespace Tsumiki.Utilities
         private Dictionary<UInt128, ulong>? _信頼kmer_中;
 
         /// <summary>
-        /// ワーカーごとのカウントを 1 本へ統合したファイルのパス
+        /// 信頼できる k-mer と出現回数 (65 &lt;= k &lt;= 128)
         /// </summary>
-        private string? _統合ファイルパス;
+        private Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>? _信頼kmer_長;
 
         /// <summary>
-        /// 統合の際に数えた、出現回数ごとの k-mer 種類数
+        /// カットオフ未満で控えた k-mer と出現回数 (k &gt; 128)
+        /// </summary>
+        private Dictionary<KmerKey, ulong>? _控えkmer_大;
+
+        /// <summary>
+        /// カットオフ未満で控えた k-mer と出現回数 (k &lt;= 32)
+        /// </summary>
+        private Dictionary<ulong, ulong>? _控えkmer_小;
+
+        /// <summary>
+        /// カットオフ未満で控えた k-mer と出現回数 (33 &lt;= k &lt;= 64)
+        /// </summary>
+        private Dictionary<UInt128, ulong>? _控えkmer_中;
+
+        /// <summary>
+        /// カットオフ未満で控えた k-mer と出現回数 (65 &lt;= k &lt;= 128)
+        /// </summary>
+        private Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>? _控えkmer_長;
+
+        /// <summary>
+        /// シャードごとに統合したファイルのパス
+        /// </summary>
+        private List<string>? _統合ファイル群;
+
+        /// <summary>
+        /// 統合ファイルから集計した、出現回数ごとの k-mer 種類数
         /// </summary>
         private Dictionary<ulong, long>? _統合時のヒストグラム;
 
@@ -79,6 +114,11 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly bool _Is中経路使用;
 
+        /// <summary>
+        /// 128 bit 2 語のキーで所属を調べるか
+        /// </summary>
+        private readonly bool _Is長経路使用;
+
         #endregion
 
         #region プロパティ
@@ -91,6 +131,16 @@ namespace Tsumiki.Utilities
         /// ゲノムサイズやカバレッジの推定に使う
         /// </remarks>
         public IReadOnlyDictionary<ulong, long> A_出現回数ヒストグラム { get; private set; } = new Dictionary<ulong, long>();
+
+        /// <summary>
+        /// カットオフ未満で控えている k-mer の数
+        /// </summary>
+        public int A_控えkmer数 => this._控えkmer_小?.Count ?? this._控えkmer_中?.Count ?? this._控えkmer_長?.Count ?? this._控えkmer_大?.Count ?? 0;
+
+        /// <summary>
+        /// カウンタのシャード数
+        /// </summary>
+        public int A_シャード数 => this._シャードロック?.Length ?? 0;
 
         #endregion
 
@@ -105,6 +155,7 @@ namespace Tsumiki.Utilities
             this._k長 = ConfigurationManager.A_実行時引数.A_k長;
             this._Is小経路使用 = this._k長 <= 32;
             this._Is中経路使用 = this._k長 is > 32 and <= 64;
+            this._Is長経路使用 = this._k長 is > 64 and <= パック値のk上限;
             this._一時ディレクトリ = p_一時ディレクトリ;
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
@@ -164,12 +215,62 @@ namespace Tsumiki.Utilities
                 return;
             }
 
+            if (this._k長 <= パック値のk上限)
+            {
+                var l_値 = Get_正規形_値(p_kmer);
+                var l_値のシャード = Get_シャード番号(l_値, l_カウンタ群.Length);
+                lock (this._シャードロック![l_値のシャード])
+                {
+                    l_カウンタ群[l_値のシャード].V_登録_値(l_値);
+                }
+                return;
+            }
+
             var l_パック済み = TryGet_正規化パック(p_kmer);
             var l_シャード = (int)(Get_ハッシュ(l_パック済み) % (uint)l_カウンタ群.Length);
             lock (this._シャードロック![l_シャード])
             {
                 l_カウンタ群[l_シャード].V_登録_パック済み(l_パック済み);
             }
+        }
+
+        /// <summary>
+        /// 同じシャードへ振り分けた正規形のパック値をまとめて数える (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_シャード"></param>
+        /// <param name="p_値群"></param>
+        /// <remarks>
+        /// k-mer ごとに錠を取ると、全リードの全 k-mer の回数だけ錠の取り合いになる
+        /// </remarks>
+        public void V_登録_値群(int p_シャード, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
+        {
+            if (this._カウンタ群 is not { } l_カウンタ群)
+            {
+                return;
+            }
+            lock (this._シャードロック![p_シャード])
+            {
+                foreach (var l_値 in p_値群)
+                {
+                    l_カウンタ群[p_シャード].V_登録_値(l_値);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 正規形のパック値を振り分けるシャード
+        /// </summary>
+        /// <param name="p_値"></param>
+        /// <param name="p_シャード数"></param>
+        /// <remarks>
+        /// パック値の下位ビットは末尾の数塩基そのもので偏るため、混ぜてから上位ビットを使う
+        /// </remarks>
+        /// <returns></returns>
+        public static int Get_シャード番号((UInt128 A_上位, UInt128 A_下位) p_値, int p_シャード数)
+        {
+            var l_混合 = (ulong)p_値.A_下位 ^ (ulong)(p_値.A_下位 >> 64) ^ (ulong)p_値.A_上位 ^ (ulong)(p_値.A_上位 >> 64);
+            l_混合 *= 0x9E37_79B9_7F4A_7C15UL;
+            return (int)(((l_混合 >> 32) * (ulong)p_シャード数) >> 32);
         }
 
         /// <summary>
@@ -181,7 +282,11 @@ namespace Tsumiki.Utilities
         {
             return this._Is小経路使用
                 ? this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer))
-                : this._Is中経路使用 ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
+                : this._Is中経路使用
+                ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer))
+                : this._Is長経路使用
+                ? this._信頼kmer_長!.ContainsKey(Get_正規形_長(p_kmer))
+                : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -209,6 +314,19 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 正規形の右詰めパック値で所属を判定する (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_上位">128 bit を超える側、k &lt;= 64 なら 0</param>
+        /// <param name="p_下位"></param>
+        /// <returns></returns>
+        public bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位)
+        {
+            return this._Is小経路使用
+                ? this._信頼kmer_小!.ContainsKey((ulong)p_下位)
+                : this._Is中経路使用 ? this._信頼kmer_中!.ContainsKey(p_下位) : this._信頼kmer_長!.ContainsKey((p_上位, p_下位));
+        }
+
+        /// <summary>
         /// kmer の出現回数 (カバレッジ) を返す
         /// </summary>
         /// <param name="p_kmer"></param>
@@ -222,7 +340,36 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL)
                 : this._Is中経路使用
                 ? this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL)
+                : this._Is長経路使用
+                ? this._信頼kmer_長!.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL)
                 : this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
+        }
+
+        /// <summary>
+        /// カットオフ未満で控えた k-mer の出現回数を返す
+        /// </summary>
+        /// <param name="p_kmer"></param>
+        /// <returns>控えに無ければ 0</returns>
+        public ulong Get_控えカバレッジ(Span<byte> p_kmer)
+        {
+            return this._Is小経路使用
+                ? this._控えkmer_小?.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL) ?? 0UL
+                : this._Is中経路使用
+                ? this._控えkmer_中?.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL) ?? 0UL
+                : this._Is長経路使用
+                ? this._控えkmer_長?.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL) ?? 0UL
+                : this._控えkmer_大?.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL) ?? 0UL;
+        }
+
+        /// <summary>
+        /// 控えた k-mer を手放す
+        /// </summary>
+        public void V_解放_控え()
+        {
+            this._控えkmer_小 = null;
+            this._控えkmer_中 = null;
+            this._控えkmer_長 = null;
+            this._控えkmer_大 = null;
         }
 
         /// <summary>
@@ -279,6 +426,29 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// Get_読み替え_小 の 128 bit 2 語版 (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_余りビット"></param>
+        /// <returns></returns>
+        public static (UInt128 A_上位, UInt128 A_下位) Get_読み替え_長(ReadOnlySpan<byte> p_パック済み, int p_余りビット)
+        {
+            UInt128 l_上位 = 0;
+            UInt128 l_下位 = 0;
+            foreach (var l_バイト in p_パック済み)
+            {
+                l_上位 = (l_上位 << 8) | (l_下位 >> 120);
+                l_下位 = (l_下位 << 8) | l_バイト;
+            }
+            if (p_余りビット > 0)
+            {
+                l_下位 = (l_下位 >> p_余りビット) | (l_上位 << (128 - p_余りビット));
+                l_上位 >>= p_余りビット;
+            }
+            return (l_上位, l_下位);
+        }
+
+        /// <summary>
         /// TryGet_パック_小 の 128 bit 版 (k は 64 以下)
         /// </summary>
         /// <param name="p_kmer"></param>
@@ -294,6 +464,23 @@ namespace Tsumiki.Utilities
                 l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
             }
             return l_値;
+        }
+
+        /// <summary>
+        /// TryGet_パック_小 の 128 bit 2 語版 (k は 128 以下)
+        /// </summary>
+        /// <param name="p_kmer"></param>
+        /// <returns></returns>
+        public static (UInt128 A_上位, UInt128 A_下位) TryGet_パック_長(ReadOnlySpan<byte> p_kmer)
+        {
+            UInt128 l_上位 = 0;
+            UInt128 l_下位 = 0;
+            foreach (var l_塩基ID in p_kmer)
+            {
+                l_上位 = (l_上位 << 2) | (l_下位 >> 126);
+                l_下位 = (l_下位 << 2) | (UInt128)(l_塩基ID - 1);
+            }
+            return (l_上位, l_下位);
         }
 
         /// <summary>
@@ -320,6 +507,13 @@ namespace Tsumiki.Utilities
                     yield return Get_復元_中(l_パック済み, l_k長);
                 }
             }
+            else if (this._Is長経路使用)
+            {
+                foreach (var l_パック済み in this._信頼kmer_長!.Keys)
+                {
+                    yield return Get_復元_長(l_パック済み, l_k長);
+                }
+            }
             else
             {
                 foreach (var l_キー in this._信頼kmer_大!.Keys)
@@ -340,7 +534,9 @@ namespace Tsumiki.Utilities
         {
             _ = this._Is小経路使用
                 ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer))
-                : this._Is中経路使用 ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
+                : this._Is中経路使用
+                ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer))
+                : this._Is長経路使用 ? this._信頼kmer_長!.Remove(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -355,18 +551,23 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ)
                 : this._Is中経路使用
                 ? this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ)
+                : this._Is長経路使用
+                ? this._信頼kmer_長!.TryAdd(Get_正規形_長(p_kmer), p_カバレッジ)
                 : this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
         }
 
-        /// <summary>64 塩基までのパック済み正準キーを引き継ぐ</summary>
-        /// <param name="p_正規形">パック済みのキー</param>
+        /// <summary>
+        /// 正規形の右詰めパック値で信頼できる k-mer 集合へ 1 件足す (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_上位">128 bit を超える側、k &lt;= 64 なら 0</param>
+        /// <param name="p_下位"></param>
         /// <param name="p_カバレッジ">未登録の場合に設定する観測回数</param>
         /// <returns>未登録のキーを追加した場合は true</returns>
-        internal bool Try追加_信頼kmer_パック済み(UInt128 p_正規形, ulong p_カバレッジ)
+        public bool Try追加_信頼kmer_正規形(UInt128 p_上位, UInt128 p_下位, ulong p_カバレッジ)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.TryAdd((ulong)p_正規形, p_カバレッジ)
-                : this._信頼kmer_中!.TryAdd(p_正規形, p_カバレッジ);
+                ? this._信頼kmer_小!.TryAdd((ulong)p_下位, p_カバレッジ)
+                : this._Is中経路使用 ? this._信頼kmer_中!.TryAdd(p_下位, p_カバレッジ) : this._信頼kmer_長!.TryAdd((p_上位, p_下位), p_カバレッジ);
         }
 
         /// <summary>
@@ -379,14 +580,8 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public List<byte[]> Get_開始kmer一覧()
         {
-            // 判定は 1 件あたり最大 8 回のハッシュ引きを要し、それを全 k-mer の
-            // 両向きについて行う
-            // tip 除去は反復のたびにこれを呼ぶため、
-            // 単一スレッドだと実行時間の大半をここが占める
-            // 判定は読み取りのみなので並列に行える
-            // AsOrdered で走査順を保つ
-            // unitig 構築の結果は開始点の順序に
-            // 依存するため、順序が変わると出力が実行ごとに変わる
+            // 判定は 1 件あたり最大 8 回のハッシュ引きを全 k-mer の両向きについて行うため並列に行う
+            // unitig 構築の結果は開始点の順序に依存するので AsOrdered で走査順を保つ
             return [.. this.Get_信頼kmer一覧()
                 .AsParallel()
                 .AsOrdered()
@@ -404,142 +599,146 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public Dictionary<ulong, long> Get_出現回数ヒストグラム()
         {
-            var l_ファイルパス = this.Get_統合済みファイル();
+            var l_ファイル群 = this.Get_統合ファイル群();
             if (this._統合時のヒストグラム is { } l_集計済み)
             {
                 return l_集計済み;
             }
 
             var l_パック長 = (this._k長 + 3) / 4;
-            var l_読み捨てバッファ = new byte[l_パック長];
-
-            Dictionary<ulong, long> l_ヒストグラム = [];
-            using var l_読み込み = new BinaryReader(File.Open(l_ファイルパス, FileMode.Open, FileAccess.Read));
-            while (Util.Has続き(l_読み込み))
+            var l_シャード別 = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
+            _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
-                _ = l_読み込み.Read(l_読み捨てバッファ, 0, l_パック長);
-                var l_出現回数 = l_読み込み.ReadUInt64();
-                l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1L;
-            }
-            return l_ヒストグラム;
+                var l_配列 = new long[配列で数える出現回数の上限];
+                Dictionary<ulong, long> l_大きい回数 = [];
+                V_走査_エントリ(l_ファイル群[s], l_パック長, (_, l_出現回数) => V_加算_ヒストグラム(l_配列, l_大きい回数, l_出現回数));
+                l_シャード別[s] = (l_配列, l_大きい回数);
+            });
+
+            this._統合時のヒストグラム = Get_合算ヒストグラム(l_シャード別);
+            return this._統合時のヒストグラム;
+        }
+
+        /// <summary>
+        /// 出現回数がカットオフに満たない k-mer を落とし、残ったものを信頼できる集合にして開始点を返す
+        /// </summary>
+        /// <param name="p_カットオフ">残すために必要な出現回数</param>
+        /// <returns>walk の開始点になりうる k-mer</returns>
+        public List<byte[]> V_カットオフ(ulong p_カットオフ)
+        {
+            this.V_適用_カットオフ(p_カットオフ);
+            Logger.V_出力(メッセージID.開始kmerの探索);
+            return this.Get_開始kmer一覧();
         }
 
         /// <summary>
         /// 出現回数がカットオフに満たない k-mer を落とし、残ったものを信頼できる集合にする
         /// </summary>
         /// <param name="p_カットオフ">残すために必要な出現回数</param>
-        /// <returns>walk の開始点になりうる k-mer</returns>
-        public List<byte[]> V_カットオフ(ulong p_カットオフ)
+        /// <param name="p_控え下限">カットオフ未満でも控えておく出現回数の下限、0 なら控えない</param>
+        /// <remarks>
+        /// 開始点は全 k-mer の両向きを調べる重い走査で、集合を後から縮める呼び出し元では捨てるだけになるため求めない<br/>
+        /// シャードは k-mer のハッシュで分けてあり同じキーが複数のシャードに現れないので、1 本へマージせずシャードごとに並列に読める
+        /// </remarks>
+        public void V_適用_カットオフ(ulong p_カットオフ, ulong p_控え下限 = 0UL)
         {
-            var l_ファイルパス = this.Get_統合済みファイル();
-
+            var l_ファイル群 = this.Get_統合ファイル群();
             var l_パック長 = (this._k長 + 3) / 4;
-            var l_小経路 = this._Is小経路使用;
-            var l_中経路 = this._Is中経路使用;
-            Dictionary<KmerKey, ulong>? l_信頼kmer_大;
-            Dictionary<ulong, ulong>? l_信頼kmer_小;
-            Dictionary<UInt128, ulong>? l_信頼kmer_中;
+            var l_余りビット = (8 * l_パック長) - (2 * this._k長);
+            var l_Is控え使用 = p_控え下限 > 0UL && p_控え下限 < p_カットオフ;
+            var l_k長 = this._k長;
+            var l_Isパック値 = l_k長 <= パック値のk上限;
+
+            var l_シャード別ヒストグラム = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
+            var l_シャード別採用 = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)>[l_ファイル群.Count];
+            var l_シャード別控え = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)>[l_ファイル群.Count];
+            var l_シャード別採用_大 = new List<(KmerKey A_キー, ulong A_出現回数)>[l_ファイル群.Count];
+            var l_シャード別控え_大 = new List<(KmerKey A_キー, ulong A_出現回数)>[l_ファイル群.Count];
+            var l_シャード別種類数 = new long[l_ファイル群.Count];
+
+            _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
-                var l_採用数 = 0UL;
-                var l_総種類数 = 0UL;
-                // 出現回数 -> その回数を持つユニーク k-mer の種類数
-                // エラー由来の低頻度 k-mer と真のゲノム由来 k-mer を分ける「谷」を
-                // 推定するために、カットオフ判定と同じこのループで集計する
-                // (このファイルはこの後削除されるため、ここでしか見られない)
-                Dictionary<ulong, long> l_ヒストグラム = [];
+                var l_配列 = new long[配列で数える出現回数の上限];
+                Dictionary<ulong, long> l_大きい回数 = [];
+                List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)> l_採用 = [];
+                List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)> l_控え = [];
+                List<(KmerKey A_キー, ulong A_出現回数)> l_採用_大 = [];
+                List<(KmerKey A_キー, ulong A_出現回数)> l_控え_大 = [];
+                var l_種類数 = 0L;
 
-                var l_エントリ長 = l_パック長 + sizeof(ulong);
-                var l_総エントリ数 = new FileInfo(l_ファイルパス).Length / l_エントリ長;
-
-                // 数千万件を入れるので、伸ばしながらのリハッシュを避けて先に確保する
-                var l_見込み = (int)Math.Min(int.MaxValue / 2, Math.Max(1_024L, l_総エントリ数 / 4L));
-                l_信頼kmer_小 = l_小経路 ? new Dictionary<ulong, ulong>(l_見込み) : null;
-                l_信頼kmer_中 = l_中経路 ? new Dictionary<UInt128, ulong>(l_見込み) : null;
-                l_信頼kmer_大 = l_小経路 || l_中経路 ? null : new Dictionary<KmerKey, ulong>(l_見込み);
-
-                // ファイル上の並びは 2 bit/塩基・先頭塩基が最上位で、パック値の規約と
-                // 同じ
-                // 塩基列へ展開してから詰め直す必要はなく、余りビット分の
-                // シフトだけで正規形の計算へ渡せる
-                var l_余りビット = (8 * l_パック長) - (2 * this._k長);
-
-                using var l_流れ = new FileStream(l_ファイルパス, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan);
-                var l_バッファ = new byte[l_エントリ長 * 4_096];
-                var l_残り = 0;
-                while (true)
+                V_走査_エントリ(l_ファイル群[s], l_パック長, (l_パック済み, l_出現回数) =>
                 {
-                    var l_読んだ = l_流れ.Read(l_バッファ, l_残り, l_バッファ.Length - l_残り);
-                    var l_有効 = l_残り + l_読んだ;
-                    var l_位置 = 0;
-                    while (l_位置 + l_エントリ長 <= l_有効)
+                    l_種類数++;
+                    V_加算_ヒストグラム(l_配列, l_大きい回数, l_出現回数);
+                    var l_Is採用 = l_出現回数 >= p_カットオフ;
+                    if (!l_Is採用 && (!l_Is控え使用 || l_出現回数 < p_控え下限))
                     {
-                        var l_パック済み = l_バッファ.AsSpan(l_位置, l_パック長);
-                        var l_出現回数 = BitConverter.ToUInt64(l_バッファ, l_位置 + l_パック長);
-                        l_位置 += l_エントリ長;
-
-                        l_総種類数 += 1UL;
-                        l_ヒストグラム[l_出現回数] = l_ヒストグラム.GetValueOrDefault(l_出現回数, 0L) + 1L;
-                        if (l_出現回数 < p_カットオフ)
-                        {
-                            continue;
-                        }
-
-                        l_採用数 += 1UL;
-                        // カウント段階で既に正規形へ寄せてあるため、同じ正規形が
-                        // 複数エントリとして現れることはない
-                        // それでも加算で受けて
-                        // おけば、将来カウント側の正規化をやめた場合でも壊れない
-                        if (l_小経路)
-                        {
-                            var l_値 = Get_読み替え_小(l_パック済み, l_余りビット);
-                            var l_逆 = Get_逆相補_小(l_値, this._k長);
-                            var l_正規形 = Math.Min(l_値, l_逆);
-                            l_信頼kmer_小![l_正規形] = l_信頼kmer_小.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
-                        }
-                        else if (l_中経路)
-                        {
-                            var l_値 = Get_読み替え_中(l_パック済み, l_余りビット);
-                            var l_逆 = Get_逆相補_中(l_値, this._k長);
-                            var l_正規形 = l_値 < l_逆 ? l_値 : l_逆;
-                            l_信頼kmer_中![l_正規形] = l_信頼kmer_中.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
-                        }
-                        else
-                        {
-                            var l_正規形 = new KmerKey(Get_復元_塩基列(l_パック済み, this._k長)).Get_正規形();
-                            l_信頼kmer_大![l_正規形] = l_信頼kmer_大.GetValueOrDefault(l_正規形, 0UL) + l_出現回数;
-                        }
+                        return;
                     }
 
-                    if (l_読んだ == 0)
+                    if (l_Isパック値)
                     {
-                        break;
+                        var (l_上位, l_下位) = Get_正規形_読み替え(l_パック済み, l_余りビット, l_k長);
+                        (l_Is採用 ? l_採用 : l_控え).Add((l_上位, l_下位, l_出現回数));
                     }
+                    else
+                    {
+                        var l_キー = new KmerKey(Get_復元_塩基列(l_パック済み, l_k長)).Get_正規形();
+                        (l_Is採用 ? l_採用_大 : l_控え_大).Add((l_キー, l_出現回数));
+                    }
+                });
 
-                    l_残り = l_有効 - l_位置;
-                    if (l_残り > 0)
-                    {
-                        Array.Copy(l_バッファ, l_位置, l_バッファ, 0, l_残り);
-                    }
+                l_シャード別ヒストグラム[s] = (l_配列, l_大きい回数);
+                l_シャード別採用[s] = l_採用;
+                l_シャード別控え[s] = l_控え;
+                l_シャード別採用_大[s] = l_採用_大;
+                l_シャード別控え_大[s] = l_控え_大;
+                l_シャード別種類数[s] = l_種類数;
+            });
+
+            var l_採用数 = l_Isパック値 ? l_シャード別採用.Sum(x => (long)x.Count) : l_シャード別採用_大.Sum(x => (long)x.Count);
+            var l_控え数 = l_Isパック値 ? l_シャード別控え.Sum(x => (long)x.Count) : l_シャード別控え_大.Sum(x => (long)x.Count);
+            var l_採用容量 = (int)Math.Min(int.MaxValue / 2, Math.Max(1_024L, l_採用数));
+            var l_控え容量 = (int)Math.Min(int.MaxValue / 2, l_控え数);
+
+            this._信頼kmer_小 = this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_採用容量) : null;
+            this._信頼kmer_中 = this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_採用容量) : null;
+            this._信頼kmer_長 = this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_採用容量) : null;
+            this._信頼kmer_大 = l_Isパック値 ? null : new Dictionary<KmerKey, ulong>(l_採用容量);
+            this._控えkmer_小 = l_Is控え使用 && this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_控え容量) : null;
+            this._控えkmer_中 = l_Is控え使用 && this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_控え容量) : null;
+            this._控えkmer_長 = l_Is控え使用 && this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_控え容量) : null;
+            this._控えkmer_大 = l_Is控え使用 && !l_Isパック値 ? new Dictionary<KmerKey, ulong>(l_控え容量) : null;
+
+            for (var s = 0; s < l_ファイル群.Count; s++)
+            {
+                foreach (var (l_上位, l_下位, l_出現回数) in l_シャード別採用[s])
+                {
+                    this.V_加算_正規形(l_上位, l_下位, l_出現回数, p_Is控え: false);
                 }
-
-                Logger.V_出力(メッセージID.kmer種類数, l_総種類数);
-                Logger.V_出力(メッセージID.採用kmer数, l_採用数);
-                this.A_出現回数ヒストグラム = l_ヒストグラム;
+                foreach (var (l_上位, l_下位, l_出現回数) in l_シャード別控え[s])
+                {
+                    this.V_加算_正規形(l_上位, l_下位, l_出現回数, p_Is控え: true);
+                }
+                foreach (var (l_キー, l_出現回数) in l_シャード別採用_大[s])
+                {
+                    this._信頼kmer_大![l_キー] = this._信頼kmer_大.GetValueOrDefault(l_キー, 0UL) + l_出現回数;
+                }
+                foreach (var (l_キー, l_出現回数) in l_シャード別控え_大[s])
+                {
+                    this._控えkmer_大![l_キー] = this._控えkmer_大.GetValueOrDefault(l_キー, 0UL) + l_出現回数;
+                }
             }
-            File.Delete(l_ファイルパス);
-            this._統合ファイルパス = null;
-            this._信頼kmer_大 = l_信頼kmer_大;
-            this._信頼kmer_小 = l_信頼kmer_小;
-            this._信頼kmer_中 = l_信頼kmer_中;
 
-            Logger.V_出力(メッセージID.開始kmerの探索);
+            Logger.V_出力(メッセージID.kmer種類数, (ulong)l_シャード別種類数.Sum());
+            Logger.V_出力(メッセージID.採用kmer数, (ulong)l_採用数);
+            this.A_出現回数ヒストグラム = Get_合算ヒストグラム(l_シャード別ヒストグラム);
 
-            // 以前はここで一度カットオフ通過 k-mer をファイルへ書き出し、
-            // 読み直して開始点を判定していた
-            // 厳密な集合をインメモリで
-            // 保持するようになったため、その集合を直接走査すれば同じ結果が
-            // 得られ、ディスク I/O を 1 往復省略できる
-            return this.Get_開始kmer一覧();
+            foreach (var l_ファイル in l_ファイル群)
+            {
+                File.Delete(l_ファイル);
+            }
+            this._統合ファイル群 = null;
         }
 
         /// <summary>
@@ -582,8 +781,8 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public int Get_出次数(Span<byte> p_kmer)
         {
-            var l_候補 = new byte[p_kmer.Length];
-            p_kmer[1..].CopyTo(l_候補.AsSpan(0, p_kmer.Length - 1));
+            Span<byte> l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
+            p_kmer[1..].CopyTo(l_候補);
             var l_件数 = 0;
             for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
@@ -608,6 +807,113 @@ namespace Tsumiki.Utilities
                     l_カウンタ.Dispose();
                 }
             }
+            if (this._統合ファイル群 != null)
+            {
+                foreach (var l_ファイル in this._統合ファイル群.Where(File.Exists))
+                {
+                    File.Delete(l_ファイル);
+                }
+            }
+        }
+
+        /// <summary>
+        /// k-mer の正規形を返す (k &lt;= 32)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <returns>正規形</returns>
+        internal static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
+        {
+            var l_パック済み = TryGet_パック_小(p_kmer);
+            var l_逆相補 = Get_逆相補_小(l_パック済み, p_kmer.Length);
+            return Math.Min(l_パック済み, l_逆相補);
+        }
+
+        /// <summary>
+        /// k-mer の正規形を返す (33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <returns>正規形</returns>
+        internal static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
+        {
+            var l_パック済み = TryGet_パック_中(p_kmer);
+            var l_逆相補 = Get_逆相補_中(l_パック済み, p_kmer.Length);
+            return l_パック済み < l_逆相補 ? l_パック済み : l_逆相補;
+        }
+
+        /// <summary>
+        /// k-mer の正規形を返す (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <remarks>
+        /// 順鎖と逆相補を同じループで詰めるので、塩基列の逆相補を作らない
+        /// </remarks>
+        /// <returns>正規形の右詰めパック値</returns>
+        internal static (UInt128 A_上位, UInt128 A_下位) Get_正規形_長(ReadOnlySpan<byte> p_kmer)
+        {
+            UInt128 l_順上 = 0;
+            UInt128 l_順下 = 0;
+            UInt128 l_逆上 = 0;
+            UInt128 l_逆下 = 0;
+            var l_末尾 = p_kmer.Length - 1;
+            for (var i = 0; i <= l_末尾; i++)
+            {
+                l_順上 = (l_順上 << 2) | (l_順下 >> 126);
+                l_順下 = (l_順下 << 2) | (UInt128)(p_kmer[i] - 1);
+                l_逆上 = (l_逆上 << 2) | (l_逆下 >> 126);
+                l_逆下 = (l_逆下 << 2) | (UInt128)(4 - p_kmer[l_末尾 - i]);
+            }
+            return l_順上 < l_逆上 || (l_順上 == l_逆上 && l_順下 <= l_逆下) ? (l_順上, l_順下) : (l_逆上, l_逆下);
+        }
+
+        /// <summary>
+        /// k-mer の正規形を、k によらず右詰めのパック値で返す (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID 列</param>
+        /// <returns>正規形の右詰めパック値、k &lt;= 64 なら上位は 0</returns>
+        internal static (UInt128 A_上位, UInt128 A_下位) Get_正規形_値(ReadOnlySpan<byte> p_kmer)
+        {
+            return p_kmer.Length <= 64 ? ((UInt128)0, Get_正規形_中(p_kmer)) : Get_正規形_長(p_kmer);
+        }
+
+        /// <summary>
+        /// TryGet_パック_小 でパックした値の逆相補を、ヒープ確保なしで直接計算する
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_長さ"></param>
+        /// <remarks>
+        /// 2 bit コドンごとに相補を取り (A&lt;-&gt;T, C&lt;-&gt;G)、下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる
+        /// </remarks>
+        /// <returns></returns>
+        internal static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
+        {
+            var l_残り = p_パック済み;
+            var l_結果 = 0UL;
+            for (var i = 0; i < p_長さ; i++)
+            {
+                var l_コドン = l_残り & 0x3UL;
+                l_結果 = (l_結果 << 2) | (l_コドン ^ 0x3UL);
+                l_残り >>= 2;
+            }
+            return l_結果;
+        }
+
+        /// <summary>
+        /// Get_逆相補_小 の 128 bit 版
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_長さ"></param>
+        /// <returns></returns>
+        internal static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
+        {
+            var l_残り = p_パック済み;
+            UInt128 l_結果 = 0;
+            for (var i = 0; i < p_長さ; i++)
+            {
+                var l_コドン = l_残り & 3;
+                l_結果 = (l_結果 << 2) | (l_コドン ^ 3);
+                l_残り >>= 2;
+            }
+            return l_結果;
         }
 
         #endregion
@@ -636,6 +942,130 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 右詰めのパック値を集合へ加算する
+        /// </summary>
+        /// <param name="p_上位"></param>
+        /// <param name="p_下位"></param>
+        /// <param name="p_出現回数"></param>
+        /// <param name="p_Is控え">控えの集合へ入れるか</param>
+        private void V_加算_正規形(UInt128 p_上位, UInt128 p_下位, ulong p_出現回数, bool p_Is控え)
+        {
+            if (this._Is小経路使用)
+            {
+                var l_集合 = p_Is控え ? this._控えkmer_小! : this._信頼kmer_小!;
+                l_集合[(ulong)p_下位] = l_集合.GetValueOrDefault((ulong)p_下位, 0UL) + p_出現回数;
+            }
+            else if (this._Is中経路使用)
+            {
+                var l_集合 = p_Is控え ? this._控えkmer_中! : this._信頼kmer_中!;
+                l_集合[p_下位] = l_集合.GetValueOrDefault(p_下位, 0UL) + p_出現回数;
+            }
+            else
+            {
+                var l_集合 = p_Is控え ? this._控えkmer_長! : this._信頼kmer_長!;
+                l_集合[(p_上位, p_下位)] = l_集合.GetValueOrDefault((p_上位, p_下位), 0UL) + p_出現回数;
+            }
+        }
+
+        /// <summary>
+        /// ファイル上のパック済みバイト列を読み替え、逆相補と比べた正規形にする (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_余りビット"></param>
+        /// <param name="p_k長"></param>
+        /// <remarks>
+        /// カウント段階で正規形に寄せてあるが、ここでも寄せておけば将来カウント側の正規化をやめても壊れない
+        /// </remarks>
+        /// <returns></returns>
+        private static (UInt128 A_上位, UInt128 A_下位) Get_正規形_読み替え(ReadOnlySpan<byte> p_パック済み, int p_余りビット, int p_k長)
+        {
+            if (p_k長 <= 64)
+            {
+                var l_値 = Get_読み替え_中(p_パック済み, p_余りビット);
+                var l_逆 = Get_逆相補_中(l_値, p_k長);
+                return (0, l_値 < l_逆 ? l_値 : l_逆);
+            }
+            return Get_正規形_長(Get_復元_長(Get_読み替え_長(p_パック済み, p_余りビット), p_k長));
+        }
+
+        /// <summary>
+        /// 統合ファイルのエントリを先頭から順に渡す
+        /// </summary>
+        /// <param name="p_パス"></param>
+        /// <param name="p_パック長"></param>
+        /// <param name="p_処理">パック済みキーと出現回数を受け取る</param>
+        private static void V_走査_エントリ(string p_パス, int p_パック長, Action<ReadOnlySpan<byte>, ulong> p_処理)
+        {
+            var l_エントリ長 = p_パック長 + sizeof(ulong);
+            using var l_流れ = new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan);
+            var l_バッファ = new byte[l_エントリ長 * 4_096];
+            var l_残り = 0;
+            while (true)
+            {
+                var l_読んだ = l_流れ.Read(l_バッファ, l_残り, l_バッファ.Length - l_残り);
+                var l_有効 = l_残り + l_読んだ;
+                var l_位置 = 0;
+                while (l_位置 + l_エントリ長 <= l_有効)
+                {
+                    p_処理(l_バッファ.AsSpan(l_位置, p_パック長), BitConverter.ToUInt64(l_バッファ, l_位置 + p_パック長));
+                    l_位置 += l_エントリ長;
+                }
+
+                if (l_読んだ == 0)
+                {
+                    break;
+                }
+
+                l_残り = l_有効 - l_位置;
+                if (l_残り > 0)
+                {
+                    Array.Copy(l_バッファ, l_位置, l_バッファ, 0, l_残り);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 出現回数を 1 件ヒストグラムへ足す
+        /// </summary>
+        /// <param name="p_配列">小さい出現回数を数える配列</param>
+        /// <param name="p_大きい回数">配列に収まらない出現回数</param>
+        /// <param name="p_出現回数"></param>
+        private static void V_加算_ヒストグラム(long[] p_配列, Dictionary<ulong, long> p_大きい回数, ulong p_出現回数)
+        {
+            if (p_出現回数 < (ulong)p_配列.Length)
+            {
+                p_配列[p_出現回数]++;
+                return;
+            }
+            p_大きい回数[p_出現回数] = p_大きい回数.GetValueOrDefault(p_出現回数, 0L) + 1L;
+        }
+
+        /// <summary>
+        /// シャードごとのヒストグラムを 1 つにまとめる
+        /// </summary>
+        /// <param name="p_シャード別"></param>
+        /// <returns></returns>
+        private static Dictionary<ulong, long> Get_合算ヒストグラム((long[] A_配列, Dictionary<ulong, long> A_大きい回数)[] p_シャード別)
+        {
+            Dictionary<ulong, long> l_結果 = [];
+            foreach (var (l_配列, l_大きい回数) in p_シャード別)
+            {
+                for (var i = 0; i < l_配列.Length; i++)
+                {
+                    if (l_配列[i] > 0L)
+                    {
+                        l_結果[(ulong)i] = l_結果.GetValueOrDefault((ulong)i, 0L) + l_配列[i];
+                    }
+                }
+                foreach (var (l_出現回数, l_種類数) in l_大きい回数)
+                {
+                    l_結果[l_出現回数] = l_結果.GetValueOrDefault(l_出現回数, 0L) + l_種類数;
+                }
+            }
+            return l_結果;
+        }
+
+        /// <summary>
         /// k-mer を正規形の向きで 2 bit パックする
         /// </summary>
         /// <param name="p_kmer"></param>
@@ -649,8 +1079,7 @@ namespace Tsumiki.Utilities
             var l_パック済み = new byte[(p_kmer.Length + 3) / 4];
             for (var i = 0; i < p_kmer.Length; i++)
             {
-                // 逆鎖側を採用する場合は、末尾から相補塩基を取り出す
-                // 相補は A (1) <->T (4), C (2) <->G (3) なので 5 - x で得られる
+                // 逆鎖側は末尾から相補塩基を取り出す (相補は 5 - x)
                 var l_塩基ID = l_Is順鎖使用 ? p_kmer[i] : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
                 l_パック済み[i >> 2] |= (byte)((l_塩基ID - 1) << ((3 - (i & 3)) << 1));
             }
@@ -679,8 +1108,7 @@ namespace Tsumiki.Utilities
                 l_i++;
                 l_j--;
             }
-            // 回文 (自身が逆相補と一致)
-            // どちらでも同じなので順鎖扱い
+            // 回文 (自身が逆相補と一致) はどちらでも同じなので順鎖扱い
             return true;
         }
 
@@ -704,41 +1132,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_小 でパックした値の逆相補を、ヒープ確保なしで直接計算する
-        /// </summary>
-        /// <param name="p_パック済み"></param>
-        /// <param name="p_長さ"></param>
-        /// <remarks>
-        /// 2 bit コドンごとに相補を取り (A&lt;-&gt;T, C&lt;-&gt;G)、下位から順に取り出しつつ上位へ積み直すことでコドン順序も反転させる
-        /// </remarks>
-        /// <returns></returns>
-        internal static ulong Get_逆相補_小(ulong p_パック済み, int p_長さ)
-        {
-            var l_残り = p_パック済み;
-            var l_結果 = 0UL;
-            for (var i = 0; i < p_長さ; i++)
-            {
-                var l_コドン = l_残り & 0x3UL;
-                l_結果 = (l_結果 << 2) | (l_コドン ^ 0x3UL);
-                l_残り >>= 2;
-            }
-            return l_結果;
-        }
-
-        /// <summary>
-        /// k-mer の正規形を返す (k &lt;= 32)
-        /// </summary>
-        /// <param name="p_kmer">塩基 ID 列</param>
-        /// <returns>正規形</returns>
-        internal static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
-        {
-            var l_パック済み = TryGet_パック_小(p_kmer);
-            var l_逆相補 = Get_逆相補_小(l_パック済み, p_kmer.Length);
-            return Math.Min(l_パック済み, l_逆相補);
-        }
-
-        /// <summary>
-        /// パック済みバイト列から塩基 ID 列を復元する (k &gt; 64 の経路用)
+        /// パック済みバイト列から塩基 ID 列を復元する (k &gt; 128 の経路用)
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_k長"></param>
@@ -776,37 +1170,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// Get_逆相補_小 の 128 bit 版
-        /// </summary>
-        /// <param name="p_パック済み"></param>
-        /// <param name="p_長さ"></param>
-        /// <returns></returns>
-        internal static UInt128 Get_逆相補_中(UInt128 p_パック済み, int p_長さ)
-        {
-            var l_残り = p_パック済み;
-            UInt128 l_結果 = 0;
-            for (var i = 0; i < p_長さ; i++)
-            {
-                var l_コドン = l_残り & 3;
-                l_結果 = (l_結果 << 2) | (l_コドン ^ 3);
-                l_残り >>= 2;
-            }
-            return l_結果;
-        }
-
-        /// <summary>
-        /// k-mer の正規形を返す (33 &lt;= k &lt;= 64)
-        /// </summary>
-        /// <param name="p_kmer">塩基 ID 列</param>
-        /// <returns>正規形</returns>
-        internal static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
-        {
-            var l_パック済み = TryGet_パック_中(p_kmer);
-            var l_逆相補 = Get_逆相補_中(l_パック済み, p_kmer.Length);
-            return l_パック済み < l_逆相補 ? l_パック済み : l_逆相補;
-        }
-
-        /// <summary>
         /// TryGet_パック_中 の逆変換
         /// </summary>
         /// <param name="p_パック済み"></param>
@@ -819,6 +1182,25 @@ namespace Tsumiki.Utilities
             {
                 l_塩基列[i] = (byte)((ulong)(p_パック済み & 3) + 1UL);
                 p_パック済み >>= 2;
+            }
+            return l_塩基列;
+        }
+
+        /// <summary>
+        /// TryGet_パック_長 の逆変換
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_長さ"></param>
+        /// <returns></returns>
+        private static byte[] Get_復元_長((UInt128 A_上位, UInt128 A_下位) p_パック済み, int p_長さ)
+        {
+            var (l_上位, l_下位) = p_パック済み;
+            var l_塩基列 = new byte[p_長さ];
+            for (var i = p_長さ - 1; i >= 0; i--)
+            {
+                l_塩基列[i] = (byte)((ulong)(l_下位 & 3) + 1UL);
+                l_下位 = (l_下位 >> 2) | (l_上位 << 126);
+                l_上位 >>= 2;
             }
             return l_塩基列;
         }
@@ -845,32 +1227,30 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 全シャードを 1 本のソート済みファイルへ統合し、そのパスを返す
+        /// 全シャードをそれぞれ 1 本のソート済みファイルへ統合し、そのパスを返す
         /// </summary>
         /// <remarks>
         /// 結果は使い回す<br/>
         /// -kc の自動決定がカットオフ前にヒストグラムを読むため、やり直すとディスク I/O が丸ごと二重になる
         /// </remarks>
         /// <returns></returns>
-        private string Get_統合済みファイル()
+        private List<string> Get_統合ファイル群()
         {
-            if (this._統合ファイルパス != null)
+            if (this._統合ファイル群 != null)
             {
-                return this._統合ファイルパス;
+                return this._統合ファイル群;
             }
 
-            var l_統合済みファイル = new List<string>();
-            foreach (var l_カウンタ in this._カウンタ群!)
+            var l_カウンタ群 = this._カウンタ群!;
+            var l_ファイル群 = new string[l_カウンタ群.Length];
+            _ = Parallel.For(0, l_カウンタ群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
-                l_統合済みファイル.Add(l_カウンタ.Get_統合ファイル());
-                l_カウンタ.Dispose();
-            }
+                l_ファイル群[s] = l_カウンタ群[s].Get_統合ファイル();
+                l_カウンタ群[s].Dispose();
+            });
             this._カウンタ群 = null;
-
-            var (l_パス, l_ヒストグラム) = CountingDB.Get_統合結果_シャード間(this._一時ディレクトリ, l_統合済みファイル);
-            this._統合ファイルパス = l_パス;
-            this._統合時のヒストグラム = l_ヒストグラム;
-            return this._統合ファイルパス;
+            this._統合ファイル群 = [.. l_ファイル群];
+            return this._統合ファイル群;
         }
 
         /// <summary>
@@ -884,20 +1264,28 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private int Get_入次数(Span<byte> p_kmer, out byte[]? p_唯一の予測元)
         {
-            var l_候補 = new byte[p_kmer.Length];
-            p_kmer[..^1].CopyTo(l_候補.AsSpan(1));
+            Span<byte> l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
+            p_kmer[..^1].CopyTo(l_候補[1..]);
             var l_件数 = 0;
-            byte[]? l_一致 = null;
+            var l_一致した塩基 = (byte)0;
             for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
             {
                 l_候補[0] = i;
                 if (this.Haskmer(l_候補))
                 {
                     l_件数++;
-                    l_一致 = l_件数 == 1 ? (byte[])l_候補.Clone() : null;
+                    l_一致した塩基 = i;
                 }
             }
-            p_唯一の予測元 = l_件数 == 1 ? l_一致 : null;
+            if (l_件数 == 1)
+            {
+                l_候補[0] = l_一致した塩基;
+                p_唯一の予測元 = l_候補.ToArray();
+            }
+            else
+            {
+                p_唯一の予測元 = null;
+            }
             return l_件数;
         }
 

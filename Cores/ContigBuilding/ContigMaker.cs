@@ -24,6 +24,16 @@ namespace Tsumiki.Core
         /// </summary>
         private const int ラウンド数上限 = 5;
 
+        /// <summary>
+        /// 短い反復を解く対象にする unitig 長を決める、断片長分布の分位
+        /// </summary>
+        /// <remarks>
+        /// 反復を跨ぐペアは断片長分布の上側にもいる<br/>
+        /// 中央値で打ち切ると、k-1 の重なりを含む unitig 長が中央値をわずかに超えるだけの短い反復まで対象から外れる<br/>
+        /// 跨ぐペアが少ない長さは、証拠数の閾値が見送らせる
+        /// </remarks>
+        private const double 解ける反復長の分位 = 0.9D;
+
         #endregion
 
         #region 公開メソッド
@@ -91,7 +101,7 @@ namespace Tsumiki.Core
                     l_分岐頂点数++;
                 }
             }
-            Logger.V_出力(メッセージID.デブルーイングラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
+            Logger.V_出力(メッセージID.deBruijnグラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
 
             var (l_支持, l_ペア連結) = this.Get_辺重み(l_グラフ);
 
@@ -100,8 +110,13 @@ namespace Tsumiki.Core
             // (これより長い反復は、そもそも両端を別々の unitig に載せたペアが存在しえない)
             // 標本が無い場合は控えめな既定値
             var l_反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一unitig標本) : l_k長 * 4;
+            var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], 解ける反復長の分位) : l_k長 * 4;
 
-            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
+            // 外してよい行き止まりの枝の長さは、k-mer 集合の tip 除去と同じ基準にする
+            var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
+            var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
+
+            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
 
             // 支持を生カウントではなく期待本数との比で測るための較正器
             // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
@@ -109,7 +124,7 @@ namespace Tsumiki.Core
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, p_リード長, this._unitig長.Values.Select(x => (long)x));
 
             var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接));
-            var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数);
+            var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数, l_unitig配列);
 
             // 1 歩だけを見る相互一意性の判定では決めきれなかった分岐を、
             // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
@@ -194,22 +209,26 @@ namespace Tsumiki.Core
         /// <param name="p_支持"></param>
         /// <param name="p_ペア連結"></param>
         /// <param name="p_反復長の上限"></param>
+        /// <param name="p_枝長の上限">外してよい行き止まりの枝の長さ</param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_r_mer検証器"></param>
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
-        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
+            var l_外した枝数 = 0;
             for (var l_ラウンド = 1; l_ラウンド <= ラウンド数上限; l_ラウンド++)
             {
+                var l_今回の枝数 = p_グラフ.V_除去_行き止まり枝(p_unitig配列, p_枝長の上限);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
                 var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
                 l_除去バブル数 += l_今回のバブル数;
                 l_解決した反復数 += l_今回の反復数;
+                l_外した枝数 += l_今回の枝数;
 
-                if (l_今回のバブル数 == 0 && l_今回の反復数 == 0)
+                if (l_今回のバブル数 == 0 && l_今回の反復数 == 0 && l_今回の枝数 == 0)
                 {
                     Logger.V_出力(メッセージID.単純化の収束, l_ラウンド);
                     break;
@@ -219,6 +238,10 @@ namespace Tsumiki.Core
                 {
                     Logger.V_出力(メッセージID.単純化の打ち切り, ラウンド数上限);
                 }
+            }
+            if (l_外した枝数 > 0)
+            {
+                Logger.V_出力(メッセージID.行き止まり枝の除去数, l_外した枝数);
             }
             if (l_除去バブル数 > 0)
             {
@@ -391,11 +414,12 @@ namespace Tsumiki.Core
         /// <param name="p_グラフ"></param>
         /// <param name="p_選択"></param>
         /// <param name="p_コピー数"></param>
+        /// <param name="p_unitig配列"></param>
         /// <remarks>
         /// これを欠くと、同じ行き先を指す複数の unitig のうち先着だけが 結合され、残りが根拠なく千切れる
         /// </remarks>
         /// <returns></returns>
-        private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数)
+        private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyList<string> p_unitig配列)
         {
             var l_結合 = new int[p_グラフ.A_出辺.Count];
             Array.Fill(l_結合, -1);
@@ -413,7 +437,7 @@ namespace Tsumiki.Core
                 // 片側だけ許すと結合の対称性が
                 // 崩れ、walk の始点判定が壊れるため、
                 // どちらかが通り抜け不可なら対ごと採用しない
-                if (!p_グラフ.Is通過可能(p_コピー数, v) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1))
+                if (!p_グラフ.Is構造上一意な辺(v, l_終点) && (!p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1, p_unitig配列)))
                 {
                     l_反復通り抜けで棄却した数++;
                     continue;

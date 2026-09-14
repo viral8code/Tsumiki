@@ -32,11 +32,12 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_単一コピー基準値"></param>
         /// <param name="p_推定ゲノムサイズ"></param>
+        /// <param name="p_単一コピー上限">これ未満のカバレッジを単一コピーとみなす、未指定なら基準値の 1.5 倍</param>
         /// <remarks>
         /// アンカー k が 64 を超える場合 (2 bit パックが UInt128 に収まらない) は評価できないため null を返す
         /// </remarks>
         /// <returns></returns>
-        public static アセンブリ評価? Get_評価(string p_FASTAパス, TrustedKmerIndex p_アンカーインデックス, int p_アンカーk長, double p_単一コピー基準値, long p_推定ゲノムサイズ)
+        public static アセンブリ評価? Get_評価(string p_FASTAパス, TrustedKmerIndex p_アンカーインデックス, int p_アンカーk長, double p_単一コピー基準値, long p_推定ゲノムサイズ, double? p_単一コピー上限 = null)
         {
             if (p_アンカーk長 > 64 || p_単一コピー基準値 <= 0D)
             {
@@ -48,12 +49,13 @@ namespace Tsumiki.Cores.Evaluation
             var l_期待延べ数 = 0L;
             var l_欠損延べ数 = 0L;
             var l_過剰延べ数 = 0L;
+            var l_単一コピー上限 = p_単一コピー上限 ?? KmerHistogram.単一コピー上限の最小比 * p_単一コピー基準値;
 
             foreach (var l_kmer in p_アンカーインデックス.Get_信頼kmer一覧())
             {
                 var l_正規形 = KmerPacking.TryGet_正規化パック(l_kmer);
                 var l_カバレッジ = p_アンカーインデックス.Get_カバレッジ(l_kmer);
-                var l_期待コピー数 = Math.Max(1, (int)Math.Round(l_カバレッジ / p_単一コピー基準値));
+                var l_期待コピー数 = KmerHistogram.Get_期待コピー数(l_カバレッジ, p_単一コピー基準値, l_単一コピー上限);
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
 
                 l_期待延べ数 += l_期待コピー数;

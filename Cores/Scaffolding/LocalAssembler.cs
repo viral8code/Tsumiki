@@ -31,6 +31,11 @@ namespace Tsumiki.Cores.Scaffolding
         private const int 局所リード数の上限 = 4_000;
 
         /// <summary>
+        /// 並列に照合するペアの 1 まとまりの数
+        /// </summary>
+        private const int 照合のバッチサイズ = 16_384;
+
+        /// <summary>
         /// 局所リードの reservoir sampling に使う乱数の種
         /// </summary>
         /// <remarks>
@@ -88,15 +93,17 @@ namespace Tsumiki.Cores.Scaffolding
             var l_結果 = new string?[l_ギャップ一覧.Count];
             var l_判定群 = new ギャップ充填判定?[l_ギャップ一覧.Count];
 
-            for (var g = 0; g < l_ギャップ一覧.Count; g++)
+            // ギャップごとのミニアセンブリは互いに独立で、結果を番号の位置へ書くので並列にしても出力は変わらない
+            var l_並列設定 = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) };
+            _ = Parallel.For(0, l_ギャップ一覧.Count, l_並列設定, g =>
             {
                 if (l_局所リード[g].Count == 0)
                 {
-                    continue;
+                    return;
                 }
                 l_結果[g] = Get_適応kの局所結果(l_ギャップ一覧[g], l_局所リード[g], p_k長, out var l_判定);
                 l_判定群[g] = l_判定;
-            }
+            });
 
             // 段階的な近傍thread回収: 1回目でリードは集まったが解決しなかったgapだけを対象に、
             // 既に回収した局所リード自体をシードにしたもう1パスで近傍のリードを拡張回収し、再試行する
@@ -105,11 +112,11 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_未解決gap.Count > 0)
             {
                 V_拡張回収_近傍thread(l_未解決gap, l_局所リード, p_リード1のパス, p_リード2のパス, p_k長);
-                foreach (var g in l_未解決gap)
+                _ = Parallel.ForEach(l_未解決gap, l_並列設定, g =>
                 {
                     l_結果[g] = Get_適応kの局所結果(l_ギャップ一覧[g], l_局所リード[g], p_k長, out var l_判定);
                     l_判定群[g] = l_判定;
-                }
+                });
             }
 
             var l_埋めた数 = 0;
@@ -347,15 +354,8 @@ namespace Tsumiki.Cores.Scaffolding
             if (!string.IsNullOrWhiteSpace(p_リード1のパス) && !string.IsNullOrWhiteSpace(p_リード2のパス)
                 && File.Exists(p_リード1のパス) && File.Exists(p_リード2のパス))
             {
-                using var l_読み込み1 = new FastqReader(p_リード1のパス);
-                using var l_読み込み2 = new FastqReader(p_リード2のパス);
-                while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(p_リード1のパス, p_リード2のパス, p_アンカー索引, p_k長, p_種集合, p_種長))
                 {
-                    var (A_ID1, A_配列1, A_クオリティ1) = l_読み込み1.Get_次のレコード();
-                    var (A_ID2, A_配列2, A_クオリティ2) = l_読み込み2.Get_次のレコード();
-                    var l_一致1 = Get_一致するギャップ_候補選別付き(p_アンカー索引, A_配列1, p_k長, p_種集合, p_種長);
-                    var l_一致2 = Get_一致するギャップ_候補選別付き(p_アンカー索引, A_配列2, p_k長, p_種集合, p_種長);
-
                     var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
                     var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
 
@@ -467,18 +467,14 @@ namespace Tsumiki.Cores.Scaffolding
             if (!string.IsNullOrWhiteSpace(p_リード1のパス) && !string.IsNullOrWhiteSpace(p_リード2のパス)
                 && File.Exists(p_リード1のパス) && File.Exists(p_リード2のパス))
             {
-                using var l_読み込み1 = new FastqReader(p_リード1のパス);
-                using var l_読み込み2 = new FastqReader(p_リード2のパス);
-                while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(p_リード1のパス, p_リード2のパス, l_拡張索引, p_k長, l_種集合, l_種長))
                 {
-                    var (A_ID1, A_配列1, _) = l_読み込み1.Get_次のレコード();
-                    var (A_ID2, A_配列2, _) = l_読み込み2.Get_次のレコード();
                     var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
                     var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
                     var l_pairID = l_pairID1 == l_pairID2 ? l_pairID1 : "";
 
-                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, A_配列1, p_k長, l_種集合, l_種長), new 読取証拠(A_配列1, l_pairID));
-                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, A_配列2, p_k長, l_種集合, l_種長), new 読取証拠(A_配列2, l_pairID));
+                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, l_pairID));
+                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, l_pairID));
                 }
             }
             else
@@ -514,6 +510,53 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         p_局所リード[l_g].Add(l_証拠);
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// ペアのリードを読み進め、それぞれが当たるギャップを並列に照合して読み込み順に返す
+        /// </summary>
+        /// <param name="p_リード1のパス"></param>
+        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_索引"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_種集合"></param>
+        /// <param name="p_種長"></param>
+        /// <remarks>
+        /// 照合は読み取りだけで互いに独立だが、局所リードへの追加は乱数による入れ替えを含み順序に依存するため、照合だけをまとめて並列にし、追加は呼び出し側が順に行う
+        /// </remarks>
+        /// <returns></returns>
+        private static IEnumerable<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_照合済みペア列(string p_リード1のパス, string p_リード2のパス, Dictionary<KmerKey, List<int>> p_索引, int p_k長, HashSet<ulong> p_種集合, int p_種長)
+        {
+            var l_並列設定 = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) };
+            var l_バッチ = new (string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)[照合のバッチサイズ];
+
+            using var l_読み込み1 = new FastqReader(p_リード1のパス);
+            using var l_読み込み2 = new FastqReader(p_リード2のパス);
+            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+            {
+                var l_件数 = 0;
+                while (l_件数 < 照合のバッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                {
+                    var (A_ID1, A_配列1, _) = l_読み込み1.Get_次のレコード();
+                    var (A_ID2, A_配列2, _) = l_読み込み2.Get_次のレコード();
+                    l_バッチ[l_件数++] = (A_ID1, A_配列1, [], A_ID2, A_配列2, []);
+                }
+
+                _ = Parallel.For(0, l_件数, l_並列設定, i =>
+                {
+                    var l_項目 = l_バッチ[i];
+                    l_バッチ[i] = l_項目 with
+                    {
+                        A_一致1 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列1, p_k長, p_種集合, p_種長),
+                        A_一致2 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列2, p_k長, p_種集合, p_種長),
+                    };
+                });
+
+                for (var i = 0; i < l_件数; i++)
+                {
+                    yield return l_バッチ[i];
                 }
             }
         }
@@ -696,16 +739,38 @@ namespace Tsumiki.Cores.Scaffolding
         /// </remarks>
         private static bool Has経路支持(局所ギャップ p_ギャップ, string p_経路, IReadOnlyList<読取証拠> p_リード群, int p_k長)
         {
+            var l_窓長 = p_k長 + 1;
             var l_接続 = p_ギャップ.A_左アンカー[^p_k長..] + p_経路 + p_ギャップ.A_右アンカー[..p_k長];
-            for (var i = 0; i + p_k長 + 1 <= l_接続.Length; i++)
+
+            // 窓ごとに全リードを部分文字列検索すると、経路長 × リード数 × リード長になる
+            // 窓とその逆相補を先に集め、リードの窓を 1 回ずつ引いて支持した独立性キーを貯める
+            Dictionary<string, HashSet<string>> l_窓別支持 = new(StringComparer.Ordinal);
+            List<(string A_窓, string A_逆窓)> l_窓一覧 = [];
+            for (var i = 0; i + l_窓長 <= l_接続.Length; i++)
             {
-                var l_窓 = l_接続.Substring(i, p_k長 + 1);
+                var l_窓 = l_接続.Substring(i, l_窓長);
                 var l_逆窓 = Util.V_逆相補(l_窓);
-                var l_独立支持数 = p_リード群
-                    .Where(x => x.A_配列.Contains(l_窓, StringComparison.Ordinal) || x.A_配列.Contains(l_逆窓, StringComparison.Ordinal))
-                    .Select(x => x.A_独立性キー)
-                    .Distinct(StringComparer.Ordinal)
-                    .Count();
+                l_窓一覧.Add((l_窓, l_逆窓));
+                _ = l_窓別支持.TryAdd(l_窓, new HashSet<string>(StringComparer.Ordinal));
+                _ = l_窓別支持.TryAdd(l_逆窓, new HashSet<string>(StringComparer.Ordinal));
+            }
+
+            var l_参照 = l_窓別支持.GetAlternateLookup<ReadOnlySpan<char>>();
+            foreach (var l_リード in p_リード群)
+            {
+                for (var i = 0; i + l_窓長 <= l_リード.A_配列.Length; i++)
+                {
+                    if (l_参照.TryGetValue(l_リード.A_配列.AsSpan(i, l_窓長), out var l_支持))
+                    {
+                        _ = l_支持.Add(l_リード.A_独立性キー);
+                    }
+                }
+            }
+
+            foreach (var (l_窓, l_逆窓) in l_窓一覧)
+            {
+                var l_支持 = l_窓別支持[l_窓];
+                var l_独立支持数 = ReferenceEquals(l_支持, l_窓別支持[l_逆窓]) ? l_支持.Count : l_支持.Union(l_窓別支持[l_逆窓], StringComparer.Ordinal).Count();
                 if (l_独立支持数 < 2)
                 {
                     return false;

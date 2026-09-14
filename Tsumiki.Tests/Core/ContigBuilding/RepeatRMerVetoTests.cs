@@ -35,27 +35,27 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 反復の手前にある片方の入口
         /// </summary>
-        private const string 入口ユニティグ = "ACAGTTCGCGAGCCCTCCGTC";
+        private const string 入口unitig = "ACAGTTCGCGAGCCCTCCGTC";
 
         /// <summary>
         /// 反復の手前にあるもう片方の入口
         /// </summary>
-        private const string 代替入口ユニティグ = "TGTATTGAGGTCGTCTCCGTC";
+        private const string 代替入口unitig = "TGTATTGAGGTCGTCTCCGTC";
 
         /// <summary>
         /// 入口と出口に挟まれた反復配列
         /// </summary>
-        private const string 反復ユニティグ = "CTCCGTCAGCTTGTTTGGAGCAGA";
+        private const string 反復unitig = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
         /// <summary>
         /// 反復の先にある片方の出口
         /// </summary>
-        private const string 出口ユニティグ = "GAGCAGAGTCGTTCTGCGAGG";
+        private const string 出口unitig = "GAGCAGAGTCGTTCTGCGAGG";
 
         /// <summary>
         /// 反復の先にあるもう片方の出口
         /// </summary>
-        private const string 代替出口ユニティグ = "GAGCAGACCGTCTGTAACAGC";
+        private const string 代替出口unitig = "GAGCAGACCGTCTGTAACAGC";
 
         #endregion
 
@@ -67,8 +67,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_WithoutVerifier_TheMisleadingCrossedPairingIsResolvedByPairSupportAlone()
         {
-            var (l_ユニティグ一覧, l_kmer辞書) = V_構築();
-            var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, k長, 曖昧kmer番号);
+            var (l_unitig一覧, l_kmer辞書) = V_構築();
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号);
 
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_中間配列 = ContigMaker.Get_頂点番号(2);
@@ -81,7 +81,7 @@ namespace Tsumiki.Tests.Core
             Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 25UL, [(l_中間配列, l_末尾配列)] = 31UL };
             Dictionary<(int, int), ulong> l_支持 = [];
 
-            var l_解決数 = l_グラフ.V_解決_短い反復(l_ユニティグ一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
+            var l_解決数 = l_グラフ.V_解決_短い反復(l_unitig一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
 
             Assert.Equal(1, l_解決数);
         }
@@ -105,8 +105,8 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
             try
             {
-                var (l_ユニティグ一覧, l_kmer辞書) = V_構築();
-                var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, k長, 曖昧kmer番号);
+                var (l_unitig一覧, l_kmer辞書) = V_構築();
+                var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号);
 
                 var l_先頭配列 = ContigMaker.Get_頂点番号(1);
                 var l_中間配列 = ContigMaker.Get_頂点番号(2);
@@ -124,7 +124,7 @@ namespace Tsumiki.Tests.Core
                 File.WriteAllText(l_空ファイルパス, string.Empty);
                 var l_検証器 = RepeatRMerVerifier.V_構築([l_空ファイルパス, string.Empty], r長);
 
-                var l_解決数 = l_グラフ.V_解決_短い反復(l_ユニティグ一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_r_mer検証器: l_検証器);
+                var l_解決数 = l_グラフ.V_解決_短い反復(l_unitig一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_r_mer検証器: l_検証器);
 
                 Assert.Equal(0, l_解決数);
                 Assert.Equal(l_変更前頂点数, l_グラフ.A_出辺.Count);
@@ -148,8 +148,8 @@ namespace Tsumiki.Tests.Core
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
             try
             {
-                var (l_ユニティグ一覧, l_kmer辞書) = V_構築();
-                var l_グラフ = UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, k長, 曖昧kmer番号);
+                var (l_unitig一覧, l_kmer辞書) = V_構築();
+                var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号);
 
                 var l_先頭配列 = ContigMaker.Get_頂点番号(1);
                 var l_中間配列 = ContigMaker.Get_頂点番号(2);
@@ -161,8 +161,8 @@ namespace Tsumiki.Tests.Core
 
                 // 今度は実際に A→R→D, B→R→C を跨ぐリードを用意する
                 // (=交差した対応付けが真の文脈であるケース)
-                var l_主経路 = 入口ユニティグ + 反復ユニティグ[(k長 - 1)..] + 代替出口ユニティグ[(k長 - 1)..];
-                var l_代替経路 = 代替入口ユニティグ + 反復ユニティグ[(k長 - 1)..] + 出口ユニティグ[(k長 - 1)..];
+                var l_主経路 = 入口unitig + 反復unitig[(k長 - 1)..] + 代替出口unitig[(k長 - 1)..];
+                var l_代替経路 = 代替入口unitig + 反復unitig[(k長 - 1)..] + 出口unitig[(k長 - 1)..];
                 List<string> l_リード群 = [];
                 foreach (var l_経路 in new[] { l_主経路, l_代替経路 })
                 {
@@ -186,7 +186,7 @@ namespace Tsumiki.Tests.Core
                 }
                 var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
 
-                var l_解決数 = l_グラフ.V_解決_短い反復(l_ユニティグ一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_r_mer検証器: l_検証器);
+                var l_解決数 = l_グラフ.V_解決_短い反復(l_unitig一覧, l_支持, l_ペア連結, p_反復長の上限: 500, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_r_mer検証器: l_検証器);
 
                 Assert.Equal(1, l_解決数);
             }
@@ -204,17 +204,17 @@ namespace Tsumiki.Tests.Core
         /// A ・ B ・ R ・ C ・ D の unitig 配列と、それらから作った kmer 辞書を組み立てる
         /// </summary>
         /// <returns></returns>
-        private static (List<string> A_ユニティグ一覧, Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> A_kmer辞書) V_構築()
+        private static (List<string> A_unitig一覧, Dictionary<KmerKey, (int A_unitigID, int A_位置)> A_kmer辞書) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
-            List<string> l_ユニティグ配列 = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> l_kmer辞書 = [];
+            List<string> l_unitig配列 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
 
             var l_ID = 1;
-            foreach (var l_配列 in new[] { 入口ユニティグ, 代替入口ユニティグ, 反復ユニティグ, 出口ユニティグ, 代替出口ユニティグ })
+            foreach (var l_配列 in new[] { 入口unitig, 代替入口unitig, 反復unitig, 出口unitig, 代替出口unitig })
             {
-                l_ユニティグ配列.Add(l_配列);
-                l_ユニティグ配列.Add(Util.V_逆相補(l_配列));
+                l_unitig配列.Add(l_配列);
+                l_unitig配列.Add(Util.V_逆相補(l_配列));
                 for (var i = k長; i <= l_配列.Length; i++)
                 {
                     var l_開始位置 = i - k長;
@@ -224,7 +224,7 @@ namespace Tsumiki.Tests.Core
                 }
                 l_ID++;
             }
-            return (l_ユニティグ配列, l_kmer辞書);
+            return (l_unitig配列, l_kmer辞書);
         }
 
         /// <summary>

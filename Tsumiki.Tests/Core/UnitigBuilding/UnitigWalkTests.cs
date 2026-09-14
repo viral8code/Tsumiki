@@ -151,8 +151,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_内部表現の上限を超えるk長では扱えないと判定される()
         {
-            Assert.True(UnitigWalk.Is対応k長(64));
-            Assert.False(UnitigWalk.Is対応k長(65));
+            Assert.True(UnitigWalk.Is対応k長(128));
+            Assert.False(UnitigWalk.Is対応k長(129));
         }
 
         #endregion

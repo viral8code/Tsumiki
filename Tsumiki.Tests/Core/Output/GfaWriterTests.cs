@@ -32,17 +32,17 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 分岐元
         /// </summary>
-        private const string ユニティグA = "TGGCAAGTCACTCTCGACCGA";
+        private const string unitigA = "TGGCAAGTCACTCTCGACCGA";
 
         /// <summary>
         /// 分岐先の片方
         /// </summary>
-        private const string ユニティグB = "CGACCGAACGGCGCCGGATC";
+        private const string unitigB = "CGACCGAACGGCGCCGGATC";
 
         /// <summary>
         /// 分岐先のもう片方
         /// </summary>
-        private const string ユニティグC = "CGACCGACTGTAATTCTACC";
+        private const string unitigC = "CGACCGACTGTAATTCTACC";
 
         #endregion
 
@@ -85,21 +85,21 @@ namespace Tsumiki.Tests.Core
         /// unitig ごとに順方向配列と長さを持つ S 行を 1 つ書くことを確かめる
         /// </summary>
         [Fact]
-        public void V_出力_ユニティグごとに順方向配列と長さを持つS行を1つ書く()
+        public void V_出力_unitigごとに順方向配列と長さを持つS行を1つ書く()
         {
-            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var (l_unitig一覧, l_グラフ) = V_構築();
             var l_パス = Path.Combine(this._作業ディレクトリ, "graph.gfa");
 
-            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, k長);
+            GfaWriter.V_出力(l_パス, l_unitig一覧, l_グラフ, k長);
 
             var l_行 = File.ReadAllLines(l_パス);
             Assert.Equal("H\tVN:Z:1.0", l_行[0]);
 
             var l_S行 = l_行.Where(l => l.StartsWith("S\t")).ToList();
             Assert.Equal(3, l_S行.Count);
-            Assert.Contains($"S\t1\t{ユニティグA}\tLN:i:{ユニティグA.Length}", l_S行);
-            Assert.Contains($"S\t2\t{ユニティグB}\tLN:i:{ユニティグB.Length}", l_S行);
-            Assert.Contains($"S\t3\t{ユニティグC}\tLN:i:{ユニティグC.Length}", l_S行);
+            Assert.Contains($"S\t1\t{unitigA}\tLN:i:{unitigA.Length}", l_S行);
+            Assert.Contains($"S\t2\t{unitigB}\tLN:i:{unitigB.Length}", l_S行);
+            Assert.Contains($"S\t3\t{unitigC}\tLN:i:{unitigC.Length}", l_S行);
         }
 
         /// <summary>
@@ -108,10 +108,10 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_出力_物理的な隣接ごとにL行を1本だけ書く()
         {
-            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var (l_unitig一覧, l_グラフ) = V_構築();
             var l_パス = Path.Combine(this._作業ディレクトリ, "graph_links.gfa");
 
-            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, k長);
+            GfaWriter.V_出力(l_パス, l_unitig一覧, l_グラフ, k長);
 
             var l_L行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("L\t")).ToList();
 
@@ -129,11 +129,11 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_出力_コピー数を渡せばCNタグを含める()
         {
-            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var (l_unitig一覧, l_グラフ) = V_構築();
             var l_パス = Path.Combine(this._作業ディレクトリ, "graph_cn.gfa");
             Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 2, [3] = 1 };
 
-            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, k長, l_コピー数);
+            GfaWriter.V_出力(l_パス, l_unitig一覧, l_グラフ, k長, l_コピー数);
 
             var l_S行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("S\t")).ToList();
             Assert.Contains(l_S行, l => l.StartsWith("S\t2\t") && l.EndsWith("CN:i:2"));
@@ -146,10 +146,10 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_出力_コピー数を渡さなければCNタグを省く()
         {
-            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var (l_unitig一覧, l_グラフ) = V_構築();
             var l_パス = Path.Combine(this._作業ディレクトリ, "graph_nocn.gfa");
 
-            GfaWriter.V_出力(l_パス, l_ユニティグ一覧, l_グラフ, k長);
+            GfaWriter.V_出力(l_パス, l_unitig一覧, l_グラフ, k長);
 
             var l_S行 = File.ReadAllLines(l_パス).Where(l => l.StartsWith("S\t")).ToList();
             Assert.DoesNotContain(l_S行, l => l.Contains("CN:i:"));
@@ -163,17 +163,17 @@ namespace Tsumiki.Tests.Core
         /// 分岐を持つ検証用の unitig グラフを組み立てる
         /// </summary>
         /// <returns>unitig 一覧とグラフ</returns>
-        private static (List<string> A_ユニティグ一覧, UnitigGraph A_グラフ) V_構築()
+        private static (List<string> A_unitig一覧, UnitigGraph A_グラフ) V_構築()
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
-            List<string> l_ユニティグ一覧 = [string.Empty, string.Empty];
-            Dictionary<KmerKey, (int A_ユニティグID, int A_位置)> l_kmer辞書 = [];
+            List<string> l_unitig一覧 = [string.Empty, string.Empty];
+            Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
 
             var l_ID = 1;
-            foreach (var l_配列 in new[] { ユニティグA, ユニティグB, ユニティグC })
+            foreach (var l_配列 in new[] { unitigA, unitigB, unitigC })
             {
-                l_ユニティグ一覧.Add(l_配列);
-                l_ユニティグ一覧.Add(Util.V_逆相補(l_配列));
+                l_unitig一覧.Add(l_配列);
+                l_unitig一覧.Add(Util.V_逆相補(l_配列));
                 for (var i = k長; i <= l_配列.Length; i++)
                 {
                     var l_開始位置 = i - k長;
@@ -183,7 +183,7 @@ namespace Tsumiki.Tests.Core
                 }
                 l_ID++;
             }
-            return (l_ユニティグ一覧, UnitigGraph.Get_グラフ(l_ユニティグ一覧, l_kmer辞書, k長, 曖昧kmer番号));
+            return (l_unitig一覧, UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号));
         }
 
         /// <summary>

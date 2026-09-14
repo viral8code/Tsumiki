@@ -40,6 +40,36 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         private const int 必要な独立支持数の既定値 = 2;
 
+        /// <summary>
+        /// アンカーから骨格の末端までの区間を跨いだ配列と照合するときに許す不一致率
+        /// </summary>
+        /// <remarks>
+        /// 別の k のアセンブリは同じ領域でも数塩基違いうるが、それを超えて食い違う配列は同じ場所を表していない
+        /// </remarks>
+        private const double 末端照合の許容不一致率 = 0.01D;
+
+        /// <summary>
+        /// 隣接の証拠に使う当たりの塊に要求する、連続した当たりの数
+        /// </summary>
+        private const int 塊とみなす当たり数 = 20;
+
+        /// <summary>
+        /// 接合の端点に使う骨格配列の最小長
+        /// </summary>
+        /// <remarks>
+        /// 短い骨格配列の多くはバブルの敗者や反復の断片で、長い配列の末端と同じ配列を持つ<br/>
+        /// これを索引に入れると長い配列の末端が重複扱いで見えなくなり、その長い配列ごと跨ぐ繋ぎ目を作ってしまう
+        /// </remarks>
+        private const int 端点に使う最小長 = 500;
+
+        /// <summary>
+        /// 繋ぎ目の k-mer のうち、骨格に既にあってよい割合
+        /// </summary>
+        /// <remarks>
+        /// 繋ぎ目は骨格が持っていない隙間を埋める配列なので、骨格の配列を多く含むなら、見えていない骨格配列を跨いで重複させている
+        /// </remarks>
+        private const double 繋ぎ目に許す既知kmerの割合 = 0.05D;
+
         #endregion
 
         #region 公開メソッド
@@ -65,6 +95,7 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_索引 = Get_骨格索引(l_骨格配列, p_アンカーk長);
+            var l_骨格kmer = Get_骨格kmer集合(l_骨格配列, p_アンカーk長);
             var l_候補 = new List<橋渡し候補>();
             foreach (var l_他 in p_全候補)
             {
@@ -72,7 +103,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
-                l_候補.AddRange(Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長));
+                l_候補.AddRange(Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長).Where(x => !Has既知の配列(x.A_橋渡し配列, l_骨格kmer, p_アンカーk長)));
             }
 
             var l_確定 = Get_相互一意な橋渡し(l_候補, l_骨格配列.Count, p_必要な独立支持数);
@@ -127,6 +158,10 @@ namespace Tsumiki.Cores.Evaluation
             for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
             {
                 var l_配列 = p_骨格配列[l_番号];
+                if (l_配列.Length < 端点に使う最小長)
+                {
+                    continue;
+                }
                 foreach (var l_位置 in Get_末端位置範囲(l_配列.Length, p_アンカーk長))
                 {
                     if (!KmerPacking.TryGet_正規化パック(l_配列, l_位置, p_アンカーk長, out var l_鍵))
@@ -149,6 +184,54 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
             return l_索引;
+        }
+
+        /// <summary>
+        /// 骨格配列に現れる全 k-mer の正規形
+        /// </summary>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static HashSet<UInt128> Get_骨格kmer集合(List<string> p_骨格配列, int p_アンカーk長)
+        {
+            HashSet<UInt128> l_集合 = [];
+            foreach (var l_配列 in p_骨格配列)
+            {
+                for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
+                {
+                    if (KmerPacking.TryGet_正規化パック(l_配列, i, p_アンカーk長, out var l_鍵))
+                    {
+                        _ = l_集合.Add(l_鍵);
+                    }
+                }
+            }
+            return l_集合;
+        }
+
+        /// <summary>
+        /// 繋ぎ目が、骨格に既にある配列を許容量を超えて含むか
+        /// </summary>
+        /// <param name="p_橋渡し配列"></param>
+        /// <param name="p_骨格kmer"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static bool Has既知の配列(string p_橋渡し配列, HashSet<UInt128> p_骨格kmer, int p_アンカーk長)
+        {
+            var l_件数 = 0;
+            var l_既知 = 0;
+            for (var i = 0; i + p_アンカーk長 <= p_橋渡し配列.Length; i++)
+            {
+                if (!KmerPacking.TryGet_正規化パック(p_橋渡し配列, i, p_アンカーk長, out var l_鍵))
+                {
+                    continue;
+                }
+                l_件数++;
+                if (p_骨格kmer.Contains(l_鍵))
+                {
+                    l_既知++;
+                }
+            }
+            return l_既知 > p_アンカーk長 && l_既知 > l_件数 * 繋ぎ目に許す既知kmerの割合;
         }
 
         /// <summary>
@@ -222,9 +305,52 @@ namespace Tsumiki.Cores.Evaluation
                     l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Is順鎖(l_配列, i, p_アンカーk長) == l_骨格側.A_Is順鎖));
                 }
 
-                l_結果.AddRange(Get_連続2本跨ぎ(l_当たり, l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
+                l_結果.AddRange(Get_連続2本跨ぎ(Get_塊として続く当たり(l_当たり), l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
             }
             return l_結果;
+        }
+
+        /// <summary>
+        /// 同じ骨格配列の同じ対角線上に一定数以上続く当たりだけを残す
+        /// </summary>
+        /// <param name="p_当たり">跨いだ配列の位置順に並んだ当たり</param>
+        /// <remarks>
+        /// 反復配列の端をわずかに越えた k-mer は、骨格の中では一意でも、跨いだ配列の別の場所と隣の数塩基が偶然一致して当たることがある<br/>
+        /// そうした孤立した当たりを隣接の証拠に使うと、本物の隣接の間に割り込んで誤った相手と繋いでしまう<br/>
+        /// 同じ場所を表す配列どうしなら、当たりは対角線を保ったまま長く続く
+        /// </remarks>
+        /// <returns></returns>
+        private static List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> Get_塊として続く当たり(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり)
+        {
+            List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> l_結果 = [];
+            var l_塊の開始 = 0;
+            for (var i = 1; i <= p_当たり.Count; i++)
+            {
+                if (i < p_当たり.Count && Is同じ塊(p_当たり[i - 1], p_当たり[i]))
+                {
+                    continue;
+                }
+
+                if (i - l_塊の開始 >= 塊とみなす当たり数)
+                {
+                    l_結果.AddRange(p_当たり.Skip(l_塊の開始).Take(i - l_塊の開始));
+                }
+                l_塊の開始 = i;
+            }
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 2 つの当たりが、同じ骨格配列の同じ向き・同じ対角線上にあるか
+        /// </summary>
+        /// <param name="p_前"></param>
+        /// <param name="p_後"></param>
+        /// <returns></returns>
+        private static bool Is同じ塊((int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_前, (int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_後)
+        {
+            return p_前.A_配列番号 == p_後.A_配列番号
+                && p_前.A_Is同方向 == p_後.A_Is同方向
+                && (p_前.A_Is同方向 ? p_前.A_自分の位置 - p_前.A_位置 == p_後.A_自分の位置 - p_後.A_位置 : p_前.A_自分の位置 + p_前.A_位置 == p_後.A_自分の位置 + p_後.A_位置);
         }
 
         /// <summary>
@@ -236,7 +362,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_由来のk長"></param>
         /// <remarks>
-        /// 切り替わりの直前・直後の当たりが、それぞれの骨格配列の「出口」と「入口」に当たっているときだけ隣接の証拠になる
+        /// 切り替わりの直前・直後の当たりが、それぞれの骨格配列の「出口」と「入口」に当たっているときだけ隣接の証拠になる<br/>
+        /// 当たったアンカーは骨格の末端そのものとは限らない<br/>
+        /// 末端が反復配列で終わると、その区間の k-mer は他の骨格にも現れて索引から外れ、一意なアンカーは反復長だけ内側に下がる<br/>
+        /// 繋ぎ目をアンカーの直後から切ると、骨格が既に持つ末端の区間をもう一度挟むことになるため、末端までの距離だけずらし、その区間が骨格と一致することを確かめる
         /// </remarks>
         /// <returns></returns>
         private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
@@ -260,16 +389,86 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                // 跨いだ配列のうち、2 つのアンカーに挟まれた部分が繋ぎ目になる
-                var l_開始 = l_前.A_自分の位置 + p_アンカーk長;
-                var l_長さ = l_後.A_自分の位置 - l_開始;
+                var l_前配列 = Get_向き付き配列(p_骨格配列, l_始点);
+                var l_後配列 = Get_向き付き配列(p_骨格配列, l_終点);
+                var l_前の残り = l_前.A_Is同方向 ? l_前配列.Length - p_アンカーk長 - l_前.A_位置 : l_前.A_位置;
+                var l_後の手前 = l_後.A_Is同方向 ? l_後.A_位置 : l_後配列.Length - p_アンカーk長 - l_後.A_位置;
 
-                if (l_長さ is < 0 or > 橋渡し長の上限)
+                // 跨いだ配列のうち、前側の末端の直後から後側の先頭の直前までが繋ぎ目になる
+                var l_開始 = l_前.A_自分の位置 + p_アンカーk長 + l_前の残り;
+                var l_終了 = l_後.A_自分の位置 - l_後の手前;
+                if (l_開始 > p_跨いだ配列.Length || l_終了 < 0)
                 {
                     continue;
                 }
-                yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長);
+
+                if (!Is一致(p_跨いだ配列, l_前.A_自分の位置, l_前配列, l_前配列.Length - p_アンカーk長 - l_前の残り, p_アンカーk長 + l_前の残り)
+                    || !Is一致(p_跨いだ配列, l_終了, l_後配列, 0, l_後の手前 + p_アンカーk長))
+                {
+                    continue;
+                }
+
+                var l_長さ = l_終了 - l_開始;
+                if (l_長さ > 橋渡し長の上限)
+                {
+                    continue;
+                }
+
+                if (l_長さ >= 0)
+                {
+                    yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長);
+                    continue;
+                }
+
+                // 2 本の末端と先頭が重なっている
+                // 重なりが片方を丸ごと呑むなら、隣接ではなく包含なので繋がない
+                var l_重なり長 = -l_長さ;
+                if (l_重なり長 >= l_前配列.Length || l_重なり長 >= l_後配列.Length)
+                {
+                    continue;
+                }
+                yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長);
             }
+        }
+
+        /// <summary>
+        /// 頂点の向きで見た骨格配列
+        /// </summary>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_頂点"></param>
+        /// <returns></returns>
+        private static string Get_向き付き配列(List<string> p_骨格配列, int p_頂点)
+        {
+            var l_配列 = p_骨格配列[p_頂点 >> 1];
+            return (p_頂点 & 1) == 0 ? l_配列 : Util.V_逆相補_曖昧塩基あり(l_配列);
+        }
+
+        /// <summary>
+        /// 跨いだ配列の区間が、骨格配列の区間と許容範囲内で一致するか
+        /// </summary>
+        /// <param name="p_跨いだ配列"></param>
+        /// <param name="p_跨いだ側の開始"></param>
+        /// <param name="p_骨格側配列"></param>
+        /// <param name="p_骨格側の開始"></param>
+        /// <param name="p_長さ"></param>
+        /// <returns></returns>
+        private static bool Is一致(string p_跨いだ配列, int p_跨いだ側の開始, string p_骨格側配列, int p_骨格側の開始, int p_長さ)
+        {
+            if (p_跨いだ側の開始 < 0 || p_骨格側の開始 < 0 || p_跨いだ側の開始 + p_長さ > p_跨いだ配列.Length || p_骨格側の開始 + p_長さ > p_骨格側配列.Length)
+            {
+                return false;
+            }
+
+            var l_許容不一致数 = (int)(p_長さ * 末端照合の許容不一致率);
+            var l_不一致数 = 0;
+            for (var i = 0; i < p_長さ; i++)
+            {
+                if (p_跨いだ配列[p_跨いだ側の開始 + i] != p_骨格側配列[p_骨格側の開始 + i] && ++l_不一致数 > l_許容不一致数)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -334,7 +533,7 @@ namespace Tsumiki.Cores.Evaluation
 
                 // 逆鎖側の双子も同じ隣接を表す
                 // 橋渡し配列も逆相補にする
-                V_登録(l_行き先, l_代表, new 橋渡し候補(l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1, Util.V_逆相補_曖昧塩基あり(l_候補.A_橋渡し配列), l_候補.A_由来のk長));
+                V_登録(l_行き先, l_代表, new 橋渡し候補(l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1, Util.V_逆相補_曖昧塩基あり(l_候補.A_橋渡し配列), l_候補.A_由来のk長, l_候補.A_重なり長));
             }
 
             Dictionary<int, 橋渡し候補> l_確定 = [];
@@ -474,6 +673,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             var l_結果 = new StringBuilder();
             var l_頂点 = p_開始頂点;
+            var l_削る長さ = 0;
 
             while (true)
             {
@@ -484,14 +684,15 @@ namespace Tsumiki.Cores.Evaluation
                 }
                 p_使用済み[l_番号] = true;
 
-                var l_配列 = p_骨格配列[l_番号];
-                _ = l_結果.Append((l_頂点 & 1) == 0 ? l_配列 : Util.V_逆相補_曖昧塩基あり(l_配列));
+                var l_配列 = Get_向き付き配列(p_骨格配列, l_頂点);
+                _ = l_結果.Append(l_配列, Math.Min(l_削る長さ, l_配列.Length), l_配列.Length - Math.Min(l_削る長さ, l_配列.Length));
 
                 if (!p_確定.TryGetValue(l_頂点, out var l_橋渡し))
                 {
                     break;
                 }
                 _ = l_結果.Append(l_橋渡し.A_橋渡し配列);
+                l_削る長さ = l_橋渡し.A_重なり長;
                 l_頂点 = l_橋渡し.A_終点;
             }
             return l_結果.ToString();

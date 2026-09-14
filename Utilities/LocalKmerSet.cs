@@ -24,7 +24,12 @@ namespace Tsumiki.Utilities
         private readonly HashSet<UInt128>? _中;
 
         /// <summary>
-        /// 信頼できる k-mer 集合 (k &gt; 64)
+        /// 信頼できる k-mer 集合 (65 &lt;= k &lt;= 128)
+        /// </summary>
+        private readonly HashSet<(UInt128 A_上位, UInt128 A_下位)>? _長;
+
+        /// <summary>
+        /// 信頼できる k-mer 集合 (k &gt; 128)
         /// </summary>
         private readonly HashSet<KmerKey>? _大;
 
@@ -46,6 +51,10 @@ namespace Tsumiki.Utilities
             {
                 this._中 = [];
             }
+            else if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            {
+                this._長 = [];
+            }
             else
             {
                 this._大 = [];
@@ -64,7 +73,9 @@ namespace Tsumiki.Utilities
         {
             _ = this._小 is { } l_小
                 ? l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer))
-                : this._中 is { } l_中 ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._大!.Add(new KmerKey(p_kmer).Get_正規形());
+                : this._中 is { } l_中
+                ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer))
+                : this._長 is { } l_長 ? l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Add(new KmerKey(p_kmer).Get_正規形());
         }
 
         /// <summary>
@@ -76,7 +87,22 @@ namespace Tsumiki.Utilities
         {
             return this._小 is { } l_小
                 ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer))
-                : this._中 is { } l_中 ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+                : this._中 is { } l_中
+                ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer))
+                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+        }
+
+        /// <summary>
+        /// 正規形の右詰めパック値 (k &lt;= 128) が集合に含まれるかどうかを判定する
+        /// </summary>
+        /// <param name="p_上位">128 bit を超える側、k &lt;= 64 なら 0</param>
+        /// <param name="p_下位"></param>
+        /// <returns></returns>
+        public bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位)
+        {
+            return this._小 is { } l_小
+                ? l_小.Contains((ulong)p_下位)
+                : this._中 is { } l_中 ? l_中.Contains(p_下位) : this._長!.Contains((p_上位, p_下位));
         }
 
         #endregion

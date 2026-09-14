@@ -25,17 +25,17 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 分岐元の入口配列 (末尾 7 塩基が分岐先双方の先頭と重なる)
         /// </summary>
-        private const string 入口ユニティグ = "TTTTTTTAAACCCG";
+        private const string 入口unitig = "TTTTTTTAAACCCG";
 
         /// <summary>
         /// 分岐先 1 (入口の末尾 7 塩基を共有する)
         /// </summary>
-        private const string 分岐先1ユニティグ = "AAACCCGGGGTTAG";
+        private const string 分岐先1unitig = "AAACCCGGGGTTAG";
 
         /// <summary>
         /// 分岐先 2 (入口の末尾 7 塩基を共有する、分岐先 1 とは中身が異なる)
         /// </summary>
-        private const string 分岐先2ユニティグ = "AAACCCGCATCGAA";
+        private const string 分岐先2unitig = "AAACCCGCATCGAA";
 
         #endregion
 
@@ -88,7 +88,7 @@ namespace Tsumiki.Tests.Core
 
             // この k 自身の read/pair マッピングは一切行わない (real 支持ゼロ)
             // 前段 k で確定した経路 (入口+分岐先1 の全体配列) だけを引き継ぐ
-            var l_引き継ぎ経路 = new[] { 入口ユニティグ + "GGGTTAG" };
+            var l_引き継ぎ経路 = new[] { 入口unitig + "GGGTTAG" };
 
             l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL, p_引き継ぎ経路群: l_引き継ぎ経路);
 
@@ -98,10 +98,10 @@ namespace Tsumiki.Tests.Core
             // 出力の鎖の向き (順鎖/逆鎖どちらを正準として選ぶか) は walk の実装詳細なので、
             // 内容の部分一致ではなく長さで結合の有無を確かめる
             var l_重なり長 = k長 - 1;
-            var l_結合後の長さ = 入口ユニティグ.Length + 分岐先1ユニティグ.Length - l_重なり長;
+            var l_結合後の長さ = 入口unitig.Length + 分岐先1unitig.Length - l_重なり長;
             Assert.Equal(2, l_contig群.Count);
             Assert.Contains(l_contig群, x => x.Length == l_結合後の長さ);
-            Assert.Contains(l_contig群, x => x.Length == 分岐先2ユニティグ.Length);
+            Assert.Contains(l_contig群, x => x.Length == 分岐先2unitig.Length);
         }
 
         /// <summary>
@@ -118,13 +118,13 @@ namespace Tsumiki.Tests.Core
             var l_リードパス = Path.Combine(this._作業ディレクトリ, "reads.fq");
 
             // この k で実際に観測された (と仮定する) read は、入口 -> 分岐先2 を繰り返し裏付ける
-            this.V_書き込み_FASTQ(l_リードパス, 入口ユニティグ + "CATCGAA", p_本数: 5);
+            this.V_書き込み_FASTQ(l_リードパス, 入口unitig + "CATCGAA", p_本数: 5);
 
             var l_contig構築 = new ContigMaker(l_unitigパス);
             l_contig構築.V_マッピング_リード(l_リードパス);
 
             // 経路引き継ぎは (誤って) 分岐先1 を示している、という矛盾した状況
-            var l_引き継ぎ経路 = new[] { 入口ユニティグ + "GGGTTAG" };
+            var l_引き継ぎ経路 = new[] { 入口unitig + "GGGTTAG" };
 
             var l_contigパス2 = Path.Combine(this._作業ディレクトリ, "contigs2.fasta");
             l_contig構築.V_結合_Contig(l_contigパス2, p_優勢閾値: 0.8M, p_最小証拠数: 1UL, p_引き継ぎ経路群: l_引き継ぎ経路);
@@ -133,10 +133,10 @@ namespace Tsumiki.Tests.Core
 
             // 矛盾する引き継ぎを無視し、実測支持どおり 入口+分岐先2 が結合され、分岐先1 が単独で残る
             var l_重なり長 = k長 - 1;
-            var l_結合後の長さ = 入口ユニティグ.Length + 分岐先2ユニティグ.Length - l_重なり長;
+            var l_結合後の長さ = 入口unitig.Length + 分岐先2unitig.Length - l_重なり長;
             Assert.Equal(2, l_contig群.Count);
             Assert.Contains(l_contig群, x => x.Length == l_結合後の長さ);
-            Assert.Contains(l_contig群, x => x.Length == 分岐先1ユニティグ.Length);
+            Assert.Contains(l_contig群, x => x.Length == 分岐先1unitig.Length);
         }
 
         #endregion
@@ -151,9 +151,9 @@ namespace Tsumiki.Tests.Core
         {
             var l_パス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
             using var l_書き込み = new FastaWriter(l_パス);
-            l_書き込み.V_書き込み(1, 入口ユニティグ);
-            l_書き込み.V_書き込み(2, 分岐先1ユニティグ);
-            l_書き込み.V_書き込み(3, 分岐先2ユニティグ);
+            l_書き込み.V_書き込み(1, 入口unitig);
+            l_書き込み.V_書き込み(2, 分岐先1unitig);
+            l_書き込み.V_書き込み(3, 分岐先2unitig);
             return l_パス;
         }
 

@@ -70,26 +70,26 @@ namespace Tsumiki.Tests.Core
 
             // tip 除去後は、分岐点だった箇所の次数が解消され、
             // 主経路が 1 本の unitig として (理想的には) 再構築されるはず
-            var l_ユニティグ構築 = new UnitigMaker(l_インデックス);
+            var l_unitig構築 = new UnitigMaker(l_インデックス);
             HashSet<string> l_seen = [];
-            var l_ユニティグ群 = new List<string>();
+            var l_unitig群 = new List<string>();
             foreach (var l_kmer in l_simplifiedFirstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
+                var l_u = l_unitig構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;
                 }
                 _ = l_seen.Add(l_u.A_配列);
                 _ = l_seen.Add(Util.V_逆相補(l_u.A_配列));
-                l_ユニティグ群.Add(l_u.A_配列);
+                l_unitig群.Add(l_u.A_配列);
             }
 
             // tip 自体はもう存在しないはずなので、tip 由来の短い配列を含む
             // unitig は残っていないこと、かつ主経路の全長をカバーする
             // (ほぼ) 1 本の unitig が存在することを確認する
-            var l_longest = l_ユニティグ群.OrderByDescending(u => u.Length).First();
-            Assert.True(l_longest.Length >= l_主配列.Length - l_k長, $"expected a near-full-length main unitig, longest was {l_longest.Length}bp among [{string.Join(",", l_ユニティグ群.Select(u => u.Length))}]");
+            var l_longest = l_unitig群.OrderByDescending(u => u.Length).First();
+            Assert.True(l_longest.Length >= l_主配列.Length - l_k長, $"expected a near-full-length main unitig, longest was {l_longest.Length}bp among [{string.Join(",", l_unitig群.Select(u => u.Length))}]");
         }
 
         /// <summary>
@@ -183,31 +183,31 @@ namespace Tsumiki.Tests.Core
 
             var l_simplifiedFirstKmers = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2);
 
-            var l_ユニティグ構築 = new UnitigMaker(l_インデックス);
+            var l_unitig構築 = new UnitigMaker(l_インデックス);
             HashSet<string> l_seen = [];
-            var l_ユニティグ群 = new List<string>();
+            var l_unitig群 = new List<string>();
             foreach (var l_kmer in l_simplifiedFirstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
+                var l_u = l_unitig構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;
                 }
                 _ = l_seen.Add(l_u.A_配列);
                 _ = l_seen.Add(Util.V_逆相補(l_u.A_配列));
-                l_ユニティグ群.Add(l_u.A_配列);
+                l_unitig群.Add(l_u.A_配列);
             }
 
             // 低カバレッジ経路の分岐点を含む短い断片は残っていないはず
             // (再構築された配列のいずれにも "C" + sharedAfter の先頭部分は
             // 現れない = 低カバレッジ経路は除去された)
-            Assert.DoesNotContain(l_ユニティグ群, u => u.Contains('C' + l_sharedAfter[..(l_k長 - 1)]));
+            Assert.DoesNotContain(l_unitig群, u => u.Contains('C' + l_sharedAfter[..(l_k長 - 1)]));
 
             // 高カバレッジ経路 (commonBefore + "A" + sharedAfter の全体、または
             // その逆相補) を含む、ほぼ全長の unitig が存在するはず
             var l_fullHigh = l_seqHighCoverage;
             var l_fullHighRevComp = Util.V_逆相補(l_fullHigh);
-            Assert.Contains(l_ユニティグ群, u => u == l_fullHigh || u == l_fullHighRevComp || u.Contains(l_fullHigh) || u.Contains(l_fullHighRevComp));
+            Assert.Contains(l_unitig群, u => u == l_fullHigh || u == l_fullHighRevComp || u.Contains(l_fullHigh) || u.Contains(l_fullHighRevComp));
         }
 
         /// <summary>
@@ -229,27 +229,59 @@ namespace Tsumiki.Tests.Core
 
             var l_firstKmers = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
 
-            var l_ユニティグ構築 = new UnitigMaker(l_インデックス);
+            var l_unitig構築 = new UnitigMaker(l_インデックス);
             HashSet<string> l_seen = [];
-            var l_ユニティグ群 = new List<string>();
+            var l_unitig群 = new List<string>();
             foreach (var l_kmer in l_firstKmers)
             {
-                var l_u = l_ユニティグ構築.Get_Unitig(l_kmer);
+                var l_u = l_unitig構築.Get_Unitig(l_kmer);
                 if (l_seen.Contains(l_u.A_配列) || l_seen.Contains(Util.V_逆相補(l_u.A_配列)))
                 {
                     continue;
                 }
                 _ = l_seen.Add(l_u.A_配列);
                 _ = l_seen.Add(Util.V_逆相補(l_u.A_配列));
-                l_ユニティグ群.Add(l_u.A_配列);
+                l_unitig群.Add(l_u.A_配列);
             }
 
             // 共有配列の先頭 k-mer (またはその逆相補) が、全 unitig を通じて
             // 延べ 1 回しか現れないこと (=重複出力されていないこと) を確認する
             var l_sharedKmer = l_shared[..l_k長];
             var l_sharedKmerRc = Util.V_逆相補(l_sharedKmer);
-            var l_occurrences = l_ユニティグ群.Sum(u => Get_出現回数(u, l_sharedKmer) + Get_出現回数(u, l_sharedKmerRc));
+            var l_occurrences = l_unitig群.Sum(u => Get_出現回数(u, l_sharedKmer) + Get_出現回数(u, l_sharedKmerRc));
             Assert.Equal(1, l_occurrences);
+        }
+
+        /// <summary>
+        /// 分岐へ入る行き止まりの短い枝は、競合する枝が無ければ全体の基準値より低くても除去しない
+        /// </summary>
+        /// <remarks>
+        /// エラー由来の枝は必ず正しい枝と同じ接合点を共有する<br/>
+        /// 競合する枝の無い行き止まりは、カバレッジの谷で上流が途切れた実配列
+        /// </remarks>
+        [Fact]
+        public void V_競合する枝の無い低カバレッジの行き止まりは除去されない()
+        {
+            const string l_主配列 = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
+            const string l_別の続き = "ATGCCGTGCCCTAACGCCCTAATCCTGCGCTAGGGG";
+            const int l_k長 = 8;
+            var l_上流 = l_主配列[..12];
+            var l_続き = l_主配列[12..];
+
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+
+            // 上流は 2 本の続きへ分かれる直前まで、続きよりずっと浅い
+            V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_上流 + l_続き), l_k長, 4);
+            V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_上流 + l_別の続き), l_k長, 4);
+            V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_続き), l_k長, 36);
+            V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_別の続き), l_k長, 36);
+            l_インデックス.V_適用_カットオフ(2UL);
+
+            var l_前 = l_インデックス.Get_信頼kmer一覧().Count();
+            _ = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2);
+
+            Assert.Equal(l_前, l_インデックス.Get_信頼kmer一覧().Count());
         }
 
         #endregion

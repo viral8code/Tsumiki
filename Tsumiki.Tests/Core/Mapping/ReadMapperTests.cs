@@ -75,6 +75,21 @@ namespace Tsumiki.Tests.Core.Mapping
             Assert.Equal(100, l_配置.A_整列位置群.Count);
         }
 
+        /// <summary>
+        /// 参照の末端からはみ出すリードでも例外を出さずに配置できることを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_配置_参照末端からはみ出すリードを配置する()
+        {
+            var l_参照 = Get_乱数配列(500, 4);
+            var l_リード = l_参照.Substring(450, 50) + Get_乱数配列(100, 5);
+            var l_マッパー = new ReadMapper([l_参照]);
+
+            var l_配置 = l_マッパー.Get_配置(l_リード);
+
+            Assert.True(l_配置.A_整列位置群.Count == 0 || l_配置.A_整列位置群[0].A_参照位置 >= 440);
+        }
+
         #endregion
 
         #region 内部メソッド

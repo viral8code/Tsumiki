@@ -13,6 +13,11 @@ namespace Tsumiki.Models.UnitigBuilding
         #region 内部変数
 
         /// <summary>
+        /// k 長
+        /// </summary>
+        private readonly int _k長 = ConfigurationManager.A_実行時引数.A_k長;
+
+        /// <summary>
         /// 固定幅キーを転がす高速 walk
         /// </summary>
         private readonly UnitigWalk? _高速walk =
@@ -30,6 +35,11 @@ namespace Tsumiki.Models.UnitigBuilding
         /// </summary>
         private readonly HashSet<UInt128> _訪問済み = [];
 
+        /// <summary>
+        /// 訪問済み (k &gt; 64)
+        /// </summary>
+        private readonly HashSet<(UInt128 A_上位, UInt128 A_下位)> _訪問済み_長 = [];
+
         #endregion
 
         #region 公開メソッド
@@ -45,7 +55,7 @@ namespace Tsumiki.Models.UnitigBuilding
             {
                 return this._参照実装.Get_Unitig(p_開始kmer).A_配列;
             }
-            var l_塩基列 = l_高速walk.Get_塩基列(p_開始kmer, this._訪問済み);
+            var l_塩基列 = this._k長 <= 64 ? l_高速walk.Get_塩基列(p_開始kmer, this._訪問済み) : l_高速walk.Get_塩基列_長(p_開始kmer, this._訪問済み_長);
             return string.Create(l_塩基列.Count, l_塩基列,
                 static (l_文字, l_元) =>
                 {

@@ -42,6 +42,28 @@ namespace Tsumiki.Utilities
         /// </remarks>
         private const double 山とみなす頻度比 = 1.5D;
 
+        /// <summary>
+        /// 単一コピーとみなすカバレッジの上限を、基準値に対して最低限これだけは取る比
+        /// </summary>
+        /// <remarks>
+        /// ばらつきの小さいデータでは、基準値との比を丸めてコピー数を決めるのと同じになる
+        /// </remarks>
+        public const double 単一コピー上限の最小比 = 1.5D;
+
+        /// <summary>
+        /// 基準値より下側の広がりを測る分位
+        /// </summary>
+        /// <remarks>
+        /// 正規分布の平均 - 1σ に当たる<br/>
+        /// 上側には反復配列が混ざるため、混ざらない下側から広がりを測る
+        /// </remarks>
+        private const double 下側1σの分位 = 0.1587D;
+
+        /// <summary>
+        /// 単一コピーとみなす上限を決める片側の z 値 (99%)
+        /// </summary>
+        private const double 単一コピー上限のz値 = 2.326D;
+
         #endregion
 
         #region 公開メソッド
@@ -87,8 +109,14 @@ namespace Tsumiki.Utilities
             }
 
             var l_加算上限 = Math.Min(l_最大キー, l_ピーク * ゲノムサイズ推定に含める倍率の上限);
+
+            // 延べ数を山の位置で割る推定は、山が単一コピーの平均と一致するときにしか成り立たない
+            // GC の偏りでカバレッジが右へ長く裾を引くと、山 (最頻値) は平均より大きく下に来て、ゲノムサイズを倍近くに見積もる
+            // k-mer の種類ごとに期待コピー数を数えて足せば、分布の形に依らない
+            var (l_単一コピー基準値, l_単一コピー上限) = Get_単一コピーの範囲(p_ヒストグラム, l_谷, l_加算上限, l_ピーク);
             var l_ゲノム由来の延べ数 = 0L;
             var l_延べ数の総和 = 0L;
+            var l_推定ゲノムサイズ = 0L;
             foreach (var (l_出現回数, l_頻度) in p_ヒストグラム)
             {
                 if (l_出現回数 > l_加算上限)
@@ -101,10 +129,23 @@ namespace Tsumiki.Utilities
                 if (l_出現回数 >= l_谷)
                 {
                     l_ゲノム由来の延べ数 += l_延べ数;
+                    l_推定ゲノムサイズ += l_頻度 * Get_期待コピー数(l_出現回数, l_単一コピー基準値, l_単一コピー上限);
                 }
             }
 
-            return new スペクトル解析結果(A_谷: l_谷, A_ピーク出現回数: l_ピーク, A_谷の頻度: l_谷の頻度, A_ピークの頻度: l_ピークの頻度, A_ゲノム由来の延べ数: l_ゲノム由来の延べ数, A_延べ数の総和: l_延べ数の総和, A_推定ゲノムサイズ: l_ゲノム由来の延べ数 / (long)l_ピーク);
+            return new スペクトル解析結果(A_谷: l_谷, A_ピーク出現回数: l_ピーク, A_谷の頻度: l_谷の頻度, A_ピークの頻度: l_ピークの頻度, A_ゲノム由来の延べ数: l_ゲノム由来の延べ数, A_延べ数の総和: l_延べ数の総和, A_推定ゲノムサイズ: l_推定ゲノムサイズ, A_単一コピー基準値: l_単一コピー基準値, A_単一コピー上限: l_単一コピー上限);
+        }
+
+        /// <summary>
+        /// カバレッジから期待されるコピー数
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_単一コピー基準値"></param>
+        /// <param name="p_単一コピー上限">これ未満を単一コピーとみなす</param>
+        /// <returns></returns>
+        public static int Get_期待コピー数(double p_カバレッジ, double p_単一コピー基準値, double p_単一コピー上限)
+        {
+            return p_単一コピー基準値 <= 0D || p_カバレッジ < p_単一コピー上限 ? 1 : Math.Max(2, (int)Math.Round(p_カバレッジ / p_単一コピー基準値));
         }
 
         /// <summary>
@@ -197,6 +238,59 @@ namespace Tsumiki.Utilities
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 単一コピーの基準カバレッジと、単一コピーとみなせるカバレッジの上限
+        /// </summary>
+        /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
+        /// <param name="p_谷"></param>
+        /// <param name="p_加算上限"></param>
+        /// <param name="p_ピーク"></param>
+        /// <remarks>
+        /// 基準は谷より上の k-mer 種類数の中央値を使う<br/>
+        /// 細菌ゲノムの反復は種類数では少数に潰れるため、中央値はほぼ単一コピーの水準になる<br/>
+        /// 上限は下側の広がりから求めた変動係数で広げ、ばらつきの大きいデータで単一コピーの高カバレッジ側を反復と数えないようにする
+        /// </remarks>
+        /// <returns></returns>
+        private static (double A_基準値, double A_上限) Get_単一コピーの範囲(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_谷, ulong p_加算上限, ulong p_ピーク)
+        {
+            var l_対象 = p_ヒストグラム
+                .Where(x => x.Key >= p_谷 && x.Key <= p_加算上限 && x.Value > 0L)
+                .OrderBy(x => x.Key)
+                .ToList();
+            var l_総数 = l_対象.Sum(x => x.Value);
+            if (l_総数 <= 0L)
+            {
+                return (p_ピーク, 単一コピー上限の最小比 * p_ピーク);
+            }
+
+            var l_中央値 = (double)Get_分位の出現回数(l_対象, l_総数, 0.5D);
+            var l_下側 = (double)Get_分位の出現回数(l_対象, l_総数, 下側1σの分位);
+            var l_変動係数 = (l_中央値 - l_下側) / l_中央値;
+            return (l_中央値, l_中央値 * Math.Max(単一コピー上限の最小比, 1D + (単一コピー上限のz値 * l_変動係数)));
+        }
+
+        /// <summary>
+        /// 種類数で数えた分位に当たる出現回数
+        /// </summary>
+        /// <param name="p_整列済み">出現回数の昇順に並べたヒストグラム</param>
+        /// <param name="p_総数">種類数の総和</param>
+        /// <param name="p_分位"></param>
+        /// <returns></returns>
+        private static ulong Get_分位の出現回数(List<KeyValuePair<ulong, long>> p_整列済み, long p_総数, double p_分位)
+        {
+            var l_目標 = p_総数 * p_分位;
+            var l_累積 = 0L;
+            foreach (var (l_出現回数, l_頻度) in p_整列済み)
+            {
+                l_累積 += l_頻度;
+                if (l_累積 >= l_目標)
+                {
+                    return l_出現回数;
+                }
+            }
+            return p_整列済み[^1].Key;
+        }
 
         /// <summary>
         /// 頻度が下げ止まって上がり始めた最初の位置

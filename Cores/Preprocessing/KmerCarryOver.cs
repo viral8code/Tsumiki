@@ -112,7 +112,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_待ち行列 = new int[l_引き継ぎ.A_カバレッジ.Length];
                 }
                 V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
-                if (p_k長 <= 64)
+                if (p_k長 <= TrustedKmerIndex.パック値のk上限)
                 {
                     var l_窓 = new RollingKmer(p_k長);
                     for (var i = 0; i < l_引き継ぎ.A_配列.Length; i++)
@@ -122,7 +122,7 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
                         var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i - p_k長 + 1], l_引き継ぎ.A_k長, p_k長, p_リード長);
-                        if (l_カバレッジ > 0UL && p_kmerインデックス.Try追加_信頼kmer_パック済み(l_キー.A_下位, l_カバレッジ))
+                        if (l_カバレッジ > 0UL && p_kmerインデックス.Try追加_信頼kmer_正規形(l_キー.A_上位, l_キー.A_下位, l_カバレッジ))
                         {
                             l_追加数++;
                         }

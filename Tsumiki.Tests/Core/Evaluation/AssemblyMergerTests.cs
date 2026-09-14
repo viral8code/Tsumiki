@@ -248,6 +248,77 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 骨格の末端が他の骨格にも現れる反復で終わり、一意なアンカーが末端より内側に下がっても、その区間を二重に挟まずに繋ぐこと
+        /// </summary>
+        [Fact]
+        public void V_末端の反復でアンカーが内側に下がっても区間を重複させない()
+        {
+            var l_左の固有 = V_生成_乱数配列(4_000, p_シード: 691);
+            var l_反復 = V_生成_乱数配列(300, p_シード: 692);
+            var l_中間 = V_生成_乱数配列(250, p_シード: 693);
+            var l_右 = V_生成_乱数配列(4_000, p_シード: 694);
+            var l_別の場所 = V_生成_乱数配列(3_000, p_シード: 695);
+            var l_真の配列 = l_左の固有 + l_反復 + l_中間 + l_右;
+
+            // 反復の k-mer は 2 本の骨格に現れるので索引から外れる
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_rep.fasta", 63, l_左の固有 + l_反復, l_右, l_反復 + l_別の場所);
+            var l_他 = this.V_書き込み_アセンブリ("other_rep.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_rep.fasta");
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1));
+
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_真の配列 || x == Util.V_逆相補(l_真の配列));
+        }
+
+        /// <summary>
+        /// 2 本の骨格が末端と先頭で重なっているときは、重なりを 1 回だけにして繋ぐこと
+        /// </summary>
+        [Fact]
+        public void V_重なって隣接する骨格は重なりを1回だけにして繋ぐ()
+        {
+            var l_左の固有 = V_生成_乱数配列(4_000, p_シード: 701);
+            var l_重なり = V_生成_乱数配列(120, p_シード: 702);
+            var l_右の固有 = V_生成_乱数配列(4_000, p_シード: 703);
+            var l_真の配列 = l_左の固有 + l_重なり + l_右の固有;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_ovl.fasta", 63, l_左の固有 + l_重なり, l_重なり + l_右の固有);
+            var l_他 = this.V_書き込み_アセンブリ("other_ovl.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_ovl.fasta");
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1));
+
+            var l_結果 = V_読み込み_配列群(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.True(l_結果[0] == l_真の配列 || l_結果[0] == Util.V_逆相補(l_真の配列));
+        }
+
+        /// <summary>
+        /// 長い骨格配列の末端と同じ配列を持つ短い骨格配列があっても、その長い配列を跨いで重複させないこと
+        /// </summary>
+        [Fact]
+        public void V_短い骨格配列が末端を隠しても長い配列を跨いで重複させない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 711);
+            var l_隙間1 = V_生成_乱数配列(200, p_シード: 712);
+            var l_中央 = V_生成_乱数配列(5_000, p_シード: 713);
+            var l_隙間2 = V_生成_乱数配列(200, p_シード: 714);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 715);
+            var l_真の配列 = l_左 + l_隙間1 + l_中央 + l_隙間2 + l_右;
+
+            // 中央の両端と同じ配列を持つ短い断片が、中央の末端の k-mer を重複扱いにする
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_hidden.fasta", 63, l_左, l_中央, l_右, l_中央[..150], l_中央[^150..]);
+            var l_他 = this.V_書き込み_アセンブリ("other_hidden.fasta", 31, l_真の配列);
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_hidden.fasta");
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1));
+
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_真の配列 || x == Util.V_逆相補(l_真の配列));
+            Assert.Equal(l_真の配列.Length + 300, l_結果.Sum(x => x.Length));
+        }
+
+        /// <summary>
         /// 統合の総延長が、骨格の総延長を下回らないこと
         /// </summary>
         /// <remarks>

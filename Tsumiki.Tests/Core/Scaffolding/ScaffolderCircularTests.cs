@@ -42,17 +42,17 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// unitig A
         /// </summary>
-        private static readonly string ユニティグA = 環[..(400 + k長 - 1)];
+        private static readonly string unitigA = 環[..(400 + k長 - 1)];
 
         /// <summary>
         /// unitig B
         /// </summary>
-        private static readonly string ユニティグB = 環[400..(800 + k長 - 1)];
+        private static readonly string unitigB = 環[400..(800 + k長 - 1)];
 
         /// <summary>
         /// unitig C
         /// </summary>
-        private static readonly string ユニティグC = 環[800..] + 環[..(k長 - 1)];
+        private static readonly string unitigC = 環[800..] + 環[..(k長 - 1)];
 
         #endregion
 
@@ -96,29 +96,29 @@ namespace Tsumiki.Tests.Core
         /// 単独で出た環状 contig が、スキャフォールディング後も環状の目印を名前に保つことを検証する
         /// </summary>
         [Fact]
-        public void V_実行_単独で出た環状コンティグは環状のまま名前に残る()
+        public void V_実行_単独で出た環状contigは環状のまま名前に残る()
         {
-            var l_スキャフォールドパス = this.Get_スキャフォールド出力();
+            var l_scaffoldパス = this.Get_scaffold出力();
 
-            Assert.True(File.Exists(l_スキャフォールドパス), "スキャフォールドが出力されていない");
+            Assert.True(File.Exists(l_scaffoldパス), "scaffoldが出力されていない");
 
-            var l_エントリ = Assert.Single(FastaReader.Get_全エントリ(l_スキャフォールドパス));
+            var l_エントリ = Assert.Single(FastaReader.Get_全エントリ(l_scaffoldパス));
             Assert.Contains(Consts.環状の目印, l_エントリ.A_ID, StringComparison.OrdinalIgnoreCase);
 
             // 環状の目印を落とすと、ここが 0 になって完全長の判定が通らなくなる
-            Assert.Equal(1, CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
+            Assert.Equal(1, CompletenessValidator.Get_環状本数(l_scaffoldパス));
         }
 
         /// <summary>
         /// contig 側の環状判定が、スキャフォールディング後もそのまま引き継がれることを検証する
         /// </summary>
         [Fact]
-        public void V_実行_コンティグ側の環状判定がそのまま引き継がれる()
+        public void V_実行_contig側の環状判定がそのまま引き継がれる()
         {
-            var l_スキャフォールドパス = this.Get_スキャフォールド出力();
-            var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
+            var l_scaffoldパス = this.Get_scaffold出力();
+            var l_contigパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
 
-            Assert.Equal(CompletenessValidator.Get_環状本数(l_コンティグパス), CompletenessValidator.Get_環状本数(l_スキャフォールドパス));
+            Assert.Equal(CompletenessValidator.Get_環状本数(l_contigパス), CompletenessValidator.Get_環状本数(l_scaffoldパス));
         }
 
         #endregion
@@ -142,7 +142,7 @@ namespace Tsumiki.Tests.Core
         /// スキャフォールディングまで通して、その出力を返す
         /// </summary>
         /// <returns>scaffold の配列</returns>
-        private string Get_スキャフォールド出力()
+        private string Get_scaffold出力()
         {
             ConfigurationManager.A_実行時引数 = new Parameters
             {
@@ -151,17 +151,17 @@ namespace Tsumiki.Tests.Core
                 A_インサートサイズ = 40,
             };
 
-            var l_ユニティグパス = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(l_ユニティグパス, $">1\n{ユニティグA}\n>2\n{ユニティグB}\n>3\n{ユニティグC}\n");
+            var l_unitigパス = Path.Combine(this._一時ディレクトリ, "unitigs.fasta");
+            File.WriteAllText(l_unitigパス, $">1\n{unitigA}\n>2\n{unitigB}\n>3\n{unitigC}\n");
 
-            var l_コンティグパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
-            var l_コンティグ構築 = new ContigMaker(l_ユニティグパス);
-            l_コンティグ構築.V_結合_Contig(l_コンティグパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
+            var l_contigパス = Path.Combine(this._一時ディレクトリ, "contigs.fasta");
+            var l_contig構築 = new ContigMaker(l_unitigパス);
+            l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
 
-            var l_スキャフォールドパス = Path.Combine(this._一時ディレクトリ, "scaffolds.fasta");
-            new Scaffolder(l_コンティグ構築, l_コンティグパス, p_リード長: 30)
-                .V_実行(l_スキャフォールドパス);
-            return l_スキャフォールドパス;
+            var l_scaffoldパス = Path.Combine(this._一時ディレクトリ, "scaffolds.fasta");
+            new Scaffolder(l_contig構築, l_contigパス, p_リード長: 30)
+                .V_実行(l_scaffoldパス);
+            return l_scaffoldパス;
         }
 
         #endregion

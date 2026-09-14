@@ -60,7 +60,7 @@ namespace Tsumiki.Cores.Preprocessing
                 // 既定値のままだと
                 // エラー由来の k-mer まで信頼扱いになり、訂正が起きない
                 KmerCutoffSelector.V_解決_kmerカットオフ(ConfigurationManager.A_実行時引数, l_kmerインデックス);
-                _ = l_kmerインデックス.V_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
+                l_kmerインデックス.V_適用_カットオフ(ConfigurationManager.A_実行時引数.A_kmerカットオフ);
 
                 Logger.V_出力(メッセージID.エラー訂正_訂正開始);
                 var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長);

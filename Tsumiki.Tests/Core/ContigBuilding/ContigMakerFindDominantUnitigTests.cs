@@ -16,7 +16,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 検証に使う唯一の unitig
         /// </summary>
-        private const string ユニティグ配列 = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
+        private const string unitig配列 = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
 
         #endregion
 
@@ -59,36 +59,36 @@ namespace Tsumiki.Tests.Core
         /// 順鎖一致では read の長さではなく unitig 内での終端位置が返る
         /// </summary>
         [Fact]
-        public void V_代表ユニティグ_順鎖一致はunitig内座標の終端位置を返す()
+        public void V_代表unitig_順鎖一致はunitig内座標の終端位置を返す()
         {
-            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
 
             // read = unitig の [40,70) 部分 (30 bp)
             // read 自身の長さ (30) ではなく、
             // unitig 内での終端位置 (70) が返るはず
-            var l_read = ユニティグ配列.Substring(40, 30);
+            var l_read = unitig配列.Substring(40, 30);
 
-            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
+            var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
 
             Assert.Equal(1, l_ヒット.A_unitigID); // 正の値 = 順鎖でのヒット
             Assert.Equal(70, l_ヒット.A_最終一致終端位置);
-            Assert.Equal(ユニティグ配列.Length, l_ヒット.A_unitig長);
+            Assert.Equal(unitig配列.Length, l_ヒット.A_unitig長);
         }
 
         /// <summary>
         /// 逆相補一致では unitig を逆向きに見た座標系での終端位置が返る
         /// </summary>
         [Fact]
-        public void V_代表ユニティグ_逆相補一致は逆向きunitig座標の終端位置を返す()
+        public void V_代表unitig_逆相補一致は逆向きunitig座標の終端位置を返す()
         {
-            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
 
             // 元の [40,70) を逆相補した read
             // unitig 全体を逆相補した向きで見ると、
             // 元の区間 [40,70) は [100-70, 100-40) = [30,60) に写る
-            var l_read = Util.V_逆相補(ユニティグ配列.Substring(40, 30));
+            var l_read = Util.V_逆相補(unitig配列.Substring(40, 30));
 
-            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
+            var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
 
             Assert.Equal(-1, l_ヒット.A_unitigID); // 負の値 = 逆鎖でのヒット
             Assert.Equal(60, l_ヒット.A_最終一致終端位置);
@@ -98,16 +98,16 @@ namespace Tsumiki.Tests.Core
         /// unitig の末尾ちょうどで一致すると終端位置が unitig の全長になる
         /// </summary>
         [Fact]
-        public void V_代表ユニティグ_unitig末尾での一致は終端位置がunitig全長になる()
+        public void V_代表unitig_unitig末尾での一致は終端位置がunitig全長になる()
         {
-            var l_コンティグ構築 = this.Get_コンティグ構築_単一ユニティグ(p_k長: 8);
+            var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
 
-            var l_read = ユニティグ配列[^20..]; // unitig の末尾 20 bp
+            var l_read = unitig配列[^20..]; // unitig の末尾 20 bp
 
-            var l_ヒット = l_コンティグ構築.Get_代表Unitig(l_read);
+            var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
 
             Assert.Equal(1, l_ヒット.A_unitigID);
-            Assert.Equal(ユニティグ配列.Length, l_ヒット.A_最終一致終端位置);
+            Assert.Equal(unitig配列.Length, l_ヒット.A_最終一致終端位置);
             Assert.Equal(0, l_ヒット.A_末尾までの残り長);
         }
 
@@ -120,12 +120,12 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         /// <param name="p_k長">k 長</param>
         /// <returns>組み立てた contig 構築</returns>
-        private ContigMaker Get_コンティグ構築_単一ユニティグ(int p_k長)
+        private ContigMaker Get_contig構築_単一unitig(int p_k長)
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
-            var l_ユニティグパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(l_ユニティグパス, $">1\n{ユニティグ配列}\n");
-            return new ContigMaker(l_ユニティグパス);
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            File.WriteAllText(l_unitigパス, $">1\n{unitig配列}\n");
+            return new ContigMaker(l_unitigパス);
         }
 
         #endregion
