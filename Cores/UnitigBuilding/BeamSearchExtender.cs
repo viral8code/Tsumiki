@@ -55,8 +55,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 支持を生カウントではなく期待本数との比で測るための較正器<br/>
         /// 渡さない (あるいは使えない) 場合は生カウントのままスコアリングする
         /// </param>
+        /// <param name="p_コピー数区間">
+        /// 観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/>
+        /// 反復を何度まで通ってよいかの予算には、点推定ではなくこの上限を使う (誤推定で真の経路を消さないため)<br/>
+        /// 渡さない場合は従来どおり点推定 (p_コピー数) を予算にする
+        /// </param>
         /// <returns>新たに確定した結合の数</returns>
-        public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null)
+        public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * 先読み倍率;
             var l_確定数 = 0;
@@ -83,7 +88,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_最良 = Get_最良1歩(p_グラフ, p_unitig配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器);
+                var l_最良 = Get_最良1歩(p_グラフ, p_unitig配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器, p_コピー数区間);
                 if (l_最良 is not { } l_選択)
                 {
                     continue;
@@ -148,6 +153,22 @@ namespace Tsumiki.Cores.UnitigBuilding
         #region 内部メソッド
 
         /// <summary>
+        /// この unitig を先読み探索で何回まで通ってよいかの予算を求める
+        /// </summary>
+        /// <param name="p_unitigID"></param>
+        /// <param name="p_コピー数">点推定</param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえた区間、無ければ点推定をそのまま予算にする</param>
+        /// <remarks>
+        /// 区間の上限を使うのは、点推定の誤りで真に複数回通るべき反復の経路を早期に打ち切らないため<br/>
+        /// (分岐選択やスキャフォールド足場の判定のような保守的であるべき場面では、引き続き点推定を使う)
+        /// </remarks>
+        /// <returns></returns>
+        private static int Get_通行予算(int p_unitigID, IReadOnlyDictionary<int, int> p_コピー数, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間)
+        {
+            return p_コピー数区間 is { } l_区間辞書 && l_区間辞書.TryGetValue(p_unitigID, out var l_区間) ? l_区間.A_上限 : p_コピー数.GetValueOrDefault(p_unitigID, 1);
+        }
+
+        /// <summary>
         /// contig 末尾のインサートサイズぶんの頂点のうち、単一コピーのものだけを集める
         /// </summary>
         /// <param name="p_頂点"></param>
@@ -209,13 +230,14 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_較正器"></param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)、渡さない場合は点推定を予算にする</param>
         /// <returns>最初の 1 歩として最も支持される頂点、決めきれない場合は null</returns>
-        private static int? Get_最良1歩(UnitigGraph p_グラフ, List<string> p_unitig配列, int p_分岐元, List<(int A_頂点, int A_距離)> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器)
+        private static int? Get_最良1歩(UnitigGraph p_グラフ, List<string> p_unitig配列, int p_分岐元, List<(int A_頂点, int A_距離)> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             List<先読み探索状態> l_ビーム = [];
             foreach (var l_候補 in p_グラフ.A_出辺[p_分岐元])
             {
-                var l_予算 = p_コピー数.GetValueOrDefault(l_候補 >> 1, 1);
+                var l_予算 = Get_通行予算(l_候補 >> 1, p_コピー数, p_コピー数区間);
                 if (l_予算 <= 0)
                 {
                     continue;
@@ -248,7 +270,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     foreach (var l_候補 in p_グラフ.A_出辺[l_状態.A_現在の頂点])
                     {
                         var l_unitigID = l_候補 >> 1;
-                        var l_予算 = p_コピー数.GetValueOrDefault(l_unitigID, 1);
+                        var l_予算 = Get_通行予算(l_unitigID, p_コピー数, p_コピー数区間);
                         if (l_状態.A_使用回数.GetValueOrDefault(l_unitigID) >= l_予算)
                         {
                             // 予算切れ

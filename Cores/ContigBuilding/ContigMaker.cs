@@ -7,6 +7,7 @@ using Tsumiki.IO;
 using Tsumiki.Models.ContigBuilding;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Reporting;
+using Tsumiki.Models.UnitigBuilding;
 using Tsumiki.Utilities;
 
 namespace Tsumiki.Core
@@ -59,7 +60,11 @@ namespace Tsumiki.Core
         /// 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、
         /// この経路投影が分岐の対応を決める効果を持つことがある
         /// </param>
-        public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null)
+        /// <param name="p_コピー数区間">
+        /// 観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/>
+        /// 先読み探索 (BeamSearchExtender) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う
+        /// </param>
+        public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
@@ -110,7 +115,7 @@ namespace Tsumiki.Core
             // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
             // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
             // ペアエンドの証拠と整合する、という状況を拾える
-            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器);
+            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器, p_コピー数区間);
 
             if (l_先読みで解決した数 > 0)
             {

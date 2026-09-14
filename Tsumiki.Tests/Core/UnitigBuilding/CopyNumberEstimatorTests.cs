@@ -341,6 +341,72 @@ namespace Tsumiki.Tests.Core
             Assert.Null(l_結果.A_分散診断);
         }
 
+        /// <summary>
+        /// 分散診断が求められない場合は、根拠のないコピー数区間も作らない
+        /// </summary>
+        [Fact]
+        public void V_コピー数区間_分散診断が無ければnullを返す()
+        {
+            Dictionary<int, double> l_カバレッジ = new() { [1] = 40D, [2] = 41D };
+            var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
+
+            var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
+
+            Assert.Null(l_結果.A_コピー数区間);
+        }
+
+        /// <summary>
+        /// 分散診断が求められる場合、コピー数区間は必ず点推定を含み、
+        /// 過分散なほど区間が広くなることを確かめる
+        /// </summary>
+        [Fact]
+        public void V_コピー数区間_過分散なほど区間が広くなる()
+        {
+            // 低分散の単一コピー集団 (id 1-7) + 4 コピー相当の対象 (id 8)
+            Dictionary<int, double> l_低分散カバレッジ = new()
+            {
+                [1] = 38D,
+                [2] = 39D,
+                [3] = 40D,
+                [4] = 41D,
+                [5] = 42D,
+                [6] = 40D,
+                [7] = 41D,
+                [8] = 160D,
+            };
+            var l_長さ一覧 = l_低分散カバレッジ.Keys.ToDictionary(x => x, _ => 600);
+            var l_低分散結果 = CopyNumberEstimator.Get_推定結果(l_低分散カバレッジ, l_長さ一覧);
+
+            // 高分散の単一コピー集団 (同じ平均・かなり広い広がり) + 同じ対象
+            Dictionary<int, double> l_高分散カバレッジ = new()
+            {
+                [1] = 10D,
+                [2] = 20D,
+                [3] = 30D,
+                [4] = 40D,
+                [5] = 50D,
+                [6] = 60D,
+                [7] = 70D,
+                [8] = 160D,
+            };
+            var l_高分散結果 = CopyNumberEstimator.Get_推定結果(l_高分散カバレッジ, l_長さ一覧);
+
+            Assert.NotNull(l_低分散結果.A_コピー数区間);
+            Assert.NotNull(l_高分散結果.A_コピー数区間);
+
+            var l_低分散区間 = l_低分散結果.A_コピー数区間![8];
+            var l_高分散区間 = l_高分散結果.A_コピー数区間![8];
+
+            // 区間は必ず点推定を含む
+            Assert.InRange(l_低分散結果.A_コピー数[8], l_低分散区間.A_下限, l_低分散区間.A_上限);
+            Assert.InRange(l_高分散結果.A_コピー数[8], l_高分散区間.A_下限, l_高分散区間.A_上限);
+
+            // 過分散な集団から求めた区間の方が広い (誤推定で真の経路を消さないための余裕が大きい)
+            var l_低分散幅 = l_低分散区間.A_上限 - l_低分散区間.A_下限;
+            var l_高分散幅 = l_高分散区間.A_上限 - l_高分散区間.A_下限;
+            Assert.True(l_高分散幅 > l_低分散幅, $"高分散区間幅({l_高分散幅})が低分散区間幅({l_低分散幅})より広いはず");
+        }
+
         #endregion
 
         #region 内部メソッド

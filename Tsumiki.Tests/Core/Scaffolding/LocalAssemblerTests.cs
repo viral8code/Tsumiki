@@ -202,6 +202,67 @@ namespace Tsumiki.Tests.Core
             Assert.Contains('N', Get_単一配列(l_scaffold));
         }
 
+        /// <summary>
+        /// アンカーに直接ヒットしない (橋の中間だけをカバーする) リードでも、
+        /// アンカーヒットリードとの重なりを介した近傍thread拡張で回収され、ギャップを埋められることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// P3b: anchor直接hitのみから、近傍のread threadへと段階的に回収する
+        /// </remarks>
+        [Fact]
+        public void V_近傍thread拡張でアンカーに届かないリードも拾って埋める()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, p_シード: 1001);
+            var l_橋 = V_生成_ランダム配列(200, p_シード: 1002);
+            var l_右 = V_生成_ランダム配列(300, p_シード: 1003);
+            var l_正解 = l_左 + l_橋 + l_右;
+
+            // 80bp のリードがアンカーと 21bp 以上重ならないと k-mer 索引にヒットしないため、
+            // 1回目 (アンカー直接ヒット) で回収できる範囲は左右それぞれアンカー境界から最大 79bp までに限られる
+            // (260-379 側 / 420-541 側)。ゾーンB (330-470) は橋の中間だけをカバーし、
+            // どちらのアンカーにも届かないが、A・Cの1回目回収範囲とはそれぞれ21bpを大きく超えて重なる
+            var l_ゾーンA = l_正解.Substring(260, 120);
+            var l_ゾーンB = l_正解.Substring(330, 140);
+            var l_ゾーンC = l_正解.Substring(420, 120);
+
+            var l_スキャフォールド = this.V_書き出し_スキャフォールド("threadexp.fasta", l_左 + new string('N', l_橋.Length) + l_右);
+            var l_リード = this.V_書き出し_リード("threadexp.fq", [l_ゾーンA, l_ゾーンB, l_ゾーンC], p_リード長: 80);
+
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールド, l_リード, string.Empty, l_k長);
+
+            Assert.Equal(1, l_統計.A_埋めたギャップ数);
+            Assert.Equal(l_正解, Get_単一配列(l_スキャフォールド));
+        }
+
+        /// <summary>
+        /// 対照実験: 橋の中間だけをカバーするゾーンB が無ければ、アンカーヒットだけでは k-mer に本当の欠落があり埋まらない
+        /// </summary>
+        /// <remarks>
+        /// 上のテストが「拡張回収のおかげで埋まった」ことを示すための対照。
+        /// これが無いと、A+C だけで偶然埋まっていた可能性を排除できない
+        /// </remarks>
+        [Fact]
+        public void V_近傍thread拡張が無ければ中間の欠落で埋まらない()
+        {
+            const int l_k長 = 21;
+            var l_左 = V_生成_ランダム配列(300, p_シード: 1001);
+            var l_橋 = V_生成_ランダム配列(200, p_シード: 1002);
+            var l_右 = V_生成_ランダム配列(300, p_シード: 1003);
+            var l_正解 = l_左 + l_橋 + l_右;
+
+            var l_ゾーンA = l_正解.Substring(260, 120);
+            var l_ゾーンC = l_正解.Substring(420, 120);
+
+            var l_スキャフォールド = this.V_書き出し_スキャフォールド("threadexp_noB.fasta", l_左 + new string('N', l_橋.Length) + l_右);
+            var l_リード = this.V_書き出し_リード("threadexp_noB.fq", [l_ゾーンA, l_ゾーンC], p_リード長: 80);
+
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_スキャフォールド, l_リード, string.Empty, l_k長);
+
+            Assert.Equal(0, l_統計.A_埋めたギャップ数);
+            Assert.Contains('N', Get_単一配列(l_スキャフォールド));
+        }
+
         /// <summary>片側だけがアンカーに当たるペアでは mate も回収して橋へ使う</summary>
         [Fact]
         public void V_アンカーに当たったリードのmateも回収する()

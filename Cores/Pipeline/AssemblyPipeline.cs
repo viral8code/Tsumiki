@@ -224,7 +224,7 @@ namespace Tsumiki.Cores.Pipeline
             // 前段 k の確定済み経路 (scaffold/contig 全体由来のものだけ、バブル敗者や合成リードは除く) を
             // この k の分岐選択へ投影する (P2: multi-k を経路として機能させる)
             var l_引き継ぎ経路群 = p_引き継ぎ?.Where(x => x.A_Is確定経路).Select(x => x.A_配列).ToList();
-            l_contig構築.V_結合_Contig(l_contigパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_引き継ぎ経路群);
+            l_contig構築.V_結合_Contig(l_contigパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_引き継ぎ経路群, l_コピー数推定.A_コピー数区間);
             Logger.V_出力(メッセージID.Contig構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_contigパス);
 

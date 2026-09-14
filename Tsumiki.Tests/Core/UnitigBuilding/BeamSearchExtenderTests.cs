@@ -2,6 +2,7 @@
 using Tsumiki.Cores.UnitigBuilding;
 using Tsumiki.Core;
 using Tsumiki.Models.Foundation;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Tests.Core
 {
@@ -165,6 +166,54 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(0, l_committed);
             Assert.Equal(-1, l_merge[l_先頭配列]);
+        }
+
+        /// <summary>
+        /// 点推定ではコピー数 0 (=候補から除外) の行き先でも、コピー数区間の上限が正なら候補に含め、
+        /// 実際に強い証拠があれば選べることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// P1c: 点推定の誤りで真の経路を消さないよう、先読み探索の通行予算には区間の上限を使う
+        /// </remarks>
+        [Fact]
+        public void V_点推定がゼロでも区間の上限が正なら候補に含める()
+        {
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_先頭配列 = ContigMaker.Get_頂点番号(1);
+            var l_中間配列 = ContigMaker.Get_頂点番号(2);
+            var l_終端配列 = ContigMaker.Get_頂点番号(4);
+
+            // B (id=2) の点推定は 0 (何らかの理由で過小に見積もられた状況を想定)
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 0, [3] = 1, [4] = 1, [5] = 1 };
+            // 区間は上限 1 まで許容する
+            Dictionary<int, コピー数区間> l_区間 = new() { [2] = new コピー数区間(0, 1) };
+            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
+
+            var l_merge = V_構築_未結合表(l_グラフ);
+            var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_コピー数区間: l_区間);
+
+            Assert.True(l_committed > 0, "区間の上限により B が候補に含まれ、証拠に基づいて選ばれるはず");
+            Assert.Equal(l_中間配列, l_merge[l_先頭配列]);
+        }
+
+        /// <summary>
+        /// コピー数区間を渡さない場合、点推定がそのまま予算になり、点推定ゼロの行き先は候補に含めない
+        /// </summary>
+        [Fact]
+        public void V_コピー数区間を渡さない場合は点推定がそのまま予算になる()
+        {
+            var (l_ユニティグ一覧, l_グラフ) = V_構築();
+            var l_先頭配列 = ContigMaker.Get_頂点番号(1);
+            var l_終端配列 = ContigMaker.Get_頂点番号(4);
+
+            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 0, [3] = 1, [4] = 1, [5] = 1 };
+            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
+
+            var l_merge = V_構築_未結合表(l_グラフ);
+            var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_ユニティグ一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
+
+            // B が候補から除外され、証拠のある経路を選べない
+            Assert.Equal(0, l_committed);
         }
 
         /// <summary>

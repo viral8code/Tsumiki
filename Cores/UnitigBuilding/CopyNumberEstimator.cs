@@ -49,6 +49,15 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         private const int 分散診断に使う最小標本数 = 5;
 
+        /// <summary>
+        /// コピー数区間を求める際に使う片側の z 値 (90%)
+        /// </summary>
+        /// <remarks>
+        /// 区間は「反復配列を安全に何回まで通ってよいか」の予算に使う想定であり、
+        /// 誤って狭すぎる上限を出して真の経路を消す方を避けたいので、両側ではなく片側で緩めに取る
+        /// </remarks>
+        private const double 区間のz値 = 1.645D;
+
         #endregion
 
         #region 公開メソッド
@@ -136,7 +145,50 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             var l_分散診断 = Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数);
-            return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数, l_分散診断);
+            var l_コピー数区間 = Get_コピー数区間(p_カバレッジ, l_基準値, l_分散診断, l_コピー数);
+            return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数, l_分散診断, l_コピー数区間);
+        }
+
+        /// <summary>
+        /// 観測されたカバレッジの分散を踏まえた、コピー数の妥当な範囲を求める
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_基準値">単一コピー基準値</param>
+        /// <param name="p_分散診断">単一コピー集団の過分散診断</param>
+        /// <param name="p_コピー数">点推定 (区間は必ずこれを含むよう広げる)</param>
+        /// <remarks>
+        /// 分散診断が求められない (標本不足) 場合は、根拠のない区間を作らず null を返す<br/>
+        /// 分散指数がポアソン (1) を下回っても、区間を狭めすぎないよう 1 未満には丸めない
+        /// </remarks>
+        /// <returns>コピー数区間、求められない場合は null</returns>
+        private static Dictionary<int, コピー数区間>? Get_コピー数区間(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, カバレッジ分散診断? p_分散診断, Dictionary<int, int> p_コピー数)
+        {
+            if (p_分散診断 is not { } l_診断 || p_基準値 <= 0D)
+            {
+                return null;
+            }
+
+            var l_分散指数 = Math.Max(1D, l_診断.A_分散指数);
+            Dictionary<int, コピー数区間> l_結果 = [];
+            foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
+            {
+                var l_点推定 = p_コピー数.GetValueOrDefault(l_ID, 1);
+                if (l_カバレッジ値 <= 0D)
+                {
+                    l_結果[l_ID] = new コピー数区間(1, Math.Max(1, l_点推定));
+                    continue;
+                }
+
+                var l_標準偏差 = Math.Sqrt(l_分散指数 * l_カバレッジ値);
+                var l_下限カバレッジ = Math.Max(0D, l_カバレッジ値 - (区間のz値 * l_標準偏差));
+                var l_上限カバレッジ = l_カバレッジ値 + (区間のz値 * l_標準偏差);
+                var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, コピー数の上限);
+                var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, コピー数の上限);
+
+                // 点推定を区間から締め出さない (別ロジックの丸め方の違いで矛盾させない)
+                l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
+            }
+            return l_結果;
         }
 
         /// <summary>

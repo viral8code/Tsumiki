@@ -1,183 +1,219 @@
 # Tsumiki
 
-The default CLI profile is standard. `Tsumiki.exe -1 reads.1.fq -2 reads.2.fq -t run` enables preprocessing, correction, multi-k, SuperReads, repeat verification, local assembly, GFA, polishing, closure checks and mercy rescue. The copy baseline is weighted; end trimming is on and merging is off. Use `-profile legacy` for the previous opt-in defaults. Put the profile before individual overrides such as `-cnb spectrum`, `-nt` or `-mg`. `-k 49` selects a single k. The final k does not generate carry-over SuperReads. The weighted default is an operational choice, not a claim of validated whole-genome accuracy improvement.
+**Tsumiki** is a de novo genome assembler for short reads (single-end and paired-end).
+It builds a de Bruijn graph from trusted k-mers and uses multiple k values and read-pair information to produce contigs and scaffolds.
 
-Tsumiki is an experimental genome assembler for single-end and paired-end short reads. It builds a de Bruijn graph from trusted k-mers, resolves supported connections, and produces contigs, scaffolds, and an evidence report. The implementation is written in C#.
+> [!CAUTION]
+> Tsumiki is experimental software under active development. Its accuracy and resource requirements on real data have not yet been thoroughly validated.
+> If you use the results for analysis, check correctness against a reference genome with a tool such as QUAST.
 
-Tsumiki is under active development. Its internal completeness labels describe checks against the input library; they do not establish a finished genome or replace reference-based assessment. Comparative accuracy and resource requirements on real datasets have not yet been established.
+## Contents
 
-## Features
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Input](#input)
+- [Options](#options)
+- [Output](#output)
+- [Re-running](#re-running)
+- [Tips](#tips)
+- [License](#license)
 
-- Automatic k-mer length and abundance cutoff selection, with explicit overrides.
-- Disk-backed k-mer counting with a configurable counting memory budget.
-- Graph simplification, unitig construction, copy-number-aware repeat handling, and paired-end scaffolding.
-- Optional overlap-based read preprocessing and k-mer-based error correction.
-- Optional multi-k assembly, sequence carry-over, and candidate selection.
-- Optional local gap assembly with bounded context-length refinement, substitution polishing, and circular-junction verification.
-- FASTA output, optional GFA1 graph output, JSON reports, and tab-separated evidence summaries.
-- Japanese, English, and Chinese command-line messages.
+## Requirements
 
-## Build
+- Windows (x64)
+- The [.NET 10 SDK](https://dotnet.microsoft.com/download) is required to build
+- Linux and macOS are not yet tested
 
-The current project targets **.NET 10 for Windows** (`net10.0-windows`). Install the .NET 10 SDK, then run from the repository root:
+## Installation
 
-```powershell
-dotnet build Tsumiki.csproj -c Release
-dotnet run --project Tsumiki.csproj -c Release --no-build -- -h -lang en
+Build from source.
+
+```bash
+git clone https://github.com/viral8code/Tsumiki.git
 ```
 
-To publish a framework-dependent build without Native AOT:
+```bash
+cd Tsumiki
+```
 
-```powershell
+To build a self-contained executable (Native AOT), you need the "Desktop development with C++" workload of Visual Studio.
+
+```bash
+dotnet publish Tsumiki.csproj -c Release -o publish
+```
+
+Without a C++ toolchain, disable Native AOT. `Tsumiki.exe` then requires the .NET 10 runtime.
+
+```bash
 dotnet publish Tsumiki.csproj -c Release -p:PublishAot=false -o publish
-dotnet publish/Tsumiki.dll -h -lang en
 ```
 
-The project enables Native AOT by default. Native publishing requires the matching native compilation toolchain. The commands above explicitly disable it for the published build. Linux and macOS builds are not currently documented or validated.
+The installation is complete if the help message is shown.
+
+```bash
+publish/Tsumiki.exe -h -lang en
+```
 
 ## Quick start
 
-Paired-end assembly:
+Paired-end reads:
 
-```powershell
-dotnet publish/Tsumiki.dll -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t assembly-run -lang en
+```bash
+Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out -lang en
 ```
 
-Single-end assembly:
+Single-end reads:
 
-```powershell
-dotnet publish/Tsumiki.dll -1 reads.fastq.gz -t single-end-run -lang en
+```bash
+Tsumiki.exe -1 reads.fastq.gz -t out -lang en
 ```
 
-Explicit k values, preprocessing, correction, and final checks:
+Specifying threads, memory, and k values:
 
-```powershell
-dotnet publish/Tsumiki.dll -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,63 -pp -ec -po -cc -gfa -t multi-k-run -th 8 -mem 2G -lang en
+```bash
+Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,71 -th 16 -mem 4G -t out -lang en
 ```
 
-This last example enables optional processing; it is not a validated best-performing preset. Choose k values below the usable read length. A comma-separated `-k` list automatically enables multi-k execution.
+The final assembly is written to `out/assembly.fasta`.
 
-Input files must be FASTQ, optionally gzip-compressed. Supply mates in corresponding record order in separate files. By default, windows containing ambiguous or low-quality bases are skipped during counting. `-ab` expands IUPAC ambiguity into candidate bases, up to 64 combinations per window; low-quality windows and larger ambiguity expansions are skipped. Expanded alternatives are hypotheses, not independent observations. Keep the original reads outside the output directory.
+By default, all major stages (preprocessing, error correction, multi-k, local gap assembly, polishing, and so on) are enabled, so specifying the input and output directory is usually enough.
 
-## Command-line options
+## Input
 
-`-h` prints the complete option list. Options take separate arguments; boolean switches enable a feature by their presence.
+- FASTQ (gzip-compressed `.gz` files are supported)
+- For paired-end data, pass R1 and R2 as separate files with reads in the same order (interleaved files are not supported)
+- The quality offset (Phred+33 / +64) is detected automatically
+- By default, regions containing ambiguous bases such as `N` are excluded from k-mer counting
+
+## Options
+
+Run `Tsumiki.exe -h` for the full list.
+
+### Basic
 
 | Option | Description | Default |
 |---|---|---|
-| `-1 <path>` | Forward or single-end FASTQ | Required |
-| `-2 <path>` | Reverse FASTQ | None |
-| `-ab` | Allow ambiguous input bases | Off |
-| `-k <n[,n...]>` | k-mer length or ascending candidate set | Inferred from reads, automatic initial k capped at 63 |
-| `-kc <n>` | Minimum trusted k-mer count | Inferred from the spectrum |
-| `-p <33|64>` | Explicit Phred encoding offset | Inferred, with 33 as fallback |
-| `-q <n>` | Minimum trusted base quality | 1 |
-| `-mem <size>` | Counting memory budget, e.g. `512M`, `2G` | 768 MB |
-| `-th <n>` | Worker thread count | Logical processor count |
-| `-i <n>` | Expected insert size | Estimated from mapped pairs |
-| `-pu <ratio>` | Dominance required for paired connections | 0.8 |
-| `-pc <n>` | Minimum pair support for short-repeat resolution | 10 |
-| `-mode <conservative|normal|bold>` | Preset for pair thresholds | `normal` |
-| `-pp` | Adapter read-through trimming and overlap correction | On |
-| `-ec` | k-mer-spectrum read correction | On |
-| `-mk` | Generate and evaluate multiple k candidates | On |
-| `-nc` | Disable sequence carry-over between k runs | Carry-over enabled |
-| `-sr` | Carry synthetic sequences from overlapping pairs | On |
-| `-mg` | Merge sequence from alternative k assemblies | Off |
-| `-rv` | Require exact r-mer evidence at both repeat junctions | On |
-| `-la` | Local gap assembly, retrying ambiguous regions at longer k | On |
-| `-my` | Rescue some low-count k-mers between trusted anchors | On |
-| `-po` | Polish substitutions in the final assembly | On |
-| `-cc` | Check reads spanning circular junctions | On |
-| `-gfa` | Write a GFA1 unitig graph | On |
-| `-t <path>` | Output and intermediate directory | `temp` |
-| `-rs` | Reuse verified preprocessing/correction outputs | Off |
-| `-rt` | Remove recognized intermediates after a successful run | Off |
-| `-lang <ja|en|zh>` | Message language | `ja` |
-| `-log <quiet|normal|verbose>` | Console verbosity | `normal` |
-| `-v` | Show version | — |
-| `-h` | Show help | — |
+| `-1 <path>` | R1 FASTQ (or the reads for single-end data) | **Required** |
+| `-2 <path>` | R2 FASTQ | None |
+| `-t <path>` | Output directory | `temp` |
+| `-th <int>` | Number of threads | Logical processor count |
+| `-mem <size>` | Memory limit for k-mer counting (e.g. `512M`, `4G`) | `768M` |
+| `-lang <ja\|en\|zh>` | Message language | `ja` |
+| `-log <quiet\|normal\|verbose>` | Console verbosity | `normal` |
+| `-v` | Show version | |
+| `-h` | Show help | |
 
-`-mem` controls k-mer counting, not the process's total memory. Graphs, mapping indices, and optional algorithms allocate additional memory. In particular, `-rv` retains exact r-mer keys and may consume substantial memory on noisy reads; it no longer uses a Bloom filter as positive evidence. Multi-k runs and final validation require additional passes over the reads. Merging and aggressive pair thresholds can increase misassemblies; assess correctness as well as contiguity.
+### k-mer and quality
+
+| Option | Description | Default |
+|---|---|---|
+| `-k <int[,int...]>` | k-mer length. With a comma-separated list, assembles with each k and keeps the best result | Selected from read length |
+| `-kc <int>` | Minimum count for a trusted k-mer | Selected from the k-mer spectrum |
+| `-q <int>` | Minimum trusted base quality | `1` |
+| `-p <33\|64>` | Phred offset | Auto-detected |
+| `-ab` | Expand ambiguous (IUPAC) bases instead of skipping them | Off |
+
+### Paired-end and scaffolding
+
+| Option | Description | Default |
+|---|---|---|
+| `-mode <conservative\|normal\|bold>` | How aggressively contigs are joined. `conservative` reduces misjoins; `bold` produces longer sequences | `normal` |
+| `-i <int>` | Insert size (bp) | Estimated from mapped pairs |
+| `-pu <decimal>` | Dominance ratio required to accept a connection (overrides `-mode` if placed after it) | `0.8` |
+| `-pc <int>` | Read pairs required to resolve a short repeat (overrides `-mode` if placed after it) | `10` |
+
+Values set by each `-mode` preset:
+
+| `-mode` | `-pu` | `-pc` |
+|---|---|---|
+| `conservative` | 0.9 | 15 |
+| `normal` | 0.8 | 10 |
+| `bold` | 0.65 | 5 |
+
+### Enabling and disabling stages
+
+With the default profile (`-profile standard`), all of the following are enabled:
+
+- Preprocessing (adapter read-through trimming and overlap-based correction)
+- k-mer spectrum error correction
+- Multi-k assembly with sequence carry-over between k values
+- r-mer verification of repeats
+- Local assembly of unclosed gaps
+- Rescue of low-count k-mers
+- Polishing (substitution error correction)
+- Verification of circular junctions
+- GFA output
+
+To enable only some of them, start from `-profile legacy`, which disables all of them, and add what you need. Put `-profile` before other options.
+
+```bash
+Tsumiki.exe -profile legacy -ec -po -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out
+```
+
+| Option | Description | standard |
+|---|---|---|
+| `-profile <standard\|legacy>` | Set the combination of stages at once | `standard` |
+| `-pp` | Preprocessing | On |
+| `-ec` | Error correction | On |
+| `-mk` | Multi-k assembly | On |
+| `-sr` | Carry synthetic reads built from overlapping pairs to the next k | On |
+| `-rv` | Require read support before duplicating repeats | On |
+| `-la` | Local assembly of unclosed gaps | On |
+| `-my` | Rescue low-count k-mers flanked by trusted k-mers | On |
+| `-po` | Polishing | On |
+| `-cc` | Verify circular junctions | On |
+| `-gfa` | Write the graph in GFA1 format | On |
+| `-nc` | Disable sequence carry-over between k values | (carry over) |
+| `-nt` | Disable trimming of low-coverage graph ends | (trim) |
+| `-mg` | Fill unresolved junctions with sequence from other k values (may increase misassemblies) | Off |
+| `-cnb <spectrum\|weighted>` | How the baseline depth for copy-number estimation is chosen | `weighted` |
+
+### Output directory
+
+| Option | Description | Default |
+|---|---|---|
+| `-rs` | Reuse preprocessed and corrected reads in an existing output directory | Off |
+| `-rt` | Delete intermediate files after a successful run (final results and log are kept) | Off |
 
 ## Output
 
-All results are placed under `-t`:
+Results are written to the directory given by `-t`.
 
-```text
-assembly-run/
-  assembly.fasta
-  unitigs.fasta
-  contigs.fasta
-  scaffolds.fasta              # when produced
-  assembly.report.json
-  assembly.provenance.json
-  assembly.ambiguous.tsv
-  assembly.unsupported.tsv     # when support checking returns a result
-  assembly.gfa                 # with -gfa
-  Tsumiki.log
-  k31/                        # intermediate results per attempted k
-  validation/                 # final validation index
-```
-
-**Use `assembly.fasta` as the final sequence output.** It contains the selected assembly after short-sequence filtering and any requested polishing. Root-level contig/scaffold files preserve earlier stages and may differ from this final file. The GFA describes the unitig graph, not every subsequent scaffold or polishing edit.
-
-`assembly.report.json` summarizes sequence statistics, unresolved gaps, ambiguity, and available consistency checks. A missing check means unknown, not passed. `assembly.unsupported.tsv` identifies intervals without the required exact read-window support; this is not a reference alignment or a basewise accuracy estimate.
-
-Final read support, polishing, and circular-junction checks use the original uncorrected input reads. Final k-mer consistency is recomputed after sequence edits. These reads come from the same library used for assembly and are **not independent holdout evidence**. The provenance file records their paths and SHA-256 hashes, the final FASTA hash, build identifier, and input settings.
-
-With `-po`, depth is measured again on the polished sequence. With `-rv`, supported windows must occur exactly in the original reads at both junctions; the count is a number of windows, not a number of independent molecules.
-
-## Resuming a run
-
-An existing output directory is rejected unless `-rs` is specified. Re-run with the original input paths and processing options:
-
-```powershell
-dotnet publish/Tsumiki.dll -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -pp -ec -t assembly-run -rs -lang en
-```
-
-Preprocessing and correction outputs are reused only when their completion records match the build, settings, input contents, and output contents. Older outputs without these records are regenerated. This is stage reuse, not a checkpoint of graph traversal; assembly stages run again. Prefer a new output directory for a different experiment.
-
-The program returns exit code 0 on successful completion or help/version display and 1 when an execution error is caught. A run without an assembly result is an error.
-
-## Algorithm overview
-
-1. Inspect read length and quality encoding, then select an initial k.
-2. Optionally preprocess mate overlaps and correct reads against a trusted k-mer spectrum.
-3. Count k-mers, select an abundance threshold, simplify the de Bruijn graph, and extract unitigs.
-4. Estimate copy number and map read evidence to construct supported contig connections. Resolve some ambiguous branches by bounded look-ahead.
-5. Use paired-read links for scaffolding and optionally reassemble unresolved gaps.
-6. For multi-k execution, evaluate candidates using a shared anchor k-mer set and select an assembly; optionally attempt merging.
-7. Filter short final sequences, optionally polish and verify circular closures, then check the final sequence and write reports.
-
-Copy-number estimates, candidate scores, and bounded search are heuristics. Short reads cannot uniquely resolve every repeat. A circular header or a large N50 alone does not demonstrate correct reconstruction.
-
-For `-la`, a region that remains ambiguous at the assembly k is also examined at k+10 and k+20 where reads are long enough. Conflicting paths remain unresolved. An accepted refinement must have window support from at least two distinct read sequences. Distinct sequences are not equivalent to independent molecules, and this experimental refinement has been tested on small known-answer cases rather than validated genome-wide.
-
-## Development and validation
-
-```powershell
-dotnet test Tsumiki.Tests/Tsumiki.Tests.csproj --verbosity minimal -p:GenerateDocumentationFile=true -warnaserror
-```
-
-The repository's bundled `read.1.fq` and `read.2.fq` are artificially generated fixtures. They are not suitable evidence for real-data assembly quality or performance. Unit tests with known small examples establish specific invariants, not whole-genome accuracy.
-
-Local evaluation data belong in the ignored `local-data/` directory. For GAGE-B comparisons, record the organism, library, preprocessing, read selection, reference accession and strain, command, build, elapsed time, and peak memory. Confirm that the sample and reference strains match before interpreting discrepancies as assembler errors. Report reference-aligned correctness and genome recovery alongside contiguity.
-
-### Source layout
-
-| Directory / file | Responsibility |
+| File | Contents |
 |---|---|
-| `Program.cs` | Process entry point |
-| `Cores/Pipeline/` | Application orchestration, read preparation, single-/multi-k execution, final validation, checkpoints |
-| `Cores/Preprocessing/` | Trimming, correction, k-mer counting, carry-over |
-| `Cores/UnitigBuilding/` | Graph construction, simplification, copy-number estimation, look-ahead |
-| `Cores/ContigBuilding/` | Mapping evidence and contig traversal |
-| `Cores/Scaffolding/` | Scaffold construction and gap assembly |
-| `Cores/Evaluation/`, `Cores/Output/` | Selection, validation, and reports |
-| `IO/`, `Utilities/`, `Models/`, `Commons/` | Input/output, indexing, models, configuration, messages |
-| `Tsumiki.Tests/` | Unit and regression tests |
+| `assembly.fasta` | **Final assembly. Use this file in most cases** |
+| `scaffolds.fasta` | Scaffolds (before polishing) |
+| `contigs.fasta` | Contigs (before scaffolding) |
+| `unitigs.fasta` | Unitigs |
+| `assembly.gfa` | Assembly graph (GFA1), viewable with tools such as [Bandage](https://rrwick.github.io/Bandage/) |
+| `assembly.report.json` | Sequence statistics and verification results |
+| `assembly.ambiguous.tsv` | Locations that remained ambiguous |
+| `assembly.unsupported.tsv` | Intervals not supported by reads |
+| `assembly.provenance.json` | Record of settings, input file hashes, and so on |
+| `Tsumiki.log` | Full execution log (saved regardless of `-log`) |
+
+Intermediate results for each k (e.g. `k31/`) and verification files are also created. Use `-rt` to remove them automatically.
+
+## Re-running
+
+If the output directory already exists, Tsumiki stops to avoid mixing results.
+To re-run while reusing the previous preprocessing and error-correction results, run with the same input and options plus `-rs`.
+
+```bash
+Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out -rs
+```
+
+If the input files or settings have changed, the affected stages are redone automatically.
+Only preprocessing and error correction are reused; the assembly itself always runs from the beginning.
+
+## Tips
+
+- **Memory**: `-mem` limits k-mer counting only. Graph construction and other stages use additional memory, so actual usage will be higher.
+- **Run time**: Multi-k repeats the assembly for several k values and takes longer. To save time, specify a single k, e.g. `-k 55`.
+- **Choosing k**: If you specify `-k`, use values smaller than the read length.
+- **Checking correctness**: A large N50 or a sequence marked as circular does not by itself mean the assembly is correct.
 
 ## License
 
-See [LICENSE.txt](LICENSE.txt) for the MIT license text.
+MIT License. See [LICENSE.txt](LICENSE.txt) for details.
