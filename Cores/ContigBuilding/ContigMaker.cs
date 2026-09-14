@@ -53,12 +53,23 @@ namespace Tsumiki.Core
         /// <param name="p_GFAパス">
         /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
         /// </param>
-        public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null)
+        /// <param name="p_引き継ぎ経路群">
+        /// 前段 k で確定した scaffold/contig 全体の配列 (P2: 経路の持ち越し)<br/>
+        /// この k 自身の read/pair 支持だけでは分岐を決められない場合に限り、追加の判断材料として使う<br/>
+        /// 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、
+        /// この経路投影が分岐の対応を決める効果を持つことがある
+        /// </param>
+        public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
 
             var l_unitig配列 = this._unitig配列;
+
+            if (p_引き継ぎ経路群 is { Count: > 0 })
+            {
+                this.V_マッピング_引き継ぎ経路(p_引き継ぎ経路群);
+            }
 
             // 隣接は de Bruijn グラフから厳密に導く (UnitigGraph の説明を参照)
             // リードマッピング由来の隣接情報は「辺を作る」ためではなく、
@@ -92,7 +103,7 @@ namespace Tsumiki.Core
             // (較正器が使えない場合は生カウントへフォールバックし、挙動は従来と完全に一致する)
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, p_リード長, this._unitig長.Values.Select(x => (long)x));
 
-            var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数);
+            var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接));
             var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数);
 
             // 1 歩だけを見る相互一意性の判定では決めきれなかった分岐を、
@@ -220,13 +231,15 @@ namespace Tsumiki.Core
         /// <param name="p_コピー数"></param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
+        /// <param name="p_引き継ぎ隣接">前段 k の確定経路が跨いだ unitig の組 (P2: 経路の持ち越し)</param>
         /// <returns></returns>
-        private int[] Get_辺選択(UnitigGraph p_グラフ, Dictionary<(int, int), ulong> p_支持, 証拠較正器 p_較正器, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数)
+        private int[] Get_辺選択(UnitigGraph p_グラフ, Dictionary<(int, int), ulong> p_支持, 証拠較正器 p_較正器, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<(int, int), ulong>? p_引き継ぎ隣接 = null)
         {
             var l_選択 = new int[p_グラフ.A_出辺.Count];
             Array.Fill(l_選択, -1);
             var l_一意な頂点数 = 0;
             var l_支持で解決した数 = 0;
+            var l_引き継ぎで解決した数 = 0;
             var l_反復由来で未解決の数 = 0;
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
@@ -283,20 +296,88 @@ namespace Tsumiki.Core
                 {
                     l_選択[v] = l_最良;
                     l_支持で解決した数++;
+                    continue;
                 }
-                else
+
+                // この k 自身の read/pair 支持だけでは決められない場合に限り、
+                // 前段 k から引き継いだ経路を追加の判断材料にする
+                // (支持で決着済みの分岐は、経路引き継ぎで上書きしない)
+                if (p_引き継ぎ隣接 is { Count: > 0 } && Get_引き継ぎで一意な行き先(v, l_出辺, p_引き継ぎ隣接) is { } l_引き継ぎ先)
                 {
-                    // 支持が足りないのか、上位が割れているのかで意味が違う
-                    var l_種別 = l_最良の生本数 < p_最小証拠数 ? 曖昧箇所の種別.支持なし : 曖昧箇所の種別.僅差;
-                    var l_場所 = AmbiguityRecorder.Get_場所名(v);
-                    var l_首位の支持 = l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化;
-                    var l_次点の支持 = l_正規化合計 - (l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化);
-                    AmbiguityRecorder.V_記録(l_種別, l_場所, l_首位の支持, l_次点の支持, (long)l_最良の生本数);
+                    l_選択[v] = l_引き継ぎ先;
+                    l_引き継ぎで解決した数++;
+                    continue;
                 }
+
+                // 支持が足りないのか、上位が割れているのかで意味が違う
+                var l_種別 = l_最良の生本数 < p_最小証拠数 ? 曖昧箇所の種別.支持なし : 曖昧箇所の種別.僅差;
+                var l_場所 = AmbiguityRecorder.Get_場所名(v);
+                var l_首位の支持 = l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化;
+                var l_次点の支持 = l_正規化合計 - (l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化);
+                AmbiguityRecorder.V_記録(l_種別, l_場所, l_首位の支持, l_次点の支持, (long)l_最良の生本数);
             }
             Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);
+            if (l_引き継ぎで解決した数 > 0)
+            {
+                Logger.V_出力(メッセージID.経路引き継ぎで解決した数, l_引き継ぎで解決した数);
+            }
 
             return l_選択;
+        }
+
+        /// <summary>
+        /// 符号付き unitig ID をキーに持つ隣接を、向き付き頂点番号をキーに持つ隣接へ変換する
+        /// </summary>
+        /// <param name="p_符号付きID隣接">V_マッピング_1リード が記録した、符号付き unitig ID の組をキーに持つ隣接</param>
+        /// <remarks>
+        /// V_マッピング_1リード は kmer 辞書がそのまま持つ符号付き ID (+ID=順鎖, -ID=逆鎖) で記録するが、
+        /// Get_辺選択 が扱う出辺は向き付き頂点番号 (2*ID+strand) なので、ここで変換してから使う
+        /// </remarks>
+        /// <returns>向き付き頂点番号をキーに持つ隣接</returns>
+        private static Dictionary<(int, int), ulong> Get_頂点番号キーへ変換(Dictionary<(int, int), ulong> p_符号付きID隣接)
+        {
+            Dictionary<(int, int), ulong> l_結果 = [];
+            foreach (var ((l_始点, l_終点), l_件数) in p_符号付きID隣接)
+            {
+                if (l_始点 == l_終点)
+                {
+                    continue;
+                }
+                var l_始点番号 = Get_頂点番号(l_始点);
+                var l_終点番号 = Get_頂点番号(l_終点);
+                l_結果[(l_始点番号, l_終点番号)] = l_結果.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
+                l_結果[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_結果.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
+            }
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 前段 k から引き継いだ経路が、この分岐の行き先を一意に示しているか調べる
+        /// </summary>
+        /// <param name="p_始点">分岐元の頂点</param>
+        /// <param name="p_出辺">分岐元の候補一覧</param>
+        /// <param name="p_引き継ぎ隣接">前段 k の確定経路が跨いだ unitig の組</param>
+        /// <remarks>
+        /// 複数の候補が引き継ぎからも支持される場合は、決められないので null を返す<br/>
+        /// (前段の異なる配列がそれぞれ違う候補を跨いでいた、等の矛盾を確定扱いしない)
+        /// </remarks>
+        /// <returns>一意な行き先、決められなければ null</returns>
+        private static int? Get_引き継ぎで一意な行き先(int p_始点, IReadOnlyList<int> p_出辺, IReadOnlyDictionary<(int, int), ulong> p_引き継ぎ隣接)
+        {
+            int? l_一意な行き先 = null;
+            foreach (var w in p_出辺)
+            {
+                if (p_引き継ぎ隣接.GetValueOrDefault((p_始点, w)) == 0UL)
+                {
+                    continue;
+                }
+                if (l_一意な行き先 is not null)
+                {
+                    return null;
+                }
+                l_一意な行き先 = w;
+            }
+            return l_一意な行き先;
         }
 
         /// <summary>

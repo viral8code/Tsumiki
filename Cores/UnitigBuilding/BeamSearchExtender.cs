@@ -235,7 +235,8 @@ namespace Tsumiki.Cores.UnitigBuilding
                 V_更新_各歩最良(l_1歩ごとの最良, l_状態);
             }
 
-            for (var l_ステップ = 0; l_ステップ < 経路あたりの最大ステップ数 && l_ビーム.Count > 0; l_ステップ++)
+            var l_ステップ = 0;
+            for (; l_ステップ < 経路あたりの最大ステップ数 && l_ビーム.Count > 0; l_ステップ++)
             {
                 List<先読み探索状態> l_次のビーム = [];
                 foreach (var l_状態 in l_ビーム)
@@ -279,6 +280,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
             }
 
+            // 生きたビームが残ったままステップ数上限に達した場合、まだ伸ばせたはずの経路を
+            // 途中で切っただけであり、証拠が無い/割れているとは意味が違う
+            // (探索打切りは到達不能ではない)
+            var l_打ち切りにより終了 = l_ステップ >= 経路あたりの最大ステップ数 && l_ビーム.Count > 0;
+
             var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
             var l_首位 = l_順位[0];
             var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0D;
@@ -286,7 +292,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 // どの枝にもペアエンドの支持が無い
                 // 根拠が無いので繋がない
-                AmbiguityRecorder.V_記録(曖昧箇所の種別.支持なし, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
+                AmbiguityRecorder.V_記録(l_打ち切りにより終了 ? 曖昧箇所の種別.探索打切り : 曖昧箇所の種別.支持なし, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
 
@@ -295,7 +301,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 // 上位が割れている
                 // 僅差で選ぶくらいなら繋がないほうがよい
-                AmbiguityRecorder.V_記録(曖昧箇所の種別.僅差, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
+                AmbiguityRecorder.V_記録(l_打ち切りにより終了 ? 曖昧箇所の種別.探索打切り : 曖昧箇所の種別.僅差, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
 

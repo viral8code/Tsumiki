@@ -53,7 +53,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長));
+                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true));
             }
             return l_結果;
         }

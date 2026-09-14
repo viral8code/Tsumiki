@@ -11,5 +11,9 @@
     /// <param name="A_配列"></param>
     /// <param name="A_カバレッジ"></param>
     /// <param name="A_k長"></param>
-    internal record 引き継ぎ配列(string A_配列, int[] A_カバレッジ, int A_k長);
+    /// <param name="A_Is確定経路">
+    /// この段の scaffold/contig 全体から取った、既に確定した経路由来なら true<br/>
+    /// バブル敗者や合成リードのような、経路として確定していない配列は false のままにする
+    /// </param>
+    internal record 引き継ぎ配列(string A_配列, int[] A_カバレッジ, int A_k長, bool A_Is確定経路 = false);
 }

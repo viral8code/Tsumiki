@@ -30,6 +30,14 @@ namespace Tsumiki.Cores.Scaffolding
         /// </remarks>
         private const int 局所リード数の上限 = 4_000;
 
+        /// <summary>
+        /// 局所リードの reservoir sampling に使う乱数の種
+        /// </summary>
+        /// <remarks>
+        /// 固定することで、同じ入力なら常に同じ選択結果になる (再現性のため)
+        /// </remarks>
+        private const int 局所リード選択の乱数種 = 20_260_914;
+
         #endregion
 
         #region 公開メソッド
@@ -302,6 +310,11 @@ namespace Tsumiki.Cores.Scaffolding
                 l_局所リード[g] = [];
             }
 
+            // 上限到達後にどの候補を残すかを、先着順ではなく一様な確率で決める (reservoir sampling)
+            // ための、ギャップごとの遭遇数
+            var l_遭遇数 = new int[p_ギャップ数];
+            var l_乱数 = new Random(局所リード選択の乱数種);
+
             if (!string.IsNullOrWhiteSpace(p_リード1のパス) && !string.IsNullOrWhiteSpace(p_リード2のパス)
                 && File.Exists(p_リード1のパス) && File.Exists(p_リード2のパス))
             {
@@ -321,8 +334,8 @@ namespace Tsumiki.Cores.Scaffolding
                     // その場合は各リード自身が当たったギャップだけへ、pair 情報を持たない単独読み取りとして入れる。
                     if (l_pairID1 != l_pairID2)
                     {
-                        V_追加_局所リード(l_局所リード, l_一致1, new 読取証拠(l_レコード1.A_配列, ""));
-                        V_追加_局所リード(l_局所リード, l_一致2, new 読取証拠(l_レコード2.A_配列, ""));
+                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(l_レコード1.A_配列, ""));
+                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(l_レコード2.A_配列, ""));
                         continue;
                     }
 
@@ -331,15 +344,28 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_ペアの一致 = l_一致1.Concat(l_一致2).ToHashSet();
                     foreach (var l_g in l_ペアの一致)
                     {
+                        l_遭遇数[l_g]++;
+
                         // ペアを途中で切らない。残り 1 枠なら、直接アンカーに当たった側だけを優先する。
-                        if (l_局所リード[l_g].Count + 2 <= 局所リード数の上限)
+                        var l_残り枠 = 局所リード数の上限 - l_局所リード[l_g].Count;
+                        if (l_残り枠 >= 2)
                         {
                             l_局所リード[l_g].Add(l_証拠1);
                             l_局所リード[l_g].Add(l_証拠2);
                         }
-                        else if (l_局所リード[l_g].Count < 局所リード数の上限)
+                        else if (l_残り枠 == 1)
                         {
                             l_局所リード[l_g].Add(l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2);
+                        }
+                        else
+                        {
+                            // 上限到達後は、これまで遭遇したペアの中から一様な確率で選ばれるよう
+                            // 代表 1 本を reservoir sampling で入れ替える (先着順のバイアスを避ける)
+                            var l_置き換え位置 = l_乱数.Next(l_遭遇数[l_g]);
+                            if (l_置き換え位置 < 局所リード数の上限)
+                            {
+                                l_局所リード[l_g][l_置き換え位置] = l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2;
+                            }
                         }
                     }
                 }
@@ -354,7 +380,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                     foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
                     {
-                        V_追加_局所リード(l_局所リード, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, ""));
+                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, ""));
                     }
                 }
             }
@@ -368,13 +394,33 @@ namespace Tsumiki.Cores.Scaffolding
                 : [];
         }
 
-        private static void V_追加_局所リード(List<読取証拠>[] p_局所リード, IEnumerable<int> p_ギャップ群, 読取証拠 p_証拠)
+        /// <summary>
+        /// 1 本ぶんの証拠をギャップの局所リードへ追加する
+        /// </summary>
+        /// <remarks>
+        /// 上限に達した後も遭遇数を数え続け、reservoir sampling で一様な確率での入れ替えに使う<br/>
+        /// これにより、反復配列でリードが際限なく集まる状況でも、常に先着した本数だけが残る先着順バイアスを避ける
+        /// </remarks>
+        /// <param name="p_局所リード"></param>
+        /// <param name="p_遭遇数">ギャップごとの遭遇数 (reservoir sampling 用)</param>
+        /// <param name="p_乱数">選択に使う乱数 (固定シードで決定的にする)</param>
+        /// <param name="p_ギャップ群"></param>
+        /// <param name="p_証拠"></param>
+        private static void V_追加_局所リード(List<読取証拠>[] p_局所リード, int[] p_遭遇数, Random p_乱数, IEnumerable<int> p_ギャップ群, 読取証拠 p_証拠)
         {
             foreach (var l_g in p_ギャップ群)
             {
+                p_遭遇数[l_g]++;
                 if (p_局所リード[l_g].Count < 局所リード数の上限)
                 {
                     p_局所リード[l_g].Add(p_証拠);
+                    continue;
+                }
+
+                var l_置き換え位置 = p_乱数.Next(p_遭遇数[l_g]);
+                if (l_置き換え位置 < 局所リード数の上限)
+                {
+                    p_局所リード[l_g][l_置き換え位置] = p_証拠;
                 }
             }
         }

@@ -53,6 +53,15 @@ namespace Tsumiki.Core
         private readonly Dictionary<(int, int), List<int>> _ペア経路;
 
         /// <summary>
+        /// 前段 k の確定済み経路 (scaffold/contig 全体) が跨いだ unitig の組と、その本数
+        /// </summary>
+        /// <remarks>
+        /// 実 read 由来の _リード隣接 とは別カウントで持つ (合成的な由来を実測と混ぜない)<br/>
+        /// この k 自身の read/pair 支持だけで分岐を決められないときに限り、追加の判断材料として参照する
+        /// </remarks>
+        private readonly Dictionary<(int, int), ulong> _経路引き継ぎ隣接;
+
+        /// <summary>
         /// unitig 配置
         /// </summary>
         private readonly Dictionary<int, Unitig配置> _unitig配置 = [];
@@ -72,6 +81,7 @@ namespace Tsumiki.Core
             this._unitig配列 = [string.Empty, string.Empty];
             this._リード隣接 = [];
             this._ペア経路 = [];
+            this._経路引き継ぎ隣接 = [];
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             using FastaReader l_読み込み = new(p_unitigファイルパス);
             var l_ID = 1;
@@ -268,6 +278,26 @@ namespace Tsumiki.Core
                 Logger.V_出力(メッセージID.同一unitigの断片長分布, Get_分布要約(l_同一unitig標本));
                 Logger.V_出力(メッセージID.同一unitigの断片長中央値, StatsUtil.Get_中央値(l_同一unitig標本), l_同一unitig標本.Count);
             }
+        }
+
+        /// <summary>
+        /// 前段 k で確定した経路 (scaffold/contig 全体の配列) を、この k の unitig グラフへ再マッピングして隣接の由来にする
+        /// </summary>
+        /// <param name="p_引き継ぎ経路群">前段 k の確定済み配列</param>
+        /// <remarks>
+        /// unitig ID は k ごとに振り直されるため、旧 ID から新 ID への対応表を別途持ち回る必要は無い<br/>
+        /// 配列そのものをこの k の k-mer 辞書へ再マッピングすれば、現在のグラフの正しい ID へ自動的に対応付く<br/>
+        /// 件数は小さい (段ごとに数百 ~ 数千本程度) ためスレッド分割はしない
+        /// </remarks>
+        public void V_マッピング_引き継ぎ経路(IEnumerable<string> p_引き継ぎ経路群)
+        {
+            var l_件数 = 0;
+            foreach (var l_配列 in p_引き継ぎ経路群)
+            {
+                this.V_マッピング_1リード(l_配列, this._経路引き継ぎ隣接);
+                l_件数++;
+            }
+            Logger.V_出力(メッセージID.経路引き継ぎのマッピング数, l_件数, this._経路引き継ぎ隣接.Count);
         }
 
         #endregion
