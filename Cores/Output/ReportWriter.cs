@@ -78,6 +78,142 @@ namespace Tsumiki.Cores.Output
         }
 
         /// <summary>
+        /// 最終成果物の統計と検査・計測の結果を、人が読む Markdown で書き出す
+        /// </summary>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_k長">採用した k の長さ</param>
+        /// <param name="p_統計表">AssemblyStatsReporter.Get_統計表 の行</param>
+        /// <param name="p_判定">完全長の判定結果</param>
+        /// <param name="p_未解決ギャップ数">埋まらなかったギャップの数</param>
+        /// <param name="p_環状本数">環状に閉じた配列の本数</param>
+        /// <param name="p_曖昧箇所数">決めきれなかった箇所の数</param>
+        /// <param name="p_要求コピー数基準">要求したコピー数基準</param>
+        /// <param name="p_実際のコピー数基準">実際に使ったコピー数基準</param>
+        /// <param name="p_整合性">自己検査の結果</param>
+        /// <param name="p_固定アンカー評価">固定アンカーでの独立評価</param>
+        /// <param name="p_ポリッシュ">ポリッシュの結果</param>
+        /// <param name="p_支持検査">リード支持の検査結果</param>
+        /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
+        /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
+        /// <remarks>
+        /// 同じ内容を機械向けに持つのは assembly.report.json で、こちらは実行結果を 1 か所で見渡すためのもの<br/>
+        /// 測っていない項目は not measured と書き、0 と区別する
+        /// </remarks>
+        public static void V_書き出し_Markdownレポート(string p_出力パス, int p_k長, IReadOnlyList<string> p_統計表, 完全性判定結果 p_判定, int p_未解決ギャップ数, int p_環状本数, int p_曖昧箇所数, string? p_要求コピー数基準, string? p_実際のコピー数基準, 整合性検査結果? p_整合性, アセンブリ評価? p_固定アンカー評価, ポリッシュ統計? p_ポリッシュ, 支持検査結果? p_支持検査, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, IReadOnlyList<フェーズ計測> p_フェーズ計測)
+        {
+            var l_文 = new StringBuilder();
+            _ = l_文.AppendLine("# Tsumiki assembly report").AppendLine();
+
+            _ = l_文.AppendLine("## Summary").AppendLine().AppendLine("| item | value |").AppendLine("|---|---|");
+            V_追加_表の行(l_文, "Tsumiki version", Consts.バージョン);
+            V_追加_表の行(l_文, "adopted k", p_k長);
+            V_追加_表の行(l_文, "complete", p_判定.A_Is完全長 ? "yes" : "no");
+            V_追加_表の行(l_文, "quality level", "Q" + (int)p_判定.A_品質保証レベル);
+            V_追加_表の行(l_文, "reasons not complete", p_判定.A_未達理由.Count == 0 ? "-" : string.Join(", ", p_判定.A_未達理由.Select(CompletenessValidator.Get_理由コード)));
+            V_追加_表の行(l_文, "circular replicons", p_環状本数);
+            V_追加_表の行(l_文, "unresolved gaps", p_未解決ギャップ数);
+            V_追加_表の行(l_文, "ambiguous junctions", p_曖昧箇所数);
+            V_追加_表の行(l_文, "copy-number baseline (requested / actual)", $"{p_要求コピー数基準 ?? "-"} / {p_実際のコピー数基準 ?? "-"}");
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Sequence statistics").AppendLine();
+            foreach (var l_行 in p_統計表)
+            {
+                _ = l_文.AppendLine(l_行);
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Completeness checks").AppendLine().AppendLine("| check | result | detail |").AppendLine("|---|---|---|");
+            foreach (var l_項目 in p_判定.A_検査項目)
+            {
+                _ = l_文.AppendLine($"| {Get_表の値(l_項目.A_キー)} | {CompletenessValidator.Get_判定コード(l_項目.A_判定)} | {Get_表の値(l_項目.A_内訳)} |");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Self-check against trusted k-mers").AppendLine();
+            if (p_整合性 is { } l_整合性)
+            {
+                _ = l_文.AppendLine("| item | value |").AppendLine("|---|---|");
+                V_追加_表の行(l_文, "trusted k-mers", l_整合性.A_信頼kmer数.ToString("N0", CultureInfo.InvariantCulture));
+                V_追加_表の行(l_文, "missing k-mers", string.Create(CultureInfo.InvariantCulture, $"{l_整合性.A_取りこぼし数:N0} ({l_整合性.A_取りこぼし率:F3}%)"));
+                V_追加_表の行(l_文, "excess copies", string.Create(CultureInfo.InvariantCulture, $"{l_整合性.A_出しすぎ率:F3}%"));
+            }
+            else
+            {
+                _ = l_文.AppendLine("not measured");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Fixed-anchor evaluation").AppendLine();
+            if (p_固定アンカー評価 is { } l_評価)
+            {
+                _ = l_文.AppendLine("| item | value |").AppendLine("|---|---|");
+                V_追加_表の行(l_文, "completeness", string.Create(CultureInfo.InvariantCulture, $"{l_評価.A_完全性 * 100D:F2}%"));
+                V_追加_表の行(l_文, "accuracy", string.Create(CultureInfo.InvariantCulture, $"{l_評価.A_正確性 * 100D:F2}%"));
+                V_追加_表の行(l_文, "NG50", l_評価.A_NG50.ToString("N0", CultureInfo.InvariantCulture));
+                V_追加_表の行(l_文, "sequences", l_評価.A_本数);
+                V_追加_表の行(l_文, "circular replicons", string.Create(CultureInfo.InvariantCulture, $"{l_評価.A_環状本数} ({l_評価.A_環状化率 * 100D:F1}% of genome)"));
+            }
+            else
+            {
+                _ = l_文.AppendLine("not measured");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Polishing").AppendLine();
+            if (p_ポリッシュ is { } l_ポリッシュ)
+            {
+                _ = l_文.AppendLine("| item | value |").AppendLine("|---|---|");
+                V_追加_表の行(l_文, "mapped reads", string.Create(CultureInfo.InvariantCulture, $"{l_ポリッシュ.A_マップされたリード数:N0} (rejected {l_ポリッシュ.A_棄却されたリード数:N0})"));
+                V_追加_表の行(l_文, "corrected bases", string.Create(CultureInfo.InvariantCulture, $"{l_ポリッシュ.A_訂正した塩基数:N0} / {l_ポリッシュ.A_総延長:N0}"));
+                V_追加_表の行(l_文, "median depth", string.Create(CultureInfo.InvariantCulture, $"{l_ポリッシュ.A_深度の中央値:F1}x"));
+                V_追加_表の行(l_文, "low-depth positions", string.Create(CultureInfo.InvariantCulture, $"{l_ポリッシュ.A_深度不足の位置数:N0} / {l_ポリッシュ.A_評価できた位置数:N0} ({l_ポリッシュ.A_深度不足率 * 100D:F2}%)"));
+            }
+            else
+            {
+                _ = l_文.AppendLine("not measured");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Read support").AppendLine();
+            if (p_支持検査 is { } l_支持検査)
+            {
+                _ = l_文.AppendLine("| item | value |").AppendLine("|---|---|");
+                V_追加_表の行(l_文, "r-mer length", l_支持検査.A_r長);
+                V_追加_表の行(l_文, "unsupported positions", string.Create(CultureInfo.InvariantCulture, $"{l_支持検査.A_支持のない位置数:N0} / {l_支持検査.A_調べた位置数:N0} ({l_支持検査.A_支持のない率:F3}%)"));
+                V_追加_表の行(l_文, "unsupported intervals", l_支持検査.A_区間.Count.ToString("N0", CultureInfo.InvariantCulture));
+            }
+            else
+            {
+                _ = l_文.AppendLine("not measured");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Circular closure").AppendLine();
+            if (p_閉鎖検証 is { Count: > 0 } l_閉鎖検証)
+            {
+                _ = l_文.AppendLine("| sequence | length | spanning reads | required | supported |").AppendLine("|---|---:|---:|---:|---|");
+                foreach (var l_検証 in l_閉鎖検証)
+                {
+                    _ = l_文.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {Get_表の値(l_検証.A_配列ID)} | {l_検証.A_長さ:N0} | {l_検証.A_跨いだリード数:N0} | {l_検証.A_必要本数:N0} | {(l_検証.A_Has支持 ? "yes" : "no")} |"));
+                }
+            }
+            else
+            {
+                _ = l_文.AppendLine(p_閉鎖検証 is null ? "not measured" : "no circular sequences");
+            }
+            _ = l_文.AppendLine();
+
+            _ = l_文.AppendLine("## Stage timings").AppendLine().AppendLine("| stage | elapsed s | CPU s | peak working set MB |").AppendLine("|---|---:|---:|---:|");
+            foreach (var l_計測 in p_フェーズ計測)
+            {
+                _ = l_文.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {Get_表の値(l_計測.A_工程)} | {l_計測.A_経過秒:F1} | {l_計測.A_CPU秒:F1} | {l_計測.A_ピークワーキングセットMB:N0} |"));
+            }
+
+            File.WriteAllText(p_出力パス, l_文.ToString());
+        }
+
+        /// <summary>
         /// リードに裏付けの無い区間を TSV で書き出す
         /// </summary>
         /// <remarks>
@@ -116,6 +252,27 @@ namespace Tsumiki.Cores.Output
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// Markdown の 2 列の表に 1 行足す
+        /// </summary>
+        /// <param name="p_文"></param>
+        /// <param name="p_項目"></param>
+        /// <param name="p_値"></param>
+        private static void V_追加_表の行(StringBuilder p_文, string p_項目, object p_値)
+        {
+            _ = p_文.AppendLine($"| {p_項目} | {Get_表の値(Convert.ToString(p_値, CultureInfo.InvariantCulture))} |");
+        }
+
+        /// <summary>
+        /// Markdown の表のセルを壊さない文字列にする
+        /// </summary>
+        /// <param name="p_値"></param>
+        /// <returns></returns>
+        private static string Get_表の値(string? p_値)
+        {
+            return string.IsNullOrEmpty(p_値) ? "-" : p_値.Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
+        }
 
         private static void V_追加_統計(StringBuilder p_文, string p_名前, アセンブリ統計 p_統計, int p_最小長)
         {

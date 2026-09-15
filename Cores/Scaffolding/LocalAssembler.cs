@@ -524,41 +524,73 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_種集合"></param>
         /// <param name="p_種長"></param>
         /// <remarks>
-        /// 照合は読み取りだけで互いに独立だが、局所リードへの追加は乱数による入れ替えを含み順序に依存するため、照合だけをまとめて並列にし、追加は呼び出し側が順に行う
+        /// 照合は読み取りだけで互いに独立だが、局所リードへの追加は乱数による入れ替えを含み順序に依存するため、照合だけをまとめて並列にし、追加は呼び出し側が順に行う<br/>
+        /// 読み込みは 1 本の流れでしか進められないので、あるバッチを照合している間に次のバッチを読み込んでおく
         /// </remarks>
         /// <returns></returns>
         private static IEnumerable<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_照合済みペア列(string p_リード1のパス, string p_リード2のパス, Dictionary<KmerKey, List<int>> p_索引, int p_k長, HashSet<ulong> p_種集合, int p_種長)
         {
             var l_並列設定 = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) };
-            var l_バッチ = new (string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)[照合のバッチサイズ];
 
             using var l_読み込み1 = new FastqReader(p_リード1のパス);
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
-            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+            var l_次の読み込み = Task.Run(() => Get_ペアのバッチ(l_読み込み1, l_読み込み2));
+            try
             {
-                var l_件数 = 0;
-                while (l_件数 < 照合のバッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                while (true)
                 {
-                    var (A_ID1, A_配列1, _) = l_読み込み1.Get_次のレコード();
-                    var (A_ID2, A_配列2, _) = l_読み込み2.Get_次のレコード();
-                    l_バッチ[l_件数++] = (A_ID1, A_配列1, [], A_ID2, A_配列2, []);
-                }
-
-                _ = Parallel.For(0, l_件数, l_並列設定, i =>
-                {
-                    var l_項目 = l_バッチ[i];
-                    l_バッチ[i] = l_項目 with
+                    var l_バッチ = l_次の読み込み.Result;
+                    if (l_バッチ.Count == 0)
                     {
-                        A_一致1 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列1, p_k長, p_種集合, p_種長),
-                        A_一致2 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列2, p_k長, p_種集合, p_種長),
-                    };
-                });
+                        yield break;
+                    }
+                    l_次の読み込み = Task.Run(() => Get_ペアのバッチ(l_読み込み1, l_読み込み2));
 
-                for (var i = 0; i < l_件数; i++)
-                {
-                    yield return l_バッチ[i];
+                    _ = Parallel.For(0, l_バッチ.Count, l_並列設定, i =>
+                    {
+                        var l_項目 = l_バッチ[i];
+                        l_バッチ[i] = l_項目 with
+                        {
+                            A_一致1 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列1, p_k長, p_種集合, p_種長),
+                            A_一致2 = Get_一致するギャップ_候補選別付き(p_索引, l_項目.A_配列2, p_k長, p_種集合, p_種長),
+                        };
+                    });
+
+                    foreach (var l_項目 in l_バッチ)
+                    {
+                        yield return l_項目;
+                    }
                 }
             }
+            finally
+            {
+                // 途中で列挙をやめられても、読み込み中のリーダーを閉じない
+                try
+                {
+                    l_次の読み込み.Wait();
+                }
+                catch (AggregateException)
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// read1/read2 を照合のバッチサイズぶん読み込む
+        /// </summary>
+        /// <param name="p_読み込み1"></param>
+        /// <param name="p_読み込み2"></param>
+        /// <returns>読み込んだペア、読み終えていれば空</returns>
+        private static List<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_ペアのバッチ(FastqReader p_読み込み1, FastqReader p_読み込み2)
+        {
+            List<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> l_バッチ = new(照合のバッチサイズ);
+            while (l_バッチ.Count < 照合のバッチサイズ && p_読み込み1.Has続き() && p_読み込み2.Has続き())
+            {
+                var (A_ID1, A_配列1, _) = p_読み込み1.Get_次のレコード();
+                var (A_ID2, A_配列2, _) = p_読み込み2.Get_次のレコード();
+                l_バッチ.Add((A_ID1, A_配列1, [], A_ID2, A_配列2, []));
+            }
+            return l_バッチ;
         }
 
         private static HashSet<int> Get_一致するギャップ_候補選別付き(Dictionary<KmerKey, List<int>> p_アンカー索引, string p_リード, int p_k長, HashSet<ulong> p_種集合, int p_種長)

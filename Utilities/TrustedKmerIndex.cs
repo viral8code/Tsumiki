@@ -605,6 +605,7 @@ namespace Tsumiki.Utilities
                 return l_集計済み;
             }
 
+            using var l_計測 = new StageTimer($"kmer-histogram k={this._k長}");
             var l_パック長 = (this._k長 + 3) / 4;
             var l_シャード別 = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
             _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
@@ -1241,6 +1242,7 @@ namespace Tsumiki.Utilities
                 return this._統合ファイル群;
             }
 
+            using var l_計測 = new StageTimer($"kmer-merge k={this._k長}");
             var l_カウンタ群 = this._カウンタ群!;
             var l_ファイル群 = new string[l_カウンタ群.Length];
             _ = Parallel.For(0, l_カウンタ群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>

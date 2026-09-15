@@ -32,6 +32,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         private const int 経路あたりの最大ステップ数 = 40;
 
+        /// <summary>
+        /// 並びの起点にする単一コピーの頂点を探して contig の末尾を遡る最大頂点数
+        /// </summary>
+        private const int 経路の起点を遡る最大頂点数 = 8;
+
         #endregion
 
         #region 公開メソッド
@@ -60,8 +65,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 反復を何度まで通ってよいかの予算には、点推定ではなくこの上限を使う (誤推定で真の経路を消さないため)<br/>
         /// 渡さない場合は従来どおり点推定 (p_コピー数) を予算にする
         /// </param>
+        /// <param name="p_経路索引">
+        /// 渡すと、contig の末尾から分岐元を通り抜けたリードの並びでも最初の 1 歩を決める<br/>
+        /// ペアの先読みと別の 1 歩を示した分岐は繋がない
+        /// </param>
         /// <returns>新たに確定した結合の数</returns>
-        public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
+        public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null, ReadPathIndex? p_経路索引 = null)
         {
             var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * 先読み倍率;
             var l_確定数 = 0;
@@ -88,8 +97,13 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
+                var l_経路先 = Get_経路で優勢な1歩(p_経路索引, p_グラフ, p_unitig配列, v, p_結合, p_コピー数, p_インサートサイズ, p_優勢閾値, p_最小証拠数);
                 var l_最良 = Get_最良1歩(p_グラフ, p_unitig配列, v, l_足場, p_ペア連結, p_コピー数, l_先読み塩基数, p_優勢閾値, p_最小証拠数, p_較正器, p_コピー数区間);
-                if (l_最良 is not { } l_選択)
+                if (l_経路先 is not null && l_最良 is not null && l_経路先 != l_最良)
+                {
+                    continue;
+                }
+                if ((l_経路先 ?? l_最良) is not { } l_選択)
                 {
                     continue;
                 }
@@ -151,6 +165,54 @@ namespace Tsumiki.Cores.UnitigBuilding
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 結合済みの contig 末尾を遡った最も近い単一コピーの頂点から分岐元を通り抜けた並びで、最初の 1 歩を決める
+        /// </summary>
+        /// <param name="p_経路索引"></param>
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_分岐元"></param>
+        /// <param name="p_結合"></param>
+        /// <param name="p_コピー数"></param>
+        /// <param name="p_起点の最短長">起点にする単一コピーの頂点に要る配列長</param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <remarks>
+        /// 短い頂点はカバレッジのばらつきで反復を 1 コピーと推定しやすく、起点にすると別のコピーから来たリードまで数えてしまうため、長さを要求する
+        /// </remarks>
+        /// <returns>決まらなければ null</returns>
+        private static int? Get_経路で優勢な1歩(ReadPathIndex? p_経路索引, UnitigGraph p_グラフ, List<string> p_unitig配列, int p_分岐元, int[] p_結合, IReadOnlyDictionary<int, int> p_コピー数, int p_起点の最短長, decimal p_優勢閾値, ulong p_最小証拠数)
+        {
+            if (p_経路索引 is null)
+            {
+                return null;
+            }
+
+            List<int> l_上流 = [p_分岐元];
+            var l_現在 = p_分岐元;
+            while (l_上流.Count <= 経路の起点を遡る最大頂点数)
+            {
+                var l_双子の結合 = p_結合[l_現在 ^ 1];
+                if (l_双子の結合 == -1)
+                {
+                    return null;
+                }
+
+                var l_直前 = l_双子の結合 ^ 1;
+                if (l_上流.Exists(x => (x >> 1) == (l_直前 >> 1)))
+                {
+                    return null;
+                }
+                l_上流.Insert(0, l_直前);
+                if (p_コピー数.GetValueOrDefault(l_直前 >> 1, 1) <= 1 && p_unitig配列[l_直前].Length >= p_起点の最短長)
+                {
+                    return p_経路索引.Get_優勢な行き先(l_上流, p_グラフ.A_出辺[p_分岐元], p_優勢閾値, p_最小証拠数);
+                }
+                l_現在 = l_直前;
+            }
+            return null;
+        }
 
         /// <summary>
         /// この unitig を先読み探索で何回まで通ってよいかの予算を求める

@@ -25,6 +25,16 @@ namespace Tsumiki.Utilities
 
         #endregion
 
+        #region 内部変数
+
+        /// <summary>
+        /// スレッドごとに使い回すパック値探索の作業域
+        /// </summary>
+        [ThreadStatic]
+        private static 経路探索作業域? _作業域;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -102,6 +112,12 @@ namespace Tsumiki.Utilities
                     continue;
                 }
 
+                // 伸ばした先はどれも長さの上限を超えて捨てられる
+                if (l_埋める長さ >= p_最大長)
+                {
+                    continue;
+                }
+
                 if (l_節点.Count > p_状態数上限)
                 {
                     return (null, ギャップ充填判定.探索打切り);
@@ -167,15 +183,20 @@ namespace Tsumiki.Utilities
             var l_左順 = TrustedKmerIndex.TryGet_パック_長(p_左のkmer);
             var l_左逆 = Get_逆相補パック(p_左のkmer);
 
-            var l_節点 = new List<(int A_親, byte A_塩基)>(1_024) { (-1, 0) };
-            var l_状態群 = new List<(UInt128 A_順上, UInt128 A_順下, UInt128 A_逆上, UInt128 A_逆下)>(1_024) { (l_左順.A_上位, l_左順.A_下位, l_左逆.A_上位, l_左逆.A_下位) };
-            var l_深さ群 = new List<int>(1_024) { 0 };
-            var l_到達済み = new Dictionary<(UInt128, UInt128, int), int>(1_024);
-            var l_多重到達 = new List<bool>(1_024) { false };
+            var l_作業域 = Get_作業域();
+            var l_節点 = l_作業域.A_節点;
+            var l_状態群 = l_作業域.A_状態群;
+            var l_深さ群 = l_作業域.A_深さ群;
+            var l_到達済み = l_作業域.A_到達済み;
+            var l_多重到達 = l_作業域.A_多重到達;
+            var l_キュー = l_作業域.A_キュー;
+            l_節点.Add((-1, 0));
+            l_状態群.Add((l_左順.A_上位, l_左順.A_下位, l_左逆.A_上位, l_左逆.A_下位));
+            l_深さ群.Add(0);
+            l_多重到達.Add(false);
+            l_キュー.Enqueue(0);
 
             var l_見つかった経路 = new List<string>();
-            var l_キュー = new Queue<int>();
-            l_キュー.Enqueue(0);
 
             while (l_キュー.Count > 0)
             {
@@ -201,6 +222,12 @@ namespace Tsumiki.Utilities
                     {
                         return (null, ギャップ充填判定.一意でない);
                     }
+                    continue;
+                }
+
+                // 伸ばした先はどれも長さの上限を超えて捨てられる
+                if (l_埋める長さ >= p_最大長)
+                {
                     continue;
                 }
 
@@ -255,6 +282,21 @@ namespace Tsumiki.Utilities
             return l_見つかった経路.Count == 1
                 ? (l_見つかった経路[0], ギャップ充填判定.充填済み)
                 : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
+        }
+
+        /// <summary>
+        /// このスレッドの作業域を空にして返す
+        /// </summary>
+        /// <returns></returns>
+        private static 経路探索作業域 Get_作業域()
+        {
+            if (_作業域 is not { } l_作業域 || l_作業域.A_節点.Count > 経路探索作業域.作り直す状態数)
+            {
+                _作業域 = new 経路探索作業域();
+                return _作業域;
+            }
+            l_作業域.V_初期化();
+            return l_作業域;
         }
 
         /// <summary>

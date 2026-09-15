@@ -73,95 +73,9 @@ namespace Tsumiki.Cores.Preprocessing
         public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
             using var l_計測 = new StageTimer($"carry-over k={p_k長}");
-            var l_追加数 = 0;
-            var l_処理数 = 0;
-            var l_出力済みの区切り = 0UL;
-            int[] l_最小値列 = [];
-            int[] l_待ち行列 = [];
-            foreach (var l_引き継ぎ in p_引き継ぎ配列)
-            {
-                // -sr を使うと引き継ぎ配列はリードペアの数まで増える
-                // 全 k-mer を足し終えるまで無言だと止まったように見える
-                l_処理数++;
-                var l_区切り = (ulong)l_処理数 / Consts.進捗ログ間隔;
-                if (l_区切り > l_出力済みの区切り)
-                {
-                    l_出力済みの区切り = l_区切り;
-                    Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_処理数, p_引き継ぎ配列.Count);
-                }
-
-                if (l_引き継ぎ.A_配列.Length < p_k長)
-                {
-                    continue;
-                }
-
-                // Array.IndexOf を窓ごとに呼ぶと窓 1 つあたり O (k) かかり、
-                // 配列全体では O (n*k) になる
-                // 窓をスライドさせる際に新しく入る 1 塩基だけを見て
-                // 「直近に見た無効塩基の位置」を更新すれば、
-                // その位置が現在の窓の左端以降にある間は判定を使い回せる
-                // (無効塩基は稀なので償却 O (n) で済む)
-                var l_塩基列 = Util.V_変換_塩基列(l_引き継ぎ.A_配列);
-                var l_窓数 = l_塩基列.Length - p_k長 + 1;
-                if (l_最小値列.Length < l_窓数)
-                {
-                    l_最小値列 = new int[l_窓数];
-                }
-                if (l_待ち行列.Length < l_引き継ぎ.A_カバレッジ.Length)
-                {
-                    l_待ち行列 = new int[l_引き継ぎ.A_カバレッジ.Length];
-                }
-                V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
-                if (p_k長 <= TrustedKmerIndex.パック値のk上限)
-                {
-                    var l_窓 = new RollingKmer(p_k長);
-                    for (var i = 0; i < l_引き継ぎ.A_配列.Length; i++)
-                    {
-                        if (!l_窓.Try追加(l_引き継ぎ.A_配列[i], out var l_キー))
-                        {
-                            continue;
-                        }
-                        var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i - p_k長 + 1], l_引き継ぎ.A_k長, p_k長, p_リード長);
-                        if (l_カバレッジ > 0UL && p_kmerインデックス.Try追加_信頼kmer_正規形(l_キー.A_上位, l_キー.A_下位, l_カバレッジ))
-                        {
-                            l_追加数++;
-                        }
-                    }
-                    continue;
-                }
-                var l_直近の無効塩基位置 = -1;
-                for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
-                {
-                    var l_新規末尾 = i + p_k長 - 1;
-                    if (i == 0)
-                    {
-                        for (var j = 0; j < p_k長; j++)
-                        {
-                            if (l_塩基列[j] == Consts.無効な塩基)
-                            {
-                                l_直近の無効塩基位置 = j;
-                            }
-                        }
-                    }
-                    else if (l_塩基列[l_新規末尾] == Consts.無効な塩基)
-                    {
-                        l_直近の無効塩基位置 = l_新規末尾;
-                    }
-
-                    if (l_直近の無効塩基位置 >= i)
-                    {
-                        continue;
-                    }
-
-                    var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i], l_引き継ぎ.A_k長, p_k長, p_リード長);
-                    if (l_カバレッジ > 0UL
-                        && p_kmerインデックス.Try追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
-                    {
-                        l_追加数++;
-                    }
-                }
-            }
-            return l_追加数;
+            return p_k長 <= TrustedKmerIndex.パック値のk上限
+                ? Get_追加数_パック値(p_引き継ぎ配列, p_kmerインデックス, p_k長, p_リード長)
+                : Get_追加数_塩基列(p_引き継ぎ配列, p_kmerインデックス, p_k長, p_リード長);
         }
 
         /// <summary>
@@ -220,6 +134,188 @@ namespace Tsumiki.Cores.Preprocessing
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// パック値で窓を転がし、集合に無い k-mer を足す (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_引き継ぎ配列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
+        /// <remarks>
+        /// 集合に有るかの判定は読むだけなので配列ごとに並列に行い、足すのは配列の順に 1 本のスレッドで行う<br/>
+        /// 同じ k-mer を複数の配列が持つとき先に来た配列のカバレッジが残る点は、逐次に足した場合と変わらない
+        /// </remarks>
+        /// <returns>足した k-mer の数</returns>
+        private static int Get_追加数_パック値(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
+        {
+            var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+            var l_バッチ長 = (int)Consts.進捗ログ間隔;
+            var l_未登録群 = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_カバレッジ)>?[Math.Min(l_バッチ長, p_引き継ぎ配列.Count)];
+            var l_追加数 = 0;
+
+            for (var l_開始 = 0; l_開始 < p_引き継ぎ配列.Count; l_開始 += l_バッチ長)
+            {
+                var l_件数 = Math.Min(l_バッチ長, p_引き継ぎ配列.Count - l_開始);
+                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, () => (A_最小値列: Array.Empty<int>(), A_待ち行列: Array.Empty<int>()), (i, _, l_作業域) =>
+                {
+                    l_未登録群[i] = Get_未登録kmer(p_引き継ぎ配列[l_開始 + i], p_kmerインデックス, p_k長, p_リード長, ref l_作業域.A_最小値列, ref l_作業域.A_待ち行列);
+                    return l_作業域;
+                }, _ => { });
+
+                for (var i = 0; i < l_件数; i++)
+                {
+                    if (l_未登録群[i] is not { } l_未登録)
+                    {
+                        continue;
+                    }
+                    foreach (var (l_上位, l_下位, l_カバレッジ) in l_未登録)
+                    {
+                        if (p_kmerインデックス.Try追加_信頼kmer_正規形(l_上位, l_下位, l_カバレッジ))
+                        {
+                            l_追加数++;
+                        }
+                    }
+                    l_未登録群[i] = null;
+                }
+
+                // -sr を使うと引き継ぎ配列はリードペアの数まで増える
+                // 全 k-mer を足し終えるまで無言だと止まったように見える
+                if (l_件数 == l_バッチ長)
+                {
+                    Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_開始 + l_件数, p_引き継ぎ配列.Count);
+                }
+            }
+            return l_追加数;
+        }
+
+        /// <summary>
+        /// 引き継ぎ配列 1 本のうち、集合に無く、与えるカバレッジが正の k-mer を配列の順に返す (k &lt;= 128)
+        /// </summary>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
+        /// <param name="p_最小値列">窓ごとの最小カバレッジの作業領域、足りなければ確保し直す</param>
+        /// <param name="p_待ち行列">最小値を求める待ち行列の作業領域、足りなければ確保し直す</param>
+        /// <returns>1 つも無ければ null</returns>
+        private static List<(UInt128 A_上位, UInt128 A_下位, ulong A_カバレッジ)>? Get_未登録kmer(引き継ぎ配列 p_引き継ぎ, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長, ref int[] p_最小値列, ref int[] p_待ち行列)
+        {
+            if (p_引き継ぎ.A_配列.Length < p_k長)
+            {
+                return null;
+            }
+
+            var l_窓数 = p_引き継ぎ.A_配列.Length - p_k長 + 1;
+            if (p_最小値列.Length < l_窓数)
+            {
+                p_最小値列 = new int[l_窓数];
+            }
+            if (p_待ち行列.Length < p_引き継ぎ.A_カバレッジ.Length)
+            {
+                p_待ち行列 = new int[p_引き継ぎ.A_カバレッジ.Length];
+            }
+            V_計算_最小値列(p_引き継ぎ.A_カバレッジ, p_k長 - p_引き継ぎ.A_k長 + 1, p_最小値列.AsSpan(0, l_窓数), p_待ち行列);
+
+            List<(UInt128 A_上位, UInt128 A_下位, ulong A_カバレッジ)>? l_未登録 = null;
+            var l_窓 = new RollingKmer(p_k長);
+            for (var i = 0; i < p_引き継ぎ.A_配列.Length; i++)
+            {
+                if (!l_窓.Try追加(p_引き継ぎ.A_配列[i], out var l_キー) || p_kmerインデックス.Haskmer_正規形(l_キー.A_上位, l_キー.A_下位))
+                {
+                    continue;
+                }
+                var l_カバレッジ = Get_換算カバレッジ(p_最小値列[i - p_k長 + 1], p_引き継ぎ.A_k長, p_k長, p_リード長);
+                if (l_カバレッジ > 0UL)
+                {
+                    (l_未登録 ??= []).Add((l_キー.A_上位, l_キー.A_下位, l_カバレッジ));
+                }
+            }
+            return l_未登録;
+        }
+
+        /// <summary>
+        /// 塩基列のまま窓を見て、集合に無い k-mer を足す (k &gt; 128)
+        /// </summary>
+        /// <param name="p_引き継ぎ配列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
+        /// <returns>足した k-mer の数</returns>
+        private static int Get_追加数_塩基列(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
+        {
+            var l_追加数 = 0;
+            var l_処理数 = 0;
+            var l_出力済みの区切り = 0UL;
+            int[] l_最小値列 = [];
+            int[] l_待ち行列 = [];
+            foreach (var l_引き継ぎ in p_引き継ぎ配列)
+            {
+                l_処理数++;
+                var l_区切り = (ulong)l_処理数 / Consts.進捗ログ間隔;
+                if (l_区切り > l_出力済みの区切り)
+                {
+                    l_出力済みの区切り = l_区切り;
+                    Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_処理数, p_引き継ぎ配列.Count);
+                }
+
+                if (l_引き継ぎ.A_配列.Length < p_k長)
+                {
+                    continue;
+                }
+
+                // Array.IndexOf を窓ごとに呼ぶと窓 1 つあたり O (k) かかり、
+                // 配列全体では O (n*k) になる
+                // 窓をスライドさせる際に新しく入る 1 塩基だけを見て
+                // 「直近に見た無効塩基の位置」を更新すれば、
+                // その位置が現在の窓の左端以降にある間は判定を使い回せる
+                // (無効塩基は稀なので償却 O (n) で済む)
+                var l_塩基列 = Util.V_変換_塩基列(l_引き継ぎ.A_配列);
+                var l_窓数 = l_塩基列.Length - p_k長 + 1;
+                if (l_最小値列.Length < l_窓数)
+                {
+                    l_最小値列 = new int[l_窓数];
+                }
+                if (l_待ち行列.Length < l_引き継ぎ.A_カバレッジ.Length)
+                {
+                    l_待ち行列 = new int[l_引き継ぎ.A_カバレッジ.Length];
+                }
+                V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
+
+                var l_直近の無効塩基位置 = -1;
+                for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
+                {
+                    var l_新規末尾 = i + p_k長 - 1;
+                    if (i == 0)
+                    {
+                        for (var j = 0; j < p_k長; j++)
+                        {
+                            if (l_塩基列[j] == Consts.無効な塩基)
+                            {
+                                l_直近の無効塩基位置 = j;
+                            }
+                        }
+                    }
+                    else if (l_塩基列[l_新規末尾] == Consts.無効な塩基)
+                    {
+                        l_直近の無効塩基位置 = l_新規末尾;
+                    }
+
+                    if (l_直近の無効塩基位置 >= i)
+                    {
+                        continue;
+                    }
+
+                    var l_カバレッジ = Get_換算カバレッジ(l_最小値列[i], l_引き継ぎ.A_k長, p_k長, p_リード長);
+                    if (l_カバレッジ > 0UL
+                        && p_kmerインデックス.Try追加_信頼kmer(l_塩基列.AsSpan(i, p_k長), l_カバレッジ))
+                    {
+                        l_追加数++;
+                    }
+                }
+            }
+            return l_追加数;
+        }
 
         /// <summary>最小カバレッジを次の k の観測本数へ換算する</summary>
         /// <param name="p_最小">最小カバレッジ</param>

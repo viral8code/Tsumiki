@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Runtime.InteropServices;
+using Tsumiki.Commons;
 using Tsumiki.Cores.UnitigBuilding;
 using Tsumiki.IO;
 using Tsumiki.Models.ContigBuilding;
@@ -22,6 +23,14 @@ namespace Tsumiki.Core
         /// 曖昧 kmer の番兵
         /// </summary>
         private const int 曖昧kmerの番兵 = int.MinValue;
+
+        /// <summary>
+        /// read1 と read2 の並びを 1 本に繋ぐのに要る、共有する unitig の数
+        /// </summary>
+        /// <remarks>
+        /// 1 つの unitig を共有するだけでは、その unitig をフラグメント内で 2 回通った (タンデム反復) 場合と区別できない
+        /// </remarks>
+        private const int ペア経路を繋ぐ最小の重なり = 2;
 
         #endregion
 
@@ -62,6 +71,19 @@ namespace Tsumiki.Core
         private readonly Dictionary<(int, int), ulong> _経路引き継ぎ隣接;
 
         /// <summary>
+        /// リードとペアが通った 3 unitig 以上の並び (符号付き ID、正準の向き) と、その独立な観測数
+        /// </summary>
+        private readonly Dictionary<経路キー, ulong> _経路集計;
+
+        /// <summary>
+        /// 前段 k の確定済み経路が通った 3 unitig 以上の並び
+        /// </summary>
+        /// <remarks>
+        /// 実リードの並びとは混ぜない
+        /// </remarks>
+        private readonly Dictionary<経路キー, ulong> _引き継ぎ経路集計;
+
+        /// <summary>
         /// unitig 配置
         /// </summary>
         private readonly Dictionary<int, Unitig配置> _unitig配置 = [];
@@ -82,6 +104,8 @@ namespace Tsumiki.Core
             this._リード隣接 = [];
             this._ペア経路 = [];
             this._経路引き継ぎ隣接 = [];
+            this._経路集計 = [];
+            this._引き継ぎ経路集計 = [];
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             using FastaReader l_読み込み = new(p_unitigファイルパス);
             var l_ID = 1;
@@ -151,6 +175,15 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// ここまでに貼り付けたリードとペアが通った並びの索引を作る
+        /// </summary>
+        /// <returns></returns>
+        internal ReadPathIndex Get_経路索引()
+        {
+            return ReadPathIndex.Get_索引(this._経路集計);
+        }
+
+        /// <summary>
         /// リードを unitig へ貼り付け、隣接とペアの支持を集める
         /// </summary>
         /// <param name="p_リードパス">貼り付けるリードのパス</param>
@@ -163,20 +196,19 @@ namespace Tsumiki.Core
             // 隣接への書き込みはスレッドごとにローカルな辞書に集計し、
             // 最後にマージすることでロックを避ける
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
+            var l_ローカル経路 = new Dictionary<経路キー, ulong>[l_スレッド数];
+            var l_作業域 = new リード走査作業域[l_スレッド数];
             for (var i = 0; i < l_スレッド数; i++)
             {
                 l_ローカル隣接[i] = [];
+                l_ローカル経路[i] = [];
+                l_作業域[i] = new リード走査作業域();
             }
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_生リード列(p_リードパス), (l_リード, l_ワーカー番号) => this.V_マッピング_1リード(l_リード, l_ローカル隣接[l_ワーカー番号]));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_生リード列(p_リードパス), (l_リード, l_ワーカー番号) => this.V_処理_1リード(l_リード, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域[l_ワーカー番号]));
 
-            foreach (var l_ローカル in l_ローカル隣接)
-            {
-                foreach (var (l_キー, l_値) in l_ローカル)
-                {
-                    this._リード隣接[l_キー] = this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
-                }
-            }
+            V_統合_隣接(this._リード隣接, l_ローカル隣接);
+            V_統合_経路(this._経路集計, l_ローカル経路);
         }
 
         /// <summary>
@@ -192,6 +224,9 @@ namespace Tsumiki.Core
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
+            var l_ローカル経路 = new Dictionary<経路キー, ulong>[l_スレッド数];
+            var l_作業域1 = new リード走査作業域[l_スレッド数];
+            var l_作業域2 = new リード走査作業域[l_スレッド数];
 
             // ローカルペア経路: (始点,終点) -> このワーカーで観測した各ペアの
             // 「既に見えている長さ」のリスト
@@ -204,20 +239,18 @@ namespace Tsumiki.Core
             for (var i = 0; i < l_スレッド数; i++)
             {
                 l_ローカル隣接[i] = [];
+                l_ローカル経路[i] = [];
+                l_作業域1[i] = new リード走査作業域();
+                l_作業域2[i] = new リード走査作業域();
                 l_ローカルペア経路[i] = [];
                 l_ローカル同一向き標本[i] = [];
                 l_ローカル逆向き標本[i] = [];
             }
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_ペアリード列(p_リード1のパス, p_リード2のパス), (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(l_ペア.A_リード1, l_ペア.A_リード2, l_ローカル隣接[l_ワーカー番号], l_ローカルペア経路[l_ワーカー番号], l_ローカル同一向き標本[l_ワーカー番号], l_ローカル逆向き標本[l_ワーカー番号]));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_ペアリード列(p_リード1のパス, p_リード2のパス), (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(l_ペア.A_リード1, l_ペア.A_リード2, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域1[l_ワーカー番号], l_作業域2[l_ワーカー番号], l_ローカルペア経路[l_ワーカー番号], l_ローカル同一向き標本[l_ワーカー番号], l_ローカル逆向き標本[l_ワーカー番号]));
 
-            foreach (var l_ローカル in l_ローカル隣接)
-            {
-                foreach (var (l_キー, l_値) in l_ローカル)
-                {
-                    this._リード隣接[l_キー] = this._リード隣接.TryGetValue(l_キー, out var l_既存) ? l_既存 + l_値 : l_値;
-                }
-            }
+            V_統合_隣接(this._リード隣接, l_ローカル隣接);
+            V_統合_経路(this._経路集計, l_ローカル経路);
 
             foreach (var l_ローカルペア in l_ローカルペア経路)
             {
@@ -292,9 +325,10 @@ namespace Tsumiki.Core
         public void V_マッピング_引き継ぎ経路(IEnumerable<string> p_引き継ぎ経路群)
         {
             var l_件数 = 0;
+            var l_作業域 = new リード走査作業域();
             foreach (var l_配列 in p_引き継ぎ経路群)
             {
-                this.V_マッピング_1リード(l_配列, this._経路引き継ぎ隣接);
+                this.V_処理_1リード(l_配列, this._経路引き継ぎ隣接, this._引き継ぎ経路集計, l_作業域);
                 l_件数++;
             }
             Logger.V_出力(メッセージID.経路引き継ぎのマッピング数, l_件数, this._経路引き継ぎ隣接.Count);
@@ -342,67 +376,39 @@ namespace Tsumiki.Core
         /// <returns></returns>
         internal 代表Unitigヒット Get_代表Unitig(string p_リード)
         {
-            if (string.IsNullOrEmpty(p_リード))
-            {
-                return 代表Unitigヒット.A_ヒットなし;
-            }
+            return this.Get_走査結果(p_リード, null, new リード走査作業域());
+        }
 
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            if (p_リード.Length < l_k長)
+        /// <summary>
+        /// ワーカーごとの隣接を 1 つにまとめる
+        /// </summary>
+        /// <param name="p_統合先"></param>
+        /// <param name="p_ローカル群"></param>
+        private static void V_統合_隣接(Dictionary<(int, int), ulong> p_統合先, Dictionary<(int, int), ulong>[] p_ローカル群)
+        {
+            foreach (var l_ローカル in p_ローカル群)
             {
-                return 代表Unitigヒット.A_ヒットなし;
-            }
-
-            var l_得票 = new Dictionary<int, int>();
-
-            // 記録するのは unitig 内での終端位置であって read 内での位置ではない
-            // 両者は unitig が read より十分長いと大きく食い違う
-            var l_最終終端位置 = new Dictionary<int, int>();
-            var l_曖昧塩基数 = 0;
-            for (var i = 0; i < l_k長; i++)
-            {
-                if (Util.Is曖昧塩基(p_リード[i]))
+                foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    l_曖昧塩基数++;
+                    p_統合先[l_キー] = p_統合先.GetValueOrDefault(l_キー) + l_値;
                 }
             }
-            for (var i = l_k長; i <= p_リード.Length; i++)
-            {
-                if (Util.Is曖昧塩基(p_リード[i - l_k長]))
-                {
-                    l_曖昧塩基数--;
-                }
+        }
 
-                if (l_曖昧塩基数 == 0)
+        /// <summary>
+        /// ワーカーごとの並びの集計を 1 つにまとめる
+        /// </summary>
+        /// <param name="p_統合先"></param>
+        /// <param name="p_ローカル群"></param>
+        private static void V_統合_経路(Dictionary<経路キー, ulong> p_統合先, Dictionary<経路キー, ulong>[] p_ローカル群)
+        {
+            foreach (var l_ローカル in p_ローカル群)
+            {
+                foreach (var (l_キー, l_値) in l_ローカル)
                 {
-                    var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
-                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_unitigID != 曖昧kmerの番兵)
-                    {
-                        var l_ID = l_項目.A_unitigID;
-                        l_得票[l_ID] = l_得票.GetValueOrDefault(l_ID) + 1;
-                        l_最終終端位置[l_ID] = l_項目.A_開始位置 + l_k長;
-                    }
+                    p_統合先[l_キー] = p_統合先.GetValueOrDefault(l_キー) + l_値;
                 }
             }
-
-            if (l_得票.Count == 0)
-            {
-                return 代表Unitigヒット.A_ヒットなし;
-            }
-
-            var l_最良 = 0;
-            var l_最多得票 = 0;
-            foreach (var (l_ID, l_票数) in l_得票)
-            {
-                if (l_票数 > l_最多得票)
-                {
-                    l_最良 = l_ID;
-                    l_最多得票 = l_票数;
-                }
-            }
-
-            var l_unitig長 = this._unitig長.GetValueOrDefault(Math.Abs(l_最良), 0);
-            return new 代表Unitigヒット(l_最良, l_最多得票, l_最終終端位置[l_最良], l_unitig長);
         }
 
         /// <summary>
@@ -459,19 +465,21 @@ namespace Tsumiki.Core
         /// <param name="p_リード1"></param>
         /// <param name="p_リード2"></param>
         /// <param name="p_ローカル隣接"></param>
+        /// <param name="p_ローカル経路"></param>
+        /// <param name="p_作業域1"></param>
+        /// <param name="p_作業域2"></param>
         /// <param name="p_ローカルペア経路"></param>
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
         /// <remarks>
-        /// ペアエンド由来の隣接は直接のオーバーラップを保証しない弱い証拠なので、リード隣接とは分けて集計する
+        /// ペアエンド由来の隣接は直接のオーバーラップを保証しない弱い証拠なので、リード隣接とは分けて集計する<br/>
+        /// 隣接・並び・代表 unitig は 1 回の走査でまとめて求める
         /// </remarks>
-        private void V_処理_1ペア(string p_リード1, string p_リード2, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
+        private void V_処理_1ペア(string p_リード1, string p_リード2, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<経路キー, ulong> p_ローカル経路, リード走査作業域 p_作業域1, リード走査作業域 p_作業域2, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
-            this.V_マッピング_1リード(p_リード1, p_ローカル隣接);
-            this.V_マッピング_1リード(p_リード2, p_ローカル隣接);
-
-            var l_ヒット1 = this.Get_代表Unitig(p_リード1);
-            var l_ヒット2 = this.Get_代表Unitig(p_リード2);
+            var l_ヒット1 = this.Get_走査結果(p_リード1, p_ローカル隣接, p_作業域1);
+            var l_ヒット2 = this.Get_走査結果(p_リード2, p_ローカル隣接, p_作業域2);
+            V_集計_ペアの並び(p_作業域1.A_経路, p_作業域2.A_経路, p_ローカル経路);
 
             if (l_ヒット1.A_unitigID == 0 || l_ヒット2.A_unitigID == 0)
             {
@@ -489,6 +497,126 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
+        /// 単一リード 1 本を処理する
+        /// </summary>
+        /// <param name="p_リード"></param>
+        /// <param name="p_ローカル隣接"></param>
+        /// <param name="p_ローカル経路"></param>
+        /// <param name="p_作業域"></param>
+        private void V_処理_1リード(string p_リード, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<経路キー, ulong> p_ローカル経路, リード走査作業域 p_作業域)
+        {
+            _ = this.Get_走査結果(p_リード, p_ローカル隣接, p_作業域);
+            V_集計_並び(CollectionsMarshal.AsSpan(p_作業域.A_経路), p_ローカル経路);
+        }
+
+        /// <summary>
+        /// 並びが 3 unitig 以上なら正準の向きで 1 件数える
+        /// </summary>
+        /// <param name="p_符号付きID列"></param>
+        /// <param name="p_ローカル経路"></param>
+        private static void V_集計_並び(ReadOnlySpan<int> p_符号付きID列, Dictionary<経路キー, ulong> p_ローカル経路)
+        {
+            if (p_符号付きID列.Length < ReadPathIndex.最短の頂点数)
+            {
+                return;
+            }
+            var l_キー = new 経路キー(ReadPathIndex.Get_正準経路(p_符号付きID列));
+            p_ローカル経路[l_キー] = p_ローカル経路.GetValueOrDefault(l_キー) + 1UL;
+        }
+
+        /// <summary>
+        /// 1 組のペアの並びを、同じ部分を二重に数えないようにして数える
+        /// </summary>
+        /// <param name="p_経路1">read1 の並び</param>
+        /// <param name="p_経路2">read2 の並び (read2 自身の向き)</param>
+        /// <param name="p_ローカル経路"></param>
+        /// <remarks>
+        /// read2 は逆鎖から読まれるため、逆相補の並びにして read1 の向きへ揃える<br/>
+        /// 末尾と先頭が unitig 2 つ以上重なり、繋いだ並びに同じ unitig が 2 度現れなければ 1 本の並びとして数える<br/>
+        /// 繋げなければ各 read の並びを数えるが、一方が他方に含まれるなら長い方だけにする
+        /// </remarks>
+        private static void V_集計_ペアの並び(List<int> p_経路1, List<int> p_経路2, Dictionary<経路キー, ulong> p_ローカル経路)
+        {
+            var l_長さ1 = p_経路1.Count;
+            var l_長さ2 = p_経路2.Count;
+            if (l_長さ1 < ReadPathIndex.最短の頂点数 && l_長さ2 < ReadPathIndex.最短の頂点数 && (l_長さ1 < ペア経路を繋ぐ最小の重なり || l_長さ2 < ペア経路を繋ぐ最小の重なり))
+            {
+                return;
+            }
+
+            var l_並び1 = CollectionsMarshal.AsSpan(p_経路1);
+            Span<int> l_並び2 = l_長さ2 <= 64 ? stackalloc int[l_長さ2] : new int[l_長さ2];
+            for (var i = 0; i < l_長さ2; i++)
+            {
+                l_並び2[i] = -p_経路2[l_長さ2 - 1 - i];
+            }
+
+            var l_重なり = Get_並びの重なり(l_並び1, l_並び2);
+            if (l_重なり >= ペア経路を繋ぐ最小の重なり)
+            {
+                var l_繋いだ並び = new int[l_長さ1 + l_長さ2 - l_重なり];
+                l_並び1.CopyTo(l_繋いだ並び);
+                l_並び2[l_重なり..].CopyTo(l_繋いだ並び.AsSpan(l_長さ1));
+                if (!Has重複unitig(l_繋いだ並び))
+                {
+                    V_集計_並び(l_繋いだ並び, p_ローカル経路);
+                    return;
+                }
+            }
+
+            if (l_長さ1 >= l_長さ2 && l_並び1.IndexOf(l_並び2) >= 0)
+            {
+                V_集計_並び(l_並び1, p_ローカル経路);
+                return;
+            }
+            if (l_長さ2 > l_長さ1 && l_並び2.IndexOf(l_並び1) >= 0)
+            {
+                V_集計_並び(l_並び2, p_ローカル経路);
+                return;
+            }
+            V_集計_並び(l_並び1, p_ローカル経路);
+            V_集計_並び(l_並び2, p_ローカル経路);
+        }
+
+        /// <summary>
+        /// 前の並びの末尾と後の並びの先頭が一致する最長の要素数
+        /// </summary>
+        /// <param name="p_前"></param>
+        /// <param name="p_後"></param>
+        /// <returns></returns>
+        private static int Get_並びの重なり(ReadOnlySpan<int> p_前, ReadOnlySpan<int> p_後)
+        {
+            for (var l_重なり = Math.Min(p_前.Length, p_後.Length); l_重なり > 0; l_重なり--)
+            {
+                if (p_前[^l_重なり..].SequenceEqual(p_後[..l_重なり]))
+                {
+                    return l_重なり;
+                }
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// 並びに同じ unitig がどちらかの向きで 2 度以上現れるか
+        /// </summary>
+        /// <param name="p_並び"></param>
+        /// <returns></returns>
+        private static bool Has重複unitig(ReadOnlySpan<int> p_並び)
+        {
+            for (var i = 0; i < p_並び.Length; i++)
+            {
+                for (var j = i + 1; j < p_並び.Length; j++)
+                {
+                    if (Math.Abs(p_並び[i]) == Math.Abs(p_並び[j]))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// FASTQ を順に読み進めて生リード文字列だけを返す
         /// </summary>
         /// <param name="p_リードパス"></param>
@@ -503,12 +631,15 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 1 本のリードを貼り付ける
+        /// 1 本のリードを k-mer 索引で走査し、隣接を数え、通った unitig の並びと代表 unitig を求める
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
-        /// <param name="p_ローカル隣接">このワーカーが集めた隣接</param>
-        private void V_マッピング_1リード(string p_リード, Dictionary<(int, int), ulong> p_ローカル隣接)
+        /// <param name="p_ローカル隣接">このワーカーが集めた隣接、null なら数えない</param>
+        /// <param name="p_作業域">通った unitig の並びを受け取る</param>
+        /// <returns>最多得票の unitig</returns>
+        private 代表Unitigヒット Get_走査結果(string p_リード, Dictionary<(int, int), ulong>? p_ローカル隣接, リード走査作業域 p_作業域)
         {
+            p_作業域.V_初期化();
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
             // k 未満のリードからは k-mer を取れない
@@ -516,10 +647,12 @@ namespace Tsumiki.Core
             // 下の初期化ループが p_リード[i] を i = k-1 まで舐めて範囲外になる
             if (p_リード.Length < l_k長)
             {
-                return;
+                return 代表Unitigヒット.A_ヒットなし;
             }
 
-            var l_直前 = 0;
+            var l_経路 = p_作業域.A_経路;
+            var l_票数 = p_作業域.A_票数;
+            var l_終端位置 = p_作業域.A_終端位置;
             var l_曖昧塩基数 = 0;
 
             // 索引には両鎖があり、辺重みは後段で逆鎖対称にするため入力方向だけを走査する
@@ -537,31 +670,70 @@ namespace Tsumiki.Core
                     l_曖昧塩基数--;
                 }
 
-                if (l_曖昧塩基数 == 0)
+                if (l_曖昧塩基数 != 0)
                 {
-                    var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
-                    if (this._kmer辞書.TryGetValue(l_キー, out var l_項目) && l_項目.A_unitigID != 曖昧kmerの番兵)
-                    {
-                        var l_ID = l_項目.A_unitigID;
-                        if (l_直前 == 0)
-                        {
-                            l_直前 = l_ID;
-                        }
-                        else if (l_直前 != l_ID)
-                        {
-                            var l_経路キー = (l_直前, l_ID);
-                            p_ローカル隣接[l_経路キー] = p_ローカル隣接.TryGetValue(l_経路キー, out var l_件数) ? l_件数 + 1UL : 1UL;
+                    continue;
+                }
 
-                            // 直前にヒットした unitig を更新する
-                            // これを怠ると、
-                            // リード内で 3 つ以上の unitig にまたがった場合でも
-                            // 常に「最初にヒットした unitig」との組しか記録されず、
-                            // 実際の隣接関係 (直前→直後) を反映できない
-                            l_直前 = l_ID;
-                        }
+                var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
+                if (!this._kmer辞書.TryGetValue(l_キー, out var l_項目) || l_項目.A_unitigID == 曖昧kmerの番兵)
+                {
+                    continue;
+                }
+
+                var l_ID = l_項目.A_unitigID;
+
+                // 記録するのは unitig 内での終端位置であって read 内での位置ではない
+                // 両者は unitig が read より十分長いと大きく食い違う
+                var l_終端 = l_項目.A_開始位置 + l_k長;
+                if (l_経路.Count > 0 && l_経路[^1] == l_ID)
+                {
+                    l_票数[^1]++;
+                    l_終端位置[^1] = l_終端;
+                    continue;
+                }
+
+                if (l_経路.Count > 0 && p_ローカル隣接 is not null)
+                {
+                    var l_経路キー = (l_経路[^1], l_ID);
+                    p_ローカル隣接[l_経路キー] = p_ローカル隣接.GetValueOrDefault(l_経路キー) + 1UL;
+                }
+                l_経路.Add(l_ID);
+                l_票数.Add(1);
+                l_終端位置.Add(l_終端);
+            }
+
+            if (l_経路.Count == 0)
+            {
+                return 代表Unitigヒット.A_ヒットなし;
+            }
+
+            // 同じ unitig に戻ってきた区間は票を合算し、同票なら先に現れた unitig を採る
+            var l_最良 = 0;
+            var l_最多得票 = 0;
+            var l_最良の終端 = 0;
+            for (var s = 0; s < l_経路.Count; s++)
+            {
+                var l_合計 = 0;
+                var l_最後の終端 = 0;
+                for (var t = 0; t < l_経路.Count; t++)
+                {
+                    if (l_経路[t] == l_経路[s])
+                    {
+                        l_合計 += l_票数[t];
+                        l_最後の終端 = l_終端位置[t];
                     }
                 }
+                if (l_合計 > l_最多得票)
+                {
+                    l_最良 = l_経路[s];
+                    l_最多得票 = l_合計;
+                    l_最良の終端 = l_最後の終端;
+                }
             }
+
+            var l_unitig長 = this._unitig長.GetValueOrDefault(Math.Abs(l_最良), 0);
+            return new 代表Unitigヒット(l_最良, l_最多得票, l_最良の終端, l_unitig長);
         }
 
         #endregion

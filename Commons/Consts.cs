@@ -10,7 +10,7 @@
         /// <summary>
         /// バージョン
         /// </summary>
-        public const string バージョン = "0.1.2";
+        public const string バージョン = "0.2.0";
 
         /// <summary>
         /// 保守的モードのペア結合閾値
@@ -56,7 +56,7 @@
         /// k を上げると 1 リードから取れる k-mer が減るため、カバレッジの薄いデータで高い k を試しても時間を捨てるだけになる<br/>
         /// 最初の k の結果から各 k のカバレッジを予測し、これを下回るものは実行前に捨てる
         /// </remarks>
-        public const double マルチkの最小kmerカバレッジ = 10.0D;
+        public const double マルチkの最小kmerカバレッジ = 10D;
 
         /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)

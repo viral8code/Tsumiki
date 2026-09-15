@@ -33,6 +33,11 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const string ポリッシュ済みファイル名 = "polished.fasta";
 
+        /// <summary>
+        /// 最終成果物の統計表のファイル名
+        /// </summary>
+        private const string 統計表ファイル名 = "stats.md";
+
         #endregion
 
         #region 公開メソッド
@@ -96,15 +101,48 @@ namespace Tsumiki.Cores.Pipeline
 
             p_結果 = p_結果 with { A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ) };
             V_記録_出所(p_原入力, p_結果, l_最終パス, p_一時ディレクトリ, p_処理済み設定);
+            V_出力_最終統計(p_一時ディレクトリ, l_最終パス);
             V_出力_完全性レポート(p_結果, p_原入力, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, p_一時ディレクトリ);
 
             Logger.V_出力(メッセージID.最終成果物, l_最終パス);
-
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 作業ディレクトリ直下に出した最終成果物の統計をログに出す
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">成果物の出力先</param>
+        /// <param name="p_最終パス">除外・ポリッシュを終えた assembly.fasta</param>
+        private static void V_出力_最終統計(string p_一時ディレクトリ, string p_最終パス)
+        {
+            Logger.V_出力_空行();
+            foreach (var (l_ラベル, l_パス) in Get_最終成果物群(p_一時ディレクトリ, p_最終パス))
+            {
+                if (File.Exists(l_パス))
+                {
+                    AssemblyStatsReporter.V_出力_統計($"final {l_ラベル}", l_パス);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 統計を出す最終成果物のラベルとパス
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">成果物の出力先</param>
+        /// <param name="p_最終パス">除外・ポリッシュを終えた assembly.fasta</param>
+        /// <returns></returns>
+        private static (string A_ラベル, string A_FASTAパス)[] Get_最終成果物群(string p_一時ディレクトリ, string p_最終パス)
+        {
+            return
+            [
+                ("contigs", Path.Combine(p_一時ディレクトリ, AssemblyPipeline.Contigファイル名)),
+                ("scaffolds", Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名)),
+                ("assembly", p_最終パス),
+            ];
+        }
 
         /// <summary>
         /// 加工前のリードから最終配列の整合性を再計算する
@@ -246,13 +284,13 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.ポリッシュ開始);
             var l_出力先 = Path.Combine(p_一時ディレクトリ, ポリッシュ済みファイル名);
+            // 深度は訂正前の貼り付けで測ったものを使う
+            // 訂正は少数の置換だけで、貼り直してもリードの置き場所はほとんど変わらないのに、全リードの貼り付けがもう 1 回かかる
             var l_統計 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先);
             Polisher.V_出力_統計(l_統計);
             if (l_統計 is not null)
             {
                 File.Copy(l_出力先, p_最終パス, overwrite: true);
-                var l_最終深度 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先, p_Is訂正: false);
-                l_統計 = l_最終深度 is { } l_測定 ? l_測定 with { A_訂正した塩基数 = l_統計.Value.A_訂正した塩基数 } : null;
             }
             Logger.V_出力_タイムスタンプ();
             return l_統計;
@@ -309,6 +347,10 @@ namespace Tsumiki.Cores.Pipeline
                 AssemblyStatsReporter.Get_N分割統計(l_配列群, l_統計の最小長), l_統計の最小長, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_原入力.A_Is低カバレッジ端トリミング,
                 AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)), p_結果.A_固定アンカー評価, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
+
+            var l_Markdownパス = Path.Combine(p_出力ディレクトリ, 統計表ファイル名);
+            ReportWriter.V_書き出し_Markdownレポート(l_Markdownパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計表(Get_最終成果物群(p_出力ディレクトリ, p_最終パス)), l_判定, l_未解決ギャップ数, l_環状本数, l_曖昧箇所.Count, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_結果.A_整合性検査, p_結果.A_固定アンカー評価, p_ポリッシュ統計, p_支持検査, p_閉鎖検証, PhaseTimingRecorder.Get_記録());
+            Logger.V_出力(メッセージID.統計表を書き出した, l_Markdownパス);
 
             ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);
             Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, l_曖昧箇所パス);

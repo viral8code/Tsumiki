@@ -274,6 +274,26 @@ namespace Tsumiki.Tests.Core
             Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
+        /// <summary>
+        /// read1 と RC (read2) が k 塩基以上重なっているペアは、反復を回り込んで目標へ届く経路があっても橋渡ししない
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_重なっているペアは反復を回り込む経路で橋渡ししない()
+        {
+            const int l_k長 = 21;
+            var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_930);
+
+            // 重なりは 40 bp で、重なりによる統合の最小長に届かない
+            var l_先行リード = l_正解[..150];
+            var l_後続リード = Util.V_逆相補(l_正解[110..260]);
+
+            // 別の場所に、read1 の末尾 k-mer から RC (read2) の先頭 k-mer へ続く配列を置く
+            var l_回り込み = l_先行リード[^l_k長..] + V_生成_ランダム配列(30, p_シード: 20_260_931) + l_正解[110..(110 + l_k長)];
+            using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解, l_回り込み);
+
+            Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
+        }
+
         #endregion
 
         #region 内部メソッド

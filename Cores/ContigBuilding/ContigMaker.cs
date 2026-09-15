@@ -34,6 +34,11 @@ namespace Tsumiki.Core
         /// </remarks>
         private const double 解ける反復長の分位 = 0.9D;
 
+        /// <summary>
+        /// 分岐元から単一コピーの頂点を探して遡る最大頂点数
+        /// </summary>
+        private const int 上流を遡る最大頂点数 = 8;
+
         #endregion
 
         #region 公開メソッド
@@ -104,6 +109,9 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.deBruijnグラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
 
             var (l_支持, l_ペア連結) = this.Get_辺重み(l_グラフ);
+            var l_経路索引 = this.Get_経路索引();
+            var l_引き継ぎ経路索引 = this._引き継ぎ経路集計.Count > 0 ? ReadPathIndex.Get_索引(this._引き継ぎ経路集計) : null;
+            Logger.V_出力(メッセージID.リード経路索引の件数, l_経路索引.A_経路数, l_引き継ぎ経路索引?.A_経路数 ?? 0);
 
             // 跨げる見込みのある長さの上限
             // フラグメント長の実測中央値を使う
@@ -116,21 +124,22 @@ namespace Tsumiki.Core
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
 
-            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先);
+            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引);
 
             // 支持を生カウントではなく期待本数との比で測るための較正器
             // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
             // (較正器が使えない場合は生カウントへフォールバックし、挙動は従来と完全に一致する)
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, p_リード長, this._unitig長.Values.Select(x => (long)x));
 
-            var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接));
-            var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数, l_unitig配列);
+            HashSet<int> l_経路で通す頂点 = [];
+            var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接), l_経路索引, l_引き継ぎ経路索引, l_経路で通す頂点, l_反復長の上限);
+            var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数, l_unitig配列, l_経路で通す頂点);
 
             // 1 歩だけを見る相互一意性の判定では決めきれなかった分岐を、
             // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
             // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
             // ペアエンドの証拠と整合する、という状況を拾える
-            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器, p_コピー数区間);
+            var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器, p_コピー数区間, l_経路索引);
 
             if (l_先読みで解決した数 > 0)
             {
@@ -214,7 +223,9 @@ namespace Tsumiki.Core
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_r_mer検証器"></param>
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
-        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先)
+        /// <param name="p_経路索引"></param>
+        /// <param name="p_引き継ぎ経路索引"></param>
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先, ReadPathIndex p_経路索引, ReadPathIndex? p_引き継ぎ経路索引)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
@@ -223,7 +234,7 @@ namespace Tsumiki.Core
             {
                 var l_今回の枝数 = p_グラフ.V_除去_行き止まり枝(p_unitig配列, p_枝長の上限);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
-                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器);
+                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引);
                 l_除去バブル数 += l_今回のバブル数;
                 l_解決した反復数 += l_今回の反復数;
                 l_外した枝数 += l_今回の枝数;
@@ -260,8 +271,12 @@ namespace Tsumiki.Core
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_引き継ぎ隣接">前段 k の確定経路が跨いだ unitig の組 (P2: 経路の持ち越し)</param>
+        /// <param name="p_経路索引">リードが通り抜けた unitig の並び</param>
+        /// <param name="p_引き継ぎ経路索引">前段 k の確定経路が通った unitig の並び</param>
+        /// <param name="p_経路で通す頂点">多コピーと推定されたが、通り抜けた並びで行き先を決めた頂点を受け取る</param>
+        /// <param name="p_起点の最短長">通り抜けた並びの起点にする単一コピーの頂点に要る配列長</param>
         /// <returns></returns>
-        private int[] Get_辺選択(UnitigGraph p_グラフ, Dictionary<(int, int), ulong> p_支持, 証拠較正器 p_較正器, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<(int, int), ulong>? p_引き継ぎ隣接 = null)
+        private int[] Get_辺選択(UnitigGraph p_グラフ, Dictionary<(int, int), ulong> p_支持, 証拠較正器 p_較正器, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<(int, int), ulong>? p_引き継ぎ隣接 = null, ReadPathIndex? p_経路索引 = null, ReadPathIndex? p_引き継ぎ経路索引 = null, HashSet<int>? p_経路で通す頂点 = null, int p_起点の最短長 = 0)
         {
             var l_選択 = new int[p_グラフ.A_出辺.Count];
             Array.Fill(l_選択, -1);
@@ -269,6 +284,9 @@ namespace Tsumiki.Core
             var l_支持で解決した数 = 0;
             var l_引き継ぎで解決した数 = 0;
             var l_反復由来で未解決の数 = 0;
+            var l_経路で解決した数 = 0;
+            var l_多コピーを経路で解決した数 = 0;
+            var l_引き継ぎ経路で解決した数 = 0;
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
                 var l_出辺 = p_グラフ.A_出辺[v];
@@ -292,6 +310,15 @@ namespace Tsumiki.Core
                 // 単一コピー領域からのペアエンドでしか決められない
                 if (p_コピー数 is not null && p_コピー数.GetValueOrDefault(v >> 1, 1) > 1)
                 {
+                    // ただし入口が一本道で単一コピーの頂点まで遡れるなら、そこから通り抜けたリードがコピーを区別する
+                    if (Get_経路で一意な行き先(p_グラフ, p_経路索引, v, this._unitig配列, p_起点の最短長, p_コピー数, p_優勢閾値, p_最小証拠数) is { } l_経路先)
+                    {
+                        l_選択[v] = l_経路先;
+                        _ = p_経路で通す頂点?.Add(v);
+                        l_経路で解決した数++;
+                        l_多コピーを経路で解決した数++;
+                        continue;
+                    }
                     l_反復由来で未解決の数++;
                     AmbiguityRecorder.V_記録(曖昧箇所の種別.反復の内側, AmbiguityRecorder.Get_場所名(v));
                     continue;
@@ -327,8 +354,22 @@ namespace Tsumiki.Core
                     continue;
                 }
 
+                if (Get_経路で一意な行き先(p_グラフ, p_経路索引, v, this._unitig配列, p_起点の最短長, p_コピー数, p_優勢閾値, p_最小証拠数) is { } l_通り抜け先)
+                {
+                    l_選択[v] = l_通り抜け先;
+                    l_経路で解決した数++;
+                    continue;
+                }
+
                 // この k 自身の read/pair 支持だけでは決められない場合に限り、
                 // 前段 k から引き継いだ経路を追加の判断材料にする
+                if (Get_経路で一意な行き先(p_グラフ, p_引き継ぎ経路索引, v, this._unitig配列, p_起点の最短長, p_コピー数, p_優勢閾値, 1UL) is { } l_引き継ぎ経路先)
+                {
+                    l_選択[v] = l_引き継ぎ経路先;
+                    l_経路で解決した数++;
+                    l_引き継ぎ経路で解決した数++;
+                    continue;
+                }
                 // (支持で決着済みの分岐は、経路引き継ぎで上書きしない)
                 if (p_引き継ぎ隣接 is { Count: > 0 } && Get_引き継ぎで一意な行き先(v, l_出辺, p_引き継ぎ隣接) is { } l_引き継ぎ先)
                 {
@@ -349,8 +390,55 @@ namespace Tsumiki.Core
             {
                 Logger.V_出力(メッセージID.経路引き継ぎで解決した数, l_引き継ぎで解決した数);
             }
+            if (l_経路で解決した数 > 0)
+            {
+                Logger.V_出力(メッセージID.経路で解決した分岐数, l_経路で解決した数, l_多コピーを経路で解決した数, l_引き継ぎ経路で解決した数);
+            }
 
             return l_選択;
+        }
+
+        /// <summary>
+        /// 分岐元の手前にある単一コピーの頂点から分岐元を通り抜けた並びが、行き先の 1 つに偏っていればそれを返す
+        /// </summary>
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_経路索引"></param>
+        /// <param name="p_分岐元"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_起点の最短長">起点にする単一コピーの頂点に要る配列長</param>
+        /// <param name="p_コピー数"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <remarks>
+        /// 分岐元へ入る辺が 1 本ずつの一本道で単一コピーの頂点まで遡れるなら、分岐元のどのコピーもその頂点を通って入ってくる<br/>
+        /// そこから通り抜けた並びの偏りは、コピー数の推定に頼らずに行き先を示す<br/>
+        /// 短い頂点はカバレッジのばらつきで反復を 1 コピーと推定しやすく、起点にすると別のコピーから来たリードまで数えてしまうため、長さを要求する
+        /// </remarks>
+        /// <returns>決まらなければ null</returns>
+        private static int? Get_経路で一意な行き先(UnitigGraph p_グラフ, ReadPathIndex? p_経路索引, int p_分岐元, IReadOnlyList<string> p_unitig配列, int p_起点の最短長, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数)
+        {
+            if (p_経路索引 is null)
+            {
+                return null;
+            }
+
+            List<int> l_上流 = [p_分岐元];
+            var l_現在 = p_分岐元;
+            while (p_グラフ.Get_入次数(l_現在) == 1 && l_上流.Count <= 上流を遡る最大頂点数)
+            {
+                var l_直前 = p_グラフ.A_出辺[l_現在 ^ 1][0] ^ 1;
+                if (l_上流.Exists(x => (x >> 1) == (l_直前 >> 1)))
+                {
+                    return null;
+                }
+                l_上流.Insert(0, l_直前);
+                if ((p_コピー数?.GetValueOrDefault(l_直前 >> 1, 1) ?? 1) <= 1 && p_unitig配列[l_直前].Length >= p_起点の最短長)
+                {
+                    return p_経路索引.Get_優勢な行き先(l_上流, p_グラフ.A_出辺[p_分岐元], p_優勢閾値, p_最小証拠数);
+                }
+                l_現在 = l_直前;
+            }
+            return null;
         }
 
         /// <summary>
@@ -415,11 +503,12 @@ namespace Tsumiki.Core
         /// <param name="p_選択"></param>
         /// <param name="p_コピー数"></param>
         /// <param name="p_unitig配列"></param>
+        /// <param name="p_経路で通す頂点">入口が 1 本で、手前の単一コピーの頂点から通り抜けた並びで行き先を決めた頂点</param>
         /// <remarks>
         /// これを欠くと、同じ行き先を指す複数の unitig のうち先着だけが 結合され、残りが根拠なく千切れる
         /// </remarks>
         /// <returns></returns>
-        private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyList<string> p_unitig配列)
+        private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyList<string> p_unitig配列, IReadOnlySet<int>? p_経路で通す頂点 = null)
         {
             var l_結合 = new int[p_グラフ.A_出辺.Count];
             Array.Fill(l_結合, -1);
@@ -437,7 +526,7 @@ namespace Tsumiki.Core
                 // 片側だけ許すと結合の対称性が
                 // 崩れ、walk の始点判定が壊れるため、
                 // どちらかが通り抜け不可なら対ごと採用しない
-                if (!p_グラフ.Is構造上一意な辺(v, l_終点) && (!p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1, p_unitig配列)))
+                if (!p_グラフ.Is構造上一意な辺(v, l_終点) && ((!(p_経路で通す頂点?.Contains(v) ?? false) && !p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列)) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1, p_unitig配列)))
                 {
                     l_反復通り抜けで棄却した数++;
                     continue;

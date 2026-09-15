@@ -125,6 +125,43 @@ namespace Tsumiki.Cores.Evaluation
             Logger.V_出力_そのまま($"[Stats] {p_ラベル} (N-split, >= {比較用の最小長}bp): {l_N分割統計}");
         }
 
+        /// <summary>
+        /// 複数の FASTA の統計を 1 つの Markdown の表の行にする
+        /// </summary>
+        /// <param name="p_対象群">ラベルと FASTA のパス、存在しないパスは飛ばす</param>
+        /// <remarks>
+        /// 全配列、比較用の最小長以上、N で分割して比較用の最小長以上、の 3 通りを並べる
+        /// </remarks>
+        /// <returns>見出し行を含む表の行</returns>
+        public static List<string> Get_統計表(IReadOnlyList<(string A_ラベル, string A_FASTAパス)> p_対象群)
+        {
+            List<string> l_行群 =
+            [
+                "| file | filter | count | total length | max | min | N50 | L50 | GC% |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            ];
+            foreach (var (l_ラベル, l_パス) in p_対象群)
+            {
+                if (!File.Exists(l_パス))
+                {
+                    continue;
+                }
+
+                var l_配列群 = Get_配列群(l_パス).ToList();
+                (string A_条件, アセンブリ統計 A_統計)[] l_絞り込み群 =
+                [
+                    ("all", Get_統計(l_配列群)),
+                    ($">= {比較用の最小長}bp", Get_統計(l_配列群.Where(x => x.Length >= 比較用の最小長))),
+                    ($"N-split, >= {比較用の最小長}bp", Get_N分割統計(l_配列群, 比較用の最小長)),
+                ];
+                foreach (var (l_条件, l_統計) in l_絞り込み群)
+                {
+                    l_行群.Add(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"| {l_ラベル} | {l_条件} | {l_統計.A_配列数:N0} | {l_統計.A_総延長:N0} | {l_統計.A_最大長:N0} | {l_統計.A_最小長:N0} | {l_統計.A_N50:N0} | {l_統計.A_L50:N0} | {l_統計.A_GC率:F2} |"));
+                }
+            }
+            return l_行群;
+        }
+
         #endregion
 
         #region 内部メソッド

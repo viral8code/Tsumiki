@@ -42,6 +42,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         public static void V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2)
         {
+            using var l_計測 = new StageTimer("error-correction");
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
             var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, "error_correction");
@@ -241,7 +242,13 @@ namespace Tsumiki.Cores.Preprocessing
                         l_訂正されたリード数++;
                         l_総訂正塩基数 += l_結果.A_訂正数;
                     }
-                    l_書き込み.V_書き込み(l_ID群[i], string.Join(string.Empty, l_結果.A_塩基列.Select(Util.V_変換_塩基文字)), l_クオリティ群[i]);
+                    l_書き込み.V_書き込み(l_ID群[i], string.Create(l_結果.A_塩基列.Length, l_結果.A_塩基列, static (l_文字, l_塩基列) =>
+                    {
+                        for (var j = 0; j < l_塩基列.Length; j++)
+                        {
+                            l_文字[j] = Util.Get_塩基文字(l_塩基列[j]);
+                        }
+                    }), l_クオリティ群[i]);
                 }
             }
 

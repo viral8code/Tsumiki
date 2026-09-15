@@ -66,12 +66,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_統計">統合の内訳</param>
+        /// <param name="p_推定断片長上限">-i が無いときに橋渡し長の上限を見積もる断片長、分からなければ null</param>
         /// <returns>統合できたペアの合成配列</returns>
-        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計)
+        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計, int? p_推定断片長上限 = null)
         {
             using var l_計測 = new StageTimer($"superread k={p_k長}");
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            var l_インサートサイズ = ConfigurationManager.A_実行時引数.A_インサートサイズ;
+            var l_インサートサイズ = ConfigurationManager.A_実行時引数.A_インサートサイズ ?? p_推定断片長上限;
 
             var l_総ペア数 = 0;
             var l_統合数 = 0;
@@ -303,6 +304,12 @@ namespace Tsumiki.Cores.Preprocessing
             var l_目標kmer = Util.V_変換_塩基列(Util.V_逆相補_曖昧塩基あり(p_配列2[^p_k長..]));
             if (Array.IndexOf(l_目標kmer, Consts.無効な塩基) >= 0
                 || !p_kmerインデックス.Haskmer(l_目標kmer))
+            {
+                return null;
+            }
+
+            // RC (read2) の先頭 k-mer が read1 の中にあれば 2 本は重なっていて、前向きの探索で届くのは反復を回り込んだ別の場所だけになる
+            if (Util.V_変換_塩基列(p_配列1).AsSpan().IndexOf(l_目標kmer) >= 0)
             {
                 return null;
             }

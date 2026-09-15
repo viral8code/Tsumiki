@@ -36,7 +36,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// contig ファイル名
         /// </summary>
-        private const string Contigファイル名 = "contigs.fasta";
+        internal const string Contigファイル名 = "contigs.fasta";
 
         /// <summary>
         /// 最終アセンブリファイル名
@@ -47,6 +47,11 @@ namespace Tsumiki.Cores.Pipeline
         /// unitig 数の上限
         /// </summary>
         private const int Unitig数の上限 = 100_000;
+
+        /// <summary>
+        /// 合成リードの橋渡し長の上限を見積もる断片長の分位
+        /// </summary>
+        private const double 橋渡しに使う断片長の分位 = 0.99D;
 
         #endregion
 
@@ -275,7 +280,7 @@ namespace Tsumiki.Cores.Pipeline
                 AssemblyValidator.V_出力_検査結果("contigs", l_contig検査);
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次段引き継ぎ(p_次への引き継ぎ, l_contigパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+                V_用意_次段引き継ぎ(p_次への引き継ぎ, l_contigパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本);
                 var l_contigのみの結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_contig検査, l_コピー数推定.A_基準の出所);
                 V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_contigのみの結果;
@@ -310,7 +315,7 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え);
+            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本);
             var l_結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, l_scaffoldパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_scaffoldの検査, l_コピー数推定.A_基準の出所);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
@@ -382,7 +387,8 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数"></param>
         /// <param name="p_バブル敗者"></param>
         /// <param name="p_合成リードの控え"></param>
-        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え)
+        /// <param name="p_断片長標本">合成リードの橋渡し長の上限を見積もる断片長</param>
+        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -428,7 +434,8 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計);
+            int? l_断片長上限 = p_断片長標本.Count > 0 ? StatsUtil.Get_分位点([.. p_断片長標本.Order()], 橋渡しに使う断片長の分位) : null;
+            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限);
             SuperReadJoiner.V_出力_統計(l_統計);
             p_次への引き継ぎ.AddRange(l_合成リード);
             p_合成リードの控え?.AddRange(l_合成リード);

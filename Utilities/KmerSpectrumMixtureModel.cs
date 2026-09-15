@@ -1,4 +1,5 @@
-﻿using Tsumiki.Models.Foundation;
+﻿using Tsumiki.Commons;
+using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Utilities
 {
@@ -89,10 +90,17 @@ namespace Tsumiki.Utilities
 
             var l_log階乗 = Get_log階乗テーブル(l_走査上限);
 
-            ヒストグラム試行結果? l_最良 = null;
-            foreach (var l_初期λ in Get_初期λ候補(l_出現回数, l_頻度, l_走査上限))
+            // 試行は初期値ごとに独立なので並列に回し、最良の選び方は候補の順に比べる逐次の場合と揃える
+            var l_初期λ候補 = Get_初期λ候補(l_出現回数, l_頻度, l_走査上限);
+            var l_試行群 = new ヒストグラム試行結果?[l_初期λ候補.Count];
+            _ = Parallel.For(0, l_初期λ候補.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
             {
-                var l_試行 = Get_単一試行(l_出現回数, l_頻度, l_log階乗, l_総数, l_初期λ);
+                l_試行群[i] = Get_単一試行(l_出現回数, l_頻度, l_log階乗, l_総数, l_初期λ候補[i]);
+            });
+
+            ヒストグラム試行結果? l_最良 = null;
+            foreach (var l_試行 in l_試行群)
+            {
                 if (l_試行 is not { } l_結果)
                 {
                     continue;
@@ -323,6 +331,7 @@ namespace Tsumiki.Utilities
 
             var l_対数尤度 = 0D;
             var l_項 = new double[1 + コピー数の上限];
+            var (l_μ群, l_logμ群, l_log混合比群) = Get_コピー数別の定数(p_λ, p_コピー数別混合比);
 
             for (var i = 0; i < p_出現回数.Length; i++)
             {
@@ -333,10 +342,9 @@ namespace Tsumiki.Utilities
 
                 for (var k = 1; k <= コピー数の上限; k++)
                 {
-                    var l_μ = k * p_λ;
                     // ポアソン分布 (コピー数 k のゲノム成分) : P (c) = exp (-μ) μ^c / c!
-                    l_項[k] = l_logw真 + Math.Log(Math.Max(1e-300D, p_コピー数別混合比[k - 1]))
-                        + (-l_μ + l_末尾配列 * Math.Log(l_μ) - p_log階乗[(int)l_末尾配列]);
+                    l_項[k] = l_logw真 + l_log混合比群[k - 1]
+                        + (-l_μ群[k - 1] + l_末尾配列 * l_logμ群[k - 1] - p_log階乗[(int)l_末尾配列]);
                 }
 
                 var l_logP_c = Get_LogSumExp(l_項);
@@ -440,20 +448,43 @@ namespace Tsumiki.Utilities
 
             var l_結果 = new double[p_出現回数.Length];
             var l_項 = new double[1 + コピー数の上限];
+            var (l_μ群, l_logμ群, l_log混合比群) = Get_コピー数別の定数(p_λ, p_コピー数別混合比);
             for (var i = 0; i < p_出現回数.Length; i++)
             {
                 var l_末尾配列 = p_出現回数[i];
                 l_項[0] = l_logw誤り + (l_末尾配列 - 1D) * l_log1マイナスp + l_logP;
                 for (var k = 1; k <= コピー数の上限; k++)
                 {
-                    var l_μ = k * p_λ;
-                    l_項[k] = l_logw真 + Math.Log(Math.Max(1e-300D, p_コピー数別混合比[k - 1]))
-                        + (-l_μ + l_末尾配列 * Math.Log(l_μ) - p_log階乗[(int)l_末尾配列]);
+                    l_項[k] = l_logw真 + l_log混合比群[k - 1]
+                        + (-l_μ群[k - 1] + l_末尾配列 * l_logμ群[k - 1] - p_log階乗[(int)l_末尾配列]);
                 }
                 var l_logP_c = Get_LogSumExp(l_項);
                 l_結果[i] = Math.Exp(l_項[0] - l_logP_c);
             }
             return l_結果;
+        }
+
+        /// <summary>
+        /// コピー数ごとの平均、その対数、混合比の対数
+        /// </summary>
+        /// <param name="p_λ"></param>
+        /// <param name="p_コピー数別混合比"></param>
+        /// <remarks>
+        /// 出現回数によらない値なので、ビンごとに取り直さない
+        /// </remarks>
+        /// <returns></returns>
+        private static (double[] A_μ群, double[] A_logμ群, double[] A_log混合比群) Get_コピー数別の定数(double p_λ, double[] p_コピー数別混合比)
+        {
+            var l_μ群 = new double[コピー数の上限];
+            var l_logμ群 = new double[コピー数の上限];
+            var l_log混合比群 = new double[コピー数の上限];
+            for (var k = 1; k <= コピー数の上限; k++)
+            {
+                l_μ群[k - 1] = k * p_λ;
+                l_logμ群[k - 1] = Math.Log(l_μ群[k - 1]);
+                l_log混合比群[k - 1] = Math.Log(Math.Max(1e-300D, p_コピー数別混合比[k - 1]));
+            }
+            return (l_μ群, l_logμ群, l_log混合比群);
         }
 
         /// <summary>
