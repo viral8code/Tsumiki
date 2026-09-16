@@ -140,6 +140,67 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 配列のうち、リードで一度も観測されていない r-mer が続く範囲を集める
+        /// </summary>
+        /// <param name="p_配列">調べる配列</param>
+        /// <param name="p_連続の下限">未観測の窓がこの数だけ続いたら範囲として拾う</param>
+        /// <param name="p_範囲">見つけた範囲 (窓の開始位置、終了位置は含む) の書き留め先</param>
+        /// <remarks>
+        /// 低カバレッジでは未観測の窓が散発するので、連続した長さで反復由来の継ぎ目と区別する<br/>
+        /// 曖昧塩基を含む窓は判定できないため観測済みとして扱い、連続を切る
+        /// </remarks>
+        public void V_収集_未観測の連続範囲(string p_配列, int p_連続の下限, List<(int A_開始, int A_終了)> p_範囲)
+        {
+            if (p_連続の下限 <= 0 || p_配列.Length < this._r長)
+            {
+                return;
+            }
+
+            var l_直近の曖昧位置 = -1;
+            var l_連続開始 = -1;
+            for (var i = 0; i + this._r長 <= p_配列.Length; i++)
+            {
+                var l_新規末尾 = i + this._r長 - 1;
+                if (i == 0)
+                {
+                    for (var j = 0; j < this._r長; j++)
+                    {
+                        if (Util.Is曖昧塩基(p_配列[j]))
+                        {
+                            l_直近の曖昧位置 = j;
+                        }
+                    }
+                }
+                else if (Util.Is曖昧塩基(p_配列[l_新規末尾]))
+                {
+                    l_直近の曖昧位置 = l_新規末尾;
+                }
+
+                var l_Is未観測 = l_直近の曖昧位置 < i && !this.Has観測(Get_正準値(p_配列.AsSpan(i, this._r長)));
+                if (l_Is未観測)
+                {
+                    if (l_連続開始 < 0)
+                    {
+                        l_連続開始 = i;
+                    }
+                    continue;
+                }
+
+                if (l_連続開始 >= 0 && i - l_連続開始 >= p_連続の下限)
+                {
+                    p_範囲.Add((l_連続開始, i - 1));
+                }
+                l_連続開始 = -1;
+            }
+
+            var l_窓数 = p_配列.Length - this._r長 + 1;
+            if (l_連続開始 >= 0 && l_窓数 - l_連続開始 >= p_連続の下限)
+            {
+                p_範囲.Add((l_連続開始, l_窓数 - 1));
+            }
+        }
+
+        /// <summary>
         /// 配列とその逆相補のうち、順鎖と逆鎖どちらから読んでも同一になるキーを返す
         /// </summary>
         /// <remarks>

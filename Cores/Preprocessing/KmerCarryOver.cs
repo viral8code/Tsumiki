@@ -20,6 +20,24 @@ namespace Tsumiki.Cores.Preprocessing
         /// </remarks>
         private const int 引き継ぐ配列の最小長 = 500;
 
+        /// <summary>
+        /// 持ち越しの裏付けを確かめる r-mer の長さ
+        /// </summary>
+        /// <remarks>
+        /// k+1 では足りない。反復の別コピーが繋がった継ぎ目でも、短い窓なら片方のコピーを読んだリードだけで真になる<br/>
+        /// リード長に収まり、偶然の一致がまず起きない長さとして 41 を使う
+        /// </remarks>
+        internal const int 持ち越し検証のr長 = 41;
+
+        /// <summary>
+        /// 持ち越さないと判断する、未観測の窓の連続数
+        /// </summary>
+        /// <remarks>
+        /// 低カバレッジでは未観測の窓が散発する (実測で 13% 前後) ため、1 つでも外すと本来の穴埋めまで消える<br/>
+        /// 反復由来の継ぎ目は 15 窓以上続き、正常な区間の最長は 11 窓だった
+        /// </remarks>
+        internal const int 未観測の連続の下限 = 14;
+
         #endregion
 
         #region 公開メソッド
@@ -31,11 +49,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_分岐の継ぎ目">その k で分岐のある継ぎ目を通った辺 ((k+1)-mer、両向き)、無ければ null</param>
+        /// <param name="p_検証器">渡すと、リードで観測されていない r-mer が続く範囲を調べ、そこを持ち越しから外す</param>
         /// <remarks>
         /// k-mer インデックスが生きているうちにしか作れない
         /// </remarks>
         /// <returns></returns>
-        public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null)
+        public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null, RepeatRMerVerifier? p_検証器 = null)
         {
             List<引き継ぎ配列> l_結果 = [];
             using var l_読み込み = new FastaReader(p_FASTAパス);
@@ -54,7 +73,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長)));
+                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長), A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器)));
             }
             return l_結果;
         }
@@ -84,6 +103,51 @@ namespace Tsumiki.Cores.Preprocessing
                 }
             }
             return l_位置群;
+        }
+
+        /// <summary>
+        /// リードで観測されていない r-mer が続く範囲
+        /// </summary>
+        /// <param name="p_配列">調べる配列</param>
+        /// <param name="p_検証器">r-mer の検証器、無ければ null</param>
+        /// <returns>1 つも無ければ null</returns>
+        internal static IReadOnlyList<(int A_開始, int A_終了)>? Get_未観測の連続範囲(string p_配列, RepeatRMerVerifier? p_検証器)
+        {
+            if (p_検証器 is null)
+            {
+                return null;
+            }
+
+            List<(int A_開始, int A_終了)> l_範囲 = [];
+            p_検証器.V_収集_未観測の連続範囲(p_配列, 未観測の連続の下限, l_範囲);
+            return l_範囲.Count > 0 ? l_範囲 : null;
+        }
+
+        /// <summary>
+        /// リードで観測されていない範囲に掛かる窓の最小カバレッジを 0 にして、足さないようにする
+        /// </summary>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_k長">足す先の k</param>
+        /// <param name="p_最小値列">窓ごとの最小カバレッジ</param>
+        /// <remarks>
+        /// 範囲に少しでも掛かる k-mer を落とす。継ぎ目そのものを含む k-mer だけを外しても、その両隣から同じ経路が繋がる
+        /// </remarks>
+        internal static void V_除外_未観測の範囲(引き継ぎ配列 p_引き継ぎ, int p_k長, Span<int> p_最小値列)
+        {
+            if (p_引き継ぎ.A_未観測の連続範囲 is not { Count: > 0 } l_範囲群)
+            {
+                return;
+            }
+
+            foreach (var (l_開始, l_終了) in l_範囲群)
+            {
+                var l_下 = Math.Max(0, l_開始 - p_k長 + 1);
+                var l_上 = Math.Min(p_最小値列.Length - 1, l_終了 + 持ち越し検証のr長 - 1);
+                for (var s = l_下; s <= l_上; s++)
+                {
+                    p_最小値列[s] = 0;
+                }
+            }
         }
 
         /// <summary>
@@ -274,6 +338,7 @@ namespace Tsumiki.Cores.Preprocessing
             }
             V_計算_最小値列(p_引き継ぎ.A_カバレッジ, p_k長 - p_引き継ぎ.A_k長 + 1, p_最小値列.AsSpan(0, l_窓数), p_待ち行列);
             V_除外_継ぎ目を含む窓(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
+            V_除外_未観測の範囲(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
 
             List<(UInt128 A_上位, UInt128 A_下位, ulong A_カバレッジ)>? l_未登録 = null;
             var l_窓 = new RollingKmer(p_k長);
@@ -340,6 +405,7 @@ namespace Tsumiki.Cores.Preprocessing
                 }
                 V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
                 V_除外_継ぎ目を含む窓(l_引き継ぎ, p_k長, l_最小値列.AsSpan(0, l_窓数));
+                V_除外_未観測の範囲(l_引き継ぎ, p_k長, l_最小値列.AsSpan(0, l_窓数));
 
                 var l_直近の無効塩基位置 = -1;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)

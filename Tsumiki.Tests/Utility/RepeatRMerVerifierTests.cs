@@ -72,6 +72,39 @@ namespace Tsumiki.Tests.Utility
         #region 公開メソッド
 
         /// <summary>
+        /// リードで観測されていない r-mer が続く範囲だけを拾う
+        /// </summary>
+        /// <remarks>
+        /// 低カバレッジでは未観測の窓が散発するので、連続した長さで反復由来の継ぎ目と区別する
+        /// </remarks>
+        [Fact]
+        public void V_収集_未観測の連続範囲_連続が下限に届いた範囲だけ拾う()
+        {
+            var l_リード = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
+            var l_パス = Path.Combine(this._作業ディレクトリ, "reads.fq");
+            File.WriteAllText(l_パス, $"@r1\n{l_リード}\n+\n{new string('I', l_リード.Length)}\n");
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
+
+            // リードそのものは全窓が観測済み
+            List<(int A_開始, int A_終了)> l_観測済み = [];
+            l_検証器.V_収集_未観測の連続範囲(l_リード, p_連続の下限: 3, l_観測済み);
+            Assert.Empty(l_観測済み);
+
+            // リードに無い配列は、連続が下限に届けば範囲になる
+            var l_未観測 = new string('G', r長 + 4);
+            List<(int A_開始, int A_終了)> l_届く = [];
+            l_検証器.V_収集_未観測の連続範囲(l_未観測, p_連続の下限: 3, l_届く);
+            var l_範囲 = Assert.Single(l_届く);
+            Assert.Equal(0, l_範囲.A_開始);
+            Assert.Equal(l_未観測.Length - r長, l_範囲.A_終了);
+
+            // 同じ配列でも下限に届かなければ拾わない
+            List<(int A_開始, int A_終了)> l_届かない = [];
+            l_検証器.V_収集_未観測の連続範囲(l_未観測, p_連続の下限: 99, l_届かない);
+            Assert.Empty(l_届かない);
+        }
+
+        /// <summary>
         /// パック幅の境界でも全塩基を保持し、逆相補を同一視する
         /// </summary>
         /// <param name="p_長さ">検査する窓の長さ</param>

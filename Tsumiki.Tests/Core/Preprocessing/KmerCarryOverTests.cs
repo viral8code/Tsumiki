@@ -53,6 +53,45 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// リードで観測されていない範囲に掛かる k-mer は引き継がない
+        /// </summary>
+        /// <remarks>
+        /// 前段 k のグラフで反復の別コピーが繋がった継ぎ目は、リードがその並びを一度も読んでいない<br/>
+        /// 継ぎ目そのものを含む k-mer だけを外しても両隣から同じ経路が繋がるので、範囲に掛かる窓をまとめて外す
+        /// </remarks>
+        [Fact]
+        public void V_除外_未観測の範囲_範囲に掛かる窓を外す()
+        {
+            const int l_前k長 = 21;
+            const int l_k長 = 31;
+            var l_カバレッジ = Enumerable.Repeat(40, 200).ToArray();
+            var l_引き継ぎ = new 引き継ぎ配列(new string('A', 220), l_カバレッジ, l_前k長, A_未観測の連続範囲: [(100, 113)]);
+            var l_最小値列 = Enumerable.Repeat(40, 190).ToArray();
+
+            KmerCarryOver.V_除外_未観測の範囲(l_引き継ぎ, l_k長, l_最小値列);
+
+            // 範囲の開始に掛かる最も手前の窓と、範囲の終了から r-mer ぶん後ろまでが 0 になる
+            Assert.Equal(0, l_最小値列[100 - l_k長 + 1]);
+            Assert.Equal(0, l_最小値列[113]);
+            Assert.Equal(40, l_最小値列[100 - l_k長]);
+            Assert.Equal(40, l_最小値列[113 + KmerCarryOver.持ち越し検証のr長]);
+        }
+
+        /// <summary>
+        /// 未観測の範囲が無ければカバレッジは変わらない
+        /// </summary>
+        [Fact]
+        public void V_除外_未観測の範囲_範囲が無ければ変えない()
+        {
+            var l_引き継ぎ = new 引き継ぎ配列(new string('A', 120), Enumerable.Repeat(40, 100).ToArray(), 21);
+            var l_最小値列 = Enumerable.Repeat(40, 90).ToArray();
+
+            KmerCarryOver.V_除外_未観測の範囲(l_引き継ぎ, 31, l_最小値列);
+
+            Assert.All(l_最小値列, x => Assert.Equal(40, x));
+        }
+
+        /// <summary>
         /// 配列中のすべての k-mer についてカバレッジを記録することを検証する
         /// </summary>
         [Fact]

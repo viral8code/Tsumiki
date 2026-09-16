@@ -315,7 +315,7 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目);
+            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目, p_原入力, p_リード長);
             var l_結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, l_scaffoldパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_scaffoldの検査, l_コピー数推定.A_基準の出所);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
@@ -389,7 +389,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_合成リードの控え"></param>
         /// <param name="p_断片長標本">合成リードの橋渡し長の上限を見積もる断片長</param>
         /// <param name="p_分岐の継ぎ目">この k の contig が分岐のある継ぎ目で通った辺 ((k+1)-mer、両向き)</param>
-        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本, HashSet<string> p_分岐の継ぎ目)
+        /// <param name="p_原入力">r-mer の裏付けを数える元のリードを持つ設定</param>
+        /// <param name="p_リード長">代表リード長</param>
+        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本, HashSet<string> p_分岐の継ぎ目, Parameters? p_原入力 = null, int? p_リード長 = null)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -401,8 +403,17 @@ namespace Tsumiki.Cores.Pipeline
             // ところなのかが分からないと止まったように見えるため、区切りを出す
             Logger.V_出力(メッセージID.引き継ぎの準備開始);
 
+            // 前段 k のグラフで反復の別コピーが繋がった継ぎ目は、リードがその並びを一度も読んでいない
+            // 持ち越す前に r-mer で裏付けを確かめ、裏付けの無い範囲は足さない
+            // r は k に依らず固定にする (k を上げるほど r も伸ばすと、リードから取れる窓が足りなくなる)
+            RepeatRMerVerifier? l_持ち越し検証器 = null;
+            if ((p_リード長 ?? 0) - KmerCarryOver.持ち越し検証のr長 + 1 >= rMer検証に必要な窓数)
+            {
+                l_持ち越し検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], KmerCarryOver.持ち越し検証のr長);
+            }
+
             p_次への引き継ぎ.Clear();
-            p_次への引き継ぎ.AddRange(KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長, p_分岐の継ぎ目));
+            p_次への引き継ぎ.AddRange(KmerCarryOver.Get_引き継ぎ配列(p_FASTAパス, p_kmerインデックス, p_k長, p_分岐の継ぎ目, l_持ち越し検証器));
             Logger.V_出力_そのまま(FormattableString.Invariant($"[Carry-over] {p_分岐の継ぎ目.Count / 2:N0} branch junction edge(s) are not carried into longer k-mers"));
 
             foreach (var l_配列 in p_バブル敗者)
