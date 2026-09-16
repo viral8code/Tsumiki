@@ -545,7 +545,7 @@ namespace Tsumiki.Core
             }
 
             var l_並び1 = CollectionsMarshal.AsSpan(p_経路1);
-            Span<int> l_並び2 = l_長さ2 <= 64 ? stackalloc int[l_長さ2] : new int[l_長さ2];
+            var l_並び2 = l_長さ2 <= 64 ? stackalloc int[l_長さ2] : new int[l_長さ2];
             for (var i = 0; i < l_長さ2; i++)
             {
                 l_並び2[i] = -p_経路2[l_長さ2 - 1 - i];

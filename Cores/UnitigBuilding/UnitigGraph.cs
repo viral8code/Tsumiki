@@ -35,6 +35,15 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </remarks>
         public HashSet<int> A_自己ループ { get; }
 
+        /// <summary>
+        /// walk に通り抜けさせない頂点
+        /// </summary>
+        /// <remarks>
+        /// 反復の頂点で行き止まりの枝を外すと、入次数・出次数が 1 ずつの一本道に見えるが、繋がっているのは別コピーの入口と出口かもしれない<br/>
+        /// 枝を外さないと contig がそこで切れて連続性を大きく損なうので、枝は外したうえでここに控え、結合の判断でだけ反復として扱う
+        /// </remarks>
+        public HashSet<int> A_通り抜け禁止の頂点 { get; } = [];
+
         #endregion
 
         #region コンストラクタ
@@ -80,6 +89,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns></returns>
         public bool Is通過可能(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点, IReadOnlyList<string>? p_unitig配列 = null)
         {
+            if (this.A_通り抜け禁止の頂点.Contains(p_頂点))
+            {
+                return false;
+            }
+
             var l_出次数 = this.A_出辺[p_頂点].Count;
             var l_入次数 = this.Get_入次数(p_頂点);
             if (l_出次数 == 1 && l_入次数 == 1)
@@ -106,12 +120,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_終点"></param>
         /// <remarks>
         /// この辺だけで結合された頂点を walk が通り抜けるには入次数・出次数とも 1 である必要があり、それは Is通過可能 を満たすので、コピー数に関わらず結合してよい<br/>
-        /// カバレッジが高いだけの単一配列 (プラスミド等) を多コピーと誤推定しても、構造上一意な辺で千切らないため
+        /// カバレッジが高いだけの単一配列 (プラスミド等) を多コピーと誤推定しても、構造上一意な辺で千切らないため<br/>
+        /// ただし通り抜け禁止の頂点は、一本道に見えても別コピーの入口と出口が繋がっている疑いがあるので、この近道を使わせない
         /// </remarks>
         /// <returns></returns>
         public bool Is構造上一意な辺(int p_始点, int p_終点)
         {
-            return this.A_出辺[p_始点].Count == 1 && this.Get_入次数(p_終点) == 1;
+            return this.A_出辺[p_始点].Count == 1
+                && this.Get_入次数(p_終点) == 1
+                && !this.A_通り抜け禁止の頂点.Contains(p_始点)
+                && !this.A_通り抜け禁止の頂点.Contains(p_終点 ^ 1);
         }
 
         /// <summary>
@@ -276,7 +294,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_経路行列 = Get_経路支持行列(p_経路索引, l_入口群, l_鎖, l_出口群);
                 var l_ペア行列 = Get_ペア支持行列(p_ペア連結, l_入口群, l_出口群);
                 var l_経路対応 = Get_決着した対応(l_経路行列, p_優勢閾値, p_最小証拠数);
-                int[]? l_ペア対応 = Get_決着した対応(l_ペア行列, p_優勢閾値, p_最小証拠数);
+                var l_ペア対応 = Get_決着した対応(l_ペア行列, p_優勢閾値, p_最小証拠数);
                 var l_足場合計 = 0UL;
                 var l_Is足場使用 = false;
                 if (l_ペア対応.Contains(-1))
@@ -502,6 +520,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 行き止まりの枝はゲノムをその先へ続けられず、残っていると分岐が一意にならないまま contig がそこで切れる<br/>
         /// 残る続きが 1 本で、その続きへ他から入る辺が無いときに限る<br/>
         /// 続きに別の入口があると、反復配列の別コピーへ入る辺である可能性を否定できない<br/>
+        /// 分岐元に入口が複数ある場合は、枝は外したうえで A_通り抜け禁止の頂点 に控える。両鎖の枝を外すと、本来は別コピーの入口と出口が一本道で繋がるため<br/>
         /// 外した枝の配列は unitig として残る
         /// </remarks>
         /// <returns>外した辺の数</returns>
@@ -536,6 +555,14 @@ namespace Tsumiki.Cores.UnitigBuilding
                 if (l_枝.Count == 0 || l_続き数 != 1 || this.Get_入次数(l_続き) != 1)
                 {
                     continue;
+                }
+
+                // 入口が複数ある頂点で枝を外すと、残る続きが別コピーの入口と一本道で繋がって見える
+                // 枝を外さないと contig がここで切れるので、枝は外したうえで結合の判断だけ塞ぐ
+                if (this.Get_入次数(v) > 1)
+                {
+                    _ = this.A_通り抜け禁止の頂点.Add(v);
+                    _ = this.A_通り抜け禁止の頂点.Add(v ^ 1);
                 }
 
                 foreach (var w in l_枝)

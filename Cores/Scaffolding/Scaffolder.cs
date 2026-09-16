@@ -481,7 +481,8 @@ namespace Tsumiki.Cores.Scaffolding
                 return;
             }
 
-            p_確定辺[p_頂点] = (l_辺.A_行き先, Math.Max(ギャップ長の下限, l_辺.A_ギャップ長));
+            // 負のままで渡す。重なっているかどうかは連結時に配列で確かめる
+            p_確定辺[p_頂点] = (l_辺.A_行き先, l_辺.A_ギャップ長);
         }
 
         /// <summary>
@@ -557,8 +558,17 @@ namespace Tsumiki.Cores.Scaffolding
                     break;
                 }
 
-                _ = l_出力.Append('N', l_辺.A_ギャップ長);
-                _ = l_出力.Append(l_Is次が逆鎖 ? Util.V_逆相補(l_次の配列) : l_次の配列);
+                var l_次の向き付き配列 = l_Is次が逆鎖 ? Util.V_逆相補(l_次の配列) : l_次の配列;
+                var l_重なり長 = l_辺.A_ギャップ長 <= 0 ? Get_畳める重なり長(l_出力, l_次の向き付き配列) : 0;
+                if (l_重なり長 > 0)
+                {
+                    _ = l_出力.Append(l_次の向き付き配列, l_重なり長, l_次の向き付き配列.Length - l_重なり長);
+                }
+                else
+                {
+                    _ = l_出力.Append('N', Math.Max(ギャップ長の下限, l_辺.A_ギャップ長));
+                    _ = l_出力.Append(l_次の向き付き配列);
+                }
 
                 l_現在 = l_辺.A_行き先;
                 p_連結したcontig数++;
@@ -566,6 +576,24 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_出力.ToString();
+        }
+
+        /// <summary>
+        /// 連結の際に畳んでよい重なりの長さを返す
+        /// </summary>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <remarks>
+        /// de Bruijn グラフ上で隣り合う contig は k-1 だけ重なる。重なりを畳まずに N で繋ぐと、その k-1 塩基が二重に出る<br/>
+        /// 推定ギャップ長は誤差を持つので長さは見ず、k-1 の重なりが配列として一致するときだけ畳む
+        /// </remarks>
+        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
+        internal static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
+        {
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
+            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長
+                ? 0
+                : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
         }
 
         /// <summary>

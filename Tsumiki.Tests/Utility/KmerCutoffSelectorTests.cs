@@ -135,6 +135,36 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal(l_残るはずの種類数, l_インデックス.Get_信頼kmer一覧().Count());
         }
 
+        /// <summary>
+        /// 谷がモデルのカットオフの 2 倍を超えるときだけ谷を採り、それ以外はモデルのカットオフを残す
+        /// </summary>
+        /// <param name="p_モデルのカットオフ"></param>
+        /// <param name="p_谷"></param>
+        /// <param name="p_期待"></param>
+        /// <remarks>
+        /// 42 と 10 は GC 69% の R. sphaeroides HiSeq の k=21、14 と 13 は S. aureus HiSeq の k=21、9 と 7 は B. cereus HiSeq の k=67 で実際に出た組
+        /// </remarks>
+        [Theory]
+        [InlineData(10UL, 42UL, 42UL)]
+        [InlineData(13UL, 14UL, 13UL)]
+        [InlineData(7UL, 9UL, 7UL)]
+        [InlineData(10UL, 20UL, 10UL)]
+        [InlineData(10UL, 21UL, 21UL)]
+        [InlineData(19UL, 14UL, 19UL)]
+        public void V_谷が明確に食い違うときだけ谷を採る(ulong p_モデルのカットオフ, ulong p_谷, ulong p_期待)
+        {
+            Assert.Equal(p_期待, KmerCutoffSelector.Get_谷で補正したカットオフ(p_モデルのカットオフ, p_谷));
+        }
+
+        /// <summary>
+        /// 谷が求められなければモデルのカットオフを残す
+        /// </summary>
+        [Fact]
+        public void V_谷が無ければモデルのカットオフを残す()
+        {
+            Assert.Equal(10UL, KmerCutoffSelector.Get_谷で補正したカットオフ(10UL, null));
+        }
+
         #endregion
 
         #region 内部メソッド

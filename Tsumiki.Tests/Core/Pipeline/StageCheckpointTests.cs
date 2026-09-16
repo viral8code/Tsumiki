@@ -107,6 +107,66 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 前処理済みリードは実体だけ消し、再開に要る記録は残す
+        /// </summary>
+        [Fact]
+        public void V_削除_前処理済みリードは記録を残して消す()
+        {
+            var l_前処理済み1 = Path.Combine(this._作業パス, "preprocessed.1.fq");
+            var l_前処理済み2 = Path.Combine(this._作業パス, "preprocessed.2.fq");
+            File.WriteAllText(l_前処理済み1, "AAAA");
+            File.WriteAllText(l_前処理済み2, "TTTT");
+            StageCheckpoint.V_保存("upstream", l_前処理済み1, l_前処理済み2);
+
+            ReadPreparationPipeline.V_削除_前処理済みリード(this._作業パス);
+
+            Assert.False(File.Exists(l_前処理済み1));
+            Assert.False(File.Exists(l_前処理済み2));
+            Assert.True(File.Exists(l_前処理済み1 + ".sha256"));
+        }
+
+        /// <summary>
+        /// 上流工程の記録があれば、その出力の実体が無くても署名は変わらない
+        /// </summary>
+        /// <remarks>
+        /// 前処理済みリードは訂正の入力にしか使わないので、消しても再開できる必要がある
+        /// </remarks>
+        [Fact]
+        public void V_署名_上流の記録があれば入力の実体が無くても変わらない()
+        {
+            var l_上流1 = Path.Combine(this._作業パス, "preprocessed.1.fq");
+            var l_上流2 = Path.Combine(this._作業パス, "preprocessed.2.fq");
+            File.WriteAllText(l_上流1, "AAAA");
+            File.WriteAllText(l_上流2, "TTTT");
+            StageCheckpoint.V_保存("upstream", l_上流1, l_上流2);
+            var l_設定 = new Parameters { A_リード1のパス = l_上流1, A_リード2のパス = l_上流2 };
+            var l_署名 = StageCheckpoint.Get_入力署名(l_設定);
+
+            File.Delete(l_上流1);
+            File.Delete(l_上流2);
+
+            Assert.Equal(l_署名, StageCheckpoint.Get_入力署名(l_設定));
+        }
+
+        /// <summary>
+        /// 上流工程の出力が作り直されて中身が変われば署名も変わる
+        /// </summary>
+        [Fact]
+        public void V_署名_上流の出力が変われば変わる()
+        {
+            var l_上流 = Path.Combine(this._作業パス, "preprocessed.1.fq");
+            File.WriteAllText(l_上流, "AAAA");
+            StageCheckpoint.V_保存("upstream", l_上流, null);
+            var l_設定 = new Parameters { A_リード1のパス = l_上流 };
+            var l_署名 = StageCheckpoint.Get_入力署名(l_設定);
+
+            File.WriteAllText(l_上流, "AAAT");
+            StageCheckpoint.V_保存("upstream", l_上流, null);
+
+            Assert.NotEqual(l_署名, StageCheckpoint.Get_入力署名(l_設定));
+        }
+
+        /// <summary>
         /// 片側の出力の欠落や破損を検出する
         /// </summary>
         [Fact]

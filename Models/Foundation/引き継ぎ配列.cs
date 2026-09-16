@@ -15,5 +15,9 @@
     /// この段の scaffold/contig 全体から取った、既に確定した経路由来なら true<br/>
     /// バブル敗者や合成リードのような、経路として確定していない配列は false のままにする
     /// </param>
-    internal record 引き継ぎ配列(string A_配列, int[] A_カバレッジ, int A_k長, bool A_Is確定経路 = false);
+    /// <param name="A_分岐の継ぎ目位置">
+    /// 前段 k で分岐のある継ぎ目を通った辺 ((k+1)-mer) が現れる開始位置、無ければ null<br/>
+    /// この辺を丸ごと含む次の k の k-mer は足さない
+    /// </param>
+    internal record 引き継ぎ配列(string A_配列, int[] A_カバレッジ, int A_k長, bool A_Is確定経路 = false, IReadOnlyList<int>? A_分岐の継ぎ目位置 = null);
 }

@@ -88,6 +88,38 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 穴の左の信頼できる k-mer に既に別の続きがあるなら、穴を救済しないことを検証する
+        /// </summary>
+        /// <remarks>
+        /// 救済した連が既存の配列に新しい分岐を作ると、短い反復を挟んで別の場所へ抜ける近道にもなりうる
+        /// </remarks>
+        [Fact]
+        public void Get_救済数_左の信頼kmerに別の続きがあれば救わない()
+        {
+            var l_配列 = Get_乱数配列(300, 25);
+            const int l_穴の開始 = 100;
+            using var l_インデックス = this.Get_穴のあるインデックス(l_配列, l_穴の開始, 3);
+
+            // 穴の直前の k-mer から、穴とは別の塩基で続く信頼できる枝を足す
+            var l_穴の最後の塩基 = l_配列[l_穴の開始 + k長 - 1];
+            var l_別の塩基 = "ACGT".First(x => x != l_穴の最後の塩基);
+            var l_枝 = l_配列.Substring(l_穴の開始, k長 - 1) + l_別の塩基 + Get_乱数配列(30, 26);
+            var l_枝の塩基列 = l_枝.Select(Util.Get_塩基ID).ToArray();
+            for (var i = 0; i + k長 <= l_枝の塩基列.Length; i++)
+            {
+                _ = l_インデックス.Try追加_信頼kmer(l_枝の塩基列.AsSpan(i, k長), 5UL);
+            }
+
+            var l_リード = l_配列.Substring(l_穴の開始 - 30, 100);
+            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
+            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
+            ConfigurationManager.A_実行時引数 = l_引数;
+
+            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
+            Assert.False(Haskmer(l_インデックス, l_配列, l_穴の開始));
+        }
+
+        /// <summary>
         /// 穴を跨ぐ観測が 1 回だけでは救済しないことを検証する
         /// </summary>
         [Fact]

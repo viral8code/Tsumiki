@@ -20,8 +20,24 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_設定 = p_引数.Get_複製();
             l_設定.A_Is再開 = false;
-            var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + "\n" + l_設定 + "\n" + Get_ハッシュ(l_設定.A_リード1のパス) + "\n" + Get_ハッシュ(l_設定.A_リード2のパス);
+
+            // 入力が前の工程の出力なら、その工程の記録で識別する
+            // 記録には入力の署名と出力の内容ハッシュが入っているので、入力そのものを読み直さずに済む
+            // (前の工程の中間ファイルを消してあっても再開できる)
+            var l_入力の識別 = Get_保存済み記録(l_設定.A_リード1のパス)
+                ?? (Get_ハッシュ(l_設定.A_リード1のパス) + "\n" + Get_ハッシュ(l_設定.A_リード2のパス));
+            var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + "\n" + l_設定 + "\n" + l_入力の識別;
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(l_本文)));
+        }
+
+        /// <summary>
+        /// その出力を作った工程の記録を返す
+        /// </summary>
+        /// <param name="p_出力">工程の主出力</param>
+        /// <returns>記録の中身、無ければ null</returns>
+        public static string? Get_保存済み記録(string? p_出力)
+        {
+            return !string.IsNullOrWhiteSpace(p_出力) && File.Exists(p_出力 + ".sha256") ? File.ReadAllText(p_出力 + ".sha256") : null;
         }
 
         /// <summary>
@@ -42,6 +58,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 完了記録が現在の入力と出力に一致するか調べる
         /// </summary>
+        /// <remarks>
+        /// 入力の識別は Get_入力署名 が済ませているので、ここで見るのは出力の実体と内容だけ
+        /// </remarks>
         /// <param name="p_署名">入力署名</param>
         /// <param name="p_出力">工程の主出力</param>
         /// <param name="p_対出力">対になる出力</param>

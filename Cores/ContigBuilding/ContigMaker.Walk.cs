@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Tsumiki.Cores.UnitigBuilding;
 
 namespace Tsumiki.Core
 {
@@ -10,7 +11,53 @@ namespace Tsumiki.Core
     /// </remarks>
     internal partial class ContigMaker
     {
+        #region プロパティ
+
+        /// <summary>
+        /// 書き出した contig が分岐のある継ぎ目で通った辺 ((k+1)-mer、両向き)
+        /// </summary>
+        /// <remarks>
+        /// 次の k へ持ち越すとき、この辺を丸ごと含む k-mer は足さない<br/>
+        /// 足すと、この k の分岐選択が次の k でリードに観測された k-mer と見分けのつかない形で持ち込まれ、次の k のリードが正しい経路を観測できていない箇所ではそのまま一本道として繋がる
+        /// </remarks>
+        public HashSet<string> A_分岐の継ぎ目 { get; } = new(StringComparer.Ordinal);
+
+        #endregion
+
         #region 公開メソッド
+
+        /// <summary>
+        /// walk が分岐のある継ぎ目で通った辺を (k+1)-mer で返す
+        /// </summary>
+        /// <param name="p_グラフ"></param>
+        /// <param name="p_unitig配列"></param>
+        /// <param name="p_walk順"></param>
+        /// <param name="p_k長"></param>
+        /// <remarks>
+        /// 出次数 2 以上の頂点から出る継ぎ目と、入次数 2 以上の頂点へ入る継ぎ目が対象<br/>
+        /// 一本道の継ぎ目はグラフの形だけで決まるので含めない
+        /// </remarks>
+        /// <returns></returns>
+        internal static IEnumerable<string> Get_分岐の継ぎ目(UnitigGraph p_グラフ, IReadOnlyList<string> p_unitig配列, IReadOnlyList<int> p_walk順, int p_k長)
+        {
+            for (var w = 1; w < p_walk順.Count; w++)
+            {
+                var l_前 = p_walk順[w - 1];
+                var l_次 = p_walk順[w];
+                if (p_グラフ.A_出辺[l_前].Count < 2 && p_グラフ.Get_入次数(l_次) < 2)
+                {
+                    continue;
+                }
+
+                var l_前の配列 = p_unitig配列[l_前];
+                var l_次の配列 = p_unitig配列[l_次];
+                if (l_前の配列.Length < p_k長 || l_次の配列.Length < p_k長)
+                {
+                    continue;
+                }
+                yield return string.Concat(l_前の配列.AsSpan(l_前の配列.Length - p_k長), l_次の配列.AsSpan(p_k長 - 1, 1));
+            }
+        }
 
         /// <summary>
         /// 符号付き unitig ID (正=順鎖、負=逆鎖) をグラフの頂点番号に変換する

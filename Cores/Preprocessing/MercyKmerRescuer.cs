@@ -119,7 +119,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_終わり++;
                 }
                 var l_連の長さ = l_終わり - i;
-                if (l_終わり < l_窓数 && l_信頼[l_終わり] && l_連の長さ <= 救済する連の上限)
+                if (l_終わり < l_窓数 && l_信頼[l_終わり] && l_連の長さ <= 救済する連の上限 && Is行き止まり同士(p_kmerインデックス, l_塩基列.AsSpan(i - 1, p_k長), l_塩基列.AsSpan(l_終わり, p_k長)))
                 {
                     for (var j = i; j < l_終わり; j++)
                     {
@@ -131,6 +131,22 @@ namespace Tsumiki.Cores.Preprocessing
                 }
                 i = l_終わり;
             }
+        }
+
+        /// <summary>
+        /// 救済する連の左の信頼 k-mer に他の出口が無く、右の信頼 k-mer に他の入口が無いか
+        /// </summary>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_左">連の直前の信頼できる k-mer</param>
+        /// <param name="p_右">連の直後の信頼できる k-mer</param>
+        /// <remarks>
+        /// 薄いカバレッジで途切れた箇所は両側とも行き止まりになる<br/>
+        /// どちらかに既に別の続きがあると、救済した連は既存の配列に新しい分岐を作り、短い反復を挟んで別の場所へ抜ける近道にもなりうる
+        /// </remarks>
+        /// <returns>両側とも行き止まりなら true</returns>
+        internal static bool Is行き止まり同士(TrustedKmerIndex p_kmerインデックス, Span<byte> p_左, Span<byte> p_右)
+        {
+            return p_kmerインデックス.Get_出次数(p_左) == 0 && p_kmerインデックス.Get_入次数(p_右) == 0;
         }
 
         /// <summary>

@@ -214,7 +214,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             double? l_自身の中央値 = null;
             var l_先頭閾値 = p_低カバレッジ比 * (p_先頭次数 == 0 ? l_自身の中央値 ??= Get_中央カバレッジ(p_kmerインデックス, p_塩基列, p_k長) : Get_対抗カバレッジ(p_kmerインデックス, Get_逆相補(p_塩基列.AsSpan(0, p_k長))));
-            var l_末尾閾値 = p_低カバレッジ比 * (p_末尾次数 == 0 ? l_自身の中央値 ??= Get_中央カバレッジ(p_kmerインデックス, p_塩基列, p_k長) : Get_対抗カバレッジ(p_kmerインデックス, p_塩基列.AsSpan(p_塩基列.Length - p_k長, p_k長).ToArray()));
+            var l_末尾閾値 = p_低カバレッジ比 * (p_末尾次数 == 0 ? l_自身の中央値 ?? Get_中央カバレッジ(p_kmerインデックス, p_塩基列, p_k長) : Get_対抗カバレッジ(p_kmerインデックス, p_塩基列.AsSpan(p_塩基列.Length - p_k長, p_k長).ToArray()));
 
             var l_先頭から = 0;
             while (l_先頭から < l_kmer数 && p_kmerインデックス.Get_カバレッジ(p_塩基列.AsSpan(l_先頭から, p_k長)) < l_先頭閾値)

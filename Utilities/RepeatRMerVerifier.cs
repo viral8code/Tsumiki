@@ -332,7 +332,7 @@ namespace Tsumiki.Utilities
         {
             if (p_r長 <= 128)
             {
-                Span<bool> l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];
+                var l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];
                 if (p_絞り込み is not null)
                 {
                     var l_k窓 = new RollingKmer(p_k長);

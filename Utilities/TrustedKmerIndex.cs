@@ -782,7 +782,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public int Get_出次数(Span<byte> p_kmer)
         {
-            Span<byte> l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
+            var l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
             p_kmer[1..].CopyTo(l_候補);
             var l_件数 = 0;
             for (var i = Consts.塩基ID.A; i <= Consts.塩基ID.T; i++)
@@ -1266,7 +1266,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private int Get_入次数(Span<byte> p_kmer, out byte[]? p_唯一の予測元)
         {
-            Span<byte> l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
+            var l_候補 = p_kmer.Length <= 256 ? stackalloc byte[p_kmer.Length] : new byte[p_kmer.Length];
             p_kmer[..^1].CopyTo(l_候補[1..]);
             var l_件数 = 0;
             var l_一致した塩基 = (byte)0;

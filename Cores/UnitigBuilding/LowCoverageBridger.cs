@@ -124,6 +124,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_現在.AsSpan(1).CopyTo(l_候補);
                 var l_信頼数 = 0;
+                var l_信頼の塩基 = Consts.塩基ID.A;
                 var l_最多 = 0UL;
                 var l_次点 = 0UL;
                 var l_最多の塩基 = Consts.塩基ID.A;
@@ -133,6 +134,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     if (p_kmerインデックス.Haskmer(l_候補))
                     {
                         l_信頼数++;
+                        l_信頼の塩基 = l_塩基;
                         continue;
                     }
 
@@ -150,9 +152,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 // 行き止まりの直後に信頼できる k-mer は無い (出次数 0) ので、合流した経路は必ず控えを 1 つ以上含む
+                // 合流先に既に別の入口があるなら、薄いカバレッジで途切れた箇所ではなく既存の配列へ新しく入る分岐になる
                 if (l_信頼数 > 0)
                 {
-                    return l_信頼数 == 1 ? l_経路 : null;
+                    l_候補[^1] = l_信頼の塩基;
+                    return l_信頼数 == 1 && p_kmerインデックス.Get_入次数(l_候補) == 0 ? l_経路 : null;
                 }
 
                 if (l_最多 < l_最小出現回数)

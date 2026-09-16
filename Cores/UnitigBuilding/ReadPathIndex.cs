@@ -134,7 +134,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 return 0UL;
             }
 
-            Span<int> l_逆部分列 = l_長さ <= 64 ? stackalloc int[l_長さ] : new int[l_長さ];
+            var l_逆部分列 = l_長さ <= 64 ? stackalloc int[l_長さ] : new int[l_長さ];
             for (var i = 0; i < l_長さ; i++)
             {
                 l_逆部分列[i] = p_部分列[l_長さ - 1 - i] ^ 1;
@@ -294,8 +294,8 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_現在位置 = l_次位置;
                 }
 
-                int? l_入口 = null;
-                int? l_出口 = null;
+                int? l_入口;
+                int? l_出口;
                 if (l_Is順)
                 {
                     l_入口 = l_開始位置 == 0 && l_開始 > 0 ? p_経路[l_開始 - 1] : null;

@@ -221,6 +221,39 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 前段 k の分岐のある継ぎ目の辺を丸ごと含む k-mer は引き継がず、含まない k-mer は引き継ぐこと
+        /// </summary>
+        /// <remarks>
+        /// 反復を挟んだ近道を前段 k の contig が選んでいても、次の k のリードがその近道を観測していなければ次の k の集合へ持ち込まない
+        /// </remarks>
+        [Fact]
+        public void V_分岐の継ぎ目を丸ごと含むkmerは引き継がない()
+        {
+            const int l_前段のk = 21;
+            const int l_次のk = 41;
+            const int l_継ぎ目の位置 = 1_500;
+            var l_正解 = V_生成_ランダム配列(3_000, p_シード: 751);
+
+            using var l_次段 = this.V_構築_インデックス(l_次のk, p_深さ: 20, l_正解[..1_200], l_正解[1_800..]);
+            using var l_前段 = this.V_構築_インデックス(l_前段のk, p_深さ: 20, l_正解);
+            var l_辺 = l_正解.Substring(l_継ぎ目の位置, l_前段のk + 1);
+            HashSet<string> l_継ぎ目 = new(StringComparer.Ordinal) { l_辺, Util.V_逆相補(l_辺) };
+
+            var l_パス = this.V_書き出し_FASTA("junction.fasta", l_正解);
+            var l_引き継ぎ = KmerCarryOver.Get_引き継ぎ配列(l_パス, l_前段, l_前段のk, l_継ぎ目);
+            Assert.Equal([l_継ぎ目の位置], Assert.Single(l_引き継ぎ).A_分岐の継ぎ目位置);
+
+            _ = KmerCarryOver.V_引き継ぎ(l_引き継ぎ, l_次段, l_次のk, p_リード長: null);
+
+            var l_塩基列 = l_正解.Select(Util.Get_塩基ID).ToArray();
+            var l_辺を含む最初 = l_継ぎ目の位置 + l_前段のk + 1 - l_次のk;
+            Assert.True(l_次段.Haskmer(l_塩基列.AsSpan(l_辺を含む最初 - 1, l_次のk)));
+            Assert.False(l_次段.Haskmer(l_塩基列.AsSpan(l_辺を含む最初, l_次のk)));
+            Assert.False(l_次段.Haskmer(l_塩基列.AsSpan(l_継ぎ目の位置, l_次のk)));
+            Assert.True(l_次段.Haskmer(l_塩基列.AsSpan(l_継ぎ目の位置 + 1, l_次のk)));
+        }
+
+        /// <summary>
         /// 短い断片は引き継がないこと
         /// </summary>
         /// <remarks>

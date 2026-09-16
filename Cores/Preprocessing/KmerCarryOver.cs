@@ -30,11 +30,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_FASTAパス"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
+        /// <param name="p_分岐の継ぎ目">その k で分岐のある継ぎ目を通った辺 ((k+1)-mer、両向き)、無ければ null</param>
         /// <remarks>
         /// k-mer インデックスが生きているうちにしか作れない
         /// </remarks>
         /// <returns></returns>
-        public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
+        public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null)
         {
             List<引き継ぎ配列> l_結果 = [];
             using var l_読み込み = new FastaReader(p_FASTAパス);
@@ -53,9 +54,60 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true));
+                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長)));
             }
             return l_結果;
+        }
+
+        /// <summary>
+        /// 配列の中で、分岐のある継ぎ目の辺が現れる開始位置
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <param name="p_分岐の継ぎ目">辺 ((k+1)-mer、両向き) の集合、無ければ null</param>
+        /// <param name="p_k長">辺を作った k</param>
+        /// <returns>1 つも無ければ null</returns>
+        internal static IReadOnlyList<int>? Get_継ぎ目位置(string p_配列, HashSet<string>? p_分岐の継ぎ目, int p_k長)
+        {
+            if (p_分岐の継ぎ目 is not { Count: > 0 })
+            {
+                return null;
+            }
+
+            var l_辺長 = p_k長 + 1;
+            var l_参照 = p_分岐の継ぎ目.GetAlternateLookup<ReadOnlySpan<char>>();
+            List<int>? l_位置群 = null;
+            for (var i = 0; i + l_辺長 <= p_配列.Length; i++)
+            {
+                if (l_参照.Contains(p_配列.AsSpan(i, l_辺長)))
+                {
+                    (l_位置群 ??= []).Add(i);
+                }
+            }
+            return l_位置群;
+        }
+
+        /// <summary>
+        /// 分岐のある継ぎ目の辺を丸ごと含む窓の最小カバレッジを 0 にして、足さないようにする
+        /// </summary>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_k長">足す先の k</param>
+        /// <param name="p_最小値列">窓ごとの最小カバレッジ</param>
+        internal static void V_除外_継ぎ目を含む窓(引き継ぎ配列 p_引き継ぎ, int p_k長, Span<int> p_最小値列)
+        {
+            if (p_引き継ぎ.A_分岐の継ぎ目位置 is not { Count: > 0 } l_位置群)
+            {
+                return;
+            }
+
+            var l_辺長 = p_引き継ぎ.A_k長 + 1;
+            foreach (var l_位置 in l_位置群)
+            {
+                var l_終了 = Math.Min(l_位置, p_最小値列.Length - 1);
+                for (var s = Math.Max(0, l_位置 + l_辺長 - p_k長); s <= l_終了; s++)
+                {
+                    p_最小値列[s] = 0;
+                }
+            }
         }
 
         /// <summary>
@@ -90,6 +142,11 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_終端 = Math.Min(p_引き継ぎ.A_カバレッジ.Length - 1, p_位置 + p_k長 - p_引き継ぎ.A_k長);
             if (p_位置 > l_終端)
+            {
+                return 0UL;
+            }
+
+            if (p_引き継ぎ.A_分岐の継ぎ目位置 is { } l_継ぎ目 && l_継ぎ目.Any(x => p_位置 <= x && x + p_引き継ぎ.A_k長 + 1 <= p_位置 + p_k長))
             {
                 return 0UL;
             }
@@ -216,6 +273,7 @@ namespace Tsumiki.Cores.Preprocessing
                 p_待ち行列 = new int[p_引き継ぎ.A_カバレッジ.Length];
             }
             V_計算_最小値列(p_引き継ぎ.A_カバレッジ, p_k長 - p_引き継ぎ.A_k長 + 1, p_最小値列.AsSpan(0, l_窓数), p_待ち行列);
+            V_除外_継ぎ目を含む窓(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
 
             List<(UInt128 A_上位, UInt128 A_下位, ulong A_カバレッジ)>? l_未登録 = null;
             var l_窓 = new RollingKmer(p_k長);
@@ -281,6 +339,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_待ち行列 = new int[l_引き継ぎ.A_カバレッジ.Length];
                 }
                 V_計算_最小値列(l_引き継ぎ.A_カバレッジ, p_k長 - l_引き継ぎ.A_k長 + 1, l_最小値列.AsSpan(0, l_窓数), l_待ち行列);
+                V_除外_継ぎ目を含む窓(l_引き継ぎ, p_k長, l_最小値列.AsSpan(0, l_窓数));
 
                 var l_直近の無効塩基位置 = -1;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)

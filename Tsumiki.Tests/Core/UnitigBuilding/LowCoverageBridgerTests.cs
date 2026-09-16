@@ -144,6 +144,31 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, l_追加数);
         }
 
+        /// <summary>
+        /// 合流先の信頼できる k-mer に既に別の入口があるなら架橋しない
+        /// </summary>
+        /// <remarks>
+        /// 薄いカバレッジで途切れた箇所なら合流先も行き止まりになる<br/>
+        /// 別の入口があるのは、行き止まりから既存の配列へ新しく入る分岐で、短い反復を挟んだ近道にもなりうる
+        /// </remarks>
+        [Fact]
+        public void V_合流先に別の入口があれば架橋しない()
+        {
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            V_登録_谷つき(l_索引, 主配列);
+
+            // 谷を抜けた最初の k-mer (位置 23) へ、谷とは別の塩基から入る信頼できる枝を足す
+            var l_合流先 = 主配列.Substring(谷の末尾 + 1, k長);
+            var l_枝 = "TGTTTGCA" + "G" + l_合流先[..^1];
+            Assert.NotEqual(主配列[谷の末尾], l_枝[^k長]);
+            V_登録_全kmer(l_索引, l_枝, 主経路の深さ);
+            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.控えの最小出現回数);
+
+            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
+
+            Assert.Equal(0, l_追加数);
+        }
+
         #endregion
 
         #region 内部メソッド

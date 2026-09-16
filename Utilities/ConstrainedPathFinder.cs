@@ -179,7 +179,7 @@ namespace Tsumiki.Utilities
             var l_上位マスク = p_k長 <= 64 ? 0 : p_k長 >= 128 ? UInt128.MaxValue : ((UInt128)1 << ((2 * p_k長) - 128)) - 1;
             var l_先頭シフト = 2 * (p_k長 - 1);
 
-            var l_目標 = TrustedKmerIndex.TryGet_パック_長(p_目標kmer);
+            var (A_上位, A_下位) = TrustedKmerIndex.TryGet_パック_長(p_目標kmer);
             var l_左順 = TrustedKmerIndex.TryGet_パック_長(p_左のkmer);
             var l_左逆 = Get_逆相補パック(p_左のkmer);
 
@@ -210,7 +210,7 @@ namespace Tsumiki.Utilities
                     continue;
                 }
 
-                if (l_埋める長さ >= p_最小長 && l_順上 == l_目標.A_上位 && l_順下 == l_目標.A_下位)
+                if (l_埋める長さ >= p_最小長 && l_順上 == A_上位 && l_順下 == A_下位)
                 {
                     if (Has多重到達(l_節点, l_多重到達, l_現在))
                     {
