@@ -361,12 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-# 規約類はリポジトリに含めない
-/規約/
-
-# 検証用の補助スクリプト群はリポジトリに含めない
-/tools/
-
-# ローカルの調査資料と評価データ
-/docs/
+# ローカルの資料・規約・補助スクリプト・評価データはリポジトリに含めない
 /local-data/

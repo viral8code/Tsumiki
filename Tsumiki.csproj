@@ -10,15 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="read.1.fq">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="read.2.fq">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="Tsumiki.Tests" />
   </ItemGroup>
 
