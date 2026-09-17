@@ -149,6 +149,8 @@ namespace Tsumiki.Cores.Pipeline
                 _ = LowCoverageBridger.Get_架橋kmer数(l_kmerインデックス, p_k長, p_リード長);
             }
 
+            l_kmerインデックス.V_解放_控え();
+
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.tip除去開始);

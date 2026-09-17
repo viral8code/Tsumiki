@@ -55,7 +55,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
         /// <remarks>
-        /// 終わったら控えは手放す
+        /// 控えは呼び出し元が手放す
         /// </remarks>
         /// <returns></returns>
         public static int Get_架橋kmer数(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
@@ -63,7 +63,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             using var l_計測 = new StageTimer($"low-coverage-bridge k={p_k長}");
             if (p_kmerインデックス.A_控えkmer数 == 0)
             {
-                p_kmerインデックス.V_解放_控え();
                 return 0;
             }
 
@@ -100,7 +99,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             Logger.V_出力(メッセージID.低カバレッジ架橋結果, l_経路群.Count, l_行き止まり.Count, l_追加数);
-            p_kmerインデックス.V_解放_控え();
             return l_追加数;
         }
 

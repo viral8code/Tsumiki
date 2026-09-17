@@ -3,7 +3,7 @@
 namespace Tsumiki.Tests.Utility
 {
     /// <summary>
-    /// k-mer スペクトルの 2 成分混合モデル (誤り=幾何分布、真の k-mer=単一コピー平均の整数倍に山を持つポアソン混合) の EM 推定を、理論分布そのものから作ったヒストグラムで固定する
+    /// k-mer スペクトルの 2 成分混合モデル (誤り=幾何分布、真の k-mer=単一コピー平均の整数倍に山を持つ負の二項混合) の EM 推定を、理論分布そのものから作ったヒストグラムで固定する
     /// </summary>
     /// <remarks>
     /// 理論分布を使うことで、サンプリング由来のノイズを排して「モデルが正しいパラメータへ収束するか」だけを検証できる
@@ -83,9 +83,67 @@ namespace Tsumiki.Tests.Utility
             Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ - 2D, l_真のλ + 2D);
         }
 
+        /// <summary>
+        /// 過分散のある理論混合分布から、単一コピー平均を復元できる
+        /// </summary>
+        [Fact]
+        public void V_過分散のある分布から単一コピー平均を復元できる()
+        {
+            // 単一コピーがポアソン分布よりずっと幅広い場合、ポアソン混合は山を「コピー数 3」と読んで λ を 1/3 に見積もる
+            const double l_真のλ = 120.0D;
+            const double l_真の過分散 = 8.0D;
+            var l_ヒストグラム = Get_理論ヒストグラム_負の二項(l_真のλ, l_真の過分散, p_誤り混合比: 0.4D, p_誤り平均: 2.0D, Get_コピー数別混合比_単一コピー優勢(), p_上限: 900, p_総数: 5_000_000L);
+
+            var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
+
+            Assert.NotNull(l_結果);
+            Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ * 0.8D, l_真のλ * 1.25D);
+        }
+
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 負の二項分布の確率を返す
+        /// </summary>
+        /// <param name="p_出現回数">出現回数</param>
+        /// <param name="p_μ">分布の平均</param>
+        /// <param name="p_過分散">大きいほどポアソン分布に近い</param>
+        /// <returns>確率</returns>
+        private static double Get_負の二項確率(double p_出現回数, double p_μ, double p_過分散)
+        {
+            var l_和 = p_過分散 + p_μ;
+            var l_log確率 = SpecialFunctions.Get_対数ガンマ(p_出現回数 + p_過分散) - SpecialFunctions.Get_対数ガンマ(p_過分散) - SpecialFunctions.Get_対数ガンマ(p_出現回数 + 1D)
+                + (p_過分散 * Math.Log(p_過分散 / l_和)) + (p_出現回数 * Math.Log(p_μ / l_和));
+            return Math.Exp(l_log確率);
+        }
+
+        /// <summary>
+        /// 単一コピー成分を負の二項分布にした理論混合分布から、その通りのヒストグラムを作る
+        /// </summary>
+        /// <param name="p_λ"></param>
+        /// <param name="p_過分散"></param>
+        /// <param name="p_誤り混合比"></param>
+        /// <param name="p_誤り平均"></param>
+        /// <param name="p_コピー数別混合比"></param>
+        /// <param name="p_上限"></param>
+        /// <param name="p_総数"></param>
+        /// <returns></returns>
+        private static Dictionary<ulong, long> Get_理論ヒストグラム_負の二項(double p_λ, double p_過分散, double p_誤り混合比, double p_誤り平均, double[] p_コピー数別混合比, int p_上限, long p_総数)
+        {
+            Dictionary<ulong, long> l_ヒストグラム = [];
+            for (var c = 1UL; c <= (ulong)p_上限; c++)
+            {
+                var l_確率 = p_誤り混合比 * Get_幾何分布確率(c, p_誤り平均);
+                for (var k = 1; k <= p_コピー数別混合比.Length; k++)
+                {
+                    l_確率 += (1D - p_誤り混合比) * p_コピー数別混合比[k - 1] * Get_負の二項確率(c, k * p_λ, p_過分散);
+                }
+                l_ヒストグラム[c] = (long)Math.Round(l_確率 * p_総数);
+            }
+            return l_ヒストグラム;
+        }
 
         /// <summary>
         /// 幾何分布の確率を返す

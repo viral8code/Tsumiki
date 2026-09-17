@@ -103,6 +103,9 @@ namespace Tsumiki.Tests.Core
             {
                 Assert.True(l_索引.Haskmer(Get_kmer(主配列, i)), $"位置 {i} の k-mer が集合に無い");
             }
+            // 控えは呼び出し元が手放すため、架橋の直後はまだ残っている
+            Assert.True(l_索引.A_控えkmer数 > 0);
+            l_索引.V_解放_控え();
             Assert.Equal(0, l_索引.A_控えkmer数);
         }
 
