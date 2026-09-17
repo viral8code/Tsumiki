@@ -53,6 +53,19 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const double 橋渡しに使う断片長の分位 = 0.99D;
 
+        /// <summary>
+        /// 重なりを探すオフセットの下限を決める断片長の分位
+        /// </summary>
+        private const double 重なりに使う断片長の分位 = 0.01D;
+
+        /// <summary>
+        /// 重なりで繋いだ断片を書き出すファイル名
+        /// </summary>
+        /// <remarks>
+        /// k をまたいで使い回すので、k ごとの作業ディレクトリではなく実行全体の一時ディレクトリに置く
+        /// </remarks>
+        private const string 合成リードファイル名 = "fragments.fq";
+
         #endregion
 
         #region 公開メソッド
@@ -86,6 +99,7 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
+            var l_断片パス = Path.Combine(p_一時ディレクトリ, 合成リードファイル名);
 
             AmbiguityRecorder.V_開始(p_k長);
 
@@ -209,6 +223,14 @@ namespace Tsumiki.Cores.Pipeline
                     Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード2のパス);
                     l_contig構築.V_マッピング_ペアリード(p_引数.A_リード1のパス, p_引数.A_リード2のパス);
                 }
+
+                // 重なりで繋いだ断片は、リードでは届かない接合点を跨げる観測そのもの
+                // k が上がるほどリード 1 本では接合点を跨げなくなるので、ここが分岐の証拠の主力になる
+                if (File.Exists(l_断片パス))
+                {
+                    Logger.V_出力(メッセージID.リードファイルのパス, l_断片パス);
+                    l_contig構築.V_マッピング_リード(l_断片パス);
+                }
             }
 
             Logger.V_出力_タイムスタンプ();
@@ -282,7 +304,7 @@ namespace Tsumiki.Cores.Pipeline
                 AssemblyValidator.V_出力_検査結果("contigs", l_contig検査);
                 Logger.V_出力_タイムスタンプ();
 
-                V_用意_次段引き継ぎ(p_次への引き継ぎ, l_contigパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目);
+                V_用意_次段引き継ぎ(p_次への引き継ぎ, l_contigパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目, l_断片パス);
                 var l_contigのみの結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, null, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_contig検査, l_コピー数推定.A_基準の出所);
                 V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
                 return l_contigのみの結果;
@@ -317,7 +339,7 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目, p_原入力, p_リード長);
+            V_用意_次段引き継ぎ(p_次への引き継ぎ, l_scaffoldパス, l_kmerインデックス, p_k長, p_引数, l_バブル敗者, p_合成リードの控え, l_contig構築.A_同一unitig標本, l_contig構築.A_分岐の継ぎ目, l_断片パス, p_原入力, p_リード長);
             var l_結果 = new アセンブリ実行結果(p_k長, l_unitigパス, l_contigパス, l_scaffoldパス, p_引数.A_kmerカットオフ, l_コピー数推定.A_単一コピー基準値, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_scaffoldの検査, l_コピー数推定.A_基準の出所);
             V_保存_チェックポイント(l_作業ディレクトリ, p_k長);
             return l_結果;
@@ -393,7 +415,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_分岐の継ぎ目">この k の contig が分岐のある継ぎ目で通った辺 ((k+1)-mer、両向き)</param>
         /// <param name="p_原入力">r-mer の裏付けを数える元のリードを持つ設定</param>
         /// <param name="p_リード長">代表リード長</param>
-        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本, HashSet<string> p_分岐の継ぎ目, Parameters? p_原入力 = null, int? p_リード長 = null)
+        private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本, HashSet<string> p_分岐の継ぎ目, string p_断片パス, Parameters? p_原入力 = null, int? p_リード長 = null)
         {
             if (p_次への引き継ぎ is null)
             {
@@ -449,8 +471,10 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            int? l_断片長上限 = p_断片長標本.Count > 0 ? StatsUtil.Get_分位点([.. p_断片長標本.Order()], 橋渡しに使う断片長の分位) : null;
-            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限);
+            var l_整列した断片長 = p_断片長標本.Count > 0 ? p_断片長標本.Order().ToArray() : null;
+            int? l_断片長上限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 橋渡しに使う断片長の分位);
+            int? l_断片長下限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 重なりに使う断片長の分位);
+            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, p_断片パス);
             SuperReadJoiner.V_出力_統計(l_統計);
             p_次への引き継ぎ.AddRange(l_合成リード);
             p_合成リードの控え?.AddRange(l_合成リード);

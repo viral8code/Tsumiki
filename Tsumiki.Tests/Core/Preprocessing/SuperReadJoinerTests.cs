@@ -218,10 +218,10 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 121;
             var l_正解 = V_生成_ランダム配列(280, p_シード: 20_260_912);
 
-            // 重なりは 20 bp (Consts.ペア結合の最小重なり長 = 40 未満)
-            // k を read1 より長くして、経路探索の側も走らないようにする
+            // 重なりは 10 bp で、ペア結合の最小重なり長に届かない
+            // 重なるペアは橋渡しに必要な長さが負になるので、経路探索の側も走らない
             var l_先行リード = l_正解[..150];
-            var l_後続リード = Util.V_逆相補(l_正解[130..280]);
+            var l_後続リード = Util.V_逆相補(l_正解[140..280]);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
@@ -256,22 +256,24 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 重なりが最小長に満たないときも、偶然の一致と区別できないので繋がない
+        /// 最小重なり長ちょうどに近い短い重なりでも統合する
         /// </summary>
+        /// <remarks>
+        /// 断片長がリード長の 2 倍に近いライブラリでは重なりが十数塩基しかない
+        /// </remarks>
         [Fact]
-        public void Get_合成配列_引き上げた最小重なり長に届かないときは統合しない()
+        public void Get_合成配列_短い重なりでも統合する()
         {
             const int l_k長 = 121;
             var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_921);
 
             // 重なりは 40 bp
-            // Consts.ペア結合の最小重なり長 (60) に届かない
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[110..260]);
 
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
 
-            Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
+            Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
         /// <summary>
@@ -283,7 +285,7 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_930);
 
-            // 重なりは 40 bp で、重なりによる統合の最小長に届かない
+            // 重なりは 40 bp
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[110..260]);
 
@@ -291,7 +293,26 @@ namespace Tsumiki.Tests.Core
             var l_回り込み = l_先行リード[^l_k長..] + V_生成_ランダム配列(30, p_シード: 20_260_931) + l_正解[110..(110 + l_k長)];
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解, l_回り込み);
 
-            Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
+            Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
+        }
+
+        /// <summary>
+        /// 断片長の窓から外れた位置で合う重なりは採らない
+        /// </summary>
+        [Fact]
+        public void Get_合成配列_断片長の窓の外では統合しない()
+        {
+            const int l_k長 = 21;
+            var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_940);
+
+            // 本当の断片長は 260
+            var l_先行リード = l_正解[..150];
+            var l_後続リード = Util.V_逆相補(l_正解[110..260]);
+
+            using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
+
+            Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null, 240, 280).A_配列);
+            Assert.NotEqual(l_正解, SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null, 100, 200).A_配列);
         }
 
         #endregion

@@ -225,11 +225,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_最小重なり長">重なりとみなすために要求する最小長</param>
         /// <param name="p_許容不一致率">重なりとみなすために許す不一致率</param>
         /// <param name="p_Has対抗馬">条件を満たすオフセットが 2 つ以上あったか</param>
+        /// <param name="p_最小オフセット">試すオフセットの下限、null なら重なりが取れる全域</param>
+        /// <param name="p_最大オフセット">試すオフセットの上限、null なら重なりが取れる全域</param>
         /// <returns>
         /// 条件を満たすもののなかで重なりが最長のもの (同点なら不一致数が少ないもの) <br/>
         /// 見つからなければ null (通常の、フラグメント長がリード長を超える場合)
         /// </returns>
-        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_Has対抗馬)
+        internal static オーバーラップ結果? Get_最適オーバーラップ(byte[] p_塩基列1, byte[] p_塩基列2RC, int p_最小重なり長, double p_許容不一致率, out bool p_Has対抗馬, int? p_最小オフセット = null, int? p_最大オフセット = null)
         {
             p_Has対抗馬 = false;
             var l_n1 = p_塩基列1.Length;
@@ -241,7 +243,11 @@ namespace Tsumiki.Cores.Preprocessing
             var l_詰め2 = PackedBases.Get_作る(p_塩基列2RC);
 
             オーバーラップ結果? l_最良 = null;
-            for (var l_offset = -(l_n2 - p_最小重なり長); l_offset <= l_n1 - p_最小重なり長; l_offset++)
+            // 断片長の分布が分かっていれば、ありえないオフセットは試さない
+            // 偶然の短い一致を拾わずに済み、対抗馬の判定も断片長として妥当な位置どうしの比較になる
+            var l_下限 = Math.Max(-(l_n2 - p_最小重なり長), p_最小オフセット ?? int.MinValue);
+            var l_上限 = Math.Min(l_n1 - p_最小重なり長, p_最大オフセット ?? int.MaxValue);
+            for (var l_offset = l_下限; l_offset <= l_上限; l_offset++)
             {
                 var l_重なり長 = l_offset >= 0 ? Math.Min(l_n1 - l_offset, l_n2) : Math.Min(l_n1, l_n2 + l_offset);
                 if (l_重なり長 < p_最小重なり長)

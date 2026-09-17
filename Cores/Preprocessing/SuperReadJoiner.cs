@@ -17,7 +17,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// ペア結合に必要な最小重なり長
         /// </summary>
-        private const int ペア結合の最小重なり長 = 60;
+        /// <remarks>
+        /// 断片長がリード長の 2 倍に近いライブラリでは重なりは十数塩基しかない<br/>
+        /// 許容不一致率を掛けると、この長さでは不一致 0 の完全一致だけが通るため、偶然の一致はまず起きない
+        /// </remarks>
+        private const int ペア結合の最小重なり長 = 15;
 
         /// <summary>
         /// ペア結合で許す不一致率
@@ -31,6 +35,14 @@ namespace Tsumiki.Cores.Preprocessing
         /// 細菌ゲノムの一般的なライブラリではフラグメント長は高々 1 kb 程度に収まるため、これを大きく超える探索は時間をかけても一意に定まる見込みが薄い (GapFiller のギャップ長上限と同じ考え方)
         /// </remarks>
         private const int 橋渡し長の上限 = 500;
+
+        /// <summary>
+        /// 書き出す合成リードに付けるクオリティ文字
+        /// </summary>
+        /// <remarks>
+        /// 重なりの一致と継ぎ目の k-mer で既に確かめてあるため、下流はクオリティを見ない
+        /// </remarks>
+        private const char 合成リードのクオリティ = 'I';
 
         /// <summary>
         /// 1 バッチあたりのペア数
@@ -67,8 +79,10 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_統計">統合の内訳</param>
         /// <param name="p_推定断片長上限">-i が無いときに橋渡し長の上限を見積もる断片長、分からなければ null</param>
-        /// <returns>統合できたペアの合成配列</returns>
-        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計, int? p_推定断片長上限 = null)
+        /// <param name="p_推定断片長下限">重なりを探すオフセットの下限を決める断片長、分からなければ null</param>
+        /// <param name="p_重なり結合の出力パス">渡すと、重なりで繋いだ断片だけを FASTQ として書き出す</param>
+        /// <returns>橋渡しで繋いだ合成配列 (重なりで繋いだものは p_重なり結合の出力パス へ書き出し、引き継ぎには含めない)</returns>
+        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計, int? p_推定断片長上限 = null, int? p_推定断片長下限 = null, string? p_重なり結合の出力パス = null)
         {
             using var l_計測 = new StageTimer($"superread k={p_k長}");
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -85,6 +99,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             using var l_読み込み1 = new FastqReader(p_リード1のパス);
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
+            using var l_書き出し = p_重なり結合の出力パス is null ? null : new FastqWriter(p_重なり結合の出力パス);
 
             var l_配列1群 = new string[バッチサイズ];
             var l_配列2群 = new string[バッチサイズ];
@@ -103,7 +118,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                 _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                 {
-                    l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ);
+                    l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ, p_推定断片長下限, p_推定断片長上限);
                 });
 
                 for (var i = 0; i < l_件数; i++)
@@ -116,8 +131,13 @@ namespace Tsumiki.Cores.Preprocessing
                     l_統合数++;
                     if (l_統合結果群[i].A_Is重なり結合)
                     {
+                        // 重なりで繋いだ断片は前段 k から推した配列ではなく試料そのものの観測
+                        // k-mer 集合へ注ぎ込むのではなくリードとして貼り、分岐の証拠としてだけ使う
                         l_重なり結合数++;
+                        l_書き出し?.V_書き込み(FormattableString.Invariant($"@F{l_重なり結合数}"), l_配列, new string(合成リードのクオリティ, l_配列.Length));
+                        continue;
                     }
+
                     l_結果.Add(Get_引き継ぎ配列(l_配列, p_kmerインデックス, p_k長));
                 }
 
@@ -185,11 +205,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
+        /// <param name="p_断片長下限">重なりを探す断片長の下限、分からなければ null</param>
+        /// <param name="p_断片長上限">重なりを探す断片長の上限、分からなければ null</param>
         /// <returns>合成配列と、重なりで繋いだかどうか、重なりが曖昧で捨てた数</returns>
-        internal static (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ)
+        internal static (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ, int? p_断片長下限 = null, int? p_断片長上限 = null)
         {
             var l_曖昧 = 0;
-            if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, ref l_曖昧) is { } l_重なり結合)
+            if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, ref l_曖昧, p_断片長下限, p_断片長上限) is { } l_重なり結合)
             {
                 return (l_重なり結合, true, 0);
             }
@@ -204,14 +226,20 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_曖昧で捨てた数">重なりが一つに定まらず捨てた数、該当すれば 1 加算する</param>
+        /// <param name="p_断片長下限">重なりを探す断片長の下限、分からなければ null</param>
+        /// <param name="p_断片長上限">重なりを探す断片長の上限、分からなければ null</param>
         /// <returns>
         /// 復元した断片<br/>
         /// 重なりが見つからない (断片がリード長の 2 倍を超える) 場合と、繋いでも伸びない場合は null
         /// </returns>
-        private static string? Get_重なりで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数)
+        private static string? Get_重なりで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数, int? p_断片長下限 = null, int? p_断片長上限 = null)
         {
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
-            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), ペア結合の最小重なり長, ペア結合の許容不一致率, out var l_対抗馬があるか);
+
+            // 断片長 = オフセット + read2 の長さ (オーバーラップ結果 参照)
+            var l_最小オフセット = p_断片長下限 is { } l_下限 ? l_下限 - p_配列2.Length : (int?)null;
+            var l_最大オフセット = p_断片長上限 is { } l_上限 ? l_上限 - p_配列2.Length : (int?)null;
+            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), ペア結合の最小重なり長, ペア結合の許容不一致率, out var l_対抗馬があるか, l_最小オフセット, l_最大オフセット);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
