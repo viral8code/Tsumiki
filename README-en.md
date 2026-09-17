@@ -1,10 +1,11 @@
-# Tsumiki
+﻿# Tsumiki
 
 **Tsumiki** is a de novo genome assembler for short reads (single-end and paired-end).
 It builds a de Bruijn graph from trusted k-mers and uses multiple k values and read-pair information to produce contigs and scaffolds.
 
 > [!CAUTION]
-> Tsumiki is experimental software under active development. Its accuracy and resource requirements on real data have not yet been thoroughly validated.
+> Tsumiki is experimental software under active development. Validation is limited to the eight bacterial short-read datasets in [Benchmark](#benchmark);
+> behaviour outside those conditions (eukaryotes, metagenomes, reads of 250 bp or longer, and so on) is unknown.
 > If you use the results for analysis, check correctness against a reference genome with a tool such as QUAST.
 
 ## Contents
@@ -12,6 +13,7 @@ It builds a de Bruijn graph from trusted k-mers and uses multiple k values and r
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quick start](#quick-start)
+- [Benchmark](#benchmark)
 - [Input](#input)
 - [Options](#options)
 - [Output](#output)
@@ -78,6 +80,41 @@ Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,71 -th 16 -mem 4G
 The final assembly is written to `out/assembly.fasta`.
 
 By default, all major stages (preprocessing, error correction, multi-k, local gap assembly, polishing, and so on) are enabled, so specifying the input and output directory is usually enough.
+
+## Benchmark
+
+Results for the eight HiSeq datasets of [GAGE-B](https://ccb.jhu.edu/gage_b/) (raw reads, no trimming), assembled with default settings. Evaluated with [QUAST](https://quast.sourceforge.net/) 5.3.0 (`--min-contig 500`) on 16 threads with `-mem 8G`.
+
+| Dataset | GC% | Depth | Reference level | Contigs | Total length | N50 | NA50 | Misassemblies | Local misassemblies | Genome fraction | Wall time |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| A. hydrophila SSU | 61.5 | 256x | Scaffold (2) | 39 | 4,846,242 | 272,284 | 272,284 | 1 | 8 | 98.42% | 39:04 |
+| B. cereus VD118 | 35.3 | 242x | Scaffold (10) | 220 | 5,631,403 | 68,612 | 68,612 | 10 | 11 | 98.39% | 38:32 |
+| B. fragilis HMW 615 | 43.5 | 266x | Scaffold (14) | 141 | 5,279,744 | 118,746 | 112,978 | 16 | 4 | 97.96% | 45:58 |
+| M. abscessus 6G-0125-R | 64.1 | 105x | Contig (5) | 66 | 5,123,295 | 147,661 | 147,661 | 0 | 0 | 99.69% | 27:45 |
+| R. sphaeroides 2.4.1 | 68.8 | 224x | **Complete** (7) | 132 | 4,549,362 | 127,489 | 127,489 | 1 | 1 | 98.67% | 47:57 |
+| S. aureus M0927 | 32.8 | 301x | Scaffold (12) | 62 | 2,830,204 | 122,586 | 122,586 | 2 | 1 | 98.36% | 17:34 |
+| V. cholerae CP1032(5) | 47.5 | 94x | Contig (17) | 105 | 3,913,414 | 97,867 | 97,866 | 4 | 3 | 98.37% | 17:07 |
+| X. axonopodis UA323 | 65.1 | 332x | Contig (151) | 140 | 4,905,262 | 115,160 | 61,310 | 58 | 2 | 99.83% | 63:08 |
+
+### How to read these numbers
+
+**Reference level** describes how completely the reference genome itself is assembled. `Complete` is a finished genome, `Scaffold` is supercontigs with N-filled gaps, and `Contig` is fragments with no adjacency information; the number in parentheses is the number of sequences in the reference.
+
+**The more fragmented the reference, the more misassemblies are counted.** A break in the reference is reported as a disagreement even where the sample is genuinely contiguous. Across these eight datasets the correlation between the number of reference sequences and the misassembly count is **+0.97**. The 58 misassemblies for X. axonopodis largely reflect its reference being split into 151 sequences, while the same assembly has the best genome fraction of the eight at 99.83%. Misassembly counts are therefore not comparable across datasets.
+
+R. sphaeroides is the only dataset here with a finished reference genome; there the counts are 1 misassembly and 1 local misassembly.
+
+**Depth does not drive accuracy.** Depth spans 94x to 332x, a 3.5-fold range, yet its correlation with NA50 is **-0.08**.
+
+### Reproducing
+
+```bash
+Tsumiki.exe -1 <reads_1.fastq> -2 <reads_2.fastq> -mg -th 16 -mem 8G -t <output> -lang en
+```
+
+```bash
+quast.py -o <output> -r <reference.fna> --min-contig 500 <output>/assembly.fasta
+```
 
 ## Input
 
