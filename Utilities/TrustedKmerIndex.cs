@@ -327,6 +327,16 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 正規形のキーで所属を判定する (k &gt; 128)
+        /// </summary>
+        /// <param name="p_正規形"></param>
+        /// <returns></returns>
+        public bool Haskmer_正規形(KmerKey p_正規形)
+        {
+            return this._信頼kmer_大!.ContainsKey(p_正規形);
+        }
+
+        /// <summary>
         /// kmer の出現回数 (カバレッジ) を返す
         /// </summary>
         /// <param name="p_kmer"></param>
@@ -568,6 +578,17 @@ namespace Tsumiki.Utilities
             return this._Is小経路使用
                 ? this._信頼kmer_小!.TryAdd((ulong)p_下位, p_カバレッジ)
                 : this._Is中経路使用 ? this._信頼kmer_中!.TryAdd(p_下位, p_カバレッジ) : this._信頼kmer_長!.TryAdd((p_上位, p_下位), p_カバレッジ);
+        }
+
+        /// <summary>
+        /// 正規形のキーで信頼できる k-mer 集合へ 1 件足す (k &gt; 128)
+        /// </summary>
+        /// <param name="p_正規形">作業領域から切り離したキー</param>
+        /// <param name="p_カバレッジ">未登録の場合に設定する観測回数</param>
+        /// <returns>未登録のキーを追加した場合は true</returns>
+        public bool Try追加_信頼kmer_正規形(KmerKey p_正規形, ulong p_カバレッジ)
+        {
+            return this._信頼kmer_大!.TryAdd(p_正規形, p_カバレッジ);
         }
 
         /// <summary>

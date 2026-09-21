@@ -325,6 +325,8 @@ namespace Tsumiki.Tests.Core
         [InlineData(63)]
         [InlineData(93)]
         [InlineData(135)]
+        [InlineData(160)]
+        [InlineData(161)]
         public void V_高速引き継ぎを窓ごとの計算と比較(int p_k長)
         {
             var l_配列 = V_生成_ランダム配列(500, 1901) + "N" + V_生成_ランダム配列(300, 1902);

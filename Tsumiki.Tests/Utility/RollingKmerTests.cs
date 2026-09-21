@@ -45,6 +45,83 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
+        /// <summary>128 塩基を超える窓を、境界長と曖昧塩基を含めて従来の正規形キーと比較する</summary>
+        /// <param name="p_長さ">窓の長さ</param>
+        [Theory]
+        [InlineData(129)]
+        [InlineData(135)]
+        [InlineData(139)]
+        [InlineData(159)]
+        [InlineData(160)]
+        [InlineData(161)]
+        [InlineData(192)]
+        [InlineData(250)]
+        public void V_長い窓を従来キーと比較(int p_長さ)
+        {
+            var l_配列 = Get_合成配列(900) + "NRYACGT" + Get_合成配列(900) + Util.V_逆相補(Get_合成配列(400));
+            var l_窓 = new WideRollingKmer(p_長さ);
+            for (var i = 0; i < l_配列.Length; i++)
+            {
+                var l_有効 = l_窓.Try追加(l_配列[i], out var l_キー);
+                var l_期待 = i >= p_長さ - 1 && !l_配列.Substring(i - p_長さ + 1, p_長さ).Any(Util.Is曖昧塩基);
+                Assert.Equal(l_期待, l_有効);
+                if (l_期待)
+                {
+                    Assert.Equal(new KmerKey(l_配列.AsSpan(i - p_長さ + 1, p_長さ)).Get_正規形(), l_キー);
+                }
+            }
+        }
+
+        /// <summary>切り離したキーは窓を進めても変わらない</summary>
+        [Fact]
+        public void V_複製したキーは窓の更新に引きずられない()
+        {
+            var l_配列 = Get_合成配列(200);
+            var l_窓 = new WideRollingKmer(139);
+            KmerKey? l_保存 = null;
+            for (var i = 0; i < l_配列.Length; i++)
+            {
+                if (l_窓.Try追加(l_配列[i], out var l_キー) && l_保存 is null)
+                {
+                    l_保存 = l_キー.Get_複製();
+                }
+            }
+            Assert.Equal(new KmerKey(l_配列.AsSpan(0, 139)).Get_正規形(), l_保存);
+        }
+
+        /// <summary>128 塩基を超える窓で、窓ごとにキーを作る従来の方法と差分更新の時間と確保量を記録する</summary>
+        [Fact]
+        public void V_長い窓の速度を記録()
+        {
+            const int l_長さ = 139;
+            var l_配列 = Get_合成配列(200_000);
+            HashSet<KmerKey> l_集合 = [];
+            var l_確保前 = GC.GetAllocatedBytesForCurrentThread();
+            var l_時計 = Stopwatch.StartNew();
+            var l_従来数 = 0;
+            for (var i = 0; i + l_長さ <= l_配列.Length; i++)
+            {
+                l_従来数 += l_集合.Contains(new KmerKey(l_配列.AsSpan(i, l_長さ)).Get_正規形()) ? 1 : 0;
+            }
+            var l_従来時間 = l_時計.Elapsed.TotalMilliseconds;
+            var l_従来確保 = GC.GetAllocatedBytesForCurrentThread() - l_確保前;
+            l_確保前 = GC.GetAllocatedBytesForCurrentThread();
+            l_時計.Restart();
+            var l_更新数 = 0;
+            var l_窓 = new WideRollingKmer(l_長さ);
+            foreach (var l_塩基 in l_配列)
+            {
+                if (l_窓.Try追加(l_塩基, out var l_キー))
+                {
+                    l_更新数 += l_集合.Contains(l_キー) ? 1 : 0;
+                }
+            }
+            var l_更新時間 = l_時計.Elapsed.TotalMilliseconds;
+            var l_更新確保 = GC.GetAllocatedBytesForCurrentThread() - l_確保前;
+            Assert.Equal(l_従来数, l_更新数);
+            p_出力.WriteLine($"k={l_長さ}: baseline={l_従来時間:F1} ms/{l_従来確保} B, rolling={l_更新時間:F1} ms/{l_更新確保} B, ratio={l_従来時間 / l_更新時間:F2}");
+        }
+
         /// <summary>種の絞り込みが逆相補の完全一致を落とさない</summary>
         [Fact]
         public void V_種は両鎖で一致する()

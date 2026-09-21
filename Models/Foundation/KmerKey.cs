@@ -113,9 +113,35 @@ namespace Tsumiki.Models.Foundation
             }
         }
 
+        /// <summary>
+        /// 詰め済みの語をそのまま持つ
+        /// </summary>
+        /// <param name="p_長さ">塩基数</param>
+        /// <param name="p_パック済みデータ">塩基を先頭から 2 bit ずつ上位側へ詰めた語、複製せずに参照する</param>
+        /// <remarks>
+        /// 1 塩基ずつ更新する窓の作業領域を引くためだけに使う<br/>
+        /// 辞書へ入れるなど窓の更新より長く持つときは <see cref="Get_複製"/> を使う
+        /// </remarks>
+        public KmerKey(int p_長さ, ulong[] p_パック済みデータ)
+        {
+            this._長さ = p_長さ;
+            this._長いパック済みデータ = p_長さ > 64 ? p_パック済みデータ : null;
+            this._先頭語 = p_長さ > 64 ? 0UL : p_パック済みデータ[0];
+            this._第2語 = p_長さ is > 32 and <= 64 ? p_パック済みデータ[1] : 0UL;
+        }
+
         #endregion
 
         #region 公開メソッド
+
+        /// <summary>
+        /// 詰め済みの語を複製した、元の作業領域から切り離されたキー
+        /// </summary>
+        /// <returns></returns>
+        public KmerKey Get_複製()
+        {
+            return this._長いパック済みデータ is null ? this : new KmerKey(this._長さ, (ulong[])this._長いパック済みデータ.Clone());
+        }
 
         /// <summary>
         /// この k-mer とその逆相補のうち、パック済みデータを辞書式順序で比較して小さい方を返す
