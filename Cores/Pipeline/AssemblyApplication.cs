@@ -81,10 +81,18 @@ namespace Tsumiki.Cores.Pipeline
             // 後からログを読んだときに何が起きたのか分からなくなる
             PhredSniffer.V_解決_Phredオフセット(l_引数, l_引数.A_リード1のパス, l_引数.A_リード2のパス);
 
-            var l_リード長 = ReadLengthSniffer.Get_代表リード長(l_引数.A_リード1のパス, l_引数.A_リード2のパス);
+            // 長さの違うライブラリが混ざっていても高い k へ届くよう、
+            // 中央値ではなく「その長さ以上のリードが塩基の 1 割以上を出している」最長の長さで k を決める
+            // 長さが 1 種類なら従来と同じ値になる
+            var l_リード長 = ReadLengthSniffer.Get_梯子上限のリード長(l_引数.A_リード1のパス, l_引数.A_リード2のパス, out var l_リード長分布);
             if (l_リード長 is { } l_観測リード長)
             {
                 Logger.V_出力(メッセージID.リード長の観測値, l_観測リード長);
+            }
+            if (l_リード長分布.Count > 1)
+            {
+                Logger.V_出力_そのまま(FormattableString.Invariant(
+                    $"[Info] リード長の分布: {string.Join(", ", l_リード長分布.OrderByDescending(x => x.Key).Select(x => $"{x.Key}bp x {x.Value:N0}"))}"));
             }
             KmerLengthSelector.V_解決_k長(l_引数, l_リード長);
 

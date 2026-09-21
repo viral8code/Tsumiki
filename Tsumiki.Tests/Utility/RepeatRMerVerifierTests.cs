@@ -114,7 +114,6 @@ namespace Tsumiki.Tests.Utility
         [InlineData(64)]
         [InlineData(65)]
         [InlineData(128)]
-        [InlineData(129)]
         public void V_厳密キー_全塩基を区別(int p_長さ)
         {
             var l_配列 = "A" + new string('C', p_長さ - 2) + "G";
@@ -125,6 +124,28 @@ namespace Tsumiki.Tests.Utility
                 var l_変更 = l_配列.ToCharArray();
                 l_変更[i] = 'T';
                 Assert.NotEqual(l_キー, RepeatRMerVerifier.Get_正準値(l_変更));
+            }
+        }
+
+        /// <summary>
+        /// 129 以上は 2 語のパックに収まらないため、キーの担当が KmerKey へ移ること
+        /// </summary>
+        /// <param name="p_長さ">検査する窓の長さ</param>
+        [Theory]
+        [InlineData(129)]
+        [InlineData(160)]
+        public void V_厳密キー_2語に収まらない長さはKmerKeyが担う(int p_長さ)
+        {
+            var l_配列 = "A" + new string('C', p_長さ - 2) + "G";
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() => RepeatRMerVerifier.Get_正準値(l_配列));
+
+            var l_キー = new KmerKey(l_配列.AsSpan()).Get_正規形();
+            Assert.Equal(l_キー, new KmerKey(Util.V_逆相補(l_配列).AsSpan()).Get_正規形());
+            for (var i = 0; i < p_長さ; i++)
+            {
+                var l_変更 = l_配列.ToCharArray();
+                l_変更[i] = 'T';
+                Assert.NotEqual(l_キー, new KmerKey(l_変更.AsSpan()).Get_正規形());
             }
         }
 
@@ -265,6 +286,76 @@ namespace Tsumiki.Tests.Utility
 
             Assert.True(l_跨ぐ検証器.Has接合点支持(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
             Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_先頭, l_反復配列, l_末尾));
+        }
+
+        /// <summary>
+        /// 2 語のパックに収まらない長さ (129 以上) でも、キー集合を切り替えて同じ判定ができること
+        /// </summary>
+        [Fact]
+        public void V_rmer長が2語のパックに収まらなくても判定できる()
+        {
+            const int l_長いR = 140;
+            var l_先頭 = V_生成_乱数配列(300, p_乱数種: 20_260_925);
+            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_926);
+            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_927);
+
+            var l_跨ぐ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
+            var l_跨ぐパス = this.V_書き込み_fastq("wide_cross.fq", V_生成_スライドリード(l_跨ぐ, 400));
+            var l_跨がないパス = this.V_書き込み_fastq("wide_apart.fq", V_生成_スライドリード(l_先頭, 250).Concat(V_生成_スライドリード(l_末尾, 250)));
+
+            var l_跨ぐ検証器 = RepeatRMerVerifier.V_構築([l_跨ぐパス, string.Empty], l_長いR);
+            var l_跨がない検証器 = RepeatRMerVerifier.V_構築([l_跨がないパス, string.Empty], l_長いR);
+
+            Assert.True(l_跨ぐ検証器.Has接合点支持(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_先頭, l_反復配列, l_末尾));
+        }
+
+        /// <summary>
+        /// 129 以上の r-mer でも、曖昧塩基を跨ぐ窓は観測とみなさないこと
+        /// </summary>
+        [Fact]
+        public void V_rmer長が129以上でも曖昧塩基を跨ぐ窓は観測されない()
+        {
+            const int l_長いR = 140;
+            var l_配列 = V_生成_乱数配列(400, p_乱数種: 20_260_928);
+            var l_曖昧入り = l_配列[..200] + "N" + l_配列[201..];
+            var l_パス = this.V_書き込み_fastq("wide_ambiguous.fq", [l_曖昧入り]);
+
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], l_長いR);
+
+            List<(int A_開始, int A_終了)> l_範囲 = [];
+            l_検証器.V_収集_未観測の連続範囲(l_配列, 1, l_範囲);
+
+            // 曖昧塩基の位置 200 を含む窓 (開始 61〜200) だけが未観測になる
+            Assert.Equal([(61, 200)], l_範囲);
+        }
+
+        /// <summary>
+        /// 問い合わせ配列へ登録を絞っても、その配列に対する判定が絞らない場合と一致すること
+        /// </summary>
+        [Fact]
+        public void V_問い合わせ配列へ絞っても判定が変わらない()
+        {
+            var l_先頭 = V_生成_乱数配列(120, p_乱数種: 20_260_929);
+            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_930);
+            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_931);
+
+            // 先頭と末尾は読まれているが、その間を跨ぐリードは無い
+            var l_パス = this.V_書き込み_fastq(
+                "limited.fq",
+                V_生成_スライドリード(l_先頭, 60).Concat(V_生成_スライドリード(l_末尾, 60)));
+            var l_問い合わせ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
+
+            var l_絞らない = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
+            var l_絞る = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長, p_問い合わせ配列: [l_問い合わせ]);
+
+            List<(int A_開始, int A_終了)> l_範囲1 = [];
+            List<(int A_開始, int A_終了)> l_範囲2 = [];
+            l_絞らない.V_収集_未観測の連続範囲(l_問い合わせ, 1, l_範囲1);
+            l_絞る.V_収集_未観測の連続範囲(l_問い合わせ, 1, l_範囲2);
+
+            Assert.NotEmpty(l_範囲1);
+            Assert.Equal(l_範囲1, l_範囲2);
         }
 
         #endregion

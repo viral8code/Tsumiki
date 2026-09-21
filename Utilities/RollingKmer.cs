@@ -47,7 +47,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_塩基">追加する塩基</param>
         /// <param name="p_キー">正準キー</param>
         /// <returns>有効塩基だけで窓が埋まれば true</returns>
-        public bool Try追加(char p_塩基, out (UInt128 A_上位, UInt128 A_下位, string? A_長い配列) p_キー)
+        public bool Try追加(char p_塩基, out (UInt128 A_上位, UInt128 A_下位) p_キー)
         {
             p_キー = default;
             var l_ID = Util.Get_塩基ID(p_塩基);
@@ -79,7 +79,7 @@ namespace Tsumiki.Utilities
             }
 
             p_キー = this._順上 < this._逆上 || (this._順上 == this._逆上 && this._順下 <= this._逆下)
-                ? (this._順上, this._順下, null) : (this._逆上, this._逆下, null);
+                ? (this._順上, this._順下) : (this._逆上, this._逆下);
             return true;
         }
 

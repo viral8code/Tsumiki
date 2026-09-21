@@ -13,9 +13,9 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
-        /// エントリあたりの推定バイト数
+        /// 辞書が倍々に伸びるために、容量が件数に対して膨らみうる倍率
         /// </summary>
-        private const int エントリあたりの推定バイト数 = 80;
+        private const int 容量の膨らみ = 2;
 
         /// <summary>
         /// IO バッファサイズ
@@ -106,7 +106,7 @@ namespace Tsumiki.Utilities
             this._パック長 = (this._k長 + 3) / 4;
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
-            this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / エントリあたりの推定バイト数));
+            this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / Get_エントリあたりのバイト数(this._k長)));
             this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
             this._値バッファ = new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限));
             this._ファイル連番 = 0;
@@ -253,6 +253,38 @@ namespace Tsumiki.Utilities
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// メモリ上に 1 件置くのに要るバイト数
+        /// </summary>
+        /// <param name="p_k長">k 長</param>
+        /// <remarks>
+        /// 辞書の実体だけでなく、容量の膨らみと、フラッシュで辞書と同時に生きる整列用の一時配列まで数える<br/>
+        /// ここを小さく見積もると -mem の指定より実際の常駐がずっと大きくなる
+        /// </remarks>
+        /// <returns></returns>
+        private static int Get_エントリあたりのバイト数(int p_k長)
+        {
+            if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            {
+                // 鍵 32 + 回数 8 + ハッシュ 4 + 次 4、バケット 4
+                const int l_容量に比例する分 = (32 + 8 + 4 + 4) + 4;
+
+                // 整列用の鍵配列 32 と回数配列 8
+                const int l_一時配列 = 32 + 8;
+                return (l_容量に比例する分 * 容量の膨らみ) + l_一時配列;
+            }
+
+            // 参照 8 + 回数 8 + ハッシュ 4 + 次 4、バケット 4
+            const int l_辞書の分 = (8 + 8 + 4 + 4) + 4;
+
+            // パック済みバイト列のオブジェクト (ヘッダ 24 + 8 バイト境界へ丸めた本体)
+            var l_鍵の実体 = 24 + (((((p_k長 + 3) / 4) + 7) / 8) * 8);
+
+            // 整列用に取り出す KeyValuePair の配列
+            const int l_一時配列_大 = 16;
+            return (l_辞書の分 * 容量の膨らみ) + l_鍵の実体 + l_一時配列_大;
+        }
 
         /// <summary>
         /// メモリ上の件数がフラッシュ閾値に達したか

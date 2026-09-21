@@ -430,10 +430,15 @@ namespace Tsumiki.Cores.Pipeline
             // 前段 k のグラフで反復の別コピーが繋がった継ぎ目は、リードがその並びを一度も読んでいない
             // 持ち越す前に r-mer で裏付けを確かめ、裏付けの無い範囲は足さない
             // r は k に依らず固定にする (k を上げるほど r も伸ばすと、リードから取れる窓が足りなくなる)
+            // 問い合わせが来るのは持ち越し候補の配列の r-mer だけなので、登録もそこへ絞る
+            // (絞らないとリードのエラー由来まで抱え、集合がゲノムの数十倍に膨らむ)
             RepeatRMerVerifier? l_持ち越し検証器 = null;
             if ((p_リード長 ?? 0) - KmerCarryOver.持ち越し検証のr長 + 1 >= rMer検証に必要な窓数)
             {
-                l_持ち越し検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], KmerCarryOver.持ち越し検証のr長);
+                l_持ち越し検証器 = RepeatRMerVerifier.V_構築(
+                    [(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス],
+                    KmerCarryOver.持ち越し検証のr長,
+                    p_問い合わせ配列: Get_配列列(p_FASTAパス));
             }
 
             p_次への引き継ぎ.Clear();
@@ -488,6 +493,20 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <returns></returns>
+        /// <summary>
+        /// FASTA の配列を順に返す
+        /// </summary>
+        /// <param name="p_FASTAパス">読む FASTA</param>
+        /// <returns></returns>
+        private static IEnumerable<string> Get_配列列(string p_FASTAパス)
+        {
+            using FastaReader l_読み込み = new(p_FASTAパス);
+            while (l_読み込み.Has続き())
+            {
+                yield return l_読み込み.Get_次の配列().A_配列;
+            }
+        }
+
         private static 引き継ぎ配列 Get_引き継ぎ配列(string p_配列, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();

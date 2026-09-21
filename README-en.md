@@ -85,16 +85,16 @@ By default, all major stages (preprocessing, error correction, multi-k, local ga
 
 Results for the eight HiSeq datasets of [GAGE-B](https://ccb.jhu.edu/gage_b/) (raw reads, no trimming), assembled with default settings. Evaluated with [QUAST](https://quast.sourceforge.net/) 5.3.0 (`--min-contig 500`) on 16 threads with `-mem 8G`.
 
-| Dataset | GC% | Depth | Reference level | Contigs | Total length | N50 | NA50 | Misassemblies | Local misassemblies | Genome fraction | Wall time |
-|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| A. hydrophila SSU | 61.5 | 256x | Scaffold (2) | 39 | 4,846,242 | 272,284 | 272,284 | 1 | 8 | 98.42% | 39:04 |
-| B. cereus VD118 | 35.3 | 242x | Scaffold (10) | 220 | 5,631,403 | 68,612 | 68,612 | 10 | 11 | 98.39% | 38:32 |
-| B. fragilis HMW 615 | 43.5 | 266x | Scaffold (14) | 141 | 5,279,744 | 118,746 | 112,978 | 16 | 4 | 97.96% | 45:58 |
-| M. abscessus 6G-0125-R | 64.1 | 105x | Contig (5) | 66 | 5,123,295 | 147,661 | 147,661 | 0 | 0 | 99.69% | 27:45 |
-| R. sphaeroides 2.4.1 | 68.8 | 224x | **Complete** (7) | 132 | 4,549,362 | 127,489 | 127,489 | 1 | 1 | 98.67% | 47:57 |
-| S. aureus M0927 | 32.8 | 301x | Scaffold (12) | 62 | 2,830,204 | 122,586 | 122,586 | 2 | 1 | 98.36% | 17:34 |
-| V. cholerae CP1032(5) | 47.5 | 94x | Contig (17) | 105 | 3,913,414 | 97,867 | 97,866 | 4 | 3 | 98.37% | 17:07 |
-| X. axonopodis UA323 | 65.1 | 332x | Contig (151) | 140 | 4,905,262 | 115,160 | 61,310 | 58 | 2 | 99.83% | 63:08 |
+| Dataset | GC% | Depth | Reference level | Contigs | Total length | N50 | NA50 | Misassemblies | Local misassemblies | Genome fraction |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| A. hydrophila SSU | 61.5 | 256x | Scaffold (2) | 39 | 4,846,242 | 272,284 | 272,284 | 1 | 8 | 98.42% |
+| B. cereus VD118 | 35.3 | 242x | Scaffold (10) | 220 | 5,631,403 | 68,612 | 68,612 | 10 | 11 | 98.39% |
+| B. fragilis HMW 615 | 43.5 | 266x | Scaffold (14) | 141 | 5,279,744 | 118,746 | 112,978 | 16 | 4 | 97.96% |
+| M. abscessus 6G-0125-R | 64.1 | 105x | Contig (5) | 66 | 5,123,295 | 147,661 | 147,661 | 0 | 0 | 99.69% |
+| R. sphaeroides 2.4.1 | 68.8 | 224x | **Complete** (7) | 132 | 4,549,362 | 127,489 | 127,489 | 1 | 1 | 98.67% |
+| S. aureus M0927 | 32.8 | 301x | Scaffold (12) | 62 | 2,830,204 | 122,586 | 122,586 | 2 | 1 | 98.36% |
+| V. cholerae CP1032(5) | 47.5 | 94x | Contig (17) | 105 | 3,913,414 | 97,867 | 97,866 | 4 | 3 | 98.37% |
+| X. axonopodis UA323 | 65.1 | 332x | Contig (151) | 140 | 4,905,262 | 115,160 | 61,310 | 58 | 2 | 99.83% |
 
 ### How to read these numbers
 
