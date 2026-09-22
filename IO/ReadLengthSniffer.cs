@@ -125,18 +125,23 @@
         }
 
         /// <summary>
-        /// 両ファイルを合わせた分布から、k の梯子の上限を決めるリード長を返す
+        /// 全ライブラリを合わせた分布から、k の梯子の上限を決めるリード長を返す
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_分布">数え上げた分布の書き留め先</param>
         /// <returns></returns>
-        public static int? Get_梯子上限のリード長(string p_リード1のパス, string? p_リード2のパス, out Dictionary<int, long> p_分布)
+        public static int? Get_梯子上限のリード長(IEnumerable<(string A_リード1, string A_リード2)> p_ライブラリ群, out Dictionary<int, long> p_分布)
         {
-            p_分布 = Get_リード長分布(p_リード1のパス);
-            foreach (var (l_長さ, l_本数) in Get_リード長分布(p_リード2のパス ?? string.Empty))
+            p_分布 = [];
+            foreach (var (A_リード1, A_リード2) in p_ライブラリ群)
             {
-                p_分布[l_長さ] = p_分布.GetValueOrDefault(l_長さ) + l_本数;
+                foreach (var l_パス in new[] { A_リード1, A_リード2 })
+                {
+                    foreach (var (l_長さ, l_本数) in Get_リード長分布(l_パス))
+                    {
+                        p_分布[l_長さ] = p_分布.GetValueOrDefault(l_長さ) + l_本数;
+                    }
+                }
             }
             return Get_梯子上限のリード長(p_分布);
         }

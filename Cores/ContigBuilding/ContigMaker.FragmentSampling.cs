@@ -40,13 +40,28 @@ namespace Tsumiki.Core
         public List<int> A_確定辺標本 { get; } = [];
 
         /// <summary>
-        /// ペアエンド由来の隣接候補
+        /// ライブラリごとの、単一 unitig 内で両リードがヒットしたペアからの標本
+        /// </summary>
+        public List<List<int>> A_同一unitig標本群 { get; } = [];
+
+        /// <summary>
+        /// ライブラリごとの、unitig 同士が直接結合されたペアからの標本
+        /// </summary>
+        public List<List<int>> A_確定辺標本群 { get; } = [];
+
+        /// <summary>
+        /// ライブラリごとのペアエンド由来の隣接候補
         /// </summary>
         /// <remarks>
         /// キーは (始点, 終点) の unitig ID (符号は向き)、値は各観測ペアの既知長の一覧<br/>
         /// Scaffolder から参照される
         /// </remarks>
-        public IReadOnlyDictionary<(int, int), List<int>> A_ペア経路 => this._ペア経路;
+        public IReadOnlyList<IReadOnlyDictionary<(int, int), List<int>>> A_ペア経路群 => this._ペア経路群;
+
+        /// <summary>
+        /// ペアを観測したライブラリの数
+        /// </summary>
+        public int A_ペアのライブラリ数 => this._ペア経路群.Count;
 
         /// <summary>
         /// unitig ID (1 始まり、符号なし) からその塩基長を引く
@@ -126,14 +141,15 @@ namespace Tsumiki.Core
         /// <param name="p_ローカルペア経路"></param>
         /// <remarks>
         /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには read2 側の unitig ID の符号を反転させる<br/>
-        /// 記録するのは「フラグメントのうち既に見えている分の長さ」 (read1 長 + unitig1 末端までの残り + unitig2 先頭からの残り + read2 長) で、ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = - (k-1))
+        /// 記録するのは「フラグメントのうち既に見えている分の長さ」 (read1 長 + unitig1 末端までの残り + read2 長 + unitig2 末端までの残り) で、ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = - (k-1))<br/>
+        /// 両ヒットとも「自分の向きでの末端までの残り」を使うのは、ヒット 2 の向きが未知区間から遠ざかる側を向いており、未知区間に接するのは常にヒットの末端側だから
         /// </remarks>
         private static void V_収集_ペア経路(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
             var l_キー = (p_ヒット1.A_unitigID, -p_ヒット2.A_unitigID);
 
             var l_残り1 = p_ヒット1.A_末尾までの残り長;
-            var l_残り2 = Get_反転後残長(p_ヒット2);
+            var l_残り2 = p_ヒット2.A_末尾までの残り長;
             var l_既知長 = l_残り1 + l_残り2 + p_リード1.Length + p_リード2.Length;
 
             if (p_ローカルペア経路.TryGetValue(l_キー, out var l_一覧))
@@ -144,19 +160,6 @@ namespace Tsumiki.Core
             {
                 p_ローカルペア経路[l_キー] = [l_既知長];
             }
-        }
-
-        /// <summary>
-        /// ヒットを、その unitig を逆向きに見た座標系での残り長に変換する
-        /// </summary>
-        /// <param name="p_ヒット"></param>
-        /// <remarks>
-        /// 元の向きでの先頭からの既知長が、逆向きでの残り長にそのまま相当する
-        /// </remarks>
-        /// <returns></returns>
-        private static int Get_反転後残長(代表Unitigヒット p_ヒット)
-        {
-            return Math.Max(0, p_ヒット.A_最終一致終端位置);
         }
 
         /// <summary>
@@ -176,55 +179,130 @@ namespace Tsumiki.Core
         /// 結合が確定した辺について、ペア経路の既知長から「フラグメント長 = 既知長 - (k-1) 」を計算して標本に積む
         /// </summary>
         /// <param name="p_結合"></param>
-        private void V_収集_確定辺標本(int[] p_結合)
+        /// <summary>
+        /// そのライブラリのペア経路を取り出す (無ければ作る)
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <returns></returns>
+        private Dictionary<(int, int), List<int>> Get_ペア経路(int p_ライブラリ番号)
         {
-            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-            List<int> l_確定辺標本 = [];
-
-            for (var v = 2; v < p_結合.Length; v++)
+            while (this._ペア経路群.Count <= p_ライブラリ番号)
             {
-                var l_次 = p_結合[v];
+                this._ペア経路群.Add([]);
+            }
+            return this._ペア経路群[p_ライブラリ番号];
+        }
 
-                if (l_次 < 0)
+        /// <summary>
+        /// そのライブラリの同一 unitig 標本を取り出す (無ければ作る)
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <returns></returns>
+        private List<int> Get_同一unitig標本(int p_ライブラリ番号)
+        {
+            while (this.A_同一unitig標本群.Count <= p_ライブラリ番号)
+            {
+                this.A_同一unitig標本群.Add([]);
+            }
+            return this.A_同一unitig標本群[p_ライブラリ番号];
+        }
+
+        /// <summary>
+        /// そのライブラリの確定辺標本を取り出す (無ければ作る)
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <returns></returns>
+        private List<int> Get_確定辺標本(int p_ライブラリ番号)
+        {
+            while (this.A_確定辺標本群.Count <= p_ライブラリ番号)
+            {
+                this.A_確定辺標本群.Add([]);
+            }
+            return this.A_確定辺標本群[p_ライブラリ番号];
+        }
+
+        /// <summary>
+        /// 全ライブラリのペア経路を unitig 対ごとにまとめて返す
+        /// </summary>
+        /// <remarks>
+        /// 反復を跨ぐ連結の有無を見るだけで既知長は使わないので、ここではライブラリを混ぜてよい
+        /// </remarks>
+        /// <returns></returns>
+        private IEnumerable<KeyValuePair<(int, int), List<int>>> Get_全ライブラリのペア経路()
+        {
+            Dictionary<(int, int), List<int>> l_まとめ = [];
+            foreach (var l_ペア経路 in this._ペア経路群)
+            {
+                foreach (var (l_キー, l_一覧) in l_ペア経路)
                 {
-                    continue;
-                }
-
-                // 頂点番号 -> 符号付き unitig ID
-                var l_始点unitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
-                var l_終点unitig = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
-
-                if (!this._ペア経路.TryGetValue((l_始点unitig, l_終点unitig), out var l_既知長標本))
-                {
-                    continue;
-                }
-
-                foreach (var l_既知長 in l_既知長標本)
-                {
-                    // 直接結合された辺では 2 つの unitig が k-1 塩基重なるので、
-                    // 未知区間の長さは G = - (k-1)
-                    // よって
-                    // フラグメント長 = 既知長 - (k-1)
-                    var l_フラグメント長 = l_既知長 - l_重なり長;
-                    if (l_フラグメント長 > 0)
+                    if (l_まとめ.TryGetValue(l_キー, out var l_既存))
                     {
-                        l_確定辺標本.Add(l_フラグメント長);
+                        l_既存.AddRange(l_一覧);
+                    }
+                    else
+                    {
+                        l_まとめ[l_キー] = [.. l_一覧];
                     }
                 }
             }
+            return l_まとめ;
+        }
 
-            this.A_インサートサイズ標本.AddRange(l_確定辺標本);
-            this.A_確定辺標本.AddRange(l_確定辺標本);
+        private void V_収集_確定辺標本(int[] p_結合)
+        {
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
 
-            Logger.V_出力(メッセージID.確定辺標本数, l_確定辺標本.Count);
-
-            if (l_確定辺標本.Count > 0)
+            for (var l_ライブラリ = 0; l_ライブラリ < this._ペア経路群.Count; l_ライブラリ++)
             {
-                // このプールは「unitig 同士が k-1 オーバーラップで直接結合された」
-                // ペアのみを対象とするため、同一 unitig 標本のような
-                // 「フラグメントが 1 つの unitig に収まる必要がある」制約が
-                // なく、短い unitig による短フラグメントへの偏りを受けにくい
-                Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);
+                var l_ペア経路 = this._ペア経路群[l_ライブラリ];
+                List<int> l_確定辺標本 = [];
+
+                for (var v = 2; v < p_結合.Length; v++)
+                {
+                    var l_次 = p_結合[v];
+
+                    if (l_次 < 0)
+                    {
+                        continue;
+                    }
+
+                    // 頂点番号 -> 符号付き unitig ID
+                    var l_始点unitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
+                    var l_終点unitig = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
+
+                    if (!l_ペア経路.TryGetValue((l_始点unitig, l_終点unitig), out var l_既知長標本))
+                    {
+                        continue;
+                    }
+
+                    foreach (var l_既知長 in l_既知長標本)
+                    {
+                        // 直接結合された辺では 2 つの unitig が k-1 塩基重なるので、
+                        // 未知区間の長さは G = - (k-1)
+                        // よって
+                        // フラグメント長 = 既知長 - (k-1)
+                        var l_フラグメント長 = l_既知長 - l_重なり長;
+                        if (l_フラグメント長 > 0)
+                        {
+                            l_確定辺標本.Add(l_フラグメント長);
+                        }
+                    }
+                }
+
+                this.A_インサートサイズ標本.AddRange(l_確定辺標本);
+                this.A_確定辺標本.AddRange(l_確定辺標本);
+                this.Get_確定辺標本(l_ライブラリ).AddRange(l_確定辺標本);
+
+                Logger.V_出力(メッセージID.確定辺標本数, l_確定辺標本.Count);
+
+                if (l_確定辺標本.Count > 0)
+                {
+                    // このプールは「unitig 同士が k-1 オーバーラップで直接結合された」
+                    // ペアのみを対象とするため、同一 unitig 標本のような
+                    // 「フラグメントが 1 つの unitig に収まる必要がある」制約が
+                    // なく、短い unitig による短フラグメントへの偏りを受けにくい
+                    Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);
+                }
             }
         }
 

@@ -64,7 +64,7 @@ namespace Tsumiki.Tests.Core
             var l_跨ぐリード = Get_閉じ目を跨ぐリード(l_配列);
             var l_FASTQ = this.V_書き出し_FASTQ(Enumerable.Repeat(l_跨ぐリード, 6));
 
-            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null);
+            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, [(l_FASTQ, string.Empty)]);
 
             var l_1件 = Assert.Single(l_結果);
             Assert.Equal(6, l_1件.A_跨いだリード数);
@@ -83,7 +83,7 @@ namespace Tsumiki.Tests.Core
             var l_跨ぐリード = Util.V_逆相補(Get_閉じ目を跨ぐリード(l_配列));
             var l_FASTQ = this.V_書き出し_FASTQ(Enumerable.Repeat(l_跨ぐリード, 6));
 
-            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null);
+            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, [(l_FASTQ, string.Empty)]);
 
             Assert.True(Assert.Single(l_結果).A_Has支持);
         }
@@ -101,7 +101,7 @@ namespace Tsumiki.Tests.Core
             // グラフ上は閉じていても閉じ目の証拠にはならない
             var l_FASTQ = this.V_書き出し_FASTQ(Enumerable.Range(0, 20).Select(i => l_配列.Substring(i * 10, 100)));
 
-            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null);
+            var l_結果 = CircularClosureVerifier.Get_検証結果(l_FASTA, [(l_FASTQ, string.Empty)]);
 
             var l_1件 = Assert.Single(l_結果);
             Assert.Equal(0, l_1件.A_跨いだリード数);
@@ -118,7 +118,7 @@ namespace Tsumiki.Tests.Core
             var l_FASTA = this.V_書き出し_FASTA("scaffold1", l_配列);
             var l_FASTQ = this.V_書き出し_FASTQ([Get_閉じ目を跨ぐリード(l_配列)]);
 
-            Assert.Empty(CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null));
+            Assert.Empty(CircularClosureVerifier.Get_検証結果(l_FASTA, [(l_FASTQ, string.Empty)]));
         }
 
         /// <summary>
@@ -133,7 +133,7 @@ namespace Tsumiki.Tests.Core
             var l_2周 = l_配列 + l_配列 + l_配列;
             var l_FASTQ = this.V_書き出し_FASTQ([l_2周]);
 
-            Assert.Equal(1, Assert.Single(CircularClosureVerifier.Get_検証結果(l_FASTA, l_FASTQ, null)).A_跨いだリード数);
+            Assert.Equal(1, Assert.Single(CircularClosureVerifier.Get_検証結果(l_FASTA, [(l_FASTQ, string.Empty)])).A_跨いだリード数);
         }
 
         #endregion

@@ -71,19 +71,17 @@ namespace Tsumiki.Cores.Evaluation
                 l_残った候補 = [.. p_候補];
             }
 
-            // 足切り後の最良値を基準に段を切る
-            // 段が同じなら差は無かったものとして
-            // 次の観点へ進む
-            // 基準を全候補ではなく残った候補から取り直すのは、
-            // 足切りで落ちたものに段の刻み位置を左右されないようにするため
-            var l_基準の完全性 = l_残った候補.Max(x => x.A_評価.A_完全性);
-            var l_基準の正確性 = l_残った候補.Max(x => x.A_評価.A_正確性);
+            // 段は「隣の候補との差」で切る
+            // 最良値からの絶対距離で刻むと、同点幅より小さい差しかない 2 候補が
+            // 刻みの境界をまたいで別の段に分かれてしまう
+            var l_完全性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_完全性));
+            var l_正確性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_正確性));
 
             return l_残った候補
                 .OrderByDescending(x => x.A_評価.A_環状本数)
                 .ThenByDescending(x => x.A_評価.A_環状化率)
-                .ThenBy(x => Get_段(x.A_評価.A_完全性, l_基準の完全性))
-                .ThenBy(x => Get_段(x.A_評価.A_正確性, l_基準の正確性))
+                .ThenBy(x => l_完全性の段[x.A_評価.A_完全性])
+                .ThenBy(x => l_正確性の段[x.A_評価.A_正確性])
                 .ThenByDescending(x => x.A_評価.A_NG50)
                 .ThenByDescending(x => x.A_評価.A_完全性)
                 .ThenByDescending(x => x.A_評価.A_正確性)
@@ -91,17 +89,29 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 基準値からどれだけ離れているかを、同点とみなす幅で刻んだ段
+        /// 値ごとの段を、良い順に並べて隣との差が同点幅を超えたところで切って作る
         /// </summary>
-        /// <param name="p_値"></param>
-        /// <param name="p_基準値"></param>
+        /// <param name="p_値群">候補の値</param>
         /// <remarks>
-        /// 0 が基準と同等で、大きいほど劣る
+        /// 0 が最良の段で、大きいほど劣る<br/>
+        /// 最良値からの絶対距離で刻むと、同点幅より小さい差しかない 2 候補が刻みの境界をまたいで別の段に分かれる<br/>
+        /// 連鎖が伸びすぎる心配は、段を切る前の足切り (完全性・正確性の許容差) が上限を与える
         /// </remarks>
-        /// <returns></returns>
-        public static int Get_段(double p_値, double p_基準値)
+        /// <returns>値から段を引く表</returns>
+        public static Dictionary<double, int> Get_段表(IEnumerable<double> p_値群)
         {
-            return (int)Math.Floor(Math.Max(0D, p_基準値 - p_値) / 同点とみなす差);
+            var l_降順 = p_値群.Distinct().OrderByDescending(x => x).ToList();
+            Dictionary<double, int> l_表 = [];
+            var l_段 = 0;
+            for (var i = 0; i < l_降順.Count; i++)
+            {
+                if (i > 0 && l_降順[i - 1] - l_降順[i] > 同点とみなす差)
+                {
+                    l_段++;
+                }
+                l_表[l_降順[i]] = l_段;
+            }
+            return l_表;
         }
 
         /// <summary>

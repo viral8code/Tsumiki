@@ -129,7 +129,11 @@ namespace Tsumiki.Core
             // 支持を生カウントではなく期待本数との比で測るための較正器
             // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
             // (較正器が使えない場合は生カウントへフォールバックし、挙動は従来と完全に一致する)
-            var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, p_リード長, this._unitig長.Values.Select(x => (long)x));
+            // 複数ライブラリでは最も短いリード長を採る
+            // 期待位置数は「リード長 > 断片長」で 0 になるので、長い側に合わせると短い側の証拠が消える
+            var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
+            var l_較正用リード長 = l_リード長群.Count > 1 && l_リード長群.All(x => x > 0) ? l_リード長群.Min() : p_リード長;
+            var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, l_較正用リード長, this._unitig長.Values.Select(x => (long)x));
 
             HashSet<int> l_経路で通す頂点 = [];
             var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接), l_経路索引, l_引き継ぎ経路索引, l_経路で通す頂点, l_反復長の上限);
@@ -190,7 +194,7 @@ namespace Tsumiki.Core
             // unitig 対がペア経路に入っていても選択には影響しない
             Dictionary<(int, int), ulong> l_ペア連結 = [];
             var l_ペア支持を足した数 = 0;
-            foreach (var ((l_始点, l_終点), l_標本) in this._ペア経路)
+            foreach (var ((l_始点, l_終点), l_標本) in this.Get_全ライブラリのペア経路())
             {
                 if (l_始点 == l_終点)
                 {

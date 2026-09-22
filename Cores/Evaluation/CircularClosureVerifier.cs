@@ -49,7 +49,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <remarks>
         /// 環状の配列が 1 本も無ければ空を返す
         /// </remarks>
-        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス)
+        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
 
@@ -83,7 +83,7 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_支持数 = new int[l_対象.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, _) => V_集計_接合支持(l_リード, l_接合窓, l_支持数));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, _) => V_集計_接合支持(l_リード, l_接合窓, l_支持数));
 
             List<環状閉鎖検証結果> l_結果 = [];
             for (var i = 0; i < l_対象.Count; i++)

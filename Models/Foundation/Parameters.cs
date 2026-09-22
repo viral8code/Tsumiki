@@ -31,12 +31,22 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 1 のパス
         /// </summary>
-        private string _リード1のパス = string.Empty;
+        private List<string> _リード1のパス群 = [];
 
         /// <summary>
         /// リード 2 のパス
         /// </summary>
-        private string _リード2のパス = string.Empty;
+        private List<string> _リード2のパス群 = [];
+
+        /// <summary>
+        /// シングルエンドのライブラリのパス
+        /// </summary>
+        private List<string> _シングルのパス群 = [];
+
+        /// <summary>
+        /// 前処理などで差し替えたライブラリ、未差し替えなら null
+        /// </summary>
+        private List<(string A_リード1, string A_リード2)>? _差し替えたライブラリ群;
 
         /// <summary>
         /// k 長
@@ -59,6 +69,19 @@ namespace Tsumiki.Models.Foundation
         private int _Phredオフセット = Consts.Phredオフセットの既定値;
 
         /// <summary>
+        /// ライブラリごとの Phred オフセット
+        /// </summary>
+        /// <remarks>
+        /// 符号化がライブラリで違うと、1 つの値で読んだ側の品質判定が静かに狂う
+        /// </remarks>
+        private List<int> _Phredオフセット群 = [];
+
+        /// <summary>
+        /// ライブラリごとの代表リード長
+        /// </summary>
+        private List<int> _ライブラリのリード長 = [];
+
+        /// <summary>
         /// 並列に使うスレッド数
         /// </summary>
         private int _スレッド数 = Environment.ProcessorCount;
@@ -78,35 +101,113 @@ namespace Tsumiki.Models.Foundation
         #region プロパティ
 
         /// <summary>
-        /// リード 1 のパス
+        /// リード 1 のパス (複数ライブラリならカンマ区切り)
         /// </summary>
+        /// <remarks>
+        /// 1 本だけを要る処理は <see cref="A_ライブラリ群"/> を回すこと<br/>
+        /// この値をそのままファイルパスとして使うと、複数ライブラリのときに存在しないパスとして失敗する
+        /// </remarks>
         public string A_リード1のパス
         {
-            get => this._リード1のパス;
+            get => string.Join(",", this.A_ライブラリ群.Select(x => x.A_リード1));
             set
             {
-                if (!File.Exists(value))
+                var l_群 = Get_パス群(value);
+                foreach (var l_パス in l_群)
                 {
-                    throw new ArgumentException($"Read1's path {value} is not found");
+                    if (!File.Exists(l_パス))
+                    {
+                        throw new ArgumentException($"Read1's path {l_パス} is not found");
+                    }
                 }
-                this._リード1のパス = value;
+                this._リード1のパス群 = l_群;
+                this._差し替えたライブラリ群 = null;
             }
         }
 
         /// <summary>
-        /// リード 2 のパス
+        /// リード 2 のパス (複数ライブラリならカンマ区切り)
         /// </summary>
         public string A_リード2のパス
         {
-            get => this._リード2のパス;
+            get => string.Join(",", this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? "-" : x.A_リード2));
             set
             {
-                if (!string.IsNullOrEmpty(value) && !File.Exists(value))
+                var l_群 = Get_パス群(value);
+                foreach (var l_パス in l_群)
                 {
-                    throw new ArgumentException($"Read2's path {value} is not found");
+                    if (!File.Exists(l_パス))
+                    {
+                        throw new ArgumentException($"Read2's path {l_パス} is not found");
+                    }
                 }
-                this._リード2のパス = value;
+                this._リード2のパス群 = l_群;
+                this._差し替えたライブラリ群 = null;
             }
+        }
+
+        /// <summary>
+        /// シングルエンドのライブラリのパス (カンマ区切り)
+        /// </summary>
+        public string A_シングルのパス
+        {
+            get => string.Join(",", this._シングルのパス群);
+            set
+            {
+                var l_群 = Get_パス群(value);
+                foreach (var l_パス in l_群)
+                {
+                    if (!File.Exists(l_パス))
+                    {
+                        throw new ArgumentException($"Single-end read's path {l_パス} is not found");
+                    }
+                }
+                this._シングルのパス群 = l_群;
+                this._差し替えたライブラリ群 = null;
+            }
+        }
+
+        /// <summary>
+        /// ライブラリごとのリードの組
+        /// </summary>
+        /// <remarks>
+        /// ペアのライブラリが先、シングルエンドのライブラリが後<br/>
+        /// シングルエンドのライブラリはリード 2 が空文字列になる<br/>
+        /// -2 を伴わない -1 は、従来どおりシングルエンドとして扱う
+        /// </remarks>
+        public IReadOnlyList<(string A_リード1, string A_リード2)> A_ライブラリ群
+            => this._差し替えたライブラリ群 ?? Get_入力からのライブラリ群();
+
+        /// <summary>
+        /// ライブラリの数
+        /// </summary>
+        public int A_ライブラリ数 => this._リード1のパス群.Count;
+
+        /// <summary>
+        /// ペアを持つライブラリがあるか
+        /// </summary>
+        public bool Hasペア => this.A_ライブラリ群.Any(x => !string.IsNullOrWhiteSpace(x.A_リード2));
+
+        /// <summary>
+        /// リード 1 と 2 でライブラリの数が揃っているか
+        /// </summary>
+        public bool Isライブラリ数が一致 => this._リード2のパス群.Count is 0 || this._リード2のパス群.Count == this._リード1のパス群.Count;
+
+        /// <summary>
+        /// ライブラリごとの代表リード長 (観測値)
+        /// </summary>
+        /// <remarks>
+        /// 期待ペア数のモデルはリード長と断片長の差で位置数を数えるので、長さの違うライブラリに 1 つの値を当てると期待が 0 になって証拠が消える
+        /// </remarks>
+        public IReadOnlyList<int> A_ライブラリのリード長 => this._ライブラリのリード長;
+
+        /// <summary>
+        /// ライブラリごとの代表リード長を置く
+        /// </summary>
+        /// <param name="p_長さ群">ライブラリ順のリード長</param>
+        public void Set_ライブラリのリード長(IEnumerable<int> p_長さ群)
+        {
+            this._ライブラリのリード長 = [.. p_長さ群];
         }
 
         /// <summary>
@@ -190,7 +291,43 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.許容Phredオフセット)}");
                 }
                 this._Phredオフセット = value;
+                this._Phredオフセット群 = [];
                 this.A_IsPhred明示指定 = true;
+            }
+        }
+
+        /// <summary>
+        /// そのライブラリの Phred オフセット
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <remarks>
+        /// 明示指定されていれば全ライブラリでその値を使う
+        /// </remarks>
+        /// <returns></returns>
+        public int Get_Phredオフセット(int p_ライブラリ番号)
+        {
+            return this.A_IsPhred明示指定 || p_ライブラリ番号 >= this._Phredオフセット群.Count
+                ? this._Phredオフセット
+                : this._Phredオフセット群[p_ライブラリ番号];
+        }
+
+        /// <summary>
+        /// そのライブラリの Phred オフセットを推定値として置く
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <param name="p_オフセット">置くオフセット</param>
+        public void Set_推定Phredオフセット(int p_ライブラリ番号, int p_オフセット)
+        {
+            while (this._Phredオフセット群.Count <= p_ライブラリ番号)
+            {
+                this._Phredオフセット群.Add(this._Phredオフセット);
+            }
+            this._Phredオフセット群[p_ライブラリ番号] = p_オフセット;
+
+            // 先頭ライブラリの値は、ライブラリを指定しない経路 (表示や既定) の代表として置く
+            if (p_ライブラリ番号 == 0)
+            {
+                this.Set_推定Phredオフセット(p_オフセット);
             }
         }
 
@@ -445,10 +582,51 @@ namespace Tsumiki.Models.Foundation
         /// 明示指定の状態を保って作業用設定を複製する
         /// </summary>
         /// <returns>元の設定と k 長一覧を共有しない複製</returns>
+        /// <summary>
+        /// 前処理などで作り直したパスへ差し替える
+        /// </summary>
+        /// <param name="p_群">ライブラリごとのリードの組</param>
+        public void Set_ライブラリ群(IEnumerable<(string A_リード1, string A_リード2)> p_群)
+        {
+            // ペアの有無ごと保つ。リード 2 だけを詰めて持つと、シングルが混ざったときに対応がずれる
+            this._差し替えたライブラリ群 = [.. p_群];
+        }
+
+        /// <summary>
+        /// 実行時引数からライブラリの一覧を組み立てる
+        /// </summary>
+        /// <returns></returns>
+        private List<(string A_リード1, string A_リード2)> Get_入力からのライブラリ群()
+        {
+            List<(string A_リード1, string A_リード2)> l_群 = this._リード2のパス群.Count > 0
+                ? [.. this._リード1のパス群.Select((x, i) => (x, i < this._リード2のパス群.Count ? this._リード2のパス群[i] : string.Empty))]
+                : [.. this._リード1のパス群.Select(x => (x, string.Empty))];
+            l_群.AddRange(this._シングルのパス群.Select(x => (x, string.Empty)));
+            return l_群;
+        }
+
+        /// <summary>
+        /// カンマ区切りのパス指定を 1 本ずつに分ける
+        /// </summary>
+        /// <param name="p_指定">カンマ区切りのパス</param>
+        /// <returns></returns>
+        private static List<string> Get_パス群(string? p_指定)
+        {
+            return string.IsNullOrWhiteSpace(p_指定)
+                ? []
+                : [.. p_指定.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)];
+        }
+
         public Parameters Get_複製()
         {
             var l_複製 = (Parameters)this.MemberwiseClone();
             l_複製._k長一覧 = [.. this._k長一覧];
+            l_複製._リード1のパス群 = [.. this._リード1のパス群];
+            l_複製._Phredオフセット群 = [.. this._Phredオフセット群];
+            l_複製._ライブラリのリード長 = [.. this._ライブラリのリード長];
+            l_複製._リード2のパス群 = [.. this._リード2のパス群];
+            l_複製._シングルのパス群 = [.. this._シングルのパス群];
+            l_複製._差し替えたライブラリ群 = this._差し替えたライブラリ群 is null ? null : [.. this._差し替えたライブラリ群];
             l_複製.A_仕上げ設定 = new()
             {
                 A_Is有効 = this.A_仕上げ設定.A_Is有効,
@@ -561,11 +739,10 @@ namespace Tsumiki.Models.Foundation
 
                 ============= Parameters =============
 
-                read1: {this.A_リード1のパス}
-                read2: {this.A_リード2のパス}
+                libraries: {string.Join(" | ", this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? x.A_リード1 + " (single-end)" : x.A_リード1 + " + " + x.A_リード2))}
                 kmer: {(this.A_k長一覧.Count > 1 ? string.Join(", ", this.A_k長一覧) : this.A_k長.ToString())}
                 kmer cutoff: {this.A_kmerカットオフ}
-                phred: {this.A_Phredオフセット}
+                phred: {(this._Phredオフセット群.Count > 1 ? string.Join(", ", this._Phredオフセット群) : this.A_Phredオフセット.ToString())}
                 quality cutoff: {this.A_クオリティカットオフ}
                 counting memory budget: {this.A_メモリ予算}
                 insert size: {this.A_インサートサイズ?.ToString() ?? インサートサイズ未指定表示}

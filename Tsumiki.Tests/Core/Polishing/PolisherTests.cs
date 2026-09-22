@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Core
             var l_配置 = new ReadMapper([l_誤りを含む配列]).Get_配置(l_真の配列.Substring(950, 150));
             Console.WriteLine(l_配置.A_整列位置群.First(x => x.A_参照位置 == l_誤り位置));
 
-            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, l_FASTQ, null, l_出力);
+            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, [(l_FASTQ, string.Empty)], l_出力);
 
             Console.WriteLine(l_統計);
 
@@ -101,7 +101,7 @@ namespace Tsumiki.Tests.Core
             var l_FASTQ = this.V_書き出し_FASTQ(l_真の配列, p_リード長: 150, p_刻み: 10, p_開始: 0, p_終了: 800);
             var l_出力 = Path.Combine(this._一時ディレクトリ, "polished.fasta");
 
-            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, l_FASTQ, null, l_出力);
+            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, [(l_FASTQ, string.Empty)], l_出力);
 
             Assert.NotNull(l_統計);
             Assert.Equal(0L, l_統計!.Value.A_訂正した塩基数);
@@ -121,7 +121,7 @@ namespace Tsumiki.Tests.Core
             var l_FASTQ = this.V_書き出し_FASTQ(l_真の配列, p_リード長: 150, p_刻み: 10, p_開始: 0, p_終了: 1_000);
             var l_出力 = Path.Combine(this._一時ディレクトリ, "polished.fasta");
 
-            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, l_FASTQ, null, l_出力);
+            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, [(l_FASTQ, string.Empty)], l_出力);
 
             Assert.NotNull(l_統計);
             Assert.Equal(2_000L, l_統計!.Value.A_評価できた位置数);

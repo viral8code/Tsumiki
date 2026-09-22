@@ -9,6 +9,20 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     internal static class ReadPreparationPipeline
     {
+        #region 定数
+
+        /// <summary>
+        /// 前処理済みリードのファイル名の幹
+        /// </summary>
+        private const string 前処理済みの幹 = "preprocessed";
+
+        /// <summary>
+        /// 訂正済みリードのファイル名の幹
+        /// </summary>
+        private const string 訂正済みの幹 = "corrected";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -16,92 +30,150 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_引数">作業用設定</param>
         /// <param name="p_一時ディレクトリ">処理済みリードの出力先</param>
+        /// <remarks>
+        /// 前処理も訂正もライブラリごとに独立して行う (アダプタの読み抜けも誤りの出方もライブラリで違う)
+        /// </remarks>
         public static void V_実行(Parameters p_引数, string p_一時ディレクトリ)
         {
             // 訂正済みリードがそのまま使えるなら前処理まで遡らない
             // 前処理済みリードは訂正の入力にしか使わないので、消してあっても再開できる
             if (p_引数.A_Is再開 && p_引数.A_Isエラー訂正 && Get_再利用できる訂正済み(p_引数, p_一時ディレクトリ) is { } l_再利用)
             {
-                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用.A_訂正済み1);
-                p_引数.A_リード1のパス = l_再利用.A_訂正済み1;
-                if (l_再利用.A_訂正済み2 is not null)
-                {
-                    p_引数.A_リード2のパス = l_再利用.A_訂正済み2;
-                }
+                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用[0].A_リード1);
+                p_引数.Set_ライブラリ群(l_再利用);
                 V_削除_前処理済みリード(p_一時ディレクトリ);
                 return;
             }
 
             if (p_引数.A_Is前処理)
             {
-                if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
-                {
-                    Logger.V_出力(メッセージID.前処理省略_ペアなし);
-                }
-                else
-                {
-                    Logger.V_出力(メッセージID.前処理開始);
-
-                    var l_前処理済み1 = Path.Combine(p_一時ディレクトリ, "preprocessed.1.fq");
-                    var l_前処理済み2 = Path.Combine(p_一時ディレクトリ, "preprocessed.2.fq");
-
-                    var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
-                    if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_前処理済み1, l_前処理済み2))
-                    {
-                        Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_前処理済み1);
-                    }
-                    else
-                    {
-                        var l_前処理統計 = Preprocessor.V_前処理_リードファイル(p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_前処理済み1, l_前処理済み2);
-                        Preprocessor.V_出力_前処理統計(l_前処理統計);
-                        StageCheckpoint.V_保存(l_署名, l_前処理済み1, l_前処理済み2);
-                    }
-
-                    // 以降の全処理 (エラー訂正・ k-mer カウント・グラフ構築) は
-                    // 前処理済みファイルを見るようにする
-                    p_引数.A_リード1のパス = l_前処理済み1;
-                    p_引数.A_リード2のパス = l_前処理済み2;
-
-                    Logger.V_出力_タイムスタンプ();
-                }
+                V_前処理(p_引数, p_一時ディレクトリ);
             }
 
             if (p_引数.A_Isエラー訂正)
             {
-                Logger.V_出力(メッセージID.エラー訂正開始);
-
-                var l_訂正済み1 = Path.Combine(p_一時ディレクトリ, "corrected.1.fq");
-                var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-                var l_訂正済み2 = l_Hasリード2 ? Path.Combine(p_一時ディレクトリ, "corrected.2.fq") : null;
-
-                var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
-                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
-                {
-                    Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_訂正済み1);
-                }
-                else
-                {
-                    ErrorCorrector.V_訂正_リードファイル(p_引数.A_リード1のパス, l_Hasリード2 ? p_引数.A_リード2のパス : null, p_一時ディレクトリ, l_訂正済み1, l_訂正済み2);
-                    StageCheckpoint.V_保存(l_署名, l_訂正済み1, l_訂正済み2);
-                }
-
-                // 以降の全処理 (k-mer カウント・グラフ構築・リードの再マッピング) は
-                // 訂正済みファイルを見るようにする
-                p_引数.A_リード1のパス = l_訂正済み1;
-                if (l_Hasリード2)
-                {
-                    p_引数.A_リード2のパス = l_訂正済み2!;
-                }
-
-                V_削除_前処理済みリード(p_一時ディレクトリ);
-
-                Logger.V_出力_タイムスタンプ();
+                V_訂正(p_引数, p_一時ディレクトリ);
             }
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// ライブラリごとにアダプタ除去とペア相互訂正を行う
+        /// </summary>
+        /// <param name="p_引数">作業用設定</param>
+        /// <param name="p_一時ディレクトリ">出力先</param>
+        private static void V_前処理(Parameters p_引数, string p_一時ディレクトリ)
+        {
+            if (!p_引数.Hasペア)
+            {
+                Logger.V_出力(メッセージID.前処理省略_ペアなし);
+                return;
+            }
+
+            Logger.V_出力(メッセージID.前処理開始);
+            var l_ペアなしを飛ばした = false;
+
+            // 署名は入力を差し替える前に採る (差し替えた後では前処理の入力を指さなくなる)
+            var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
+            List<(string A_リード1, string A_リード2)> l_出力群 = [];
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+
+                // アダプタの読み抜けもペアの相互訂正も相方が要る。シングルエンドのライブラリはそのまま通す
+                if (string.IsNullOrWhiteSpace(A_リード2))
+                {
+                    l_出力群.Add((A_リード1, string.Empty));
+                    l_ペアなしを飛ばした = true;
+                    continue;
+                }
+
+                var l_出力1 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 1);
+                var l_出力2 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 2);
+
+                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_出力1, l_出力2))
+                {
+                    Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
+                }
+                else
+                {
+                    var l_前処理統計 = Preprocessor.V_前処理_リードファイル(A_リード1, A_リード2, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    Preprocessor.V_出力_前処理統計(l_前処理統計);
+                    StageCheckpoint.V_保存(l_署名, l_出力1, l_出力2);
+                }
+                l_出力群.Add((l_出力1, l_出力2));
+            }
+
+            if (l_ペアなしを飛ばした)
+            {
+                Logger.V_出力(メッセージID.前処理省略_ペアなし);
+            }
+
+            // 以降の全処理 (エラー訂正・ k-mer カウント・グラフ構築) は
+            // 前処理済みファイルを見るようにする
+            p_引数.Set_ライブラリ群(l_出力群);
+
+            Logger.V_出力_タイムスタンプ();
+        }
+
+        /// <summary>
+        /// ライブラリごとにエラー訂正を行う
+        /// </summary>
+        /// <param name="p_引数">作業用設定</param>
+        /// <param name="p_一時ディレクトリ">出力先</param>
+        private static void V_訂正(Parameters p_引数, string p_一時ディレクトリ)
+        {
+            Logger.V_出力(メッセージID.エラー訂正開始);
+
+            var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
+            List<(string A_リード1, string A_リード2)> l_出力群 = [];
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                var l_Hasリード2 = !string.IsNullOrWhiteSpace(A_リード2);
+                var l_出力1 = Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 1);
+                var l_出力2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 2) : null;
+
+                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_出力1, l_出力2))
+                {
+                    Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
+                }
+                else
+                {
+                    ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    StageCheckpoint.V_保存(l_署名, l_出力1, l_出力2);
+                }
+                l_出力群.Add((l_出力1, l_出力2 ?? string.Empty));
+            }
+
+            // 以降の全処理 (k-mer カウント・グラフ構築・リードの再マッピング) は
+            // 訂正済みファイルを見るようにする
+            p_引数.Set_ライブラリ群(l_出力群);
+
+            V_削除_前処理済みリード(p_一時ディレクトリ);
+
+            Logger.V_出力_タイムスタンプ();
+        }
+
+        /// <summary>
+        /// 中間リードのパス
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">置き場</param>
+        /// <param name="p_幹">ファイル名の幹</param>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <param name="p_side">1 か 2</param>
+        /// <remarks>
+        /// 先頭のライブラリだけ従来の名前にするのは、単一ライブラリの再開が過去の中間ファイルで効くようにするため
+        /// </remarks>
+        /// <returns></returns>
+        private static string Get_中間パス(string p_一時ディレクトリ, string p_幹, int p_ライブラリ番号, int p_side)
+        {
+            var l_接尾 = p_ライブラリ番号 == 0 ? string.Empty : FormattableString.Invariant($".lib{p_ライブラリ番号 + 1}");
+            return Path.Combine(p_一時ディレクトリ, FormattableString.Invariant($"{p_幹}{l_接尾}.{p_side}.fq"));
+        }
 
         /// <summary>
         /// 訂正済みリードが揃った後、要らなくなった前処理済みリードを消す
@@ -113,14 +185,15 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         internal static void V_削除_前処理済みリード(string p_一時ディレクトリ)
         {
-            foreach (var l_名前 in new[] { "preprocessed.1.fq", "preprocessed.2.fq" })
+            if (!Directory.Exists(p_一時ディレクトリ))
             {
-                var l_パス = Path.Combine(p_一時ディレクトリ, l_名前);
-                if (File.Exists(l_パス))
-                {
-                    File.Delete(l_パス);
-                    Logger.V_出力(メッセージID.中間リードを削除, l_パス);
-                }
+                return;
+            }
+
+            foreach (var l_パス in Directory.EnumerateFiles(p_一時ディレクトリ, 前処理済みの幹 + "*.fq"))
+            {
+                File.Delete(l_パス);
+                Logger.V_出力(メッセージID.中間リードを削除, l_パス);
             }
         }
 
@@ -132,27 +205,47 @@ namespace Tsumiki.Cores.Pipeline
         /// <remarks>
         /// 訂正工程の入力は前処理済みリードだが、その識別には前処理工程の記録 (.sha256) を使うので実体は要らない
         /// </remarks>
-        /// <returns>そのまま使える訂正済みリード、無ければ null</returns>
-        private static (string A_訂正済み1, string? A_訂正済み2)? Get_再利用できる訂正済み(Parameters p_引数, string p_一時ディレクトリ)
+        /// <returns>そのまま使える訂正済みリード、1 つでも欠けていれば null</returns>
+        private static List<(string A_リード1, string A_リード2)>? Get_再利用できる訂正済み(Parameters p_引数, string p_一時ディレクトリ)
         {
-            var l_訂正済み1 = Path.Combine(p_一時ディレクトリ, "corrected.1.fq");
-            var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-            var l_訂正済み2 = l_Hasリード2 ? Path.Combine(p_一時ディレクトリ, "corrected.2.fq") : null;
-
             var l_訂正前設定 = p_引数.Get_複製();
-            if (p_引数.A_Is前処理 && l_Hasリード2)
+            if (p_引数.A_Is前処理 && p_引数.Hasペア)
             {
-                var l_前処理済み1 = Path.Combine(p_一時ディレクトリ, "preprocessed.1.fq");
-                var l_前処理済み2 = Path.Combine(p_一時ディレクトリ, "preprocessed.2.fq");
-                if (StageCheckpoint.Get_保存済み記録(l_前処理済み1) is null && !(File.Exists(l_前処理済み1) && File.Exists(l_前処理済み2)))
+                List<(string A_リード1, string A_リード2)> l_前処理済み群 = [];
+                for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+                {
+                    var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                    if (string.IsNullOrWhiteSpace(A_リード2))
+                    {
+                        l_前処理済み群.Add((A_リード1, string.Empty));
+                        continue;
+                    }
+
+                    var l_前処理済み1 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 1);
+                    var l_前処理済み2 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 2);
+                    if (StageCheckpoint.Get_保存済み記録(l_前処理済み1) is null && !(File.Exists(l_前処理済み1) && File.Exists(l_前処理済み2)))
+                    {
+                        return null;
+                    }
+                    l_前処理済み群.Add((l_前処理済み1, l_前処理済み2));
+                }
+                l_訂正前設定.Set_ライブラリ群(l_前処理済み群);
+            }
+
+            var l_署名 = StageCheckpoint.Get_入力署名(l_訂正前設定);
+            List<(string A_リード1, string A_リード2)> l_訂正済み群 = [];
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_リード2);
+                var l_訂正済み1 = Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 1);
+                var l_訂正済み2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 2) : null;
+                if (!StageCheckpoint.Is再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
                 {
                     return null;
                 }
-                l_訂正前設定.A_リード1のパス = l_前処理済み1;
-                l_訂正前設定.A_リード2のパス = l_前処理済み2;
+                l_訂正済み群.Add((l_訂正済み1, l_訂正済み2 ?? string.Empty));
             }
-
-            return StageCheckpoint.Is再利用可能(StageCheckpoint.Get_入力署名(l_訂正前設定), l_訂正済み1, l_訂正済み2) ? (l_訂正済み1, l_訂正済み2) : null;
+            return l_訂正済み群;
         }
 
         #endregion

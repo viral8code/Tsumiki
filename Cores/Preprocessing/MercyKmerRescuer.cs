@@ -49,7 +49,7 @@ namespace Tsumiki.Cores.Preprocessing
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_引数.A_リード1のパス, p_引数.A_リード2のパス), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
 
             var l_追加数 = 0;
             foreach (var (_, l_候補中身) in l_候補)

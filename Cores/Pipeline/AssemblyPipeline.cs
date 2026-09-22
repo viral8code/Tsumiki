@@ -210,26 +210,30 @@ namespace Tsumiki.Cores.Pipeline
 
             using (new StageTimer($"read-mapping k={p_k長}"))
             {
-                if (string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+                for (var i = 0; i < p_引数.A_ライブラリ数; i++)
                 {
-                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
-                    l_contig構築.V_マッピング_リード(p_引数.A_リード1のパス);
-                }
-                else
-                {
-                    // ペアエンドの場合、read1/read2 を同時に読み進めて
-                    // インサートサイズによる隣接検出も行う
-                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード1のパス);
-                    Logger.V_出力(メッセージID.リードファイルのパス, p_引数.A_リード2のパス);
-                    l_contig構築.V_マッピング_ペアリード(p_引数.A_リード1のパス, p_引数.A_リード2のパス);
+                    var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                    Logger.V_出力(メッセージID.リードファイルのパス, A_リード1);
+                    if (string.IsNullOrWhiteSpace(A_リード2))
+                    {
+                        l_contig構築.V_マッピング_リード(A_リード1);
+                    }
+                    else
+                    {
+                        // ペアエンドの場合、read1/read2 を同時に読み進めて
+                        // インサートサイズによる隣接検出も行う
+                        // ライブラリ番号を渡すのは、既知長をそのライブラリの断片長分布で解釈させるため
+                        Logger.V_出力(メッセージID.リードファイルのパス, A_リード2);
+                        l_contig構築.V_マッピング_ペアリード(A_リード1, A_リード2, i);
+                    }
                 }
 
                 // 重なりで繋いだ断片は、リードでは届かない接合点を跨げる観測そのもの
                 // k が上がるほどリード 1 本では接合点を跨げなくなるので、ここが分岐の証拠の主力になる
-                if (File.Exists(l_断片パス))
+                foreach (var l_パス in Get_断片パス群(l_断片パス, p_引数.A_ライブラリ数).Where(File.Exists))
                 {
-                    Logger.V_出力(メッセージID.リードファイルのパス, l_断片パス);
-                    l_contig構築.V_マッピング_リード(l_断片パス);
+                    Logger.V_出力(メッセージID.リードファイルのパス, l_パス);
+                    l_contig構築.V_マッピング_リード(l_パス);
                 }
             }
 
@@ -263,7 +267,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
                 if (l_窓数 >= rMer検証に必要な窓数)
                 {
-                    l_r_mer検証器 = RepeatRMerVerifier.V_構築([(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス], l_r長, l_kmerインデックス, p_k長);
+                    l_r_mer検証器 = RepeatRMerVerifier.V_構築(Get_全リードパス(p_原入力 ?? p_引数), l_r長, l_kmerインデックス, p_k長);
                 }
                 else
                 {
@@ -287,7 +291,7 @@ namespace Tsumiki.Cores.Pipeline
             // インサートサイズが推定できず作られないこともある
             var l_IsScaffold作成済み = false;
 
-            if (!string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            if (p_引数.Hasペア)
             {
                 Logger.V_出力(メッセージID.Scaffolding開始);
                 using (new StageTimer($"scaffolding k={p_k長}"))
@@ -326,7 +330,7 @@ namespace Tsumiki.Cores.Pipeline
             // 局所リードだけの使い捨てミニアセンブリで埋める (-la、-mg の安全な代替)
             if (p_引数.A_Is局所アセンブリ)
             {
-                var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_k長);
+                var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, p_引数.A_ライブラリ群, p_k長);
                 LocalAssembler.V_出力_統計(l_局所統計);
                 if (l_局所統計.A_埋めたギャップ数 > 0)
                 {
@@ -436,7 +440,7 @@ namespace Tsumiki.Cores.Pipeline
             if ((p_リード長 ?? 0) - KmerCarryOver.持ち越し検証のr長 + 1 >= rMer検証に必要な窓数)
             {
                 l_持ち越し検証器 = RepeatRMerVerifier.V_構築(
-                    [(p_原入力 ?? p_引数).A_リード1のパス, (p_原入力 ?? p_引数).A_リード2のパス],
+                    Get_全リードパス(p_原入力 ?? p_引数),
                     KmerCarryOver.持ち越し検証のr長,
                     p_問い合わせ配列: Get_配列列(p_FASTAパス));
             }
@@ -456,7 +460,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.引き継ぎの準備完了, p_次への引き継ぎ.Count);
             Logger.V_出力_タイムスタンプ();
 
-            if (!p_引数.A_IsSuperRead作成 || string.IsNullOrWhiteSpace(p_引数.A_リード2のパス))
+            if (!p_引数.A_IsSuperRead作成 || !p_引数.Hasペア)
             {
                 return;
             }
@@ -479,10 +483,18 @@ namespace Tsumiki.Cores.Pipeline
             var l_整列した断片長 = p_断片長標本.Count > 0 ? p_断片長標本.Order().ToArray() : null;
             int? l_断片長上限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 橋渡しに使う断片長の分位);
             int? l_断片長下限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 重なりに使う断片長の分位);
-            var l_合成リード = SuperReadJoiner.Get_合成リード(p_引数.A_リード1のパス, p_引数.A_リード2のパス, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, p_断片パス);
-            SuperReadJoiner.V_出力_統計(l_統計);
-            p_次への引き継ぎ.AddRange(l_合成リード);
-            p_合成リードの控え?.AddRange(l_合成リード);
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                if (string.IsNullOrWhiteSpace(A_リード2))
+                {
+                    continue;
+                }
+                var l_合成リード = SuperReadJoiner.Get_合成リード(A_リード1, A_リード2, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, Get_断片パス(p_断片パス, i));
+                SuperReadJoiner.V_出力_統計(l_統計);
+                p_次への引き継ぎ.AddRange(l_合成リード);
+                p_合成リードの控え?.AddRange(l_合成リード);
+            }
             Logger.V_出力_タイムスタンプ();
         }
 
@@ -504,6 +516,50 @@ namespace Tsumiki.Cores.Pipeline
             while (l_読み込み.Has続き())
             {
                 yield return l_読み込み.Get_次の配列().A_配列;
+            }
+        }
+
+        /// <summary>
+        /// 全ライブラリのリードのパス
+        /// </summary>
+        /// <param name="p_引数">実行時引数</param>
+        /// <returns></returns>
+        private static string[] Get_全リードパス(Parameters p_引数)
+        {
+            return [.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })];
+        }
+
+        /// <summary>
+        /// ライブラリごとの断片ファイルのパス
+        /// </summary>
+        /// <param name="p_基準パス">先頭ライブラリのパス</param>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <remarks>
+        /// 先頭だけ従来の名前にするのは、単一ライブラリの出力を変えないため
+        /// </remarks>
+        /// <returns></returns>
+        private static string Get_断片パス(string p_基準パス, int p_ライブラリ番号)
+        {
+            if (p_ライブラリ番号 == 0)
+            {
+                return p_基準パス;
+            }
+            var l_ディレクトリ = Path.GetDirectoryName(p_基準パス) ?? string.Empty;
+            var l_幹 = Path.GetFileNameWithoutExtension(p_基準パス);
+            return Path.Combine(l_ディレクトリ, FormattableString.Invariant($"{l_幹}.lib{p_ライブラリ番号 + 1}{Path.GetExtension(p_基準パス)}"));
+        }
+
+        /// <summary>
+        /// ライブラリの数だけ断片ファイルのパスを並べる
+        /// </summary>
+        /// <param name="p_基準パス">先頭ライブラリのパス</param>
+        /// <param name="p_ライブラリ数">ライブラリの数</param>
+        /// <returns></returns>
+        private static IEnumerable<string> Get_断片パス群(string p_基準パス, int p_ライブラリ数)
+        {
+            for (var i = 0; i < p_ライブラリ数; i++)
+            {
+                yield return Get_断片パス(p_基準パス, i);
             }
         }
 

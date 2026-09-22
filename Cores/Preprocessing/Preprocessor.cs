@@ -68,9 +68,9 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_出力先1">前処理したリード 1 の書き出し先</param>
         /// <param name="p_出力先2">前処理したリード 2 の書き出し先</param>
         /// <returns>前処理の集計</returns>
-        public static 前処理統計 V_前処理_リードファイル(string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2)
+        public static 前処理統計 V_前処理_リードファイル(string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2, int p_Phredオフセット)
         {
-            var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
+            var l_Phredオフセット = p_Phredオフセット;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
             var l_総ペア数 = 0;

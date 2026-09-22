@@ -71,24 +71,60 @@ namespace Tsumiki.Tests.Core
         /// 同点幅に収まる差は同じ段になることを確かめる
         /// </summary>
         [Fact]
-        public void Get_段_同点幅に収まる差は同じ段になる()
+        public void Get_段表_同点幅に収まる差は同じ段になる()
         {
-            Assert.Equal(0, AssemblySelector.Get_段(0.9994D, 0.9994D));
-            Assert.Equal(0, AssemblySelector.Get_段(0.9976D, 0.9994D));
-            Assert.Equal(0, AssemblySelector.Get_段(0.9970D, 0.9994D));
+            var l_段 = AssemblySelector.Get_段表([0.9994D, 0.9976D, 0.9970D]);
 
-            // 同点幅 (0.5 ポイント) を超えれば段が下がる
-            Assert.True(AssemblySelector.Get_段(0.9900D, 0.9994D) > 0);
+            Assert.Equal(0, l_段[0.9994D]);
+            Assert.Equal(0, l_段[0.9976D]);
+            Assert.Equal(0, l_段[0.9970D]);
         }
 
         /// <summary>
-        /// 基準より良い値は 0 段のままにすることを確かめる
+        /// 同点幅を超える差があれば段が下がることを確かめる
         /// </summary>
         [Fact]
-        public void Get_段_基準より良い値は0段のままにする()
+        public void Get_段表_同点幅を超える差で段が下がる()
         {
-            // 丸めの都合で基準をわずかに上回っても、負の段にはしない
-            Assert.Equal(0, AssemblySelector.Get_段(0.9999D, 0.9994D));
+            var l_段 = AssemblySelector.Get_段表([0.9994D, 0.9900D]);
+
+            Assert.Equal(0, l_段[0.9994D]);
+            Assert.True(l_段[0.9900D] > 0);
+        }
+
+        /// <summary>
+        /// 隣との差で切るので、最良値からの距離が同点幅を超えていても間が詰まっていれば同じ段になることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// 実データで観測された誤り (V. cholerae の k=53 が NG50 を見る前に落ちた) の再現<br/>
+        /// 96.50 / 96.12 / 95.82 は隣との差がどれも 0.5 ポイント未満なので、同点として扱われなければならない
+        /// </remarks>
+        [Fact]
+        public void Get_段表_隣が詰まっていれば最良から離れていても同じ段になる()
+        {
+            var l_段 = AssemblySelector.Get_段表([0.9650D, 0.9612D, 0.9582D]);
+
+            Assert.Equal(0, l_段[0.9650D]);
+            Assert.Equal(0, l_段[0.9612D]);
+            Assert.Equal(0, l_段[0.9582D]);
+        }
+
+        /// <summary>
+        /// 完全性が同点の範囲なら、連続性で選ばれることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// V. cholerae で k=87 (NG50 55,706) が k=53 (NG50 134,913) に勝ってしまった実例
+        /// </remarks>
+        [Fact]
+        public void Get_最良_完全性が同点なら連続性で選ぶ()
+        {
+            var l_選択 = AssemblySelector.Get_最良([
+                Get_候補(53, 134_913L, 0.9582D, 0.9994D),
+                Get_候補(87, 55_706L, 0.9612D, 0.9978D),
+                Get_候補(139, 55_618L, 0.9650D, 0.9958D),
+            ]);
+
+            Assert.Equal(53, l_選択!.Value.A_実行結果.A_k長);
         }
 
         #endregion

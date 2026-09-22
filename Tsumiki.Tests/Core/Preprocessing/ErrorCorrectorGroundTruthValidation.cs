@@ -57,7 +57,7 @@ namespace Tsumiki.Tests.Core
 
             try
             {
-                ErrorCorrector.V_訂正_リードファイル(l_リード1パス, l_リード2パス, l_出力ディレクトリ, l_訂正済み1, l_訂正済み2);
+                ErrorCorrector.V_訂正_リードファイル(l_リード1パス, l_リード2パス, l_出力ディレクトリ, l_訂正済み1, l_訂正済み2, ConfigurationManager.A_実行時引数.A_Phredオフセット);
 
                 // read_id -> mate -> position -> true_base (注入されたエラーの正解)
                 var l_正解エラー = new Dictionary<(string A_リードID, int A_ペア番号, int A_位置), char>();

@@ -24,8 +24,8 @@ namespace Tsumiki.Cores.Pipeline
             // 入力が前の工程の出力なら、その工程の記録で識別する
             // 記録には入力の署名と出力の内容ハッシュが入っているので、入力そのものを読み直さずに済む
             // (前の工程の中間ファイルを消してあっても再開できる)
-            var l_入力の識別 = Get_保存済み記録(l_設定.A_リード1のパス)
-                ?? (Get_ハッシュ(l_設定.A_リード1のパス) + "\n" + Get_ハッシュ(l_設定.A_リード2のパス));
+            var l_入力の識別 = string.Join("\n", l_設定.A_ライブラリ群.Select(x =>
+                Get_保存済み記録(x.A_リード1) ?? (Get_ハッシュ(x.A_リード1) + "\n" + Get_ハッシュ(x.A_リード2))));
             var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + "\n" + l_設定 + "\n" + l_入力の識別;
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(l_本文)));
         }

@@ -204,7 +204,7 @@ namespace Tsumiki.Cores.Pipeline
             l_JSON.WriteBoolean("trim_low_coverage_ends", p_原入力.A_Is低カバレッジ端トリミング);
             l_JSON.WriteEndObject();
             l_JSON.WriteStartArray("inputs");
-            foreach (var l_入力 in new[] { p_原入力.A_リード1のパス, p_原入力.A_リード2のパス })
+            foreach (var l_入力 in p_原入力.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
             {
                 if (string.IsNullOrWhiteSpace(l_入力))
                 {
@@ -222,7 +222,7 @@ namespace Tsumiki.Cores.Pipeline
             if (p_処理済み設定 is { } l_処理済み設定)
             {
                 l_JSON.WriteStartArray("corrected_read_hashes");
-                foreach (var l_入力 in new[] { l_処理済み設定.A_リード1のパス, l_処理済み設定.A_リード2のパス })
+                foreach (var l_入力 in l_処理済み設定.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
                 {
                     if (string.IsNullOrWhiteSpace(l_入力) || !File.Exists(l_入力))
                     {
@@ -258,7 +258,7 @@ namespace Tsumiki.Cores.Pipeline
         {
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.支持検査の開始, 支持検査のr長);
-            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, 支持検査のr長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_ライブラリ群, 支持検査のr長);
             ReadSupportChecker.V_出力_検査結果(l_結果);
             return l_結果;
         }
@@ -286,7 +286,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_出力先 = Path.Combine(p_一時ディレクトリ, ポリッシュ済みファイル名);
             // 深度は訂正前の貼り付けで測ったものを使う
             // 訂正は少数の置換だけで、貼り直してもリードの置き場所はほとんど変わらないのに、全リードの貼り付けがもう 1 回かかる
-            var l_統計 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス, l_出力先);
+            var l_統計 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_ライブラリ群, l_出力先);
             Polisher.V_出力_統計(l_統計);
             if (l_統計 is not null)
             {
@@ -314,7 +314,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力_空行();
-            var l_検証 = CircularClosureVerifier.Get_検証結果(p_最終パス, p_引数.A_リード1のパス, p_引数.A_リード2のパス);
+            var l_検証 = CircularClosureVerifier.Get_検証結果(p_最終パス, p_引数.A_ライブラリ群);
             CircularClosureVerifier.V_出力_検証結果(l_検証);
             Logger.V_出力_タイムスタンプ();
             return l_検証;

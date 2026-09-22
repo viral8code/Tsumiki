@@ -24,7 +24,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
         /// </remarks>
-        public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
+        public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
@@ -38,11 +38,11 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     if (l_束群 is not null)
                     {
-                        V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号]);
+                        V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号], p_Phredオフセット);
                     }
                     else
                     {
-                        V_登録_1リード(Util.V_変換_塩基列(l_レコード.A_配列), l_レコード.A_クオリティ, p_kmerインデックス);
+                        V_登録_1リード(Util.V_変換_塩基列(l_レコード.A_配列), l_レコード.A_クオリティ, p_kmerインデックス, p_Phredオフセット);
                     }
 
                     var l_件数 = Interlocked.Increment(ref l_総リード数);
@@ -72,23 +72,28 @@ namespace Tsumiki.Cores.Preprocessing
         public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_Is進行状況出力 = false)
         {
             using var l_計測 = new StageTimer($"kmer-count k={p_引数.A_k長}");
-            var l_Isペアエンド = !string.IsNullOrWhiteSpace(p_引数.A_リード2のパス);
-            if (p_Is進行状況出力)
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
-                Logger.V_出力(l_Isペアエンド ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
-            }
-            V_読込_1ファイル(p_引数.A_リード1のパス, p_引数.A_Is曖昧塩基許容, p_kmerインデックス);
+                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                var l_Phred = p_引数.Get_Phredオフセット(i);
+                var l_Isペアエンド = !string.IsNullOrWhiteSpace(A_リード2);
+                if (p_Is進行状況出力)
+                {
+                    Logger.V_出力(l_Isペアエンド ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
+                }
+                V_読込_1ファイル(A_リード1, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
 
-            if (!l_Isペアエンド)
-            {
-                return;
-            }
+                if (!l_Isペアエンド)
+                {
+                    continue;
+                }
 
-            if (p_Is進行状況出力)
-            {
-                Logger.V_出力(メッセージID.リード2の読込開始);
+                if (p_Is進行状況出力)
+                {
+                    Logger.V_出力(メッセージID.リード2の読込開始);
+                }
+                V_読込_1ファイル(A_リード2, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
             }
-            V_読込_1ファイル(p_引数.A_リード2のパス, p_引数.A_Is曖昧塩基許容, p_kmerインデックス);
         }
 
         /// <summary>
@@ -99,12 +104,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 呼ばれる頻度が低い想定のため未並列
         /// </remarks>
-        public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス)
+        public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_件数 = 0UL;
             var l_ログ回数 = 0UL;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
+            var l_Phredオフセット = p_Phredオフセット;
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
 
             using var l_読み込み = new FastqReader(p_ファイルパス);
@@ -147,15 +152,15 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_パス">読み込むリードのパス</param>
         /// <param name="p_Is曖昧塩基許容">曖昧塩基を展開して数えるか</param>
         /// <param name="p_kmerインデックス">数え上げ先</param>
-        private static void V_読込_1ファイル(string p_パス, bool p_Is曖昧塩基許容, TrustedKmerIndex p_kmerインデックス)
+        private static void V_読込_1ファイル(string p_パス, bool p_Is曖昧塩基許容, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             if (p_Is曖昧塩基許容)
             {
-                V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス);
+                V_読込_リードファイル_曖昧塩基あり(p_パス, p_kmerインデックス, p_Phredオフセット);
             }
             else
             {
-                V_読込_リードファイル(p_パス, p_kmerインデックス);
+                V_読込_リードファイル(p_パス, p_kmerインデックス, p_Phredオフセット);
             }
         }
 
@@ -183,7 +188,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 低品質の塩基は曖昧塩基と同じく窓を切る壁として渡し、V_登録_1リード と同じ k-mer だけを数える
         /// </remarks>
-        private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束)
+        private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束, int p_Phredオフセット)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             if (p_配列.Length < l_k長)
@@ -191,7 +196,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return;
             }
 
-            var l_品質下限 = ConfigurationManager.A_実行時引数.A_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
+            var l_品質下限 = p_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
             var l_窓 = new RollingKmer(l_k長);
             for (var i = 0; i < p_配列.Length; i++)
             {
@@ -213,7 +218,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// 逆相補側を別途登録してはいけない<br/>
         /// TrustedKmerIndex.V_登録 が正規形へ寄せて数えるため、二重計上になる
         /// </remarks>
-        private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス)
+        private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_塩基列 = p_塩基列;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -222,7 +227,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return;
             }
 
-            var l_Phredオフセット = ConfigurationManager.A_実行時引数.A_Phredオフセット;
+            var l_Phredオフセット = p_Phredオフセット;
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
 
             var l_低品質数 = 0;

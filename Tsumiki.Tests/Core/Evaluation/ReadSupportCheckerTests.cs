@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Core
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, l_リード, null, r長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
 
             Assert.NotNull(l_結果);
             Assert.Equal(0L, l_結果!.Value.A_支持のない位置数);
@@ -91,7 +91,7 @@ namespace Tsumiki.Tests.Core
             var l_リード = this.Get_リード("reads.fq", l_左, l_右);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_左 + l_右));
 
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, l_リード, null, r長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
 
             Assert.NotNull(l_結果);
             var l_区間 = Assert.Single(l_結果!.Value.A_区間);
@@ -114,7 +114,7 @@ namespace Tsumiki.Tests.Core
             var l_リード = this.Get_リード("reads.fq", l_真値);
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値[..1_000] + new string('N', 50) + l_真値[1_000..]));
 
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, l_リード, null, r長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
 
             Assert.NotNull(l_結果);
             Assert.Equal(0L, l_結果!.Value.A_支持のない位置数);
@@ -131,7 +131,7 @@ namespace Tsumiki.Tests.Core
             var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
             var l_リード = this.Get_リード("reads.fq", l_真値);
 
-            Assert.Null(ReadSupportChecker.Get_検査結果(l_FASTA, l_リード, null, p_r長: 65));
+            Assert.Null(ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], p_r長: 65));
         }
 
         #endregion

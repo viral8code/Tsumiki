@@ -61,15 +61,14 @@ namespace Tsumiki.Cores.Polishing
         /// p_FASTAパス を磨いて p_出力パス へ書き出す
         /// </summary>
         /// <param name="p_FASTAパス"></param>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_出力パス"></param>
         /// <param name="p_Is訂正">false なら配列を変更せず深度を再測定する</param>
         /// <remarks>
         /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
         /// </remarks>
         /// <returns></returns>
-        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, string p_リード1のパス, string? p_リード2のパス, string p_出力パス, bool p_Is訂正 = true)
+        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, string p_出力パス, bool p_Is訂正 = true)
         {
             using var l_計測 = new StageTimer("polishing");
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
@@ -98,7 +97,7 @@ namespace Tsumiki.Cores.Polishing
             var l_棄却数 = new long[l_スレッド数];
 
             Logger.V_出力(メッセージID.ポリッシュのマッピング開始);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス), (l_リード, l_ワーカー番号) =>
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, l_ワーカー番号) =>
             {
                 if (Try集計_塩基票(l_リード, l_マッパー, l_得票))
                 {

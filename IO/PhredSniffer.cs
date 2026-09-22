@@ -123,7 +123,7 @@ namespace Tsumiki.IO
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
         /// <param name="p_標本上限">見る行数の上限</param>
-        public static void V_解決_Phredオフセット(Parameters p_引数, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
+        public static void V_解決_Phredオフセット(Parameters p_引数, int p_ライブラリ番号, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
             var l_推定 = Get_推定オフセット(l_標本1);
@@ -134,12 +134,12 @@ namespace Tsumiki.IO
                 var l_推定2 = Get_推定オフセット(l_標本2);
                 if (l_推定 != l_推定2)
                 {
-                    Logger.V_出力(メッセージID.Phred_ファイル間で不一致, Get_表示用オフセット(l_推定), Get_表示用オフセット(l_推定2), p_引数.A_Phredオフセット);
+                    Logger.V_出力(メッセージID.Phred_ファイル間で不一致, Get_表示用オフセット(l_推定), Get_表示用オフセット(l_推定2), p_引数.Get_Phredオフセット(p_ライブラリ番号));
                     l_推定 = null;
                 }
             }
 
-            if (l_推定 is { } l_オフセット && l_オフセット != p_引数.A_Phredオフセット)
+            if (l_推定 is { } l_オフセット && l_オフセット != p_引数.Get_Phredオフセット(p_ライブラリ番号))
             {
                 if (p_引数.A_IsPhred明示指定)
                 {
@@ -147,15 +147,16 @@ namespace Tsumiki.IO
                 }
                 else
                 {
-                    p_引数.Set_推定Phredオフセット(l_オフセット);
+                    p_引数.Set_推定Phredオフセット(p_ライブラリ番号, l_オフセット);
                     Logger.V_出力(メッセージID.Phred_自動判定, l_オフセット, l_標本1.A_最小ASCII, l_標本1.A_最大ASCII);
                 }
             }
 
-            V_警告_疑わしいオフセット(p_リード1のパス, p_引数.A_Phredオフセット, p_標本上限);
+            var l_有効 = p_引数.Get_Phredオフセット(p_ライブラリ番号);
+            V_警告_疑わしいオフセット(p_リード1のパス, l_有効, p_標本上限);
             if (!string.IsNullOrWhiteSpace(p_リード2のパス))
             {
-                V_警告_疑わしいオフセット(p_リード2のパス!, p_引数.A_Phredオフセット, p_標本上限);
+                V_警告_疑わしいオフセット(p_リード2のパス!, l_有効, p_標本上限);
             }
         }
 

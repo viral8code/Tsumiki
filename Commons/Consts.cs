@@ -198,6 +198,11 @@
             public const string リード2のパス = "-2";
 
             /// <summary>
+            /// シングルエンドリードのパス
+            /// </summary>
+            public const string シングルのパス = "-s";
+
+            /// <summary>
             /// k 長
             /// </summary>
             public const string k長 = "-k";

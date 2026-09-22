@@ -57,9 +57,12 @@ namespace Tsumiki.Core
         private readonly Dictionary<(int, int), ulong> _リード隣接;
 
         /// <summary>
-        /// ペアが跨いだ unitig の組と、その間に通った頂点
+        /// ライブラリごとの、ペアが跨いだ unitig の組と、その間に通った頂点
         /// </summary>
-        private readonly Dictionary<(int, int), List<int>> _ペア経路;
+        /// <remarks>
+        /// 既知長はそのライブラリの断片長分布に照らして初めて意味を持つので、混ぜて持たない
+        /// </remarks>
+        private readonly List<Dictionary<(int, int), List<int>>> _ペア経路群 = [];
 
         /// <summary>
         /// 前段 k の確定済み経路 (scaffold/contig 全体) が跨いだ unitig の組と、その本数
@@ -102,7 +105,7 @@ namespace Tsumiki.Core
             this._unitig長 = [];
             this._unitig配列 = [string.Empty, string.Empty];
             this._リード隣接 = [];
-            this._ペア経路 = [];
+
             this._経路引き継ぎ隣接 = [];
             this._経路集計 = [];
             this._引き継ぎ経路集計 = [];
@@ -219,7 +222,7 @@ namespace Tsumiki.Core
         /// <remarks>
         /// 単一リードでは unitig 境界を跨げない場合でも、フラグメント長ぶん離れた 2 つの unitig の隣接なら検出できる
         /// </remarks>
-        public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス)
+        public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス, int p_ライブラリ番号 = 0)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
@@ -252,17 +255,18 @@ namespace Tsumiki.Core
             V_統合_隣接(this._リード隣接, l_ローカル隣接);
             V_統合_経路(this._経路集計, l_ローカル経路);
 
+            var l_ペア経路 = this.Get_ペア経路(p_ライブラリ番号);
             foreach (var l_ローカルペア in l_ローカルペア経路)
             {
                 foreach (var (l_キー, l_値群) in l_ローカルペア)
                 {
-                    if (this._ペア経路.TryGetValue(l_キー, out var l_一覧))
+                    if (l_ペア経路.TryGetValue(l_キー, out var l_一覧))
                     {
                         l_一覧.AddRange(l_値群);
                     }
                     else
                     {
-                        this._ペア経路[l_キー] = [.. l_値群];
+                        l_ペア経路[l_キー] = [.. l_値群];
                     }
                 }
             }
@@ -299,9 +303,10 @@ namespace Tsumiki.Core
             }
             this.A_インサートサイズ標本.AddRange(l_同一unitig標本);
             this.A_同一unitig標本.AddRange(l_同一unitig標本);
+            this.Get_同一unitig標本(p_ライブラリ番号).AddRange(l_同一unitig標本);
 
-            var l_ペア支持数 = this._ペア経路.Values.Sum(x => x.Count);
-            Logger.V_出力(メッセージID.ペア隣接候補数, this._ペア経路.Count, l_ペア支持数);
+            var l_ペア支持数 = l_ペア経路.Values.Sum(x => x.Count);
+            Logger.V_出力(メッセージID.ペア隣接候補数, l_ペア経路.Count, l_ペア支持数);
             Logger.V_出力(メッセージID.同一unitigのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一unitig標本.Count);
             if (l_同一unitig標本.Count > 0)
             {

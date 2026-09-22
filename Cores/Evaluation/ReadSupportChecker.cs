@@ -29,11 +29,10 @@ namespace Tsumiki.Cores.Evaluation
         /// 最終成果物がリードに裏付けられているかを調べる
         /// </summary>
         /// <param name="p_FASTAパス">調べる FASTA のパス</param>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_r長">支持を問う r-mer の長さ、2 bit パックの上限を超えられない</param>
         /// <returns>検査結果、調べられなかった場合は null</returns>
-        public static 支持検査結果? Get_検査結果(string p_FASTAパス, string? p_リード1のパス, string? p_リード2のパス, int p_r長)
+        public static 支持検査結果? Get_検査結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_r長)
         {
             if (p_r長 is < 1 or > 64 || !File.Exists(p_FASTAパス))
             {
@@ -48,7 +47,7 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_観測状態 = new byte[l_表.Count];
-            V_記録_支持(l_表, l_観測状態, p_リード1のパス, p_リード2のパス, p_r長);
+            V_記録_支持(l_表, l_観測状態, p_ライブラリ群, p_r長);
 
             return Get_集計(l_全件, l_位置ごとの番号, l_観測状態, p_r長);
         }
@@ -123,16 +122,15 @@ namespace Tsumiki.Cores.Evaluation
         /// </remarks>
         /// <param name="p_表">r-mer から通し番号への表</param>
         /// <param name="p_観測状態">通し番号ごとの観測状態</param>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
-        private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, string? p_リード1のパス, string? p_リード2のパス, int p_r長)
+        private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_r長)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_バッチ = new string[照合バッチサイズ];
             var l_件数 = 0;
 
-            foreach (var l_リード in FastqReader.Get_生リード列(p_リード1のパス, p_リード2のパス))
+            foreach (var l_リード in FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]))
             {
                 l_バッチ[l_件数++] = l_リード;
                 if (l_件数 == 照合バッチサイズ)

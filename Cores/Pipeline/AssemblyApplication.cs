@@ -79,12 +79,20 @@ namespace Tsumiki.Cores.Pipeline
             // 表示する前に確定させる
             // 表示された値と実際に使う値が食い違うと、
             // 後からログを読んだときに何が起きたのか分からなくなる
-            PhredSniffer.V_解決_Phredオフセット(l_引数, l_引数.A_リード1のパス, l_引数.A_リード2のパス);
+            // 符号化はライブラリごとに違いうるので、ライブラリごとに判定する
+            for (var i = 0; i < l_引数.A_ライブラリ数; i++)
+            {
+                var (A_リード1, A_リード2) = l_引数.A_ライブラリ群[i];
+                PhredSniffer.V_解決_Phredオフセット(l_引数, i, A_リード1, A_リード2);
+            }
 
             // 長さの違うライブラリが混ざっていても高い k へ届くよう、
             // 中央値ではなく「その長さ以上のリードが塩基の 1 割以上を出している」最長の長さで k を決める
             // 長さが 1 種類なら従来と同じ値になる
-            var l_リード長 = ReadLengthSniffer.Get_梯子上限のリード長(l_引数.A_リード1のパス, l_引数.A_リード2のパス, out var l_リード長分布);
+            var l_リード長 = ReadLengthSniffer.Get_梯子上限のリード長(l_引数.A_ライブラリ群, out var l_リード長分布);
+
+            // ライブラリごとの代表リード長も測る (期待ペア数のモデルがライブラリ別に要る)
+            l_引数.Set_ライブラリのリード長(l_引数.A_ライブラリ群.Select(x => ReadLengthSniffer.Get_代表リード長(x.A_リード1, x.A_リード2) ?? l_リード長 ?? 0));
             if (l_リード長 is { } l_観測リード長)
             {
                 Logger.V_出力(メッセージID.リード長の観測値, l_観測リード長);
@@ -103,7 +111,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_一時ディレクトリ = Path.Combine(Environment.CurrentDirectory, l_引数.A_一時ディレクトリ);
 
             var l_絶対作業パス = Path.GetFullPath(l_一時ディレクトリ).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            foreach (var l_入力 in new[] { l_引数.A_リード1のパス, l_引数.A_リード2のパス })
+            foreach (var l_入力 in l_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
             {
                 if (!string.IsNullOrWhiteSpace(l_入力) && Path.GetFullPath(l_入力).StartsWith(l_絶対作業パス, StringComparison.OrdinalIgnoreCase))
                 {

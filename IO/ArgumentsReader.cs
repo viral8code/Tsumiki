@@ -38,6 +38,10 @@ namespace Tsumiki.IO
                             l_引数.A_リード2のパス = p_引数列[l_位置++];
                             break;
 
+                        case Consts.引数キー.シングルのパス:
+                            l_引数.A_シングルのパス = p_引数列[l_位置++];
+                            break;
+
                         case Consts.引数キー.k長:
                             l_引数.Set_k長一覧(p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;
@@ -191,10 +195,18 @@ namespace Tsumiki.IO
                 l_引数.A_リード2のパス = string.Empty;
             }
 
-            if (string.IsNullOrWhiteSpace(l_引数.A_リード1のパス))
+            if (l_引数.A_ライブラリ数 == 0)
             {
                 Logger.V_出力_エラー(Logger.Get_メソッド名(), new ArgumentException("Please set read path"));
                 throw new ArgumentException("Please set read path");
+            }
+
+            // 数が食い違ったまま進むと、どのリード 1 とどのリード 2 が対なのかが決まらない
+            if (!l_引数.Isライブラリ数が一致)
+            {
+                var l_例外 = new ArgumentException("-1 and -2 must list the same number of comma-separated libraries");
+                Logger.V_出力_エラー(Logger.Get_メソッド名(), l_例外);
+                throw l_例外;
             }
 
             return l_引数;

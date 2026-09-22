@@ -56,11 +56,10 @@ namespace Tsumiki.Cores.Scaffolding
         /// 残ったギャップを、その両端に付いたリードだけで組み直して埋める
         /// </summary>
         /// <param name="p_scaffoldパス">対象の scaffold のパス</param>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス</param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>局所アセンブリの集計</returns>
-        public static 局所アセンブリ統計 V_充填_ギャップ(string p_scaffoldパス, string p_リード1のパス, string p_リード2のパス, int p_k長)
+        public static 局所アセンブリ統計 V_充填_ギャップ(string p_scaffoldパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_k長)
         {
             using var l_計測 = new StageTimer($"local-assembly k={p_k長}");
             var l_scaffold群 = FastaReader.Get_全エントリ(p_scaffoldパス);
@@ -88,7 +87,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
-            var l_局所リード = Get_局所リード(l_アンカー索引, p_リード1のパス, p_リード2のパス, p_k長, l_ギャップ一覧.Count, l_種集合, l_種長);
+            var l_局所リード = Get_局所リード(l_アンカー索引, p_ライブラリ群, p_k長, l_ギャップ一覧.Count, l_種集合, l_種長);
 
             var l_結果 = new string?[l_ギャップ一覧.Count];
             var l_判定群 = new ギャップ充填判定?[l_ギャップ一覧.Count];
@@ -111,7 +110,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_未解決gap = Enumerable.Range(0, l_ギャップ一覧.Count).Where(g => l_結果[g] is null && l_局所リード[g].Count > 0).ToList();
             if (l_未解決gap.Count > 0)
             {
-                V_拡張回収_近傍thread(l_未解決gap, l_局所リード, p_リード1のパス, p_リード2のパス, p_k長);
+                V_拡張回収_近傍thread(l_未解決gap, l_局所リード, p_ライブラリ群, p_k長);
                 _ = Parallel.ForEach(l_未解決gap, l_並列設定, g =>
                 {
                     l_結果[g] = Get_適応kの局所結果(l_ギャップ一覧[g], l_局所リード[g], p_k長, out var l_判定);
@@ -331,14 +330,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// アンカーに触れたペアは両方のリードを局所リード集合に入れる (相方が、まだ組み込まれていない領域を読んでいる可能性があるため)
         /// </remarks>
         /// <param name="p_アンカー索引"></param>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_k長"></param>
         /// <param name="p_ギャップ数"></param>
         /// <param name="p_種集合">アンカー内の短い正準キー</param>
         /// <param name="p_種長">種の長さ</param>
         /// <returns></returns>
-        private static List<読取証拠>[] Get_局所リード(Dictionary<KmerKey, List<int>> p_アンカー索引, string p_リード1のパス, string p_リード2のパス, int p_k長, int p_ギャップ数, HashSet<ulong> p_種集合, int p_種長)
+        private static List<読取証拠>[] Get_局所リード(Dictionary<KmerKey, List<int>> p_アンカー索引, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_k長, int p_ギャップ数, HashSet<ulong> p_種集合, int p_種長)
         {
             var l_局所リード = new List<読取証拠>[p_ギャップ数];
             for (var g = 0; g < p_ギャップ数; g++)
@@ -351,68 +349,73 @@ namespace Tsumiki.Cores.Scaffolding
             var l_遭遇数 = new int[p_ギャップ数];
             var l_乱数 = new Random(局所リード選択の乱数種);
 
-            if (!string.IsNullOrWhiteSpace(p_リード1のパス) && !string.IsNullOrWhiteSpace(p_リード2のパス)
-                && File.Exists(p_リード1のパス) && File.Exists(p_リード2のパス))
+            foreach (var (l_リード1のパス, l_リード2のパス) in p_ライブラリ群)
             {
-                foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(p_リード1のパス, p_リード2のパス, p_アンカー索引, p_k長, p_種集合, p_種長))
+
+                if (!string.IsNullOrWhiteSpace(l_リード1のパス) && !string.IsNullOrWhiteSpace(l_リード2のパス)
+                    && File.Exists(l_リード1のパス) && File.Exists(l_リード2のパス))
                 {
-                    var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
-                    var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
-
-                    // 対応 ID が崩れた FASTQ を mate として混ぜると、無関係な配列を局所グラフへ持ち込む。
-                    // その場合は各リード自身が当たったギャップだけへ、pair 情報を持たない単独読み取りとして入れる。
-                    if (l_pairID1 != l_pairID2)
+                    foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(l_リード1のパス, l_リード2のパス, p_アンカー索引, p_k長, p_種集合, p_種長))
                     {
-                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, ""));
-                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, ""));
-                        continue;
-                    }
+                        var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
+                        var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
 
-                    var l_証拠1 = new 読取証拠(A_配列1, l_pairID1);
-                    var l_証拠2 = new 読取証拠(A_配列2, l_pairID2);
-                    var l_ペアの一致 = l_一致1.Concat(l_一致2).ToHashSet();
-                    foreach (var l_g in l_ペアの一致)
-                    {
-                        l_遭遇数[l_g]++;
+                        // 対応 ID が崩れた FASTQ を mate として混ぜると、無関係な配列を局所グラフへ持ち込む。
+                        // その場合は各リード自身が当たったギャップだけへ、pair 情報を持たない単独読み取りとして入れる。
+                        if (l_pairID1 != l_pairID2)
+                        {
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, ""));
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, ""));
+                            continue;
+                        }
 
-                        // ペアを途中で切らない。残り 1 枠なら、直接アンカーに当たった側だけを優先する。
-                        var l_残り枠 = 局所リード数の上限 - l_局所リード[l_g].Count;
-                        if (l_残り枠 >= 2)
+                        var l_証拠1 = new 読取証拠(A_配列1, l_pairID1);
+                        var l_証拠2 = new 読取証拠(A_配列2, l_pairID2);
+                        var l_ペアの一致 = l_一致1.Concat(l_一致2).ToHashSet();
+                        foreach (var l_g in l_ペアの一致)
                         {
-                            l_局所リード[l_g].Add(l_証拠1);
-                            l_局所リード[l_g].Add(l_証拠2);
-                        }
-                        else if (l_残り枠 == 1)
-                        {
-                            l_局所リード[l_g].Add(l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2);
-                        }
-                        else
-                        {
-                            // 上限到達後は、これまで遭遇したペアの中から一様な確率で選ばれるよう
-                            // 代表 1 本を reservoir sampling で入れ替える (先着順のバイアスを避ける)
-                            var l_置き換え位置 = l_乱数.Next(l_遭遇数[l_g]);
-                            if (l_置き換え位置 < 局所リード数の上限)
+                            l_遭遇数[l_g]++;
+
+                            // ペアを途中で切らない。残り 1 枠なら、直接アンカーに当たった側だけを優先する。
+                            var l_残り枠 = 局所リード数の上限 - l_局所リード[l_g].Count;
+                            if (l_残り枠 >= 2)
                             {
-                                l_局所リード[l_g][l_置き換え位置] = l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2;
+                                l_局所リード[l_g].Add(l_証拠1);
+                                l_局所リード[l_g].Add(l_証拠2);
+                            }
+                            else if (l_残り枠 == 1)
+                            {
+                                l_局所リード[l_g].Add(l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2);
+                            }
+                            else
+                            {
+                                // 上限到達後は、これまで遭遇したペアの中から一様な確率で選ばれるよう
+                                // 代表 1 本を reservoir sampling で入れ替える (先着順のバイアスを避ける)
+                                var l_置き換え位置 = l_乱数.Next(l_遭遇数[l_g]);
+                                if (l_置き換え位置 < 局所リード数の上限)
+                                {
+                                    l_局所リード[l_g][l_置き換え位置] = l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2;
+                                }
                             }
                         }
                     }
                 }
-            }
-            else
-            {
-                foreach (var l_パス in new[] { p_リード1のパス, p_リード2のパス })
+                else
                 {
-                    if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                    foreach (var l_パス in new[] { l_リード1のパス, l_リード2のパス })
                     {
-                        continue;
-                    }
-                    foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
-                    {
-                        V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, ""));
+                        if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                        {
+                            continue;
+                        }
+                        foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
+                        {
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, ""));
+                        }
                     }
                 }
             }
+
             return l_局所リード;
         }
 
@@ -422,15 +425,14 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_未解決gap">対象の gap 番号一覧 (p_局所リード のインデックス)</param>
         /// <param name="p_局所リード">gap ごとの局所リード (該当 gap 分を直接更新する)</param>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_k長"></param>
         /// <remarks>
         /// 対象を「1回目で失敗した gap」だけに絞ることで、解決済みの gap に無駄な追加コストをかけない<br/>
         /// シードがアンカーではなく回収済みリードそのものになる点だけが元の回収と異なり、
         /// 一致判定・上限・reservoir sampling の仕組みは共通のヘルパーをそのまま再利用する
         /// </remarks>
-        private static void V_拡張回収_近傍thread(List<int> p_未解決gap, List<読取証拠>[] p_局所リード, string p_リード1のパス, string p_リード2のパス, int p_k長)
+        private static void V_拡張回収_近傍thread(List<int> p_未解決gap, List<読取証拠>[] p_局所リード, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_k長)
         {
             Dictionary<KmerKey, List<int>> l_拡張索引 = [];
             var l_種長 = Math.Min(31, p_k長);
@@ -464,30 +466,34 @@ namespace Tsumiki.Cores.Scaffolding
             var l_遭遇数 = new int[p_未解決gap.Count];
             var l_乱数 = new Random(近傍拡張の乱数シード値);
 
-            if (!string.IsNullOrWhiteSpace(p_リード1のパス) && !string.IsNullOrWhiteSpace(p_リード2のパス)
-                && File.Exists(p_リード1のパス) && File.Exists(p_リード2のパス))
+            foreach (var (l_リード1のパス, l_リード2のパス) in p_ライブラリ群)
             {
-                foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(p_リード1のパス, p_リード2のパス, l_拡張索引, p_k長, l_種集合, l_種長))
-                {
-                    var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
-                    var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
-                    var l_pairID = l_pairID1 == l_pairID2 ? l_pairID1 : "";
 
-                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, l_pairID));
-                    V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, l_pairID));
-                }
-            }
-            else
-            {
-                foreach (var l_パス in new[] { p_リード1のパス, p_リード2のパス })
+                if (!string.IsNullOrWhiteSpace(l_リード1のパス) && !string.IsNullOrWhiteSpace(l_リード2のパス)
+                    && File.Exists(l_リード1のパス) && File.Exists(l_リード2のパス))
                 {
-                    if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                    foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(l_リード1のパス, l_リード2のパス, l_拡張索引, p_k長, l_種集合, l_種長))
                     {
-                        continue;
+                        var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
+                        var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
+                        var l_pairID = l_pairID1 == l_pairID2 ? l_pairID1 : "";
+
+                        V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, l_pairID));
+                        V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, l_pairID));
                     }
-                    foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
+                }
+                else
+                {
+                    foreach (var l_パス in new[] { l_リード1のパス, l_リード2のパス })
                     {
-                        V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, l_リード, p_k長, l_種集合, l_種長), new 読取証拠(l_リード, ""));
+                        if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                        {
+                            continue;
+                        }
+                        foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
+                        {
+                            V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, l_リード, p_k長, l_種集合, l_種長), new 読取証拠(l_リード, ""));
+                        }
                     }
                 }
             }
@@ -517,8 +523,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// ペアのリードを読み進め、それぞれが当たるギャップを並列に照合して読み込み順に返す
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_索引"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_種集合"></param>

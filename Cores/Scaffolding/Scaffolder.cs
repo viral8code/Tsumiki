@@ -86,13 +86,27 @@ namespace Tsumiki.Cores.Scaffolding
         /// </remarks>
         public void V_実行(string p_scaffoldパス)
         {
-            if (!this.TryGet_インサートサイズ(out var l_インサートサイズ))
+            // インサートサイズはライブラリごとに決める
+            // 混ぜた中央値を 1 つ置くと、短い側に引きずられて長い側の連結が消える
+            var l_ライブラリ数 = Math.Max(1, p_contig構築.A_ペアのライブラリ数);
+            var l_インサートサイズ群 = new int[l_ライブラリ数];
+            var l_使えるライブラリ = 0;
+            for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
+            {
+                if (this.TryGet_インサートサイズ(l_ライブラリ, out var l_値))
+                {
+                    l_インサートサイズ群[l_ライブラリ] = l_値;
+                    l_使えるライブラリ++;
+                    this.A_有効インサートサイズ ??= l_値;
+                }
+            }
+
+            if (l_使えるライブラリ == 0)
             {
                 Logger.V_出力(メッセージID.Scaffolding省略_インサートサイズ不明);
                 return;
             }
-            this.A_有効インサートサイズ = l_インサートサイズ;
-            Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, l_インサートサイズ);
+            Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, this.A_有効インサートサイズ!.Value);
 
             this.V_読込_Contig();
 
@@ -103,7 +117,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_配置 = p_contig構築.A_unitig配置;
-            var l_ペア経路 = p_contig構築.A_ペア経路;
 
             // contig 単位の頂点空間を作る
             // unitig 同様、各 contig を
@@ -118,56 +131,45 @@ namespace Tsumiki.Cores.Scaffolding
                 l_隣接[i] = [];
             }
 
-            var l_辺の集計 = new Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)>();
-
+            // ライブラリごとに集計して採点する
+            // 既知長はそのライブラリの断片長分布に照らして初めて意味を持ち、
+            // 分布の違うライブラリを混ぜると両方に合わないモデルになる
+            var l_対称化群 = new Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)>[l_ライブラリ数];
+            var l_モデル群 = new PairedDistanceModel[l_ライブラリ数];
+            var l_較正器群 = new 証拠較正器[l_ライブラリ数];
             var l_内部を指した数 = 0;
             var l_未配置を指した数 = 0;
+            var l_unitig長 = p_contig構築.A_unitig長.Values.Select(x => (long)x).ToList();
 
-            foreach (var (l_キー, l_標本) in l_ペア経路)
+            for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
             {
-                var (l_始点unitig, l_終点unitig) = l_キー;
+                var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数
+                    ? p_contig構築.A_ペア経路群[l_ライブラリ]
+                    : new Dictionary<(int, int), List<int>>();
+                l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
 
-                if (!TryGet_Contig末端頂点(l_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
-                {
-                    if (!l_配置.ContainsKey(Math.Abs(l_始点unitig)))
-                    {
-                        l_未配置を指した数++;
-                    }
-                    else
-                    {
-                        l_内部を指した数++;
-                    }
-                    continue;
-                }
+                // 分布は同一 unitig 標本から作る
+                // 確定辺標本の方が母集団としては正しいはずだが、差し替えると連続性が大きく落ちた
+                // ただしそれを試した時点では既知長の座標に鏡像の誤りがあり確定辺標本が過大だったので、
+                // 差し替えの是非そのものは未決着
+                var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count
+                    ? p_contig構築.A_同一unitig標本群[l_ライブラリ]
+                    : [];
+                // リード長はライブラリごとに取る
+                // 長いリードのライブラリに合わせた値を短い側へ当てると、
+                // 期待位置数が「リード長 > 断片長」で 0 になり、そのライブラリの証拠が丸ごと消える
+                var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
+                var l_この長さ = l_ライブラリ < l_リード長群.Count && l_リード長群[l_ライブラリ] > 0
+                    ? l_リード長群[l_ライブラリ]
+                    : p_リード長 ?? (l_インサートサイズ群[l_ライブラリ] > 0 ? l_インサートサイズ群[l_ライブラリ] : this.A_有効インサートサイズ!.Value);
+                l_モデル群[l_ライブラリ] = new PairedDistanceModel(l_標本, l_この長さ);
+                l_較正器群[l_ライブラリ] = 証拠較正器.Get_較正器(l_標本, l_この長さ, l_unitig長);
 
-                if (!TryGet_Contig末端頂点(l_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
+                // 混ぜたときに何が起きているかは、ライブラリごとの数字を見ないと分からない
+                if (l_ライブラリ数 > 1)
                 {
-                    if (!l_配置.ContainsKey(Math.Abs(l_終点unitig)))
-                    {
-                        l_未配置を指した数++;
-                    }
-                    else
-                    {
-                        l_内部を指した数++;
-                    }
-                    continue;
-                }
-
-                // 自己ループ (同一 contig の同一末端同士) は無視する
-                if (l_始点頂点 >> 1 == l_終点頂点 >> 1)
-                {
-                    continue;
-                }
-
-                var l_辺キー = (l_始点頂点, l_終点頂点);
-                if (l_辺の集計.TryGetValue(l_辺キー, out var l_既存))
-                {
-                    l_既存.A_既知長標本.AddRange(l_標本);
-                    l_辺の集計[l_辺キー] = (l_既存.A_支持数 + (ulong)l_標本.Count, l_既存.A_既知長標本);
-                }
-                else
-                {
-                    l_辺の集計[l_辺キー] = ((ulong)l_標本.Count, [.. l_標本]);
+                    Logger.V_出力_そのまま(FormattableString.Invariant(
+                        $"[Info] ライブラリ {l_ライブラリ + 1}: インサートサイズ {l_インサートサイズ群[l_ライブラリ]:N0}、リード長 {l_この長さ:N0}、断片長標本 {l_標本.Count:N0} 件、ペア辺 {l_対称化群[l_ライブラリ].Count:N0} 本"));
                 }
             }
 
@@ -181,47 +183,42 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.未配置を指したペア候補, l_未配置を指した数);
             }
 
-            // v→w と双子 w^1→v^1 は同一の隣接だが、ペアエンドの観測は
-            // 片方の向きにしか記録されない
-            // 対称化しないと逆鎖側の支持がゼロになり、
-            // 相互一意性の検査が常に落ちる
-            // 各観測は一方のキーにしか入っていないので
-            // 和を取っても二重計上にはならない
-            Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_対称化 = [];
-            foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_辺の集計)
+            // 同じ辺を複数のライブラリが支えていても、一貫した支持が最も多いライブラリの
+            // 見立て (本数・ギャップ長・期待比) だけを採る
+            // 足し合わせると、距離の前提が違うライブラリの本数が混ざる
+            var l_候補キー = l_対称化群.SelectMany(x => x.Keys).ToHashSet();
+            foreach (var (l_始点, l_終点) in l_候補キー)
             {
-                foreach (var l_キー in new[] { (l_始点, l_終点), (l_終点 ^ 1, l_始点 ^ 1) })
+                var l_最良本数 = 0;
+                var l_最良ギャップ = 0;
+                var l_最良比 = 0D;
+                for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
                 {
-                    if (l_対称化.TryGetValue(l_キー, out var l_累積))
+                    if (!l_対称化群[l_ライブラリ].TryGetValue((l_始点, l_終点), out var l_項目))
                     {
-                        l_累積.A_既知長標本.AddRange(l_標本);
-                        l_対称化[l_キー] = (l_累積.A_支持数 + l_支持数, l_累積.A_既知長標本);
+                        continue;
                     }
-                    else
+
+                    var (l_一貫した本数, l_ギャップ長) = l_モデル群[l_ライブラリ].Get_一貫した支持(l_項目.A_既知長標本);
+                    if (l_一貫した本数 <= l_最良本数)
                     {
-                        l_対称化[l_キー] = (l_支持数, [.. l_標本]);
+                        continue;
                     }
+
+                    // 期待は接合点から 1 フラグメント長ぶんの窓しか効かないので、
+                    // 重なっている (ギャップが負) 場合は接している場合と同じとみなす
+                    l_最良本数 = l_一貫した本数;
+                    l_最良ギャップ = l_ギャップ長;
+                    l_最良比 = l_較正器群[l_ライブラリ].Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
                 }
-            }
 
-            var l_モデル = new PairedDistanceModel(p_contig構築.A_同一unitig標本, p_リード長 ?? l_インサートサイズ);
-            var l_較正器 = 証拠較正器.Get_較正器(p_contig構築.A_同一unitig標本, p_リード長 ?? l_インサートサイズ, p_contig構築.A_unitig長.Values.Select(x => (long)x));
-
-            foreach (var ((l_始点, l_終点), (_, l_標本)) in l_対称化)
-            {
-                var (l_一貫した本数, l_ギャップ長) = l_モデル.Get_一貫した支持(l_標本);
-
-                // 期待は接合点から 1 フラグメント長ぶんの窓しか効かないので、
-                // 重なっている (ギャップが負) 場合は接している場合と同じとみなす
-                var l_期待に対する比 = l_較正器.Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
-
-                l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_一貫した本数, l_ギャップ長, l_期待に対する比));
+                l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比));
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
             var l_最小証拠数 = Scaffold支持数の下限;
 
-            Logger.V_出力(メッセージID.Scaffold候補辺数, l_辺の集計.Count, Messages.Get_文言(l_較正器.A_Is使用可能 ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
+            Logger.V_出力(メッセージID.Scaffold候補辺数, l_候補キー.Count, Messages.Get_文言(l_較正器群.Any(x => x.A_Is使用可能) ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
 
             // 各頂点について、最多支持の辺 1 本だけを残す
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
@@ -341,11 +338,100 @@ namespace Tsumiki.Cores.Scaffolding
         #region 内部メソッド
 
         /// <summary>
+        /// 1 ライブラリのペア経路を contig 末端の辺へ畳み、双子側も含めて対称化する
+        /// </summary>
+        /// <param name="p_配置">unitig の contig 上の配置</param>
+        /// <param name="p_ペア経路">そのライブラリのペア経路</param>
+        /// <param name="p_内部を指した数">contig 内部を指した観測の数</param>
+        /// <param name="p_未配置を指した数">contig に載っていない unitig を指した観測の数</param>
+        /// <returns>対称化した辺の集計</returns>
+        private Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(
+            IReadOnlyDictionary<int, Unitig配置> p_配置,
+            IReadOnlyDictionary<(int, int), List<int>> p_ペア経路,
+            ref int p_内部を指した数,
+            ref int p_未配置を指した数)
+        {
+            Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_辺の集計 = [];
+
+            foreach (var (l_キー, l_標本) in p_ペア経路)
+            {
+                var (l_始点unitig, l_終点unitig) = l_キー;
+
+                if (!TryGet_Contig末端頂点(p_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
+                {
+                    if (!p_配置.ContainsKey(Math.Abs(l_始点unitig)))
+                    {
+                        p_未配置を指した数++;
+                    }
+                    else
+                    {
+                        p_内部を指した数++;
+                    }
+                    continue;
+                }
+
+                if (!TryGet_Contig末端頂点(p_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
+                {
+                    if (!p_配置.ContainsKey(Math.Abs(l_終点unitig)))
+                    {
+                        p_未配置を指した数++;
+                    }
+                    else
+                    {
+                        p_内部を指した数++;
+                    }
+                    continue;
+                }
+
+                // 自己ループ (同一 contig の同一末端同士) は無視する
+                if (l_始点頂点 >> 1 == l_終点頂点 >> 1)
+                {
+                    continue;
+                }
+
+                var l_辺キー = (l_始点頂点, l_終点頂点);
+                if (l_辺の集計.TryGetValue(l_辺キー, out var l_既存))
+                {
+                    l_既存.A_既知長標本.AddRange(l_標本);
+                    l_辺の集計[l_辺キー] = (l_既存.A_支持数 + (ulong)l_標本.Count, l_既存.A_既知長標本);
+                }
+                else
+                {
+                    l_辺の集計[l_辺キー] = ((ulong)l_標本.Count, [.. l_標本]);
+                }
+            }
+
+            // v→w と双子 w^1→v^1 は同一の隣接だが、ペアエンドの観測は
+            // 片方の向きにしか記録されない
+            // 対称化しないと逆鎖側の支持がゼロになり、
+            // 相互一意性の検査が常に落ちる
+            // 各観測は一方のキーにしか入っていないので
+            // 和を取っても二重計上にはならない
+            Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_対称化 = [];
+            foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_辺の集計)
+            {
+                foreach (var l_キー in new[] { (l_始点, l_終点), (l_終点 ^ 1, l_始点 ^ 1) })
+                {
+                    if (l_対称化.TryGetValue(l_キー, out var l_累積))
+                    {
+                        l_累積.A_既知長標本.AddRange(l_標本);
+                        l_対称化[l_キー] = (l_累積.A_支持数 + l_支持数, l_累積.A_既知長標本);
+                    }
+                    else
+                    {
+                        l_対称化[l_キー] = (l_支持数, [.. l_標本]);
+                    }
+                }
+            }
+            return l_対称化;
+        }
+
+        /// <summary>
         /// インサートサイズを確定する
         /// </summary>
         /// <param name="p_インサートサイズ"></param>
         /// <returns></returns>
-        private bool TryGet_インサートサイズ(out int p_インサートサイズ)
+        private bool TryGet_インサートサイズ(int p_ライブラリ, out int p_インサートサイズ)
         {
             if (ConfigurationManager.A_実行時引数.A_インサートサイズ is { } l_指定値)
             {
@@ -353,7 +439,11 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            var l_同一unitig標本 = p_contig構築.A_同一unitig標本;
+            var l_ラベル = p_contig構築.A_ペアのライブラリ数 > 1 ? FormattableString.Invariant($" (ライブラリ {p_ライブラリ + 1})") : string.Empty;
+
+            var l_同一unitig標本 = p_ライブラリ < p_contig構築.A_同一unitig標本群.Count
+                ? p_contig構築.A_同一unitig標本群[p_ライブラリ]
+                : [];
             if (l_同一unitig標本.Count >= インサートサイズ標本数の下限)
             {
                 var l_推定値 = StatsUtil.Get_中央値(l_同一unitig標本);
@@ -366,7 +456,9 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            var l_確定辺標本 = p_contig構築.A_確定辺標本;
+            var l_確定辺標本 = p_ライブラリ < p_contig構築.A_確定辺標本群.Count
+                ? p_contig構築.A_確定辺標本群[p_ライブラリ]
+                : [];
             if (l_確定辺標本.Count >= インサートサイズ標本数の下限)
             {
                 p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
@@ -374,17 +466,12 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            var l_全標本 = p_contig構築.A_インサートサイズ標本;
-            if (l_全標本.Count < インサートサイズ標本数の下限)
-            {
-                Logger.V_出力(メッセージID.インサートサイズ推定_標本不足, インサートサイズ標本数の下限, l_確定辺標本.Count, l_全標本.Count);
-                p_インサートサイズ = 0;
-                return false;
-            }
-
-            p_インサートサイズ = StatsUtil.Get_中央値(l_全標本);
-            Logger.V_出力(メッセージID.インサートサイズ推定_全標本, p_インサートサイズ, l_全標本.Count, l_確定辺標本.Count);
-            return true;
+            // そのライブラリだけでは足りないとき、混ぜた標本へ落とすと距離の前提が壊れる
+            // 落とさずに諦め、支えられるライブラリだけで scaffolding する
+            Logger.V_出力_そのまま(FormattableString.Invariant(
+                $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {インサートサイズ標本数の下限})"));
+            p_インサートサイズ = 0;
+            return false;
         }
 
         /// <summary>

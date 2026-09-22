@@ -61,7 +61,7 @@ namespace Tsumiki.Tests.Core
             var l_固定結果 = LocalAssembler.Get_固定kの局所結果(new 局所ギャップ(0, 300, l_充填.Length, l_左, l_右), Get_証拠(FastqReader.Get_生リード列(l_リード, null)), 21, out var l_固定判定);
             Assert.Null(l_固定結果);
             Assert.Equal(ギャップ充填判定.一意でない, l_固定判定);
-            var l_結果 = LocalAssembler.V_充填_ギャップ(l_パス, l_リード, string.Empty, 21);
+            var l_結果 = LocalAssembler.V_充填_ギャップ(l_パス, [(l_リード, string.Empty)], 21);
             Assert.Equal(1, l_結果.A_埋めたギャップ数);
             Assert.Equal(l_正解, Get_単一配列(l_パス));
         }
@@ -196,7 +196,7 @@ namespace Tsumiki.Tests.Core
             var l_mate2 = new List<string> { Util.V_逆相補(l_正解.Substring(l_左.Length - 25, 25 + l_橋.Length + 25)) };
             var (l_read1, l_read2) = this.V_書き出し_リードペア("matepair_dup", l_mate1, l_mate2);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_read1, l_read2, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, [(l_read1, l_read2)], l_k長);
 
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
             Assert.Contains('N', Get_単一配列(l_scaffold));
@@ -229,7 +229,7 @@ namespace Tsumiki.Tests.Core
             var l_scaffold = this.V_書き出し_scaffold("threadexp.fasta", l_左 + new string('N', l_橋.Length) + l_右);
             var l_リード = this.V_書き出し_リード("threadexp.fq", [l_ゾーンA, l_ゾーンB, l_ゾーンC], p_リード長: 80);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_リード, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, [(l_リード, string.Empty)], l_k長);
 
             Assert.Equal(1, l_統計.A_埋めたギャップ数);
             Assert.Equal(l_正解, Get_単一配列(l_scaffold));
@@ -257,7 +257,7 @@ namespace Tsumiki.Tests.Core
             var l_scaffold = this.V_書き出し_scaffold("threadexp_noB.fasta", l_左 + new string('N', l_橋.Length) + l_右);
             var l_リード = this.V_書き出し_リード("threadexp_noB.fq", [l_ゾーンA, l_ゾーンC], p_リード長: 80);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_リード, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, [(l_リード, string.Empty)], l_k長);
 
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
             Assert.Contains('N', Get_単一配列(l_scaffold));
@@ -285,7 +285,7 @@ namespace Tsumiki.Tests.Core
             }
             var (l_read1, l_read2) = this.V_書き出し_リードペア("mate", l_アンカー側, l_mate側);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, l_read1, l_read2, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffold, [(l_read1, l_read2)], l_k長);
 
             Assert.Equal(1, l_統計.A_埋めたギャップ数);
             Assert.Equal(l_正解, Get_単一配列(l_scaffold));
@@ -317,7 +317,7 @@ namespace Tsumiki.Tests.Core
             var l_scaffoldパス = this.V_書き出し_scaffold("scaffold.fasta", l_接頭配列 + new string('N', l_充填配列.Length) + l_接尾配列);
             var l_リードパス = this.V_書き出し_リード("reads.fq", [l_正解], p_リード長: 100);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, l_リードパス, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, [(l_リードパス, string.Empty)], l_k長);
 
             Assert.Equal(1, l_統計.A_対象ギャップ数);
             Assert.Equal(1, l_統計.A_埋めたギャップ数);
@@ -341,7 +341,7 @@ namespace Tsumiki.Tests.Core
             var l_無関係配列 = V_生成_ランダム配列(500, p_シード: 999);
             var l_リードパス = this.V_書き出し_リード("reads_unrelated.fq", [l_無関係配列], p_リード長: 100);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, l_リードパス, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, [(l_リードパス, string.Empty)], l_k長);
 
             Assert.Equal(1, l_統計.A_対象ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
@@ -364,7 +364,7 @@ namespace Tsumiki.Tests.Core
             // prefix と suffix それぞれの内部だけを読んだリード (橋渡しは無い)
             var l_リードパス = this.V_書き出し_リード("reads_nopath.fq", [l_接頭配列, l_接尾配列], p_リード長: 100);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, l_リードパス, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, [(l_リードパス, string.Empty)], l_k長);
 
             Assert.Equal(1, l_統計.A_対象ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
@@ -387,7 +387,7 @@ namespace Tsumiki.Tests.Core
             var l_scaffoldパス = this.V_書き出し_scaffold("scaffold_ambiguous.fasta", l_接頭配列 + new string('N', l_主充填配列.Length) + l_接尾配列);
             var l_リードパス = this.V_書き出し_リード("reads_ambiguous.fq", [l_接頭配列 + l_主充填配列 + l_接尾配列, l_接頭配列 + l_代替充填配列 + l_接尾配列], p_リード長: 100);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, l_リードパス, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, [(l_リードパス, string.Empty)], l_k長);
 
             Assert.Equal(1, l_統計.A_対象ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
@@ -406,7 +406,7 @@ namespace Tsumiki.Tests.Core
             var l_scaffoldパス = this.V_書き出し_scaffold("scaffold_nogap.fasta", l_正解);
             var l_リードパス = this.V_書き出し_リード("reads_nogap.fq", [l_正解], p_リード長: 100);
 
-            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, l_リードパス, string.Empty, l_k長);
+            var l_統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, [(l_リードパス, string.Empty)], l_k長);
 
             Assert.Equal(0, l_統計.A_対象ギャップ数);
             Assert.Equal(l_正解, Get_単一配列(l_scaffoldパス));

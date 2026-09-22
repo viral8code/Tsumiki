@@ -40,7 +40,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <remarks>
         /// 「信頼できる k-mer」の判定には、本アセンブリと同じ -kc のカットオフ値を使って構築した専用の k-mer インデックス (このメソッド内で完結し、本パイプライン用のインデックスとは独立) を用いる
         /// </remarks>
-        public static void V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2)
+        public static void V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2, int p_Phredオフセット)
         {
             using var l_計測 = new StageTimer("error-correction");
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -51,10 +51,10 @@ namespace Tsumiki.Cores.Preprocessing
             Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
             using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ))
             {
-                KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス);
+                KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット);
                 if (p_リード2のパス != null)
                 {
-                    KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス);
+                    KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス, p_Phredオフセット);
                 }
 
                 // 訂正の判定はこのカットオフが全て
