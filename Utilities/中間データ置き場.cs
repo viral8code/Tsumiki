@@ -66,7 +66,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// いま置き場が抱えている圧縮済みの大きさ (バイト)
         /// </summary>
-        public static long A_使用量 => _置き場.Values.Sum(x => x.A_塊群.Sum(y => (long)y.Length));
+        public static long A_使用量 => _置き場.Values.SelectMany(static x => x.A_塊群).Sum(static x => (long)x.Length);
 
         #endregion
 
@@ -157,15 +157,22 @@ namespace Tsumiki.Utilities
         {
             var l_場所 = Get_キー(p_ディレクトリ);
             var l_置き場 = _置き場.Keys.Where(x => string.Equals(Path.GetDirectoryName(x), l_場所, 名前の比較) && Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞));
-            IEnumerable<string> l_ディスク = Directory.Exists(p_ディレクトリ)
+            var l_ディスク = Directory.Exists(p_ディレクトリ)
                 ? Directory.EnumerateFiles(p_ディレクトリ).Where(x => Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞))
                 : [];
             return [.. l_置き場, .. l_ディスク];
         }
 
+        #endregion
+
+        #region テストメソッド
+
         /// <summary>
         /// 置き場を空にする
         /// </summary>
+        /// <remarks>
+        /// プロセス全体で共有する置き場なので、テストの間で中身を持ち越さないために使う
+        /// </remarks>
         public static void V_消去()
         {
             _置き場.Clear();
@@ -210,6 +217,8 @@ namespace Tsumiki.Utilities
         /// </remarks>
         private sealed class 計数ストリーム : Stream
         {
+            #region 内部変数
+
             /// <summary>
             /// 包んでいるストリーム
             /// </summary>
@@ -235,6 +244,10 @@ namespace Tsumiki.Utilities
             /// </summary>
             private bool _Is確定済み;
 
+            #endregion
+
+            #region コンストラクタ
+
             /// <summary>
             /// 書き込み用
             /// </summary>
@@ -257,17 +270,32 @@ namespace Tsumiki.Utilities
                 this._長さ = p_長さ;
             }
 
+            #endregion
+
+            #region 継承メソッド
+
+            /// <inheritdoc/>
             public override bool CanRead => this._確定 is null;
+
+            /// <inheritdoc/>
             public override bool CanSeek => false;
+
+            /// <inheritdoc/>
             public override bool CanWrite => this._確定 is not null;
+
+            /// <inheritdoc/>
             public override long Length => this._確定 is null ? this._長さ : this._位置;
+
+            /// <inheritdoc/>
             public override long Position { get => this._位置; set => throw new NotSupportedException(); }
 
+            /// <inheritdoc/>
             public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
             {
                 return this.Read(p_バッファ.AsSpan(p_開始, p_長さ));
             }
 
+            /// <inheritdoc/>
             public override int Read(Span<byte> p_バッファ)
             {
                 var l_読んだ = this._中身.Read(p_バッファ);
@@ -275,25 +303,44 @@ namespace Tsumiki.Utilities
                 return l_読んだ;
             }
 
+            /// <inheritdoc/>
             public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
             {
                 this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
             }
 
+            /// <inheritdoc/>
             public override void Write(ReadOnlySpan<byte> p_バッファ)
             {
                 this._中身.Write(p_バッファ);
                 this._位置 += p_バッファ.Length;
             }
 
+            /// <inheritdoc/>
             public override void Flush()
             {
                 this._中身.Flush();
             }
 
-            public override long Seek(long p_位置, SeekOrigin p_起点) => throw new NotSupportedException();
-            public override void SetLength(long p_長さ) => throw new NotSupportedException();
+            /// <inheritdoc/>
+            public override long Seek(long p_位置, SeekOrigin p_起点)
+            {
+                throw new NotSupportedException();
+            }
 
+            /// <inheritdoc/>
+            public override void SetLength(long p_長さ)
+            {
+                throw new NotSupportedException();
+            }
+
+            /// <summary>
+            /// 包んでいるストリームを閉じてから、展開後の長さを渡す
+            /// </summary>
+            /// <param name="p_Is明示">Dispose から呼ばれたか</param>
+            /// <remarks>
+            /// 圧縮ストリームは閉じたときに最後の塊を書き出すので、長さを渡すのはその後でなければならない
+            /// </remarks>
             protected override void Dispose(bool p_Is明示)
             {
                 if (!this._Is確定済み)
@@ -304,6 +351,8 @@ namespace Tsumiki.Utilities
                 }
                 base.Dispose(p_Is明示);
             }
+
+            #endregion
         }
 
         /// <summary>
@@ -311,10 +360,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         private sealed class 塊書込ストリーム : Stream
         {
-            /// <summary>
-            /// 書き終えた塊 (閉じた後は書きかけの塊も含む)
-            /// </summary>
-            public List<byte[]> A_塊群 { get; } = [];
+            #region 内部変数
 
             /// <summary>
             /// 書きかけの塊
@@ -331,17 +377,41 @@ namespace Tsumiki.Utilities
             /// </summary>
             private bool _Is確定済み;
 
+            #endregion
+
+            #region プロパティ
+
+            /// <summary>
+            /// 書き終えた塊 (閉じた後は書きかけの塊も含む)
+            /// </summary>
+            public List<byte[]> A_塊群 { get; } = [];
+
+            #endregion
+
+            #region 継承メソッド
+
+            /// <inheritdoc/>
             public override bool CanRead => false;
+
+            /// <inheritdoc/>
             public override bool CanSeek => false;
+
+            /// <inheritdoc/>
             public override bool CanWrite => true;
+
+            /// <inheritdoc/>
             public override long Length => throw new NotSupportedException();
+
+            /// <inheritdoc/>
             public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
+            /// <inheritdoc/>
             public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
             {
                 this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
             }
 
+            /// <inheritdoc/>
             public override void Write(ReadOnlySpan<byte> p_バッファ)
             {
                 while (!p_バッファ.IsEmpty)
@@ -359,14 +429,33 @@ namespace Tsumiki.Utilities
                 }
             }
 
+            /// <inheritdoc/>
             public override void Flush()
             {
             }
 
-            public override int Read(byte[] p_バッファ, int p_開始, int p_長さ) => throw new NotSupportedException();
-            public override long Seek(long p_位置, SeekOrigin p_起点) => throw new NotSupportedException();
-            public override void SetLength(long p_長さ) => throw new NotSupportedException();
+            /// <inheritdoc/>
+            public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
+            {
+                throw new NotSupportedException();
+            }
 
+            /// <inheritdoc/>
+            public override long Seek(long p_位置, SeekOrigin p_起点)
+            {
+                throw new NotSupportedException();
+            }
+
+            /// <inheritdoc/>
+            public override void SetLength(long p_長さ)
+            {
+                throw new NotSupportedException();
+            }
+
+            /// <summary>
+            /// 書きかけの塊を、使った分だけに詰めて塊の列へ加える
+            /// </summary>
+            /// <param name="p_Is明示">Dispose から呼ばれたか</param>
             protected override void Dispose(bool p_Is明示)
             {
                 if (!this._Is確定済み)
@@ -379,6 +468,8 @@ namespace Tsumiki.Utilities
                 }
                 base.Dispose(p_Is明示);
             }
+
+            #endregion
         }
 
         /// <summary>
@@ -387,6 +478,8 @@ namespace Tsumiki.Utilities
         /// <param name="p_塊群">読む塊の列</param>
         private sealed class 塊読込ストリーム(List<byte[]> p_塊群) : Stream
         {
+            #region 内部変数
+
             /// <summary>
             /// 読んでいる塊の番号
             /// </summary>
@@ -397,17 +490,32 @@ namespace Tsumiki.Utilities
             /// </summary>
             private int _位置;
 
+            #endregion
+
+            #region 継承メソッド
+
+            /// <inheritdoc/>
             public override bool CanRead => true;
+
+            /// <inheritdoc/>
             public override bool CanSeek => false;
+
+            /// <inheritdoc/>
             public override bool CanWrite => false;
+
+            /// <inheritdoc/>
             public override long Length => throw new NotSupportedException();
+
+            /// <inheritdoc/>
             public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
+            /// <inheritdoc/>
             public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
             {
                 return this.Read(p_バッファ.AsSpan(p_開始, p_長さ));
             }
 
+            /// <inheritdoc/>
             public override int Read(Span<byte> p_バッファ)
             {
                 var l_読んだ = 0;
@@ -429,13 +537,30 @@ namespace Tsumiki.Utilities
                 return l_読んだ;
             }
 
+            /// <inheritdoc/>
             public override void Flush()
             {
             }
 
-            public override long Seek(long p_位置, SeekOrigin p_起点) => throw new NotSupportedException();
-            public override void SetLength(long p_長さ) => throw new NotSupportedException();
-            public override void Write(byte[] p_バッファ, int p_開始, int p_長さ) => throw new NotSupportedException();
+            /// <inheritdoc/>
+            public override long Seek(long p_位置, SeekOrigin p_起点)
+            {
+                throw new NotSupportedException();
+            }
+
+            /// <inheritdoc/>
+            public override void SetLength(long p_長さ)
+            {
+                throw new NotSupportedException();
+            }
+
+            /// <inheritdoc/>
+            public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
+            {
+                throw new NotSupportedException();
+            }
+
+            #endregion
         }
 
         #endregion

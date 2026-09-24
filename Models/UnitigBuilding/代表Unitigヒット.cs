@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Models.UnitigBuilding
 {
     /// <summary>
-    /// ContigMaker.Get_代表unitig の結果
+    /// ContigMaker でリード 1 本を unitig の索引で走査し、代表として選んだ unitig
     /// </summary>
     /// <param name="p_unitigID"></param>
     /// <param name="p_一致kmer数"></param>

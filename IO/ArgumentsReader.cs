@@ -264,12 +264,9 @@ namespace Tsumiki.IO
             }
 
             // 1 つの値を全ライブラリに当てると、インサートの違うライブラリの距離の前提が黙って壊れる
-            if (p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1)
-            {
-                return $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately";
-            }
-
-            return null;
+            return p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1
+                ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately"
+                : null;
         }
 
         /// <summary>

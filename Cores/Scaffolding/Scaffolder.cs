@@ -156,7 +156,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数
                     ? p_contig構築.A_ペア経路群[l_ライブラリ]
                     : new Dictionary<(int, int), List<int>>();
-                l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
+                l_対称化群[l_ライブラリ] = this.Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
 
                 // 分布は同一 unitig 標本から作る
                 // 採点するのは接合点を跨いだペアなので確定辺標本の方が母集団は揃うが、差し替えても採る辺はほとんど変わらない
@@ -212,10 +212,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
 
                     var (l_一貫した本数, l_ギャップ長) = l_モデル群[l_ライブラリ].Get_一貫した支持(l_項目.A_既知長標本);
-                    if (l_本数群 is not null)
-                    {
-                        l_本数群[l_ライブラリ] = l_一貫した本数;
-                    }
+                    l_本数群?[l_ライブラリ] = l_一貫した本数;
                     if (l_一貫した本数 <= l_最良本数)
                     {
                         continue;

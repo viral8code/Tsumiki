@@ -23,7 +23,7 @@ namespace Tsumiki.Models.UnitigBuilding
 
         #endregion
 
-        #region 公開メソッド
+        #region 継承メソッド
 
         /// <summary>
         /// (オーバーライド) unitig を FASTA の 2 行として返す

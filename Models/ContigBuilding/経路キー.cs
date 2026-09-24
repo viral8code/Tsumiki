@@ -27,6 +27,10 @@
             return this.A_頂点列.AsSpan().SequenceEqual(p_他.A_頂点列);
         }
 
+        #endregion
+
+        #region 継承メソッド
+
         /// <summary>
         /// 並びが要素ごとに一致するか
         /// </summary>

@@ -176,7 +176,7 @@ namespace Tsumiki.Models.Foundation
         /// -2 を伴わない -1 は、従来どおりシングルエンドとして扱う
         /// </remarks>
         public IReadOnlyList<(string A_リード1, string A_リード2)> A_ライブラリ群
-            => this._差し替えたライブラリ群 ?? Get_入力からのライブラリ群();
+            => this._差し替えたライブラリ群 ?? this.Get_入力からのライブラリ群();
 
         /// <summary>
         /// ライブラリの数
@@ -761,6 +761,10 @@ namespace Tsumiki.Models.Foundation
             }
             return string.Join(Environment.NewLine, l_行群);
         }
+
+        #endregion
+
+        #region 継承メソッド
 
         /// <summary>
         /// (オーバーライド) 実行時引数を表す文字列を返す

@@ -79,30 +79,6 @@
         }
 
         /// <summary>
-        /// 観測された既知長の一覧から、独立とみなせる支持本数を数える
-        /// </summary>
-        /// <param name="p_既知長一覧">観測された既知長の一覧</param>
-        /// <remarks>
-        /// 同じ辺に対して全く同じ距離を示す観測は、PCR 重複か同一断片の読み直しである可能性が高く、別々の分子から得た裏付けとは言えない<br/>
-        /// 相異なる距離の個数を独立な証拠の数とみなす
-        /// </remarks>
-        /// <returns></returns>
-        public static int Get_独立支持数(IReadOnlyList<int> p_既知長一覧)
-        {
-            if (p_既知長一覧.Count == 0)
-            {
-                return 0;
-            }
-
-            HashSet<int> l_相異なる距離 = [];
-            foreach (var l_距離 in p_既知長一覧)
-            {
-                _ = l_相異なる距離.Add(l_距離);
-            }
-            return l_相異なる距離.Count;
-        }
-
-        /// <summary>
         /// 同一 unitig 内標本とリード長から較正器を作る
         /// </summary>
         /// <param name="p_同一unitig標本">同一 unitig 内で観測された距離の標本</param>
@@ -167,6 +143,34 @@
         public double Get_期待本数(long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
             return this._モデル is { } l_モデル ? this._密度 * l_モデル.Get_期待位置数(p_長さ1, p_長さ2, p_ギャップ長) : 0D;
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// 観測された既知長の一覧から、独立とみなせる支持本数を数える
+        /// </summary>
+        /// <param name="p_既知長一覧">観測された既知長の一覧</param>
+        /// <remarks>
+        /// 同じ辺に対して全く同じ距離を示す観測は、PCR 重複か同一断片の読み直しである可能性が高く、別々の分子から得た裏付けとは言えない<br/>
+        /// 相異なる距離の個数を独立な証拠の数とみなす
+        /// </remarks>
+        /// <returns></returns>
+        public static int Get_独立支持数(IReadOnlyList<int> p_既知長一覧)
+        {
+            if (p_既知長一覧.Count == 0)
+            {
+                return 0;
+            }
+
+            HashSet<int> l_相異なる距離 = [];
+            foreach (var l_距離 in p_既知長一覧)
+            {
+                _ = l_相異なる距離.Add(l_距離);
+            }
+            return l_相異なる距離.Count;
         }
 
         #endregion

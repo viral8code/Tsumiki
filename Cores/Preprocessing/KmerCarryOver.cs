@@ -297,35 +297,6 @@ namespace Tsumiki.Cores.Preprocessing
                 : Get_追加数_塩基列(p_引き継ぎ配列, p_kmerインデックス, p_k長, p_リード長);
         }
 
-        /// <summary>
-        /// この k-mer に与えるカバレッジ
-        /// </summary>
-        /// <param name="p_引き継ぎ"></param>
-        /// <param name="p_位置"></param>
-        /// <param name="p_k長"></param>
-        /// <param name="p_リード長"></param>
-        /// <returns></returns>
-        public static ulong Get_引き継ぐカバレッジ(引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
-        {
-            var l_終端 = Math.Min(p_引き継ぎ.A_カバレッジ.Length - 1, p_位置 + p_k長 - p_引き継ぎ.A_k長);
-            if (p_位置 > l_終端)
-            {
-                return 0UL;
-            }
-
-            if (p_引き継ぎ.A_分岐の継ぎ目位置 is { } l_継ぎ目 && l_継ぎ目.Any(x => p_位置 <= x && x + p_引き継ぎ.A_k長 + 1 <= p_位置 + p_k長))
-            {
-                return 0UL;
-            }
-
-            var l_最小 = int.MaxValue;
-            for (var i = p_位置; i <= l_終端; i++)
-            {
-                l_最小 = Math.Min(l_最小, p_引き継ぎ.A_カバレッジ[i]);
-            }
-            return Get_換算カバレッジ(l_最小, p_引き継ぎ.A_k長, p_k長, p_リード長);
-        }
-
         /// <summary>各窓の最小値を単調な待ち行列で求める</summary>
         /// <param name="p_値">元のカバレッジ</param>
         /// <param name="p_幅">窓の幅</param>
@@ -353,6 +324,39 @@ namespace Tsumiki.Cores.Preprocessing
                 }
                 p_結果[i] = p_幅 <= 0 || i >= p_値.Length || l_先頭 == l_末尾 ? 0 : p_値[p_待ち行列[l_先頭]];
             }
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// この k-mer に与えるカバレッジ
+        /// </summary>
+        /// <param name="p_引き継ぎ"></param>
+        /// <param name="p_位置"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_リード長"></param>
+        /// <returns></returns>
+        public static ulong Get_引き継ぐカバレッジ(引き継ぎ配列 p_引き継ぎ, int p_位置, int p_k長, int? p_リード長)
+        {
+            var l_終端 = Math.Min(p_引き継ぎ.A_カバレッジ.Length - 1, p_位置 + p_k長 - p_引き継ぎ.A_k長);
+            if (p_位置 > l_終端)
+            {
+                return 0UL;
+            }
+
+            if (p_引き継ぎ.A_分岐の継ぎ目位置 is { } l_継ぎ目 && l_継ぎ目.Any(x => p_位置 <= x && x + p_引き継ぎ.A_k長 + 1 <= p_位置 + p_k長))
+            {
+                return 0UL;
+            }
+
+            var l_最小 = int.MaxValue;
+            for (var i = p_位置; i <= l_終端; i++)
+            {
+                l_最小 = Math.Min(l_最小, p_引き継ぎ.A_カバレッジ[i]);
+            }
+            return Get_換算カバレッジ(l_最小, p_引き継ぎ.A_k長, p_k長, p_リード長);
         }
 
         #endregion
@@ -583,5 +587,6 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         #endregion
+
     }
 }

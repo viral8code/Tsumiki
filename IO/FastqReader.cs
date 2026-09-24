@@ -12,27 +12,6 @@ namespace Tsumiki.IO
         #region 公開メソッド
 
         /// <summary>
-        /// (オーバーライド) 次の 1 行を読み込んで返す
-        /// </summary>
-        /// <returns></returns>
-        /// <remarks>
-        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF というケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
-        /// </remarks>
-        protected override string Get_次の行()
-        {
-            var l_行 = this.Get_次の行_生();
-            while (string.IsNullOrWhiteSpace(l_行))
-            {
-                if (l_行 is null && !this.Has続き())
-                {
-                    throw new InvalidDataException($"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
-                }
-                l_行 = this.Get_次の行_生();
-            }
-            return l_行;
-        }
-
-        /// <summary>
         /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す
         /// </summary>
         /// <param name="p_パス群"></param>
@@ -106,6 +85,31 @@ namespace Tsumiki.IO
                 Logger.V_出力_警告(Logger.Get_メソッド名(), l_例外);
                 throw;
             }
+        }
+
+        #endregion
+
+        #region 継承メソッド
+
+        /// <summary>
+        /// (オーバーライド) 次の 1 行を読み込んで返す
+        /// </summary>
+        /// <returns></returns>
+        /// <remarks>
+        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF というケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
+        /// </remarks>
+        protected override string Get_次の行()
+        {
+            var l_行 = this.Get_次の行_生();
+            while (string.IsNullOrWhiteSpace(l_行))
+            {
+                if (l_行 is null && !this.Has続き())
+                {
+                    throw new InvalidDataException($"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
+                }
+                l_行 = this.Get_次の行_生();
+            }
+            return l_行;
         }
 
         #endregion

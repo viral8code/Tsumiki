@@ -1,5 +1,5 @@
-﻿using Tsumiki.Utilities;
-using System.IO.Compression;
+﻿using System.IO.Compression;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.IO
 {

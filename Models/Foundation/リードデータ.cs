@@ -42,7 +42,7 @@
 
         #endregion
 
-        #region 公開メソッド
+        #region 継承メソッド
 
         /// <summary>
         /// (オーバーライド) リードを FASTQ の 4 行として返す

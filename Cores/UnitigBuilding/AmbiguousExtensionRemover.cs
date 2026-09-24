@@ -28,7 +28,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
         #endregion
 
-        #region 公開メソッド
+        #region テストメソッド
 
         /// <summary>
         /// 断った k-mer の数を返す
@@ -133,5 +133,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         }
 
         #endregion
+
     }
 }

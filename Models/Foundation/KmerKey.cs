@@ -215,6 +215,10 @@ namespace Tsumiki.Models.Foundation
             return true;
         }
 
+        #endregion
+
+        #region 継承メソッド
+
         /// <summary>
         /// (オーバーライド) 同じ k-mer か
         /// </summary>

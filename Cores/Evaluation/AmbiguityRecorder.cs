@@ -171,18 +171,6 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 再実行で上書きされた分も含む、全 k を通じた累積履歴
-        /// </summary>
-        /// <returns></returns>
-        public static IReadOnlyList<曖昧箇所> Get_履歴()
-        {
-            lock (_錠)
-            {
-                return [.. _履歴];
-            }
-        }
-
-        /// <summary>
         /// その k で書き留めた箇所の一覧
         /// </summary>
         /// <param name="p_k長"></param>
@@ -195,6 +183,22 @@ namespace Tsumiki.Cores.Evaluation
             lock (_錠)
             {
                 return _k長ごとの記録.TryGetValue(p_k長, out var l_一覧) ? [.. l_一覧] : [];
+            }
+        }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// 再実行で上書きされた分も含む、全 k を通じた累積履歴
+        /// </summary>
+        /// <returns></returns>
+        public static IReadOnlyList<曖昧箇所> Get_履歴()
+        {
+            lock (_錠)
+            {
+                return [.. _履歴];
             }
         }
 

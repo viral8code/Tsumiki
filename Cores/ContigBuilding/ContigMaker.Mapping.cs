@@ -341,6 +341,23 @@ namespace Tsumiki.Core
 
         #endregion
 
+        #region テストメソッド
+
+        /// <summary>
+        /// 1 本のリードが代表としてどの unitig にマップされるかを判定する
+        /// </summary>
+        /// <remarks>
+        /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
+        /// </remarks>
+        /// <param name="p_リード"></param>
+        /// <returns></returns>
+        public 代表Unitigヒット Get_代表Unitig(string p_リード)
+        {
+            return this.Get_走査結果(p_リード, null, new リード走査作業域());
+        }
+
+        #endregion
+
         #region 内部メソッド
 
         /// <summary>
@@ -369,19 +386,6 @@ namespace Tsumiki.Core
             }
             p_辞書[p_キー] = (p_ID, p_位置);
             return 0;
-        }
-
-        /// <summary>
-        /// 1 本のリードが代表としてどの unitig にマップされるかを判定する
-        /// </summary>
-        /// <remarks>
-        /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
-        /// </remarks>
-        /// <param name="p_リード"></param>
-        /// <returns></returns>
-        internal 代表Unitigヒット Get_代表Unitig(string p_リード)
-        {
-            return this.Get_走査結果(p_リード, null, new リード走査作業域());
         }
 
         /// <summary>
@@ -742,5 +746,6 @@ namespace Tsumiki.Core
         }
 
         #endregion
+
     }
 }
