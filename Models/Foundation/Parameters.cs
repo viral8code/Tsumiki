@@ -337,6 +337,14 @@ namespace Tsumiki.Models.Foundation
         public int A_クオリティカットオフ { get; set; } = Consts.クオリティカットオフの既定値;
 
         /// <summary>
+        /// 3' 末端の品質トリムの閾値 (0 なら切らない)
+        /// </summary>
+        /// <remarks>
+        /// 前処理の一部として働くので、前処理を切ると一緒に効かなくなる
+        /// </remarks>
+        public int A_品質トリム閾値 { get; set; } = 0;
+
+        /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)
         /// </summary>
         /// <remarks>
@@ -506,6 +514,14 @@ namespace Tsumiki.Models.Foundation
         public bool A_Is再開 { get; set; } = false;
 
         /// <summary>
+        /// 中間データ (前処理・訂正済みリード、断片、k-mer 計数の途中結果) をディスクではなくメモリに置くか
+        /// </summary>
+        /// <remarks>
+        /// ディスクへの読み書きを避ける代わりにメモリを使うので、既定では置かない
+        /// </remarks>
+        public bool A_Isオンメモリ { get; set; } = false;
+
+        /// <summary>
         /// 一時ディレクトリ
         /// </summary>
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
@@ -659,31 +675,27 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
-        /// CLI の実行機能をプロファイルで設定する
+        /// CLI の既定で有効な処理を有効にする
         /// </summary>
-        /// <param name="p_名前"></param>
-        public void V_適用_実行プロファイル(string p_名前)
+        /// <remarks>
+        /// 部品を単体で試すときに余計な処理が走らないよう、プロパティの初期値は無効のままにしてあり、CLI から使うときだけここで有効にする
+        /// </remarks>
+        public void V_適用_既定の機能()
         {
-            var l_Is標準 = p_名前 switch
-            {
-                "standard" => true,
-                "legacy" => false,
-                _ => throw new ArgumentException($"Unknown profile \"{p_名前}\": expected standard or legacy"),
-            };
-
-            this.A_Is前処理 = l_Is標準;
-            this.A_Isエラー訂正 = l_Is標準;
-            this.A_Isマルチk = l_Is標準;
+            this.A_Is前処理 = true;
+            this.A_品質トリム閾値 = Consts.品質トリム閾値の既定値;
+            this.A_Isエラー訂正 = true;
+            this.A_Isマルチk = true;
             this.A_Is引き継ぎ = true;
-            this.A_IsSuperRead作成 = l_Is標準;
-            this.A_Is反復rMer検証 = l_Is標準;
-            this.A_Is局所アセンブリ = l_Is標準;
-            this.A_IsGFA出力 = l_Is標準;
-            this.A_Isポリッシュ = l_Is標準;
-            this.A_Is環状閉鎖検証 = l_Is標準;
-            this.A_Is救済kmer使用 = l_Is標準;
+            this.A_IsSuperRead作成 = true;
+            this.A_Is反復rMer検証 = true;
+            this.A_Is局所アセンブリ = true;
+            this.A_IsGFA出力 = true;
+            this.A_Isポリッシュ = true;
+            this.A_Is環状閉鎖検証 = true;
+            this.A_Is救済kmer使用 = true;
             this.A_Isマージ = false;
-            this.A_コピー数基準の出所 = l_Is標準 ? Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted : Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum;
+            this.A_コピー数基準の出所 = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted;
             this.A_Is低カバレッジ端トリミング = true;
         }
 
@@ -730,6 +742,27 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// ライブラリごとに行を分けた入力の一覧
+        /// </summary>
+        /// <returns></returns>
+        private string Get_ライブラリ表示()
+        {
+            List<string> l_行群 = [];
+            for (var i = 0; i < this.A_ライブラリ群.Count; i++)
+            {
+                var (l_リード1, l_リード2) = this.A_ライブラリ群[i];
+                if (string.IsNullOrWhiteSpace(l_リード2))
+                {
+                    l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_リード1}"));
+                    continue;
+                }
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_リード1}"));
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_リード2}"));
+            }
+            return string.Join(Environment.NewLine, l_行群);
+        }
+
+        /// <summary>
         /// (オーバーライド) 実行時引数を表す文字列を返す
         /// </summary>
         /// <returns></returns>
@@ -739,11 +772,12 @@ namespace Tsumiki.Models.Foundation
 
                 ============= Parameters =============
 
-                libraries: {string.Join(" | ", this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? x.A_リード1 + " (single-end)" : x.A_リード1 + " + " + x.A_リード2))}
+                {this.Get_ライブラリ表示()}
                 kmer: {(this.A_k長一覧.Count > 1 ? string.Join(", ", this.A_k長一覧) : this.A_k長.ToString())}
                 kmer cutoff: {this.A_kmerカットオフ}
                 phred: {(this._Phredオフセット群.Count > 1 ? string.Join(", ", this._Phredオフセット群) : this.A_Phredオフセット.ToString())}
                 quality cutoff: {this.A_クオリティカットオフ}
+                3' quality trimming threshold: {this.A_品質トリム閾値}
                 counting memory budget: {this.A_メモリ予算}
                 insert size: {this.A_インサートサイズ?.ToString() ?? インサートサイズ未指定表示}
                 allow ambiguous bases : {this.A_Is曖昧塩基許容}
@@ -762,6 +796,7 @@ namespace Tsumiki.Models.Foundation
                 polish final assembly with reads : {this.A_Isポリッシュ}
                 verify circular closure with reads : {this.A_Is環状閉鎖検証}
                 resume from temp directory : {this.A_Is再開}
+                keep intermediate data in memory : {this.A_Isオンメモリ}
                 temp directory : {this.A_一時ディレクトリ}
                 delete temp directory when finished : {this.A_Is一時ディレクトリ削除}
                 thread count : {this.A_スレッド数}

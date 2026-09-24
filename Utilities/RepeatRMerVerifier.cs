@@ -125,7 +125,7 @@ namespace Tsumiki.Utilities
             }
 
             var l_パス群 = p_リードパス一覧
-                .Where(x => !string.IsNullOrWhiteSpace(x) && File.Exists(x))
+                .Where(中間データ置き場.Is存在)
                 .ToList();
 
             var l_検証器 = new RepeatRMerVerifier(p_r長);

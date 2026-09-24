@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.IO
+﻿using Tsumiki.Utilities;
+
+namespace Tsumiki.IO
 {
     /// <summary>
     /// リードファイルの先頭を標本抽出して代表的なリード長を求める
@@ -51,7 +53,7 @@
         public static Dictionary<int, long> Get_リード長分布(string p_ファイルパス)
         {
             Dictionary<int, long> l_分布 = [];
-            if (string.IsNullOrWhiteSpace(p_ファイルパス) || !File.Exists(p_ファイルパス))
+            if (!中間データ置き場.Is存在(p_ファイルパス))
             {
                 return l_分布;
             }

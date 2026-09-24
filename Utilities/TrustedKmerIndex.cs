@@ -758,7 +758,7 @@ namespace Tsumiki.Utilities
 
             foreach (var l_ファイル in l_ファイル群)
             {
-                File.Delete(l_ファイル);
+                中間データ置き場.V_削除(l_ファイル);
             }
             this._統合ファイル群 = null;
         }
@@ -831,9 +831,9 @@ namespace Tsumiki.Utilities
             }
             if (this._統合ファイル群 != null)
             {
-                foreach (var l_ファイル in this._統合ファイル群.Where(File.Exists))
+                foreach (var l_ファイル in this._統合ファイル群)
                 {
-                    File.Delete(l_ファイル);
+                    中間データ置き場.V_削除(l_ファイル);
                 }
             }
         }
@@ -1019,7 +1019,7 @@ namespace Tsumiki.Utilities
         private static void V_走査_エントリ(string p_パス, int p_パック長, Action<ReadOnlySpan<byte>, ulong> p_処理)
         {
             var l_エントリ長 = p_パック長 + sizeof(ulong);
-            using var l_流れ = new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20, FileOptions.SequentialScan);
+            using var l_流れ = 中間データ置き場.Get_読込ストリーム(p_パス);
             var l_バッファ = new byte[l_エントリ長 * 4_096];
             var l_残り = 0;
             while (true)

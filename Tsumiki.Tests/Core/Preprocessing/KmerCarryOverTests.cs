@@ -313,6 +313,64 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_長い, l_項目.A_配列);
         }
 
+        /// <summary>
+        /// 全連続を拾ってから下限で絞っても、下限を検証器へ直接渡したときと同じ範囲になること
+        /// </summary>
+        /// <remarks>
+        /// 下限未満の分布を数えるために拾い方を変えたので、持ち越しから外す範囲が変わらないことを固定する
+        /// </remarks>
+        [Fact]
+        public void Get_未観測の連続範囲_下限で絞った範囲は検証器へ直接渡した場合と同じ()
+        {
+            const int l_r長 = KmerCarryOver.持ち越し検証のr長;
+            var l_配列 = V_生成_ランダム配列(500, p_シード: 2301);
+
+            // リード同士の重なりが o 塩基なら、どのリードにも収まらない窓が (r長 - 1 - o) 個続く
+            // 重なり 35 で 5 窓 (下限未満)、重なり 20 で 20 窓 (下限以上) の連続を作る
+            string[] l_リード群 = [l_配列[..150], l_配列[115..300], l_配列[280..]];
+            var l_パス = Path.Combine(this._作業ディレクトリ, "cover.fq");
+            File.WriteAllText(l_パス, string.Concat(l_リード群.Select((x, i) => $"@r{i}\n{x}\n+\n{new string('I', x.Length)}\n")));
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], l_r長);
+
+            List<(int A_開始, int A_終了)> l_全連続 = [];
+            l_検証器.V_収集_未観測の連続範囲(l_配列, 1, l_全連続);
+            Assert.Equal([5, 20], l_全連続.Select(x => x.A_終了 - x.A_開始 + 1));
+
+            List<(int A_開始, int A_終了)> l_直接 = [];
+            l_検証器.V_収集_未観測の連続範囲(l_配列, KmerCarryOver.未観測の連続の下限, l_直接);
+            var l_絞った = KmerCarryOver.Get_未観測の連続範囲(l_配列, l_検証器, p_度数: new 連続長の度数());
+
+            Assert.NotNull(l_絞った);
+            Assert.Equal(l_直接, l_絞った);
+        }
+
+        /// <summary>
+        /// k が r より長く、未観測の連続が配列の末尾に掛かっても落ちないこと
+        /// </summary>
+        /// <remarks>
+        /// k-mer の窓は r-mer の窓より少ないので、連続の位置をそのままカバレッジの添字に使うと範囲の外に出る
+        /// </remarks>
+        [Fact]
+        public void Get_未観測の連続範囲_kがrより長く末尾に連続があっても落ちない()
+        {
+            const int l_k長 = 67;
+            var l_配列 = V_生成_ランダム配列(400, p_シード: 2302);
+
+            // 末尾 20 塩基をどのリードにも含めないので、末尾の r-mer の窓が未観測で続く (開始位置が k-mer の窓の数を超える)
+            var l_パス = Path.Combine(this._作業ディレクトリ, "tail.fq");
+            var l_リード = l_配列[..380];
+            File.WriteAllText(l_パス, "@r0\n" + l_リード + "\n+\n" + new string('I', l_リード.Length) + "\n");
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], KmerCarryOver.持ち越し検証のr長);
+            var l_カバレッジ = Enumerable.Repeat(10, l_配列.Length - l_k長 + 1).ToArray();
+
+            var l_度数 = new 連続長の度数();
+            var l_範囲 = KmerCarryOver.Get_未観測の連続範囲(l_配列, l_検証器, null, l_k長, l_度数, "s", l_カバレッジ);
+
+            var l_末尾 = Assert.Single(l_範囲!);
+            Assert.Equal(l_配列.Length - KmerCarryOver.持ち越し検証のr長, l_末尾.A_終了);
+            Assert.True(l_末尾.A_開始 >= l_カバレッジ.Length);
+        }
+
         #endregion
 
         #region 速度改善の回帰検証

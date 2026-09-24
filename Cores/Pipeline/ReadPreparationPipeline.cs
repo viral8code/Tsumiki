@@ -1,6 +1,7 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Preprocessing;
 using Tsumiki.Models.Foundation;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Pipeline
 {
@@ -74,10 +75,11 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.前処理開始);
+            using var l_計測 = new StageTimer("preprocess");
             var l_ペアなしを飛ばした = false;
 
             // 署名は入力を差し替える前に採る (差し替えた後では前処理の入力を指さなくなる)
-            var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
+            var l_署名 = Get_署名(p_引数);
             List<(string A_リード1, string A_リード2)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
@@ -94,7 +96,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_出力1 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 1);
                 var l_出力2 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 2);
 
-                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_出力1, l_出力2))
+                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
                 }
@@ -102,7 +104,7 @@ namespace Tsumiki.Cores.Pipeline
                 {
                     var l_前処理統計 = Preprocessor.V_前処理_リードファイル(A_リード1, A_リード2, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
                     Preprocessor.V_出力_前処理統計(l_前処理統計);
-                    StageCheckpoint.V_保存(l_署名, l_出力1, l_出力2);
+                    V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
                 l_出力群.Add((l_出力1, l_出力2));
             }
@@ -128,7 +130,7 @@ namespace Tsumiki.Cores.Pipeline
         {
             Logger.V_出力(メッセージID.エラー訂正開始);
 
-            var l_署名 = StageCheckpoint.Get_入力署名(p_引数);
+            var l_署名 = Get_署名(p_引数);
             List<(string A_リード1, string A_リード2)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
@@ -137,14 +139,14 @@ namespace Tsumiki.Cores.Pipeline
                 var l_出力1 = Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 1);
                 var l_出力2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 2) : null;
 
-                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名, l_出力1, l_出力2))
+                if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
                 }
                 else
                 {
                     ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
-                    StageCheckpoint.V_保存(l_署名, l_出力1, l_出力2);
+                    V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
                 l_出力群.Add((l_出力1, l_出力2 ?? string.Empty));
             }
@@ -185,15 +187,37 @@ namespace Tsumiki.Cores.Pipeline
         /// </remarks>
         internal static void V_削除_前処理済みリード(string p_一時ディレクトリ)
         {
-            if (!Directory.Exists(p_一時ディレクトリ))
+            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, 前処理済みの幹, ".fq"))
             {
-                return;
-            }
-
-            foreach (var l_パス in Directory.EnumerateFiles(p_一時ディレクトリ, 前処理済みの幹 + "*.fq"))
-            {
-                File.Delete(l_パス);
+                中間データ置き場.V_削除(l_パス);
                 Logger.V_出力(メッセージID.中間リードを削除, l_パス);
+            }
+        }
+
+        /// <summary>
+        /// 再開の照合に使う署名
+        /// </summary>
+        /// <param name="p_引数">作業用設定</param>
+        /// <remarks>
+        /// 署名は入力リードを丸ごと読んでハッシュを取るので重い。中間データをメモリに置くときは再開の元が残らず使い道が無いので取らない
+        /// </remarks>
+        /// <returns>取らないときは null</returns>
+        private static string? Get_署名(Parameters p_引数)
+        {
+            return 中間データ置き場.A_Is有効 ? null : StageCheckpoint.Get_入力署名(p_引数);
+        }
+
+        /// <summary>
+        /// 工程の記録 (.sha256) を残す
+        /// </summary>
+        /// <param name="p_署名">入力の署名、取っていなければ null</param>
+        /// <param name="p_出力">出力</param>
+        /// <param name="p_対出力">対になる出力</param>
+        private static void V_保存_記録(string? p_署名, string p_出力, string? p_対出力)
+        {
+            if (p_署名 is not null)
+            {
+                StageCheckpoint.V_保存(p_署名, p_出力, p_対出力);
             }
         }
 

@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.IO;
+using Tsumiki.Models.Foundation;
 using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Tests.IO
@@ -56,20 +57,65 @@ namespace Tsumiki.Tests.IO
         }
 
         /// <summary>
-        /// 従来プロファイルと後続の個別指定を検証する
+        /// 既定で有効な処理は、それぞれの -n で始まるフラグで 1 つずつ切れる
+        /// </summary>
+        /// <param name="p_キー">切るフラグ</param>
+        /// <param name="p_項目">切れるはずの設定の名前</param>
+        [Theory]
+        [InlineData("-npp", nameof(Parameters.A_Is前処理))]
+        [InlineData("-nec", nameof(Parameters.A_Isエラー訂正))]
+        [InlineData("-nmk", nameof(Parameters.A_Isマルチk))]
+        [InlineData("-nsr", nameof(Parameters.A_IsSuperRead作成))]
+        [InlineData("-nrv", nameof(Parameters.A_Is反復rMer検証))]
+        [InlineData("-nla", nameof(Parameters.A_Is局所アセンブリ))]
+        [InlineData("-ngfa", nameof(Parameters.A_IsGFA出力))]
+        [InlineData("-npo", nameof(Parameters.A_Isポリッシュ))]
+        [InlineData("-ncc", nameof(Parameters.A_Is環状閉鎖検証))]
+        [InlineData("-nmy", nameof(Parameters.A_Is救済kmer使用))]
+        [InlineData("-nc", nameof(Parameters.A_Is引き継ぎ))]
+        [InlineData("-nt", nameof(Parameters.A_Is低カバレッジ端トリミング))]
+        public void 既定で有効な処理を1つずつ切れる(string p_キー, string p_項目)
+        {
+            string[] l_全項目 =
+            [
+                nameof(Parameters.A_Is前処理), nameof(Parameters.A_Isエラー訂正), nameof(Parameters.A_Isマルチk), nameof(Parameters.A_IsSuperRead作成),
+                nameof(Parameters.A_Is反復rMer検証), nameof(Parameters.A_Is局所アセンブリ), nameof(Parameters.A_IsGFA出力), nameof(Parameters.A_Isポリッシュ),
+                nameof(Parameters.A_Is環状閉鎖検証), nameof(Parameters.A_Is救済kmer使用), nameof(Parameters.A_Is引き継ぎ), nameof(Parameters.A_Is低カバレッジ端トリミング),
+            ];
+
+            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, p_キー]);
+
+            foreach (var l_項目 in l_全項目)
+            {
+                var l_値 = (bool)typeof(Parameters).GetProperty(l_項目)!.GetValue(l_引数)!;
+                Assert.Equal(l_項目 != p_項目, l_値);
+            }
+        }
+
+        /// <summary>
+        /// 廃止した -profile と、既定で有効になった処理を有効にするだけのフラグは受け付けない
+        /// </summary>
+        /// <param name="p_引数">渡す引数 (空白区切り)</param>
+        [Theory]
+        [InlineData("-profile legacy")]
+        [InlineData("-po")]
+        [InlineData("-mk")]
+        public void 廃止したフラグは受け付けない(string p_引数)
+        {
+            Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, .. p_引数.Split(' ')]));
+        }
+
+        /// <summary>
+        /// 複数の -k は試して選ぶ指定なので、マルチ k を切る指定とは併用できない
         /// </summary>
         [Fact]
-        public void V_従来プロファイルに個別設定を追加できる()
+        public void 複数のkとマルチkなしは併用できない()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-profile", "legacy", "-cnb", "weighted", "-nt"]);
-            Assert.False(l_引数.A_Is前処理);
-            Assert.False(l_引数.A_Isエラー訂正);
-            Assert.False(l_引数.A_Isマルチk);
-            Assert.False(l_引数.A_IsSuperRead作成);
-            Assert.False(l_引数.A_Isポリッシュ);
-            Assert.Equal(コピー数基準の出所.Weighted, l_引数.A_コピー数基準の出所);
-            Assert.False(l_引数.A_Is低カバレッジ端トリミング);
-            Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-profile", "invalid"]));
+            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-nmk", "-k", "31,63"]));
+            Assert.Contains("-nmk", l_例外.Message, StringComparison.Ordinal);
+
+            var l_単一k = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-nmk", "-k", "31"]);
+            Assert.False(l_単一k.A_Isマルチk);
         }
 
         /// <summary>

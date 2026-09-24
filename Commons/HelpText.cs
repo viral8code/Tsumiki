@@ -49,8 +49,6 @@ namespace Tsumiki.Commons
         public static string Get_ヘルプ()
         {
             var l_文 = new StringBuilder();
-            _ = l_文.AppendLine("Default CLI profile: standard (preprocess, correction, multi-k, carry-over, SuperReads, repeat verification, local assembly, GFA, polishing, closure verification, mercy rescue; copy baseline=weighted; end trimming=on; merge=off)")
-                .AppendLine("-profile standard|legacy : reset assembly features; put before individual overrides (legacy restores the previous opt-in defaults)");
             _ = l_文.AppendLine(Get_概要())
                 .AppendLine(Messages.Get_文言(メッセージID.ヘルプ_使い方, Consts.引数キー.リード1のパス, Consts.引数キー.リード2のパス));
 
@@ -61,12 +59,13 @@ namespace Tsumiki.Commons
             V_追加_行(l_文, Consts.引数キー.曖昧塩基を許容, メッセージID.ヘルプ_曖昧塩基);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_kmerと品質);
-            V_追加_行(l_文, $"{Consts.引数キー.k長} <int[,int...]>", メッセージID.ヘルプ_k長, Consts.引数キー.マルチk, Consts.自動k長の上限);
+            V_追加_行(l_文, $"{Consts.引数キー.k長} <int[,int...]>", メッセージID.ヘルプ_k長, Consts.自動k長の上限);
             V_追加_行(l_文, $"{Consts.引数キー.kmerカットオフ} <int>", メッセージID.ヘルプ_kmerカットオフ);
             V_追加_行(l_文, $"{Consts.引数キー.Phredオフセット} <int>", メッセージID.ヘルプ_Phred, string.Join(" or ", Consts.許容Phredオフセット), Consts.Phredオフセットの既定値);
             V_追加_行(l_文, $"{Consts.引数キー.クオリティカットオフ} <int>", メッセージID.ヘルプ_クオリティカットオフ, Consts.クオリティカットオフの既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.品質トリム閾値} <int>", メッセージID.ヘルプ_品質トリム閾値, Consts.品質トリム閾値の既定値);
             V_追加_行(l_文, $"{Consts.引数キー.メモリ予算} <size>", メッセージID.ヘルプ_メモリ予算, Util.Get_表示用メモリサイズ(Consts.メモリ予算の既定値));
-            V_追加_行(l_文, Consts.引数キー.救済kmer, メッセージID.ヘルプ_救済kmer);
+            V_追加_行(l_文, Consts.引数キー.救済kmerなし, メッセージID.ヘルプ_救済kmer);
             V_追加_行(l_文, $"{Consts.引数キー.コピー数基準} <spectrum|weighted>", メッセージID.ヘルプ_コピー数基準);
             V_追加_行(l_文, Consts.引数キー.低カバレッジ端トリミングなし, メッセージID.ヘルプ_低カバレッジ端トリミングなし);
 
@@ -77,29 +76,30 @@ namespace Tsumiki.Commons
             V_追加_行(l_文, $"{Consts.引数キー.積極性モード} <{Consts.積極性モード名.保守的}|{Consts.積極性モード名.標準}|{Consts.積極性モード名.積極的}>", メッセージID.ヘルプ_積極性モード, Consts.引数キー.ペア結合閾値, Consts.引数キー.ペア支持数閾値, Consts.積極性モード名.標準);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_前処理);
-            V_追加_行(l_文, Consts.引数キー.前処理, メッセージID.ヘルプ_前処理);
-            V_追加_行(l_文, Consts.引数キー.エラー訂正, メッセージID.ヘルプ_エラー訂正);
+            V_追加_行(l_文, Consts.引数キー.前処理なし, メッセージID.ヘルプ_前処理);
+            V_追加_行(l_文, Consts.引数キー.エラー訂正なし, メッセージID.ヘルプ_エラー訂正);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_マルチk);
-            V_追加_行(l_文, Consts.引数キー.マルチk, メッセージID.ヘルプ_マルチk, Consts.マルチkで試す個数 + 1);
+            V_追加_行(l_文, Consts.引数キー.マルチkなし, メッセージID.ヘルプ_マルチk, Consts.マルチkで試す個数 + 1);
             V_追加_行(l_文, Consts.引数キー.引き継ぎなし, メッセージID.ヘルプ_引き継ぎなし);
-            V_追加_行(l_文, Consts.引数キー.SuperRead, メッセージID.ヘルプ_SuperRead);
+            V_追加_行(l_文, Consts.引数キー.SuperReadなし, メッセージID.ヘルプ_SuperRead);
             V_追加_行(l_文, Consts.引数キー.マージ, メッセージID.ヘルプ_マージ);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_反復の安全策);
-            V_追加_行(l_文, Consts.引数キー.反復r_mer検証, メッセージID.ヘルプ_反復rMer検証);
-            V_追加_行(l_文, Consts.引数キー.局所アセンブリ, メッセージID.ヘルプ_局所アセンブリ, Consts.引数キー.マージ);
+            V_追加_行(l_文, Consts.引数キー.反復r_mer検証なし, メッセージID.ヘルプ_反復rMer検証);
+            V_追加_行(l_文, Consts.引数キー.局所アセンブリなし, メッセージID.ヘルプ_局所アセンブリ, Consts.引数キー.マージ);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_完全性の検証);
-            V_追加_行(l_文, Consts.引数キー.ポリッシュ, メッセージID.ヘルプ_ポリッシュ);
-            V_追加_行(l_文, Consts.引数キー.環状閉鎖検証, メッセージID.ヘルプ_環状閉鎖検証);
+            V_追加_行(l_文, Consts.引数キー.ポリッシュなし, メッセージID.ヘルプ_ポリッシュ);
+            V_追加_行(l_文, Consts.引数キー.環状閉鎖検証なし, メッセージID.ヘルプ_環状閉鎖検証);
             V_追加_説明(l_文, メッセージID.ヘルプ_レポートの説明, Consts.レポートファイル名, Consts.曖昧箇所ファイル名);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_出力とその他);
-            V_追加_行(l_文, Consts.引数キー.GFA出力, メッセージID.ヘルプ_GFA出力, Consts.GFAファイル名);
+            V_追加_行(l_文, Consts.引数キー.GFA出力なし, メッセージID.ヘルプ_GFA出力, Consts.GFAファイル名);
             V_追加_行(l_文, $"{Consts.引数キー.一時ディレクトリ} <path>", メッセージID.ヘルプ_一時ディレクトリ, Consts.一時ディレクトリの既定値);
             V_追加_行(l_文, Consts.引数キー.一時ディレクトリ削除, メッセージID.ヘルプ_一時ディレクトリ削除);
             V_追加_行(l_文, Consts.引数キー.再開, メッセージID.ヘルプ_再開);
+            V_追加_行(l_文, Consts.引数キー.オンメモリ, メッセージID.ヘルプ_オンメモリ);
             V_追加_行(l_文, $"{Consts.引数キー.スレッド数} <int>", メッセージID.ヘルプ_スレッド数);
             V_追加_行(l_文, $"{Consts.引数キー.言語} <{Consts.言語名.日本語}|{Consts.言語名.英語}|{Consts.言語名.中国語}>", メッセージID.ヘルプ_言語, Consts.言語名.日本語);
             V_追加_行(l_文, $"{Consts.引数キー.ログ水準} <{Consts.ログ水準名.最小}|{Consts.ログ水準名.標準}|{Consts.ログ水準名.詳細}>", メッセージID.ヘルプ_ログ水準, Consts.ログ水準名.標準, Consts.ログファイル名);

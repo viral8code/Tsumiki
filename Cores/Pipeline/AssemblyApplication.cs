@@ -62,6 +62,7 @@ namespace Tsumiki.Cores.Pipeline
             ConfigurationManager.A_実行時引数 = l_引数;
             Messages.A_言語 = l_引数.A_言語;
             Logger.A_水準 = l_引数.A_ログ水準;
+            中間データ置き場.A_Is有効 = l_引数.A_Isオンメモリ;
 
             if (l_引数.A_Isバージョンモード)
             {
@@ -73,6 +74,15 @@ namespace Tsumiki.Cores.Pipeline
             {
                 Console.WriteLine(HelpText.Get_ヘルプ());
                 return;
+            }
+
+            if (中間データ置き場.A_Is有効)
+            {
+                foreach (var l_パス in l_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
+                {
+                    中間データ置き場.V_取り込み(l_パス);
+                }
+                Logger.V_出力_そのまま(FormattableString.Invariant($"[Info] 入力リードをメモリに読み込んだ (圧縮後 {中間データ置き場.A_使用量 / 1048576D:F0} MB)"));
             }
 
             // データを見なければ決まらないパラメータは、パラメータ一覧を
@@ -145,8 +155,7 @@ namespace Tsumiki.Cores.Pipeline
             // 時点の設定を控えておく (出所記録で使う)
             var l_処理済み設定 = l_引数.Get_複製();
 
-            // -k に複数指定するのは「これらを試して選べ」という意味なので、
-            // -mk を別途書かせない
+            // -k に複数指定するのは「これらを試して選べ」という意味なので、マルチ k として扱う
             アセンブリ実行結果 l_結果;
             if (l_引数.A_Isマルチk || l_引数.A_k長一覧.Count > 1)
             {

@@ -224,7 +224,7 @@ namespace Tsumiki.Cores.Pipeline
                 l_JSON.WriteStartArray("corrected_read_hashes");
                 foreach (var l_入力 in l_処理済み設定.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
                 {
-                    if (string.IsNullOrWhiteSpace(l_入力) || !File.Exists(l_入力))
+                    if (!中間データ置き場.Is存在(l_入力))
                     {
                         continue;
                     }
@@ -271,7 +271,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_最終パス">磨く対象の最終成果物パス</param>
         /// <returns>ポリッシュ統計、実行しなければ null</returns>
         /// <remarks>
-        /// -po が無ければ何もしない<br/>
+        /// ポリッシュが無効なら何もしない<br/>
         /// 磨いた結果は同じファイル名へ被せ、利用者が受け取るものを 1 つに保つ
         /// </remarks>
         private static ポリッシュ統計? V_磨く(Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
@@ -303,7 +303,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_最終パス">検証対象の最終成果物パス</param>
         /// <returns>検証結果、実行しなければ null</returns>
         /// <remarks>
-        /// -cc が無ければ何もしない<br/>
+        /// 環状閉鎖検証が無効なら何もしない<br/>
         /// 検証していないことと、検証して支持が無かったことは別なので、前者は null を返して判定不能として扱わせる
         /// </remarks>
         private static IReadOnlyList<環状閉鎖検証結果>? V_検証_環状閉鎖(Parameters p_引数, string p_最終パス)

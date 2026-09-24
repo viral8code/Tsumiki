@@ -153,13 +153,20 @@
         /// </remarks>
         public double Get_正規化済み支持(ulong p_観測本数, long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
-            if (this._モデル is not { } l_モデル)
-            {
-                return 0D;
-            }
-
-            var l_期待 = this._密度 * l_モデル.Get_期待位置数(p_長さ1, p_長さ2, p_ギャップ長);
+            var l_期待 = this.Get_期待本数(p_長さ1, p_長さ2, p_ギャップ長);
             return l_期待 > 0D ? p_観測本数 / l_期待 : 0D;
+        }
+
+        /// <summary>
+        /// 2 本の端の間に、このライブラリのペアが何本跨ぐはずか
+        /// </summary>
+        /// <param name="p_長さ1">片側の長さ</param>
+        /// <param name="p_長さ2">もう片側の長さ</param>
+        /// <param name="p_ギャップ長">両者の間のギャップ長</param>
+        /// <returns>期待本数、モデルが使えなければ 0</returns>
+        public double Get_期待本数(long p_長さ1, long p_長さ2, int p_ギャップ長)
+        {
+            return this._モデル is { } l_モデル ? this._密度 * l_モデル.Get_期待位置数(p_長さ1, p_長さ2, p_ギャップ長) : 0D;
         }
 
         #endregion

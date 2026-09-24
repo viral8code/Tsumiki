@@ -18,18 +18,17 @@ namespace Tsumiki.IO
         public static Parameters Get_実行時引数(string[] p_引数列)
         {
             var l_引数 = new Parameters();
-            l_引数.V_適用_実行プロファイル("standard");
+            l_引数.V_適用_既定の機能();
+            HashSet<string> l_指定済み = [];
             try
             {
                 var l_位置 = 0;
                 while (l_位置 < p_引数列.Length)
                 {
                     var l_キー = p_引数列[l_位置++];
+                    _ = l_指定済み.Add(l_キー);
                     switch (l_キー)
                     {
-                        case Consts.引数キー.実行プロファイル:
-                            l_引数.V_適用_実行プロファイル(p_引数列[l_位置++]);
-                            break;
                         case Consts.引数キー.リード1のパス:
                             l_引数.A_リード1のパス = p_引数列[l_位置++];
                             break;
@@ -56,6 +55,14 @@ namespace Tsumiki.IO
 
                         case Consts.引数キー.クオリティカットオフ:
                             l_引数.A_クオリティカットオフ = int.Parse(p_引数列[l_位置++]);
+                            break;
+
+                        case Consts.引数キー.品質トリム閾値:
+                            l_引数.A_品質トリム閾値 = int.Parse(p_引数列[l_位置++]);
+                            if (l_引数.A_品質トリム閾値 < 0)
+                            {
+                                throw new ArgumentException($"{Consts.引数キー.品質トリム閾値} must be 0 or greater (0 disables trimming)");
+                            }
                             break;
 
                         case Consts.引数キー.メモリ予算:
@@ -98,16 +105,16 @@ namespace Tsumiki.IO
                             l_引数.A_Is曖昧塩基許容 = true;
                             break;
 
-                        case Consts.引数キー.エラー訂正:
-                            l_引数.A_Isエラー訂正 = true;
+                        case Consts.引数キー.エラー訂正なし:
+                            l_引数.A_Isエラー訂正 = false;
                             break;
 
-                        case Consts.引数キー.前処理:
-                            l_引数.A_Is前処理 = true;
+                        case Consts.引数キー.前処理なし:
+                            l_引数.A_Is前処理 = false;
                             break;
 
-                        case Consts.引数キー.マルチk:
-                            l_引数.A_Isマルチk = true;
+                        case Consts.引数キー.マルチkなし:
+                            l_引数.A_Isマルチk = false;
                             break;
 
                         case Consts.引数キー.マージ:
@@ -118,16 +125,16 @@ namespace Tsumiki.IO
                             l_引数.A_Is引き継ぎ = false;
                             break;
 
-                        case Consts.引数キー.SuperRead:
-                            l_引数.A_IsSuperRead作成 = true;
+                        case Consts.引数キー.SuperReadなし:
+                            l_引数.A_IsSuperRead作成 = false;
                             break;
 
-                        case Consts.引数キー.反復r_mer検証:
-                            l_引数.A_Is反復rMer検証 = true;
+                        case Consts.引数キー.反復r_mer検証なし:
+                            l_引数.A_Is反復rMer検証 = false;
                             break;
 
-                        case Consts.引数キー.局所アセンブリ:
-                            l_引数.A_Is局所アセンブリ = true;
+                        case Consts.引数キー.局所アセンブリなし:
+                            l_引数.A_Is局所アセンブリ = false;
                             break;
 
                         case Consts.引数キー.言語:
@@ -138,20 +145,20 @@ namespace Tsumiki.IO
                             V_適用_積極性モード(l_引数, p_引数列[l_位置++]);
                             break;
 
-                        case Consts.引数キー.GFA出力:
-                            l_引数.A_IsGFA出力 = true;
+                        case Consts.引数キー.GFA出力なし:
+                            l_引数.A_IsGFA出力 = false;
                             break;
 
-                        case Consts.引数キー.ポリッシュ:
-                            l_引数.A_Isポリッシュ = true;
+                        case Consts.引数キー.ポリッシュなし:
+                            l_引数.A_Isポリッシュ = false;
                             break;
 
-                        case Consts.引数キー.環状閉鎖検証:
-                            l_引数.A_Is環状閉鎖検証 = true;
+                        case Consts.引数キー.環状閉鎖検証なし:
+                            l_引数.A_Is環状閉鎖検証 = false;
                             break;
 
-                        case Consts.引数キー.救済kmer:
-                            l_引数.A_Is救済kmer使用 = true;
+                        case Consts.引数キー.救済kmerなし:
+                            l_引数.A_Is救済kmer使用 = false;
                             break;
 
                         case Consts.引数キー.コピー数基準:
@@ -164,6 +171,10 @@ namespace Tsumiki.IO
 
                         case Consts.引数キー.再開:
                             l_引数.A_Is再開 = true;
+                            break;
+
+                        case Consts.引数キー.オンメモリ:
+                            l_引数.A_Isオンメモリ = true;
                             break;
 
                         case Consts.引数キー.ログ水準:
@@ -209,12 +220,57 @@ namespace Tsumiki.IO
                 throw l_例外;
             }
 
+            if (Get_相反する指定(l_指定済み, l_引数) is { } l_理由)
+            {
+                var l_例外 = new ArgumentException(l_理由);
+                Logger.V_出力_エラー(Logger.Get_メソッド名(), l_例外);
+                throw l_例外;
+            }
+
             return l_引数;
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 同時に指定すると意味が通らない組を探す
+        /// </summary>
+        /// <param name="p_指定済み">コマンドラインに書かれたキー</param>
+        /// <param name="p_引数">組み立て済みの実行時引数</param>
+        /// <remarks>
+        /// どちらかを黙って優先すると、利用者は自分の指定が効いたと思ったまま別の条件で走らせることになるので、始める前に止める
+        /// </remarks>
+        /// <returns>見つかれば理由、無ければ null</returns>
+        internal static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
+        {
+            // メモリに置くときは計数の途中結果もメモリに溜まるので、予算で外へ逃がす前提と食い違う
+            if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算))
+            {
+                return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget";
+            }
+
+            // 再開の元になる中間ファイルがディスクに残らない
+            if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開))
+            {
+                return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from";
+            }
+
+            // -k に複数書くのは「これらを試して選べ」という指定で、マルチ k を切る指定と両立しない
+            if (p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1)
+            {
+                return $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best";
+            }
+
+            // 1 つの値を全ライブラリに当てると、インサートの違うライブラリの距離の前提が黙って壊れる
+            if (p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1)
+            {
+                return $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately";
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// -lang に渡された言語名を解釈する

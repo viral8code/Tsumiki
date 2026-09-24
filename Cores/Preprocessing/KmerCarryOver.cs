@@ -33,10 +33,15 @@ namespace Tsumiki.Cores.Preprocessing
         /// 持ち越さないと判断する、未観測の窓の連続数
         /// </summary>
         /// <remarks>
-        /// 低カバレッジでは未観測の窓が散発する (実測で 13% 前後) ため、1 つでも外すと本来の穴埋めまで消える<br/>
-        /// 反復由来の継ぎ目は 15 窓以上続き、正常な区間の最長は 11 窓だった
+        /// 低カバレッジでは未観測の窓が散発するため、1 つでも外すと本来の穴埋めまで消える<br/>
+        /// 周りのカバレッジとの比でも判定できそうに見えるが、内側が沈むのはカバレッジの谷だけでなく反復の別コピーへ乗り換えた偽の経路もそうなので、使えない
         /// </remarks>
         internal const int 未観測の連続の下限 = 14;
+
+        /// <summary>
+        /// 未観測の連続の位置を書き出すファイル名 (持ち越し元の FASTA と同じ場所に置く)
+        /// </summary>
+        private const string 未観測の連続の書き出し名 = "unobserved_runs.tsv";
 
         #endregion
 
@@ -57,11 +62,13 @@ namespace Tsumiki.Cores.Preprocessing
         public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null, RepeatRMerVerifier? p_検証器 = null)
         {
             List<引き継ぎ配列> l_結果 = [];
+            var l_度数 = p_検証器 is null ? null : new 連続長の度数();
             using var l_読み込み = new FastaReader(p_FASTAパス);
 
             while (l_読み込み.Has続き())
             {
-                var l_配列 = l_読み込み.Get_次の配列().A_配列;
+                var l_エントリ = l_読み込み.Get_次の配列();
+                var l_配列 = l_エントリ.A_配列;
                 if (l_配列.Length < Math.Max(引き継ぐ配列の最小長, p_k長))
                 {
                     continue;
@@ -73,7 +80,14 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長), A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器)));
+                var l_継ぎ目位置 = Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長);
+                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数, l_エントリ.A_ID.TrimStart('>'), l_カバレッジ)));
+            }
+
+            if (l_度数 is not null)
+            {
+                l_度数.V_出力(p_k長);
+                l_度数.V_書き出し(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_FASTAパス))!, 未観測の連続の書き出し名));
             }
             return l_結果;
         }
@@ -110,17 +124,106 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_配列">調べる配列</param>
         /// <param name="p_検証器">r-mer の検証器、無ければ null</param>
+        /// <param name="p_継ぎ目位置">分岐のある継ぎ目の辺の開始位置、無ければ null</param>
+        /// <param name="p_k長">継ぎ目の辺を作った k</param>
+        /// <param name="p_度数">渡すと、下限未満も含めた全ての連続を数える</param>
+        /// <param name="p_配列名">度数の明細に残す配列の名前</param>
+        /// <param name="p_カバレッジ">k-mer ごとのカバレッジ、渡すと連続の内側と前後の中央値を明細に残す</param>
+        /// <remarks>
+        /// 下限未満の分布も見えるように、全連続を一度拾ってから下限で絞る
+        /// </remarks>
         /// <returns>1 つも無ければ null</returns>
-        internal static IReadOnlyList<(int A_開始, int A_終了)>? Get_未観測の連続範囲(string p_配列, RepeatRMerVerifier? p_検証器)
+        internal static IReadOnlyList<(int A_開始, int A_終了)>? Get_未観測の連続範囲(string p_配列, RepeatRMerVerifier? p_検証器, IReadOnlyList<int>? p_継ぎ目位置 = null, int p_k長 = 0, 連続長の度数? p_度数 = null, string p_配列名 = "", int[]? p_カバレッジ = null)
         {
             if (p_検証器 is null)
             {
                 return null;
             }
 
+            List<(int A_開始, int A_終了)> l_全連続 = [];
+            p_検証器.V_収集_未観測の連続範囲(p_配列, 1, l_全連続);
+
             List<(int A_開始, int A_終了)> l_範囲 = [];
-            p_検証器.V_収集_未観測の連続範囲(p_配列, 未観測の連続の下限, l_範囲);
+            foreach (var l_連続 in l_全連続)
+            {
+                if (p_度数 is not null)
+                {
+                    var (l_内側, l_外側) = Get_内外のカバレッジ(l_連続, p_カバレッジ);
+                    p_度数.V_加算(p_配列名, l_連続.A_開始, l_連続.A_終了, Is継ぎ目に掛かる(l_連続, p_継ぎ目位置, p_k長), l_内側, l_外側);
+                }
+                if (l_連続.A_終了 - l_連続.A_開始 + 1 >= 未観測の連続の下限)
+                {
+                    l_範囲.Add(l_連続);
+                }
+            }
             return l_範囲.Count > 0 ? l_範囲 : null;
+        }
+
+        /// <summary>
+        /// 未観測の連続に掛かる k-mer と、その前後の k-mer のカバレッジの中央値
+        /// </summary>
+        /// <param name="p_連続">r-mer の窓の開始と終了</param>
+        /// <param name="p_カバレッジ">k-mer ごとのカバレッジ、無ければ (0, 0)</param>
+        /// <remarks>
+        /// 未観測の連続がカバレッジの谷なのか、リードに無い経路なのかを後から調べるために残す
+        /// </remarks>
+        /// <returns></returns>
+        private static (int A_内側, int A_外側) Get_内外のカバレッジ((int A_開始, int A_終了) p_連続, int[]? p_カバレッジ)
+        {
+            if (p_カバレッジ is not { Length: > 0 })
+            {
+                return (0, 0);
+            }
+
+            // k が r より長いと k-mer の窓は r-mer の窓より少ないので、連続の端が配列の外に出うる
+            const int l_前後の幅 = 150;
+            var l_長さ = p_カバレッジ.Length;
+            var l_開始 = Math.Min(p_連続.A_開始, l_長さ - 1);
+            var l_終端 = Math.Clamp(p_連続.A_終了 + 持ち越し検証のr長 - 1, l_開始, l_長さ - 1);
+            var l_内側 = p_カバレッジ[l_開始..(l_終端 + 1)];
+            var l_前 = p_カバレッジ[Math.Max(0, l_開始 - l_前後の幅)..l_開始];
+            var l_後 = p_カバレッジ[(l_終端 + 1)..Math.Min(l_長さ, l_終端 + 1 + l_前後の幅)];
+            return (Get_中央値(l_内側), Get_中央値([.. l_前, .. l_後]));
+        }
+
+        /// <summary>
+        /// 中央値 (空なら 0)
+        /// </summary>
+        /// <param name="p_値群"></param>
+        /// <returns></returns>
+        private static int Get_中央値(int[] p_値群)
+        {
+            if (p_値群.Length == 0)
+            {
+                return 0;
+            }
+            var l_並び = p_値群.Order().ToArray();
+            return l_並び[l_並び.Length / 2];
+        }
+
+        /// <summary>
+        /// 未観測の連続が、分岐のある継ぎ目の辺と塩基で重なるか
+        /// </summary>
+        /// <param name="p_連続">r-mer の窓の開始と終了</param>
+        /// <param name="p_継ぎ目位置">継ぎ目の辺 ((k+1)-mer) の開始位置</param>
+        /// <param name="p_k長">継ぎ目の辺を作った k</param>
+        /// <returns></returns>
+        private static bool Is継ぎ目に掛かる((int A_開始, int A_終了) p_連続, IReadOnlyList<int>? p_継ぎ目位置, int p_k長)
+        {
+            if (p_継ぎ目位置 is null)
+            {
+                return false;
+            }
+
+            var l_塩基の終端 = p_連続.A_終了 + 持ち越し検証のr長 - 1;
+            foreach (var l_位置 in p_継ぎ目位置)
+            {
+                if (l_位置 <= l_塩基の終端 && l_位置 + p_k長 >= p_連続.A_開始)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -300,7 +403,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_未登録群[i] = null;
                 }
 
-                // -sr を使うと引き継ぎ配列はリードペアの数まで増える
+                // 合成リードを作ると引き継ぎ配列はリードペアの数まで増える
                 // 全 k-mer を足し終えるまで無言だと止まったように見える
                 if (l_件数 == l_バッチ長)
                 {

@@ -69,7 +69,7 @@ namespace Tsumiki.Cores.Pipeline
             List<引き継ぎ配列> l_引き継ぎ = [];
             List<引き継ぎ配列> l_次への引き継ぎ = [];
 
-            // 合成リード (-sr) は最初に作れた k のものを以降でも使い回す
+            // 合成リード (SuperRead) は最初に作れた k のものを以降でも使い回す
             List<引き継ぎ配列> l_合成リードの控え = [];
 
             foreach (var l_k長 in l_k候補)

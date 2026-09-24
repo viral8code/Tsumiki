@@ -76,6 +76,9 @@ namespace Tsumiki.Cores.Preprocessing
             var l_総ペア数 = 0;
             var l_アダプタ検出ペア数 = 0;
             var l_訂正塩基数 = 0;
+            var l_総塩基数 = 0L;
+            var l_トリム塩基数 = 0L;
+            var l_トリム閾値 = ConfigurationManager.A_実行時引数.A_品質トリム閾値;
 
             using var l_読み込み1 = new FastqReader(p_リード1のパス);
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
@@ -109,7 +112,8 @@ namespace Tsumiki.Cores.Preprocessing
 
                 _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                 {
-                    l_結果群[i] = Get_前処理結果(l_配列1群[i], l_クオリティ1群[i], l_配列2群[i], l_クオリティ2群[i], l_Phredオフセット);
+                    // 重なりで相方から救える末尾の塩基を先に救い、それでも崩れている区間だけを切る
+                    l_結果群[i] = Get_品質トリム済み(Get_前処理結果(l_配列1群[i], l_クオリティ1群[i], l_配列2群[i], l_クオリティ2群[i], l_Phredオフセット), l_Phredオフセット, l_トリム閾値);
                 });
 
                 for (var i = 0; i < l_件数; i++)
@@ -120,12 +124,14 @@ namespace Tsumiki.Cores.Preprocessing
                         l_アダプタ検出ペア数++;
                     }
                     l_訂正塩基数 += l_結果.A_訂正塩基数;
+                    l_総塩基数 += l_配列1群[i].Length + l_配列2群[i].Length;
+                    l_トリム塩基数 += l_結果.A_品質トリム塩基数;
                     l_書き込み1.V_書き込み(l_ID1群[i], l_結果.A_配列1, l_結果.A_クオリティ1);
                     l_書き込み2.V_書き込み(l_ID2群[i], l_結果.A_配列2, l_結果.A_クオリティ2);
                 }
             }
 
-            return new 前処理統計(l_総ペア数, l_アダプタ検出ペア数, l_訂正塩基数);
+            return new 前処理統計(l_総ペア数, l_アダプタ検出ペア数, l_訂正塩基数, l_総塩基数, l_トリム塩基数, l_トリム閾値);
         }
 
         /// <summary>
@@ -135,6 +141,71 @@ namespace Tsumiki.Cores.Preprocessing
         public static void V_出力_前処理統計(前処理統計 p_統計)
         {
             Logger.V_出力(メッセージID.前処理統計, p_統計.A_アダプタ検出ペア数, p_統計.A_総ペア数, p_統計.A_訂正塩基数);
+            if (p_統計.A_品質トリム閾値 > 0)
+            {
+                var l_割合 = p_統計.A_総塩基数 > 0 ? 100D * p_統計.A_品質トリム塩基数 / p_統計.A_総塩基数 : 0D;
+                Logger.V_出力(メッセージID.品質トリム統計, p_統計.A_品質トリム閾値, p_統計.A_品質トリム塩基数.ToString("N0", System.Globalization.CultureInfo.InvariantCulture), l_割合.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        /// <summary>
+        /// ペアの両方の 3' 末端から、品質の崩れた区間を切る
+        /// </summary>
+        /// <param name="p_結果">重なり処理まで済んだペア</param>
+        /// <param name="p_Phredオフセット">クオリティ文字から Phred スコアを引くためのオフセット</param>
+        /// <param name="p_閾値">これより低い品質が続く区間を切る (0 なら切らない)</param>
+        /// <returns>切った後のペア (切った塩基数を含む)</returns>
+        internal static ペア前処理結果 Get_品質トリム済み(ペア前処理結果 p_結果, int p_Phredオフセット, int p_閾値)
+        {
+            if (p_閾値 <= 0)
+            {
+                return p_結果;
+            }
+
+            var l_長さ1 = Get_品質トリム後の長さ(p_結果.A_クオリティ1, p_Phredオフセット, p_閾値);
+            var l_長さ2 = Get_品質トリム後の長さ(p_結果.A_クオリティ2, p_Phredオフセット, p_閾値);
+            var l_切った数 = p_結果.A_配列1.Length - l_長さ1 + p_結果.A_配列2.Length - l_長さ2;
+            return p_結果 with
+            {
+                A_配列1 = p_結果.A_配列1[..l_長さ1],
+                A_クオリティ1 = p_結果.A_クオリティ1[..l_長さ1],
+                A_配列2 = p_結果.A_配列2[..l_長さ2],
+                A_クオリティ2 = p_結果.A_クオリティ2[..l_長さ2],
+                A_品質トリム塩基数 = p_結果.A_品質トリム塩基数 + l_切った数,
+            };
+        }
+
+        /// <summary>
+        /// 3' 末端から品質の崩れた区間を切った後の長さ
+        /// </summary>
+        /// <param name="p_クオリティ">クオリティ文字列</param>
+        /// <param name="p_Phredオフセット">クオリティ文字から Phred スコアを引くためのオフセット</param>
+        /// <param name="p_閾値">品質の閾値</param>
+        /// <remarks>
+        /// BWA の -q と同じく、末尾から (閾値 - 品質) を足していき、和が最大になる位置で切る<br/>
+        /// 区間の和で決めるので、品質の良い区間に孤立した低品質塩基があっても切らない<br/>
+        /// 空のリードは下流の読み込みで扱えないので、少なくとも 1 塩基は残す
+        /// </remarks>
+        /// <returns>残す長さ</returns>
+        internal static int Get_品質トリム後の長さ(string p_クオリティ, int p_Phredオフセット, int p_閾値)
+        {
+            var l_和 = 0;
+            var l_最大 = 0;
+            var l_長さ = p_クオリティ.Length;
+            for (var i = p_クオリティ.Length - 1; i >= 1; i--)
+            {
+                l_和 += p_閾値 - (p_クオリティ[i] - p_Phredオフセット);
+                if (l_和 < 0)
+                {
+                    break;
+                }
+                if (l_和 > l_最大)
+                {
+                    l_最大 = l_和;
+                    l_長さ = i;
+                }
+            }
+            return l_長さ;
         }
 
         /// <summary>

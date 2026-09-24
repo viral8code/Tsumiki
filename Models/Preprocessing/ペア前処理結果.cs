@@ -12,5 +12,6 @@
     /// <param name="A_クオリティ2"></param>
     /// <param name="A_Hasアダプタ検出"></param>
     /// <param name="A_訂正塩基数"></param>
-    internal readonly record struct ペア前処理結果(string A_配列1, string A_クオリティ1, string A_配列2, string A_クオリティ2, bool A_Hasアダプタ検出, int A_訂正塩基数);
+    /// <param name="A_品質トリム塩基数">3' 末端の品質トリムで切った塩基数 (両側の合計)</param>
+    internal readonly record struct ペア前処理結果(string A_配列1, string A_クオリティ1, string A_配列2, string A_クオリティ2, bool A_Hasアダプタ検出, int A_訂正塩基数, int A_品質トリム塩基数 = 0);
 }

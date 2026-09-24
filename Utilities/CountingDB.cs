@@ -220,10 +220,7 @@ namespace Tsumiki.Utilities
             // 統合を呼ばずに破棄された場合に備えて残存ファイルを掃除する
             foreach (var l_ファイル in this._フラッシュ済みファイル)
             {
-                if (File.Exists(l_ファイル))
-                {
-                    File.Delete(l_ファイル);
-                }
+                中間データ置き場.V_削除(l_ファイル);
             }
         }
 
@@ -300,9 +297,11 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ファイル名">開くファイル名</param>
         /// <returns>書き込み用のストリーム</returns>
-        private static FileStream Get_書き込みストリーム(string p_ファイル名)
+        private static Stream Get_書き込みストリーム(string p_ファイル名)
         {
-            return new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, IOバッファサイズ, FileOptions.SequentialScan);
+            return 中間データ置き場.A_Is有効
+                ? 中間データ置き場.Get_書込ストリーム(p_ファイル名)
+                : new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, IOバッファサイズ, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -310,9 +309,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ファイル名">開くファイル名</param>
         /// <returns>読み込み用のストリーム</returns>
-        private static FileStream Get_読み込みストリーム(string p_ファイル名)
+        private static Stream Get_読み込みストリーム(string p_ファイル名)
         {
-            return new FileStream(p_ファイル名, FileMode.Open, FileAccess.Read, FileShare.Read, IOバッファサイズ, FileOptions.SequentialScan);
+            return 中間データ置き場.Get_読込ストリーム(p_ファイル名);
         }
 
         /// <summary>
@@ -445,8 +444,8 @@ namespace Tsumiki.Utilities
                 }
             }
 
-            File.Delete(p_ファイル1);
-            File.Delete(p_ファイル2);
+            中間データ置き場.V_削除(p_ファイル1);
+            中間データ置き場.V_削除(p_ファイル2);
         }
 
         /// <summary>

@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.IO
+﻿using Tsumiki.Utilities;
+
+namespace Tsumiki.IO
 {
     /// <summary>
     /// FASTQ を 1 リードずつ書き出す
@@ -11,7 +13,7 @@
         /// <summary>
         /// 書き込み
         /// </summary>
-        private readonly StreamWriter _書き込み = new(p_ファイル名);
+        private readonly StreamWriter _書き込み = new(中間データ置き場.Get_書込ストリーム(p_ファイル名));
 
         #endregion
 

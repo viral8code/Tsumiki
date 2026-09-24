@@ -43,6 +43,16 @@ namespace Tsumiki.Cores.Scaffolding
         private const int インサートサイズ標本数の下限 = 30;
 
         /// <summary>
+        /// 採用した辺をライブラリ別の支持と共に書き出すファイル名 (scaffold と同じ場所に置く)
+        /// </summary>
+        private const string 採用辺の書き出し名 = "scaffold_edges.tsv";
+
+        /// <summary>
+        /// 支持の下限を満たす候補が 2 本以上ある頂点の候補を書き出すファイル名 (scaffold と同じ場所に置く)
+        /// </summary>
+        private const string 競合候補の書き出し名 = "scaffold_candidates.tsv";
+
+        /// <summary>
         /// scaffold に挿入する最小ギャップ長
         /// </summary>
         private const int ギャップ長の下限 = 1;
@@ -149,9 +159,8 @@ namespace Tsumiki.Cores.Scaffolding
                 l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
 
                 // 分布は同一 unitig 標本から作る
-                // 確定辺標本の方が母集団としては正しいはずだが、差し替えると連続性が大きく落ちた
-                // ただしそれを試した時点では既知長の座標に鏡像の誤りがあり確定辺標本が過大だったので、
-                // 差し替えの是非そのものは未決着
+                // 採点するのは接合点を跨いだペアなので確定辺標本の方が母集団は揃うが、差し替えても採る辺はほとんど変わらない
+                // 標本数が 1 桁多い同一 unitig 標本の方が分布の形が安定する
                 var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count
                     ? p_contig構築.A_同一unitig標本群[l_ライブラリ]
                     : [];
@@ -187,8 +196,11 @@ namespace Tsumiki.Cores.Scaffolding
             // 見立て (本数・ギャップ長・期待比) だけを採る
             // 足し合わせると、距離の前提が違うライブラリの本数が混ざる
             var l_候補キー = l_対称化群.SelectMany(x => x.Keys).ToHashSet();
+            var l_ライブラリ別本数 = l_ライブラリ数 > 1 ? new Dictionary<(int, int), (int[] A_本数, double[] A_期待)>() : null;
+
             foreach (var (l_始点, l_終点) in l_候補キー)
             {
+                var l_本数群 = l_ライブラリ別本数 is null ? null : new int[l_ライブラリ数];
                 var l_最良本数 = 0;
                 var l_最良ギャップ = 0;
                 var l_最良比 = 0D;
@@ -200,6 +212,10 @@ namespace Tsumiki.Cores.Scaffolding
                     }
 
                     var (l_一貫した本数, l_ギャップ長) = l_モデル群[l_ライブラリ].Get_一貫した支持(l_項目.A_既知長標本);
+                    if (l_本数群 is not null)
+                    {
+                        l_本数群[l_ライブラリ] = l_一貫した本数;
+                    }
                     if (l_一貫した本数 <= l_最良本数)
                     {
                         continue;
@@ -213,6 +229,16 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比));
+                if (l_本数群 is not null)
+                {
+                    // 支持しなかったライブラリも、採った見立ての距離で何本来るはずだったかを残す
+                    var l_期待群 = new double[l_ライブラリ数];
+                    for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
+                    {
+                        l_期待群[l_ライブラリ] = l_較正器群[l_ライブラリ].Get_期待本数(this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_最良ギャップ));
+                    }
+                    l_ライブラリ別本数![(l_始点, l_終点)] = (l_本数群, l_期待群);
+                }
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
@@ -225,6 +251,11 @@ namespace Tsumiki.Cores.Scaffolding
             for (var v = 2; v < l_頂点数; v++)
             {
                 V_確定_Scaffold辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
+            }
+
+            if (l_ライブラリ別本数 is not null)
+            {
+                this.V_書き出し_競合候補(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, 競合候補の書き出し名), l_隣接, l_確定辺, l_ライブラリ別本数, l_最小証拠数);
             }
 
             var l_確定数 = 0;
@@ -263,6 +294,11 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
             Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
+
+            if (l_ライブラリ別本数 is not null)
+            {
+                this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, 採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
+            }
 
             // 「入ってくる結合を持たない」頂点が経路の始点
             // v への結合が
@@ -472,6 +508,65 @@ namespace Tsumiki.Cores.Scaffolding
                 $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {インサートサイズ標本数の下限})"));
             p_インサートサイズ = 0;
             return false;
+        }
+
+        /// <summary>
+        /// 採用した辺と、それを支えた一貫したペアの本数をライブラリ別に書き出す
+        /// </summary>
+        /// <param name="p_パス">書き出し先</param>
+        /// <param name="p_確定辺">頂点ごとの採用辺</param>
+        /// <param name="p_ライブラリ別本数">辺ごとの、ライブラリ別の一貫した支持の本数と期待本数</param>
+        /// <remarks>
+        /// 採点は最も支持の多いライブラリ 1 つで行うので、他のライブラリが別の繋ぎ方を支えていても結果からは見えない。どのライブラリがどの辺を通したかを後から確かめられるよう残す
+        /// </remarks>
+        private void V_書き出し_採用辺(string p_パス, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数)
+        {
+            using var l_書き込み = new StreamWriter(p_パス);
+            l_書き込み.WriteLine("from\tfrom_end\tto\tto_end\tgap\tsupport_by_library\texpected_by_library");
+            for (var v = 2; v < p_確定辺.Length; v++)
+            {
+                if (p_確定辺[v] is not { } l_辺 || !p_ライブラリ別本数.TryGetValue((v, l_辺.A_行き先), out var l_支持))
+                {
+                    continue;
+                }
+                var l_始点名 = this._contig名.GetValueOrDefault(v >> 1, string.Empty);
+                var l_終点名 = this._contig名.GetValueOrDefault(l_辺.A_行き先 >> 1, string.Empty);
+                l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_辺.A_行き先 & 1}\t{l_辺.A_ギャップ長}\t{string.Join(",", l_支持.A_本数)}\t{string.Join(",", l_支持.A_期待.Select(x => x.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}"));
+            }
+        }
+
+        /// <summary>
+        /// 支持の下限を満たす候補が 2 本以上ある頂点について、全候補を書き出す
+        /// </summary>
+        /// <param name="p_パス">書き出し先</param>
+        /// <param name="p_隣接">頂点ごとの候補</param>
+        /// <param name="p_確定辺">頂点ごとの採用辺 (相互一意の前)</param>
+        /// <param name="p_ライブラリ別本数">辺ごとの、ライブラリ別の一貫した支持の本数と期待本数</param>
+        /// <param name="p_最小証拠数">候補として数える支持の下限</param>
+        /// <remarks>
+        /// 優勢の判定は期待に対する比で候補を比べるので、ライブラリごとに期待の尺度が違うと、どのライブラリで選ばれた候補かで勝敗が決まりうる。それを後から確かめられるよう残す
+        /// </remarks>
+        private void V_書き出し_競合候補(string p_パス, List<Scaffold候補>[] p_隣接, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数, ulong p_最小証拠数)
+        {
+            using var l_書き込み = new StreamWriter(p_パス);
+            l_書き込み.WriteLine("from\tfrom_end\tto\tto_end\tsupport\tratio\tsupport_by_library\texpected_by_library\tchosen");
+            for (var v = 2; v < p_隣接.Length; v++)
+            {
+                var l_候補群 = p_隣接[v].Where(x => x.A_支持数 >= p_最小証拠数).ToList();
+                if (l_候補群.Count < 2)
+                {
+                    continue;
+                }
+
+                var l_始点名 = this._contig名.GetValueOrDefault(v >> 1, string.Empty);
+                foreach (var l_候補 in l_候補群)
+                {
+                    var l_終点名 = this._contig名.GetValueOrDefault(l_候補.A_行き先 >> 1, string.Empty);
+                    var (l_本数, l_期待) = p_ライブラリ別本数.TryGetValue((v, l_候補.A_行き先), out var l_支持) ? l_支持 : ([], []);
+                    var l_Is採用 = p_確定辺[v] is { } l_辺 && l_辺.A_行き先 == l_候補.A_行き先;
+                    l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_候補.A_行き先 & 1}\t{l_候補.A_支持数}\t{l_候補.A_期待に対する比:F2}\t{string.Join(",", l_本数)}\t{string.Join(",", l_期待.Select(x => x.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}\t{(l_Is採用 ? 1 : 0)}"));
+                }
+            }
         }
 
         /// <summary>

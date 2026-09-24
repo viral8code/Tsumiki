@@ -148,6 +148,7 @@ Run `Tsumiki.exe -h` for the full list.
 | `-k <int[,int...]>` | k-mer length. With a comma-separated list, assembles with each k and keeps the best result | Selected from read length |
 | `-kc <int>` | Minimum count for a trusted k-mer | Selected from the k-mer spectrum |
 | `-q <int>` | Minimum trusted base quality | `1` |
+| `-qt <int>` | During preprocessing, trim the 3' ends of paired reads where quality falls below this value (same method as BWA `-q`). `0` disables it. Not applied to single-end reads (`-s`) | `20` |
 | `-p <33\|64>` | Phred offset | Auto-detected |
 | `-ab` | Expand ambiguous (IUPAC) bases instead of skipping them | Off |
 
@@ -170,48 +171,52 @@ Values set by each `-mode` preset:
 
 ### Enabling and disabling stages
 
-With the default profile (`-profile standard`), all of the following are enabled:
+All of the following stages are enabled by default. To disable one, use the corresponding option starting with `-n`.
 
-- Preprocessing (adapter read-through trimming and overlap-based correction)
-- k-mer spectrum error correction
-- Multi-k assembly with sequence carry-over between k values
-- r-mer verification of repeats
-- Local assembly of unclosed gaps
-- Rescue of low-count k-mers
-- Polishing (substitution error correction)
-- Verification of circular junctions
-- GFA output
-
-To enable only some of them, start from `-profile legacy`, which disables all of them, and add what you need. Put `-profile` before other options.
+| Option | Stage it disables |
+|---|---|
+| `-npp` | Preprocessing (adapter read-through trimming and overlap-based correction) |
+| `-nec` | k-mer spectrum error correction |
+| `-nmk` | Multi-k assembly (assemble with a single k) |
+| `-nc` | Sequence carry-over between k values |
+| `-nsr` | Carry-over of synthetic reads built from overlapping pairs |
+| `-nrv` | Read support required before duplicating repeats (r-mer verification) |
+| `-nla` | Local assembly of unclosed gaps |
+| `-nmy` | Rescue of low-count k-mers flanked by trusted k-mers |
+| `-nt` | Trimming of low-coverage graph ends |
+| `-npo` | Polishing (substitution error correction) |
+| `-ncc` | Verification of circular junctions |
+| `-ngfa` | Graph output in GFA1 format |
 
 ```bash
-Tsumiki.exe -profile legacy -ec -po -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out
+Tsumiki.exe -npo -ngfa -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out
 ```
 
-| Option | Description | standard |
+Stages that are off by default and other settings:
+
+| Option | Description | Default |
 |---|---|---|
-| `-profile <standard\|legacy>` | Set the combination of stages at once | `standard` |
-| `-pp` | Preprocessing | On |
-| `-ec` | Error correction | On |
-| `-mk` | Multi-k assembly | On |
-| `-sr` | Carry synthetic reads built from overlapping pairs to the next k | On |
-| `-rv` | Require read support before duplicating repeats | On |
-| `-la` | Local assembly of unclosed gaps | On |
-| `-my` | Rescue low-count k-mers flanked by trusted k-mers | On |
-| `-po` | Polishing | On |
-| `-cc` | Verify circular junctions | On |
-| `-gfa` | Write the graph in GFA1 format | On |
-| `-nc` | Disable sequence carry-over between k values | (carry over) |
-| `-nt` | Disable trimming of low-coverage graph ends | (trim) |
 | `-mg` | Fill unresolved junctions with sequence from other k values (may increase misassemblies) | Off |
 | `-cnb <spectrum\|weighted>` | How the baseline depth for copy-number estimation is chosen | `weighted` |
 
-### Output directory
+### Output directory and intermediate data
 
 | Option | Description | Default |
 |---|---|---|
 | `-rs` | Reuse preprocessed and corrected reads in an existing output directory | Off |
 | `-rt` | Delete intermediate files after a successful run (final results and log are kept) | Off |
+| `-inmem` | Keep intermediate reads and k-mer counting runs in memory instead of on disk. Greatly reduces disk reads and writes at the cost of more memory | Off |
+
+### Options that cannot be combined
+
+If any of these combinations is given, Tsumiki prints the reason and exits without starting.
+
+| Combination | Reason |
+|---|---|
+| `-inmem` and `-mem` | `-inmem` keeps k-mer counting runs in memory, whereas `-mem` assumes they spill to disk |
+| `-inmem` and `-rs` | `-inmem` leaves no intermediate files on disk to resume from |
+| `-nmk` and `-k` with several values | A comma-separated `-k` means "try each value and keep the best" |
+| `-i` and two or more paired-end libraries | A single value would be applied to every library, breaking the assumptions for libraries with different insert sizes |
 
 ## Output
 

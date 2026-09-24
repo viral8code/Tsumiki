@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using Tsumiki.Utilities;
+using System.IO.Compression;
 
 namespace Tsumiki.IO
 {
@@ -49,7 +50,7 @@ namespace Tsumiki.IO
         protected SequenceFileReaderBase(string p_パス)
         {
             this.A_ファイルパス = p_パス;
-            var l_入力ストリーム = new FileStream(p_パス, FileMode.Open, FileAccess.Read);
+            var l_入力ストリーム = 中間データ置き場.Get_読込ストリーム(p_パス);
             this._読み込み = Path.GetExtension(p_パス)?.ToLower() == ".gz"
                 ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: バッファサイズ)
                 : new StreamReader(l_入力ストリーム, bufferSize: バッファサイズ);

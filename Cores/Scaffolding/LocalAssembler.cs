@@ -353,7 +353,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
 
                 if (!string.IsNullOrWhiteSpace(l_リード1のパス) && !string.IsNullOrWhiteSpace(l_リード2のパス)
-                    && File.Exists(l_リード1のパス) && File.Exists(l_リード2のパス))
+                    && 中間データ置き場.Is存在(l_リード1のパス) && 中間データ置き場.Is存在(l_リード2のパス))
                 {
                     foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(l_リード1のパス, l_リード2のパス, p_アンカー索引, p_k長, p_種集合, p_種長))
                     {
@@ -404,7 +404,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     foreach (var l_パス in new[] { l_リード1のパス, l_リード2のパス })
                     {
-                        if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                        if (!中間データ置き場.Is存在(l_パス))
                         {
                             continue;
                         }
@@ -470,7 +470,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
 
                 if (!string.IsNullOrWhiteSpace(l_リード1のパス) && !string.IsNullOrWhiteSpace(l_リード2のパス)
-                    && File.Exists(l_リード1のパス) && File.Exists(l_リード2のパス))
+                    && 中間データ置き場.Is存在(l_リード1のパス) && 中間データ置き場.Is存在(l_リード2のパス))
                 {
                     foreach (var (A_ID1, A_配列1, l_一致1, A_ID2, A_配列2, l_一致2) in Get_照合済みペア列(l_リード1のパス, l_リード2のパス, l_拡張索引, p_k長, l_種集合, l_種長))
                     {
@@ -486,7 +486,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     foreach (var l_パス in new[] { l_リード1のパス, l_リード2のパス })
                     {
-                        if (string.IsNullOrWhiteSpace(l_パス) || !File.Exists(l_パス))
+                        if (!中間データ置き場.Is存在(l_パス))
                         {
                             continue;
                         }

@@ -41,7 +41,7 @@
         public const int 自動k長の上限 = 63;
 
         /// <summary>
-        /// -mk で試す k の個数
+        /// マルチ k で試す k の個数
         /// </summary>
         /// <remarks>
         /// 増やすほど実行時間が線形に伸びる<br/>
@@ -75,6 +75,14 @@
         /// クオリティカットオフの既定値
         /// </summary>
         public const int クオリティカットオフの既定値 = 1;
+
+        /// <summary>
+        /// 3' 末端の品質トリムの閾値の既定値
+        /// </summary>
+        /// <remarks>
+        /// 末尾で品質が崩れたリードを残すと、エラー訂正が崩れた区間を 1 塩基ずつ直そうとして重くなり、偽の k-mer もグラフに持ち込む
+        /// </remarks>
+        public const int 品質トリム閾値の既定値 = 20;
 
         /// <summary>
         /// 一時ディレクトリの既定値
@@ -223,6 +231,11 @@
             public const string クオリティカットオフ = "-q";
 
             /// <summary>
+            /// 3' 末端の品質トリムの閾値
+            /// </summary>
+            public const string 品質トリム閾値 = "-qt";
+
+            /// <summary>
             /// インサートサイズ
             /// </summary>
             public const string インサートサイズ = "-i";
@@ -273,14 +286,14 @@
             public const string ペア支持数閾値 = "-pc";
 
             /// <summary>
-            /// エラー訂正
+            /// エラー訂正を行わない
             /// </summary>
-            public const string エラー訂正 = "-ec";
+            public const string エラー訂正なし = "-nec";
 
             /// <summary>
-            /// 前処理
+            /// 前処理を行わない
             /// </summary>
-            public const string 前処理 = "-pp";
+            public const string 前処理なし = "-npp";
 
             /// <summary>
             /// メモリ予算
@@ -288,9 +301,9 @@
             public const string メモリ予算 = "-mem";
 
             /// <summary>
-            /// マルチ k
+            /// マルチ k を行わない
             /// </summary>
-            public const string マルチk = "-mk";
+            public const string マルチkなし = "-nmk";
 
             /// <summary>
             /// マージ
@@ -303,19 +316,19 @@
             public const string 引き継ぎなし = "-nc";
 
             /// <summary>
-            /// 合成リードを作る
+            /// 合成リードを作らない
             /// </summary>
-            public const string SuperRead = "-sr";
+            public const string SuperReadなし = "-nsr";
 
             /// <summary>
-            /// 反復の r-mer 検証
+            /// 反復の r-mer 検証を行わない
             /// </summary>
-            public const string 反復r_mer検証 = "-rv";
+            public const string 反復r_mer検証なし = "-nrv";
 
             /// <summary>
-            /// 局所アセンブリ
+            /// 局所アセンブリを行わない
             /// </summary>
-            public const string 局所アセンブリ = "-la";
+            public const string 局所アセンブリなし = "-nla";
 
             /// <summary>
             /// 積極性モード
@@ -323,34 +336,29 @@
             public const string 積極性モード = "-mode";
 
             /// <summary>
-            /// GFA 出力
+            /// GFA を出力しない
             /// </summary>
-            public const string GFA出力 = "-gfa";
+            public const string GFA出力なし = "-ngfa";
 
             /// <summary>
-            /// ポリッシュ
+            /// ポリッシュを行わない
             /// </summary>
-            public const string ポリッシュ = "-po";
+            public const string ポリッシュなし = "-npo";
 
             /// <summary>
-            /// 環状閉鎖検証
+            /// 環状閉鎖検証を行わない
             /// </summary>
-            public const string 環状閉鎖検証 = "-cc";
+            public const string 環状閉鎖検証なし = "-ncc";
 
             /// <summary>
-            /// 救済 kmer
+            /// 低頻度 k-mer を救済しない
             /// </summary>
-            public const string 救済kmer = "-my";
+            public const string 救済kmerなし = "-nmy";
 
             /// <summary>
             /// コピー数基準
             /// </summary>
             public const string コピー数基準 = "-cnb";
-
-            /// <summary>
-            /// 実行機能のプリセット
-            /// </summary>
-            public const string 実行プロファイル = "-profile";
 
             /// <summary>
             /// 低カバレッジ端トリミングなし
@@ -361,6 +369,11 @@
             /// 再開
             /// </summary>
             public const string 再開 = "-rs";
+
+            /// <summary>
+            /// 中間データをメモリに置く
+            /// </summary>
+            public const string オンメモリ = "-inmem";
 
             /// <summary>
             /// ログ水準
