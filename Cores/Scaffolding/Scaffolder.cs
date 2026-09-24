@@ -14,9 +14,6 @@ namespace Tsumiki.Cores.Scaffolding
     /// <summary>
     /// 確定した contig を読み直し、ペアエンド由来の隣接で N 埋め連結する
     /// </summary>
-    /// <remarks>
-    /// 出力は新規ファイルで、contigs.fasta 自体は変更しない
-    /// </remarks>
     /// <param name="p_contig構築">確定辺・配置情報を持つ contig 構築器</param>
     /// <param name="p_contigファイルパス">読み直す contig ファイルのパス</param>
     /// <param name="p_リード長">リード長、不明なら null</param>
@@ -27,9 +24,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比
         /// </summary>
-        /// <remarks>
-        /// unitig がフラグメントより短いと両端が収まるペアしか観測できず短い側へ偏るが、この倍率以上に長ければ打ち切りは事実上起きない
-        /// </remarks>
         private const int 偏りが無いとみなす長さ比 = 10;
 
         /// <summary>
@@ -78,9 +72,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 自動推定された (あるいは CLI で明示指定された) インサートサイズ
         /// </summary>
-        /// <remarks>
-        /// 推定に失敗した場合は null のままとなり、その場合 scaffolding は行われない
-        /// </remarks>
         public int? A_有効インサートサイズ { get; private set; }
 
         #endregion
@@ -91,13 +82,8 @@ namespace Tsumiki.Cores.Scaffolding
         /// scaffolding を実行し、指定パスに結果を書き出す
         /// </summary>
         /// <param name="p_scaffoldパス"></param>
-        /// <remarks>
-        /// インサートサイズが (指定・推定いずれの方法でも) 確定できなかった場合は、その旨をログに出力して何もせずに戻る (ファイルは作成されない)
-        /// </remarks>
         public void V_実行(string p_scaffoldパス)
         {
-            // インサートサイズはライブラリごとに決める
-            // 混ぜた中央値を 1 つ置くと、短い側に引きずられて長い側の連結が消える
             var l_ライブラリ数 = Math.Max(1, p_contig構築.A_ペアのライブラリ数);
             var l_インサートサイズ群 = new int[l_ライブラリ数];
             var l_使えるライブラリ = 0;
@@ -128,10 +114,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_配置 = p_contig構築.A_unitig配置;
 
-            // contig 単位の頂点空間を作る
-            // unitig 同様、各 contig を
-            // 「順方向」「逆方向」の 2 頂点として扱う
-            // 頂点番号 = contig ID << 1 (順方向) / contig ID << 1 | 1 (逆方向)
             var l_contig数 = this._contig配列.Keys.Count == 0 ? 0 : this._contig配列.Keys.Max();
             var l_頂点数 = (l_contig数 + 1) << 1;
 
@@ -141,9 +123,6 @@ namespace Tsumiki.Cores.Scaffolding
                 l_隣接[i] = [];
             }
 
-            // ライブラリごとに集計して採点する
-            // 既知長はそのライブラリの断片長分布に照らして初めて意味を持ち、
-            // 分布の違うライブラリを混ぜると両方に合わないモデルになる
             var l_対称化群 = new Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)>[l_ライブラリ数];
             var l_モデル群 = new PairedDistanceModel[l_ライブラリ数];
             var l_較正器群 = new 証拠較正器[l_ライブラリ数];
@@ -158,15 +137,9 @@ namespace Tsumiki.Cores.Scaffolding
                     : new Dictionary<(int, int), List<int>>();
                 l_対称化群[l_ライブラリ] = this.Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
 
-                // 分布は同一 unitig 標本から作る
-                // 採点するのは接合点を跨いだペアなので確定辺標本の方が母集団は揃うが、差し替えても採る辺はほとんど変わらない
-                // 標本数が 1 桁多い同一 unitig 標本の方が分布の形が安定する
                 var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count
                     ? p_contig構築.A_同一unitig標本群[l_ライブラリ]
                     : [];
-                // リード長はライブラリごとに取る
-                // 長いリードのライブラリに合わせた値を短い側へ当てると、
-                // 期待位置数が「リード長 > 断片長」で 0 になり、そのライブラリの証拠が丸ごと消える
                 var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
                 var l_この長さ = l_ライブラリ < l_リード長群.Count && l_リード長群[l_ライブラリ] > 0
                     ? l_リード長群[l_ライブラリ]
@@ -174,7 +147,6 @@ namespace Tsumiki.Cores.Scaffolding
                 l_モデル群[l_ライブラリ] = new PairedDistanceModel(l_標本, l_この長さ);
                 l_較正器群[l_ライブラリ] = 証拠較正器.Get_較正器(l_標本, l_この長さ, l_unitig長);
 
-                // 混ぜたときに何が起きているかは、ライブラリごとの数字を見ないと分からない
                 if (l_ライブラリ数 > 1)
                 {
                     Logger.V_出力_そのまま(FormattableString.Invariant(
@@ -192,9 +164,6 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.未配置を指したペア候補, l_未配置を指した数);
             }
 
-            // 同じ辺を複数のライブラリが支えていても、一貫した支持が最も多いライブラリの
-            // 見立て (本数・ギャップ長・期待比) だけを採る
-            // 足し合わせると、距離の前提が違うライブラリの本数が混ざる
             var l_候補キー = l_対称化群.SelectMany(x => x.Keys).ToHashSet();
             var l_ライブラリ別本数 = l_ライブラリ数 > 1 ? new Dictionary<(int, int), (int[] A_本数, double[] A_期待)>() : null;
 
@@ -218,8 +187,6 @@ namespace Tsumiki.Cores.Scaffolding
                         continue;
                     }
 
-                    // 期待は接合点から 1 フラグメント長ぶんの窓しか効かないので、
-                    // 重なっている (ギャップが負) 場合は接している場合と同じとみなす
                     l_最良本数 = l_一貫した本数;
                     l_最良ギャップ = l_ギャップ長;
                     l_最良比 = l_較正器群[l_ライブラリ].Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
@@ -228,7 +195,6 @@ namespace Tsumiki.Cores.Scaffolding
                 l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比));
                 if (l_本数群 is not null)
                 {
-                    // 支持しなかったライブラリも、採った見立ての距離で何本来るはずだったかを残す
                     var l_期待群 = new double[l_ライブラリ数];
                     for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
                     {
@@ -243,7 +209,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             Logger.V_出力(メッセージID.Scaffold候補辺数, l_候補キー.Count, Messages.Get_文言(l_較正器群.Any(x => x.A_Is使用可能) ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
 
-            // 各頂点について、最多支持の辺 1 本だけを残す
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
             for (var v = 2; v < l_頂点数; v++)
             {
@@ -264,15 +229,6 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            // 相互一意な辺だけを採用する
-            // v→w を繋いでよいのは
-            // 「v の唯一の行き先が w」であり、かつ「w の唯一の来訪元が v」で
-            // あるときに限る
-            // 後者は逆鎖対称性より 確定辺[w^1] が v^1 を
-            // 指すことと同値
-            // これを課さないと、複数の contig が同じ次の contig を
-            // 指した場合に先着 1 本だけが繋がれ、残りは黙って千切れる
-            // (どれが正しいかの根拠がないまま 1 本を選ぶことになる)
             var l_候補辺 = ((int A_行き先, int A_ギャップ長)?[])l_確定辺.Clone();
             var l_相互一意で棄却した数 = 0;
             for (var v = 2; v < l_頂点数; v++)
@@ -297,9 +253,6 @@ namespace Tsumiki.Cores.Scaffolding
                 this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, 採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
             }
 
-            // 「入ってくる結合を持たない」頂点が経路の始点
-            // v への結合が
-            // 存在することは、逆鎖対称性より 確定辺[v^1] != null と同値
             var l_始点群 = new List<int>();
             for (var v = 2; v < l_頂点数; v++)
             {
@@ -309,21 +262,10 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            // 配列と、それが環状に閉じた複製単位そのものかどうか
-            // 単独の contig がそのまま 1 本の scaffold になった場合だけ
-            // 環状を引き継ぐ
-            // 他の contig を継ぎ足した時点で、それはもう
-            // 閉じた環ではない
             List<(string A_配列, bool A_Is環状)> l_scaffold群 = [];
             var l_訪問済み = new bool[l_頂点数];
             foreach (var l_始点 in l_始点群)
             {
-                // 始点群には同一 contig の順鎖/逆鎖の両方の頂点が独立に
-                // 含まれうる
-                // 先に処理された方の walk が両方向を訪問済みに
-                // するため、後から来た方はここでスキップしないと、同じ contig を
-                // 起点とする scaffold が二重に生成されてしまう
-                // (contig 数の水増し・配列の重複の原因)
                 if (l_訪問済み[l_始点])
                 {
                     continue;
@@ -336,8 +278,6 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            // まだ訪問されていない (=孤立した、あるいは循環に巻き込まれた) contig を
-            // 単独 scaffold として出力する
             for (var l_contigID = 1; l_contigID <= l_contig数; l_contigID++)
             {
                 var l_順鎖 = l_contigID << 1;
@@ -416,7 +356,6 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                // 自己ループ (同一 contig の同一末端同士) は無視する
                 if (l_始点頂点 >> 1 == l_終点頂点 >> 1)
                 {
                     continue;
@@ -434,12 +373,6 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            // v→w と双子 w^1→v^1 は同一の隣接だが、ペアエンドの観測は
-            // 片方の向きにしか記録されない
-            // 対称化しないと逆鎖側の支持がゼロになり、
-            // 相互一意性の検査が常に落ちる
-            // 各観測は一方のキーにしか入っていないので
-            // 和を取っても二重計上にはならない
             Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_対称化 = [];
             foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_辺の集計)
             {
@@ -499,8 +432,6 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            // そのライブラリだけでは足りないとき、混ぜた標本へ落とすと距離の前提が壊れる
-            // 落とさずに諦め、支えられるライブラリだけで scaffolding する
             Logger.V_出力_そのまま(FormattableString.Invariant(
                 $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {インサートサイズ標本数の下限})"));
             p_インサートサイズ = 0;
@@ -513,9 +444,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_パス">書き出し先</param>
         /// <param name="p_確定辺">頂点ごとの採用辺</param>
         /// <param name="p_ライブラリ別本数">辺ごとの、ライブラリ別の一貫した支持の本数と期待本数</param>
-        /// <remarks>
-        /// 採点は最も支持の多いライブラリ 1 つで行うので、他のライブラリが別の繋ぎ方を支えていても結果からは見えない。どのライブラリがどの辺を通したかを後から確かめられるよう残す
-        /// </remarks>
         private void V_書き出し_採用辺(string p_パス, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数)
         {
             using var l_書き込み = new StreamWriter(p_パス);
@@ -540,9 +468,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_確定辺">頂点ごとの採用辺 (相互一意の前)</param>
         /// <param name="p_ライブラリ別本数">辺ごとの、ライブラリ別の一貫した支持の本数と期待本数</param>
         /// <param name="p_最小証拠数">候補として数える支持の下限</param>
-        /// <remarks>
-        /// 優勢の判定は期待に対する比で候補を比べるので、ライブラリごとに期待の尺度が違うと、どのライブラリで選ばれた候補かで勝敗が決まりうる。それを後から確かめられるよう残す
-        /// </remarks>
         private void V_書き出し_競合候補(string p_パス, List<Scaffold候補>[] p_隣接, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数, ulong p_最小証拠数)
         {
             using var l_書き込み = new StreamWriter(p_パス);
@@ -569,10 +494,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// unitig の N50
         /// </summary>
-        /// <remarks>
-        /// 打ち切りバイアスの有無の判断に使う<br/>
-        /// 平均ではなく N50 を使うのは、本数では短い断片が多くてもペアが実際に観測される場所は長い unitig に偏るため
-        /// </remarks>
         /// <param name="p_unitig長"></param>
         /// <returns></returns>
         private static long Get_UnitigN50(IReadOnlyDictionary<int, int> p_unitig長)
@@ -599,10 +520,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 符号付き unitig ID が contig の末端に配置されているかを判定し、配置されていれば対応する contig 頂点を返す
         /// </summary>
-        /// <remarks>
-        /// 出口側 (読み進める起点) として有効なのは「順鎖かつ contig 内で末尾」または「逆鎖かつ先頭」、入口側はその逆<br/>
-        /// contig が正規化で逆相補化されていると walk 順の先頭/末尾の意味が反転するため、その分も考慮して向きを決める
-        /// </remarks>
         /// <param name="p_配置"></param>
         /// <param name="p_符号付きunitigID"></param>
         /// <param name="p_Is出口側"></param>
@@ -619,9 +536,6 @@ namespace Tsumiki.Cores.Scaffolding
                 return false;
             }
 
-            // unitig 自身が walk 中に逆鎖として使われていた場合、ペア経路上の
-            // 向きは「unitig 単体の元の向き」を基準にしているため、
-            // walk 内での実効的な向きに変換する
             var l_Is実効順鎖 = l_Is順鎖 != l_配置情報.A_Iswalk中逆鎖;
 
             var l_Is該当端 = p_Is出口側
@@ -632,11 +546,6 @@ namespace Tsumiki.Cores.Scaffolding
                 return false;
             }
 
-            // contig 全体が正規化のために逆相補化されている場合、
-            // 「walk 順で見た先頭/末尾」と「実際の contigs.fasta 上の先頭/末尾」が
-            // 入れ替わる
-            // scaffolding は contigs.fasta 上の配列
-            // (=実際に出力された向き) を基準に扱うため、ここで反転させる
             var l_Is最終配列順鎖 = l_配置情報.A_IsContig逆相補 ? !l_Is実効順鎖 : l_Is実効順鎖;
 
             p_頂点番号 = (l_配置情報.A_ContigID << 1) | (l_Is最終配列順鎖 ? 0 : 1);
@@ -660,17 +569,12 @@ namespace Tsumiki.Cores.Scaffolding
                 return;
             }
 
-            // 負のままで渡す。重なっているかどうかは連結時に配列で確かめる
             p_確定辺[p_頂点] = (l_辺.A_行き先, l_辺.A_ギャップ長);
         }
 
         /// <summary>
         /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す
         /// </summary>
-        /// <remarks>
-        /// 期待本数と比べるのは、辺が長く距離が近いほど多く観測されるという幾何的な偏りを外すため<br/>
-        /// 観測本数だけを固定の下限と比べると、期待が数本の場所と数百本の場所を同じ物差しで測ることになる
-        /// </remarks>
         /// <param name="p_候補"></param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
@@ -701,9 +605,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// contig を 1 本の scaffold へ連ねる
         /// </summary>
-        /// <remarks>
-        /// p_連結したcontig数 は実際に繋いだ本数で、1 なら元の contig がそのまま出ていることを意味する
-        /// </remarks>
         /// <param name="p_確定辺">確定した辺の書き留め先</param>
         /// <param name="p_始点"></param>
         /// <param name="p_訪問済み"></param>
@@ -722,11 +623,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_出力 = new StringBuilder(l_Is逆鎖 ? Util.V_逆相補(l_配列) : l_配列);
             var l_現在 = p_始点;
-            // 頂点を「消費」した (=いずれかの向きで scaffold に組み込んだ) 際は、
-            // その contig の両方の向きの頂点を訪問済みにする
-            // 片方の頂点だけを訪問済みにすると、同じ contig の反対向きの頂点が
-            // 別の開始点や「未訪問の孤立 contig」判定で再度使われてしまう
-            // (同じ contig が 2 回出力される) おそれがあるため
             V_記録_訪問済み(p_訪問済み, l_現在);
             while (p_確定辺[l_現在] is { } l_辺 && !p_訪問済み[l_辺.A_行き先])
             {
@@ -762,10 +658,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_出力">ここまでの scaffold 配列</param>
         /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <remarks>
-        /// de Bruijn グラフ上で隣り合う contig は k-1 だけ重なる。重なりを畳まずに N で繋ぐと、その k-1 塩基が二重に出る<br/>
-        /// 推定ギャップ長は誤差を持つので長さは見ず、k-1 の重なりが配列として一致するときだけ畳む
-        /// </remarks>
         /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
         internal static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
         {

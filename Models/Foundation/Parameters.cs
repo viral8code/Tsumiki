@@ -71,9 +71,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// ライブラリごとの Phred オフセット
         /// </summary>
-        /// <remarks>
-        /// 符号化がライブラリで違うと、1 つの値で読んだ側の品質判定が静かに狂う
-        /// </remarks>
         private List<int> _Phredオフセット群 = [];
 
         /// <summary>
@@ -103,10 +100,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 1 のパス (複数ライブラリならカンマ区切り)
         /// </summary>
-        /// <remarks>
-        /// 1 本だけを要る処理は <see cref="A_ライブラリ群"/> を回すこと<br/>
-        /// この値をそのままファイルパスとして使うと、複数ライブラリのときに存在しないパスとして失敗する
-        /// </remarks>
         public string A_リード1のパス
         {
             get => string.Join(",", this.A_ライブラリ群.Select(x => x.A_リード1));
@@ -170,11 +163,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// ライブラリごとのリードの組
         /// </summary>
-        /// <remarks>
-        /// ペアのライブラリが先、シングルエンドのライブラリが後<br/>
-        /// シングルエンドのライブラリはリード 2 が空文字列になる<br/>
-        /// -2 を伴わない -1 は、従来どおりシングルエンドとして扱う
-        /// </remarks>
         public IReadOnlyList<(string A_リード1, string A_リード2)> A_ライブラリ群
             => this._差し替えたライブラリ群 ?? this.Get_入力からのライブラリ群();
 
@@ -196,9 +184,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// ライブラリごとの代表リード長 (観測値)
         /// </summary>
-        /// <remarks>
-        /// 期待ペア数のモデルはリード長と断片長の差で位置数を数えるので、長さの違うライブラリに 1 つの値を当てると期待が 0 になって証拠が消える
-        /// </remarks>
         public IReadOnlyList<int> A_ライブラリのリード長 => this._ライブラリのリード長;
 
         /// <summary>
@@ -213,9 +198,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// -k が明示的に指定されたかどうか
         /// </summary>
-        /// <remarks>
-        /// 指定されていない場合に限り、実際のリード長から求めた k を自動採用する
-        /// </remarks>
         public bool A_Isk長明示指定 { get; private set; }
 
         /// <summary>
@@ -238,18 +220,11 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)
         /// </summary>
-        /// <remarks>
-        /// 未指定なら空<br/>
-        /// 2 個以上あれば multi-k として扱う
-        /// </remarks>
         public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
 
         /// <summary>
         /// -kc が明示的に指定されたかどうか
         /// </summary>
-        /// <remarks>
-        /// 指定されていない場合に限り、k-mer スペクトルの谷から求めたカットオフを自動採用する
-        /// </remarks>
         public bool A_Iskmerカットオフ明示指定 { get; private set; }
 
         /// <summary>
@@ -272,10 +247,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// -p が明示的に指定されたかどうか
         /// </summary>
-        /// <remarks>
-        /// 指定されていない場合に限り、FASTQ のクオリティ文字列から推定したオフセットを自動採用する<br/>
-        /// 明示指定はユーザーの判断なので、推定結果で上書きはしない
-        /// </remarks>
         public bool A_IsPhred明示指定 { get; private set; }
 
         /// <summary>
@@ -300,9 +271,6 @@ namespace Tsumiki.Models.Foundation
         /// そのライブラリの Phred オフセット
         /// </summary>
         /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
-        /// <remarks>
-        /// 明示指定されていれば全ライブラリでその値を使う
-        /// </remarks>
         /// <returns></returns>
         public int Get_Phredオフセット(int p_ライブラリ番号)
         {
@@ -324,7 +292,6 @@ namespace Tsumiki.Models.Foundation
             }
             this._Phredオフセット群[p_ライブラリ番号] = p_オフセット;
 
-            // 先頭ライブラリの値は、ライブラリを指定しない経路 (表示や既定) の代表として置く
             if (p_ライブラリ番号 == 0)
             {
                 this.Set_推定Phredオフセット(p_オフセット);
@@ -339,26 +306,16 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 3' 末端の品質トリムの閾値 (0 なら切らない)
         /// </summary>
-        /// <remarks>
-        /// 前処理の一部として働くので、前処理を切ると一緒に効かなくなる
-        /// </remarks>
         public int A_品質トリム閾値 { get; set; } = 0;
 
         /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)
         /// </summary>
-        /// <remarks>
-        /// メモリとディスク I/O のトレードオフを環境に合わせて調整するためのもの<br/>
-        /// 増やすとフラッシュ回数が減って I/O が軽くなり、減らすとメモリが軽くなる
-        /// </remarks>
         public long A_メモリ予算バイト数 { get; private set; } = Consts.メモリ予算の既定値;
 
         /// <summary>
         /// メモリ量の指定
         /// </summary>
-        /// <remarks>
-        /// "2G" / "512M" / "1024" (接尾辞なしは MB) を受け付ける
-        /// </remarks>
         public string A_メモリ予算
         {
             get => Util.Get_表示用メモリサイズ(this.A_メモリ予算バイト数);
@@ -368,11 +325,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 期待インサートサイズ
         /// </summary>
-        /// <remarks>
-        /// CLI で明示指定されなかった場合は null のままとし、scaffolding 実行時にマップ済みペアから標本推定を試みる<br/>
-        /// (自動推定できた値はこのプロパティには反映せず、Scaffolder 側で別途保持する<br/>
-        /// CLI 指定値と自動推定値を区別するため)
-        /// </remarks>
         public int? A_インサートサイズ { get; set; } = null;
 
         /// <summary>
@@ -393,9 +345,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 画面へ出す量
         /// </summary>
-        /// <remarks>
-        /// ファイルへの記録はこれに関わらず全量を残すので、静かにしても後から原因を追う手掛かりは失われない
-        /// </remarks>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
 
         /// <summary>
@@ -416,18 +365,11 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 複数の k でアセンブリし、リファレンス無しの評価で最良のものを選ぶか
         /// </summary>
-        /// <remarks>
-        /// 最適な k はゲノムの反復構造で決まり、リードからは事前に分からないため、精度を求めるなら試すしかない<br/>
-        /// 実行時間と引き換えになるので既定は false
-        /// </remarks>
         public bool A_Isマルチk { get; set; } = false;
 
         /// <summary>
         /// multi-k で、前段の k の配列を次の k へ引き継ぐか
         /// </summary>
-        /// <remarks>
-        /// 引き継ぐのは配列だけで、繋ぐという決定は引き継がない
-        /// </remarks>
         public bool A_Is引き継ぎ { get; set; } = true;
 
         /// <summary>
@@ -438,50 +380,31 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 短い反復の解決 (V_解決_短い反復) で、対応付けを確定させる前に r-mer (アセンブリの k とは独立の短い長さ) による接合点の検証を課すか
         /// </summary>
-        /// <remarks>
-        /// 生リードの追加走査が 1 回 k 毎に要る (既定は false)
-        /// </remarks>
         public bool A_Is反復rMer検証 { get; set; } = false;
 
         /// <summary>
         /// GapFiller が埋められなかった scaffold のギャップを、その両端に実際にマップされた局所リードだけを使う局所アセンブリ (LocalAssembler) で埋めるか
         /// </summary>
-        /// <remarks>
-        /// AssemblyMerger (-mg) の安全な代替
-        /// </remarks>
         public bool A_Is局所アセンブリ { get; set; } = false;
 
         /// <summary>
         /// バブル除去・反復解決後の unitig グラフを GFA1 形式でも出力するか
         /// </summary>
-        /// <remarks>
-        /// 決められない分岐がなぜそこで打ち切られたかを、Bandage 等のビューアで直接確認できるようにする
-        /// </remarks>
         public bool A_IsGFA出力 { get; set; } = false;
 
         /// <summary>
         /// multi-k の結果を統合するか
         /// </summary>
-        /// <remarks>
-        /// 既定は false<br/>
-        /// 同じリードから作ったアセンブリは同じ反復配列で同じ誤りをするため、統合しても新しい情報がほとんど入らず、誤アセンブリだけが持ち込まれる
-        /// </remarks>
         public bool A_Isマージ { get; set; } = false;
 
         /// <summary>
         /// 最終成果物に元リードを貼り直し、多数決で置換を直すか
         /// </summary>
-        /// <remarks>
-        /// リードを 1 回余分に走査するぶん時間がかかるため既定は false
-        /// </remarks>
         public bool A_Isポリッシュ { get; set; } = false;
 
         /// <summary>
         /// 環状に閉じたと判定した配列について、その閉じ目を跨ぐリードが実在するかを確かめるか
         /// </summary>
-        /// <remarks>
-        /// 完全長を名乗るには必須の検査だが、リードの追加走査が要るため既定は false
-        /// </remarks>
         public bool A_Is環状閉鎖検証 { get; set; } = false;
 
         /// <summary>
@@ -492,33 +415,21 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// コピー数推定に使う単一コピー深度基準
         /// </summary>
-        /// <remarks>
-        /// cutoff の選択とは独立に保持し、既定値は従来どおり spectrum にする
-        /// </remarks>
         public Tsumiki.Models.UnitigBuilding.コピー数基準の出所 A_コピー数基準の出所 { get; set; } = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum;
 
         /// <summary>
         /// 低カバレッジ unitig 端をトリミングするか
         /// </summary>
-        /// <remarks>
-        /// E2 用の切替で、false は tip 除去と cutoff を変えず端トリミングだけを止める
-        /// </remarks>
         public bool A_Is低カバレッジ端トリミング { get; set; } = true;
 
         /// <summary>
         /// 一時ディレクトリに残っている前回の成果を再利用して途中から続けるか
         /// </summary>
-        /// <remarks>
-        /// 同じ入力・同じオプションで作り終えた k だけを飛ばす
-        /// </remarks>
         public bool A_Is再開 { get; set; } = false;
 
         /// <summary>
         /// 中間データ (前処理・訂正済みリード、断片、k-mer 計数の途中結果) をディスクではなくメモリに置くか
         /// </summary>
-        /// <remarks>
-        /// ディスクへの読み書きを避ける代わりにメモリを使うので、既定では置かない
-        /// </remarks>
         public bool A_Isオンメモリ { get; set; } = false;
 
         /// <summary>
@@ -529,9 +440,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 実行後に一時ディレクトリを消すか
         /// </summary>
-        /// <remarks>
-        /// k ごとの成果物が入っており後から見比べたくなるため、既定では残す
-        /// </remarks>
         public bool A_Is一時ディレクトリ削除 { get; set; } = false;
 
         /// <summary>
@@ -585,9 +493,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// v0.2 仕上げ経路の設定
         /// </summary>
-        /// <remarks>
-        /// T01 では内部からだけ設定し、旧 CLI の引数なし動作を維持する
-        /// </remarks>
         public 仕上げ設定 A_仕上げ設定 { get; set; } = new();
 
         #endregion
@@ -604,7 +509,6 @@ namespace Tsumiki.Models.Foundation
         /// <param name="p_群">ライブラリごとのリードの組</param>
         public void Set_ライブラリ群(IEnumerable<(string A_リード1, string A_リード2)> p_群)
         {
-            // ペアの有無ごと保つ。リード 2 だけを詰めて持つと、シングルが混ざったときに対応がずれる
             this._差し替えたライブラリ群 = [.. p_群];
         }
 
@@ -677,9 +581,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// CLI の既定で有効な処理を有効にする
         /// </summary>
-        /// <remarks>
-        /// 部品を単体で試すときに余計な処理が走らないよう、プロパティの初期値は無効のままにしてあり、CLI から使うときだけここで有効にする
-        /// </remarks>
         public void V_適用_既定の機能()
         {
             this.A_Is前処理 = true;
@@ -703,9 +604,6 @@ namespace Tsumiki.Models.Foundation
         /// 推定結果から k 長を設定する
         /// </summary>
         /// <param name="p_k長">推定して得られた k 長</param>
-        /// <remarks>
-        /// A_Isk長明示指定 は立てないため、「ユーザーが明示指定した」扱いにはならない
-        /// </remarks>
         public void Set_推定k長(int p_k長)
         {
             var l_Is明示指定済み = this.A_Isk長明示指定;
@@ -717,9 +615,6 @@ namespace Tsumiki.Models.Foundation
         /// 推定結果から k-mer カットオフを設定する
         /// </summary>
         /// <param name="p_カットオフ">推定して得られたカットオフ</param>
-        /// <remarks>
-        /// A_Iskmerカットオフ明示指定 は立てない
-        /// </remarks>
         public void Set_推定kmerカットオフ(ulong p_カットオフ)
         {
             var l_Is明示指定済み = this.A_Iskmerカットオフ明示指定;
@@ -731,9 +626,6 @@ namespace Tsumiki.Models.Foundation
         /// 推定結果から Phred オフセットを設定する
         /// </summary>
         /// <param name="p_オフセット">推定して得られた Phred オフセット</param>
-        /// <remarks>
-        /// A_IsPhred明示指定 は立てないため、「ユーザーが明示指定した」扱いにはならない
-        /// </remarks>
         public void Set_推定Phredオフセット(int p_オフセット)
         {
             var l_Is明示指定済み = this.A_IsPhred明示指定;
@@ -823,9 +715,6 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_水準">綴りへ変換するログ水準</param>
         /// <returns>-log に書く綴り</returns>
-        /// <remarks>
-        /// 表示は CLI で指定する形に合わせる
-        /// </remarks>
         private static string Get_ログ水準名(ログ水準 p_水準)
         {
             return p_水準 switch
@@ -841,9 +730,6 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_言語">綴りへ変換する言語</param>
         /// <returns>-lang に書く綴り</returns>
-        /// <remarks>
-        /// 表示は CLI で指定する形に合わせる
-        /// </remarks>
         private static string Get_言語名(言語 p_言語)
         {
             return p_言語 switch

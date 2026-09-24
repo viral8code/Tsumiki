@@ -12,9 +12,6 @@ namespace Tsumiki.Core
     /// <summary>
     /// ContigMaker のうち、unitig への k-mer 索引構築とリードマッピングを担う部分
     /// </summary>
-    /// <remarks>
-    /// (contig 結合そのものは ContigMaker.cs、walk 構築は ContigMaker.Walk.cs、フラグメント長標本の収集は ContigMaker.FragmentSampling.cs を参照)
-    /// </remarks>
     internal partial class ContigMaker
     {
         #region 定数
@@ -27,9 +24,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// read1 と read2 の並びを 1 本に繋ぐのに要る、共有する unitig の数
         /// </summary>
-        /// <remarks>
-        /// 1 つの unitig を共有するだけでは、その unitig をフラグメント内で 2 回通った (タンデム反復) 場合と区別できない
-        /// </remarks>
         private const int ペア経路を繋ぐ最小の重なり = 2;
 
         #endregion
@@ -59,18 +53,11 @@ namespace Tsumiki.Core
         /// <summary>
         /// ライブラリごとの、ペアが跨いだ unitig の組と、その間に通った頂点
         /// </summary>
-        /// <remarks>
-        /// 既知長はそのライブラリの断片長分布に照らして初めて意味を持つので、混ぜて持たない
-        /// </remarks>
         private readonly List<Dictionary<(int, int), List<int>>> _ペア経路群 = [];
 
         /// <summary>
         /// 前段 k の確定済み経路 (scaffold/contig 全体) が跨いだ unitig の組と、その本数
         /// </summary>
-        /// <remarks>
-        /// 実 read 由来の _リード隣接 とは別カウントで持つ (合成的な由来を実測と混ぜない)<br/>
-        /// この k 自身の read/pair 支持だけで分岐を決められないときに限り、追加の判断材料として参照する
-        /// </remarks>
         private readonly Dictionary<(int, int), ulong> _経路引き継ぎ隣接;
 
         /// <summary>
@@ -81,9 +68,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// 前段 k の確定済み経路が通った 3 unitig 以上の並び
         /// </summary>
-        /// <remarks>
-        /// 実リードの並びとは混ぜない
-        /// </remarks>
         private readonly Dictionary<経路キー, ulong> _引き継ぎ経路集計;
 
         /// <summary>
@@ -123,8 +107,6 @@ namespace Tsumiki.Core
 
                 if (l_unitig.A_配列.Length < l_k長)
                 {
-                    // k 未満の unitig は k-mer を持てずマッピング対象から漏れる
-                    // 黙って漏れないよう数だけ可視化しておく
                     l_短すぎるunitig数++;
                     l_ID++;
                     continue;
@@ -135,11 +117,6 @@ namespace Tsumiki.Core
                     var l_キー = new KmerKey(l_unitig.A_配列.AsSpan(l_開始位置, l_k長));
                     var l_逆鎖キー = l_キー.Get_逆相補();
 
-                    // 逆鎖キーは unitig 全体を逆相補した (=逆鎖の向きで読んだ) 場合の
-                    // 配列に対応する
-                    // 区間 [開始位置, 開始位置+k 長) を
-                    // 長さ L の配列の逆側に写すと [L-i, L-開始位置) になるため、
-                    // 逆鎖側での開始位置は L-i
                     var l_逆鎖開始位置 = l_unitig.A_配列.Length - i;
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー, l_ID, l_開始位置);
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_逆鎖キー, -l_ID, l_逆鎖開始位置);
@@ -165,10 +142,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig 間の隣接を de Bruijn グラフから厳密に構築する
         /// </summary>
-        /// <remarks>
-        /// <see cref="V_結合_Contig"/> を呼ぶ前 (コピー数推定の接続伝播など) でも独立に呼べるよう公開している<br/>
-        /// 呼ぶたびに FASTA を読み直して新しいグラフを作る (unitig 数の規模では軽量なので使い捨てで構わない)
-        /// </remarks>
         /// <returns></returns>
         public UnitigGraph Get_グラフ()
         {
@@ -194,10 +167,6 @@ namespace Tsumiki.Core
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            // k-mer 辞書 は構築後に変更されない読み取り専用データなので、
-            // 複数スレッドから安全に参照できる
-            // 隣接への書き込みはスレッドごとにローカルな辞書に集計し、
-            // 最後にマージすることでロックを避ける
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
             var l_ローカル経路 = new Dictionary<経路キー, ulong>[l_スレッド数];
             var l_作業域 = new リード走査作業域[l_スレッド数];
@@ -219,9 +188,6 @@ namespace Tsumiki.Core
         /// </summary>
         /// <param name="p_リード1のパス"></param>
         /// <param name="p_リード2のパス"></param>
-        /// <remarks>
-        /// 単一リードでは unitig 境界を跨げない場合でも、フラグメント長ぶん離れた 2 つの unitig の隣接なら検出できる
-        /// </remarks>
         public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス, int p_ライブラリ番号 = 0)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -231,12 +197,8 @@ namespace Tsumiki.Core
             var l_作業域1 = new リード走査作業域[l_スレッド数];
             var l_作業域2 = new リード走査作業域[l_スレッド数];
 
-            // ローカルペア経路: (始点,終点) -> このワーカーで観測した各ペアの
-            // 「既に見えている長さ」のリスト
             var l_ローカルペア経路 = new Dictionary<(int, int), List<int>>[l_スレッド数];
 
-            // ライブラリの向き (FR/RF/FF/RR) は決め打ちできないため、符号が
-            // 一致するヒットと不一致のヒットを別々に集計し、多数派を採用する
             var l_ローカル同一向き標本 = new List<int>[l_スレッド数];
             var l_ローカル逆向き標本 = new List<int>[l_スレッド数];
             for (var i = 0; i < l_スレッド数; i++)
@@ -271,9 +233,6 @@ namespace Tsumiki.Core
                 }
             }
 
-            // 「符号一致」「符号不一致」それぞれの総標本数を集計し、
-            // 多数派の側だけを実際のライブラリ配置として採用する
-            // 少数派側は測定ノイズ・誤マッピング・稀な異常配置とみなして捨てる
             var l_同一向き合計 = l_ローカル同一向き標本.Sum(x => x.Count);
             var l_逆向き合計 = l_ローカル逆向き標本.Sum(x => x.Count);
 
@@ -310,9 +269,6 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.同一unitigのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一unitig標本.Count);
             if (l_同一unitig標本.Count > 0)
             {
-                // 同一 unitig 内標本は、unitig 自体がフラグメント長より短い場合
-                // 両端が同じ unitig 内に収まるペアしか観測できず、より短い
-                // フラグメントに偏った標本になりやすい (unitig が短いほど顕著)
                 Logger.V_出力(メッセージID.同一unitigの断片長分布, Get_分布要約(l_同一unitig標本));
                 Logger.V_出力(メッセージID.同一unitigの断片長中央値, StatsUtil.Get_中央値(l_同一unitig標本), l_同一unitig標本.Count);
             }
@@ -322,11 +278,6 @@ namespace Tsumiki.Core
         /// 前段 k で確定した経路 (scaffold/contig 全体の配列) を、この k の unitig グラフへ再マッピングして隣接の由来にする
         /// </summary>
         /// <param name="p_引き継ぎ経路群">前段 k の確定済み配列</param>
-        /// <remarks>
-        /// unitig ID は k ごとに振り直されるため、旧 ID から新 ID への対応表を別途持ち回る必要は無い<br/>
-        /// 配列そのものをこの k の k-mer 辞書へ再マッピングすれば、現在のグラフの正しい ID へ自動的に対応付く<br/>
-        /// 件数は小さい (段ごとに数百 ~ 数千本程度) ためスレッド分割はしない
-        /// </remarks>
         public void V_マッピング_引き継ぎ経路(IEnumerable<string> p_引き継ぎ経路群)
         {
             var l_件数 = 0;
@@ -346,9 +297,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// 1 本のリードが代表としてどの unitig にマップされるかを判定する
         /// </summary>
-        /// <remarks>
-        /// 最多得票の unitig ID と、ギャップ長推定に使う最終ヒット位置を返す
-        /// </remarks>
         /// <param name="p_リード"></param>
         /// <returns></returns>
         public 代表Unitigヒット Get_代表Unitig(string p_リード)
@@ -367,11 +315,6 @@ namespace Tsumiki.Core
         /// <param name="p_キー"></param>
         /// <param name="p_ID"></param>
         /// <param name="p_位置"></param>
-        /// <remarks>
-        /// 衝突した k-mer は後勝ちで上書きすると別 unitig 由来のリードが同じ ID に見え、偽の隣接を作る<br/>
-        /// そのため曖昧としてマークし、マッピング時のヒットから除く<br/>
-        /// 戻り値は新たに曖昧マークを付けた件数 (0 か 1)
-        /// </remarks>
         /// <returns></returns>
         private static int V_登録_kmer(Dictionary<KmerKey, (int, int)> p_辞書, KmerKey p_キー, int p_ID, int p_位置)
         {
@@ -425,9 +368,6 @@ namespace Tsumiki.Core
         /// </summary>
         /// <param name="p_リード1のパス"></param>
         /// <param name="p_リード2のパス"></param>
-        /// <remarks>
-        /// ID の対応が取れないものと片側だけ残ったものは A_リード2 を空文字にし、単一リード内の隣接検出だけは通常どおり行えるようにする
-        /// </remarks>
         /// <returns></returns>
         private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(string p_リード1のパス, string p_リード2のパス)
         {
@@ -448,7 +388,6 @@ namespace Tsumiki.Core
                         l_Is不一致警告済み = true;
                     }
 
-                    // お互いを誤ってペアとして扱わないよう、別々に流す
                     yield return (A_配列1, string.Empty);
                     yield return (A_配列2, string.Empty);
                     continue;
@@ -457,7 +396,6 @@ namespace Tsumiki.Core
                 yield return (A_配列1, A_配列2);
             }
 
-            // 片方のファイルだけ残っている場合は単一リードとして処理する
             while (l_読み込み1.Has続き())
             {
                 yield return (l_読み込み1.Get_次のレコード().A_配列, string.Empty);
@@ -480,10 +418,6 @@ namespace Tsumiki.Core
         /// <param name="p_ローカルペア経路"></param>
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
-        /// <remarks>
-        /// ペアエンド由来の隣接は直接のオーバーラップを保証しない弱い証拠なので、リード隣接とは分けて集計する<br/>
-        /// 隣接・並び・代表 unitig は 1 回の走査でまとめて求める
-        /// </remarks>
         private void V_処理_1ペア(string p_リード1, string p_リード2, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<経路キー, ulong> p_ローカル経路, リード走査作業域 p_作業域1, リード走査作業域 p_作業域2, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
             var l_ヒット1 = this.Get_走査結果(p_リード1, p_ローカル隣接, p_作業域1);
@@ -539,11 +473,6 @@ namespace Tsumiki.Core
         /// <param name="p_経路1">read1 の並び</param>
         /// <param name="p_経路2">read2 の並び (read2 自身の向き)</param>
         /// <param name="p_ローカル経路"></param>
-        /// <remarks>
-        /// read2 は逆鎖から読まれるため、逆相補の並びにして read1 の向きへ揃える<br/>
-        /// 末尾と先頭が unitig 2 つ以上重なり、繋いだ並びに同じ unitig が 2 度現れなければ 1 本の並びとして数える<br/>
-        /// 繋げなければ各 read の並びを数えるが、一方が他方に含まれるなら長い方だけにする
-        /// </remarks>
         private static void V_集計_ペアの並び(List<int> p_経路1, List<int> p_経路2, Dictionary<経路キー, ulong> p_ローカル経路)
         {
             var l_長さ1 = p_経路1.Count;
@@ -651,9 +580,6 @@ namespace Tsumiki.Core
             p_作業域.V_初期化();
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            // k 未満のリードからは k-mer を取れない
-            // この判定が無いと
-            // 下の初期化ループが p_リード[i] を i = k-1 まで舐めて範囲外になる
             if (p_リード.Length < l_k長)
             {
                 return 代表Unitigヒット.A_ヒットなし;
@@ -664,7 +590,6 @@ namespace Tsumiki.Core
             var l_終端位置 = p_作業域.A_終端位置;
             var l_曖昧塩基数 = 0;
 
-            // 索引には両鎖があり、辺重みは後段で逆鎖対称にするため入力方向だけを走査する
             for (var i = 0; i < l_k長; i++)
             {
                 if (Util.Is曖昧塩基(p_リード[i]))
@@ -692,8 +617,6 @@ namespace Tsumiki.Core
 
                 var l_ID = l_項目.A_unitigID;
 
-                // 記録するのは unitig 内での終端位置であって read 内での位置ではない
-                // 両者は unitig が read より十分長いと大きく食い違う
                 var l_終端 = l_項目.A_開始位置 + l_k長;
                 if (l_経路.Count > 0 && l_経路[^1] == l_ID)
                 {
@@ -717,7 +640,6 @@ namespace Tsumiki.Core
                 return 代表Unitigヒット.A_ヒットなし;
             }
 
-            // 同じ unitig に戻ってきた区間は票を合算し、同票なら先に現れた unitig を採る
             var l_最良 = 0;
             var l_最多得票 = 0;
             var l_最良の終端 = 0;

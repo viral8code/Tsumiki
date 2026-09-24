@@ -95,10 +95,6 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_支持検査">リード支持の検査結果</param>
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果</param>
         /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
-        /// <remarks>
-        /// 同じ内容を機械向けに持つのは assembly.report.json で、こちらは実行結果を 1 か所で見渡すためのもの<br/>
-        /// 測っていない項目は not measured と書き、0 と区別する
-        /// </remarks>
         public static void V_書き出し_Markdownレポート(string p_出力パス, int p_k長, IReadOnlyList<string> p_統計表, 完全性判定結果 p_判定, int p_未解決ギャップ数, int p_環状本数, int p_曖昧箇所数, string? p_要求コピー数基準, string? p_実際のコピー数基準, 整合性検査結果? p_整合性, アセンブリ評価? p_固定アンカー評価, ポリッシュ統計? p_ポリッシュ, 支持検査結果? p_支持検査, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, IReadOnlyList<フェーズ計測> p_フェーズ計測)
         {
             var l_文 = new StringBuilder();
@@ -216,9 +212,6 @@ namespace Tsumiki.Cores.Output
         /// <summary>
         /// リードに裏付けの無い区間を TSV で書き出す
         /// </summary>
-        /// <remarks>
-        /// 位置は 1 始まり・両端を含む
-        /// </remarks>
         /// <param name="p_出力パス">書き出し先</param>
         /// <param name="p_区間">支持のない区間</param>
         /// <param name="p_r長">支持を問うた r-mer の長さ</param>
@@ -292,9 +285,6 @@ namespace Tsumiki.Cores.Output
         /// TSV に出す固定の種別名
         /// </summary>
         /// <param name="p_種別"></param>
-        /// <remarks>
-        /// 訳さない
-        /// </remarks>
         /// <returns></returns>
         private static string Get_種別コード(曖昧箇所の種別 p_種別)
         {
@@ -316,9 +306,6 @@ namespace Tsumiki.Cores.Output
         /// </summary>
         /// <param name="p_文">組み立て中のレポート</param>
         /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
-        /// <remarks>
-        /// レポートの最後の項目のため、末尾にカンマを付けない
-        /// </remarks>
         private static void V_追加_フェーズ計測(StringBuilder p_文, IReadOnlyList<フェーズ計測> p_フェーズ計測)
         {
             _ = p_文.AppendLine("  \"phase_timings\": [");
@@ -357,10 +344,6 @@ namespace Tsumiki.Cores.Output
         /// </summary>
         /// <param name="p_文">組み立て中のレポート</param>
         /// <param name="p_評価">固定アンカーでの評価</param>
-        /// <remarks>
-        /// 採用した k やコピー数基準を選ぶ前段の候補比較とは無関係に、常に同じ物差しで測った値<br/>
-        /// アンカースペクトルが二峰でない等で測れなかった場合は null
-        /// </remarks>
         private static void V_追加_アンカー評価(StringBuilder p_文, アセンブリ評価? p_評価)
         {
             if (p_評価 is not { } l_評価)
@@ -448,9 +431,6 @@ namespace Tsumiki.Cores.Output
         /// JSON の文字列リテラル
         /// </summary>
         /// <param name="p_値"></param>
-        /// <remarks>
-        /// ID には引用符も含まれうる
-        /// </remarks>
         /// <returns></returns>
         private static string Get_文字列(string? p_値)
         {

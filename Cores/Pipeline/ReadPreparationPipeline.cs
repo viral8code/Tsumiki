@@ -31,13 +31,8 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_引数">作業用設定</param>
         /// <param name="p_一時ディレクトリ">処理済みリードの出力先</param>
-        /// <remarks>
-        /// 前処理も訂正もライブラリごとに独立して行う (アダプタの読み抜けも誤りの出方もライブラリで違う)
-        /// </remarks>
         public static void V_実行(Parameters p_引数, string p_一時ディレクトリ)
         {
-            // 訂正済みリードがそのまま使えるなら前処理まで遡らない
-            // 前処理済みリードは訂正の入力にしか使わないので、消してあっても再開できる
             if (p_引数.A_Is再開 && p_引数.A_Isエラー訂正 && Get_再利用できる訂正済み(p_引数, p_一時ディレクトリ) is { } l_再利用)
             {
                 Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用[0].A_リード1);
@@ -78,14 +73,12 @@ namespace Tsumiki.Cores.Pipeline
             using var l_計測 = new StageTimer("preprocess");
             var l_ペアなしを飛ばした = false;
 
-            // 署名は入力を差し替える前に採る (差し替えた後では前処理の入力を指さなくなる)
             var l_署名 = Get_署名(p_引数);
             List<(string A_リード1, string A_リード2)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
                 var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
 
-                // アダプタの読み抜けもペアの相互訂正も相方が要る。シングルエンドのライブラリはそのまま通す
                 if (string.IsNullOrWhiteSpace(A_リード2))
                 {
                     l_出力群.Add((A_リード1, string.Empty));
@@ -114,8 +107,6 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.前処理省略_ペアなし);
             }
 
-            // 以降の全処理 (エラー訂正・ k-mer カウント・グラフ構築) は
-            // 前処理済みファイルを見るようにする
             p_引数.Set_ライブラリ群(l_出力群);
 
             Logger.V_出力_タイムスタンプ();
@@ -151,8 +142,6 @@ namespace Tsumiki.Cores.Pipeline
                 l_出力群.Add((l_出力1, l_出力2 ?? string.Empty));
             }
 
-            // 以降の全処理 (k-mer カウント・グラフ構築・リードの再マッピング) は
-            // 訂正済みファイルを見るようにする
             p_引数.Set_ライブラリ群(l_出力群);
 
             V_削除_前処理済みリード(p_一時ディレクトリ);
@@ -167,9 +156,6 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_幹">ファイル名の幹</param>
         /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
         /// <param name="p_side">1 か 2</param>
-        /// <remarks>
-        /// 先頭のライブラリだけ従来の名前にするのは、単一ライブラリの再開が過去の中間ファイルで効くようにするため
-        /// </remarks>
         /// <returns></returns>
         private static string Get_中間パス(string p_一時ディレクトリ, string p_幹, int p_ライブラリ番号, int p_side)
         {
@@ -181,10 +167,6 @@ namespace Tsumiki.Cores.Pipeline
         /// 訂正済みリードが揃った後、要らなくなった前処理済みリードを消す
         /// </summary>
         /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
-        /// <remarks>
-        /// 前処理済みリードは訂正の入力にしか使わない (以降の工程は訂正済み、最終検査は元のリードを読む)<br/>
-        /// 再開の照合は工程の記録 (.sha256) だけで足りるので、記録は残して実体だけ消す
-        /// </remarks>
         internal static void V_削除_前処理済みリード(string p_一時ディレクトリ)
         {
             foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, 前処理済みの幹, ".fq"))
@@ -198,9 +180,6 @@ namespace Tsumiki.Cores.Pipeline
         /// 再開の照合に使う署名
         /// </summary>
         /// <param name="p_引数">作業用設定</param>
-        /// <remarks>
-        /// 署名は入力リードを丸ごと読んでハッシュを取るので重い。中間データをメモリに置くときは再開の元が残らず使い道が無いので取らない
-        /// </remarks>
         /// <returns>取らないときは null</returns>
         private static string? Get_署名(Parameters p_引数)
         {
@@ -226,9 +205,6 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_引数">作業用設定</param>
         /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
-        /// <remarks>
-        /// 訂正工程の入力は前処理済みリードだが、その識別には前処理工程の記録 (.sha256) を使うので実体は要らない
-        /// </remarks>
         /// <returns>そのまま使える訂正済みリード、1 つでも欠けていれば null</returns>
         private static List<(string A_リード1, string A_リード2)>? Get_再利用できる訂正済み(Parameters p_引数, string p_一時ディレクトリ)
         {

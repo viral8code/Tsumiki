@@ -19,11 +19,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 経路上の各 k-mer に求める最小カバレッジ
         /// </summary>
-        /// <remarks>
-        /// LocalAssembler の Has経路支持 (2 本以上の異なるリードでの裏付け) と同じ趣旨の安全策を、
-        /// 局所リードを回収せずグローバルな TrustedKmerIndex のカバレッジだけで代替する<br/>
-        /// カバレッジ 1 は「1 本のリードにしか支持されていない」ことと概ね対応する
-        /// </remarks>
         private const ulong 経路の最小カバレッジ = 2UL;
 
         #endregion
@@ -61,7 +56,6 @@ namespace Tsumiki.Cores.Scaffolding
                         continue;
                     }
 
-                    // N の連続区間 = 1 つのギャップ
                     var l_ギャップ開始 = l_位置;
                     while (l_位置 < l_配列.Length && l_配列[l_位置] == 'N')
                     {
@@ -145,9 +139,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_Is支持不足">経路自体は一意に見つかったが、経路上の k-mer カバレッジが薄く採用を見送った場合 true</param>
         /// <param name="p_安定ID">この箇所を再実行をまたいで追跡するための安定ID</param>
         /// <returns></returns>
-        /// <remarks>
-        /// 見つからない/一意に定まらない場合は null を返す
-        /// </remarks>
         private static string? Get_ギャップ充填配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定, out bool p_Isアンカー不足, out bool p_Is支持不足, out string p_安定ID)
         {
             p_判定 = ギャップ充填判定.到達不能;
@@ -165,15 +156,12 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
-            // 左側の足場: 既に書き出した配列の末尾 k-mer
             var l_左のkmer = new byte[p_k長];
             for (var i = 0; i < p_k長; i++)
             {
                 l_左のkmer[i] = Util.Get_塩基ID(p_左側の出力[p_左側の出力.Length - p_k長 + i]);
             }
 
-            // 右側の足場: ギャップ直後の k-mer
-            // ここへ到達できれば繋がったことになる
             var l_目標kmer = new byte[p_k長];
             for (var i = 0; i < p_k長; i++)
             {
@@ -189,7 +177,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             if (!p_kmerインデックス.Haskmer(l_左のkmer) || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
-                // 足場そのものが信頼できる k-mer 集合に無いなら探索しても意味がない
                 p_Isアンカー不足 = true;
                 return null;
             }
@@ -205,8 +192,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             if (!Has十分なカバレッジ支持(p_左側の出力, l_経路, p_配列, p_ギャップ終端, p_kmerインデックス, p_k長))
             {
-                // LocalAssembler の Has経路支持 と同じ安全策: 一意な経路であっても、
-                // アンカー由来の k-mer だけで繋がっている (実際のリードにほとんど支持されていない) 場合は採用しない
                 p_Is支持不足 = true;
                 return null;
             }

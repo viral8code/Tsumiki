@@ -5,11 +5,6 @@ namespace Tsumiki.Commons
     /// <summary>
     /// 言語ごとの文言表
     /// </summary>
-    /// <remarks>
-    /// <see cref="Messages"/> から引く<br/>
-    /// 言語を増やすときは、その言語の辞書をここに足して <see cref="Get_辞書"/> に繋ぐだけでよい<br/>
-    /// 訳が無い ID は英語にそのまま落ちるので、部分的に訳した状態でも表示が壊れない
-    /// </remarks>
     internal static class MessageCatalog
     {
         #region 定数
@@ -773,9 +768,6 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_言語"></param>
         /// <param name="p_ID"></param>
-        /// <remarks>
-        /// 指定言語に無ければ英語を返す
-        /// </remarks>
         /// <returns></returns>
         public static string Get_書式(言語 p_言語, メッセージID p_ID)
         {
@@ -792,9 +784,6 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_言語"></param>
         /// <param name="p_ID"></param>
-        /// <remarks>
-        /// 訳の入れ忘れの検査に使う
-        /// </remarks>
         /// <returns></returns>
         public static bool Has訳(言語 p_言語, メッセージID p_ID)
         {
@@ -809,9 +798,6 @@ namespace Tsumiki.Commons
         /// その言語の辞書
         /// </summary>
         /// <param name="p_言語"></param>
-        /// <remarks>
-        /// まだ用意していない言語は null
-        /// </remarks>
         /// <returns></returns>
         private static Dictionary<メッセージID, string>? Get_辞書(言語 p_言語)
         {

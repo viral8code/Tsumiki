@@ -3,10 +3,6 @@
     /// <summary>
     /// ペアエンドの隣接証拠を、観測本数ではなく期待本数との比で測るためのモデル
     /// </summary>
-    /// <remarks>
-    /// 観測本数をそのまま固定の下限と比べると、辺が長く距離が近いほど多く観測されるという幾何的な偏りをそのまま拾う<br/>
-    /// 期待本数が数本しかない場所と数百本ある場所に同じ下限を課しても、どこに線を引いても正しくならない
-    /// </remarks>
     internal sealed class PairedDistanceModel
     {
         #region 定数
@@ -28,9 +24,6 @@
         /// <summary>
         /// フラグメント長の経験分布
         /// </summary>
-        /// <remarks>
-        /// 裾は誤マップなので両端を落とす
-        /// </remarks>
         private readonly (int A_長さ, double A_確率)[] _分布;
 
         /// <summary>
@@ -109,10 +102,6 @@
         /// </summary>
         /// <param name="p_既知長標本">既知長の標本</param>
         /// <returns>最も密集した窓の本数と、そこから導かれるギャップ長</returns>
-        /// <remarks>
-        /// 中央値ではなく密集した窓を採るのは、反復の別コピーへ誤マップしたペアが長い裾を作るため<br/>
-        /// 裾が過半を占めても、同じ隣接から出たペアは狭い範囲に集まるので峰は残る
-        /// </remarks>
         public (int A_本数, int A_ギャップ長) Get_一貫した支持(IReadOnlyList<int> p_既知長標本)
         {
             if (p_既知長標本.Count == 0)
@@ -153,10 +142,6 @@
         /// <param name="p_長さ2">もう片側の長さ</param>
         /// <param name="p_ギャップ長">両者の間のギャップ長</param>
         /// <returns>フラグメントの開始位置の総数</returns>
-        /// <remarks>
-        /// フラグメント開始位置の密度を掛けると期待ペア数になる<br/>
-        /// 接合点を原点とし、フラグメント長 x の開始位置 s について左リードが左側に収まる条件 s &lt;= -リード長 かつ s &gt;= -長さ 1、右リードが右側に収まる条件 s &gt;= ギャップ長 + リード長 - x かつ s &lt;= ギャップ長 + 長さ 2 - x を満たす s の個数を数える
-        /// </remarks>
         public double Get_期待位置数(long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
             var l_合計 = 0D;
@@ -177,9 +162,6 @@
         /// </summary>
         /// <param name="p_長さ">配列の長さ</param>
         /// <returns>フラグメントの開始位置の総数</returns>
-        /// <remarks>
-        /// 同一 unitig 内の観測数からフラグメント開始位置の密度を較正するのに使う
-        /// </remarks>
         public double Get_期待位置数_単一(long p_長さ)
         {
             var l_合計 = 0D;

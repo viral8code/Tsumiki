@@ -6,10 +6,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// リードが通り抜けた向き付き unitig の並びを数え、どの入口からどの出口へ抜けたかを引けるようにする
     /// </summary>
-    /// <remarks>
-    /// 隣り合う 2 頂点の組では、反復 R を挟んだ入口と出口の対応が消える<br/>
-    /// 並びは向き付き頂点番号 (2*ID+鎖) で持ち、逆鎖側から読んだ出現も同じ並びとして数える
-    /// </remarks>
     internal sealed class ReadPathIndex
     {
         #region 定数
@@ -17,9 +13,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 索引に入れる並びの最短の頂点数
         /// </summary>
-        /// <remarks>
-        /// 2 頂点の並びは隣接の支持と同じ情報しか持たない
-        /// </remarks>
         public const int 最短の頂点数 = 3;
 
         #endregion
@@ -122,9 +115,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 部分列をどちらかの向きで連続して含む並びの件数の合計
         /// </summary>
         /// <param name="p_部分列">向き付き頂点番号の並び</param>
-        /// <remarks>
-        /// 1 つの並びに部分列が何度現れても 1 回と数える (1 本のリードは 1 回の観測)
-        /// </remarks>
         /// <returns></returns>
         public ulong Get_出現数(ReadOnlySpan<int> p_部分列)
         {
@@ -199,10 +189,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_移す出口"></param>
         /// <param name="p_入口群">付け替え前に元の鎖へ入っていた頂点</param>
         /// <param name="p_出口群">付け替え前に元の鎖から出ていた頂点</param>
-        /// <remarks>
-        /// 入口側と出口側で移した側・残した側の判定が食い違う並びは、どちらのコピーを通ったか決められないので件数を 0 にする<br/>
-        /// 鎖の外に手がかりの無い並びは元の頂点のまま残す (入口と出口の対応の証拠にはならない)
-        /// </remarks>
         public void V_付け替え_複製(IReadOnlyList<int> p_鎖, IReadOnlyList<int> p_複製鎖, int p_移す入口, int p_移す出口, IReadOnlyCollection<int> p_入口群, IReadOnlyCollection<int> p_出口群)
         {
             SortedSet<int> l_候補 = [];
@@ -277,7 +263,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 逆鎖から読んだ区間では、並びの左が鎖の出口側になる
                 var l_Is順 = l_順位置 >= 0;
                 var l_歩幅 = l_Is順 ? 1 : -1;
                 var l_開始 = j;

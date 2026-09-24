@@ -16,9 +16,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 閉じ目の左右それぞれに要求する踏み込みの長さ
         /// </summary>
-        /// <remarks>
-        /// 窓はこの 2 倍になる (2 bit パックが UInt128 に収まる範囲に収める)
-        /// </remarks>
         private const int 接合フランク長 = 30;
 
         /// <summary>
@@ -29,10 +26,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 閉じ目を支持されたとみなすのに必要なリード本数
         /// </summary>
-        /// <remarks>
-        /// 通常の接合点より高く取る<br/>
-        /// ここが誤っていると、アセンブリ全体の見え方が「完全長」から「1 本の線状断片」へ変わってしまうため
-        /// </remarks>
         private const int 閉じ目に必要なリード数 = 5;
 
         #endregion
@@ -46,9 +39,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_リード1のパス">支持を数えるリードのパス</param>
         /// <param name="p_リード2のパス">ペアの相方のパス、無ければ null</param>
         /// <returns>配列ごとの環状閉鎖検証結果</returns>
-        /// <remarks>
-        /// 環状の配列が 1 本も無ければ空を返す
-        /// </remarks>
         public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
@@ -63,8 +53,6 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                // 環状なので末尾の続きは先頭になる
-                // その繋ぎ目を跨ぐ窓を作る
                 var l_窓 = string.Concat(l_配列.AsSpan(l_配列.Length - 接合フランク長), l_配列.AsSpan(0, 接合フランク長));
                 if (!KmerPacking.TryGet_パック(l_窓, 0, 接合窓長, out var l_順鎖))
                 {
@@ -121,9 +109,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_リード">検査するリードの配列</param>
         /// <param name="p_接合窓">正規形の窓 -> 配列番号</param>
         /// <param name="p_支持数">配列番号ごとの支持数、見つかれば加算する</param>
-        /// <remarks>
-        /// 同じリードが同じ配列を何度支持しても 1 本と数える
-        /// </remarks>
         private static void V_集計_接合支持(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
             if (p_リード.Length < 接合窓長)
@@ -162,7 +147,6 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                // 1 本のリードは、同じ閉じ目を何度跨いで見えても 1 本の証拠でしかない
                 l_数えた配列 ??= [];
                 if (!l_数えた配列.Add(l_配列番号))
                 {

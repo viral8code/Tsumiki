@@ -3,9 +3,6 @@
     /// <summary>
     /// FASTQ のクオリティ文字列を一定数サンプリングした結果
     /// </summary>
-    /// <remarks>
-    /// Phred オフセット (33 or 64) の推定に使う
-    /// </remarks>
     /// <param name="A_最小ASCII"></param>
     /// <param name="A_最大ASCII"></param>
     /// <param name="A_標本リード数"></param>

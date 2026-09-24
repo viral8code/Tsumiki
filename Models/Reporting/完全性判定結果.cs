@@ -5,9 +5,6 @@ namespace Tsumiki.Models.Reporting
     /// <summary>
     /// 品質保証の段階
     /// </summary>
-    /// <remarks>
-    /// 完全長を名乗れるのは最上位だけとし、それ以外は「どこまでは言えるのか」を段階で示す
-    /// </remarks>
     internal enum 品質保証レベル
     {
         /// <summary>
@@ -44,9 +41,6 @@ namespace Tsumiki.Models.Reporting
     /// <summary>
     /// 1 つの検査項目の結果
     /// </summary>
-    /// <remarks>
-    /// 材料が無い場合は不合格と区別する
-    /// </remarks>
     internal enum 検査判定
     {
         /// <summary>
@@ -68,9 +62,6 @@ namespace Tsumiki.Models.Reporting
     /// <summary>
     /// 完全長に届かなかった理由
     /// </summary>
-    /// <remarks>
-    /// レポートの reason_codes になる
-    /// </remarks>
     internal enum 未達理由
     {
         /// <summary>
@@ -137,9 +128,6 @@ namespace Tsumiki.Models.Reporting
     /// <summary>
     /// 検査 1 項目
     /// </summary>
-    /// <remarks>
-    /// A_キー はレポートに出す固定の英語キー、A_見出し はログに出す訳語
-    /// </remarks>
     /// <param name="A_キー"></param>
     /// <param name="A_見出し"></param>
     /// <param name="A_判定"></param>
@@ -149,10 +137,6 @@ namespace Tsumiki.Models.Reporting
     /// <summary>
     /// 完全長かどうかの判定と、そう判定した根拠一式
     /// </summary>
-    /// <remarks>
-    /// 完全長は「長い配列が出た」ことではなく、必要な検査を全て通ったことを指す<br/>
-    /// 情報が足りない箇所を推測で埋めて完全長を名乗らせないための型
-    /// </remarks>
     /// <param name="A_Is完全長"></param>
     /// <param name="A_品質保証レベル"></param>
     /// <param name="A_検査項目"></param>

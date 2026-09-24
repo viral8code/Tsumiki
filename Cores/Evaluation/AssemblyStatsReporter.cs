@@ -15,9 +15,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)
         /// </summary>
-        /// <remarks>
-        /// 全件の統計だけでは、短い断片を含むぶん公表値と比較にならない
-        /// </remarks>
         public const int 比較用の最小長 = 500;
 
         #endregion
@@ -70,10 +67,6 @@ namespace Tsumiki.Cores.Evaluation
         /// N 連続区間で分割した contig の統計を求めて返す
         /// </summary>
         /// <param name="p_配列群"></param>
-        /// <remarks>
-        /// scaffold の N50 と実配列 contig の N50 を混同しないため、N が 1 個以上連続する箇所で分割する<br/>
-        /// 空の断片は数えず、大文字小文字の N を同じものとして扱う
-        /// </remarks>
         /// <returns></returns>
         public static アセンブリ統計 Get_N分割統計(IEnumerable<string> p_配列群, int p_最小長 = 0)
         {
@@ -104,9 +97,6 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_ラベル">出力の見出しに使うラベル</param>
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
-        /// <remarks>
-        /// 全配列を対象とした統計に加えて、他アセンブラの公表値と直接比較できるよう比較用の最小長以上の配列だけに絞った統計も併記する
-        /// </remarks>
         public static void V_出力_統計(string p_ラベル, string p_FASTAパス)
         {
             if (!File.Exists(p_FASTAパス))
@@ -129,9 +119,6 @@ namespace Tsumiki.Cores.Evaluation
         /// 複数の FASTA の統計を 1 つの Markdown の表の行にする
         /// </summary>
         /// <param name="p_対象群">ラベルと FASTA のパス、存在しないパスは飛ばす</param>
-        /// <remarks>
-        /// 全配列、比較用の最小長以上、N で分割して比較用の最小長以上、の 3 通りを並べる
-        /// </remarks>
         /// <returns>見出し行を含む表の行</returns>
         public static List<string> Get_統計表(IReadOnlyList<(string A_ラベル, string A_FASTAパス)> p_対象群)
         {

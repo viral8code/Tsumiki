@@ -13,50 +13,31 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 推奨カットオフの下限
         /// </summary>
-        /// <remarks>
-        /// 出現回数 1 の k-mer はほぼ全てエラー由来で、残すとメモリを食ったうえでグラフが偽の枝だらけになる
-        /// </remarks>
         public const ulong 推奨カットオフの下限 = 2UL;
 
         /// <summary>
         /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか
         /// </summary>
-        /// <remarks>
-        /// ゲノム由来の種類数はゲノムサイズをやや下回る (反復が 1 種類に潰れる) ため、この比を超えたぶんはほぼエラー由来の混入とみなせる
-        /// </remarks>
         private const double 許容するエラー混入比 = 1.2D;
 
         /// <summary>
         /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)
         /// </summary>
-        /// <remarks>
-        /// これを超えるものはアダプタやコンタミ由来である公算が高く、足し込むとゲノムサイズが大きく水増しされる
-        /// </remarks>
         private const int ゲノムサイズ推定に含める倍率の上限 = 100;
 
         /// <summary>
         /// 「山」と認めるために必要な、谷の頻度に対する比
         /// </summary>
-        /// <remarks>
-        /// これを下回る場合は二峰性がはっきりしないとみなして推定を諦める
-        /// </remarks>
         private const double 山とみなす頻度比 = 1.5D;
 
         /// <summary>
         /// 単一コピーとみなすカバレッジの上限を、基準値に対して最低限これだけは取る比
         /// </summary>
-        /// <remarks>
-        /// ばらつきの小さいデータでは、基準値との比を丸めてコピー数を決めるのと同じになる
-        /// </remarks>
         public const double 単一コピー上限の最小比 = 1.5D;
 
         /// <summary>
         /// 基準値より下側の広がりを測る分位
         /// </summary>
-        /// <remarks>
-        /// 正規分布の平均 - 1σ に当たる<br/>
-        /// 上側には反復配列が混ざるため、混ざらない下側から広がりを測る
-        /// </remarks>
         private const double 下側1σの分位 = 0.1587D;
 
         /// <summary>
@@ -73,9 +54,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_走査上限">谷・山を探す出現回数の上限</param>
-        /// <remarks>
-        /// 二峰性がはっきりしない (カバレッジが低すぎる等) 場合は null を返す
-        /// </remarks>
         /// <returns></returns>
         public static スペクトル解析結果? Get_解析結果(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限 = 10_000UL)
         {
@@ -98,7 +76,6 @@ namespace Tsumiki.Utilities
 
             var l_ピーク = Get_ピーク(p_ヒストグラム, l_粗い谷 + 1UL, l_走査上限);
 
-            // 粗い谷はノイズに引きずられるため、山が分かった時点で取り直す
             var l_谷 = Get_谷(p_ヒストグラム, l_ピーク);
 
             var l_谷の頻度 = p_ヒストグラム.GetValueOrDefault(l_谷, 0L);
@@ -110,9 +87,6 @@ namespace Tsumiki.Utilities
 
             var l_加算上限 = Math.Min(l_最大キー, l_ピーク * ゲノムサイズ推定に含める倍率の上限);
 
-            // 延べ数を山の位置で割る推定は、山が単一コピーの平均と一致するときにしか成り立たない
-            // GC の偏りでカバレッジが右へ長く裾を引くと、山 (最頻値) は平均より大きく下に来て、ゲノムサイズを倍近くに見積もる
-            // k-mer の種類ごとに期待コピー数を数えて足せば、分布の形に依らない
             var (l_単一コピー基準値, l_単一コピー上限) = Get_単一コピーの範囲(p_ヒストグラム, l_谷, l_加算上限, l_ピーク);
             var l_ゲノム由来の延べ数 = 0L;
             var l_延べ数の総和 = 0L;
@@ -169,7 +143,6 @@ namespace Tsumiki.Utilities
                 l_残る種類数 -= p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L);
             }
 
-            // 谷を超えたら残るのはゲノム由来だけなので、それより上げない
             for (var l_出現回数 = 推奨カットオフの下限; l_出現回数 <= l_解析.A_谷; l_出現回数++)
             {
                 if (l_残る種類数 <= l_許容種類数)
@@ -187,9 +160,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 推定ゲノムサイズとカバレッジは、自動選択された k と -kc の妥当性を利用者が確かめる材料になる
-        /// </remarks>
         public static void V_出力_スペクトル(IReadOnlyDictionary<ulong, long> p_ヒストグラム, int p_k長, int? p_リード長)
         {
             Logger.V_出力(メッセージID.kmerヒストグラム, Get_要約(p_ヒストグラム));
@@ -205,11 +175,6 @@ namespace Tsumiki.Utilities
             var l_カバレッジ表記 = $"{l_解析.A_ピーク出現回数}x (k-mer)";
             if (p_リード長 is { } l_リード長 && l_リード長 > p_k長)
             {
-                // リードのカバレッジを山の位置から逆算してはいけない
-                // エラーを含む
-                // k-mer は山ではなく低頻度側へ落ちるため、大きく過小評価になる
-                // 延べ数 = Σ (リードごとの L-k+1) からリード本数を復元すれば、
-                // エラーを含む k-mer も勘定に入る
                 var l_リード本数 = l_解析.A_延べ数の総和 / (double)(l_リード長 - p_k長 + 1);
                 var l_リードカバレッジ = l_リード本数 * l_リード長 / l_解析.A_推定ゲノムサイズ;
                 l_カバレッジ表記 += $" / {l_リードカバレッジ:F1}x (read)";
@@ -246,11 +211,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_谷"></param>
         /// <param name="p_加算上限"></param>
         /// <param name="p_ピーク"></param>
-        /// <remarks>
-        /// 基準は谷より上の k-mer 種類数の中央値を使う<br/>
-        /// 細菌ゲノムの反復は種類数では少数に潰れるため、中央値はほぼ単一コピーの水準になる<br/>
-        /// 上限は下側の広がりから求めた変動係数で広げ、ばらつきの大きいデータで単一コピーの高カバレッジ側を反復と数えないようにする
-        /// </remarks>
         /// <returns></returns>
         private static (double A_基準値, double A_上限) Get_単一コピーの範囲(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_谷, ulong p_加算上限, ulong p_ピーク)
         {
@@ -297,10 +257,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_走査上限">谷を探す出現回数の上限</param>
-        /// <remarks>
-        /// 単調減少のままなら null<br/>
-        /// 1 段だけの増加はノイズでも起きるため、2 つ先まで見て上昇の継続を確かめる
-        /// </remarks>
         /// <returns></returns>
         private static ulong? Get_粗い谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_走査上限)
         {
@@ -345,9 +301,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_ヒストグラム">出現回数ごとの k-mer 種類数</param>
         /// <param name="p_ピーク">山の位置</param>
-        /// <remarks>
-        /// 観測された出現回数だけを候補にする (疎なヒストグラムでは「データが無いだけ」の穴が最小値として選ばれ、谷が山の直前まで押し上げられるため)
-        /// </remarks>
         /// <returns></returns>
         private static ulong Get_谷(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_ピーク)
         {

@@ -30,18 +30,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 末尾を 1 塩基伸ばすと自分の先頭 k-mer に戻る頂点
         /// </summary>
-        /// <remarks>
-        /// 辺としては持てない (辿ると伸び続ける) が、分岐を持たない環状の複製単位はこの形でしか現れないため、事実だけは残しておく
-        /// </remarks>
         public HashSet<int> A_自己ループ { get; }
 
         /// <summary>
         /// walk に通り抜けさせない頂点
         /// </summary>
-        /// <remarks>
-        /// 反復の頂点で行き止まりの枝を外すと、入次数・出次数が 1 ずつの一本道に見えるが、繋がっているのは別コピーの入口と出口かもしれない<br/>
-        /// 枝を外さないと contig がそこで切れて連続性を大きく損なうので、枝は外したうえでここに控え、結合の判断でだけ反復として扱う
-        /// </remarks>
         public HashSet<int> A_通り抜け禁止の頂点 { get; } = [];
 
         #endregion
@@ -67,9 +60,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 頂点の入次数
         /// </summary>
         /// <param name="p_頂点"></param>
-        /// <remarks>
-        /// 辺の逆鎖対称性より、v の入次数は v^1 の出次数に等しい
-        /// </remarks>
         /// <returns></returns>
         public int Get_入次数(int p_頂点)
         {
@@ -82,10 +72,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_コピー数"></param>
         /// <param name="p_頂点"></param>
         /// <param name="p_unitig配列">渡すと、分岐の片方が短い脇道だけの頂点も通り抜けを許す</param>
-        /// <remarks>
-        /// A-R-B-R-C (R は 2 コピーの反復) で A→R と R→C はどちらも本物の隣接だが、walk は各 unitig を 1 回しか使えないため、連鎖させると中間の B を飛ばした A-R-C ができてしまう<br/>
-        /// 通り抜けてよいのは反復が解きほぐされ入次数・出次数がどちらも 1 になった、どのコピーにいるか確定した状態だけ
-        /// </remarks>
         /// <returns></returns>
         public bool Is通過可能(IReadOnlyDictionary<int, int>? p_コピー数, int p_頂点, IReadOnlyList<string>? p_unitig配列 = null)
         {
@@ -101,15 +87,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                 return true;
             }
 
-            // 入口も出口も複数ある頂点は、2 本の経路が同じ配列を共有している形そのものなので反復とみなす
-            // カバレッジのばらつきが大きいと 2 コピーの反復を 1 コピーと推定することがあり、コピー数だけで通すと入口と出口を取り違える
             var l_Isコピー数1以下 = (p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1;
             if (l_出次数 < 2 || l_入次数 < 2)
             {
                 return l_Isコピー数1以下;
             }
 
-            // 分岐の片方がこの頂点から出て戻ってくる短い脇道だけなら、残る入口と出口は 1 本ずつに決まる
             return l_Isコピー数1以下 && p_unitig配列 is not null && this.Is短い脇道だけの分岐(p_頂点, p_unitig配列);
         }
 
@@ -118,11 +101,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_始点"></param>
         /// <param name="p_終点"></param>
-        /// <remarks>
-        /// この辺だけで結合された頂点を walk が通り抜けるには入次数・出次数とも 1 である必要があり、それは Is通過可能 を満たすので、コピー数に関わらず結合してよい<br/>
-        /// カバレッジが高いだけの単一配列 (プラスミド等) を多コピーと誤推定しても、構造上一意な辺で千切らないため<br/>
-        /// ただし通り抜け禁止の頂点は、一本道に見えても別コピーの入口と出口が繋がっている疑いがあるので、この近道を使わせない
-        /// </remarks>
         /// <returns></returns>
         public bool Is構造上一意な辺(int p_始点, int p_終点)
         {
@@ -139,10 +117,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmer辞書"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_曖昧kmerの番兵"></param>
-        /// <remarks>
-        /// 行き先が「先頭 k-mer である (開始位置 == 0) 」ことを要求するのが要点で、これにより結合が必ず k-1 オーバーラップの単純連結になる<br/>
-        /// 曖昧 k-mer は行き先を一意に決められないため辺を張らない
-        /// </remarks>
         /// <returns></returns>
         public static UnitigGraph Get_グラフ(List<string> p_unitig配列, IReadOnlyDictionary<KmerKey, (int A_unitigID, int A_開始位置)> p_kmer辞書, int p_k長, int p_曖昧kmerの番兵)
         {
@@ -153,7 +127,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_出辺.Add([]);
             }
 
-            // 末尾 k-mer から 1 塩基伸ばした候補を組み立てるための作業バッファ
             var l_候補 = new byte[p_k長];
 
             for (var l_頂点 = 2; l_頂点 < p_unitig配列.Count; l_頂点++)
@@ -164,7 +137,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 末尾 k-mer の 2 文字目以降 (k-1 塩基) を候補の先頭に置く
                 var l_末尾開始 = l_配列.Length - p_k長 + 1;
                 var l_Has無効塩基 = false;
                 for (var i = 0; i < p_k長 - 1; i++)
@@ -194,18 +166,12 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                     if (l_ヒット.A_unitigID == p_曖昧kmerの番兵 || l_ヒット.A_開始位置 != 0)
                     {
-                        // 開始位置 != 0 は「その k-mer が unitig の途中に現れる」
-                        // ことを意味し、そこへ k-1 オーバーラップで連結することは
-                        // できない (unitig 分割が正しければ本来起きないが、
-                        // グラフ簡略化で k-mer を削った結果として起こりうる)
                         continue;
                     }
                     var l_行き先 = ContigMaker.Get_頂点番号(l_ヒット.A_unitigID);
 
                     if (l_行き先 == l_頂点)
                     {
-                        // 自己ループは辿ると無限に伸びるため辺として持たない
-                        // ただし環状に閉じている根拠そのものなので、事実は残す
                         _ = l_自己ループ.Add(l_頂点);
                         continue;
                     }
@@ -234,10 +200,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </param>
         /// <param name="p_経路索引">渡すと、入口から反復を通って出口まで 1 本で読んだ並びを証拠に加える (複製に合わせて書き換える)</param>
         /// <param name="p_引き継ぎ経路索引">前段 k の確定経路の並び、この k の証拠が 1 件も無い反復に限って使う (複製に合わせて書き換える)</param>
-        /// <remarks>
-        /// 対象は入口と出口がともに 2 本以上ある頂点と、入口側の分岐と出口側の分岐が一本道の unitig 列で結ばれた鎖<br/>
-        /// 決着した入口と出口の組だけを複製へ移し、決着しない入口と出口は元の鎖に残す
-        /// </remarks>
         /// <returns>解きほぐした反復の数</returns>
         public int V_解決_短い反復(List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null, ReadPathIndex? p_経路索引 = null, ReadPathIndex? p_引き継ぎ経路索引 = null)
         {
@@ -255,12 +217,10 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_引き継ぎで解決した数 = 0;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            // 複製で頂点が増えるが、増えた分 (複製そのもの) は対象にしない
             var l_元の頂点数 = this.A_出辺.Count;
 
             for (var l_始点 = 2; l_始点 < l_元の頂点数; l_始点++)
             {
-                // 同じ反復を逆鎖側からもう一度数えない
                 if (this.Get_反復の鎖(l_始点) is not { } l_鎖 || l_鎖[0] > (l_鎖[^1] ^ 1))
                 {
                     continue;
@@ -272,19 +232,9 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 反復へ入ってくる頂点は、双子の出辺の双子
                 List<int> l_入口群 = [.. this.A_出辺[l_鎖[0] ^ 1].Select(x => x ^ 1).Distinct()];
                 List<int> l_出口群 = [.. this.A_出辺[l_鎖[^1]].Distinct()];
 
-                // 反復自身が周囲に現れる (タンデム反復・自己ループ) 場合と、
-                // 入口どうし・出口どうしが同じ unitig の場合 (逆向き反復の
-                // ヘアピンなど) は、付け替えの意味が定まらないため触らない
-                // 一方、入口と出口に同じ unitig が現れることは退化ではない
-                // 環状の複製単位に同じ反復が 2 回現れると、その間に挟まれた
-                // 2 つの領域が必ず両方の役回りに立つ
-                // 細菌のゲノムで最も
-                // ありふれた反復の形なので、ここまで弾くと、証拠が揃っていて
-                // 解ける反復が解けないまま残る
                 if (Is退化した形(l_鎖, l_入口群, l_出口群))
                 {
                     l_形で見送った数++;
@@ -299,8 +249,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_Is足場使用 = false;
                 if (l_ペア対応.Contains(-1))
                 {
-                    // 反復に隣接する unitig が短いと、そこに両端が載ったペアはわずかしか無い
-                    // 反復から断片長の範囲にある一意な鎖まで足場を広げて数え直す
                     var l_足場行列 = this.Get_足場ペア支持行列(l_入口群, l_出口群, p_unitig配列, p_ペア連結, p_反復長の上限, l_鎖);
                     l_足場合計 = Get_合計(l_足場行列);
                     var l_直接の決着数 = l_ペア対応.Count(x => x >= 0);
@@ -308,7 +256,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_Is足場使用 = l_ペア対応 is not null && l_ペア対応.Count(x => x >= 0) > l_直接の決着数;
                 }
 
-                // 並びとペアが別々の対応付けを示す反復は、どちらも信用しない
                 var l_対応 = l_ペア対応 is null ? null : Get_併合した対応(l_経路対応, l_ペア対応);
                 if (l_対応 is null)
                 {
@@ -335,8 +282,6 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (l_決着.Count == 0)
                 {
-                    // どの対応付けとも決めきれない
-                    // 無理に繋がない
                     _ = l_実測合計 < p_最小証拠数 ? l_証拠不足の数++ : l_僅差の数++;
                     continue;
                 }
@@ -344,8 +289,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 List<int> l_残る入口 = [.. l_入口群.Where(x => !l_決着.Exists(y => y.A_入口 == x))];
                 List<int> l_残る出口 = [.. l_出口群.Where(x => !l_決着.Exists(y => y.A_出口 == x))];
 
-                // 一方の証拠だけで決着した組も、もう一方の証拠がその入口や出口を別の組へ振り分けているなら反復ごと残す
-                // 入口と出口が 1 本ずつ残ると、決着していないその組も walk が通り抜けられる一本道になるので同じく確かめる
                 List<(int A_入口, int A_出口)> l_一本道になる組 = [.. l_決着];
                 if (l_残る入口.Count == 1 && l_残る出口.Count == 1)
                 {
@@ -359,13 +302,6 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (p_r_mer検証器 is not null)
                 {
-                    // 集計された支持は「跨いだリードが実在するか」を直接
-                    // 確かめていない
-                    // r-mer で各組を独立に検証し、
-                    // どれか 1 組でも接合点の支持が足りなければ、この対応付け
-                    // 自体を疑って複製しない (誤った複製は取りこぼしではなく
-                    // 実在しない配列を作る偽陽性になるため、疑わしきは見送る)
-                    // 残る入口と出口が 1 本ずつなら、その組も対応付けから決まるので同じく確かめる
                     List<(int A_入口, int A_出口)> l_検証する組 = [.. l_決着];
                     if (l_残る入口.Count == 1 && l_残る出口.Count == 1)
                     {
@@ -379,7 +315,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                 }
 
-                // 残る入口か出口が無くなるなら、決着した組の 1 つは元の鎖に残す
                 var l_移す数 = l_残る入口.Count == 0 || l_残る出口.Count == 0 ? l_決着.Count - 1 : l_決着.Count;
                 HashSet<int> l_現在の入口 = [.. l_入口群];
                 HashSet<int> l_現在の出口 = [.. l_出口群];
@@ -435,8 +370,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 「途中に本物の分岐の無い経路を経て同じ頂点へ再合流する」枝を、
-                // その再合流先ごとにまとめる
                 Dictionary<int, List<List<int>>> l_再合流先ごと = [];
                 foreach (var l_開始 in l_出辺)
                 {
@@ -470,17 +403,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                     var l_差分 = Math.Max(p_長さ帯の下限, p_長さ帯の割合 * l_基準長);
                     if (l_配列群.Any(x => Math.Abs(x.Length - l_基準長) > l_差分))
                     {
-                        // 長さが揃っていない = 同じ領域の別表現ではなく
-                        // 本物の分岐の可能性が高い
-                        // 触らない
                         continue;
                     }
 
                     var l_基準配列 = l_配列群[0];
                     if (l_配列群.Skip(1).Any(x => Get_類似度(l_基準配列, x) < p_類似度の下限))
                     {
-                        // 長さは近いが配列がまるで違う
-                        // 同じ領域の別表現とは言えない
                         continue;
                     }
 
@@ -516,13 +444,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_unitig配列"></param>
         /// <param name="p_枝長の上限">外してよい枝の unitig 長の上限</param>
-        /// <remarks>
-        /// 行き止まりの枝はゲノムをその先へ続けられず、残っていると分岐が一意にならないまま contig がそこで切れる<br/>
-        /// 残る続きが 1 本で、その続きへ他から入る辺が無いときに限る<br/>
-        /// 続きに別の入口があると、反復配列の別コピーへ入る辺である可能性を否定できない<br/>
-        /// 分岐元に入口が複数ある場合は、枝は外したうえで A_通り抜け禁止の頂点 に控える。両鎖の枝を外すと、本来は別コピーの入口と出口が一本道で繋がるため<br/>
-        /// 外した枝の配列は unitig として残る
-        /// </remarks>
         /// <returns>外した辺の数</returns>
         public int V_除去_行き止まり枝(List<string> p_unitig配列, int p_枝長の上限)
         {
@@ -557,8 +478,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 入口が複数ある頂点で枝を外すと、残る続きが別コピーの入口と一本道で繋がって見える
-                // 枝を外さないと contig がここで切れるので、枝は外したうえで結合の判断だけ塞ぐ
                 if (this.Get_入次数(v) > 1)
                 {
                     _ = this.A_通り抜け禁止の頂点.Add(v);
@@ -582,9 +501,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 入口と出口がともに複数ある反復の鎖を、入口側から順に取り出す
         /// </summary>
         /// <param name="p_始点"></param>
-        /// <remarks>
-        /// 単独の頂点のほか、入口側だけで分岐する頂点から一本道を辿って出口側だけで分岐する頂点に着く unitig 列も 1 つの反復として扱う (バブルや枝を外したあとに残る形)
-        /// </remarks>
         /// <returns>該当しなければ null</returns>
         private List<int>? Get_反復の鎖(int p_始点)
         {
@@ -714,10 +630,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_行列">入口×出口の支持</param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
-        /// <remarks>
-        /// 決着とみなすのは、行の中でも列の中でもその組が優勢で、組自体に最小証拠数の半分以上の支持があるとき<br/>
-        /// 半分にするのは、入口 2・出口 2 の反復で 2 組の支持を合わせて最小証拠数に届けば解いていた従来の基準に揃えるため
-        /// </remarks>
         /// <returns>入口の添字ごとの出口の添字、決着しなければ -1</returns>
         private static int[] Get_決着した対応(ulong[,] p_行列, decimal p_優勢閾値, ulong p_最小証拠数)
         {
@@ -767,7 +679,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_対応[i] = l_最良;
             }
 
-            // 優勢閾値が半分以下だと 2 つの入口が同じ出口に決着しうる
             for (var i = 0; i < l_入口数; i++)
             {
                 if (l_対応[i] >= 0 && Array.FindAll(l_対応, x => x == l_対応[i]).Length > 1)
@@ -789,9 +700,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_行">入口の添字</param>
         /// <param name="p_列">出口の添字</param>
         /// <param name="p_優勢閾値"></param>
-        /// <remarks>
-        /// 支持が 1 件も無い行や列は、その組と争う証拠が無いので妨げない
-        /// </remarks>
         /// <returns></returns>
         private static bool Is組が優勢(ulong[,] p_行列, int p_行, int p_列, decimal p_優勢閾値)
         {
@@ -848,7 +756,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             List<int> l_複製鎖 = [];
             foreach (var l_頂点 in p_鎖)
             {
-                // 常に偶数 = 元の頂点と同じ向きの配列を順鎖側に置く
                 l_複製鎖.Add(p_unitig配列.Count);
                 p_unitig配列.Add(p_unitig配列[l_頂点]);
                 p_unitig配列.Add(p_unitig配列[l_頂点 ^ 1]);
@@ -863,7 +770,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             this.V_追加_双方向辺(p_入口, l_複製鎖[0]);
             this.V_追加_双方向辺(l_複製鎖[^1], p_出口);
 
-            // 付け替えた辺の支持を複製側へ引き継ぐ (逆鎖側も対称に)
             V_設定_双方向支持(p_支持, p_入口, l_複製鎖[0], l_入辺の支持);
             V_設定_双方向支持(p_支持, l_複製鎖[^1], p_出口, l_出辺の支持);
             for (var i = 0; i + 1 < p_鎖.Count; i++)
@@ -921,9 +827,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_足場長">集める配列長の上限</param>
         /// <param name="p_反復のID群">辿らない反復の unitig</param>
         /// <param name="p_Is上流">上流へ辿るか</param>
-        /// <remarks>
-        /// 分岐や合流を越えると、その先の配列は反復のどちらの側とも限らなくなる
-        /// </remarks>
         /// <returns></returns>
         private List<int> Get_一意な鎖(int p_頂点, List<string> p_unitig配列, int p_足場長, HashSet<int> p_反復のID群, bool p_Is上流)
         {
@@ -933,7 +836,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_現在 = p_頂点;
             while (l_累積長 < p_足場長)
             {
-                // 上流へは双子の出辺を辿る (v の入辺は v^1 の出辺の双子)
                 var l_辿る辺 = p_Is上流 ? this.A_出辺[l_現在 ^ 1] : this.A_出辺[l_現在];
                 if (l_辿る辺.Count != 1)
                 {
@@ -978,9 +880,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_頂点"></param>
         /// <param name="p_unitig配列"></param>
-        /// <remarks>
-        /// 脇道を k の 2 倍までに限るのは、長い脇道は反復に挟まれた本物の配列で、通り抜けるとそれを落とすため
-        /// </remarks>
         /// <returns></returns>
         private bool Is短い脇道だけの分岐(int p_頂点, IReadOnlyList<string> p_unitig配列)
         {
@@ -1024,9 +923,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_始点"></param>
         /// <param name="p_終点"></param>
-        /// <remarks>
-        /// 片方だけ消すとグラフの逆鎖対称性が崩れ、順鎖側と逆鎖側で別々の経路が組まれてしまう
-        /// </remarks>
         private void V_除去_双方向辺(int p_始点, int p_終点)
         {
             _ = this.A_出辺[p_始点].Remove(p_終点);
@@ -1051,9 +947,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_unitig配列"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_長さ上限"></param>
-        /// <remarks>
-        /// 判定できない (開始点が既に他からも入られている、途中で行き止まる/さらに分岐する、循環する、長さの上限を超える) 場合は null
-        /// </remarks>
         /// <returns></returns>
         private (List<int> A_経路, int A_再合流先)? Get_単純経路(int p_開始, List<string> p_unitig配列, int p_k長, int p_長さ上限)
         {
@@ -1067,10 +960,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 if (this.Get_入次数(l_現在) != 1 || !l_訪問済み.Add(l_現在))
                 {
-                    // 開始点以外から見て他からも入ってくる (=本物の再合流点)、
-                    // あるいは循環に突入した
-                    // 前者かつ経路が空でなければ、
-                    // この頂点そのものが再合流先
                     return l_経路.Count > 0 ? (l_経路, l_現在) : null;
                 }
 
@@ -1087,8 +976,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_出辺 = this.A_出辺[l_現在];
                 if (l_出辺.Count != 1)
                 {
-                    // 行き止まり、または途中でさらに分岐している
-                    // 単純な経路ではない
                     return null;
                 }
                 l_現在 = l_出辺[0];

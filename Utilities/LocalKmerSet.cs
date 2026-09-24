@@ -5,10 +5,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// 局所アセンブリ用の、ディスクを使わないインメモリの k-mer 集合
     /// </summary>
-    /// <remarks>
-    /// LocalAssembler は 1 ギャップあたり高々数千リード・数十万 k-mer 程度しか扱わないため、TrustedKmerIndex のシャード分割・外部ソート・ディスクマージは過剰でしかない (ギャップの数だけ一時ディレクトリの作成とファイルの生成・マージ・削除が走り、それ自体が支配的なコストになっていた) <br/>
-    /// この規模ならインメモリの HashSet で完結できるため、カウントは持たず「見たことがあるか」だけを覚える
-    /// </remarks>
     internal sealed class LocalKmerSet : IKmerLookup
     {
         #region 内部変数

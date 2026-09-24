@@ -20,28 +20,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// コピー数の上限
         /// </summary>
-        /// <remarks>
-        /// これを超える比が出た場合、rRNA オペロンのような高コピー反復か、あるいはカバレッジ異常のどちらかで区別がつかない<br/>
-        /// 経路探索の予算としては大きすぎると探索が発散するため頭打ちにする
-        /// </remarks>
         private const int コピー数の上限 = 12;
 
         /// <summary>
         /// 「染色体側の確定成分と繋がりが無い、独立した島」を単一の複製単位 (プラスミド等) とみなすために要求する、島の合計長の下限
         /// </summary>
-        /// <remarks>
-        /// AssemblyStatsReporter の「比較可能」しきい値と同じ 500 bp を使う<br/>
-        /// 短い島は偶然の孤立 (flanking 配列が trim で消えた等) や短い反復配列との区別がつきにくいため、この下限より短い場合は判定しない (Unicycler が短いセグメントの単一コピー確定に厳しい条件を課しているのと同じ理由)
-        /// </remarks>
         private const int 孤立複製単位とみなす最小合計長 = 500;
 
         /// <summary>
         /// 分散指数 (分散 ÷ 平均) がこれを超えたら、ポアソン仮定では説明が付かない過分散とみなす
         /// </summary>
-        /// <remarks>
-        /// ポアソン分布は分散指数が 1 に近づく<br/>
-        /// 診断のみに使い、この値だけでコピー数判定のロジックを変えることはしない
-        /// </remarks>
         private const double 過分散とみなす分散指数の下限 = 1.5D;
 
         /// <summary>
@@ -52,10 +40,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// コピー数区間を求める際に使う片側の z 値 (90%)
         /// </summary>
-        /// <remarks>
-        /// 区間は「反復配列を安全に何回まで通ってよいか」の予算に使う想定であり、
-        /// 誤って狭すぎる上限を出して真の経路を消す方を避けたいので、両側ではなく片側で緩めに取る
-        /// </remarks>
         private const double 区間のz値 = 1.645D;
 
         /// <summary>
@@ -108,13 +92,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns></returns>
         public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, UnitigGraph? p_グラフ = null, コピー数基準の出所? p_基準の出所 = null)
         {
-            // k-mer スペクトルの 2 成分混合モデルが適合できていれば、その単一コピー平均を
-            // 基準値に使う
-            // カットオフと同じモデルから導くことで、unitig の長さ加重
-            // 中央値という別のヒューリスティックとの食い違いを無くす
-            // (KmerCutoffSelector.V_解決_kmerカットオフ 参照)
-            // 適合に失敗している場合は
-            // 従来どおり unitig カバレッジの長さ加重中央値にフォールバックする
             var l_希望する出所 = p_基準の出所 ?? コピー数基準の出所.Spectrum;
             var l_モデル基準値 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均;
             var l_モデルを使える = l_モデル基準値 is { } l_値 && l_値 > 0D;
@@ -123,8 +100,6 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             var l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, 多コピーとみなす比の下限);
 
-            // カバレッジが過分散なら単一コピーでも基準値の 1.5 倍を超える unitig が普通に現れ、反復と誤判定すると結合を拒まれる
-            // 観測したばらつきで単一コピーとして説明できる範囲まで下限を引き上げて判定し直す
             if (l_基準値 > 0D && Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数) is { A_Is過分散: true } l_初回診断)
             {
                 var l_引き上げた下限 = Math.Max(多コピーとみなす比の下限, 1D + (過分散時の片側z値 * Math.Sqrt(l_初回診断.A_分散指数 / l_基準値)));
@@ -150,10 +125,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_基準値">単一コピー基準値</param>
         /// <param name="p_分散診断">単一コピー集団の過分散診断</param>
         /// <param name="p_コピー数">点推定 (区間は必ずこれを含むよう広げる)</param>
-        /// <remarks>
-        /// 分散診断が求められない (標本不足) 場合は、根拠のない区間を作らず null を返す<br/>
-        /// 分散指数がポアソン (1) を下回っても、区間を狭めすぎないよう 1 未満には丸めない
-        /// </remarks>
         /// <returns>コピー数区間、求められない場合は null</returns>
         private static Dictionary<int, コピー数区間>? Get_コピー数区間(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, カバレッジ分散診断? p_分散診断, Dictionary<int, int> p_コピー数)
         {
@@ -179,7 +150,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, コピー数の上限);
                 var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, コピー数の上限);
 
-                // 点推定を区間から締め出さない (別ロジックの丸め方の違いで矛盾させない)
                 l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
             }
             return l_結果;
@@ -191,11 +161,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_unitig長"></param>
         /// <param name="p_コピー数"></param>
-        /// <remarks>
-        /// 短い unitig は平均カバレッジ自体のばらつきが大きく分散を汚すため、
-        /// 孤立複製単位の判定と同じ長さの下限で足切りする<br/>
-        /// 標本が少なすぎる場合は診断せず null を返す (根拠のない診断を出さない)
-        /// </remarks>
         /// <returns>診断結果、求められない場合は null</returns>
         private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
         {
@@ -226,9 +191,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_推定結果"></param>
         /// <param name="p_unitig長"></param>
-        /// <remarks>
-        /// 「単一コピーが何本・何 bp、2 コピー以上が何本・何 bp」が分かると、反復配列がアセンブリのどれだけを占めているかが把握できる
-        /// </remarks>
         public static void V_出力_推定結果(コピー数推定結果 p_推定結果, IReadOnlyDictionary<int, int> p_unitig長)
         {
             Logger.V_出力(メッセージID.単一コピー基準値, p_推定結果.A_単一コピー基準値);
@@ -266,10 +228,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_基準値"></param>
         /// <param name="p_多コピーの下限比">これ未満の比を単一コピーとみなす</param>
-        /// <remarks>
-        /// 低カバレッジで判断できないものも 0 にはせず 1 にする<br/>
-        /// 実際に配列は存在しており、経路から締め出すと組み立てられなくなる
-        /// </remarks>
         /// <returns></returns>
         private static Dictionary<int, int> Get_比によるコピー数(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, double p_多コピーの下限比)
         {
@@ -331,9 +289,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 });
                 if (!l_Is内部一貫)
                 {
-                    // 島の内部でもカバレッジ水準がばらついている
-                    // (=島の中に反復がある)
-                    // 触らない
                     continue;
                 }
 
@@ -349,9 +304,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_グラフ"></param>
         /// <param name="p_unitigID一覧"></param>
-        /// <remarks>
-        /// 辺 v→w があれば逆鎖対称性より w^1→v^1 もあるため、各 unitig の両頂点 (順鎖・逆鎖) の出辺だけを辿れば入ってくる辺も含めて全方向を辿ったことになる
-        /// </remarks>
         /// <returns></returns>
         private static Dictionary<int, int> Get_連結成分(UnitigGraph p_グラフ, IEnumerable<int> p_unitigID一覧)
         {
@@ -412,8 +364,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_成分 = Get_排他的成分(p_グラフ, l_ID);
                 if (l_成分.Count < 2)
                 {
-                    // 排他的に繋がる相手がいない
-                    // 比較材料が無いので判定しない
                     continue;
                 }
 
@@ -444,9 +394,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_グラフ"></param>
         /// <param name="p_unitigID"></param>
-        /// <remarks>
-        /// 両方の頂点 (順鎖・逆鎖) から辿ることで、鎖を両方向に伸ばす
-        /// </remarks>
         /// <returns></returns>
         private static HashSet<int> Get_排他的成分(UnitigGraph p_グラフ, int p_unitigID)
         {
@@ -488,9 +435,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_unitig長"></param>
-        /// <remarks>
-        /// ゲノムの大部分を占める単一コピー領域の水準を推定するために使う
-        /// </remarks>
         /// <returns></returns>
         private static double Get_長さ加重中央値(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長)
         {

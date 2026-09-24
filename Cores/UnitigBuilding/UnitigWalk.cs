@@ -7,10 +7,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// unitig の walk を、パック値を転がしながら進める実装 (k &lt;= 128 用)
     /// </summary>
-    /// <remarks>
-    /// walk は 1 塩基ずつ進むので、k-mer のパック値は前の値からシフトで作れる<br/>
-    /// Span から毎回詰め直すと、1 歩あたり O (k) の詰め直しが所属判定と入次数判定の回数だけ走る
-    /// </remarks>
     /// <param name="p_kmerインデックス"></param>
     /// <param name="p_k長"></param>
     internal sealed class UnitigWalk(TrustedKmerIndex p_kmerインデックス, int p_k長)
@@ -57,9 +53,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_開始kmer">walk の起点となる k-mer</param>
         /// <param name="p_訪問済み">循環検出用の作業集合</param>
         /// <returns>組み立てた塩基列</returns>
-        /// <remarks>
-        /// 循環を検出したら打ち切る
-        /// </remarks>
         public List<byte> Get_塩基列(ReadOnlySpan<byte> p_開始kmer, HashSet<UInt128> p_訪問済み)
         {
             p_訪問済み.Clear();
@@ -76,8 +69,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 if (!p_訪問済み.Add(l_順鎖))
                 {
-                    // 循環
-                    // 1 塩基前で打ち切った場合と同じ配列になるよう末尾を外す
                     l_配列.RemoveAt(l_配列.Count - 1);
                     return l_配列;
                 }
@@ -102,9 +93,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     (l_次順, l_次逆) = (l_順, l_逆);
                 }
 
-                // 出次数が 1 でなければ、ここが unitig の終端
-                // 次の k-mer の入次数が 2 以上なら別の経路が合流しており、
-                // そこからは別の unitig が始まるのでやはり終端になる
                 if (l_候補数 != 1 || !this.Is入次数1(l_次順, l_次逆))
                 {
                     return l_配列;
@@ -121,9 +109,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_開始kmer">walk の起点となる k-mer</param>
         /// <param name="p_訪問済み">循環検出用の作業集合</param>
         /// <returns>組み立てた塩基列</returns>
-        /// <remarks>
-        /// 判定の規則は Get_塩基列 と同じで、パック値を 128 bit 2 語で持つ点だけが違う
-        /// </remarks>
         public List<byte> Get_塩基列_長(ReadOnlySpan<byte> p_開始kmer, HashSet<(UInt128 A_上位, UInt128 A_下位)> p_訪問済み)
         {
             p_訪問済み.Clear();
@@ -225,9 +210,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_順鎖"></param>
         /// <param name="p_逆鎖"></param>
-        /// <remarks>
-        /// 前進規則が 後続 = kmer[1..] + c である以上、その逆を解くと予測元は c + kmer[..^1] になる
-        /// </remarks>
         /// <returns></returns>
         private bool Is入次数1(UInt128 p_順鎖, UInt128 p_逆鎖)
         {

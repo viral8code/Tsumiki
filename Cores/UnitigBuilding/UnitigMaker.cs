@@ -65,7 +65,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             this._訪問済み_パック.Clear();
             this._訪問済み_文字列.Clear();
 
-            // 末尾 k 長 塩基が常に「現在の k-mer」になる
             List<byte> l_配列 = [.. p_開始kmer];
 
             while (true)
@@ -77,16 +76,10 @@ namespace Tsumiki.Cores.UnitigBuilding
                     : this._訪問済み_文字列.Add(string.Join(string.Empty, l_現在のkmer.ToArray().Select(Util.V_変換_塩基文字)));
                 if (!l_Is未訪問)
                 {
-                    // 循環
-                    // 従来実装は「この k-mer の最後の 1 塩基を付ける前」に
-                    // 打ち切っていたため、同じ配列になるよう 1 塩基取り除く
                     l_配列.RemoveAt(l_配列.Count - 1);
                     break;
                 }
 
-                // 次の 1 塩基を決める
-                // 候補がちょうど 1 つ (出次数 1) でなければ
-                // ここが unitig の終端
                 l_配列.Add(0);
                 byte l_次の塩基 = 0;
                 var l_候補数 = 0;
@@ -110,12 +103,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     break;
                 }
 
-                // unitig は「内部のすべての節点が入次数 1 かつ出次数 1 である極大パス」
-                // 出次数だけでなく入次数も見る必要がある
-                // 次の k-mer の入次数が
-                // 2 以上なら別の経路が合流しており、そこからは別の unitig が始まる
-                // 怠ると合流後の共有配列を複数の unitig が重複して持ち、
-                // さらにその k-mer が曖昧としてマッピング対象から外れる
                 l_配列[^1] = l_次の塩基;
                 if (this._kmerインデックス.Get_入次数(CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..]) != 1)
                 {
@@ -135,10 +122,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// k-mer (塩基 ID 1-4、長さ 64 以下) を 2 bit/塩基で UInt128 にパックする
         /// </summary>
         /// <param name="p_kmer"></param>
-        /// <remarks>
-        /// 向き依存の値 (逆相補への正規化はしない) <br/>
-        /// 循環検出は「同じ向きで同じ k-mer に戻ったか」で判定する必要があるため
-        /// </remarks>
         /// <returns></returns>
         private static UInt128 TryGet_パック(ReadOnlySpan<byte> p_kmer)
         {

@@ -9,9 +9,6 @@ namespace Tsumiki.Cores.Preprocessing
     /// <summary>
     /// FASTQ ファイルを読み進めて TrustedKmerIndex へ k-mer を登録する処理 (曖昧塩基を無視する既定経路)
     /// </summary>
-    /// <remarks>
-    /// 本パイプラインと ErrorCorrector の事前カウントパスの両方から呼べるよう切り出したもの
-    /// </remarks>
     internal static class KmerCounting
     {
         #region 公開メソッド
@@ -21,15 +18,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <remarks>
-        /// 読み取りを 1 本に保つのはディスク I/O をシーケンシャルなままにするため
-        /// </remarks>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
 
-            // 128 塩基までは正規形のパック値をリード上で転がして作り、ワーカーごとに束ねて渡す
             var l_束群 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.パック値のk上限
                 ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray()
                 : null;
@@ -66,9 +59,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_引数"></param>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_Is進行状況出力"></param>
-        /// <remarks>
-        /// AssemblyPipeline と MultiKAssembler のどちらも (単一 k ・複数 k の違いだけで) 同じ読み込み手順を必要とするためここにまとめる
-        /// </remarks>
         public static void V_読込_リードペア(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, bool p_Is進行状況出力 = false)
         {
             using var l_計測 = new StageTimer($"kmer-count k={p_引数.A_k長}");
@@ -101,9 +91,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <remarks>
-        /// 呼ばれる頻度が低い想定のため未並列
-        /// </remarks>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_件数 = 0UL;
@@ -185,9 +172,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_束"></param>
-        /// <remarks>
-        /// 低品質の塩基は曖昧塩基と同じく窓を切る壁として渡し、V_登録_1リード と同じ k-mer だけを数える
-        /// </remarks>
         private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束, int p_Phredオフセット)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -214,10 +198,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_塩基列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <remarks>
-        /// 逆相補側を別途登録してはいけない<br/>
-        /// TrustedKmerIndex.V_登録 が正規形へ寄せて数えるため、二重計上になる
-        /// </remarks>
         private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_塩基列 = p_塩基列;

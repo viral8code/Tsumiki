@@ -6,9 +6,6 @@ namespace Tsumiki.IO
     /// <summary>
     /// FASTA/FASTQ 共通の下回り
     /// </summary>
-    /// <remarks>
-    /// ファイルを開く (.gz なら透過的に展開する) 処理と空行を読み飛ばす行読み込みは、レコードの形式によらず同じで済む
-    /// </remarks>
     internal abstract class SequenceFileReaderBase : IDisposable
     {
         #region 定数
@@ -44,9 +41,6 @@ namespace Tsumiki.IO
         /// ファイルを開く
         /// </summary>
         /// <param name="p_パス"></param>
-        /// <remarks>
-        /// 拡張子が .gz なら透過的に展開する
-        /// </remarks>
         protected SequenceFileReaderBase(string p_パス)
         {
             this.A_ファイルパス = p_パス;
@@ -86,9 +80,6 @@ namespace Tsumiki.IO
         /// <summary>
         /// 空行の読み飛ばしをしない生の 1 行読み込み
         /// </summary>
-        /// <remarks>
-        /// EOF 検知が要る派生クラス向け
-        /// </remarks>
         /// <returns></returns>
         protected string? Get_次の行_生()
         {

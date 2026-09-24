@@ -3,10 +3,6 @@
     /// <summary>
     /// ペアエンドの隣接証拠を、生の観測本数ではなく期待本数との比で測るための較正器
     /// </summary>
-    /// <remarks>
-    /// ある辺で観測される本数は、その辺の両側の unitig 長とフラグメント長分布に応じて期待値そのものが桁で変わるため、観測本数をそのまま固定閾値と比べると、短い辺には厳しすぎ、長い辺には緩すぎる基準になる<br/>
-    /// Scaffolder (scaffold 辺の選択) ・ ContigMaker (分岐選択) ・ BeamSearchExtender (先読みスコア) が同じ較正を共有するために括り出した
-    /// </remarks>
     internal sealed class 証拠較正器
     {
         #region 定数
@@ -14,9 +10,6 @@
         /// <summary>
         /// 支持本数を 0〜1 の確信度へ潰すときの時定数
         /// </summary>
-        /// <remarks>
-        /// この本数あたりで 6 割強に達し、以降は増やしてもほとんど動かなくなる
-        /// </remarks>
         public const double 飽和の時定数 = 3.0D;
 
         #endregion
@@ -40,9 +33,6 @@
         /// <summary>
         /// モデルが構築できたか
         /// </summary>
-        /// <remarks>
-        /// false の場合、呼び出し側は生カウント方式に自分でフォールバックする
-        /// </remarks>
         public bool A_Is使用可能 => this._モデル is not null;
 
         #endregion
@@ -68,10 +58,6 @@
         /// 独立な支持本数を 0〜1 の確信度に変換する
         /// </summary>
         /// <param name="p_独立支持数">独立とみなせる支持本数</param>
-        /// <remarks>
-        /// 本数をそのまま足し合わせると、ほぼ同じ条件のペアが 1000 本あるだけで種類の違う証拠 1 本を完全に押し流してしまう<br/>
-        /// 頭打ちにすることで、「同じ話を何度も聞いた」ことが「別の裏付けを得た」ことに化けるのを防ぐ
-        /// </remarks>
         /// <returns></returns>
         public static double Get_飽和支持(double p_独立支持数)
         {
@@ -85,9 +71,6 @@
         /// <param name="p_リード長">リード長、不明な場合は null</param>
         /// <param name="p_unitig長一覧">unitig ごとの長さ</param>
         /// <returns>較正器、モデルが使えない場合も返り値自体は null にならない</returns>
-        /// <remarks>
-        /// 標本が無い・リード長が不明・期待位置数の合計が 0 (すべての unitig がフラグメント長より短い等) のいずれかならモデルは使えないものとして返す
-        /// </remarks>
         public static 証拠較正器 Get_較正器(IReadOnlyList<int> p_同一unitig標本, int? p_リード長, IEnumerable<long> p_unitig長一覧)
         {
             if (p_リード長 is not { } l_リード長 || p_同一unitig標本.Count == 0)
@@ -123,10 +106,6 @@
         /// <param name="p_長さ2">もう片側の長さ</param>
         /// <param name="p_ギャップ長">両者の間のギャップ長</param>
         /// <returns>正規化済みの支持</returns>
-        /// <remarks>
-        /// モデルが使えない場合は 0 を返す (=証拠なしとして扱う) <br/>
-        /// 生カウントへのフォールバックが必要な呼び出し側はA_Is使用可能 を先に見て自分で分岐すること
-        /// </remarks>
         public double Get_正規化済み支持(ulong p_観測本数, long p_長さ1, long p_長さ2, int p_ギャップ長)
         {
             var l_期待 = this.Get_期待本数(p_長さ1, p_長さ2, p_ギャップ長);
@@ -153,10 +132,6 @@
         /// 観測された既知長の一覧から、独立とみなせる支持本数を数える
         /// </summary>
         /// <param name="p_既知長一覧">観測された既知長の一覧</param>
-        /// <remarks>
-        /// 同じ辺に対して全く同じ距離を示す観測は、PCR 重複か同一断片の読み直しである可能性が高く、別々の分子から得た裏付けとは言えない<br/>
-        /// 相異なる距離の個数を独立な証拠の数とみなす
-        /// </remarks>
         /// <returns></returns>
         public static int Get_独立支持数(IReadOnlyList<int> p_既知長一覧)
         {

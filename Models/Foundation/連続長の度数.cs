@@ -6,9 +6,6 @@ namespace Tsumiki.Models.Foundation
     /// <summary>
     /// 持ち越し検証で見つかった、未観測の r-mer が続く長さの度数
     /// </summary>
-    /// <remarks>
-    /// 継ぎ目に掛かるものとそれ以外を分けて数えるのは、下限が両者の分布の谷にあるかを見るため
-    /// </remarks>
     internal sealed class 連続長の度数
     {
         #region 定数
@@ -66,9 +63,6 @@ namespace Tsumiki.Models.Foundation
         /// 連続ごとの位置を TSV に書き出す
         /// </summary>
         /// <param name="p_パス">書き出し先</param>
-        /// <remarks>
-        /// 度数だけでは継ぎ目に掛からない長い連続が正しい配列か誤結合かを決められないので、参照へ当てられるよう位置を残す
-        /// </remarks>
         public void V_書き出し(string p_パス)
         {
             using var l_書き込み = new StreamWriter(p_パス);

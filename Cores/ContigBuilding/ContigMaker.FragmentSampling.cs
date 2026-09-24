@@ -8,9 +8,6 @@ namespace Tsumiki.Core
     /// <summary>
     /// ContigMaker のうち、フラグメント長・インサートサイズの標本収集を担う部分
     /// </summary>
-    /// <remarks>
-    /// (unitig へのマッピングは ContigMaker.Mapping.cs、contig 結合そのものは ContigMaker.cs を参照)
-    /// </remarks>
     internal partial class ContigMaker
     {
         #region プロパティ
@@ -18,25 +15,16 @@ namespace Tsumiki.Core
         /// <summary>
         /// 標本抽出された距離の一覧
         /// </summary>
-        /// <remarks>
-        /// Scaffolder は出所によるバイアスの違いを見るため、この結合ではなく個別の一覧を優先する
-        /// </remarks>
         public List<int> A_インサートサイズ標本 { get; } = [];
 
         /// <summary>
         /// 単一 unitig 内で両リードがヒットしたペアからの標本
         /// </summary>
-        /// <remarks>
-        /// unitig がフラグメント長より短いと短いフラグメントに偏る
-        /// </remarks>
         public List<int> A_同一unitig標本 { get; } = [];
 
         /// <summary>
         /// unitig 同士が k-1 オーバーラップで直接結合されたペアからの標本
         /// </summary>
-        /// <remarks>
-        /// 同一 unitig 標本のような長さバイアスを受けない
-        /// </remarks>
         public List<int> A_確定辺標本 { get; } = [];
 
         /// <summary>
@@ -52,10 +40,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// ライブラリごとのペアエンド由来の隣接候補
         /// </summary>
-        /// <remarks>
-        /// キーは (始点, 終点) の unitig ID (符号は向き)、値は各観測ペアの既知長の一覧<br/>
-        /// Scaffolder から参照される
-        /// </remarks>
         public IReadOnlyList<IReadOnlyDictionary<(int, int), List<int>>> A_ペア経路群 => this._ペア経路群;
 
         /// <summary>
@@ -66,9 +50,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig ID (1 始まり、符号なし) からその塩基長を引く
         /// </summary>
-        /// <remarks>
-        /// Scaffolder が contig 側の末端 unitig の長さを参照する際に使う
-        /// </remarks>
         public IReadOnlyDictionary<int, int> A_unitig長 => this._unitig長;
 
         /// <summary>
@@ -89,18 +70,10 @@ namespace Tsumiki.Core
         /// <param name="p_リード2"></param>
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
-        /// <remarks>
-        /// 2 ヒットの順鎖座標の差はフラグメント長ではなく、2 リードに挟まれた内側の未読区間 (inner distance) である<br/>
-        /// FR 配置では「フラグメント長 = 内側距離 + 両リード長」なので、ここで足し戻して以降の推定値の単位をフラグメント長に揃える
-        /// </remarks>
         private static void V_収集_同一unitig標本(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
             if ((p_ヒット1.A_unitigID > 0) == (p_ヒット2.A_unitigID > 0))
             {
-                // 同じ向き同士 (FF/RR 相当)
-                // 両リードの内側の端はどちらも
-                // 同じ側を向いているため、差は「開始位置の差」に相当する
-                // 下流側リード 1 本分を足すとフラグメント長になる
                 var l_内側距離 = Math.Abs(Get_順鎖座標(p_ヒット1) - Get_順鎖座標(p_ヒット2));
                 var l_フラグメント長 = l_内側距離 + Math.Max(p_リード1.Length, p_リード2.Length);
 
@@ -111,17 +84,12 @@ namespace Tsumiki.Core
             }
             else
             {
-                // 互いに逆向き (FR 相当、Illumina ペアエンドの通常配置)
-                // 順鎖側ヒットのリードがフラグメントの左端、
-                // 逆鎖側ヒットのリードが右端を占める
                 var l_Isヒット1順鎖 = p_ヒット1.A_unitigID > 0;
                 var l_順鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット1 : p_ヒット2);
                 var l_逆鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット2 : p_ヒット1);
                 var l_順鎖側リード長 = l_Isヒット1順鎖 ? p_リード1.Length : p_リード2.Length;
                 var l_逆鎖側リード長 = l_Isヒット1順鎖 ? p_リード2.Length : p_リード1.Length;
 
-                // フラグメントの左端 = 順鎖リードの開始位置、
-                // 右端 = 逆鎖リードの終了位置
                 var l_フラグメント長 = (l_逆鎖側の端 + l_逆鎖側リード長) - (l_順鎖側の端 - l_順鎖側リード長);
 
                 if (l_フラグメント長 > 0)
@@ -139,11 +107,6 @@ namespace Tsumiki.Core
         /// <param name="p_リード1"></param>
         /// <param name="p_リード2"></param>
         /// <param name="p_ローカルペア経路"></param>
-        /// <remarks>
-        /// read2 は逆鎖側から読まれるため、read1 の向きへ揃えるには read2 側の unitig ID の符号を反転させる<br/>
-        /// 記録するのは「フラグメントのうち既に見えている分の長さ」 (read1 長 + unitig1 末端までの残り + read2 長 + unitig2 末端までの残り) で、ギャップ長 G との間に フラグメント長 = 既知長 + G が常に成り立つ (直接 k-1 で結合された場合は G = - (k-1))<br/>
-        /// 両ヒットとも「自分の向きでの末端までの残り」を使うのは、ヒット 2 の向きが未知区間から遠ざかる側を向いており、未知区間に接するのは常にヒットの末端側だから
-        /// </remarks>
         private static void V_収集_ペア経路(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
             var l_キー = (p_ヒット1.A_unitigID, -p_ヒット2.A_unitigID);
@@ -166,9 +129,6 @@ namespace Tsumiki.Core
         /// ヒットの終端位置を常に順鎖座標系へ揃える
         /// </summary>
         /// <param name="p_ヒット"></param>
-        /// <remarks>
-        /// 同一 unitig 上の 2 ヒット間の距離を求めるのに使う
-        /// </remarks>
         /// <returns></returns>
         private static int Get_順鎖座標(代表Unitigヒット p_ヒット)
         {
@@ -224,9 +184,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// 全ライブラリのペア経路を unitig 対ごとにまとめて返す
         /// </summary>
-        /// <remarks>
-        /// 反復を跨ぐ連結の有無を見るだけで既知長は使わないので、ここではライブラリを混ぜてよい
-        /// </remarks>
         /// <returns></returns>
         private IEnumerable<KeyValuePair<(int, int), List<int>>> Get_全ライブラリのペア経路()
         {
@@ -266,7 +223,6 @@ namespace Tsumiki.Core
                         continue;
                     }
 
-                    // 頂点番号 -> 符号付き unitig ID
                     var l_始点unitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
                     var l_終点unitig = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
 
@@ -277,10 +233,6 @@ namespace Tsumiki.Core
 
                     foreach (var l_既知長 in l_既知長標本)
                     {
-                        // 直接結合された辺では 2 つの unitig が k-1 塩基重なるので、
-                        // 未知区間の長さは G = - (k-1)
-                        // よって
-                        // フラグメント長 = 既知長 - (k-1)
                         var l_フラグメント長 = l_既知長 - l_重なり長;
                         if (l_フラグメント長 > 0)
                         {
@@ -297,10 +249,6 @@ namespace Tsumiki.Core
 
                 if (l_確定辺標本.Count > 0)
                 {
-                    // このプールは「unitig 同士が k-1 オーバーラップで直接結合された」
-                    // ペアのみを対象とするため、同一 unitig 標本のような
-                    // 「フラグメントが 1 つの unitig に収まる必要がある」制約が
-                    // なく、短い unitig による短フラグメントへの偏りを受けにくい
                     Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);
                 }
             }
@@ -309,9 +257,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// フラグメント長分布の分位点
         /// </summary>
-        /// <remarks>
-        /// 橋渡しできる未知区間の長さを決めるのは中央値ではなく分布の上側の裾なので、そこまで出す
-        /// </remarks>
         /// <param name="p_値一覧"></param>
         /// <returns></returns>
         private static string Get_分布要約(List<int> p_値一覧)

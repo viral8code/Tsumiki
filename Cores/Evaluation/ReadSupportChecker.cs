@@ -16,9 +16,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 1 バッチあたりのリード数
         /// </summary>
-        /// <remarks>
-        /// まとめて読んで並列に照合する
-        /// </remarks>
         private const int 照合バッチサイズ = 20_000;
 
         #endregion
@@ -73,9 +70,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// アセンブリの r-mer に通し番号を振った表と、位置ごとの番号を作る
         /// </summary>
-        /// <remarks>
-        /// 曖昧塩基を含む位置は -1 にして検査の対象から外す
-        /// </remarks>
         /// <param name="p_全件">アセンブリの全配列</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
         /// <returns>r-mer から通し番号への表と、配列 ID ごとの位置別番号</returns>
@@ -117,9 +111,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// リードを流して、表にある r-mer に印を付ける
         /// </summary>
-        /// <remarks>
-        /// 書き込みは 0 でなくするだけなので、並列に走っても取りこぼしは出ない
-        /// </remarks>
         /// <param name="p_表">r-mer から通し番号への表</param>
         /// <param name="p_観測状態">通し番号ごとの観測状態</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
@@ -194,7 +185,6 @@ namespace Tsumiki.Cores.Evaluation
                     var l_番号 = l_番号列[i];
                     if (l_番号 < 0)
                     {
-                        // 曖昧塩基を含む位置にはギャップの N が来るので、支持が無いのではなく問えないものとして飛ばす
                         V_閉じる(l_区間, l_ID, ref l_開始, i - 1, p_r長);
                         continue;
                     }
@@ -221,9 +211,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 続いていた支持なしの並びを区間として確定する
         /// </summary>
-        /// <remarks>
-        /// 区間は r-mer の開始位置ではなく、その r-mer が覆う塩基の範囲で表す
-        /// </remarks>
         /// <param name="p_区間">確定した区間の集まり</param>
         /// <param name="p_ID">配列 ID</param>
         /// <param name="p_開始">続いている並びの開始位置、続いていなければ -1</param>

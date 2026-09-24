@@ -14,9 +14,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 足切りに使う完全性の許容差
         /// </summary>
-        /// <remarks>
-        /// 取りこぼしはそのままゲノムの欠落なので、正確性より厳しく見る (7 Mbp 級なら 1% で 70 kbp に相当する)
-        /// </remarks>
         public const double 完全性の許容差 = 0.01D;
 
         /// <summary>
@@ -27,10 +24,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 完全性・正確性で同点とみなす差
         /// </summary>
-        /// <remarks>
-        /// どちらもカバレッジからの期待コピー数の丸めに依存するため、この程度の差は候補の優劣ではなく推定の揺らぎとみなす<br/>
-        /// 特に正確性は、反復を正しく複製したときにも (丸めが 1 つ下に落ちれば) 下がる向きに動く
-        /// </remarks>
         public const double 同点とみなす差 = 0.005D;
 
         #endregion
@@ -41,9 +34,6 @@ namespace Tsumiki.Cores.Evaluation
         /// 候補から最良のものを選ぶ
         /// </summary>
         /// <param name="p_候補"></param>
-        /// <remarks>
-        /// 候補が空なら null
-        /// </remarks>
         /// <returns></returns>
         public static (アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)? Get_最良(IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補)
         {
@@ -60,7 +50,6 @@ namespace Tsumiki.Cores.Evaluation
             var l_最良の完全性 = p_候補.Max(x => x.A_評価.A_完全性);
             var l_最良の正確性 = p_候補.Max(x => x.A_評価.A_正確性);
 
-            // 配列を落として連続性を買う取引を、許容差を超えては認めない
             var l_残った候補 = p_候補
                 .Where(x => x.A_評価.A_完全性 >= l_最良の完全性 - 完全性の許容差)
                 .Where(x => x.A_評価.A_正確性 >= l_最良の正確性 - 正確性の許容差)
@@ -71,9 +60,6 @@ namespace Tsumiki.Cores.Evaluation
                 l_残った候補 = [.. p_候補];
             }
 
-            // 段は「隣の候補との差」で切る
-            // 最良値からの絶対距離で刻むと、同点幅より小さい差しかない 2 候補が
-            // 刻みの境界をまたいで別の段に分かれてしまう
             var l_完全性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_完全性));
             var l_正確性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_正確性));
 
@@ -92,11 +78,6 @@ namespace Tsumiki.Cores.Evaluation
         /// 値ごとの段を、良い順に並べて隣との差が同点幅を超えたところで切って作る
         /// </summary>
         /// <param name="p_値群">候補の値</param>
-        /// <remarks>
-        /// 0 が最良の段で、大きいほど劣る<br/>
-        /// 最良値からの絶対距離で刻むと、同点幅より小さい差しかない 2 候補が刻みの境界をまたいで別の段に分かれる<br/>
-        /// 連鎖が伸びすぎる心配は、段を切る前の足切り (完全性・正確性の許容差) が上限を与える
-        /// </remarks>
         /// <returns>値から段を引く表</returns>
         public static Dictionary<double, int> Get_段表(IEnumerable<double> p_値群)
         {
@@ -119,9 +100,6 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_候補"></param>
         /// <param name="p_採用したもの"></param>
-        /// <remarks>
-        /// 自動選択の妥当性を利用者が確かめられるようにする
-        /// </remarks>
         public static void V_出力_候補一覧(IReadOnlyList<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, アセンブリ実行結果 p_採用したもの)
         {
             Logger.V_出力(メッセージID.候補一覧の見出し);

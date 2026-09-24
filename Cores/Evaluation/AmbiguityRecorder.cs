@@ -16,17 +16,11 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// k ごとの作業ディレクトリに残す控え
         /// </summary>
-        /// <remarks>
-        /// 再開時に読み直す
-        /// </remarks>
         private const string 保存ファイル名 = "ambiguous.tsv";
 
         /// <summary>
         /// 全 k を通じた累積履歴のファイル名
         /// </summary>
-        /// <remarks>
-        /// 同じ k を再実行すると保存ファイル名側は上書きされるが、こちらは追記し続けるため、再実行前の判定も後から追える
-        /// </remarks>
         private const string 履歴ファイル名 = "ambiguous.history.tsv";
 
         /// <summary>
@@ -66,10 +60,6 @@ namespace Tsumiki.Cores.Evaluation
         /// この k の記録を集め直す
         /// </summary>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// この k の「最終状態」ビュー(Get_記録/V_保存が返す分)は同じ k を再実行すると上書きする<br/>
-        /// 累積履歴(V_保存_履歴が書き出す分)は上書きされず、再実行前の判定も残る
-        /// </remarks>
         public static void V_開始(int p_k長)
         {
             lock (_錠)
@@ -88,9 +78,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_次点の支持"></param>
         /// <param name="p_首位の生支持数"></param>
         /// <param name="p_安定ID">再実行や ID 採番替えをまたいで同じ箇所を追跡するための ID、無ければ空</param>
-        /// <remarks>
-        /// 確信度は独立な支持本数を飽和関数に通した値で、同じ種類の証拠がいくら積み上がっても 1 に近づくだけになる
-        /// </remarks>
         public static void V_記録(曖昧箇所の種別 p_種別, string p_場所, double p_首位の支持 = 0D, double p_次点の支持 = 0D, long p_首位の生支持数 = 0L, string p_安定ID = "")
         {
             lock (_錠)
@@ -109,9 +96,6 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_左アンカー">左側の足場配列</param>
         /// <param name="p_右アンカー">右側の足場配列</param>
-        /// <remarks>
-        /// contig ID や座標は再実行のたびに振り直されうるが、アンカー配列そのものは変わらない限り同じ ID になる
-        /// </remarks>
         /// <returns>16 文字の16進ID</returns>
         public static string Get_安定ID(string p_左アンカー, string p_右アンカー)
         {
@@ -135,9 +119,6 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_作業ディレクトリ"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 再開でこの k を飛ばしたときに、決めきれなかった箇所だけが失われてレポートが実態より綺麗に見えるのを防ぐ
-        /// </remarks>
         public static void V_保存(string p_作業ディレクトリ, int p_k長)
         {
             File.WriteAllText(Path.Combine(p_作業ディレクトリ, 保存ファイル名), Get_行群(Get_記録(p_k長)));
@@ -174,9 +155,6 @@ namespace Tsumiki.Cores.Evaluation
         /// その k で書き留めた箇所の一覧
         /// </summary>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 記録が無ければ空
-        /// </remarks>
         /// <returns></returns>
         public static IReadOnlyList<曖昧箇所> Get_記録(int p_k長)
         {

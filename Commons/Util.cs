@@ -78,10 +78,6 @@
         /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する (Booth のアルゴリズム、O (n))
         /// </summary>
         /// <param name="p_配列"></param>
-        /// <remarks>
-        /// 環状に閉じた contig は開始位置が任意 (walk がどこから始まったかの産物でしかない) <br/>
-        /// 決定的な基準を置かないと、同じ環状配列でも実行のたびに (あるいは同じ実行内でも walk の起点が変われば) 別の文字列として出力され、下流の比較や再現性を損なう
-        /// </remarks>
         /// <returns></returns>
         public static string Get_最小回転(string p_配列)
         {
@@ -97,11 +93,6 @@
         /// 曖昧塩基が混入しうる文字列向けの逆相補
         /// </summary>
         /// <param name="p_配列"></param>
-        /// <remarks>
-        /// A/C/G/T 以外は位置だけ反転して通す<br/>
-        /// unitig/contig には使わないこと<br/>
-        /// そちらは V_逆相補 (string) を使い、想定外の文字を例外で早期検知する
-        /// </remarks>
         /// <returns></returns>
         public static string V_逆相補_曖昧塩基あり(string p_配列)
         {
@@ -117,9 +108,6 @@
         /// 塩基文字が曖昧 (A/C/G/T のいずれでもない IUPAC コード) かどうか
         /// </summary>
         /// <param name="p_塩基文字"></param>
-        /// <remarks>
-        /// 候補の中身ではなく個数だけが必要な場面で、List の確保を避ける
-        /// </remarks>
         /// <returns></returns>
         public static bool Is曖昧塩基(char p_塩基文字)
         {
@@ -135,10 +123,6 @@
         /// 単一の塩基文字を ID に変換する軽量版
         /// </summary>
         /// <param name="p_塩基文字"></param>
-        /// <remarks>
-        /// 曖昧塩基は一律 Consts.無効な塩基<br/>
-        /// List 確保を伴わないため、曖昧塩基を無視する経路ではこちらを使う
-        /// </remarks>
         /// <returns></returns>
         public static byte Get_塩基ID(char p_塩基文字)
         {
@@ -173,9 +157,6 @@
         /// 塩基 ID を 1 文字へ変換する
         /// </summary>
         /// <param name="p_塩基ID"></param>
-        /// <remarks>
-        /// 文字列を返す版は連結のたびに確保が起きるため、塩基列をまとめて文字列にする場面ではこちらを使う
-        /// </remarks>
         /// <returns></returns>
         public static char Get_塩基文字(byte p_塩基ID)
         {
@@ -203,11 +184,6 @@
         /// 曖昧塩基を無視する経路向けの軽量版
         /// </summary>
         /// <param name="p_リード"></param>
-        /// <remarks>
-        /// リードの各文字を 1 バイト ID に変換する<br/>
-        /// A/C/G/T 以外は Consts.無効な塩基 になる<br/>
-        /// V_変換_塩基候補列 と異なり LINQ ・ per-char の byte[] アロケーションを行わないため大幅に高速
-        /// </remarks>
         /// <returns></returns>
         public static byte[] V_変換_塩基列(string p_リード)
         {
@@ -233,9 +209,6 @@
         /// "2G" / "512M" / "2048" のようなサイズ指定をバイト数に変換する
         /// </summary>
         /// <param name="p_表記"></param>
-        /// <remarks>
-        /// 接尾辞は 2 進接頭辞 (1 K = 1024)、接尾辞が無い場合は MB とみなす
-        /// </remarks>
         /// <returns></returns>
         public static long V_変換_メモリサイズ(string p_表記)
         {
@@ -245,13 +218,12 @@
             }
 
             var l_本体 = p_表記.Trim();
-            // "2 GB" のように B が付いていても受け付ける
             if (l_本体.Length >= 2 && (l_本体[^1] is 'B' or 'b') && !char.IsDigit(l_本体[^2]))
             {
                 l_本体 = l_本体[..^1];
             }
 
-            var l_倍率 = 1_024L * 1_024L; // 接尾辞なしは MB
+            var l_倍率 = 1_024L * 1_024L;
             switch (l_本体[^1])
             {
                 case 'K' or 'k':
@@ -305,13 +277,9 @@
         /// FASTQ のリード ID から、ペア判定に使うための「ベース部分」を取り出す
         /// </summary>
         /// <param name="p_ID"></param>
-        /// <remarks>
-        /// 対応する例:"@READ001/1"                       -> "@READ001""@READ001/2"                       -> "@READ001""@INST:RUN:FLOWCELL:1:1:1:1 1:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1""@INST:RUN:FLOWCELL:1:1:1:1 2:N:0:1" -> "@INST:RUN:FLOWCELL:1:1:1:1"上記どちらの記法にも当てはまらない場合は ID をそのまま返す (この場合、呼び出し側で「ペアかどうか」の確証が得られないことに注意)
-        /// </remarks>
         /// <returns></returns>
         public static string Get_ペア共通ID(string p_ID)
         {
-            // Casava 1.8+ 形式: 空白区切りの後半が "1:..." または "2:..." で始まる
             var l_空白位置 = p_ID.IndexOf(' ');
             if (l_空白位置 >= 0 && l_空白位置 + 1 < p_ID.Length)
             {
@@ -322,13 +290,11 @@
                 }
             }
 
-            // 旧来の "/1", "/2" 形式
             if (p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2'))
             {
                 return p_ID[..^2];
             }
 
-            // "/A", "/B" のような表記に対応する亜種も一応見ておく
             return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
         }
 
@@ -425,9 +391,6 @@
         /// Booth のアルゴリズム
         /// </summary>
         /// <param name="p_配列"></param>
-        /// <remarks>
-        /// p_配列 を 2 つ繋げた仮想文字列の上で KMP の失敗関数に似た配列を作りながら、最小回転の開始位置を求める
-        /// </remarks>
         /// <returns></returns>
         private static int Get_最小回転開始位置(string p_配列)
         {

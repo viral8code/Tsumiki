@@ -31,15 +31,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_tipカバレッジ比"></param>
         /// <param name="p_Is低カバレッジ端トリミング"></param>
-        /// <remarks>
-        /// カバレッジは全体の基準値ではなく、同じ接合点で競合する枝と比べる<br/>
-        /// GC の偏りでカバレッジが全体に低い領域では実配列も全体の基準値を大きく割り込み、比べる相手を誤ると正しい配列ごと消えてグラフが途切れる
-        /// </remarks>
         /// <returns></returns>
         public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true)
         {
-            // k がリード長の半分を超えると、k を基準にした閾値は実配列まで
-            // 巻き込むほど長くなるため min (k, リード長/2) を基準に取る
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(p_k長, l_リード長 / 2) : p_k長;
             var l_tip長閾値 = p_tip長閾値 ?? Math.Max(10 * l_基準長, p_リード長 ?? 0);
             var l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
@@ -62,12 +56,8 @@ namespace Tsumiki.Cores.UnitigBuilding
                     var l_先頭次数 = p_kmerインデックス.Get_入次数(l_塩基列.AsSpan(0, p_k長));
                     var l_末尾次数 = p_kmerインデックス.Get_出次数(l_塩基列.AsSpan(l_塩基列.Length - p_k長, p_k長));
 
-                    // 片方の端が行き止まり (そちら向きに続きがない) であれば tip の候補
-                    // 行き止まりであること自体は誤りの証拠にならず、カバレッジが切れた実配列でも同じ形になる
                     if (l_塩基列.Length < l_tip長閾値 && (l_先頭次数 == 0 || l_末尾次数 == 0))
                     {
-                        // k-mer スペクトルの混合モデルが「無条件に信頼してよい」と
-                        // 判定したカバレッジ以上なら、行き止まりに見えても除去しない
                         var l_信頼下限 = ConfigurationManager.A_スペクトルモデル?.A_信頼下限;
                         var l_Is無条件信頼 = l_信頼下限 is { } l_下限 && l_平均カバレッジ >= l_下限;
 
@@ -95,7 +85,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return l_開始kmer;
                 }
 
-                // k-mer 集合が縮小されたため、開始点を再検出してから次の反復へ
                 l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
             }
 
@@ -140,11 +129,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_先頭次数"></param>
         /// <param name="p_末尾次数"></param>
         /// <param name="p_基準値">全体の基準値</param>
-        /// <remarks>
-        /// エラー由来の枝は必ず正しい枝から分かれるので、繋がっている側の接合点に競合する枝を持つ<br/>
-        /// 競合する枝が無い行き止まりはカバレッジの切れ目で途切れた実配列なので、比べずに残す<br/>
-        /// 両端とも行き止まりの断片には接合点が無いため全体の基準値と比べる
-        /// </remarks>
         /// <returns>比べる相手のカバレッジ、除去の対象にしない場合は null</returns>
         private static double? Get_tip比較基準(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長, int p_先頭次数, int p_末尾次数, double p_基準値)
         {
@@ -163,10 +147,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_端kmer">接合点へ向かう向きにした端の k-mer</param>
-        /// <remarks>
-        /// 後続 k-mer の予測元は先頭の 1 塩基だけが違う k-mer なので、それらが合流先を共有する枝になる<br/>
-        /// 後続が無い端には合流する接合点が無い
-        /// </remarks>
         /// <returns>競合する枝が無ければ 0</returns>
         private static ulong Get_対抗カバレッジ(TrustedKmerIndex p_kmerインデックス, byte[] p_端kmer)
         {
@@ -198,11 +178,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_先頭次数"></param>
         /// <param name="p_末尾次数"></param>
-        /// <remarks>
-        /// 閾値は接合点で競合する枝、行き止まりの端では unitig 自身のカバレッジに比を掛けて決める<br/>
-        /// 競合する枝の無い接合点の端を削ると、繋がっていたグラフに行き止まりを作るだけになる<br/>
-        /// 先頭側と末尾側で除去範囲が重ならないよう互いの残り長で制限する
-        /// </remarks>
         /// <returns></returns>
         private static int Get_低カバレッジ端除去数(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長, double p_低カバレッジ比, int p_先頭次数, int p_末尾次数)
         {
@@ -246,9 +221,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_塩基列"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 削る候補の低い端に引きずられないよう平均ではなく中央値を使う
-        /// </remarks>
         /// <returns></returns>
         private static double Get_中央カバレッジ(TrustedKmerIndex p_kmerインデックス, byte[] p_塩基列, int p_k長)
         {
@@ -285,11 +257,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_unitig群"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 基準値の算出と tip 判定の両方が同じ値を使うため、まとめて 1 回だけ求める<br/>
-        /// 全 unitig の全 k-mer を引くので反復のたびに数百万回のハッシュ引きになる<br/>
-        /// 読み取りのみなので並列に行う
-        /// </remarks>
         /// <returns></returns>
         private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_Unitig情報(TrustedKmerIndex p_kmerインデックス, List<string> p_unitig群, int p_k長)
         {
@@ -308,9 +275,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 全 unitig の平均カバレッジの長さ加重中央値
         /// </summary>
         /// <param name="p_unitig群"></param>
-        /// <remarks>
-        /// 多数を占めうる短い断片 (エラー由来の tip/バブル候補そのもの) に引きずられず、ゲノムの大部分を占める正しい主経路のカバレッジ水準を推定するため、単純平均・単純中央値ではなく塩基数で重み付けした中央値を使う
-        /// </remarks>
         /// <returns></returns>
         private static double Get_長さ加重中央カバレッジ((byte[] A_塩基列, double A_平均カバレッジ)[] p_unitig群)
         {

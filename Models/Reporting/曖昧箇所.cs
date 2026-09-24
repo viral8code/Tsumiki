@@ -28,9 +28,6 @@
         /// <summary>
         /// 分岐元が多コピーで、いまどのコピーの上にいるのかを区別できなかった
         /// </summary>
-        /// <remarks>
-        /// 反復の内側から読まれたリードはどの行き先にも支持を付けるため、選ぶ根拠が原理的に存在しない
-        /// </remarks>
         反復の内側,
 
         /// <summary>
@@ -52,9 +49,6 @@
     /// <summary>
     /// 決めきれなかった 1 箇所の記録
     /// </summary>
-    /// <remarks>
-    /// N で埋めて黙って落とすと、後から人や別のツールが再解析するための手掛かりが残らない
-    /// </remarks>
     /// <param name="A_k長"></param>
     /// <param name="A_種別"></param>
     /// <param name="A_場所"></param>
@@ -70,9 +64,6 @@
         /// <summary>
         /// 首位と次点の差
         /// </summary>
-        /// <remarks>
-        /// これが小さいほど選ぶ根拠が薄い
-        /// </remarks>
         public double A_余裕 => this.A_首位の支持 - this.A_次点の支持;
 
         #endregion

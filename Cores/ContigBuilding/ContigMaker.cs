@@ -27,11 +27,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// 短い反復を解く対象にする unitig 長を決める、断片長分布の分位
         /// </summary>
-        /// <remarks>
-        /// 反復を跨ぐペアは断片長分布の上側にもいる<br/>
-        /// 中央値で打ち切ると、k-1 の重なりを含む unitig 長が中央値をわずかに超えるだけの短い反復まで対象から外れる<br/>
-        /// 跨ぐペアが少ない長さは、証拠数の閾値が見送らせる
-        /// </remarks>
         private const double 解ける反復長の分位 = 0.9D;
 
         /// <summary>
@@ -91,9 +86,6 @@ namespace Tsumiki.Core
                 this.V_マッピング_引き継ぎ経路(p_引き継ぎ経路群);
             }
 
-            // 隣接は de Bruijn グラフから厳密に導く (UnitigGraph の説明を参照)
-            // リードマッピング由来の隣接情報は「辺を作る」ためではなく、
-            // 分岐点でどの辺を選ぶかの「重み」としてのみ使う
             var l_グラフ = UnitigGraph.Get_グラフ(l_unitig配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
 
             var l_辺数 = 0;
@@ -113,24 +105,14 @@ namespace Tsumiki.Core
             var l_引き継ぎ経路索引 = this._引き継ぎ経路集計.Count > 0 ? ReadPathIndex.Get_索引(this._引き継ぎ経路集計) : null;
             Logger.V_出力(メッセージID.リード経路索引の件数, l_経路索引.A_経路数, l_引き継ぎ経路索引?.A_経路数 ?? 0);
 
-            // 跨げる見込みのある長さの上限
-            // フラグメント長の実測中央値を使う
-            // (これより長い反復は、そもそも両端を別々の unitig に載せたペアが存在しえない)
-            // 標本が無い場合は控えめな既定値
             var l_反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一unitig標本) : l_k長 * 4;
             var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], 解ける反復長の分位) : l_k長 * 4;
 
-            // 外してよい行き止まりの枝の長さは、k-mer 集合の tip 除去と同じ基準にする
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
 
             V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引);
 
-            // 支持を生カウントではなく期待本数との比で測るための較正器
-            // 短い辺には厳しすぎ、長い辺には緩すぎる固定閾値のバイアスを外す
-            // (較正器が使えない場合は生カウントへフォールバックし、挙動は従来と完全に一致する)
-            // 複数ライブラリでは最も短いリード長を採る
-            // 期待位置数は「リード長 > 断片長」で 0 になるので、長い側に合わせると短い側の証拠が消える
             var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
             var l_較正用リード長 = l_リード長群.Count > 1 && l_リード長群.All(x => x > 0) ? l_リード長群.Min() : p_リード長;
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, l_較正用リード長, this._unitig長.Values.Select(x => (long)x));
@@ -139,10 +121,6 @@ namespace Tsumiki.Core
             var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接), l_経路索引, l_引き継ぎ経路索引, l_経路で通す頂点, l_反復長の上限);
             var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数, l_unitig配列, l_経路で通す頂点);
 
-            // 1 歩だけを見る相互一意性の判定では決めきれなかった分岐を、
-            // 数 kb 先まで複数経路を並行して伸ばして (ビームサーチ) 解けるだけ解く
-            // 分岐の直後だけを見ると五分五分でも、少し先まで進めると片方だけが
-            // ペアエンドの証拠と整合する、という状況を拾える
             var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器, p_コピー数区間, l_経路索引);
 
             if (l_先読みで解決した数 > 0)
@@ -172,10 +150,6 @@ namespace Tsumiki.Core
         /// <returns></returns>
         private (Dictionary<(int, int), ulong> A_支持, Dictionary<(int, int), ulong> A_ペア連結) Get_辺重み(UnitigGraph p_グラフ)
         {
-            // リード由来の支持数を逆鎖対称に集計する
-            // 辺 v→w と w^1→v^1 は
-            // 同一の物理的な隣接を表すため、重みも同一でなければ順鎖側と
-            // 逆鎖側で異なる経路が選ばれ、同じ領域が 2 通りに組み立てられてしまう
             Dictionary<(int, int), ulong> l_支持 = [];
             foreach (var ((l_始点, l_終点), l_件数) in this._リード隣接)
             {
@@ -189,9 +163,6 @@ namespace Tsumiki.Core
                 l_支持[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_支持.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
             }
 
-            // 1 本のリードでは跨げない長さの反復も、フラグメント長なら跨げる
-            // 参照するのはグラフ上に実在する辺だけなので、隣接していない
-            // unitig 対がペア経路に入っていても選択には影響しない
             Dictionary<(int, int), ulong> l_ペア連結 = [];
             var l_ペア支持を足した数 = 0;
             foreach (var ((l_始点, l_終点), l_標本) in this.Get_全ライブラリのペア経路())
@@ -236,8 +207,6 @@ namespace Tsumiki.Core
             var l_外した枝数 = 0;
             for (var l_ラウンド = 1; l_ラウンド <= ラウンド数上限; l_ラウンド++)
             {
-                // 反復解決を先に行う
-                // 反復の頂点に行き止まりの枝が付いていると、枝を先に外した時点で入口と出口の対応を決める手掛かりが消え、別コピー同士が一本道で繋がる
                 var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
                 var l_今回の枝数 = p_グラフ.V_除去_行き止まり枝(p_unitig配列, p_枝長の上限);
@@ -309,14 +278,8 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                // 分岐元が多コピーだと、リード支持はどのコピー由来か区別できない
-                // 各コピーの続きが 1 頂点に集まるため支持が全ての行き先に付き、
-                // 行き先を選ぶ根拠にならない
-                // 正しい続きは反復の外側の
-                // 単一コピー領域からのペアエンドでしか決められない
                 if (p_コピー数 is not null && p_コピー数.GetValueOrDefault(v >> 1, 1) > 1)
                 {
-                    // ただし入口が一本道で単一コピーの頂点まで遡れるなら、そこから通り抜けたリードがコピーを区別する
                     if (Get_経路で一意な行き先(p_グラフ, p_経路索引, v, this._unitig配列, p_起点の最短長, p_コピー数, p_優勢閾値, p_最小証拠数) is { } l_経路先)
                     {
                         l_選択[v] = l_経路先;
@@ -340,9 +303,6 @@ namespace Tsumiki.Core
                     var l_件数 = p_支持.GetValueOrDefault((v, w));
                     var l_終点長 = this._unitig長.GetValueOrDefault(w >> 1, 0);
 
-                    // 較正器が使えない場合は生カウントをそのまま正規化値として扱う
-                    // これにより以下の判定式は較正器が無かった従来のロジックと
-                    // 完全に同じ結果になる
                     var l_正規化 = p_較正器.A_Is使用可能 ? p_較正器.Get_正規化済み支持(l_件数, l_始点長, l_終点長, p_ギャップ長: 0) : l_件数;
                     l_正規化合計 += l_正規化;
                     if (l_正規化 > l_最良の正規化)
@@ -367,8 +327,6 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                // この k 自身の read/pair 支持だけでは決められない場合に限り、
-                // 前段 k から引き継いだ経路を追加の判断材料にする
                 if (Get_経路で一意な行き先(p_グラフ, p_引き継ぎ経路索引, v, this._unitig配列, p_起点の最短長, p_コピー数, p_優勢閾値, 1UL) is { } l_引き継ぎ経路先)
                 {
                     l_選択[v] = l_引き継ぎ経路先;
@@ -376,7 +334,6 @@ namespace Tsumiki.Core
                     l_引き継ぎ経路で解決した数++;
                     continue;
                 }
-                // (支持で決着済みの分岐は、経路引き継ぎで上書きしない)
                 if (p_引き継ぎ隣接 is { Count: > 0 } && Get_引き継ぎで一意な行き先(v, l_出辺, p_引き継ぎ隣接) is { } l_引き継ぎ先)
                 {
                     l_選択[v] = l_引き継ぎ先;
@@ -384,7 +341,6 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                // 支持が足りないのか、上位が割れているのかで意味が違う
                 var l_種別 = l_最良の生本数 < p_最小証拠数 ? 曖昧箇所の種別.支持なし : 曖昧箇所の種別.僅差;
                 var l_場所 = AmbiguityRecorder.Get_場所名(v);
                 var l_首位の支持 = l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化;
@@ -415,11 +371,6 @@ namespace Tsumiki.Core
         /// <param name="p_コピー数"></param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
-        /// <remarks>
-        /// 分岐元へ入る辺が 1 本ずつの一本道で単一コピーの頂点まで遡れるなら、分岐元のどのコピーもその頂点を通って入ってくる<br/>
-        /// そこから通り抜けた並びの偏りは、コピー数の推定に頼らずに行き先を示す<br/>
-        /// 短い頂点はカバレッジのばらつきで反復を 1 コピーと推定しやすく、起点にすると別のコピーから来たリードまで数えてしまうため、長さを要求する
-        /// </remarks>
         /// <returns>決まらなければ null</returns>
         private static int? Get_経路で一意な行き先(UnitigGraph p_グラフ, ReadPathIndex? p_経路索引, int p_分岐元, IReadOnlyList<string> p_unitig配列, int p_起点の最短長, IReadOnlyDictionary<int, int>? p_コピー数, decimal p_優勢閾値, ulong p_最小証拠数)
         {
@@ -451,10 +402,6 @@ namespace Tsumiki.Core
         /// 符号付き unitig ID をキーに持つ隣接を、向き付き頂点番号をキーに持つ隣接へ変換する
         /// </summary>
         /// <param name="p_符号付きID隣接">V_マッピング_1リード が記録した、符号付き unitig ID の組をキーに持つ隣接</param>
-        /// <remarks>
-        /// V_マッピング_1リード は kmer 辞書がそのまま持つ符号付き ID (+ID=順鎖, -ID=逆鎖) で記録するが、
-        /// Get_辺選択 が扱う出辺は向き付き頂点番号 (2*ID+strand) なので、ここで変換してから使う
-        /// </remarks>
         /// <returns>向き付き頂点番号をキーに持つ隣接</returns>
         private static Dictionary<(int, int), ulong> Get_頂点番号キーへ変換(Dictionary<(int, int), ulong> p_符号付きID隣接)
         {
@@ -479,10 +426,6 @@ namespace Tsumiki.Core
         /// <param name="p_始点">分岐元の頂点</param>
         /// <param name="p_出辺">分岐元の候補一覧</param>
         /// <param name="p_引き継ぎ隣接">前段 k の確定経路が跨いだ unitig の組</param>
-        /// <remarks>
-        /// 複数の候補が引き継ぎからも支持される場合は、決められないので null を返す<br/>
-        /// (前段の異なる配列がそれぞれ違う候補を跨いでいた、等の矛盾を確定扱いしない)
-        /// </remarks>
         /// <returns>一意な行き先、決められなければ null</returns>
         private static int? Get_引き継ぎで一意な行き先(int p_始点, IReadOnlyList<int> p_出辺, IReadOnlyDictionary<(int, int), ulong> p_引き継ぎ隣接)
         {
@@ -510,9 +453,6 @@ namespace Tsumiki.Core
         /// <param name="p_コピー数"></param>
         /// <param name="p_unitig配列"></param>
         /// <param name="p_経路で通す頂点">入口が 1 本で、手前の単一コピーの頂点から通り抜けた並びで行き先を決めた頂点</param>
-        /// <remarks>
-        /// これを欠くと、同じ行き先を指す複数の unitig のうち先着だけが 結合され、残りが根拠なく千切れる
-        /// </remarks>
         /// <returns></returns>
         private static int[] Get_結合確定(UnitigGraph p_グラフ, int[] p_選択, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyList<string> p_unitig配列, IReadOnlySet<int>? p_経路で通す頂点 = null)
         {
@@ -528,10 +468,6 @@ namespace Tsumiki.Core
                     continue;
                 }
 
-                // 結合は逆鎖側と対で成立する
-                // 片側だけ許すと結合の対称性が
-                // 崩れ、walk の始点判定が壊れるため、
-                // どちらかが通り抜け不可なら対ごと採用しない
                 if (!p_グラフ.Is構造上一意な辺(v, l_終点) && ((!(p_経路で通す頂点?.Contains(v) ?? false) && !p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列)) || !p_グラフ.Is通過可能(p_コピー数, l_終点 ^ 1, p_unitig配列)))
                 {
                     l_反復通り抜けで棄却した数++;
@@ -541,11 +477,6 @@ namespace Tsumiki.Core
                 l_結合数++;
             }
 
-            // 分岐を 1 つも持たない環状の複製単位は、unitig 1 本の末尾が自分の
-            // 先頭へ戻るだけの形になる
-            // この自己ループはグラフの辺として持てないため、
-            // 他に出入りが無い孤立した頂点に限って結合として明示し、
-            // walk に環として閉じさせる (閉じないと重なりの k-1 塩基が余分に残り、環状であることも分からないまま線状の断片になる)
             var l_孤立した環の数 = 0;
             foreach (var l_始点 in p_グラフ.A_自己ループ)
             {
@@ -581,10 +512,6 @@ namespace Tsumiki.Core
         /// <param name="p_contigパス">書き出し先</param>
         private void V_walk実行してFASTA書き出し(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, int p_重なり長, string p_contigパス)
         {
-            // 双子 (v と v^1) は同一 unitig の裏表なので、unitig 単位で訪問済みを管理する
-            // これを頂点単位でやっていたため、順鎖側の walk と逆鎖側の
-            // walk が同じ unitig を別々に出力し、contig 総長が unitig 総長の
-            // ちょうど 2 倍に膨れていた
             var l_unitig数 = (p_unitig配列.Count - 2) >> 1;
             var l_訪問済み = new bool[l_unitig数 + 1];
 
@@ -592,8 +519,6 @@ namespace Tsumiki.Core
             List<List<int>> l_walk順群 = [];
             List<bool> l_環状フラグ群 = [];
 
-            // 結合グラフ上で「入ってくる結合を持たない」頂点が経路の始点
-            // v への結合が存在することは、逆鎖対称性より 結合[v^1] != -1 と同値
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
                 if (p_結合[v ^ 1] != -1 || l_訪問済み[v >> 1])
@@ -603,7 +528,6 @@ namespace Tsumiki.Core
                 V_実行_walk(p_unitig配列, p_結合, l_訪問済み, p_重なり長, v, l_contig群, l_walk順群, l_環状フラグ群);
             }
 
-            // 始点を持たない=循環している経路を拾う (環状ゲノム/プラスミド等)
             for (var v = 2; v < p_グラフ.A_出辺.Count; v += 2)
             {
                 if (l_訪問済み[v >> 1])
@@ -623,37 +547,22 @@ namespace Tsumiki.Core
                 var l_逆相補 = Util.V_逆相補(l_contig);
                 var l_Is逆相補採用 = string.CompareOrdinal(l_contig, l_逆相補) > 0;
 
-                // 環状に閉じた contig は、その複製単位 (染色体・プラスミド) を
-                // 完全に組み上げられたことを意味するため、名前に明示する
-                // 閉じていても、複製単位と呼べる長さが無ければ目印は付けない
-                // ホモポリマー由来の 1 bp の閉路まで環状のレプリコンとして数えると、
-                // 候補選択も完全性の判定もその雑音に従ってしまう
                 var l_Is複製単位 = l_環状フラグ群[c] && l_contig群[c].Length >= Consts.環状として数える最小長;
                 var l_名前 = l_Is複製単位 ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
                 var l_出力配列 = l_Is逆相補採用 ? l_逆相補 : l_contig;
 
                 if (l_環状フラグ群[c])
                 {
-                    // 環状配列は開始位置が任意 (walk がどこから始まったかの
-                    // 産物でしかない)
-                    // 下流の比較・再現性のため、辞書式順序で
-                    // 最小になる回転へ正規化する (鎖の向きは上の比較で既に
-                    // 決めているため、ここでは回転のみ
-                    // 鎖の選択まで変えると
-                    // 下の unitig 配置 (逆相補か) の記録と食い違う)
                     l_出力配列 = Util.Get_最小回転(l_出力配列);
                 }
                 l_書き込み.V_書き込み(l_名前, l_出力配列);
 
-                // 持ち越す配列は逆相補で出力されることがあるので両向きで持つ
                 foreach (var l_辺 in Get_分岐の継ぎ目(p_グラフ, p_unitig配列, l_walk順, p_重なり長 + 1))
                 {
                     _ = this.A_分岐の継ぎ目.Add(l_辺);
                     _ = this.A_分岐の継ぎ目.Add(Util.V_逆相補(l_辺));
                 }
 
-                // 逆相補を採用した場合、出力配列は walk 順と逆向きになる
-                // 位置 (先頭/末尾) の解釈は Scaffolder 側で反転させる
                 for (var w = 0; w < l_walk順.Count; w++)
                 {
                     var l_頂点番号 = l_walk順[w];

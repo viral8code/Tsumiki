@@ -17,9 +17,6 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// リードの置き場所を探す種にする長さ
         /// </summary>
-        /// <remarks>
-        /// 短いほど反復配列で曖昧になり、長いほどエラーを 1 つ含んだだけで種が潰れる
-        /// </remarks>
         private const int シード長 = 21;
 
         /// <summary>
@@ -35,9 +32,6 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// 置換を認めるのに必要な、対立塩基の占有率
         /// </summary>
-        /// <remarks>
-        /// 元の塩基が少数派というだけでは足りず、対立塩基が明確に多数派でなければ動かさない
-        /// </remarks>
         private const double 訂正に必要な占有率 = 0.7D;
 
         /// <summary>
@@ -48,9 +42,6 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// 深度のヒストグラムを取る上限
         /// </summary>
-        /// <remarks>
-        /// これ以上は同じ枠に入れる
-        /// </remarks>
         private const int 深度ヒストグラムの上限 = 65_535;
 
         #endregion
@@ -64,9 +55,6 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_出力パス"></param>
         /// <param name="p_Is訂正">false なら配列を変更せず深度を再測定する</param>
-        /// <remarks>
-        /// 磨く対象が無い (配列が空、種が 1 つも取れない) 場合は null を返す
-        /// </remarks>
         /// <returns></returns>
         public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, string p_出力パス, bool p_Is訂正 = true)
         {
@@ -88,8 +76,6 @@ namespace Tsumiki.Cores.Polishing
                 return null;
             }
 
-            // 位置ごとの塩基の得票
-            // 塩基 ID は 1..4 なので (位置 * 4 + 塩基 ID - 1)
             var l_得票 = l_配列群.Select(x => new int[x.Length * 4]).ToArray();
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -151,11 +137,6 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_リード"></param>
         /// <param name="p_マッパー"></param>
         /// <param name="p_得票"></param>
-        /// <remarks>
-        /// 置けたら true<br/>
-        /// 得票は複数のワーカーが同じ配列を触るため Interlocked で足す<br/>
-        /// 加算は順序に依らないので、並列でも結果は毎回同じになる
-        /// </remarks>
         /// <returns></returns>
         private static bool Try集計_塩基票(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
         {
@@ -173,8 +154,6 @@ namespace Tsumiki.Cores.Polishing
                     continue;
                 }
 
-                // A_リード位置 は元のリードの向きでの添字なので、逆鎖に載ったリードは
-                // 参照と同じ向きにするため相補を取ってから投票する
                 if (l_配置.A_Is逆鎖)
                 {
                     l_塩基ID = Util.Get_相補塩基ID(l_塩基ID);
@@ -189,11 +168,6 @@ namespace Tsumiki.Cores.Polishing
         /// </summary>
         /// <param name="p_配列群"></param>
         /// <param name="p_得票"></param>
-        /// <remarks>
-        /// ヒストグラムから求めるのは、位置ごとの値をすべて並べるとゲノムサイズぶんの配列をもう 1 本持つことになるため<br/>
-        /// 深度 0 の位置を混ぜないのが要点<br/>
-        /// 混ぜると、覆われていない範囲が広いアセンブリほど中央値が 0 へ引き寄せられ、本来そこを咎めるはずの深度不足の判定が何も引っ掛けなくなる
-        /// </remarks>
         /// <returns></returns>
         private static double Get_深度中央値(List<char[]> p_配列群, int[][] p_得票)
         {
@@ -254,11 +228,6 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_深度不足数"></param>
         /// <param name="p_評価位置数"></param>
         /// <param name="p_Is訂正">置換を適用するか</param>
-        /// <remarks>
-        /// 併せて深度不足の位置を数える<br/>
-        /// N の位置は触らない<br/>
-        /// ギャップの長さは推定値であり、そこを塩基で埋めるのは多数決の仕事ではない
-        /// </remarks>
         /// <returns></returns>
         private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数, bool p_Is訂正)
         {

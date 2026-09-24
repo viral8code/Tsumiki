@@ -15,27 +15,16 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 引き継ぐ配列の最小長
         /// </summary>
-        /// <remarks>
-        /// 前段で短く切れた断片は連結の役に立たないうえ、エラー由来の残骸である可能性が相対的に高い
-        /// </remarks>
         private const int 引き継ぐ配列の最小長 = 500;
 
         /// <summary>
         /// 持ち越しの裏付けを確かめる r-mer の長さ
         /// </summary>
-        /// <remarks>
-        /// k+1 では足りない。反復の別コピーが繋がった継ぎ目でも、短い窓なら片方のコピーを読んだリードだけで真になる<br/>
-        /// リード長に収まり、偶然の一致がまず起きない長さとして 41 を使う
-        /// </remarks>
         internal const int 持ち越し検証のr長 = 41;
 
         /// <summary>
         /// 持ち越さないと判断する、未観測の窓の連続数
         /// </summary>
-        /// <remarks>
-        /// 低カバレッジでは未観測の窓が散発するため、1 つでも外すと本来の穴埋めまで消える<br/>
-        /// 周りのカバレッジとの比でも判定できそうに見えるが、内側が沈むのはカバレッジの谷だけでなく反復の別コピーへ乗り換えた偽の経路もそうなので、使えない
-        /// </remarks>
         internal const int 未観測の連続の下限 = 14;
 
         /// <summary>
@@ -55,9 +44,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長"></param>
         /// <param name="p_分岐の継ぎ目">その k で分岐のある継ぎ目を通った辺 ((k+1)-mer、両向き)、無ければ null</param>
         /// <param name="p_検証器">渡すと、リードで観測されていない r-mer が続く範囲を調べ、そこを持ち越しから外す</param>
-        /// <remarks>
-        /// k-mer インデックスが生きているうちにしか作れない
-        /// </remarks>
         /// <returns></returns>
         public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null, RepeatRMerVerifier? p_検証器 = null)
         {
@@ -129,9 +115,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_度数">渡すと、下限未満も含めた全ての連続を数える</param>
         /// <param name="p_配列名">度数の明細に残す配列の名前</param>
         /// <param name="p_カバレッジ">k-mer ごとのカバレッジ、渡すと連続の内側と前後の中央値を明細に残す</param>
-        /// <remarks>
-        /// 下限未満の分布も見えるように、全連続を一度拾ってから下限で絞る
-        /// </remarks>
         /// <returns>1 つも無ければ null</returns>
         internal static IReadOnlyList<(int A_開始, int A_終了)>? Get_未観測の連続範囲(string p_配列, RepeatRMerVerifier? p_検証器, IReadOnlyList<int>? p_継ぎ目位置 = null, int p_k長 = 0, 連続長の度数? p_度数 = null, string p_配列名 = "", int[]? p_カバレッジ = null)
         {
@@ -164,9 +147,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_連続">r-mer の窓の開始と終了</param>
         /// <param name="p_カバレッジ">k-mer ごとのカバレッジ、無ければ (0, 0)</param>
-        /// <remarks>
-        /// 未観測の連続がカバレッジの谷なのか、リードに無い経路なのかを後から調べるために残す
-        /// </remarks>
         /// <returns></returns>
         private static (int A_内側, int A_外側) Get_内外のカバレッジ((int A_開始, int A_終了) p_連続, int[]? p_カバレッジ)
         {
@@ -175,7 +155,6 @@ namespace Tsumiki.Cores.Preprocessing
                 return (0, 0);
             }
 
-            // k が r より長いと k-mer の窓は r-mer の窓より少ないので、連続の端が配列の外に出うる
             const int l_前後の幅 = 150;
             var l_長さ = p_カバレッジ.Length;
             var l_開始 = Math.Min(p_連続.A_開始, l_長さ - 1);
@@ -232,9 +211,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_引き継ぎ"></param>
         /// <param name="p_k長">足す先の k</param>
         /// <param name="p_最小値列">窓ごとの最小カバレッジ</param>
-        /// <remarks>
-        /// 範囲に少しでも掛かる k-mer を落とす。継ぎ目そのものを含む k-mer だけを外しても、その両隣から同じ経路が繋がる
-        /// </remarks>
         internal static void V_除外_未観測の範囲(引き継ぎ配列 p_引き継ぎ, int p_k長, Span<int> p_最小値列)
         {
             if (p_引き継ぎ.A_未観測の連続範囲 is not { Count: > 0 } l_範囲群)
@@ -284,10 +260,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 既にある k-mer は触らない (実際のリード由来の観測を優先する) <br/>
-        /// 戻り値は足した k-mer の数
-        /// </remarks>
         /// <returns></returns>
         public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
@@ -370,10 +342,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 集合に有るかの判定は読むだけなので配列ごとに並列に行い、足すのは配列の順に 1 本のスレッドで行う<br/>
-        /// 同じ k-mer を複数の配列が持つとき先に来た配列のカバレッジが残る点は、逐次に足した場合と変わらない
-        /// </remarks>
         /// <returns>足した k-mer の数</returns>
         private static int Get_追加数_パック値(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
@@ -407,8 +375,6 @@ namespace Tsumiki.Cores.Preprocessing
                     l_未登録群[i] = null;
                 }
 
-                // 合成リードを作ると引き継ぎ配列はリードペアの数まで増える
-                // 全 k-mer を足し終えるまで無言だと止まったように見える
                 if (l_件数 == l_バッチ長)
                 {
                     Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_開始 + l_件数, p_引き継ぎ配列.Count);
@@ -471,9 +437,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 足す順序は <see cref="Get_追加数_パック値"/> と同じく配列の順に 1 本のスレッドで保つ
-        /// </remarks>
         /// <returns>足した k-mer の数</returns>
         private static int Get_追加数_塩基列(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {

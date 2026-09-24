@@ -6,10 +6,6 @@ namespace Tsumiki.Commons
     /// <summary>
     /// メッセージ ID から表示用の文言を作る
     /// </summary>
-    /// <remarks>
-    /// 文言を呼び出し側に直接書かないのは、出す場所と訳す場所を分けるため<br/>
-    /// 書式は <see cref="MessageCatalog"/> が言語ごとに持ち、ここは現在の言語を選んで差し込むだけにする
-    /// </remarks>
     internal static class Messages
     {
         #region プロパティ

@@ -61,9 +61,6 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 重なりで繋いだ断片を書き出すファイル名
         /// </summary>
-        /// <remarks>
-        /// k をまたいで使い回すので、k ごとの作業ディレクトリではなく実行全体の一時ディレクトリに置く
-        /// </remarks>
         private const string 合成リードファイル名 = "fragments.fq";
 
         #endregion
@@ -82,16 +79,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_合成リードの控え"></param>
         /// <param name="p_原入力">反復検査に使う加工前の入力</param>
         /// <returns></returns>
-        /// <remarks>
-        /// unitig 数が上限を超えた場合は null<br/>
-        /// 生成物は k ごとの作業ディレクトリに置く<br/>
-        /// 最終的に採用したものだけを V_複製_最終成果物 が作業ディレクトリの直下へ複製する
-        /// </remarks>
         public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, int p_k長, string p_一時ディレクトリ, int? p_リード長, IReadOnlyList<引き継ぎ配列>? p_引き継ぎ = null, List<引き継ぎ配列>? p_次への引き継ぎ = null, List<引き継ぎ配列>? p_合成リードの控え = null, Parameters? p_原入力 = null)
         {
             using var l_計測 = new StageTimer($"assembly k={p_k長}");
-            // 以降の全処理は ConfigurationManager 経由で k 長を参照する
-            // 明示指定の印は立てない (自動選択された値のままとして扱う)
             if (p_引数.A_k長 != p_k長)
             {
                 p_引数.Set_推定k長(p_k長);
@@ -108,7 +98,6 @@ namespace Tsumiki.Cores.Pipeline
             var l_scaffoldパス = Path.Combine(l_作業ディレクトリ, Consts.Scaffoldファイル名);
             var l_GFAパス = Path.Combine(l_作業ディレクトリ, Consts.GFAファイル名);
 
-            // 再実行で今回生成されなかった前回の scaffold を採用しない
             if (File.Exists(l_scaffoldパス))
             {
                 File.Delete(l_scaffoldパス);
@@ -127,26 +116,17 @@ namespace Tsumiki.Cores.Pipeline
             {
                 KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
 
-                // 架橋が使うため、カットオフ未満でも 1 回きりではない k-mer は控えておく
                 l_kmerインデックス.V_適用_カットオフ(p_引数.A_kmerカットオフ, p_引数.A_Is救済kmer使用 ? LowCoverageBridger.控えの最小出現回数 : 0UL);
             }
 
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
 
-            // 救済はカットオフの直後に行う
-            // スペクトルを出し終えてからにするのは、
-            // 救済した k-mer を混ぜたヒストグラムがカバレッジ推定の材料に
-            // 使われないようにするため
             if (p_引数.A_Is救済kmer使用)
             {
                 Logger.V_出力(メッセージID.救済kmerの開始);
                 _ = MercyKmerRescuer.Get_救済数(p_引数, l_kmerインデックス, p_k長);
             }
 
-            // 引き継ぎはカットオフの後に行う
-            // カウントとカットオフを通常どおり
-            // 済ませてから足すことで、スペクトルが実データのまま保たれ、
-            // ゲノムサイズとカバレッジの推定が歪まない
             if (p_引き継ぎ is { Count: > 0 })
             {
                 Logger.V_出力(メッセージID.引き継ぎの統合開始, p_引き継ぎ.Count);
@@ -154,9 +134,6 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.引き継ぎで追加したkmer数, l_追加数);
             }
 
-            // 架橋は引き継ぎの後に行う
-            // 前段の k が既に通った配列で繋がる行き止まりへ、控えの k-mer から推した経路を持ち込まない
-            // tip 除去より前に行うのは、繋がる前の行き止まりが短い tip として消されるため
             if (p_引数.A_Is救済kmer使用)
             {
                 Logger.V_出力(メッセージID.低カバレッジ架橋開始);
@@ -169,9 +146,6 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力(メッセージID.tip除去開始);
 
-            // tip 除去は k-mer 集合を縮小するため、開始点はその後の状態で
-            // 数え直す必要がある
-            // 除去側が最終状態のものを返す
             List<byte[]> l_開始kmer;
             using (new StageTimer($"graph-simplify k={p_k長}"))
             {
@@ -194,12 +168,6 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.リードのマッピング開始);
             var l_contig構築 = new ContigMaker(l_unitigパス);
 
-            // 反復配列かどうかをグラフの形ではなく量的な根拠で判定するための
-            // コピー数推定
-            // k-mer インデックスが生きている今しか計算できない
-            // 接続構造 (排他的な鎖) による補正のため、ContigMaker が厳密な
-            // de Bruijn グラフから構築した隣接情報も使う (コピー数推定専用に
-            // 作る使い捨てのグラフで、V_結合_contig が後で作るものとは別)
             var l_unitig長 = l_unitig配列.ToDictionary(x => x.Key, x => x.Value.Length);
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_kmerインデックス, l_unitig配列, p_k長);
             var l_グラフ = l_contig構築.Get_グラフ();
@@ -220,16 +188,11 @@ namespace Tsumiki.Cores.Pipeline
                     }
                     else
                     {
-                        // ペアエンドの場合、read1/read2 を同時に読み進めて
-                        // インサートサイズによる隣接検出も行う
-                        // ライブラリ番号を渡すのは、既知長をそのライブラリの断片長分布で解釈させるため
                         Logger.V_出力(メッセージID.リードファイルのパス, A_リード2);
                         l_contig構築.V_マッピング_ペアリード(A_リード1, A_リード2, i);
                     }
                 }
 
-                // 重なりで繋いだ断片は、リードでは届かない接合点を跨げる観測そのもの
-                // k が上がるほどリード 1 本では接合点を跨げなくなるので、ここが分岐の証拠の主力になる
                 foreach (var l_パス in Get_断片パス群(l_断片パス, p_引数.A_ライブラリ数).Where(中間データ置き場.Is存在))
                 {
                     Logger.V_出力(メッセージID.リードファイルのパス, l_パス);
@@ -241,29 +204,13 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力(メッセージID.Unitig結合開始);
 
-            // careful_bubble: バブル除去で外れた側の配列も、この k では
-            // 敗者と判断しただけであって存在しないわけではない
-            // 捨てずに
-            // 次の k への引き継ぎ候補として集めておく
             List<string> l_バブル敗者 = [];
 
-            // 短い反復解決の拒否権 (r-mer 検証)
-            // 生リードを 1 回走査し、集計された
-            // ペア支持だけでは決めきれない「本当にその接合点を跨いだリードが
-            // あるか」を確かめる
-            // r はこの k の k-1 重なりより確実に長く
-            // 取らないと共有区間の内側に収まってしまい判定にならないため、
-            // k + 余剰分で決め、リード内に十分な窓を取れる場合に検証する
             RepeatRMerVerifier? l_r_mer検証器 = null;
             if (p_引数.A_Is反復rMer検証)
             {
                 var l_r長 = p_k長 + rMer長のk超過分の既定値;
 
-                // r は k より長くないと拒否権として働かない (窓が k-1 の共有区間に
-                // 収まってしまい常に真になる)
-                // 一方でリードから取れる窓の数は
-                // リード長 - r + 1 なので、r がリード長に近づくと r-mer の
-                // カバレッジが痩せて正しい経路まで棄却しはじめる
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
                 if (l_窓数 >= rMer検証に必要な窓数)
                 {
@@ -275,8 +222,6 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            // 前段 k の確定済み経路 (scaffold/contig 全体由来のものだけ、バブル敗者や合成リードは除く) を
-            // この k の分岐選択へ投影する (P2: multi-k を経路として機能させる)
             var l_引き継ぎ経路群 = p_引き継ぎ?.Where(x => x.A_Is確定経路).Select(x => x.A_配列).ToList();
             using (new StageTimer($"contig-join k={p_k長}"))
             {
@@ -287,8 +232,6 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
 
-            // scaffolding はペアエンド情報を前提とする
-            // インサートサイズが推定できず作られないこともある
             var l_IsScaffold作成済み = false;
 
             if (p_引数.Hasペア)
@@ -316,8 +259,6 @@ namespace Tsumiki.Cores.Pipeline
 
             AssemblyStatsReporter.V_出力_統計("scaffolds", l_scaffoldパス);
 
-            // contig が途切れる原因は配列の不在より分岐の未解決が多く、
-            // その場合ギャップを埋める配列はグラフ上に実在する
             Logger.V_出力(メッセージID.ギャップ充填開始);
             var l_ギャップ統計 = GapFiller.V_充填_ギャップ(l_scaffoldパス, l_kmerインデックス, p_k長);
             GapFiller.V_出力_充填統計(l_ギャップ統計);
@@ -326,8 +267,6 @@ namespace Tsumiki.Cores.Pipeline
                 AssemblyStatsReporter.V_出力_統計("scaffolds (gaps filled)", l_scaffoldパス);
             }
 
-            // GapFiller が埋めきれなかった残りを、その両端に実際にマップされた
-            // 局所リードだけの使い捨てミニアセンブリで埋める (-la、-mg の安全な代替)
             if (p_引数.A_Is局所アセンブリ)
             {
                 var l_局所統計 = LocalAssembler.V_充填_ギャップ(l_scaffoldパス, p_引数.A_ライブラリ群, p_k長);
@@ -355,11 +294,6 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_結果"></param>
         /// <param name="p_出力ディレクトリ"></param>
         /// <returns></returns>
-        /// <remarks>
-        /// k ごとの成果物は k のサブディレクトリに残したまま、利用者が受け取る 1 組だけを上へ出す<br/>
-        /// unitigs/contigs/scaffolds はここまでの各段階の出力で、最後に手が入る前の姿<br/>
-        /// 利用者が使うべき 1 本は assembly.fasta のほうになる
-        /// </remarks>
         public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
             V_複製(p_結果.A_unitigパス, Path.Combine(p_出力ディレクトリ, Unitigファイル名));
@@ -426,16 +360,8 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            // ここから次の k が始まるまでは出力の無い区間が続く
-            // 何をしている
-            // ところなのかが分からないと止まったように見えるため、区切りを出す
             Logger.V_出力(メッセージID.引き継ぎの準備開始);
 
-            // 前段 k のグラフで反復の別コピーが繋がった継ぎ目は、リードがその並びを一度も読んでいない
-            // 持ち越す前に r-mer で裏付けを確かめ、裏付けの無い範囲は足さない
-            // r は k に依らず固定にする (k を上げるほど r も伸ばすと、リードから取れる窓が足りなくなる)
-            // 問い合わせが来るのは持ち越し候補の配列の r-mer だけなので、登録もそこへ絞る
-            // (絞らないとリードのエラー由来まで抱え、集合がゲノムの数十倍に膨らむ)
             RepeatRMerVerifier? l_持ち越し検証器 = null;
             if ((p_リード長 ?? 0) - KmerCarryOver.持ち越し検証のr長 + 1 >= rMer検証に必要な窓数)
             {
@@ -465,14 +391,6 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            // 合成リードは最初の k で作ったものを以降の k でも使い回す
-            // 橋渡しはその k の信頼できる k-mer 集合を通るので k ごとに
-            // 作り直していたが、実データでは本数がほとんど動かなかった
-            // (7.4 Mbp ・ 170 x で 556,352 -> 557,761 -> 557,867 -> 558,026 -> 557,931)
-            // 一方で費用は k とともに増え、6 つの k の合計で実行時間の
-            // 3 分の 1 を占めていた
-            // 狙いは次の k のためにリードを実効的に
-            // 伸ばすことなので、最も繋がりやすい最小の k で 1 度作れば足りる
             if (p_合成リードの控え is { Count: > 0 })
             {
                 Logger.V_出力(メッセージID.合成リードを再利用, p_合成リードの控え.Count);
@@ -534,9 +452,6 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_基準パス">先頭ライブラリのパス</param>
         /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
-        /// <remarks>
-        /// 先頭だけ従来の名前にするのは、単一ライブラリの出力を変えないため
-        /// </remarks>
         /// <returns></returns>
         private static string Get_断片パス(string p_基準パス, int p_ライブラリ番号)
         {
@@ -583,16 +498,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_出力パス"></param>
         /// <param name="p_Is上限到達"></param>
         /// <returns></returns>
-        /// <remarks>
-        /// 同じ配列を順鎖・逆鎖の両方で出さないよう既出集合で弾く
-        /// </remarks>
         private static Dictionary<int, string> Get_Unitig(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_Is上限到達)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
 
-            // 分岐を 1 つも持たない閉路は開始点の条件を満たす k-mer を持たず、
-            // ここまでの走査から丸ごと漏れる
-            // 覆い残しを拾って足す
             var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(p_kmerインデックス, l_walk結果, p_k長);
             if (l_閉路の開始kmer.Count > 0)
             {

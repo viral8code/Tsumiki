@@ -51,9 +51,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_覆済み"></param>
         /// <param name="p_配列"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// k &lt;= 64 ではパック値を転がして作る (位置ごとに詰め直すと総延長 x k の手間になる)
-        /// </remarks>
         private static void V_記録_覆った範囲(正規形集合 p_覆済み, string p_配列, int p_k長)
         {
             if (p_配列.Length < p_k長)
@@ -100,11 +97,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 開始 k-mer から前進し、元へ戻ってくれば閉路として true を返す
         /// </summary>
-        /// <remarks>
-        /// 通った k-mer は覆済みに入れ、同じ閉路の別の k-mer から二度目の走査が始まらないようにする<br/>
-        /// 覆われずに残る k-mer は、どの開始点からも到達されない= 予測元を遡ると必ず輪になる、という性質を満たすものだけなので、途中で出次数が 1 でなくなることは無い<br/>
-        /// それでも念のため見るのは、上流の判定が変わったときに無限に回り続けないようにするため
-        /// </remarks>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_開始kmer"></param>
         /// <param name="p_k長"></param>
@@ -139,8 +131,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_次[^1] = l_次の塩基;
                 if (p_覆済み.Haskmer(l_次))
                 {
-                    // 既に通った所へ戻った
-                    // それが出発点なら 1 周できている
                     return 正規形集合.Is同一座位(l_次, p_開始kmer, p_k長);
                 }
                 l_次.CopyTo(l_現在, 0);

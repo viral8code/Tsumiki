@@ -192,9 +192,6 @@ namespace Tsumiki.IO
                 throw;
             }
 
-            // ヘルプ表示だけを求められている場合は、リードパスの必須チェックを行わない
-            // (以前は -h のみを指定してもここで「Please set read path」エラーになり
-            // ヘルプが表示できなかった)
             if (l_引数.A_Isヘルプモード || l_引数.A_Isバージョンモード)
             {
                 return l_引数;
@@ -212,7 +209,6 @@ namespace Tsumiki.IO
                 throw new ArgumentException("Please set read path");
             }
 
-            // 数が食い違ったまま進むと、どのリード 1 とどのリード 2 が対なのかが決まらない
             if (!l_引数.Isライブラリ数が一致)
             {
                 var l_例外 = new ArgumentException("-1 and -2 must list the same number of comma-separated libraries");
@@ -239,31 +235,24 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_指定済み">コマンドラインに書かれたキー</param>
         /// <param name="p_引数">組み立て済みの実行時引数</param>
-        /// <remarks>
-        /// どちらかを黙って優先すると、利用者は自分の指定が効いたと思ったまま別の条件で走らせることになるので、始める前に止める
-        /// </remarks>
         /// <returns>見つかれば理由、無ければ null</returns>
         internal static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
         {
-            // メモリに置くときは計数の途中結果もメモリに溜まるので、予算で外へ逃がす前提と食い違う
             if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算))
             {
                 return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget";
             }
 
-            // 再開の元になる中間ファイルがディスクに残らない
             if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開))
             {
                 return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from";
             }
 
-            // -k に複数書くのは「これらを試して選べ」という指定で、マルチ k を切る指定と両立しない
             if (p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1)
             {
                 return $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best";
             }
 
-            // 1 つの値を全ライブラリに当てると、インサートの違うライブラリの距離の前提が黙って壊れる
             return p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1
                 ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately"
                 : null;
@@ -321,9 +310,6 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_モード名"></param>
-        /// <remarks>
-        /// 個別に -pu/-pc を後ろに書けばそちらで上書きできる (通常の CLI 引数と同じく、後に書いたものが勝つ)
-        /// </remarks>
         private static void V_適用_積極性モード(Parameters p_引数, string p_モード名)
         {
             switch (p_モード名)

@@ -6,10 +6,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// 中間データ (前処理・訂正済みリード、断片、k-mer 計数の一時ファイル) を読み書きする口
     /// </summary>
-    /// <remarks>
-    /// オンメモリモードではパスをキーにしてメモリ上に置き、ディスクへは書かない<br/>
-    /// パスのまま受け渡す作りを変えずに済むよう、置き場に無いパスはそのままファイルとして扱う
-    /// </remarks>
     internal static class 中間データ置き場
     {
         #region 定数
@@ -17,9 +13,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 1 つの塊の大きさ
         /// </summary>
-        /// <remarks>
-        /// 1 本の配列に詰めると 2 GB を超えるデータを持てないので、塊に分けて繋ぐ
-        /// </remarks>
         private const int 塊の大きさ = 16 << 20;
 
         /// <summary>
@@ -49,9 +42,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 取り込んだ入力のキー
         /// </summary>
-        /// <remarks>
-        /// 利用者のファイルなので、置き場から消した後もディスク上のものは消さない
-        /// </remarks>
         private static readonly ConcurrentDictionary<string, byte> _取り込み済み = new(パスの比較);
 
         #endregion
@@ -94,10 +84,6 @@ namespace Tsumiki.Utilities
         /// ディスク上のファイルを置き場へ写す
         /// </summary>
         /// <param name="p_パス">写すファイル</param>
-        /// <remarks>
-        /// 入力リードは工程ごとに何度も読み直されるので、メモリに置くときは最初に 1 回だけ読む<br/>
-        /// 写した後もディスク上のファイルには触らない (削除しても置き場から消えるだけ)
-        /// </remarks>
         public static void V_取り込み(string p_パス)
         {
             if (!A_Is有効 || _置き場.ContainsKey(Get_キー(p_パス)))
@@ -170,9 +156,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 置き場を空にする
         /// </summary>
-        /// <remarks>
-        /// プロセス全体で共有する置き場なので、テストの間で中身を持ち越さないために使う
-        /// </remarks>
         public static void V_消去()
         {
             _置き場.Clear();
@@ -212,9 +195,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 展開後の読み書きの量を数え、長さと位置を答える
         /// </summary>
-        /// <remarks>
-        /// 圧縮ストリームは長さも位置も持たないが、呼び出し側には位置と長さで終端を判定するものがある
-        /// </remarks>
         private sealed class 計数ストリーム : Stream
         {
             #region 内部変数
@@ -338,9 +318,6 @@ namespace Tsumiki.Utilities
             /// 包んでいるストリームを閉じてから、展開後の長さを渡す
             /// </summary>
             /// <param name="p_Is明示">Dispose から呼ばれたか</param>
-            /// <remarks>
-            /// 圧縮ストリームは閉じたときに最後の塊を書き出すので、長さを渡すのはその後でなければならない
-            /// </remarks>
             protected override void Dispose(bool p_Is明示)
             {
                 if (!this._Is確定済み)

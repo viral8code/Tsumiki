@@ -3,9 +3,6 @@
     /// <summary>
     /// アセンブリ上の、どのリードにも現れない r-mer が連なっている区間
     /// </summary>
-    /// <remarks>
-    /// 位置は 1 始まり・両端を含む
-    /// </remarks>
     /// <param name="A_配列ID"></param>
     /// <param name="A_開始"></param>
     /// <param name="A_終了"></param>

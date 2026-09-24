@@ -3,9 +3,6 @@
     /// <summary>
     /// アセンブリ結果 (unitigs/contigs/scaffolds) の品質を大まかに把握するための基本統計量
     /// </summary>
-    /// <remarks>
-    /// リファレンスなしで計算できる範囲の指標のみを対象とする
-    /// </remarks>
     /// <param name="A_配列数"></param>
     /// <param name="A_総延長"></param>
     /// <param name="A_最大長"></param>

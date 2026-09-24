@@ -16,10 +16,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 先読みで進む塩基数の上限
         /// </summary>
-        /// <remarks>
-        /// 長くするほど遠くの証拠を使えるが、探索が広がるうえ、遠いほどペアエンドの証拠は届かなくなる<br/>
-        /// インサートサイズの数倍あれば、跨げる範囲は使い切れる
-        /// </remarks>
         private const int 先読み倍率 = 4;
 
         /// <summary>
@@ -44,10 +40,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 結合が未確定 (-1) の頂点について、先読みで続きを決められるものを決める
         /// </summary>
-        /// <remarks>
-        /// 結合の配列を直接書き換える<br/>
-        /// 戻り値は新たに確定した結合の数 (有向、双子ぶんを含む)
-        /// </remarks>
         /// <param name="p_グラフ"></param>
         /// <param name="p_unitig配列"></param>
         /// <param name="p_結合"></param>
@@ -90,10 +82,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_足場 = Get_足場(v, p_unitig配列, p_結合, p_インサートサイズ, p_コピー数);
                 if (l_足場.Count == 0)
                 {
-                    // 単一コピーの足場が 1 つも取れない = いま反復配列の上にいて、
-                    // どのコピーにいるのか分からない
-                    // この状態で進む方向を選ぶ
-                    // 根拠は原理的に存在しない
                     continue;
                 }
 
@@ -108,18 +96,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                // 相互一意性は保ったままにする
-                // 行き先に既に別の結合が
-                // 入っている場合は、そちらを壊してまで繋がない
                 if (p_結合[l_選択 ^ 1] != -1 || p_結合[l_選択] == (v ^ 1))
                 {
                     continue;
                 }
 
-                // 解きほぐされていない多コピーの反復を通り抜ける結合は作らない
-                // A-R-B-R-C という構造で A→R と R→C はどちらも本物の隣接だが、
-                // R を 1 回しか使えない walk でこれを連鎖させると中間の B が
-                // 飛ばされる (詳細は ContigMaker 側の同名の判定を参照)
                 if (!p_グラフ.Is構造上一意な辺(v, l_選択) && (!p_グラフ.Is通過可能(p_コピー数, v, p_unitig配列) || !p_グラフ.Is通過可能(p_コピー数, l_選択 ^ 1, p_unitig配列)))
                 {
                     continue;
@@ -136,9 +117,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 足場群から候補頂点への支持を集計する
         /// </summary>
-        /// <remarks>
-        /// 生カウントの合計 (足切り判定用) と、較正器が使える場合は期待本数との比の合計 (ランキング・優勢判定用、較正器が使えない場合は生カウントと同じ値) を両方返す
-        /// </remarks>
         /// <param name="p_足場"></param>
         /// <param name="p_候補"></param>
         /// <param name="p_unitig配列"></param>
@@ -178,9 +156,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_起点の最短長">起点にする単一コピーの頂点に要る配列長</param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
-        /// <remarks>
-        /// 短い頂点はカバレッジのばらつきで反復を 1 コピーと推定しやすく、起点にすると別のコピーから来たリードまで数えてしまうため、長さを要求する
-        /// </remarks>
         /// <returns>決まらなければ null</returns>
         private static int? Get_経路で優勢な1歩(ReadPathIndex? p_経路索引, UnitigGraph p_グラフ, List<string> p_unitig配列, int p_分岐元, int[] p_結合, IReadOnlyDictionary<int, int> p_コピー数, int p_起点の最短長, decimal p_優勢閾値, ulong p_最小証拠数)
         {
@@ -220,10 +195,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_unitigID"></param>
         /// <param name="p_コピー数">点推定</param>
         /// <param name="p_コピー数区間">観測された分散を踏まえた区間、無ければ点推定をそのまま予算にする</param>
-        /// <remarks>
-        /// 区間の上限を使うのは、点推定の誤りで真に複数回通るべき反復の経路を早期に打ち切らないため<br/>
-        /// (分岐選択やscaffold足場の判定のような保守的であるべき場面では、引き続き点推定を使う)
-        /// </remarks>
         /// <returns></returns>
         private static int Get_通行予算(int p_unitigID, IReadOnlyDictionary<int, int> p_コピー数, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間)
         {
@@ -279,9 +250,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 分岐元からの各候補について先読みし、最初の 1 歩として最も支持される頂点を返す
         /// </summary>
-        /// <remarks>
-        /// 決めきれない場合は null
-        /// </remarks>
         /// <param name="p_グラフ"></param>
         /// <param name="p_unitig配列"></param>
         /// <param name="p_分岐元"></param>
@@ -312,7 +280,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 return null;
             }
 
-            // 最初の 1 歩ごとの最良スコア (正規化値と、それに対応する生カウント) を追跡する
             Dictionary<int, (double A_正規化, long A_生)> l_1歩ごとの最良 = [];
             foreach (var l_状態 in l_ビーム)
             {
@@ -335,8 +302,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                         var l_予算 = Get_通行予算(l_unitigID, p_コピー数, p_コピー数区間);
                         if (l_状態.A_使用回数.GetValueOrDefault(l_unitigID) >= l_予算)
                         {
-                            // 予算切れ
-                            // 反復を何度も通って架空の経路を作らないようにする
                             continue;
                         }
                         var l_使用回数 = new Dictionary<int, int>(l_状態.A_使用回数);
@@ -364,9 +329,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
             }
 
-            // 生きたビームが残ったままステップ数上限に達した場合、まだ伸ばせたはずの経路を
-            // 途中で切っただけであり、証拠が無い/割れているとは意味が違う
-            // (探索打切りは到達不能ではない)
             var l_打ち切りにより終了 = l_ステップ >= 経路あたりの最大ステップ数 && l_ビーム.Count > 0;
 
             var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
@@ -374,8 +336,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0D;
             if ((ulong)Math.Max(0L, l_首位.Value.A_生) < p_最小証拠数)
             {
-                // どの枝にもペアエンドの支持が無い
-                // 根拠が無いので繋がない
                 AmbiguityRecorder.V_記録(l_打ち切りにより終了 ? 曖昧箇所の種別.探索打切り : 曖昧箇所の種別.支持なし, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
@@ -383,8 +343,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_合計 = l_順位.Sum(x => Math.Max(0D, x.Value.A_正規化));
             if (l_合計 <= 0D || (decimal)(l_首位.Value.A_正規化 / l_合計) < p_優勢閾値)
             {
-                // 上位が割れている
-                // 僅差で選ぶくらいなら繋がないほうがよい
                 AmbiguityRecorder.V_記録(l_打ち切りにより終了 ? 曖昧箇所の種別.探索打切り : 曖昧箇所の種別.僅差, AmbiguityRecorder.Get_場所名(p_分岐元), l_首位.Value.A_正規化, l_次点, l_首位.Value.A_生);
                 return null;
             }
@@ -395,9 +353,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 最初の 1 歩ごとの最良スコアを更新する
         /// </summary>
-        /// <remarks>
-        /// 正規化スコアが同点になりうる (較正器が無い場合は生カウントと一致する) ため、比較は正規化スコアで行い、対応する生カウントも一緒に持ち替える
-        /// </remarks>
         /// <param name="p_1歩ごとの最良"></param>
         /// <param name="p_状態"></param>
         private static void V_更新_各歩最良(Dictionary<int, (double A_正規化, long A_生)> p_1歩ごとの最良, 先読み探索状態 p_状態)

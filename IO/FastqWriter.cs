@@ -25,10 +25,6 @@ namespace Tsumiki.IO
         /// <param name="p_ID"></param>
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
-        /// <remarks>
-        /// p_ID は先頭の "@" を含む形で渡すこと<br/>
-        /// (FastqReader.Get_次のリード () .A_ID がそのまま使える)
-        /// </remarks>
         public void V_書き込み(string p_ID, string p_配列, string p_クオリティ)
         {
             this._書き込み.WriteLine(p_ID);

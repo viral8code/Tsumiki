@@ -17,10 +17,6 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_グラフ"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_コピー数"></param>
-        /// <remarks>
-        /// 頂点は unitig ID (1 始まり) の順鎖/逆鎖のペアで表現されているため、各物理的な隣接は双子の辺として 2 回現れる<br/>
-        /// 片方だけを 1 本の L 行として出す
-        /// </remarks>
         public static void V_出力(string p_パス, List<string> p_unitig配列, UnitigGraph p_グラフ, int p_k長, IReadOnlyDictionary<int, int>? p_コピー数 = null)
         {
             var l_重なり長 = Math.Max(0, p_k長 - 1);
@@ -31,15 +27,13 @@ namespace Tsumiki.Cores.Output
 
             for (var l_ID = 1; l_ID <= l_unitig数; l_ID++)
             {
-                var l_配列 = p_unitig配列[l_ID << 1]; // 順鎖側
+                var l_配列 = p_unitig配列[l_ID << 1];
                 var l_深度タグ = p_コピー数 is not null && p_コピー数.TryGetValue(l_ID, out var l_コピー数値)
                     ? $"\tCN:i:{l_コピー数値}"
                     : string.Empty;
                 l_書き込み.WriteLine($"S\t{l_ID}\t{l_配列}\tLN:i:{l_配列.Length}{l_深度タグ}");
             }
 
-            // 同じ物理的隣接が v→w と w^1→v^1 の双子として 2 回現れるため、
-            // 片方を出したらもう片方は出さない
             HashSet<(int, int)> l_出力済み = [];
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {

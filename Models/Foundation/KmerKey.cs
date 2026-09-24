@@ -56,15 +56,7 @@ namespace Tsumiki.Models.Foundation
             {
                 var l_要素位置 = i >> 5;
                 var l_シフト量 = (31 ^ (i & 31)) << 1;
-                // Get_塩基 ID 候補 は曖昧塩基対応のため List を確保するが、
-                // ContigMaker 側では曖昧塩基を含む区間はそもそも KmerKey 化されない
-                // (呼ばれない) ため、ここでは List 確保のない軽量な単一塩基変換で十分
                 var l_値 = Util.Get_塩基ID(p_kmer[i]) - 1UL;
-                // 32 塩基ごとに同じ ulong 要素 (2 bit x 32 = 64 bit) を共有するため、
-                // 代入ではなく OR で詰め込まないと、直前までに書き込んだ
-                // 塩基の情報が上書きで消えてしまう
-                // (この不具合により、同じ ulong 要素に収まる k-mer 同士が
-                // 実質「末尾の数文字だけで同一視される」形になっていた)
                 if (this._長いパック済みデータ is not null)
                 {
                     this._長いパック済みデータ[l_要素位置] |= l_値 << l_シフト量;
@@ -84,9 +76,6 @@ namespace Tsumiki.Models.Foundation
         /// 塩基 ID (1=A,2=C,3=G,4=T) のバイト列から直接構築する版
         /// </summary>
         /// <param name="p_kmer">パックする塩基 ID 列</param>
-        /// <remarks>
-        /// UnitigMaker/TrustedKmerIndex はバイト ID 空間で動作しているため、char 経由の変換を挟まずに済む (ホットパス向け)
-        /// </remarks>
         public KmerKey(ReadOnlySpan<byte> p_kmer)
         {
             this._長さ = p_kmer.Length;
@@ -118,10 +107,6 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         /// <param name="p_長さ">塩基数</param>
         /// <param name="p_パック済みデータ">塩基を先頭から 2 bit ずつ上位側へ詰めた語、複製せずに参照する</param>
-        /// <remarks>
-        /// 1 塩基ずつ更新する窓の作業領域を引くためだけに使う<br/>
-        /// 辞書へ入れるなど窓の更新より長く持つときは <see cref="Get_複製"/> を使う
-        /// </remarks>
         public KmerKey(int p_長さ, ulong[] p_パック済みデータ)
         {
             this._長さ = p_長さ;
@@ -146,9 +131,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// この k-mer とその逆相補のうち、パック済みデータを辞書式順序で比較して小さい方を返す
         /// </summary>
-        /// <remarks>
-        /// 挿入時・検索時の双方でこれを使えば、順鎖/逆鎖どちらから見ても同一のキーに正規化されるため、逆相補を別途リトライする必要がなくなる
-        /// </remarks>
         /// <returns></returns>
         public KmerKey Get_正規形()
         {
@@ -159,10 +141,6 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 塩基 ID 列へデコードしてから逆相補を取り、再エンコードする
         /// </summary>
-        /// <remarks>
-        /// 64 bit 全体のビット反転で済ませてはいけない<br/>
-        /// 2 bit コドン内部のビット順まで入れ替わり、C (01) と G (10) のような塩基で値が化ける
-        /// </remarks>
         /// <returns></returns>
         public KmerKey Get_逆相補()
         {

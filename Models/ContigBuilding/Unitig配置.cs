@@ -3,10 +3,6 @@
     /// <summary>
     /// V_結合_contig が unitig を結合して contig を作る際、各 unitig が最終的にどの contig の中に、どの向きで、どこに位置したかを表す
     /// </summary>
-    /// <remarks>
-    /// Scaffolder はこれを使って「unitig 単位のペアエンド隣接候補」を「contig 単位の scaffolding 候補」へ変換する<br/>
-    /// contigs.fasta に書き出される配列は、内部的に walk した向き (Forward) そのままの場合と、辞書順で正規化するために逆相補を取った場合 (Reverse) があるため、その正規化情報も保持する
-    /// </remarks>
     /// <param name="p_contigID"></param>
     /// <param name="p_IsContig逆相補"></param>
     /// <param name="p_walk順の位置"></param>

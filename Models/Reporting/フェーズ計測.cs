@@ -10,10 +10,5 @@
     /// <param name="A_ワーキングセットMB"></param>
     /// <param name="A_ピークワーキングセットMB"></param>
     /// <param name="A_世代2回収回数"></param>
-    /// <remarks>
-    /// A_ピークワーキングセットMBはプロセス開始からの最大値 (OS が保持する単調増加値) であり、
-    /// この区間だけに限定した値ではない<br/>
-    /// 区間終了時点でこの値が伸びていれば、その増分はこの区間中に起きたと分かる
-    /// </remarks>
     internal readonly record struct フェーズ計測(string A_工程, double A_経過秒, double A_CPU秒, double A_確保MB, double A_ワーキングセットMB, double A_ピークワーキングセットMB, int A_世代2回収回数);
 }

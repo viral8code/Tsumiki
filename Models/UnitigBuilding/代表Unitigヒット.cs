@@ -23,10 +23,6 @@
         /// <summary>
         /// マップ先 unitig ID
         /// </summary>
-        /// <remarks>
-        /// 正=unitig の順鎖として一致、負=逆鎖として一致<br/>
-        /// 0 はヒットなしを表す
-        /// </remarks>
         public readonly int A_unitigID = p_unitigID;
 
         /// <summary>
@@ -37,9 +33,6 @@
         /// <summary>
         /// unitig の向きに揃えた最後の一致 k-mer の終端位置 (末尾の添字 + 1)
         /// </summary>
-        /// <remarks>
-        /// この値を unitig 先頭からの既知長として使う
-        /// </remarks>
         public readonly int A_最終一致終端位置 = p_最終一致終端位置;
 
         /// <summary>
@@ -54,9 +47,6 @@
         /// <summary>
         /// unitig の末尾から、リードが最後にヒットした位置までの残り塩基数
         /// </summary>
-        /// <remarks>
-        /// この値が小さいほど、リードは unitig の末端近くまで到達している (＝ペアのもう一方までの未知区間が長くなる可能性が高い) ことを示す
-        /// </remarks>
         public int A_末尾までの残り長 => Math.Max(0, this.A_unitig長 - this.A_最終一致終端位置);
 
         #endregion

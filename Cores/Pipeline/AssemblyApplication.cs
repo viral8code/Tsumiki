@@ -49,7 +49,6 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数列">コマンドライン引数</param>
         private static void V_実行(string[] p_引数列)
         {
-            // 日本語・中国語の文言をそのまま出せるようにする
             Console.OutputEncoding = Encoding.UTF8;
 
             if (p_引数列.Length == 0)
@@ -85,23 +84,14 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力_そのまま(FormattableString.Invariant($"[Info] 入力リードをメモリに読み込んだ (圧縮後 {中間データ置き場.A_使用量 / 1048576D:F0} MB)"));
             }
 
-            // データを見なければ決まらないパラメータは、パラメータ一覧を
-            // 表示する前に確定させる
-            // 表示された値と実際に使う値が食い違うと、
-            // 後からログを読んだときに何が起きたのか分からなくなる
-            // 符号化はライブラリごとに違いうるので、ライブラリごとに判定する
             for (var i = 0; i < l_引数.A_ライブラリ数; i++)
             {
                 var (A_リード1, A_リード2) = l_引数.A_ライブラリ群[i];
                 PhredSniffer.V_解決_Phredオフセット(l_引数, i, A_リード1, A_リード2);
             }
 
-            // 長さの違うライブラリが混ざっていても高い k へ届くよう、
-            // 中央値ではなく「その長さ以上のリードが塩基の 1 割以上を出している」最長の長さで k を決める
-            // 長さが 1 種類なら従来と同じ値になる
             var l_リード長 = ReadLengthSniffer.Get_梯子上限のリード長(l_引数.A_ライブラリ群, out var l_リード長分布);
 
-            // ライブラリごとの代表リード長も測る (期待ペア数のモデルがライブラリ別に要る)
             l_引数.Set_ライブラリのリード長(l_引数.A_ライブラリ群.Select(x => ReadLengthSniffer.Get_代表リード長(x.A_リード1, x.A_リード2) ?? l_リード長 ?? 0));
             if (l_リード長 is { } l_観測リード長)
             {
@@ -131,8 +121,6 @@ namespace Tsumiki.Cores.Pipeline
 
             if (Path.Exists(l_一時ディレクトリ))
             {
-                // 中身を上書きすると、前回の成果と今回の成果が混ざった状態になる
-                // 再開を明示されたときだけ、残っているものを使うことを許す
                 if (!l_引数.A_Is再開)
                 {
                     Logger.V_出力(メッセージID.一時ディレクトリが既にある, l_引数.A_一時ディレクトリ);
@@ -144,18 +132,13 @@ namespace Tsumiki.Cores.Pipeline
 
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
 
-            // ここまでに出た行 (Phred の推定・パラメータ一覧など) も
-            // 控えから書き出される
             Logger.V_開始_ファイル出力(l_一時ディレクトリ);
 
             var l_原入力 = l_引数.Get_複製();
             ReadPreparationPipeline.V_実行(l_引数, l_一時ディレクトリ);
 
-            // アンカー評価が推定k長を書き換える前に、前処理・エラー訂正後のパスを持つ
-            // 時点の設定を控えておく (出所記録で使う)
             var l_処理済み設定 = l_引数.Get_複製();
 
-            // -k に複数指定するのは「これらを試して選べ」という意味なので、マルチ k として扱う
             アセンブリ実行結果 l_結果;
             if (l_引数.A_Isマルチk || l_引数.A_k長一覧.Count > 1)
             {
@@ -163,8 +146,6 @@ namespace Tsumiki.Cores.Pipeline
             }
             else
             {
-                // マルチk比較が無くても、採用した k やコピー数基準に依らない固定の物差しでの
-                // 評価をレポートへ残す (以前は単一 k 指定時にこの評価が一切残らなかった)
                 var l_単一結果 = AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力) ?? throw new InvalidOperationException("Assembly could not produce a result");
                 l_結果 = MultiKAssembler.Get_固定アンカー評価を付与(l_単一結果, l_引数, l_一時ディレクトリ, l_リード長);
             }

@@ -6,10 +6,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// 128 塩基を超える正準キーを 1 塩基ずつ更新する
     /// </summary>
-    /// <remarks>
-    /// 語の並びは <see cref="KmerKey"/> と同じ (先頭の塩基ほど上位ビット) なので、作業領域をそのままキーとして辞書を引ける<br/>
-    /// 窓ごとにキーを作り直すと、詰め直しと逆相補の生成で窓 1 つあたり O (k) の計算と配列の確保が 3 回ずつ要る
-    /// </remarks>
     internal sealed class WideRollingKmer
     {
         #region 内部変数
@@ -67,14 +63,12 @@ namespace Tsumiki.Utilities
             var l_値 = (ulong)(l_ID - 1);
             var l_末尾 = this._順.Length - 1;
 
-            // 順鎖は全体を 1 塩基ぶん先頭側へ送り、空いた末尾へ置く
             for (var j = 0; j < l_末尾; j++)
             {
                 this._順[j] = (this._順[j] << 2) | (this._順[j + 1] >> 62);
             }
             this._順[l_末尾] = (this._順[l_末尾] << 2) | (l_値 << this._末尾のシフト量);
 
-            // 逆鎖は相補塩基を先頭に置き、全体を末尾側へ送ってはみ出た塩基を落とす
             for (var j = l_末尾; j > 0; j--)
             {
                 this._逆[j] = (this._逆[j] >> 2) | (this._逆[j - 1] << 62);
@@ -101,9 +95,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_順"></param>
         /// <param name="p_逆"></param>
-        /// <remarks>
-        /// 等しいときに順鎖を採るのは <see cref="KmerKey.Get_正規形"/> と揃えるため
-        /// </remarks>
         /// <returns></returns>
         private static bool Is順が小さい(ulong[] p_順, ulong[] p_逆)
         {

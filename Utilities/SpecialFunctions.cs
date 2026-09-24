@@ -10,9 +10,6 @@
         /// <summary>
         /// 漸近展開へ移る前に漸化式で引き上げる引数の下限
         /// </summary>
-        /// <remarks>
-        /// 漸近展開はここを下回ると精度が落ちるため、漸化式で押し上げてから使う
-        /// </remarks>
         private const double 漸近展開の下限 = 6D;
 
         /// <summary>

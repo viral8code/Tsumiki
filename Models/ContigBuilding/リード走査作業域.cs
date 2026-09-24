@@ -3,9 +3,6 @@
     /// <summary>
     /// リード 1 本を unitig の k-mer 索引で走査した結果を、ワーカーごとに使い回して持つ
     /// </summary>
-    /// <remarks>
-    /// 同じ unitig に続けてヒットした k-mer をひと区間にまとめ、区間ごとの票数と終端位置を並べて持つ
-    /// </remarks>
     internal sealed class リード走査作業域
     {
         #region プロパティ

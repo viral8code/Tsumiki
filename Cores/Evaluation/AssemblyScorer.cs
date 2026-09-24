@@ -8,9 +8,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// リファレンス無しでアセンブリの良さを測る
     /// </summary>
-    /// <remarks>
-    /// k が違えば k-mer 集合の意味も変わるため、比較には固定したアンカー k の集合を物差しとして使う
-    /// </remarks>
     internal static class AssemblyScorer
     {
         #region 定数
@@ -33,9 +30,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_単一コピー基準値"></param>
         /// <param name="p_推定ゲノムサイズ"></param>
         /// <param name="p_単一コピー上限">これ未満のカバレッジを単一コピーとみなす、未指定なら基準値の 1.5 倍</param>
-        /// <remarks>
-        /// アンカー k が 64 を超える場合 (2 bit パックが UInt128 に収まらない) は評価できないため null を返す
-        /// </remarks>
         /// <returns></returns>
         public static アセンブリ評価? Get_評価(string p_FASTAパス, TrustedKmerIndex p_アンカーインデックス, int p_アンカーk長, double p_単一コピー基準値, long p_推定ゲノムサイズ, double? p_単一コピー上限 = null)
         {
@@ -131,10 +125,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_長さ一覧"></param>
         /// <param name="p_推定ゲノムサイズ"></param>
         /// <param name="p_総延長"></param>
-        /// <remarks>
-        /// 素の N50 は自分の総延長を分母にするため、配列を落として短くなったアセンブリほど有利になり k を跨いだ比較に使えない<br/>
-        /// ゲノムサイズが分からない場合は総延長で代用する (=素の N50)
-        /// </remarks>
         /// <returns></returns>
         private static long Get_NG50(List<int> p_長さ一覧, long p_推定ゲノムサイズ, long p_総延長)
         {

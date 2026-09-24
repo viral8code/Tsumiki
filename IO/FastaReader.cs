@@ -15,9 +15,6 @@ namespace Tsumiki.IO
         /// FASTA を 1 回で全件読み込む
         /// </summary>
         /// <param name="p_パス"></param>
-        /// <remarks>
-        /// ID の先頭 '>' は取り除く
-        /// </remarks>
         /// <returns></returns>
         public static List<(string A_ID, string A_配列)> Get_全エントリ(string p_パス)
         {

@@ -15,9 +15,6 @@ namespace Tsumiki.IO
         /// 指定したファイル群のリードを、塩基列だけを取り出して順に流す
         /// </summary>
         /// <param name="p_パス群"></param>
-        /// <remarks>
-        /// 最終成果物へリードを貼り直す処理 (ポリッシュ・閉じ目の検証) のように、ID もクオリティも要らない全走査のための入口
-        /// </remarks>
         /// <returns></returns>
         public static IEnumerable<string> Get_生リード列(params string?[] p_パス群)
         {
@@ -62,10 +59,6 @@ namespace Tsumiki.IO
         /// <summary>
         /// 曖昧塩基を無視する経路向けの軽量版
         /// </summary>
-        /// <remarks>
-        /// A_塩基候補列 (List&lt;byte[]&gt;) の代わりに A_塩基列 (byte[]) のみを構築する<br/>
-        /// KmerCounting.V_読込_リードファイル から使用する
-        /// </remarks>
         /// <returns></returns>
         public リードデータ Get_次のリード_軽量()
         {
@@ -95,9 +88,6 @@ namespace Tsumiki.IO
         /// (オーバーライド) 次の 1 行を読み込んで返す
         /// </summary>
         /// <returns></returns>
-        /// <remarks>
-        /// FASTQ は 4 行 1 組の固定構造なので、空行に見えても実は EOF というケースを区別しないと 4 行の途中で切れたファイルで無限に回り続ける
-        /// </remarks>
         protected override string Get_次の行()
         {
             var l_行 = this.Get_次の行_生();
@@ -122,9 +112,6 @@ namespace Tsumiki.IO
         /// <param name="p_ID"></param>
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
-        /// <remarks>
-        /// どのリードが不正かを言って止める
-        /// </remarks>
         private void V_検査(string p_ID, string p_配列, string p_クオリティ)
         {
             if (p_配列.Length != p_クオリティ.Length)

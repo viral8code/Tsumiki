@@ -10,11 +10,6 @@ namespace Tsumiki.Cores.Evaluation
     /// <summary>
     /// 最終成果物が完全長を名乗れるかを判定する
     /// </summary>
-    /// <remarks>
-    /// 完全長は「最長の配列がゲノムサイズに近い」ことではない<br/>
-    /// 必要な検査をすべて通ったことを指し、材料が足りない項目は不合格ではなく判定不能として区別する<br/>
-    /// 情報が足りないところを推測で埋めて完全長を名乗らせないための仕組みであり、判定できないことが分かる状態のほうが下流にとって安全
-    /// </remarks>
     internal static class CompletenessValidator
     {
         #region 定数
@@ -37,10 +32,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// リードに裏付けの無い位置として許す数
         /// </summary>
-        /// <remarks>
-        /// 割合ではなく数で見るのは、この検査が「そう繋いだ読みが一つも無い」という白黒のはっきりした事実を数えているため<br/>
-        /// 総延長で薄めると数箇所の捏造が見えなくなる
-        /// </remarks>
         private const int 支持のない位置の許容数 = 0;
 
         #endregion
@@ -57,9 +48,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_曖昧箇所">決めきれなかった分岐の一覧</param>
         /// <param name="p_支持検査">リード支持の検査結果、調べていない場合は null</param>
         /// <returns>完全性判定結果</returns>
-        /// <remarks>
-        /// p_閉鎖検証 が null なら閉じ目を調べていない、p_ポリッシュ が null なら深度を測っていないことを意味し、いずれも判定不能として扱う
-        /// </remarks>
         public static 完全性判定結果 Get_判定結果(int p_未解決ギャップ数, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, 支持検査結果? p_支持検査)
         {
             var l_僅差の数 = p_曖昧箇所.Count(x => x.A_種別 == 曖昧箇所の種別.僅差);
@@ -88,8 +76,6 @@ namespace Tsumiki.Cores.Evaluation
             var l_接合点 = Get_判定(p_曖昧箇所.Count == 0, 未達理由.決めきれない分岐が残る, l_理由);
             l_項目.Add(new 検査項目("junction_support", メッセージID.検査項目_接合点の支持, l_接合点, p_曖昧箇所.Count.ToString()));
 
-            // 僅差で捨てた箇所が残っているということは、同程度の証拠を持つ
-            // 別の経路が残っているということ
             var l_代替経路 = Get_判定(l_僅差の数 == 0, 未達理由.決めきれない分岐が残る, l_理由);
             l_項目.Add(new 検査項目("no_alternative_path", メッセージID.検査項目_競合経路, l_代替経路, l_僅差の数.ToString()));
 
@@ -129,9 +115,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// レポートに出す固定の理由コード
         /// </summary>
-        /// <remarks>
-        /// 訳さない
-        /// </remarks>
         /// <param name="p_理由"></param>
         /// <returns></returns>
         public static string Get_理由コード(未達理由 p_理由)
@@ -156,9 +139,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// レポートに出す固定の判定名
         /// </summary>
-        /// <remarks>
-        /// 訳さない
-        /// </remarks>
         /// <param name="p_判定"></param>
         /// <returns></returns>
         public static string Get_判定コード(検査判定 p_判定)
@@ -195,9 +175,6 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_FASTAパス">対象の FASTA のパス</param>
         /// <returns>埋まらずに残った N の連続区間の数</returns>
-        /// <remarks>
-        /// 埋められなかったギャップは「そこを繋いだ根拠が無い」ことをそのまま表している
-        /// </remarks>
         public static int Get_未解決ギャップ数(string p_FASTAパス)
         {
             var l_数 = 0;
@@ -307,9 +284,6 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_代替経路">競合経路の判定</param>
         /// <param name="p_閉鎖">環状閉鎖の判定</param>
         /// <returns>段階に畳んだ品質保証レベル</returns>
-        /// <remarks>
-        /// 下の段が通っていない限り上の段は名乗れない
-        /// </remarks>
         private static 品質保証レベル Get_品質保証レベル(検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度, 検査判定 p_支持, 検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
         {
             return p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格

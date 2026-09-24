@@ -7,12 +7,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// 控えに同水準の兄弟がいる一本道を、偶然そう見えているだけとみなして断つ
     /// </summary>
-    /// <remarks>
-    /// カバレッジが局所的に沈む区間ではカットオフの上下に真の続きと別コピーの続きが半々で散らばり、どちらが残るかが運で決まる<br/>
-    /// 片方だけが残ると一本道に見え、分岐として扱われないまま黙って繋がる<br/>
-    /// 現在はパイプラインから呼んでいない<br/>
-    /// 系統的な読み取り誤りも控えに兄弟を作るため、S. aureus では精度を変えずに NA50 相当を 24% 落とした
-    /// </remarks>
     internal static class AmbiguousExtensionRemover
     {
         #region 定数
@@ -20,10 +14,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 控えの兄弟に対して、残った続きに要求する優勢の比
         /// </summary>
-        /// <remarks>
-        /// 控えは必ずカットオフ未満なので、この比を満たさないのはカットオフの数倍までの低い深度に限られる<br/>
-        /// 系統的な読み取り誤りも控えに兄弟を作るため、別の座位が競合している場合 (双方がほぼ同じ深さ) だけに絞る
-        /// </remarks>
         private const double 優勢とみなす比 = 1.5D;
 
         #endregion
@@ -35,9 +25,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 控えが生きている間にしか判定できない
-        /// </remarks>
         /// <returns>除去した k-mer の件数</returns>
         public static int Get_除去数(TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
@@ -49,7 +36,6 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            // 走査しながら集合を変えると次数の判定が途中で変わるため、候補を出し切ってから消す
             var l_候補 = p_kmerインデックス.Get_信頼kmer一覧()
                 .AsParallel()
                 .AsOrdered()
@@ -99,9 +85,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_kmer"></param>
-        /// <remarks>
-        /// 後続に別の入口がある場合は、断つと無関係な経路まで巻き込むので触らない
-        /// </remarks>
         /// <returns>断つべき後続、無ければ null</returns>
         private static byte[]? Get_断つべき後続_片向き(TrustedKmerIndex p_kmerインデックス, byte[] p_kmer)
         {
@@ -119,7 +102,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     if (l_後続 is not null)
                     {
-                        // 既に分岐しているので、どれを選ぶかは後段の証拠で決まる
                         return null;
                     }
                     l_後続 = l_候補.ToArray();

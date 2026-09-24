@@ -7,10 +7,6 @@ namespace Tsumiki.Cores.UnitigBuilding
     /// <summary>
     /// カットオフ未満で控えた k-mer を辿って、信頼できる k-mer 集合の行き止まりを繋ぎ直す
     /// </summary>
-    /// <remarks>
-    /// GC に偏ったライブラリでは AT に富む領域のカバレッジが全体のカットオフを割り、実在する配列の途中でグラフが途切れる<br/>
-    /// 続きが控えの k-mer だけで一本道に続き、再び信頼できる k-mer に合流する場合に限って足すことで、エラー由来の枝を持ち込まない
-    /// </remarks>
     internal static class LowCoverageBridger
     {
         #region 定数
@@ -18,17 +14,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 控えに残す出現回数の下限
         /// </summary>
-        /// <remarks>
-        /// 1 回しか見ていない k-mer はエラーと区別できない
-        /// </remarks>
         public const ulong 控えの最小出現回数 = 2UL;
 
         /// <summary>
         /// 行き止まりの k-mer の出現回数に対して、続きに要求する出現回数の比
         /// </summary>
-        /// <remarks>
-        /// 隣り合う k-mer は k-1 塩基を共有するのでカバレッジは急には変わらず、行き止まりから桁違いに落ちる続きはエラー由来
-        /// </remarks>
         private const double 行き止まりに対する最小比 = 0.1D;
 
         /// <summary>
@@ -39,9 +29,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 辿ってよい k-mer 数のリード長に対する倍率
         /// </summary>
-        /// <remarks>
-        /// 長く途切れた区間ほど、控えの k-mer だけで正しい一本道を選べている根拠が薄くなる
-        /// </remarks>
         private const int 歩数上限のリード長倍率 = 4;
 
         #endregion
@@ -54,9 +41,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_リード長"></param>
-        /// <remarks>
-        /// 控えは呼び出し元が手放す
-        /// </remarks>
         /// <returns></returns>
         public static int Get_架橋kmer数(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
@@ -69,8 +53,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_歩数上限 = 歩数上限のリード長倍率 * Math.Max(p_リード長 ?? 0, p_k長);
 
-            // 探索は読み取りだけなので並列に行い、集合への追加は全経路が出揃ってから決まった順で行う
-            // 同じ k-mer を複数の経路が足すと先に足した側の出現回数が残るため、順序が変わると結果も変わる
             var l_行き止まり = p_kmerインデックス.Get_信頼kmer一覧()
                 .AsParallel()
                 .AsOrdered()
@@ -149,8 +131,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                 }
 
-                // 行き止まりの直後に信頼できる k-mer は無い (出次数 0) ので、合流した経路は必ず控えを 1 つ以上含む
-                // 合流先に既に別の入口があるなら、薄いカバレッジで途切れた箇所ではなく既存の配列へ新しく入る分岐になる
                 if (l_信頼数 > 0)
                 {
                     l_候補[^1] = l_信頼の塩基;

@@ -66,9 +66,6 @@ namespace Tsumiki.Utilities
         #region 内部メソッド
 
         /// <summary>プロセスがこれまでに読み書きした量</summary>
-        /// <remarks>
-        /// OS ごとに取り方が違い、macOS には手軽な口が無いので取らない
-        /// </remarks>
         /// <returns>取れなければ null</returns>
         private static (ulong A_読込, ulong A_書込)? Get_入出力量()
         {
@@ -81,9 +78,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>/proc/self/io から読み書きした量を取る</summary>
-        /// <remarks>
-        /// Windows の値と揃えるため、ディスクまで届いた量 (read_bytes) ではなく読み書きの呼び出しで渡した量 (rchar・wchar) を使う
-        /// </remarks>
         /// <returns>取れなければ null</returns>
         private static (ulong A_読込, ulong A_書込)? Get_入出力量_Linux()
         {

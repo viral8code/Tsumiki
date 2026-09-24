@@ -3,9 +3,6 @@
     /// <summary>
     /// ワーカーごとに k-mer のパック値をシャード単位で溜め、まとめてカウンタへ渡す
     /// </summary>
-    /// <remarks>
-    /// k-mer ごとにシャードの錠を取ると、全リードの全 k-mer の回数だけワーカー同士が錠を取り合う
-    /// </remarks>
     internal sealed class KmerCountBatch
     {
         #region 定数

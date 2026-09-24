@@ -13,11 +13,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 混合モデルのカットオフに対して、スペクトルの谷がこの倍率を超えたら谷を採る
         /// </summary>
-        /// <remarks>
-        /// 混合モデルは誤り成分を幾何分布 1 つで表すので、GC に偏ったライブラリのように同じ位置で繰り返す系統誤りが裾を引くと、谷よりずっと手前で誤りの範囲を打ち切る<br/>
-        /// そのまま使うと誤りの k-mer が大量に残り、グラフが unitig 数の上限を超えて k ごと飛ぶ<br/>
-        /// 谷とモデルがおおむね一致するデータでは、谷の取り方の揺れで結果を動かさないよう、明確に食い違うときだけ採る
-        /// </remarks>
         private const ulong 谷を採る倍率 = 2UL;
 
         #endregion
@@ -40,14 +35,8 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_kmerインデックス"></param>
-        /// <remarks>
-        /// ヒストグラムはカットオフ適用前に読む必要があるため統合ファイルをもう一度走査するが、明示指定時はこの走査自体を行わない
-        /// </remarks>
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
-            // 前回 (別の k、あるいは ErrorCorrector 用の一時インデックス) の適合結果を
-            // 持ち越さない
-            // 適合に成功した場合のみ、この下で改めて設定し直す
             ConfigurationManager.A_スペクトルモデル = null;
 
             if (p_引数.A_Iskmerカットオフ明示指定)
@@ -75,10 +64,6 @@ namespace Tsumiki.Utilities
                 return;
             }
 
-            // フォールバック: 谷検出
-            // 混合モデルの適合に失敗するのは、データがこの
-            // 2 成分モデルにうまく当てはまらない (EM が収束しない、あるいは単一コピー
-            // 成分と誤り成分を分離できない) 場合
             if (KmerHistogram.Get_推奨カットオフ(l_ヒストグラム) is not { } l_推奨値)
             {
                 Logger.V_出力(メッセージID.kmerカットオフ_谷が不明, p_引数.A_kmerカットオフ);

@@ -5,9 +5,6 @@ namespace Tsumiki.IO
     /// <summary>
     /// リードファイルの先頭を標本抽出して代表的なリード長を求める
     /// </summary>
-    /// <remarks>
-    /// k 長の自動選択に使う
-    /// </remarks>
     internal static class ReadLengthSniffer
     {
         #region 公開メソッド
@@ -17,10 +14,6 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_標本上限"></param>
-        /// <remarks>
-        /// トリミング済みデータでは長さがばらつくため、平均や最大値より中央値のほうが実態に近い<br/>
-        /// 1 リードも読めなければ null
-        /// </remarks>
         /// <returns></returns>
         public static int? Get_代表リード長(string p_ファイルパス, int p_標本上限 = 20_000)
         {
@@ -46,9 +39,6 @@ namespace Tsumiki.IO
         /// リード長ごとの本数を全リードから数える
         /// </summary>
         /// <param name="p_ファイルパス"></param>
-        /// <remarks>
-        /// 先頭だけを見ると、長さの違うライブラリを連結したファイルで後ろ側が見えない
-        /// </remarks>
         /// <returns></returns>
         public static Dictionary<int, long> Get_リード長分布(string p_ファイルパス)
         {
@@ -72,11 +62,6 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_分布">リード長ごとの本数</param>
         /// <param name="p_必要な塩基の割合">この割合以上の塩基を供給する長さまでを採る</param>
-        /// <remarks>
-        /// 長いリードが少数でも混ざっていれば高い k へ届くが、そこでカバレッジが痩せては意味がない<br/>
-        /// 「その長さ以上のリードが全体の塩基のうち何割を出しているか」で線を引く<br/>
-        /// 長さが 1 種類しかない (単一ライブラリの) ファイルでは、その長さがそのまま返る
-        /// </remarks>
         /// <returns>1 リードも無ければ null</returns>
         public static int? Get_梯子上限のリード長(IReadOnlyDictionary<int, long> p_分布, double p_必要な塩基の割合 = 0.1D)
         {
@@ -110,9 +95,6 @@ namespace Tsumiki.IO
         /// <param name="p_リード1のパス"></param>
         /// <param name="p_リード2のパス"></param>
         /// <param name="p_標本上限"></param>
-        /// <remarks>
-        /// 長いほうに合わせると短い側のリードが丸ごと使えなくなりうる
-        /// </remarks>
         /// <returns></returns>
         public static int? Get_代表リード長(string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {

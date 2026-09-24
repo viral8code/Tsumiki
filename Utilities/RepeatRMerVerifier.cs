@@ -19,9 +19,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 集合の分割数
         /// </summary>
-        /// <remarks>
-        /// 分割ごとに錠を取ることで、リードの走査を並列にしても登録が 1 本の錠に詰まらない
-        /// </remarks>
         private const int 分割数 = 1 << 分割のビット数;
 
         #endregion
@@ -51,9 +48,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 登録を許す r-mer、null なら全部登録する
         /// </summary>
-        /// <remarks>
-        /// 構築が終わった後は読むだけなので、走査を並列にしても錠は要らない
-        /// </remarks>
         private RepeatRMerVerifier? _候補集合;
 
         /// <summary>
@@ -103,13 +97,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 生リードファイル群を 1 回走査し、出現した r-mer (正準形) の集合を作る
         /// </summary>
-        /// <remarks>
-        /// 空、存在しないパスは片側リードのみの実行に対応するため無視する<br/>
-        /// 検査する窓はこの k のグラフ上の経路なので、中の k-mer はすべて p_kmerインデックス にある<br/>
-        /// 両端の k-mer が集合に無い r-mer は照合されることがなく、登録を省いても判定は変わらない<br/>
-        /// 省けるのは主にリードのエラーを含む r-mer で、ゲノムの数十倍に膨らむ集合がゲノム規模に収まる<br/>
-        /// p_問い合わせ配列 を渡す場合、後の問い合わせがその配列の r-mer に限られることを呼び出し側が保証すること
-        /// </remarks>
         /// <param name="p_リードパス一覧">走査するリードファイルのパス</param>
         /// <param name="p_r長">r-mer の長さ</param>
         /// <param name="p_kmerインデックス">登録する r-mer を両端の k-mer で絞り込む集合、null なら絞り込まない</param>
@@ -174,10 +161,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_配列">調べる配列</param>
         /// <param name="p_連続の下限">未観測の窓がこの数だけ続いたら範囲として拾う</param>
         /// <param name="p_範囲">見つけた範囲 (窓の開始位置、終了位置は含む) の書き留め先</param>
-        /// <remarks>
-        /// 低カバレッジでは未観測の窓が散発するので、連続した長さで反復由来の継ぎ目と区別する<br/>
-        /// 曖昧塩基を含む窓は判定できないため観測済みとして扱い、連続を切る
-        /// </remarks>
         public void V_収集_未観測の連続範囲(string p_配列, int p_連続の下限, List<(int A_開始, int A_終了)> p_範囲)
         {
             if (p_連続の下限 <= 0 || p_配列.Length < this._r長)
@@ -232,9 +215,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 配列とその逆相補のうち、順鎖と逆鎖どちらから読んでも同一になるキーを返す
         /// </summary>
-        /// <remarks>
-        /// 128 塩基を超える長さは 2 語に収まらないため <see cref="KmerKey"/> を使う
-        /// </remarks>
         /// <param name="p_配列">元の配列</param>
         /// <returns>正準化したキー</returns>
         public static (UInt128 A_上位, UInt128 A_下位) Get_正準値(ReadOnlySpan<char> p_配列)
@@ -292,12 +272,6 @@ namespace Tsumiki.Utilities
         /// <returns>支持している r-mer の本数</returns>
         private (int A_全体, int A_入口, int A_出口) Get_接合点別支持数(string p_head配列, string p_repeat配列, string p_tail配列)
         {
-            // head-repeat、repeat-tail は de Bruijn グラフの辺である以上、
-            // 必ず (このアセンブリの) k-1 塩基を共有しており、そのコピーは repeat 自身の配列の両端にもそのまま現れる
-            // head と tail をそのまま margin に使うと、接合点に重なり区間が二重に並ぶ
-            // (head 側のコピーの直後に repeat 自身のコピー) テスト配列を作ってしまい、
-            // 本物のゲノム配列 (重なりは一度しか現れない) には存在しない配列になるため、
-            // head と tail からはこの重なりを除いた固有部分だけを margin に使う
             var l_重なり長 = Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1);
             var l_head固有 = p_head配列.Length > l_重なり長 ? p_head配列[..^l_重なり長] : string.Empty;
             var l_tail固有 = p_tail配列.Length > l_重なり長 ? p_tail配列[l_重なり長..] : string.Empty;
@@ -313,15 +287,10 @@ namespace Tsumiki.Utilities
             var l_支持数 = 0;
             var l_入口支持数 = 0;
             var l_出口支持数 = 0;
-            // 窓ごとに Is曖昧塩基 を r 回呼ぶと O (n*r) になるため、
-            // V_登録_rMer と同じく「直近に見た曖昧塩基の位置」を
-            // 窓のスライドに合わせて償却 O (n) で更新する
-            // (接合点を跨がない窓は continue するが、曖昧判定は
-            // スキップせず続けないと以降の窓の判定がずれる)
             var l_直近の曖昧位置 = -1;
             for (var i = 0; i + this._r長 <= l_テスト配列.Length; i++)
             {
-                var l_窓終端 = i + this._r長; // exclusive
+                var l_窓終端 = i + this._r長;
                 var l_新規末尾 = l_窓終端 - 1;
                 if (i == 0)
                 {
@@ -338,9 +307,6 @@ namespace Tsumiki.Utilities
                     l_直近の曖昧位置 = l_新規末尾;
                 }
 
-                // repeat の先頭 k-1 塩基は head の末尾のコピーなので、
-                // そこまでしか踏み込まない窓は head の部分文字列そのもので、
-                // head を読んだだけのリードでも必ず真になる (tail 側も同じ)
                 var l_接合点1を跨ぐ = i < l_接合点1 && l_窓終端 > l_接合点1 + l_重なり長;
                 var l_接合点2を跨ぐ = l_接合点2 < l_窓終端 && i < l_接合点2 - l_重なり長;
                 if (!l_接合点1を跨ぐ && !l_接合点2を跨ぐ)
@@ -375,10 +341,6 @@ namespace Tsumiki.Utilities
         /// 128 塩基を超える r-mer を厳密な集合へ登録する
         /// </summary>
         /// <param name="p_キー">正準化した r-mer のキー</param>
-        /// <remarks>
-        /// キーは窓の作業領域を指すので、集合へ入れるときだけ複製する<br/>
-        /// 先に所属を見るのは、リードの r-mer はほとんどが登録済みで、複製すると窓ごとに配列を捨てることになるため
-        /// </remarks>
         private void V_登録(KmerKey p_キー)
         {
             var l_分割 = Get_分割番号(p_キー);
@@ -396,9 +358,6 @@ namespace Tsumiki.Utilities
         /// r-mer をリードで見たか
         /// </summary>
         /// <param name="p_値">正準化した r-mer の値</param>
-        /// <remarks>
-        /// 構築を終えた後は読み取りだけなので錠を取らない
-        /// </remarks>
         /// <returns>完全に一致する配列を見ていれば true</returns>
         private bool Has観測((UInt128 A_上位, UInt128 A_下位) p_値)
         {
@@ -430,9 +389,6 @@ namespace Tsumiki.Utilities
         /// r-mer の値から、登録先の分割を決める
         /// </summary>
         /// <param name="p_値">正準化した r-mer の値</param>
-        /// <remarks>
-        /// パック値の下位ビットは末尾の数塩基そのもので偏るため、混ぜてから上位ビットを使う
-        /// </remarks>
         /// <returns></returns>
         private static int Get_分割番号((UInt128 A_上位, UInt128 A_下位) p_値)
         {
@@ -457,10 +413,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_r長">r-mer の長さ</param>
         /// <param name="p_絞り込み">両端の k-mer がこの集合にある r-mer だけを登録する、null なら絞り込まない</param>
         /// <param name="p_k長">p_絞り込み の k</param>
-        /// <remarks>
-        /// 窓は 1 塩基ずつ転がして更新する (窓ごとに詰め直すとリード 1 本あたり O (n*r) になり、この呼び出しは全リード分繰り返される) <br/>
-        /// 曖昧塩基が入ると窓は空に戻るので、それを跨ぐ窓は登録されない
-        /// </remarks>
         private void V_登録_rMer(string p_リード, int p_r長, TrustedKmerIndex? p_絞り込み, int p_k長)
         {
             var l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];

@@ -5,9 +5,6 @@ namespace Tsumiki.Utilities
     /// <summary>
     /// 外部ソートで k-mer の出現回数を数えるデータベース
     /// </summary>
-    /// <remarks>
-    /// メモリ上の Dictionary で集約しつつ、閾値を超えたらソート済みファイルへフラッシュし、最後にペアワイズマージして 1 本の整列済みファイルへ統合する
-    /// </remarks>
     internal class CountingDB : IDisposable
     {
         #region 定数
@@ -93,9 +90,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_シャード数"></param>
-        /// <remarks>
-        /// メモリ予算を等分するために使う
-        /// </remarks>
         public CountingDB(string p_一時ディレクトリ, int p_シャード数 = 1)
         {
             this._ファイル接頭辞 = Guid.NewGuid().ToString("N");
@@ -162,9 +156,6 @@ namespace Tsumiki.Utilities
         /// 右詰めのパック値で表した k-mer を 1 件登録する (k &lt;= 128)
         /// </summary>
         /// <param name="p_値"></param>
-        /// <remarks>
-        /// バイト列のキーは k-mer ごとに配列を確保し、比較もバイト単位になる
-        /// </remarks>
         public void V_登録_値((UInt128 A_上位, UInt128 A_下位) p_値)
         {
             if (this._値バッファ.TryGetValue(p_値, out var l_出現回数))
@@ -186,7 +177,6 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public string Get_統合ファイル()
         {
-            // メモリ上に残っている未フラッシュ分を書き出す
             this.V_フラッシュ();
 
             var l_対象ファイル = new List<string>(this._フラッシュ済みファイル);
@@ -205,7 +195,6 @@ namespace Tsumiki.Utilities
                 l_対象ファイル.Add(l_出力先);
             }
 
-            // 1 件のみでマージが走らなかった場合、登録したままだと Dispose で消されてしまうため、所有権を呼び出し元へ渡す
             var l_最終ファイル = l_対象ファイル[0];
             _ = this._フラッシュ済みファイル.Remove(l_最終ファイル);
             return l_最終ファイル;
@@ -216,8 +205,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         public void Dispose()
         {
-            // 未フラッシュのデータは統合側で処理される想定だが、
-            // 統合を呼ばずに破棄された場合に備えて残存ファイルを掃除する
             foreach (var l_ファイル in this._フラッシュ済みファイル)
             {
                 中間データ置き場.V_削除(l_ファイル);
@@ -255,30 +242,21 @@ namespace Tsumiki.Utilities
         /// メモリ上に 1 件置くのに要るバイト数
         /// </summary>
         /// <param name="p_k長">k 長</param>
-        /// <remarks>
-        /// 辞書の実体だけでなく、容量の膨らみと、フラッシュで辞書と同時に生きる整列用の一時配列まで数える<br/>
-        /// ここを小さく見積もると -mem の指定より実際の常駐がずっと大きくなる
-        /// </remarks>
         /// <returns></returns>
         private static int Get_エントリあたりのバイト数(int p_k長)
         {
             if (p_k長 <= TrustedKmerIndex.パック値のk上限)
             {
-                // 鍵 32 + 回数 8 + ハッシュ 4 + 次 4、バケット 4
                 const int l_容量に比例する分 = (32 + 8 + 4 + 4) + 4;
 
-                // 整列用の鍵配列 32 と回数配列 8
                 const int l_一時配列 = 32 + 8;
                 return (l_容量に比例する分 * 容量の膨らみ) + l_一時配列;
             }
 
-            // 参照 8 + 回数 8 + ハッシュ 4 + 次 4、バケット 4
             const int l_辞書の分 = (8 + 8 + 4 + 4) + 4;
 
-            // パック済みバイト列のオブジェクト (ヘッダ 24 + 8 バイト境界へ丸めた本体)
             var l_鍵の実体 = 24 + (((((p_k長 + 3) / 4) + 7) / 8) * 8);
 
-            // 整列用に取り出す KeyValuePair の配列
             const int l_一時配列_大 = 16;
             return (l_辞書の分 * 容量の膨らみ) + l_鍵の実体 + l_一時配列_大;
         }
@@ -317,10 +295,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// メモリ上の集約済みカウントをキー順にソートしてディスクへ書き出す
         /// </summary>
-        /// <remarks>
-        /// フラッシュ後のファイルは常にソート済み・集約済みであるため、統合側では再集計 (Dictionary への読み直し) が不要になる<br/>
-        /// 2 種類のバッファは同じ並び規則の別ファイルとして書き、同じキーが両方にあってもマージで合算される
-        /// </remarks>
         private void V_フラッシュ()
         {
             if (this._バッファ.Count > 0)
@@ -346,7 +320,6 @@ namespace Tsumiki.Utilities
             {
                 var l_ファイル名 = this.Get_次のファイル名();
 
-                // 右詰めのパック値の大小は、ファイル上のバイト列の辞書順と一致する
                 var l_キー = new (UInt128 A_上位, UInt128 A_下位)[this._値バッファ.Count];
                 var l_回数 = new ulong[l_キー.Length];
                 var l_位置 = 0;
@@ -391,9 +364,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_出力先"></param>
         /// <param name="p_パック長"></param>
         /// <param name="p_比較器"></param>
-        /// <remarks>
-        /// 同じキーが両方に現れた場合はカウントを合算する
-        /// </remarks>
         private static void V_マージ_2ファイル(string p_ファイル1, string p_ファイル2, string p_出力先, int p_パック長, ByteArrayComparer p_比較器)
         {
             using (var l_読み込み1 = new BinaryReader(Get_読み込みストリーム(p_ファイル1)))
@@ -401,7 +371,6 @@ namespace Tsumiki.Utilities
                 using var l_読み込み2 = new BinaryReader(Get_読み込みストリーム(p_ファイル2));
                 using var l_書き込み = new BinaryWriter(Get_書き込みストリーム(p_出力先));
 
-                // BinaryReader.ReadBytes は EOF でも長さ 0 の配列を返すため、空ファイルを中身があると誤認しないよう先に確かめる
                 var l_キー1 = Util.Has続き(l_読み込み1) ? l_読み込み1.ReadBytes(p_パック長) : null;
                 var l_キー2 = Util.Has続き(l_読み込み2) ? l_読み込み2.ReadBytes(p_パック長) : null;
 
@@ -453,9 +422,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_接頭辞"></param>
-        /// <remarks>
-        /// 登録が 1 件も無かったシャードでも、統合処理に渡せる形を保つために使う
-        /// </remarks>
         /// <returns></returns>
         private static string Get_空ファイル(string p_一時ディレクトリ, string p_接頭辞)
         {

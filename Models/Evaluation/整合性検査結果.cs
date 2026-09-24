@@ -21,9 +21,6 @@
         /// <summary>
         /// アセンブリ中の k-mer 延べ数のうち、コピー数の推定を超えて余分に現れている分の割合
         /// </summary>
-        /// <remarks>
-        /// 総延長の水増し量にほぼ対応する
-        /// </remarks>
         public double A_出しすぎ率 => this.A_アセンブリ内の延べ数 == 0L ? 0D : 100D * this.A_余分な延べ数 / this.A_アセンブリ内の延べ数;
 
         #endregion

@@ -3,9 +3,6 @@
     /// <summary>
     /// k-mer が信頼できる集合に含まれるかどうかを判定できる型が実装するインターフェース
     /// </summary>
-    /// <remarks>
-    /// ConstrainedPathFinder はゲノム全体規模の TrustedKmerIndex と、局所アセンブリ規模の軽量な LocalKmerSet のどちらが相手でも同じ探索ロジックを使い回せるよう、この越しに k-mer 集合へ問い合わせる
-    /// </remarks>
     internal interface IKmerLookup
     {
         #region 公開メソッド

@@ -16,17 +16,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 救済の対象とする、信頼できない窓の連続長の上限
         /// </summary>
-        /// <remarks>
-        /// 長く途切れている箇所は、カバレッジが薄いのではなくそもそも別の配列を読んでいる可能性が高くなる
-        /// </remarks>
         private const int 救済する連の上限 = 8;
 
         /// <summary>
         /// 救済に必要な観測回数
         /// </summary>
-        /// <remarks>
-        /// 1 回しか見ていない k-mer は、挟まれていてもエラーと区別できない
-        /// </remarks>
         private const int 救済に必要な観測数 = 2;
 
         #endregion
@@ -42,9 +36,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns>救済して足した k-mer の件数</returns>
         public static int Get_救済数(Parameters p_引数, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
-            // 候補は数百万件になりうるので、ワーカーごとに辞書を持つとその本数だけ複製することになるため、1 つを共有する
-            // 値に塩基列そのものを持つのは、キーが k > 64 でハッシュになり配列を戻せなくなるためで、
-            // 救済は集合へ足す処理なので実体が要る
             using var l_計測 = new StageTimer($"mercy k={p_k長}");
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
 
@@ -79,22 +70,16 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_候補">集めた救済候補</param>
-        /// <remarks>
-        /// 信頼できない窓の連なりが、両側を信頼できる窓に挟まれている場合だけを候補にする
-        /// </remarks>
         private static void V_集める_1リード(string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> p_候補)
         {
             if (p_リード.Length < p_k長 + 2)
             {
-                // 両側に信頼できる窓を要求する以上、窓が 3 つ取れなければ意味がない
                 return;
             }
 
             var l_塩基列 = Util.V_変換_塩基列(p_リード);
             var l_窓数 = l_塩基列.Length - p_k長 + 1;
 
-            // 曖昧塩基を含む窓は候補にできない (パックも登録もできない) ので、
-            // 信頼できるかどうかも見ないまま、連を切る壁として扱う
             var l_有効 = new bool[l_窓数];
             var l_信頼 = new bool[l_窓数];
             if (p_k長 <= TrustedKmerIndex.パック値のk上限)
@@ -139,10 +124,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_左">連の直前の信頼できる k-mer</param>
         /// <param name="p_右">連の直後の信頼できる k-mer</param>
-        /// <remarks>
-        /// 薄いカバレッジで途切れた箇所は両側とも行き止まりになる<br/>
-        /// どちらかに既に別の続きがあると、救済した連は既存の配列に新しい分岐を作り、短い反復を挟んで別の場所へ抜ける近道にもなりうる
-        /// </remarks>
         /// <returns>両側とも行き止まりなら true</returns>
         internal static bool Is行き止まり同士(TrustedKmerIndex p_kmerインデックス, Span<byte> p_左, Span<byte> p_右)
         {
@@ -157,9 +138,6 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_有効">曖昧塩基を含まない窓</param>
         /// <param name="p_信頼">信頼できる k-mer の窓</param>
-        /// <remarks>
-        /// 窓ごとに k 塩基を詰め直すと、全リードの全窓で O (k) かかる
-        /// </remarks>
         private static void V_判定_窓_パック(string p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, bool[] p_有効, bool[] p_信頼)
         {
             var l_窓 = new RollingKmer(p_k長);

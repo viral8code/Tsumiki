@@ -3,9 +3,6 @@
     /// <summary>
     /// リファレンス無しで測ったアセンブリの良さ
     /// </summary>
-    /// <remarks>
-    /// 「この配列が正しいなら各 k-mer は何回現れるはずか」をカバレッジから求め、実際の出力と突き合わせた結果
-    /// </remarks>
     /// <param name="A_期待延べ数"></param>
     /// <param name="A_欠損延べ数"></param>
     /// <param name="A_過剰延べ数"></param>
@@ -21,9 +18,6 @@
         /// <summary>
         /// 出すべき k-mer のうち実際に出せた割合
         /// </summary>
-        /// <remarks>
-        /// 反復配列を飛ばして繋いだ誤アセンブリは、飛ばした領域の k-mer が欠損として現れるためここに反映される
-        /// </remarks>
         public double A_完全性 => this.A_期待延べ数 == 0L ? 0D : 1D - ((double)this.A_欠損延べ数 / this.A_期待延べ数);
 
         /// <summary>

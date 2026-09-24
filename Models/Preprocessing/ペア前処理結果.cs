@@ -3,9 +3,6 @@
     /// <summary>
     /// 1 ペア分の前処理結果
     /// </summary>
-    /// <remarks>
-    /// 副作用のない純粋関数の戻り値
-    /// </remarks>
     /// <param name="A_配列1"></param>
     /// <param name="A_クオリティ1"></param>
     /// <param name="A_配列2"></param>

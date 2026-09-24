@@ -8,10 +8,6 @@ namespace Tsumiki.Cores.Mapping
     /// <summary>
     /// 種ヒットのチェインと帯域制限整列でリードを配置する
     /// </summary>
-    /// <remarks>
-    /// 索引は全参照位置を持つが、各種について保持する反復由来の位置には上限を設ける<br/>
-    /// 反復を無制限に展開すると、配列の大部分が低複雑度である入力で処理時間が発散するため
-    /// </remarks>
     internal sealed class ReadMapper
     {
         #region 定数
@@ -266,9 +262,6 @@ namespace Tsumiki.Cores.Mapping
                 var l_最小値 = int.MinValue / 4;
                 var l_行数 = l_照合リード.Length;
 
-                // 帯域の外のセルは計算からもトレースバックからも読まれないので、行ごとに帯域とその両隣だけを初期化する
-                // 全面を埋めると、候補ごとの整列で計算そのものより初期化が重くなる
-                // 最終行だけは末尾位置を全列から選ぶので全面を初期化する
                 l_得点[..l_列数].Clear();
                 l_削除得点[..l_列数].Clear();
                 l_挿入得点[..l_列数].Fill(l_最小値);
@@ -279,7 +272,6 @@ namespace Tsumiki.Cores.Mapping
                     var l_初期化左 = i == l_行数 ? 0 : Math.Max(0, l_中心 - (帯域幅 * 2) - 1);
                     var l_初期化右 = i == l_行数 ? l_幅 : Math.Min(l_幅, l_中心 + (帯域幅 * 2) + 1);
                     var l_行頭 = i * l_列数;
-                    // 参照の末端付近ではリードが窓より長く、帯域が行の右端を越えて空になる
                     var l_初期化幅 = Math.Max(0, l_初期化右 - l_初期化左 + 1);
                     l_得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
                     l_挿入得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);

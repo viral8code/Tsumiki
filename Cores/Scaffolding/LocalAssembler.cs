@@ -25,9 +25,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 1 ギャップに集める局所リードの上限
         /// </summary>
-        /// <remarks>
-        /// アンカーが反復配列と重なると際限なくリードが集まりうるため、暴走を防ぐ
-        /// </remarks>
         private const int 局所リード数の上限 = 4_000;
 
         /// <summary>
@@ -38,9 +35,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 局所リードの reservoir sampling に使う乱数の種
         /// </summary>
-        /// <remarks>
-        /// 固定することで、同じ入力なら常に同じ選択結果になる (再現性のため)
-        /// </remarks>
         private const int 局所リード選択の乱数種 = 20_260_914;
 
         /// <summary>
@@ -92,7 +86,6 @@ namespace Tsumiki.Cores.Scaffolding
             var l_結果 = new string?[l_ギャップ一覧.Count];
             var l_判定群 = new ギャップ充填判定?[l_ギャップ一覧.Count];
 
-            // ギャップごとのミニアセンブリは互いに独立で、結果を番号の位置へ書くので並列にしても出力は変わらない
             var l_並列設定 = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) };
             _ = Parallel.For(0, l_ギャップ一覧.Count, l_並列設定, g =>
             {
@@ -104,9 +97,6 @@ namespace Tsumiki.Cores.Scaffolding
                 l_判定群[g] = l_判定;
             });
 
-            // 段階的な近傍thread回収: 1回目でリードは集まったが解決しなかったgapだけを対象に、
-            // 既に回収した局所リード自体をシードにしたもう1パスで近傍のリードを拡張回収し、再試行する
-            // (アンカー直接ヒットの先まで回収範囲を広げる。難所だけを対象にするため全体をやり直さない)
             var l_未解決gap = Enumerable.Range(0, l_ギャップ一覧.Count).Where(g => l_結果[g] is null && l_局所リード[g].Count > 0).ToList();
             if (l_未解決gap.Count > 0)
             {
@@ -242,7 +232,6 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                     var l_長さ = l_i - l_開始;
 
-                    // 両端に最低 k 長ぶんの足場が要る (左右のアンカー k-mer を取るため)
                     if (l_長さ <= Consts.ギャップ充填のギャップ長上限 && l_開始 >= p_k長 && l_i + p_k長 <= l_配列.Length)
                     {
                         var l_左長 = Math.Min(アンカー長, l_開始);
@@ -257,9 +246,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 全ギャップの左右アンカーから k-mer 索引を作る
         /// </summary>
-        /// <remarks>
-        /// キーは正規形 (順鎖・逆鎖どちらでも同じキーに寄る)
-        /// </remarks>
         /// <param name="p_ギャップ一覧"></param>
         /// <param name="p_k長"></param>
         /// <returns></returns>
@@ -326,9 +312,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 生リードを 1 回走査し、アンカーに触れたリードをギャップごとに集める
         /// </summary>
-        /// <remarks>
-        /// アンカーに触れたペアは両方のリードを局所リード集合に入れる (相方が、まだ組み込まれていない領域を読んでいる可能性があるため)
-        /// </remarks>
         /// <param name="p_アンカー索引"></param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_k長"></param>
@@ -344,8 +327,6 @@ namespace Tsumiki.Cores.Scaffolding
                 l_局所リード[g] = [];
             }
 
-            // 上限到達後にどの候補を残すかを、先着順ではなく一様な確率で決める (reservoir sampling)
-            // ための、ギャップごとの遭遇数
             var l_遭遇数 = new int[p_ギャップ数];
             var l_乱数 = new Random(局所リード選択の乱数種);
 
@@ -360,8 +341,6 @@ namespace Tsumiki.Cores.Scaffolding
                         var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
                         var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
 
-                        // 対応 ID が崩れた FASTQ を mate として混ぜると、無関係な配列を局所グラフへ持ち込む。
-                        // その場合は各リード自身が当たったギャップだけへ、pair 情報を持たない単独読み取りとして入れる。
                         if (l_pairID1 != l_pairID2)
                         {
                             V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, ""));
@@ -376,7 +355,6 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             l_遭遇数[l_g]++;
 
-                            // ペアを途中で切らない。残り 1 枠なら、直接アンカーに当たった側だけを優先する。
                             var l_残り枠 = 局所リード数の上限 - l_局所リード[l_g].Count;
                             if (l_残り枠 >= 2)
                             {
@@ -389,8 +367,6 @@ namespace Tsumiki.Cores.Scaffolding
                             }
                             else
                             {
-                                // 上限到達後は、これまで遭遇したペアの中から一様な確率で選ばれるよう
-                                // 代表 1 本を reservoir sampling で入れ替える (先着順のバイアスを避ける)
                                 var l_置き換え位置 = l_乱数.Next(l_遭遇数[l_g]);
                                 if (l_置き換え位置 < 局所リード数の上限)
                                 {
@@ -427,11 +403,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_局所リード">gap ごとの局所リード (該当 gap 分を直接更新する)</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 対象を「1回目で失敗した gap」だけに絞ることで、解決済みの gap に無駄な追加コストをかけない<br/>
-        /// シードがアンカーではなく回収済みリードそのものになる点だけが元の回収と異なり、
-        /// 一致判定・上限・reservoir sampling の仕組みは共通のヘルパーをそのまま再利用する
-        /// </remarks>
         private static void V_拡張回収_近傍thread(List<int> p_未解決gap, List<読取証拠>[] p_局所リード, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_k長)
         {
             Dictionary<KmerKey, List<int>> l_拡張索引 = [];
@@ -528,10 +499,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_k長"></param>
         /// <param name="p_種集合"></param>
         /// <param name="p_種長"></param>
-        /// <remarks>
-        /// 照合は読み取りだけで互いに独立だが、局所リードへの追加は乱数による入れ替えを含み順序に依存するため、照合だけをまとめて並列にし、追加は呼び出し側が順に行う<br/>
-        /// 読み込みは 1 本の流れでしか進められないので、あるバッチを照合している間に次のバッチを読み込んでおく
-        /// </remarks>
         /// <returns></returns>
         private static IEnumerable<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_照合済みペア列(string p_リード1のパス, string p_リード2のパス, Dictionary<KmerKey, List<int>> p_索引, int p_k長, HashSet<ulong> p_種集合, int p_種長)
         {
@@ -569,7 +536,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
             finally
             {
-                // 途中で列挙をやめられても、読み込み中のリーダーを閉じない
                 try
                 {
                     l_次の読み込み.Wait();
@@ -608,10 +574,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 1 本ぶんの証拠をギャップの局所リードへ追加する
         /// </summary>
-        /// <remarks>
-        /// 上限に達した後も遭遇数を数え続け、reservoir sampling で一様な確率での入れ替えに使う<br/>
-        /// これにより、反復配列でリードが際限なく集まる状況でも、常に先着した本数だけが残る先着順バイアスを避ける
-        /// </remarks>
         /// <param name="p_局所リード"></param>
         /// <param name="p_遭遇数">ギャップごとの遭遇数 (reservoir sampling 用)</param>
         /// <param name="p_乱数">選択に使う乱数 (固定シードで決定的にする)</param>
@@ -687,10 +649,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 1 ギャップぶんのミニアセンブリ
         /// </summary>
-        /// <remarks>
-        /// 左右アンカー配列+局所リードだけから使い捨ての LocalKmerSet を作り、GapFiller と同じ制約付き探索で左アンカー末尾から右アンカー先頭までの経路を探す<br/>
-        /// 集めた k-mer は局所リード数の上限ぶんしかなくインメモリで完結するため、TrustedKmerIndex のようなディスク経由のシャード集計は使わない (ギャップの数だけ繰り返すには重すぎる)
-        /// </remarks>
         /// <param name="p_ギャップ"></param>
         /// <param name="p_局所リード"></param>
         /// <param name="p_k長"></param>
@@ -700,9 +658,6 @@ namespace Tsumiki.Cores.Scaffolding
         {
             var l_異なるリード = p_局所リード.DistinctBy(x => x.A_配列, StringComparer.Ordinal).ToList();
 
-            // base-k の結果も、fallback 候補と全く同じ「複数リードの支持」ゲートを通す
-            // これを素通りさせると、橋渡し全体をまたぐリードが 1 本しかなくても
-            // (あるいはアンカー由来の k-mer だけでも) 採用されてしまう
             var l_経路 = Get_固定kの局所結果(p_ギャップ, p_局所リード, p_k長, out p_判定);
             if (l_経路 is not null && Has経路支持(p_ギャップ, l_経路, l_異なるリード, p_k長))
             {
@@ -733,8 +688,6 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                // 支持の無い候補は無視するだけにとどめ、既に支持された結論を
-                // 曖昧扱いにしない (support の有無を先に確かめてから不一致を見る)
                 if (!Has経路支持(p_ギャップ, l_候補, l_異なるリード, l_局所k))
                 {
                     continue;
@@ -770,17 +723,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 候補経路の各辺が、アンカー合成ではなく複数の独立した分子で観測されていることを確かめる
         /// </summary>
-        /// <remarks>
-        /// 支持は読み取り本数ではなく独立性キー (pair ID があればそれ、無ければ配列自身) の種類数で数える<br/>
-        /// mate1/mate2 は同一分子由来なので、2 本読めても 1 件としてしか数えない
-        /// </remarks>
         private static bool Has経路支持(局所ギャップ p_ギャップ, string p_経路, IReadOnlyList<読取証拠> p_リード群, int p_k長)
         {
             var l_窓長 = p_k長 + 1;
             var l_接続 = p_ギャップ.A_左アンカー[^p_k長..] + p_経路 + p_ギャップ.A_右アンカー[..p_k長];
 
-            // 窓ごとに全リードを部分文字列検索すると、経路長 × リード数 × リード長になる
-            // 窓とその逆相補を先に集め、リードの窓を 1 回ずつ引いて支持した独立性キーを貯める
             Dictionary<string, HashSet<string>> l_窓別支持 = new(StringComparer.Ordinal);
             List<(string A_窓, string A_逆窓)> l_窓一覧 = [];
             for (var i = 0; i + l_窓長 <= l_接続.Length; i++)

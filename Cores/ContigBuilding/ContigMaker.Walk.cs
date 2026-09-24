@@ -6,9 +6,6 @@ namespace Tsumiki.Core
     /// <summary>
     /// ContigMaker のうち、確定した結合を辿って contig 配列を組み立てる部分
     /// </summary>
-    /// <remarks>
-    /// (unitig へのマッピングは ContigMaker.Mapping.cs、辺の選択・結合の確定は ContigMaker.cs の <see cref="V_結合_Contig"/> を参照)
-    /// </remarks>
     internal partial class ContigMaker
     {
         #region プロパティ
@@ -16,10 +13,6 @@ namespace Tsumiki.Core
         /// <summary>
         /// 書き出した contig が分岐のある継ぎ目で通った辺 ((k+1)-mer、両向き)
         /// </summary>
-        /// <remarks>
-        /// 次の k へ持ち越すとき、この辺を丸ごと含む k-mer は足さない<br/>
-        /// 足すと、この k の分岐選択が次の k でリードに観測された k-mer と見分けのつかない形で持ち込まれ、次の k のリードが正しい経路を観測できていない箇所ではそのまま一本道として繋がる
-        /// </remarks>
         public HashSet<string> A_分岐の継ぎ目 { get; } = new(StringComparer.Ordinal);
 
         #endregion
@@ -33,10 +26,6 @@ namespace Tsumiki.Core
         /// <param name="p_unitig配列"></param>
         /// <param name="p_walk順"></param>
         /// <param name="p_k長"></param>
-        /// <remarks>
-        /// 出次数 2 以上の頂点から出る継ぎ目と、入次数 2 以上の頂点へ入る継ぎ目が対象<br/>
-        /// 一本道の継ぎ目はグラフの形だけで決まるので含めない
-        /// </remarks>
         /// <returns></returns>
         internal static IEnumerable<string> Get_分岐の継ぎ目(UnitigGraph p_グラフ, IReadOnlyList<string> p_unitig配列, IReadOnlyList<int> p_walk順, int p_k長)
         {
@@ -102,9 +91,6 @@ namespace Tsumiki.Core
         /// <param name="p_重なり長"></param>
         /// <param name="p_始点"></param>
         /// <param name="p_walk順"></param>
-        /// <remarks>
-        /// 経路が始点へ戻ってきた場合は環状として報告する
-        /// </remarks>
         /// <returns></returns>
         private static (string A_配列, bool A_Is環状) Get_walk結果(List<string> p_unitig配列, int[] p_結合, bool[] p_訪問済み, int p_重なり長, int p_始点, List<int> p_walk順)
         {
@@ -124,10 +110,6 @@ namespace Tsumiki.Core
 
                 if (p_訪問済み[l_次 >> 1])
                 {
-                    // 始点へ戻ってきた = 経路が閉じている
-                    // 細菌の染色体と
-                    // プラスミドは環状なので、これは「その複製単位を
-                    // 完全に 1 周組み上げられた」ことを意味する
                     l_Is環状 = l_次 == p_始点;
                     break;
                 }
@@ -138,8 +120,6 @@ namespace Tsumiki.Core
                     break;
                 }
 
-                // 構築方法より k-1 のオーバーラップは保証されているが、
-                // 万一崩れていた場合に誤った配列を作らないよう検証する
                 if (!Is重なり一致(l_出力, l_配列, p_重なり長))
                 {
                     break;
@@ -150,10 +130,6 @@ namespace Tsumiki.Core
                 l_現在 = l_次;
             }
 
-            // 環状では末尾 unitig が始点との重なり k-1 塩基を含んでおり、
-            // それは配列の先頭にも現れる
-            // 線状の連結では次の unitig 側から
-            // 取り除くが、環状では「次」が出力済みの始点なので末尾から取り除く
             if (l_Is環状 && l_出力.Length > p_重なり長)
             {
                 _ = l_出力.Remove(l_出力.Length - p_重なり長, p_重なり長);

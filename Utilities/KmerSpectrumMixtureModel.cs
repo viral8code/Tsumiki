@@ -13,9 +13,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 混合する真の k-mer 成分のコピー数上限
         /// </summary>
-        /// <remarks>
-        /// これを超える倍率は稀な高コピー反復と見分けがつかない
-        /// </remarks>
         private const int コピー数の上限 = 10;
 
         /// <summary>
@@ -56,9 +53,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 過分散パラメータの上限
         /// </summary>
-        /// <remarks>
-        /// ここまで大きいと負の二項分布はポアソン分布と数値的に区別できず、log ガンマの差で桁が落ちるだけになる
-        /// </remarks>
         private const double 過分散パラメータの上限 = 10_000D;
 
         /// <summary>
@@ -69,26 +63,16 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 採用する λ の、観測された山に対する下限比
         /// </summary>
-        /// <remarks>
-        /// 調波エイリアシングにより、尤度面には λ, λ/3, λ/5 … と整数分の 1 の位置にも峰が立ち、大域最良がそちらへ落ちることがある<br/>
-        /// 単一コピー成分は観測された最頻値を説明できていなければならない、という制約として帯を課す
-        /// </remarks>
         private const double 山に対するλの下限比 = 0.6D;
 
         /// <summary>
         /// 採用する λ の、観測された山に対する上限比
         /// </summary>
-        /// <remarks>
-        /// 過分散が強いと平均は最頻値よりかなり上に来るため、上側は広く取る
-        /// </remarks>
         private const double 山に対するλの上限比 = 2.5D;
 
         /// <summary>
         /// 局所極大から拾う初期値候補の上限数
         /// </summary>
-        /// <remarks>
-        /// 頻度上位のものだけを試す
-        /// </remarks>
         private const int 局所極大候補の上限数 = 20;
 
         #endregion
@@ -130,7 +114,6 @@ namespace Tsumiki.Utilities
 
             var l_log階乗 = Get_log階乗テーブル(l_走査上限);
 
-            // 試行は初期値ごとに独立なので並列に回し、最良の選び方は候補の順に比べる逐次の場合と揃える
             var l_初期λ候補 = Get_初期λ候補(l_出現回数, l_頻度, l_走査上限);
             var l_試行群 = new ヒストグラム試行結果?[l_初期λ候補.Count];
             _ = Parallel.For(0, l_初期λ候補.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
@@ -157,8 +140,6 @@ namespace Tsumiki.Utilities
 
             if (l_カットオフ is not { } l_確定カットオフ)
             {
-                // 全域が誤り成分寄りと判定された
-                // モデルが当てはまっていない
                 return null;
             }
 
@@ -170,11 +151,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 「この深度以上はすべて信頼できる」と言える一方向境界だけを返す
         /// </summary>
-        /// <remarks>
-        /// 有限コピー数の混合は未観測 tail で真成分が先に減衰し、事後誤り確率が再上昇しうる。
-        /// 観測された bin 内で一度でも再上昇する場合、最後の交差点を巨大な下限として報告せず unknown
-        /// (ulong.MaxValue) にする。この値は GraphSimplifier では「無条件に保護できる深度なし」として働く。
-        /// </remarks>
         internal static ulong Get_単調な信頼下限(IReadOnlyList<double> p_事後誤り確率, IReadOnlyList<double> p_頻度, ulong p_カットオフ)
         {
             var l_開始 = checked((int)Math.Max(0UL, p_カットオフ - 1UL));
@@ -197,10 +173,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_試行群"></param>
         /// <param name="p_山">観測された山の出現回数、求められなければ null</param>
-        /// <remarks>
-        /// 山が分かる場合は、その帯に λ が収まる試行の中で最良のものを採る<br/>
-        /// 帯に収まる試行が 1 つも無い場合と山が分からない場合は、制約なしの最良へ戻す
-        /// </remarks>
         /// <returns>採用する試行、1 つも収束していなければ null</returns>
         private static ヒストグラム試行結果? Get_採用する試行(ヒストグラム試行結果?[] p_試行群, ulong? p_山)
         {
@@ -238,10 +210,6 @@ namespace Tsumiki.Utilities
         /// コピー数別の混合比 π_k は自由な 10 パラメータにせず、π_k ∝ r^ (k-1) という単一の減衰率 r で表す (k=1 が最大、以降単調減少)
         /// </summary>
         /// <param name="p_コピー数減衰率">コピー数別混合比の減衰率</param>
-        /// <remarks>
-        /// 自由な 10 パラメータのままだと、λ' = λ/d (d は 2 以上の約数) にして k'=d, 2 d, 3 d... にだけ重みを乗せれば、真のピーク位置 (dλ', 2 dλ', ...) をそっくりそのまま再現できてしまう「調波エイリアシング」の別解に EM が収束しうる<br/>
-        /// 単調減少という 1 パラメータの制約は、真のゲノムで高コピー配列ほど少ないという実態にも合致し、この別解 (低い k を飛ばして高い k にだけ重みが乗る形) を作れなくする
-        /// </remarks>
         /// <returns></returns>
         private static double[] Get_コピー数別混合比(double p_コピー数減衰率)
         {
@@ -267,9 +235,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_log階乗"></param>
         /// <param name="p_総数"></param>
         /// <param name="p_初期λ"></param>
-        /// <remarks>
-        /// どちらかの成分が完全に空になる、または最終的な λ が下限未満になる (誤り成分と分離できていない) 場合は null を返す
-        /// </remarks>
         /// <returns></returns>
         private static ヒストグラム試行結果? Get_単一試行(double[] p_出現回数, double[] p_頻度, double[] p_log階乗, double p_総数, double p_初期λ)
         {
@@ -340,9 +305,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_走査上限"></param>
         /// <param name="p_過分散"></param>
-        /// <remarks>
-        /// コピー数によらず c と r だけで決まるので、成分ごとに引き直さない
-        /// </remarks>
         /// <returns></returns>
         private static double[] Get_logガンマテーブル(int p_走査上限, double p_過分散)
         {
@@ -362,10 +324,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_rコピー"></param>
         /// <param name="p_λ"></param>
         /// <param name="p_過分散">現在の値</param>
-        /// <remarks>
-        /// λ と違って閉じた形の解が無いため、反復数を区切って近づけるだけにとどめる<br/>
-        /// 曲率が正 (極大でない) 側へ出た場合や範囲外へ出た場合は動かさない
-        /// </remarks>
         /// <returns>更新後の過分散パラメータ</returns>
         private static double Get_更新後の過分散(double[] p_出現回数, double[] p_頻度, double[][] p_rコピー, double p_λ, double p_過分散)
         {
@@ -375,7 +333,6 @@ namespace Tsumiki.Utilities
                 var l_ディガンマ過分散 = SpecialFunctions.Get_ディガンマ(l_過分散);
                 var l_トリガンマ過分散 = SpecialFunctions.Get_トリガンマ(l_過分散);
 
-                // ディガンマ・トリガンマの引数は c と過分散だけで決まるので、コピー数ごとに引き直さない
                 var l_ディガンマ = new double[p_出現回数.Length];
                 var l_トリガンマ = new double[p_出現回数.Length];
                 for (var i = 0; i < p_出現回数.Length; i++)
@@ -430,10 +387,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_出現回数"></param>
         /// <param name="p_頻度"></param>
-        /// <remarks>
-        /// 出現回数 1..20 の頻度加重平均を使う (低頻度域の大まかな水準を見るだけの粗い初期値で、EM が精密化する) <br/>
-        /// 定数 1 で初期化すると、幾何分布が c=1 にのみ質量を持つ退化点になり、そこでは c&gt;=2 の責任度が最初から実質ゼロになって動けなくなる (EM が抜け出せない自明な吸収点に落ちる)
-        /// </remarks>
         /// <returns></returns>
         private static double Get_初期誤り平均(double[] p_出現回数, double[] p_頻度)
         {
@@ -454,10 +407,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_出現回数"></param>
         /// <param name="p_頻度"></param>
         /// <param name="p_走査上限"></param>
-        /// <remarks>
-        /// 頻度の高い局所極大 (データが実際に示す山) と、対数間隔のグリッド (局所極大が谷に埋もれて見えない場合の保険) を併用する<br/>
-        /// 谷の目視判定には依存しない
-        /// </remarks>
         /// <returns></returns>
         private static List<double> Get_初期λ候補(double[] p_出現回数, double[] p_頻度, int p_走査上限)
         {
@@ -496,9 +445,6 @@ namespace Tsumiki.Utilities
         /// <param name="p_コピー数別混合比"></param>
         /// <param name="p_r誤り">出現回数ごとの誤り成分への責任度、この呼び出しで書き込む</param>
         /// <param name="p_rコピー">出現回数・コピー数ごとの責任度、この呼び出しで書き込む</param>
-        /// <remarks>
-        /// 各出現回数について、誤り成分・コピー数 1..上限の各成分への事後責任 (責任度) を計算し、対数尤度を返す
-        /// </remarks>
         /// <returns></returns>
         private static double Get_Estep(double[] p_出現回数, double[] p_頻度, double[] p_log階乗, double p_誤り平均, double p_誤り混合比, double p_λ, double[] p_コピー数別混合比, double p_過分散, double[] p_logガンマ, double[] p_r誤り, double[][] p_rコピー)
         {
@@ -517,7 +463,6 @@ namespace Tsumiki.Utilities
             {
                 var l_末尾配列 = p_出現回数[i];
 
-                // 幾何分布 (誤り成分) : P (c) = (1-p) ^ (c-1) * p
                 l_項[0] = l_logw誤り + (l_末尾配列 - 1D) * l_log1マイナスp + l_logP;
 
                 for (var k = 1; k <= コピー数の上限; k++)
@@ -650,9 +595,6 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_λ"></param>
         /// <param name="p_コピー数別混合比"></param>
-        /// <remarks>
-        /// 出現回数によらない値なので、ビンごとに取り直さない
-        /// </remarks>
         /// <returns></returns>
         private static (double[] A_μ群, double[] A_log混合比群) Get_コピー数別の定数(double p_λ, double[] p_コピー数別混合比)
         {
@@ -669,9 +611,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 対数のまま和を取る
         /// </summary>
-        /// <remarks>
-        /// そのまま指数へ戻すと桁が溢れるため、最大値を括り出してから足す
-        /// </remarks>
         /// <param name="p_対数値">足し合わせる対数値</param>
         /// <returns>和の対数</returns>
         private static double Get_LogSumExp(double[] p_対数値)
@@ -693,9 +632,6 @@ namespace Tsumiki.Utilities
         /// c=0..p_上限 の log (c!) の表
         /// </summary>
         /// <param name="p_上限"></param>
-        /// <remarks>
-        /// ポアソン対数尤度の計算に使う
-        /// </remarks>
         /// <returns></returns>
         private static double[] Get_log階乗テーブル(int p_上限)
         {

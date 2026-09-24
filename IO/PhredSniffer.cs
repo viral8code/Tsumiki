@@ -6,9 +6,6 @@ namespace Tsumiki.IO
     /// <summary>
     /// FASTQ のクオリティ文字列から Phred オフセット (33 or 64) を推定する
     /// </summary>
-    /// <remarks>
-    /// -p が明示指定されていない場合に限り推定値を自動採用し、明示指定されている場合は (ユーザーの判断を尊重して) 警告のみに留める
-    /// </remarks>
     internal static class PhredSniffer
     {
         #region 定数
@@ -66,9 +63,6 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_標本"></param>
         /// <param name="p_有効オフセット"></param>
-        /// <remarks>
-        /// 問題なさそうな場合は null を返す
-        /// </remarks>
         /// <returns></returns>
         public static string? Get_警告文(Phred標本 p_標本, int p_有効オフセット)
         {
@@ -99,10 +93,6 @@ namespace Tsumiki.IO
         /// 標本から、どちらのオフセットが妥当かを判定する
         /// </summary>
         /// <param name="p_標本"></param>
-        /// <remarks>
-        /// 片方だけが妥当な場合にそのオフセットを返す<br/>
-        /// 両方妥当/両方不当な場合は判別できないため null を返す
-        /// </remarks>
         /// <returns></returns>
         public static int? Get_推定オフセット(Phred標本 p_標本)
         {

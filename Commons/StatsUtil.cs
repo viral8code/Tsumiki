@@ -3,9 +3,6 @@
     /// <summary>
     /// 中央値・分位点・ N50 ・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
     /// </summary>
-    /// <remarks>
-    /// 「整列してから累積和が半分を超えた点を採る」という同じ骨格の実装がファイルごとに個別に書かれていたのを 1 箇所にする
-    /// </remarks>
     internal static class StatsUtil
     {
         #region 公開メソッド
@@ -49,10 +46,6 @@
         /// 長さで重み付けした値の中央値
         /// </summary>
         /// <param name="p_組"></param>
-        /// <remarks>
-        /// 累積長が総延長の半分を超えた点の値を採る<br/>
-        /// 短い断片が本数で多数を占めていても、実際の塩基の大部分が属する水準を代表させたい場面 (単一コピー領域のカバレッジ基準値など) で使う
-        /// </remarks>
         /// <returns></returns>
         public static double Get_長さ加重中央値(IEnumerable<(long A_長さ, double A_値)> p_組)
         {
@@ -80,9 +73,6 @@
         /// 長さ一覧から N50/L50 を求める
         /// </summary>
         /// <param name="p_長さ一覧"></param>
-        /// <remarks>
-        /// N50 は「この長さ以上の配列だけで総延長の半分に達する」最小の長さ、L50 はそのために必要な本数
-        /// </remarks>
         /// <returns></returns>
         public static (long A_N50, int A_L50) Get_N50(IReadOnlyCollection<long> p_長さ一覧)
         {
