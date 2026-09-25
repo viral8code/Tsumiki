@@ -22,17 +22,17 @@ namespace Tsumiki.Core
         /// <summary>
         /// 簡略化ラウンド上限
         /// </summary>
-        private const int ラウンド数上限 = 5;
+        private const int C_ラウンド数上限 = 5;
 
         /// <summary>
         /// 短い反復を解く対象にする unitig 長を決める、断片長分布の分位
         /// </summary>
-        private const double 解ける反復長の分位 = 0.9D;
+        private const double C_解ける反復長の分位 = 0.9D;
 
         /// <summary>
         /// 分岐元から単一コピーの頂点を探して遡る最大頂点数
         /// </summary>
-        private const int 上流を遡る最大頂点数 = 8;
+        private const int C_上流を遡る最大頂点数 = 8;
 
         #endregion
 
@@ -41,9 +41,15 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig グラフから辺を選び結合を確定して、contig を FASTA へ書き出す
         /// </summary>
-        /// <param name="p_contigパス">出力先の FASTA パス</param>
-        /// <param name="p_優勢閾値">分岐選択で優勢とみなす正規化支持の割合</param>
-        /// <param name="p_最小証拠数">分岐選択に必要な最小の証拠数</param>
+        /// <param name="p_contigパス">
+        /// 出力先の FASTA パス
+        /// </param>
+        /// <param name="p_優勢閾値">
+        /// 分岐選択で優勢とみなす正規化支持の割合
+        /// </param>
+        /// <param name="p_最小証拠数">
+        /// 分岐選択に必要な最小の証拠数
+        /// </param>
         /// <param name="p_コピー数">
         /// unitig ID -> 推定コピー数<br/>
         /// 先読み探索で「この unitig を何回まで通ってよいか」の予算に使う<br/>
@@ -59,7 +65,7 @@ namespace Tsumiki.Core
         /// </param>
         /// <param name="p_r_mer検証器">
         /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/>
-        /// 詳細は UnitigGraph.V_解決_短い反復 を参照
+        /// 詳細は <see cref="UnitigGraph.V_解決_短い反復"/> を参照
         /// </param>
         /// <param name="p_GFAパス">
         /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
@@ -72,7 +78,7 @@ namespace Tsumiki.Core
         /// </param>
         /// <param name="p_コピー数区間">
         /// 観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/>
-        /// 先読み探索 (BeamSearchExtender) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う
+        /// 先読み探索 (<see cref="BeamSearchExtender"/>) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う
         /// </param>
         public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
@@ -86,7 +92,7 @@ namespace Tsumiki.Core
                 this.V_マッピング_引き継ぎ経路(p_引き継ぎ経路群);
             }
 
-            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig配列, this._kmer辞書, l_k長, C_曖昧kmerの番兵);
 
             var l_辺数 = 0;
             var l_分岐頂点数 = 0;
@@ -106,7 +112,7 @@ namespace Tsumiki.Core
             Logger.V_出力(メッセージID.リード経路索引の件数, l_経路索引.A_経路数, l_引き継ぎ経路索引?.A_経路数 ?? 0);
 
             var l_反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一unitig標本) : l_k長 * 4;
-            var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], 解ける反復長の分位) : l_k長 * 4;
+            var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], C_解ける反復長の分位) : l_k長 * 4;
 
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
@@ -205,7 +211,7 @@ namespace Tsumiki.Core
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
             var l_外した枝数 = 0;
-            for (var l_ラウンド = 1; l_ラウンド <= ラウンド数上限; l_ラウンド++)
+            for (var l_ラウンド = 1; l_ラウンド <= C_ラウンド数上限; l_ラウンド++)
             {
                 var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
@@ -220,15 +226,16 @@ namespace Tsumiki.Core
                     break;
                 }
 
-                if (l_ラウンド == ラウンド数上限)
+                if (l_ラウンド == C_ラウンド数上限)
                 {
-                    Logger.V_出力(メッセージID.単純化の打ち切り, ラウンド数上限);
+                    Logger.V_出力(メッセージID.単純化の打ち切り, C_ラウンド数上限);
                 }
             }
             if (l_外した枝数 > 0)
             {
                 Logger.V_出力(メッセージID.行き止まり枝の除去数, l_外した枝数);
             }
+
             if (l_除去バブル数 > 0)
             {
                 Logger.V_出力(メッセージID.バブル除去数, l_除去バブル数);
@@ -334,6 +341,7 @@ namespace Tsumiki.Core
                     l_引き継ぎ経路で解決した数++;
                     continue;
                 }
+
                 if (p_引き継ぎ隣接 is { Count: > 0 } && Get_引き継ぎで一意な行き先(v, l_出辺, p_引き継ぎ隣接) is { } l_引き継ぎ先)
                 {
                     l_選択[v] = l_引き継ぎ先;
@@ -348,10 +356,12 @@ namespace Tsumiki.Core
                 AmbiguityRecorder.V_記録(l_種別, l_場所, l_首位の支持, l_次点の支持, (long)l_最良の生本数);
             }
             Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);
+
             if (l_引き継ぎで解決した数 > 0)
             {
                 Logger.V_出力(メッセージID.経路引き継ぎで解決した数, l_引き継ぎで解決した数);
             }
+
             if (l_経路で解決した数 > 0)
             {
                 Logger.V_出力(メッセージID.経路で解決した分岐数, l_経路で解決した数, l_多コピーを経路で解決した数, l_引き継ぎ経路で解決した数);
@@ -381,13 +391,14 @@ namespace Tsumiki.Core
 
             List<int> l_上流 = [p_分岐元];
             var l_現在 = p_分岐元;
-            while (p_グラフ.Get_入次数(l_現在) == 1 && l_上流.Count <= 上流を遡る最大頂点数)
+            while (p_グラフ.Get_入次数(l_現在) == 1 && l_上流.Count <= C_上流を遡る最大頂点数)
             {
                 var l_直前 = p_グラフ.A_出辺[l_現在 ^ 1][0] ^ 1;
                 if (l_上流.Exists(x => (x >> 1) == (l_直前 >> 1)))
                 {
                     return null;
                 }
+
                 l_上流.Insert(0, l_直前);
                 if ((p_コピー数?.GetValueOrDefault(l_直前 >> 1, 1) ?? 1) <= 1 && p_unitig配列[l_直前].Length >= p_起点の最短長)
                 {
@@ -401,7 +412,7 @@ namespace Tsumiki.Core
         /// <summary>
         /// 符号付き unitig ID をキーに持つ隣接を、向き付き頂点番号をキーに持つ隣接へ変換する
         /// </summary>
-        /// <param name="p_符号付きID隣接">V_マッピング_1リード が記録した、符号付き unitig ID の組をキーに持つ隣接</param>
+        /// <param name="p_符号付きID隣接"><see cref="V_処理_1リード"/> が記録した、符号付き unitig ID の組をキーに持つ隣接</param>
         /// <returns>向き付き頂点番号をキーに持つ隣接</returns>
         private static Dictionary<(int, int), ulong> Get_頂点番号キーへ変換(Dictionary<(int, int), ulong> p_符号付きID隣接)
         {
@@ -436,10 +447,12 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 if (l_一意な行き先 is not null)
                 {
                     return null;
                 }
+
                 l_一意な行き先 = w;
             }
             return l_一意な行き先;
@@ -473,6 +486,7 @@ namespace Tsumiki.Core
                     l_反復通り抜けで棄却した数++;
                     continue;
                 }
+
                 l_結合[v] = l_終点;
                 l_結合数++;
             }
@@ -484,6 +498,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 l_結合[l_始点] = l_始点;
                 l_孤立した環の数++;
             }

@@ -75,7 +75,7 @@
         }
 
         /// <summary>
-        /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する (Booth のアルゴリズム、O (n))
+        /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する (Booth のアルゴリズム、O(n))
         /// </summary>
         /// <param name="p_配列"></param>
         /// <returns></returns>
@@ -177,7 +177,25 @@
         /// <returns>位置ごとの塩基候補列</returns>
         public static List<byte[]> V_変換_塩基候補列(string p_リード)
         {
-            return [.. p_リード.Select<char, byte[]>(x => x switch { 'A' => [Consts.塩基ID.A], 'M' => [Consts.塩基ID.A, Consts.塩基ID.C], 'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G], 'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T], 'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T], 'R' => [Consts.塩基ID.A, Consts.塩基ID.G], 'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T], 'W' => [Consts.塩基ID.A, Consts.塩基ID.T], 'C' => [Consts.塩基ID.C], 'S' => [Consts.塩基ID.C, Consts.塩基ID.G], 'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T], 'Y' => [Consts.塩基ID.C, Consts.塩基ID.T], 'G' => [Consts.塩基ID.G], 'K' => [Consts.塩基ID.G, Consts.塩基ID.T], 'T' => [Consts.塩基ID.T], _ => throw new ArgumentException($"{x} is not nucleotide base code") })];
+            return [.. p_リード.Select<char, byte[]>(x => x switch
+            {
+                'A' => [Consts.塩基ID.A],
+                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
+                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
+                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
+                'C' => [Consts.塩基ID.C],
+                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
+                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
+                'G' => [Consts.塩基ID.G],
+                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
+                'T' => [Consts.塩基ID.T],
+                _ => throw new ArgumentException($"{x} is not nucleotide base code")
+            })];
         }
 
         /// <summary>
@@ -262,7 +280,7 @@
         /// <returns></returns>
         public static string Get_表示用メモリサイズ(long p_バイト数)
         {
-            string[] l_単位 = ["", "K", "M", "G", "T"];
+            string[] l_単位 = [string.Empty, "K", "M", "G", "T"];
             double l_サイズ = p_バイト数;
             var l_単位位置 = 0;
             while (l_サイズ >= 1_024D && l_単位位置 < l_単位.Length - 1)
@@ -355,8 +373,20 @@
         /// <returns>塩基 ID 列</returns>
         public static byte[] V_変換_塩基列(byte p_パック済みバイト)
         {
-            return [.. new[] { (p_パック済みバイト >>> 6) & 3, (p_パック済みバイト >>> 4) & 3, (p_パック済みバイト >>> 2) & 3, p_パック済みバイト & 3 }
-                .Select(x => (x + 1) switch { Consts.塩基ID.A => Consts.塩基ID.A, Consts.塩基ID.C => Consts.塩基ID.C, Consts.塩基ID.G => Consts.塩基ID.G, Consts.塩基ID.T => Consts.塩基ID.T, _ => throw new ArgumentException($"{x + 1} is not the expected value for a base") })];
+            return [.. new[]
+            {
+                (p_パック済みバイト >>> 6) & 3,
+                (p_パック済みバイト >>> 4) & 3,
+                (p_パック済みバイト >>> 2) & 3,
+                p_パック済みバイト & 3
+            }.Select(x => (x + 1) switch
+            {
+                Consts.塩基ID.A => Consts.塩基ID.A,
+                Consts.塩基ID.C => Consts.塩基ID.C,
+                Consts.塩基ID.G => Consts.塩基ID.G,
+                Consts.塩基ID.T => Consts.塩基ID.T,
+                _ => throw new ArgumentException($"{x + 1} is not the expected value for a base")
+            })];
         }
 
         /// <summary>
@@ -408,6 +438,7 @@
                     }
                     l_i = l_失敗関数[l_i];
                 }
+
                 if (l_文字 != l_二重化[l_k長 + l_i + 1])
                 {
                     if (l_文字 < l_二重化[l_k長])

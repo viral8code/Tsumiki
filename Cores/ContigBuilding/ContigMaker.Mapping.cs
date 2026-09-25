@@ -19,12 +19,27 @@ namespace Tsumiki.Core
         /// <summary>
         /// 曖昧 kmer の番兵
         /// </summary>
-        private const int 曖昧kmerの番兵 = int.MinValue;
+        private const int C_曖昧kmerの番兵 = int.MinValue;
 
         /// <summary>
         /// read1 と read2 の並びを 1 本に繋ぐのに要る、共有する unitig の数
         /// </summary>
-        private const int ペア経路を繋ぐ最小の重なり = 2;
+        private const int C_ペア経路を繋ぐ最小の重なり = 2;
+
+        /// <summary>
+        /// 採用ラベル: 情報無し
+        /// </summary>
+        private const string C_採用ラベル_無し = "none";
+
+        /// <summary>
+        /// 採用ラベル: 同一向き
+        /// </summary>
+        private const string C_採用ラベル_同一向き = "same-orientation";
+
+        /// <summary>
+        /// 採用ラベル: 逆向き向き
+        /// </summary>
+        private const string C_採用ラベル_逆向き向き = "opposite-orientation";
 
         #endregion
 
@@ -111,6 +126,7 @@ namespace Tsumiki.Core
                     l_ID++;
                     continue;
                 }
+
                 for (var i = l_k長; i <= l_unitig.A_配列.Length; i++)
                 {
                     var l_開始位置 = i - l_k長;
@@ -147,7 +163,7 @@ namespace Tsumiki.Core
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            return UnitigGraph.Get_グラフ(this._unitig配列, this._kmer辞書, l_k長, 曖昧kmerの番兵);
+            return UnitigGraph.Get_グラフ(this._unitig配列, this._kmer辞書, l_k長, C_曖昧kmerの番兵);
         }
 
         /// <summary>
@@ -242,17 +258,17 @@ namespace Tsumiki.Core
             if (l_同一向き合計 == 0 && l_逆向き合計 == 0)
             {
                 l_採用する標本群 = [];
-                l_採用ラベル = "none";
+                l_採用ラベル = C_採用ラベル_無し;
             }
             else if (l_同一向き合計 >= l_逆向き合計)
             {
                 l_採用する標本群 = l_ローカル同一向き標本;
-                l_採用ラベル = "same-orientation";
+                l_採用ラベル = C_採用ラベル_同一向き;
             }
             else
             {
                 l_採用する標本群 = l_ローカル逆向き標本;
-                l_採用ラベル = "opposite-orientation";
+                l_採用ラベル = C_採用ラベル_逆向き向き;
             }
 
             var l_同一unitig標本 = new List<int>();
@@ -267,6 +283,7 @@ namespace Tsumiki.Core
             var l_ペア支持数 = l_ペア経路.Values.Sum(x => x.Count);
             Logger.V_出力(メッセージID.ペア隣接候補数, l_ペア経路.Count, l_ペア支持数);
             Logger.V_出力(メッセージID.同一unitigのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一unitig標本.Count);
+
             if (l_同一unitig標本.Count > 0)
             {
                 Logger.V_出力(メッセージID.同一unitigの断片長分布, Get_分布要約(l_同一unitig標本));
@@ -320,11 +337,11 @@ namespace Tsumiki.Core
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存))
             {
-                if (l_既存.Item1 == 曖昧kmerの番兵 || l_既存.Item1 == p_ID)
+                if (l_既存.Item1 == C_曖昧kmerの番兵 || l_既存.Item1 == p_ID)
                 {
                     return 0;
                 }
-                p_辞書[p_キー] = (曖昧kmerの番兵, 0);
+                p_辞書[p_キー] = (C_曖昧kmerの番兵, 0);
                 return 1;
             }
             p_辞書[p_キー] = (p_ID, p_位置);
@@ -477,7 +494,7 @@ namespace Tsumiki.Core
         {
             var l_長さ1 = p_経路1.Count;
             var l_長さ2 = p_経路2.Count;
-            if (l_長さ1 < ReadPathIndex.最短の頂点数 && l_長さ2 < ReadPathIndex.最短の頂点数 && (l_長さ1 < ペア経路を繋ぐ最小の重なり || l_長さ2 < ペア経路を繋ぐ最小の重なり))
+            if (l_長さ1 < ReadPathIndex.最短の頂点数 && l_長さ2 < ReadPathIndex.最短の頂点数 && (l_長さ1 < C_ペア経路を繋ぐ最小の重なり || l_長さ2 < C_ペア経路を繋ぐ最小の重なり))
             {
                 return;
             }
@@ -490,7 +507,7 @@ namespace Tsumiki.Core
             }
 
             var l_重なり = Get_並びの重なり(l_並び1, l_並び2);
-            if (l_重なり >= ペア経路を繋ぐ最小の重なり)
+            if (l_重なり >= C_ペア経路を繋ぐ最小の重なり)
             {
                 var l_繋いだ並び = new int[l_長さ1 + l_長さ2 - l_重なり];
                 l_並び1.CopyTo(l_繋いだ並び);
@@ -507,6 +524,7 @@ namespace Tsumiki.Core
                 V_集計_並び(l_並び1, p_ローカル経路);
                 return;
             }
+
             if (l_長さ2 > l_長さ1 && l_並び2.IndexOf(l_並び1) >= 0)
             {
                 V_集計_並び(l_並び2, p_ローカル経路);
@@ -543,9 +561,12 @@ namespace Tsumiki.Core
         {
             for (var i = 0; i < p_並び.Length; i++)
             {
+                var l_並び1 = Math.Abs(p_並び[i]);
                 for (var j = i + 1; j < p_並び.Length; j++)
                 {
-                    if (Math.Abs(p_並び[i]) == Math.Abs(p_並び[j]))
+                    var l_並び2 = Math.Abs(p_並び[j]);
+
+                    if (l_並び1 == l_並び2)
                     {
                         return true;
                     }
@@ -596,7 +617,7 @@ namespace Tsumiki.Core
                 }
 
                 var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
-                if (!this._kmer辞書.TryGetValue(l_キー, out var l_項目) || l_項目.A_unitigID == 曖昧kmerの番兵)
+                if (!this._kmer辞書.TryGetValue(l_キー, out var l_項目) || l_項目.A_unitigID == C_曖昧kmerの番兵)
                 {
                     continue;
                 }
@@ -654,6 +675,5 @@ namespace Tsumiki.Core
         }
 
         #endregion
-
     }
 }

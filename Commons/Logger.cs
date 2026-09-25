@@ -13,12 +13,12 @@ namespace Tsumiki.Commons
         /// <summary>
         /// CallerMemberName が置換する既定値
         /// </summary>
-        private const string 呼び出し元の既定値 = "";
+        private const string C_呼び出し元の既定値 = "";
 
         /// <summary>
         /// 控えの上限
         /// </summary>
-        private const int 控えの上限 = 10_000;
+        private const int C_控えの上限 = 10_000;
 
         #endregion
 
@@ -57,7 +57,7 @@ namespace Tsumiki.Commons
         /// </summary>
         /// <param name="p_メソッド名">呼び出し元のメソッド名、コンパイラが埋める</param>
         /// <returns>呼び出し元のメソッド名</returns>
-        public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = 呼び出し元の既定値)
+        public static string Get_メソッド名([CallerMemberName] string p_メソッド名 = C_呼び出し元の既定値)
         {
             return p_メソッド名;
         }
@@ -185,7 +185,7 @@ namespace Tsumiki.Commons
                 {
                     l_ファイル.WriteLine(p_行);
                 }
-                else if (_書き出し待ち.Count < 控えの上限)
+                else if (_書き出し待ち.Count < C_控えの上限)
                 {
                     _書き出し待ち.Add(p_行);
                 }
@@ -212,8 +212,7 @@ namespace Tsumiki.Commons
         {
             return p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal)
                 ? ログ水準.詳細
-                : p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal)
-                || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal)
+                : p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal) || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal)
                 ? ログ水準.最小
                 : ログ水準.標準;
         }

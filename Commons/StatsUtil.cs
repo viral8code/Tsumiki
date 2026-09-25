@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Commons
 {
     /// <summary>
-    /// 中央値・分位点・ N50 ・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
+    /// 中央値・分位点・N50・長さ加重中央値など、複数箇所で必要になる分布の要約統計をまとめる
     /// </summary>
     internal static class StatsUtil
     {

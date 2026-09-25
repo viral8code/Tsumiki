@@ -13,27 +13,27 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 説明を書き始める桁
         /// </summary>
-        private const int 説明の開始桁 = 20;
+        private const int C_説明の開始桁 = 20;
 
         /// <summary>
         /// 入力形式 (パス)
         /// </summary>
-        private const string 形式_パス = "path";
+        private const string C_形式_パス = "path";
 
         /// <summary>
         /// 入力形式 (整数)
         /// </summary>
-        private const string 形式_整数 = "int";
+        private const string C_形式_整数 = "int";
 
         /// <summary>
         /// 入力形式 (小数)
         /// </summary>
-        private const string 形式_小数 = "decimal";
+        private const string C_形式_小数 = "decimal";
 
         /// <summary>
         /// 入力形式 (容量)
         /// </summary>
-        private const string 形式_容量 = "size";
+        private const string C_形式_容量 = "size";
 
         #endregion
 
@@ -62,26 +62,26 @@ namespace Tsumiki.Commons
                 .AppendLine(Messages.Get_文言(メッセージID.ヘルプ_使い方, Consts.引数キー.リード1のパス, Consts.引数キー.リード2のパス));
 
             V_追加_節(l_文, メッセージID.ヘルプ節_入力);
-            V_追加_行(l_文, $"{Consts.引数キー.リード1のパス} <{形式_パス}>", メッセージID.ヘルプ_リード1);
-            V_追加_行(l_文, $"{Consts.引数キー.リード2のパス} <{形式_パス}>", メッセージID.ヘルプ_リード2);
-            V_追加_行(l_文, $"{Consts.引数キー.シングルのパス} <{形式_パス}>", メッセージID.ヘルプ_シングル);
+            V_追加_行(l_文, $"{Consts.引数キー.リード1のパス} <{C_形式_パス}>", メッセージID.ヘルプ_リード1);
+            V_追加_行(l_文, $"{Consts.引数キー.リード2のパス} <{C_形式_パス}>", メッセージID.ヘルプ_リード2);
+            V_追加_行(l_文, $"{Consts.引数キー.シングルのパス} <{C_形式_パス}>", メッセージID.ヘルプ_シングル);
             V_追加_行(l_文, Consts.引数キー.曖昧塩基を許容, メッセージID.ヘルプ_曖昧塩基);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_kmerと品質);
-            V_追加_行(l_文, $"{Consts.引数キー.k長} <{形式_整数}[,{形式_整数}...]>", メッセージID.ヘルプ_k長, Consts.自動k長の上限);
-            V_追加_行(l_文, $"{Consts.引数キー.kmerカットオフ} <{形式_整数}>", メッセージID.ヘルプ_kmerカットオフ);
-            V_追加_行(l_文, $"{Consts.引数キー.Phredオフセット} <{形式_整数}>", メッセージID.ヘルプ_Phred, string.Join(" or ", Consts.許容Phredオフセット), Consts.Phredオフセットの既定値);
-            V_追加_行(l_文, $"{Consts.引数キー.クオリティカットオフ} <{形式_整数}>", メッセージID.ヘルプ_クオリティカットオフ, Consts.クオリティカットオフの既定値);
-            V_追加_行(l_文, $"{Consts.引数キー.品質トリム閾値} <{形式_整数}>", メッセージID.ヘルプ_品質トリム閾値, Consts.品質トリム閾値の既定値);
-            V_追加_行(l_文, $"{Consts.引数キー.メモリ予算} <{形式_容量}>", メッセージID.ヘルプ_メモリ予算, Util.Get_表示用メモリサイズ(Consts.メモリ予算の既定値));
+            V_追加_行(l_文, $"{Consts.引数キー.k長} <{C_形式_整数}[,{C_形式_整数}...]>", メッセージID.ヘルプ_k長, Consts.自動k長の上限);
+            V_追加_行(l_文, $"{Consts.引数キー.kmerカットオフ} <{C_形式_整数}>", メッセージID.ヘルプ_kmerカットオフ);
+            V_追加_行(l_文, $"{Consts.引数キー.Phredオフセット} <{C_形式_整数}>", メッセージID.ヘルプ_Phred, string.Join(" or ", Consts.許容Phredオフセット), Consts.Phredオフセットの既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.クオリティカットオフ} <{C_形式_整数}>", メッセージID.ヘルプ_クオリティカットオフ, Consts.クオリティカットオフの既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.品質トリム閾値} <{C_形式_整数}>", メッセージID.ヘルプ_品質トリム閾値, Consts.品質トリム閾値の既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.メモリ予算} <{C_形式_容量}>", メッセージID.ヘルプ_メモリ予算, Util.Get_表示用メモリサイズ(Consts.メモリ予算の既定値));
             V_追加_行(l_文, Consts.引数キー.救済kmerなし, メッセージID.ヘルプ_救済kmer);
             V_追加_行(l_文, $"{Consts.引数キー.コピー数基準} <{Consts.コピー数基準の出所.スペクトラム}|{Consts.コピー数基準の出所.重みづけ}>", メッセージID.ヘルプ_コピー数基準);
             V_追加_行(l_文, Consts.引数キー.低カバレッジ端トリミングなし, メッセージID.ヘルプ_低カバレッジ端トリミングなし);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_ペアエンド);
-            V_追加_行(l_文, $"{Consts.引数キー.インサートサイズ} <{形式_整数}>", メッセージID.ヘルプ_インサートサイズ);
-            V_追加_行(l_文, $"{Consts.引数キー.ペア結合閾値} <{形式_小数}>", メッセージID.ヘルプ_ペア結合閾値, Consts.ペア結合閾値の既定値);
-            V_追加_行(l_文, $"{Consts.引数キー.ペア支持数閾値} <{形式_整数}>", メッセージID.ヘルプ_ペア支持数閾値, Consts.ペア支持数閾値の既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.インサートサイズ} <{C_形式_整数}>", メッセージID.ヘルプ_インサートサイズ);
+            V_追加_行(l_文, $"{Consts.引数キー.ペア結合閾値} <{C_形式_小数}>", メッセージID.ヘルプ_ペア結合閾値, Consts.ペア結合閾値の既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.ペア支持数閾値} <{C_形式_整数}>", メッセージID.ヘルプ_ペア支持数閾値, Consts.ペア支持数閾値の既定値);
             V_追加_行(l_文, $"{Consts.引数キー.積極性モード} <{Consts.積極性モード名.保守的}|{Consts.積極性モード名.標準}|{Consts.積極性モード名.積極的}>", メッセージID.ヘルプ_積極性モード, Consts.引数キー.ペア結合閾値, Consts.引数キー.ペア支持数閾値, Consts.積極性モード名.標準);
 
             V_追加_節(l_文, メッセージID.ヘルプ節_前処理);
@@ -105,11 +105,11 @@ namespace Tsumiki.Commons
 
             V_追加_節(l_文, メッセージID.ヘルプ節_出力とその他);
             V_追加_行(l_文, Consts.引数キー.GFA出力なし, メッセージID.ヘルプ_GFA出力, Consts.GFAファイル名);
-            V_追加_行(l_文, $"{Consts.引数キー.一時ディレクトリ} <{形式_パス}>", メッセージID.ヘルプ_一時ディレクトリ, Consts.一時ディレクトリの既定値);
+            V_追加_行(l_文, $"{Consts.引数キー.一時ディレクトリ} <{C_形式_パス}>", メッセージID.ヘルプ_一時ディレクトリ, Consts.一時ディレクトリの既定値);
             V_追加_行(l_文, Consts.引数キー.一時ディレクトリ削除, メッセージID.ヘルプ_一時ディレクトリ削除);
             V_追加_行(l_文, Consts.引数キー.再開, メッセージID.ヘルプ_再開);
             V_追加_行(l_文, Consts.引数キー.オンメモリ, メッセージID.ヘルプ_オンメモリ);
-            V_追加_行(l_文, $"{Consts.引数キー.スレッド数} <{形式_整数}>", メッセージID.ヘルプ_スレッド数);
+            V_追加_行(l_文, $"{Consts.引数キー.スレッド数} <{C_形式_整数}>", メッセージID.ヘルプ_スレッド数);
             V_追加_行(l_文, $"{Consts.引数キー.言語} <{Consts.言語名.日本語}|{Consts.言語名.英語}|{Consts.言語名.中国語}>", メッセージID.ヘルプ_言語, Consts.言語名.日本語);
             V_追加_行(l_文, $"{Consts.引数キー.ログ水準} <{Consts.ログ水準名.最小}|{Consts.ログ水準名.標準}|{Consts.ログ水準名.詳細}>", メッセージID.ヘルプ_ログ水準, Consts.ログ水準名.標準, Consts.ログファイル名);
             V_追加_行(l_文, Consts.引数キー.バージョン, メッセージID.ヘルプ_バージョン);
@@ -140,7 +140,7 @@ namespace Tsumiki.Commons
         /// <param name="p_引数"></param>
         private static void V_追加_説明(StringBuilder p_文, メッセージID p_説明, params object?[] p_引数)
         {
-            _ = p_文.AppendLine(new string(' ', 説明の開始桁) + Messages.Get_文言(p_説明, p_引数));
+            _ = p_文.AppendLine(new string(' ', C_説明の開始桁) + Messages.Get_文言(p_説明, p_引数));
         }
 
         /// <summary>
@@ -153,9 +153,9 @@ namespace Tsumiki.Commons
         private static void V_追加_行(StringBuilder p_文, string p_オプション, メッセージID p_説明, params object?[] p_引数)
         {
             var l_説明 = Messages.Get_文言(p_説明, p_引数);
-            _ = p_オプション.Length < 説明の開始桁
-                ? p_文.AppendLine(p_オプション.PadRight(説明の開始桁) + l_説明)
-                : p_文.AppendLine(p_オプション).AppendLine(new string(' ', 説明の開始桁) + l_説明);
+            _ = p_オプション.Length < C_説明の開始桁
+                ? p_文.AppendLine(p_オプション.PadRight(C_説明の開始桁) + l_説明)
+                : p_文.AppendLine(p_オプション).AppendLine(new string(' ', C_説明の開始桁) + l_説明);
         }
 
         #endregion

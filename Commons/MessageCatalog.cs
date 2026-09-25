@@ -12,7 +12,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 英語
         /// </summary>
-        private static readonly Dictionary<メッセージID, string> _英語 = new()
+        private static readonly Dictionary<メッセージID, string> C_辞書_英語 = new()
         {
             [メッセージID.deBruijnグラフの要約] = "[Debug] Exact de Bruijn unitig graph: {0} directed edge(s), {1} branching vertex(es) out of {2}",
             [メッセージID.先読みで解決した分岐数] = "[Debug] Beam-search lookahead resolved {0} additional junction(s) that mutual uniqueness could not decide",
@@ -262,7 +262,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 日本語
         /// </summary>
-        private static readonly Dictionary<メッセージID, string> _日本語 = new()
+        private static readonly Dictionary<メッセージID, string> C_辞書_日本語 = new()
         {
             [メッセージID.deBruijnグラフの要約] = "[Debug] de Bruijn unitig グラフ: 有向辺 {0} 本、分岐頂点 {1} 個 / 全 {2} 頂点",
             [メッセージID.先読みで解決した分岐数] = "[Debug] ビーム探索の先読みにより、相互一意判定で未確定の分岐をさらに {0} 箇所解決",
@@ -512,7 +512,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 中国語
         /// </summary>
-        private static readonly Dictionary<メッセージID, string> _中国語 = new()
+        private static readonly Dictionary<メッセージID, string> C_辞書_中国語 = new()
         {
             [メッセージID.deBruijnグラフの要約] = "[Debug] 精确 de Bruijn unitig 图：{0} 条有向边，{1} 个分支顶点 / 共 {2} 个顶点",
             [メッセージID.先読みで解決した分岐数] = "[Debug] 束搜索前瞻额外解决 {0} 处单步互唯一性无法确定的连接点",
@@ -772,7 +772,11 @@ namespace Tsumiki.Commons
         public static string Get_書式(言語 p_言語, メッセージID p_ID)
         {
             var l_辞書 = Get_辞書(p_言語);
-            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : _英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
+            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式)
+                ? l_書式
+                : C_辞書_英語.TryGetValue(p_ID, out var l_英語)
+                ? l_英語
+                : p_ID.ToString();
         }
 
         #endregion
@@ -803,9 +807,9 @@ namespace Tsumiki.Commons
         {
             return p_言語 switch
             {
-                言語.英語 => _英語,
-                言語.日本語 => _日本語,
-                言語.中国語 => _中国語,
+                言語.英語 => C_辞書_英語,
+                言語.日本語 => C_辞書_日本語,
+                言語.中国語 => C_辞書_中国語,
                 _ => null,
             };
         }

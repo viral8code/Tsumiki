@@ -185,7 +185,7 @@ namespace Tsumiki.Core
         /// 全ライブラリのペア経路を unitig 対ごとにまとめて返す
         /// </summary>
         /// <returns></returns>
-        private IEnumerable<KeyValuePair<(int, int), List<int>>> Get_全ライブラリのペア経路()
+        private Dictionary<(int, int), List<int>> Get_全ライブラリのペア経路()
         {
             Dictionary<(int, int), List<int>> l_まとめ = [];
             foreach (var l_ペア経路 in this._ペア経路群)
@@ -205,6 +205,10 @@ namespace Tsumiki.Core
             return l_まとめ;
         }
 
+        /// <summary>
+        /// 確定辺標本の収集
+        /// </summary>
+        /// <param name="p_結合"></param>
         private void V_収集_確定辺標本(int[] p_結合)
         {
             var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
