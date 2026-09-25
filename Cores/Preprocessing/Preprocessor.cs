@@ -329,9 +329,9 @@ namespace Tsumiki.Cores.Preprocessing
         private static int Get_不一致数_語単位(PackedBases p_詰め1, PackedBases p_詰め2, int p_開始1, int p_開始2, int p_重なり長, int p_許容不一致数)
         {
             var l_不一致数 = 0;
-            for (var i = 0; i < p_重なり長; i += Consts.語あたりの塩基数)
+            for (var i = 0; i < p_重なり長; i += Consts.ワードあたりの塩基数)
             {
-                var l_今回 = Math.Min(Consts.語あたりの塩基数, p_重なり長 - i);
+                var l_今回 = Math.Min(Consts.ワードあたりの塩基数, p_重なり長 - i);
                 l_不一致数 += PackedBases.Get_不一致数(p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
                 if (l_不一致数 > p_許容不一致数)
                 {

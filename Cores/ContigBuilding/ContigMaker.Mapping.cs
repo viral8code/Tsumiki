@@ -177,7 +177,7 @@ namespace Tsumiki.Core
                 l_作業域[i] = new リード走査作業域();
             }
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_生リード列(p_リードパス), (l_リード, l_ワーカー番号) => this.V_処理_1リード(l_リード, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域[l_ワーカー番号]));
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, 塩基列控え.Get_塩基列(p_リードパス), (l_リード, l_ワーカー番号) => this.V_処理_1リード(l_リード, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域[l_ワーカー番号]));
 
             V_統合_隣接(this._リード隣接, l_ローカル隣接);
             V_統合_経路(this._経路集計, l_ローカル経路);
@@ -555,20 +555,6 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// FASTQ を順に読み進めて生リード文字列だけを返す
-        /// </summary>
-        /// <param name="p_リードパス"></param>
-        /// <returns></returns>
-        private static IEnumerable<string> Get_生リード列(string p_リードパス)
-        {
-            using var l_読み込み = new FastqReader(p_リードパス);
-            while (l_読み込み.Has続き())
-            {
-                yield return l_読み込み.Get_次のレコード().A_配列;
-            }
-        }
-
-        /// <summary>
         /// 1 本のリードを k-mer 索引で走査し、隣接を数え、通った unitig の並びと代表 unitig を求める
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
@@ -664,7 +650,7 @@ namespace Tsumiki.Core
             }
 
             var l_unitig長 = this._unitig長.GetValueOrDefault(Math.Abs(l_最良), 0);
-            return new 代表Unitigヒット(l_最良, l_最多得票, l_最良の終端, l_unitig長);
+            return new 代表Unitigヒット(l_最良, l_最良の終端, l_unitig長);
         }
 
         #endregion

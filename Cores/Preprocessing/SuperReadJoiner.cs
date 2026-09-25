@@ -84,49 +84,63 @@ namespace Tsumiki.Cores.Preprocessing
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
             using var l_書き出し = p_重なり結合の出力パス is null ? null : new FastqWriter(p_重なり結合の出力パス);
 
-            var l_配列1群 = new string[バッチサイズ];
-            var l_配列2群 = new string[バッチサイズ];
             var l_統合結果群 = new (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数)[バッチサイズ];
+            var l_引き継ぎ群 = new 引き継ぎ配列?[バッチサイズ];
 
-            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+            var l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
+            try
             {
-                var l_件数 = 0;
-                while (l_件数 < バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                while (true)
                 {
-                    l_配列1群[l_件数] = l_読み込み1.Get_次のリード_軽量().A_生リード;
-                    l_配列2群[l_件数] = l_読み込み2.Get_次のリード_軽量().A_生リード;
-                    l_件数++;
-                }
-                l_総ペア数 += l_件数;
-
-                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
-                {
-                    l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ, p_推定断片長下限, p_推定断片長上限);
-                });
-
-                for (var i = 0; i < l_件数; i++)
-                {
-                    l_曖昧で捨てた数 += l_統合結果群[i].A_曖昧で捨てた数;
-                    if (l_統合結果群[i].A_配列 is not { } l_配列)
+                    var (l_配列1群, l_配列2群) = l_次の読み込み.Result;
+                    var l_件数 = l_配列1群.Length;
+                    if (l_件数 == 0)
                     {
-                        continue;
+                        break;
                     }
-                    l_統合数++;
-                    if (l_統合結果群[i].A_Is重なり結合)
+                    l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
+                    l_総ペア数 += l_件数;
+
+                    _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                     {
-                        l_重なり結合数++;
-                        l_書き出し?.V_書き込み(FormattableString.Invariant($"@F{l_重なり結合数}"), l_配列, new string(合成リードのクオリティ, l_配列.Length));
-                        continue;
+                        l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ, p_推定断片長下限, p_推定断片長上限);
+                        l_引き継ぎ群[i] = l_統合結果群[i] is { A_配列: { } l_合成, A_Is重なり結合: false } ? Get_引き継ぎ配列(l_合成, p_kmerインデックス, p_k長) : null;
+                    });
+
+                    for (var i = 0; i < l_件数; i++)
+                    {
+                        l_曖昧で捨てた数 += l_統合結果群[i].A_曖昧で捨てた数;
+                        if (l_統合結果群[i].A_配列 is not { } l_配列)
+                        {
+                            continue;
+                        }
+                        l_統合数++;
+                        if (l_統合結果群[i].A_Is重なり結合)
+                        {
+                            l_重なり結合数++;
+                            l_書き出し?.V_書き込み(FormattableString.Invariant($"@F{l_重なり結合数}"), l_配列, new string(合成リードのクオリティ, l_配列.Length));
+                            continue;
+                        }
+
+                        l_結果.Add(l_引き継ぎ群[i]!);
                     }
 
-                    l_結果.Add(Get_引き継ぎ配列(l_配列, p_kmerインデックス, p_k長));
+                    var l_区切り = (ulong)l_総ペア数 / Consts.進捗ログ間隔;
+                    if (l_区切り > l_出力済みの区切り)
+                    {
+                        l_出力済みの区切り = l_区切り;
+                        Logger.V_出力(メッセージID.SuperRead橋渡し進捗, l_総ペア数, l_統合数);
+                    }
                 }
-
-                var l_区切り = (ulong)l_総ペア数 / Consts.進捗ログ間隔;
-                if (l_区切り > l_出力済みの区切り)
+            }
+            finally
+            {
+                try
                 {
-                    l_出力済みの区切り = l_区切り;
-                    Logger.V_出力(メッセージID.SuperRead橋渡し進捗, l_総ペア数, l_統合数);
+                    l_次の読み込み.Wait();
+                }
+                catch (AggregateException)
+                {
                 }
             }
 
@@ -324,6 +338,36 @@ namespace Tsumiki.Cores.Preprocessing
             }
             var l_見積もり = (int)(l_インサートサイズ * インサートサイズの許容比) - p_長さ1 - p_長さ2;
             return Math.Min(橋渡し長の上限, l_見積もり);
+        }
+
+        /// <summary>
+        /// read1/read2 の配列をバッチサイズぶん読み込む
+        /// </summary>
+        /// <param name="p_読み込み1">read1 の読み込み</param>
+        /// <param name="p_読み込み2">read2 の読み込み</param>
+        /// <returns>読み込んだ配列の組、読み終えていれば空</returns>
+        private static (string[] A_配列1群, string[] A_配列2群) Get_ペアの束(FastqReader p_読み込み1, FastqReader p_読み込み2)
+        {
+            var l_読み込み1 = Task.Run(() => Get_配列の束(p_読み込み1));
+            var l_配列2群 = Get_配列の束(p_読み込み2);
+            var l_配列1群 = l_読み込み1.Result;
+            var l_件数 = Math.Min(l_配列1群.Count, l_配列2群.Count);
+            return ([.. l_配列1群[..l_件数]], [.. l_配列2群[..l_件数]]);
+        }
+
+        /// <summary>
+        /// 1 本のファイルからバッチサイズぶんの配列を読み込む
+        /// </summary>
+        /// <param name="p_読み込み">読み込み</param>
+        /// <returns>読み込んだ配列</returns>
+        private static List<string> Get_配列の束(FastqReader p_読み込み)
+        {
+            List<string> l_束 = new(バッチサイズ);
+            while (l_束.Count < バッチサイズ && p_読み込み.Has続き())
+            {
+                l_束.Add(p_読み込み.Get_次のレコード().A_配列);
+            }
+            return l_束;
         }
 
         /// <summary>

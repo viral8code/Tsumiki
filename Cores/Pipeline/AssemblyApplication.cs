@@ -12,6 +12,15 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     internal static class AssemblyApplication
     {
+        #region 定数
+
+        /// <summary>
+        /// 一時ディレクトリの中で塩基列の控えを置くディレクトリ名
+        /// </summary>
+        private const string 塩基列控えの置き場所名 = "bases";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -34,6 +43,10 @@ namespace Tsumiki.Cores.Pipeline
             }
             finally
             {
+                塩基列控え.V_全消去();
+                塩基列控え.A_置き場所 = null;
+                RepeatRMerVerifier.V_解放_共有索引();
+                RepeatRMerVerifier.A_Is索引使用 = false;
                 Logger.V_終了_ファイル出力();
                 ConfigurationManager.A_実行時引数 = l_元設定;
             }
@@ -62,6 +75,8 @@ namespace Tsumiki.Cores.Pipeline
             Messages.A_言語 = l_引数.A_言語;
             Logger.A_水準 = l_引数.A_ログ水準;
             中間データ置き場.A_Is有効 = l_引数.A_Isオンメモリ;
+            塩基列控え.A_置き場所 = Path.Combine(l_引数.A_一時ディレクトリ, 塩基列控えの置き場所名);
+            RepeatRMerVerifier.A_Is索引使用 = true;
 
             if (l_引数.A_Isバージョンモード)
             {
@@ -149,6 +164,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_単一結果 = AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力) ?? throw new InvalidOperationException("Assembly could not produce a result");
                 l_結果 = MultiKAssembler.Get_固定アンカー評価を付与(l_単一結果, l_引数, l_一時ディレクトリ, l_リード長);
             }
+            RepeatRMerVerifier.V_解放_共有索引();
             FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長, l_処理済み設定);
 
             if (l_引数.A_Is一時ディレクトリ削除)

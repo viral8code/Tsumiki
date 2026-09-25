@@ -88,12 +88,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             var l_Isコピー数1以下 = (p_コピー数?.GetValueOrDefault(p_頂点 >> 1, 1) ?? 1) <= 1;
-            if (l_出次数 < 2 || l_入次数 < 2)
-            {
-                return l_Isコピー数1以下;
-            }
-
-            return l_Isコピー数1以下 && p_unitig配列 is not null && this.Is短い脇道だけの分岐(p_頂点, p_unitig配列);
+            return l_出次数 < 2 || l_入次数 < 2 ? l_Isコピー数1以下 : l_Isコピー数1以下 && p_unitig配列 is not null && this.Is短い脇道だけの分岐(p_頂点, p_unitig配列);
         }
 
         /// <summary>

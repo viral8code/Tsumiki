@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Models.Foundation;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.IO
 {
@@ -238,22 +239,13 @@ namespace Tsumiki.IO
         /// <returns>見つかれば理由、無ければ null</returns>
         internal static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
         {
-            if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算))
-            {
-                return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget";
-            }
-
-            if (p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開))
-            {
-                return $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from";
-            }
-
-            if (p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1)
-            {
-                return $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best";
-            }
-
-            return p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1
+            return p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算)
+                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget"
+                : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開)
+                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from"
+                : p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1
+                ? $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best"
+                : p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1
                 ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately"
                 : null;
         }
@@ -295,13 +287,13 @@ namespace Tsumiki.IO
         /// </summary>
         /// <param name="p_出所名"></param>
         /// <returns></returns>
-        private static Tsumiki.Models.UnitigBuilding.コピー数基準の出所 Get_コピー数基準の出所(string p_出所名)
+        private static コピー数基準の出所 Get_コピー数基準の出所(string p_出所名)
         {
             return p_出所名 switch
             {
-                "spectrum" => Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum,
-                "weighted" => Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted,
-                _ => throw new ArgumentException($"Unknown copy-number baseline \"{p_出所名}\": expected spectrum or weighted"),
+                Consts.コピー数基準の出所.スペクトラム => コピー数基準の出所.Spectrum,
+                Consts.コピー数基準の出所.重みづけ => コピー数基準の出所.Weighted,
+                _ => throw new ArgumentException($"Unknown copy-number baseline \"{p_出所名}\": expected {Consts.コピー数基準の出所.スペクトラム} or {Consts.コピー数基準の出所.重みづけ}"),
             };
         }
 

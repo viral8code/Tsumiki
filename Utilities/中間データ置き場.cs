@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.IO.Compression;
+using Tsumiki.IO;
 
 namespace Tsumiki.Utilities
 {
@@ -69,6 +70,7 @@ namespace Tsumiki.Utilities
         /// <returns>閉じた時点で書き込みが確定するストリーム</returns>
         public static Stream Get_書込ストリーム(string p_パス)
         {
+            塩基列控え.V_無効化(p_パス);
             if (!A_Is有効)
             {
                 return new FileStream(p_パス, FileMode.Create, FileAccess.Write, FileShare.Read, ファイルのバッファ, FileOptions.SequentialScan);
@@ -125,6 +127,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_パス">消すパス</param>
         public static void V_削除(string p_パス)
         {
+            塩基列控え.V_無効化(p_パス);
             var l_キー = Get_キー(p_パス);
             if (!_置き場.TryRemove(l_キー, out _) && !_取り込み済み.ContainsKey(l_キー) && File.Exists(p_パス))
             {

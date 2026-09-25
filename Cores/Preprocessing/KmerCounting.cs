@@ -71,6 +71,19 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     Logger.V_出力(l_Isペアエンド ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
                 }
+
+                if (l_Isペアエンド && !p_引数.A_Is曖昧塩基許容)
+                {
+                    if (p_Is進行状況出力)
+                    {
+                        Logger.V_出力(メッセージID.リード2の読込開始);
+                    }
+                    Parallel.Invoke(
+                        () => V_読込_リードファイル(A_リード1, p_kmerインデックス, l_Phred),
+                        () => V_読込_リードファイル(A_リード2!, p_kmerインデックス, l_Phred));
+                    continue;
+                }
+
                 V_読込_1ファイル(A_リード1, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
 
                 if (!l_Isペアエンド)

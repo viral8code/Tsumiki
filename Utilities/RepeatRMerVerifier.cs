@@ -60,6 +60,45 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly int _r長;
 
+        /// <summary>
+        /// 問い合わせに使うリードの索引、null なら登録した集合を引く
+        /// </summary>
+        private ReadMinimizerIndex? _索引;
+
+        /// <summary>
+        /// 索引を使うときに r-mer の両端の k-mer を確かめる集合、null なら確かめない
+        /// </summary>
+        private TrustedKmerIndex? _絞り込み;
+
+        /// <summary>
+        /// _絞り込み の k
+        /// </summary>
+        private int _絞り込みのk長;
+
+        /// <summary>
+        /// 実行の間、全 k で使い回すリードの索引
+        /// </summary>
+        private static ReadMinimizerIndex? _共有索引;
+
+        /// <summary>
+        /// 共有索引を作ったリードのパス (区切って連ねたもの)
+        /// </summary>
+        private static string? _共有索引の元;
+
+        /// <summary>
+        /// 共有索引を作るときの錠
+        /// </summary>
+        private static readonly Lock _共有索引の錠 = new();
+
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
+        /// 長い r-mer の問い合わせに、リード全体を流す代わりにリードの索引を使うか
+        /// </summary>
+        public static bool A_Is索引使用 { get; set; }
+
         #endregion
 
         #region コンストラクタ
@@ -115,29 +154,44 @@ namespace Tsumiki.Utilities
                 .Where(中間データ置き場.Is存在)
                 .ToList();
 
+            if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.最短の問い合わせ長 && l_パス群.Count > 0)
+            {
+                return new RepeatRMerVerifier(p_r長)
+                {
+                    _索引 = Get_共有索引(l_パス群),
+                    _絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null,
+                    _絞り込みのk長 = p_k長,
+                };
+            }
+
             var l_検証器 = new RepeatRMerVerifier(p_r長);
             if (p_問い合わせ配列 is not null)
             {
                 var l_候補 = new RepeatRMerVerifier(p_r長);
                 foreach (var l_配列 in p_問い合わせ配列)
                 {
-                    l_候補.V_登録_rMer(l_配列, p_r長, null, 0);
+                    l_候補.V_登録_rMer(l_配列, p_r長, null, 0, null);
                 }
                 l_検証器._候補集合 = l_候補;
             }
             var l_絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            foreach (var l_パス in l_パス群)
+            _ = Parallel.ForEach(l_パス群, l_パス =>
             {
-                ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(l_パス), (l_リード, _) =>
+                var l_束群 = Enumerable.Range(0, l_スレッド数).Select(_ => new 登録束(l_検証器)).ToArray();
+                ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列(l_パス), (l_リード, l_ワーカー番号) =>
                 {
                     if (l_リード is not null)
                     {
-                        l_検証器.V_登録_rMer(l_リード, p_r長, l_絞り込み, p_k長);
+                        l_検証器.V_登録_rMer(l_リード, p_r長, l_絞り込み, p_k長, l_束群[l_ワーカー番号]);
                     }
                 });
-            }
+                foreach (var l_束 in l_束群)
+                {
+                    l_束.V_吐き出し();
+                }
+            });
             return l_検証器;
         }
 
@@ -243,6 +297,18 @@ namespace Tsumiki.Utilities
             return (l_上位, l_下位);
         }
 
+        /// <summary>
+        /// 共有しているリードの索引を捨てる
+        /// </summary>
+        public static void V_解放_共有索引()
+        {
+            lock (_共有索引の錠)
+            {
+                _共有索引 = null;
+                _共有索引の元 = null;
+            }
+        }
+
         #endregion
 
         #region テストメソッド
@@ -325,7 +391,23 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// r-mer の値を厳密な集合へ登録する
+        /// 同じ分割の r-mer をまとめて集合へ登録する
+        /// </summary>
+        /// <param name="p_分割">分割番号</param>
+        /// <param name="p_値群">正準化した r-mer の値</param>
+        private void V_登録_束(int p_分割, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
+        {
+            lock (this._分割錠[p_分割])
+            {
+                foreach (var l_値 in p_値群)
+                {
+                    _ = this._小集合?[p_分割].Add((ulong)l_値.A_下位) ?? this._中集合?[p_分割].Add(l_値.A_下位) ?? this._長集合![p_分割].Add(l_値);
+                }
+            }
+        }
+
+        /// <summary>
+        /// r-mer を厳密な集合へ登録する
         /// </summary>
         /// <param name="p_値">正準化した r-mer の値</param>
         private void V_登録((UInt128 A_上位, UInt128 A_下位) p_値)
@@ -372,7 +454,56 @@ namespace Tsumiki.Utilities
         /// <returns>完全に一致する配列を見ていれば true</returns>
         private bool Has観測(ReadOnlySpan<char> p_窓)
         {
-            return this._大集合 is null ? this.Has観測(Get_正準値(p_窓)) : this.Has観測(new KmerKey(p_窓).Get_正規形());
+            return this._索引 is { } l_索引
+                ? this.Is両端が信頼済み(p_窓) && l_索引.Has出現(p_窓)
+                : this._大集合 is null ? this.Has観測(Get_正準値(p_窓)) : this.Has観測(new KmerKey(p_窓).Get_正規形());
+        }
+
+        /// <summary>
+        /// r-mer の両端の k-mer が信頼できる k-mer 集合にあるか (リードを流して登録するときの条件と同じ)
+        /// </summary>
+        /// <param name="p_窓">r-mer</param>
+        /// <returns>絞り込まないときは常に true</returns>
+        private bool Is両端が信頼済み(ReadOnlySpan<char> p_窓)
+        {
+            if (this._絞り込み is not { } l_絞り込み)
+            {
+                return true;
+            }
+            Span<byte> l_塩基 = stackalloc byte[this._絞り込みのk長];
+            foreach (var l_開始 in new[] { 0, p_窓.Length - this._絞り込みのk長 })
+            {
+                for (var i = 0; i < l_塩基.Length; i++)
+                {
+                    l_塩基[i] = Util.Get_塩基ID(p_窓[l_開始 + i]);
+                }
+                if (!l_絞り込み.Haskmer(l_塩基))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// リードの索引を、同じリードからはまだ作っていなければ作って返す
+        /// </summary>
+        /// <param name="p_パス群">生リードのパス</param>
+        /// <returns></returns>
+        private static ReadMinimizerIndex Get_共有索引(List<string> p_パス群)
+        {
+            var l_元 = string.Join(Path.PathSeparator, p_パス群);
+            lock (_共有索引の錠)
+            {
+                if (_共有索引 is null || _共有索引の元 != l_元)
+                {
+                    _共有索引 = null;
+                    using var l_計測 = new StageTimer("read-index");
+                    _共有索引 = ReadMinimizerIndex.V_構築(() => FastqReader.Get_生リード列([.. p_パス群]));
+                    _共有索引の元 = l_元;
+                }
+                return _共有索引;
+            }
         }
 
         /// <summary>
@@ -413,7 +544,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_r長">r-mer の長さ</param>
         /// <param name="p_絞り込み">両端の k-mer がこの集合にある r-mer だけを登録する、null なら絞り込まない</param>
         /// <param name="p_k長">p_絞り込み の k</param>
-        private void V_登録_rMer(string p_リード, int p_r長, TrustedKmerIndex? p_絞り込み, int p_k長)
+        private void V_登録_rMer(string p_リード, int p_r長, TrustedKmerIndex? p_絞り込み, int p_k長, 登録束? p_束)
         {
             var l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];
             if (p_絞り込み is not null)
@@ -430,7 +561,14 @@ namespace Tsumiki.Utilities
                         && Is登録対象(l_k窓の信頼, p_絞り込み, i - p_r長 + 1, p_r長, p_k長)
                         && (this._候補集合?.Has観測(l_キー) ?? true))
                     {
-                        this.V_登録(l_キー);
+                        if (p_束 is null)
+                        {
+                            this.V_登録(l_キー);
+                        }
+                        else
+                        {
+                            p_束.V_追加(l_キー);
+                        }
                     }
                 }
                 return;
@@ -492,6 +630,75 @@ namespace Tsumiki.Utilities
         private static bool Is登録対象(ReadOnlySpan<bool> p_k窓の信頼, TrustedKmerIndex? p_絞り込み, int p_開始, int p_r長, int p_k長)
         {
             return p_絞り込み is null || (p_k窓の信頼[p_開始] && p_k窓の信頼[p_開始 + p_r長 - p_k長]);
+        }
+
+        #endregion
+
+        #region 内部クラス
+
+        /// <summary>
+        /// 1 ワーカーが見つけた r-mer を分割ごとに溜め、溜まったらまとめて登録する
+        /// </summary>
+        /// <param name="p_検証器">登録先</param>
+        private sealed class 登録束(RepeatRMerVerifier p_検証器)
+        {
+            #region 定数
+
+            /// <summary>
+            /// 1 分割に溜める件数
+            /// </summary>
+            private const int 束の件数 = 1_024;
+
+            #endregion
+
+            #region 内部変数
+
+            /// <summary>
+            /// 分割ごとの溜め置き
+            /// </summary>
+            private readonly (UInt128 A_上位, UInt128 A_下位)[]?[] _束 = new (UInt128 A_上位, UInt128 A_下位)[]?[分割数];
+
+            /// <summary>
+            /// 分割ごとの溜めた件数
+            /// </summary>
+            private readonly int[] _件数 = new int[分割数];
+
+            #endregion
+
+            #region 公開メソッド
+
+            /// <summary>
+            /// r-mer を 1 件溜める
+            /// </summary>
+            /// <param name="p_値">正準化した r-mer の値</param>
+            public void V_追加((UInt128 A_上位, UInt128 A_下位) p_値)
+            {
+                var l_分割 = Get_分割番号(p_値);
+                var l_束 = this._束[l_分割] ??= new (UInt128 A_上位, UInt128 A_下位)[束の件数];
+                l_束[this._件数[l_分割]++] = p_値;
+                if (this._件数[l_分割] == 束の件数)
+                {
+                    p_検証器.V_登録_束(l_分割, l_束);
+                    this._件数[l_分割] = 0;
+                }
+            }
+
+            /// <summary>
+            /// 溜めた分をすべて登録する
+            /// </summary>
+            public void V_吐き出し()
+            {
+                for (var l_分割 = 0; l_分割 < 分割数; l_分割++)
+                {
+                    if (this._件数[l_分割] > 0)
+                    {
+                        p_検証器.V_登録_束(l_分割, this._束[l_分割].AsSpan(0, this._件数[l_分割]));
+                        this._件数[l_分割] = 0;
+                    }
+                }
+            }
+
+            #endregion
         }
 
         #endregion

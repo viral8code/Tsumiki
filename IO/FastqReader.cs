@@ -24,10 +24,9 @@ namespace Tsumiki.IO
                 {
                     continue;
                 }
-                using var l_読み込み = new FastqReader(l_パス);
-                while (l_読み込み.Has続き())
+                foreach (var l_配列 in 塩基列控え.Get_塩基列(l_パス))
                 {
-                    yield return l_読み込み.Get_次のレコード().A_配列;
+                    yield return l_配列;
                 }
             }
         }

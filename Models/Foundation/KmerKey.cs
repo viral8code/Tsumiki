@@ -31,15 +31,6 @@ namespace Tsumiki.Models.Foundation
 
         #endregion
 
-        #region プロパティ
-
-        /// <summary>
-        /// パック済みデータ
-        /// </summary>
-        public ulong[] A_パック済みデータ => this._長いパック済みデータ ?? (this._長さ <= 32 ? [this._先頭語] : [this._先頭語, this._第2語]);
-
-        #endregion
-
         #region コンストラクタ
 
         /// <summary>
@@ -222,6 +213,15 @@ namespace Tsumiki.Models.Foundation
             }
             return (int)(l_ハッシュ ^ (l_ハッシュ >> 32));
         }
+
+        #endregion
+
+        #region テストメソッド
+
+        /// <summary>
+        /// パック済みデータ
+        /// </summary>
+        public ulong[] A_パック済みデータ => this._長いパック済みデータ ?? (this._長さ <= 32 ? [this._先頭語] : [this._先頭語, this._第2語]);
 
         #endregion
 

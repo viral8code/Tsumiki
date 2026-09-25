@@ -38,7 +38,7 @@
 
         #endregion
 
-        #region 公開メソッド
+        #region テストメソッド
 
         /// <summary>
         /// 設定がこの実装で扱えることを検証する

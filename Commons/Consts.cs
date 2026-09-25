@@ -65,7 +65,7 @@
         /// <summary>
         /// 3' 末端の品質トリムの閾値の既定値
         /// </summary>
-        public const int 品質トリム閾値の既定値 = 20;
+        public const int 品質トリム閾値の既定値 = 0;
 
         /// <summary>
         /// 一時ディレクトリの既定値
@@ -75,7 +75,7 @@
         /// <summary>
         /// 許容 Phred オフセット
         /// </summary>
-        public static readonly int[] 許容Phredオフセット = [33, 64];
+        public static readonly int[] 許容Phredオフセット = [33, 64,];
 
         /// <summary>
         /// ペア結合閾値の既定値
@@ -138,17 +138,17 @@
         public const byte 無効な塩基 = 5;
 
         /// <summary>
-        /// 1 個の 64 bit 語へ格納する塩基数
+        /// 1 個の 64 bit へ格納する塩基数
         /// </summary>
-        public const int 語あたりの塩基数 = 32;
+        public const int ワードあたりの塩基数 = 32;
 
         /// <summary>
-        /// ギャップ充填 (GapFiller ・ LocalAssembler 共通) で、推定ギャップ長に対して許容する誤差 (塩基)
+        /// ギャップ充填 (GapFiller・LocalAssembler 共通) で、推定ギャップ長に対して許容する誤差 (塩基)
         /// </summary>
         public const int ギャップ充填の長さの余裕幅 = 30;
 
         /// <summary>
-        /// ギャップ充填 (GapFiller ・ LocalAssembler 共通) の対象とするギャップ長の上限
+        /// ギャップ充填 (GapFiller・LocalAssembler 共通) の対象とするギャップ長の上限
         /// </summary>
         public const int ギャップ充填のギャップ長上限 = 500;
 
@@ -352,7 +352,7 @@
         }
 
         /// <summary>
-        /// -mode が束ねる値<br/>
+        /// -lang が束ねる値
         /// </summary>
         public static class 言語名
         {
@@ -447,6 +447,26 @@
             /// 積極的
             /// </summary>
             public const string 積極的 = "bold";
+
+            #endregion
+        }
+
+        /// <summary>
+        /// -cnb に指定できる基準
+        /// </summary>
+        public static class コピー数基準の出所
+        {
+            #region 定数
+
+            /// <summary>
+            /// k-mer スペクトル混合モデル
+            /// </summary>
+            public const string スペクトラム = "spectrum";
+
+            /// <summary>
+            /// unitig カバレッジの長さ加重中央値
+            /// </summary>
+            public const string 重みづけ = "weighted";
 
             #endregion
         }

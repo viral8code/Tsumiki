@@ -148,7 +148,7 @@ Run `Tsumiki.exe -h` for the full list.
 | `-k <int[,int...]>` | k-mer length. With a comma-separated list, assembles with each k and keeps the best result | Selected from read length |
 | `-kc <int>` | Minimum count for a trusted k-mer | Selected from the k-mer spectrum |
 | `-q <int>` | Minimum trusted base quality | `1` |
-| `-qt <int>` | During preprocessing, trim the 3' ends of paired reads where quality falls below this value (same method as BWA `-q`). `0` disables it. Not applied to single-end reads (`-s`) | `20` |
+| `-qt <int>` | During preprocessing, trim the 3' ends of paired reads where quality falls below this value (same method as BWA `-q`). `0` disables it. Not applied to single-end reads (`-s`) | `0` |
 | `-p <33\|64>` | Phred offset | Auto-detected |
 | `-ab` | Expand ambiguous (IUPAC) bases instead of skipping them | Off |
 

@@ -27,12 +27,7 @@ namespace Tsumiki.Commons
         /// <summary>
         /// 錠
         /// </summary>
-        internal static readonly Lock _錠 = new();
-
-        /// <summary>
-        /// 0 より大きい間は何も出さない
-        /// </summary>
-        internal static int _休止の深さ;
+        private static readonly Lock _錠 = new();
 
         /// <summary>
         /// 全量を残す書き出し先、まだ開いていなければ null
@@ -162,15 +157,6 @@ namespace Tsumiki.Commons
         }
 
         /// <summary>
-        /// この場を抜けるまで、画面にもファイルにも何も出さない
-        /// </summary>
-        /// <returns></returns>
-        public static IDisposable V_止める_記録()
-        {
-            return new 記録の休止();
-        }
-
-        /// <summary>
         /// 記録を閉じる
         /// </summary>
         public static void V_終了_ファイル出力()
@@ -195,11 +181,6 @@ namespace Tsumiki.Commons
         {
             lock (_錠)
             {
-                if (_休止の深さ > 0)
-                {
-                    return;
-                }
-
                 if (_ファイル is { } l_ファイル)
                 {
                     l_ファイル.WriteLine(p_行);

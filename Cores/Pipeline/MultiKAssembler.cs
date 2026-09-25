@@ -81,6 +81,8 @@ namespace Tsumiki.Cores.Pipeline
                 l_引き継ぎ = [.. l_次への引き継ぎ];
             }
 
+            RepeatRMerVerifier.V_解放_共有索引();
+
             if (l_実行結果一覧.Count == 0)
             {
                 return null;

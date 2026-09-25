@@ -4,17 +4,16 @@
     /// ContigMaker でリード 1 本を unitig の索引で走査し、代表として選んだ unitig
     /// </summary>
     /// <param name="p_unitigID"></param>
-    /// <param name="p_一致kmer数"></param>
     /// <param name="p_最終一致終端位置"></param>
     /// <param name="p_unitig長"></param>
-    internal readonly struct 代表Unitigヒット(int p_unitigID, int p_一致kmer数, int p_最終一致終端位置, int p_unitig長)
+    internal readonly struct 代表Unitigヒット(int p_unitigID, int p_最終一致終端位置, int p_unitig長)
     {
         #region 定数
 
         /// <summary>
         /// ヒットなし
         /// </summary>
-        public static readonly 代表Unitigヒット A_ヒットなし = new(0, 0, 0, 0);
+        public static readonly 代表Unitigヒット A_ヒットなし = new(0, 0, 0);
 
         #endregion
 
@@ -24,11 +23,6 @@
         /// マップ先 unitig ID
         /// </summary>
         public readonly int A_unitigID = p_unitigID;
-
-        /// <summary>
-        /// 採用された (最多得票の) unitig に対する一致 k-mer 数
-        /// </summary>
-        public readonly int A_一致kmer数 = p_一致kmer数;
 
         /// <summary>
         /// unitig の向きに揃えた最後の一致 k-mer の終端位置 (末尾の添字 + 1)

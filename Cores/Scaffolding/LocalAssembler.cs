@@ -42,6 +42,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int 近傍拡張の乱数シード値 = 20_260_915;
 
+        /// <summary>
+        /// どのギャップにも当たらなかったことを表す空の集合 (リードごとに作らないために共有する)
+        /// </summary>
+        private static readonly IReadOnlySet<int> 一致なし = new HashSet<int>();
+
         #endregion
 
         #region 公開メソッド
@@ -500,7 +505,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_種集合"></param>
         /// <param name="p_種長"></param>
         /// <returns></returns>
-        private static IEnumerable<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_照合済みペア列(string p_リード1のパス, string p_リード2のパス, Dictionary<KmerKey, List<int>> p_索引, int p_k長, HashSet<ulong> p_種集合, int p_種長)
+        private static IEnumerable<(string A_ID1, string A_配列1, IReadOnlySet<int> A_一致1, string A_ID2, string A_配列2, IReadOnlySet<int> A_一致2)> Get_照合済みペア列(string p_リード1のパス, string p_リード2のパス, Dictionary<KmerKey, List<int>> p_索引, int p_k長, HashSet<ulong> p_種集合, int p_種長)
         {
             var l_並列設定 = new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) };
 
@@ -552,23 +557,41 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_読み込み1"></param>
         /// <param name="p_読み込み2"></param>
         /// <returns>読み込んだペア、読み終えていれば空</returns>
-        private static List<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> Get_ペアのバッチ(FastqReader p_読み込み1, FastqReader p_読み込み2)
+        private static List<(string A_ID1, string A_配列1, IReadOnlySet<int> A_一致1, string A_ID2, string A_配列2, IReadOnlySet<int> A_一致2)> Get_ペアのバッチ(FastqReader p_読み込み1, FastqReader p_読み込み2)
         {
-            List<(string A_ID1, string A_配列1, HashSet<int> A_一致1, string A_ID2, string A_配列2, HashSet<int> A_一致2)> l_バッチ = new(照合のバッチサイズ);
-            while (l_バッチ.Count < 照合のバッチサイズ && p_読み込み1.Has続き() && p_読み込み2.Has続き())
+            var l_読み込み1 = Task.Run(() => Get_レコードの束(p_読み込み1));
+            var l_束2 = Get_レコードの束(p_読み込み2);
+            var l_束1 = l_読み込み1.Result;
+            var l_件数 = Math.Min(l_束1.Count, l_束2.Count);
+            List<(string A_ID1, string A_配列1, IReadOnlySet<int> A_一致1, string A_ID2, string A_配列2, IReadOnlySet<int> A_一致2)> l_バッチ = new(l_件数);
+            for (var i = 0; i < l_件数; i++)
             {
-                var (A_ID1, A_配列1, _) = p_読み込み1.Get_次のレコード();
-                var (A_ID2, A_配列2, _) = p_読み込み2.Get_次のレコード();
-                l_バッチ.Add((A_ID1, A_配列1, [], A_ID2, A_配列2, []));
+                l_バッチ.Add((l_束1[i].A_ID, l_束1[i].A_配列, 一致なし, l_束2[i].A_ID, l_束2[i].A_配列, 一致なし));
             }
             return l_バッチ;
         }
 
-        private static HashSet<int> Get_一致するギャップ_候補選別付き(Dictionary<KmerKey, List<int>> p_アンカー索引, string p_リード, int p_k長, HashSet<ulong> p_種集合, int p_種長)
+        /// <summary>
+        /// 1 本のファイルから照合のバッチサイズぶんの ID と配列を読み込む
+        /// </summary>
+        /// <param name="p_読み込み">読み込み</param>
+        /// <returns>読み込んだ ID と配列</returns>
+        private static List<(string A_ID, string A_配列)> Get_レコードの束(FastqReader p_読み込み)
+        {
+            List<(string A_ID, string A_配列)> l_束 = new(照合のバッチサイズ);
+            while (l_束.Count < 照合のバッチサイズ && p_読み込み.Has続き())
+            {
+                var (l_ID, l_配列, _) = p_読み込み.Get_次のレコード();
+                l_束.Add((l_ID, l_配列));
+            }
+            return l_束;
+        }
+
+        private static IReadOnlySet<int> Get_一致するギャップ_候補選別付き(Dictionary<KmerKey, List<int>> p_アンカー索引, string p_リード, int p_k長, HashSet<ulong> p_種集合, int p_種長)
         {
             return p_リード.Length >= p_k長 && Has種一致(p_リード, p_種集合, p_種長)
                 ? Get_一致するギャップ(p_アンカー索引, p_リード, p_k長)
-                : [];
+                : 一致なし;
         }
 
         /// <summary>
@@ -623,7 +646,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_k長">k 長</param>
         /// <returns>当たったギャップの番号</returns>
-        private static HashSet<int> Get_一致するギャップ(Dictionary<KmerKey, List<int>> p_索引, string p_リード, int p_k長)
+        private static IReadOnlySet<int> Get_一致するギャップ(Dictionary<KmerKey, List<int>> p_索引, string p_リード, int p_k長)
         {
             HashSet<int>? l_見つかった = null;
             for (var i = 0; i + p_k長 <= p_リード.Length; i++)
@@ -643,7 +666,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
-            return l_見つかった ?? [];
+            return l_見つかった ?? 一致なし;
         }
 
         /// <summary>

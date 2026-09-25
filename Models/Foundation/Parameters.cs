@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Models.Foundation
 {
@@ -415,7 +416,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// コピー数推定に使う単一コピー深度基準
         /// </summary>
-        public Tsumiki.Models.UnitigBuilding.コピー数基準の出所 A_コピー数基準の出所 { get; set; } = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Spectrum;
+        public コピー数基準の出所 A_コピー数基準の出所 { get; set; } = コピー数基準の出所.Spectrum;
 
         /// <summary>
         /// 低カバレッジ unitig 端をトリミングするか
@@ -596,7 +597,7 @@ namespace Tsumiki.Models.Foundation
             this.A_Is環状閉鎖検証 = true;
             this.A_Is救済kmer使用 = true;
             this.A_Isマージ = false;
-            this.A_コピー数基準の出所 = Tsumiki.Models.UnitigBuilding.コピー数基準の出所.Weighted;
+            this.A_コピー数基準の出所 = コピー数基準の出所.Weighted;
             this.A_Is低カバレッジ端トリミング = true;
         }
 

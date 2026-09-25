@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Collections.Concurrent;
+using Tsumiki.Commons;
 using Tsumiki.IO;
 using Tsumiki.Models.Correction;
 using Tsumiki.Models.Foundation;
@@ -17,6 +18,21 @@ namespace Tsumiki.Cores.Preprocessing
         /// 1 バッチあたりのリード数
         /// </summary>
         private const int 訂正バッチサイズ = 20_000;
+
+        /// <summary>
+        /// 読み込み・訂正・書き出しの間に溜めておくバッチ数
+        /// </summary>
+        private const int 先読みするバッチ数 = 2;
+
+        #endregion
+
+        #region 内部変数
+
+        /// <summary>
+        /// スレッドごとの訂正の作業域
+        /// </summary>
+        [ThreadStatic]
+        private static 訂正作業域? _作業域;
 
         #endregion
 
@@ -41,10 +57,15 @@ namespace Tsumiki.Cores.Preprocessing
             Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
             using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ))
             {
-                KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット);
                 if (p_リード2のパス != null)
                 {
-                    KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス, p_Phredオフセット);
+                    Parallel.Invoke(
+                        () => KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット),
+                        () => KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス, p_Phredオフセット));
+                }
+                else
+                {
+                    KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット);
                 }
 
                 KmerCutoffSelector.V_解決_kmerカットオフ(ConfigurationManager.A_実行時引数, l_kmerインデックス);
@@ -181,51 +202,127 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            using var l_読み込み = new FastqReader(p_入力パス);
-            using var l_書き込み = new FastqWriter(p_出力パス);
+            using var l_中断 = new CancellationTokenSource();
+            using var l_読込済み = new BlockingCollection<訂正バッチ>(先読みするバッチ数);
+            using var l_訂正済み = new BlockingCollection<訂正バッチ>(先読みするバッチ数);
 
-            var l_ID群 = new string[訂正バッチサイズ];
-            var l_クオリティ群 = new string[訂正バッチサイズ];
-            var l_塩基列群 = new byte[訂正バッチサイズ][];
-            var l_結果群 = new 訂正結果[訂正バッチサイズ];
+            var l_読み込み = Task.Run(() => V_読込_バッチ群(p_入力パス, l_読込済み, l_中断));
+            var l_書き出し = Task.Run(() => V_書出_バッチ群(p_出力パス, l_訂正済み, l_中断));
 
-            while (l_読み込み.Has続き())
+            try
             {
-                var l_件数 = 0;
-                while (l_件数 < 訂正バッチサイズ && l_読み込み.Has続き())
+                foreach (var l_バッチ in l_読込済み.GetConsumingEnumerable(l_中断.Token))
                 {
-                    var l_リード = l_読み込み.Get_次のリード_軽量();
-                    l_ID群[l_件数] = l_リード.A_ID;
-                    l_クオリティ群[l_件数] = l_リード.A_クオリティ;
-                    l_塩基列群[l_件数] = l_リード.A_塩基列!;
-                    l_件数++;
-                }
-                l_総リード数 += l_件数;
+                    l_総リード数 += l_バッチ.A_件数;
 
-                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
-                {
-                    l_結果群[i] = Get_訂正結果(l_塩基列群[i], p_kmerインデックス, p_k長);
-                });
+                    _ = Parallel.For(0, l_バッチ.A_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
+                    {
+                        l_バッチ.A_結果群[i] = Get_訂正結果(l_バッチ.A_塩基列群[i], p_kmerインデックス, p_k長);
+                    });
 
-                for (var i = 0; i < l_件数; i++)
-                {
-                    var l_結果 = l_結果群[i];
-                    if (l_結果.A_訂正数 > 0)
+                    for (var i = 0; i < l_バッチ.A_件数; i++)
                     {
-                        l_訂正されたリード数++;
-                        l_総訂正塩基数 += l_結果.A_訂正数;
-                    }
-                    l_書き込み.V_書き込み(l_ID群[i], string.Create(l_結果.A_塩基列.Length, l_結果.A_塩基列, static (l_文字, l_塩基列) =>
-                    {
-                        for (var j = 0; j < l_塩基列.Length; j++)
+                        if (l_バッチ.A_結果群[i].A_訂正数 > 0)
                         {
-                            l_文字[j] = Util.Get_塩基文字(l_塩基列[j]);
+                            l_訂正されたリード数++;
+                            l_総訂正塩基数 += l_バッチ.A_結果群[i].A_訂正数;
                         }
-                    }), l_クオリティ群[i]);
+                    }
+
+                    l_訂正済み.Add(l_バッチ, l_中断.Token);
                 }
             }
+            catch (OperationCanceledException) when (l_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                l_中断.Cancel();
+                throw;
+            }
+            finally
+            {
+                l_訂正済み.CompleteAdding();
+            }
+
+            l_読み込み.GetAwaiter().GetResult();
+            l_書き出し.GetAwaiter().GetResult();
 
             return new ファイル訂正統計(l_総リード数, l_訂正されたリード数, l_総訂正塩基数);
+        }
+
+        /// <summary>
+        /// リードをバッチに詰めて順に渡す
+        /// </summary>
+        /// <param name="p_入力パス">訂正するリードのパス</param>
+        /// <param name="p_渡し先">読み込んだバッチの渡し先</param>
+        /// <param name="p_中断">どこかで失敗したときに止める合図</param>
+        private static void V_読込_バッチ群(string p_入力パス, BlockingCollection<訂正バッチ> p_渡し先, CancellationTokenSource p_中断)
+        {
+            try
+            {
+                using var l_読み込み = new FastqReader(p_入力パス);
+                while (l_読み込み.Has続き())
+                {
+                    var l_バッチ = new 訂正バッチ();
+                    while (l_バッチ.A_件数 < 訂正バッチサイズ && l_読み込み.Has続き())
+                    {
+                        var l_リード = l_読み込み.Get_次のリード_軽量();
+                        l_バッチ.A_ID群[l_バッチ.A_件数] = l_リード.A_ID;
+                        l_バッチ.A_クオリティ群[l_バッチ.A_件数] = l_リード.A_クオリティ;
+                        l_バッチ.A_塩基列群[l_バッチ.A_件数] = l_リード.A_塩基列!;
+                        l_バッチ.A_件数++;
+                    }
+                    p_渡し先.Add(l_バッチ, p_中断.Token);
+                }
+            }
+            catch (OperationCanceledException) when (p_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                p_中断.Cancel();
+                throw;
+            }
+            finally
+            {
+                p_渡し先.CompleteAdding();
+            }
+        }
+
+        /// <summary>
+        /// 訂正を終えたバッチを、受け取った順に書き出す
+        /// </summary>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_受け取り元">訂正を終えたバッチ</param>
+        /// <param name="p_中断">どこかで失敗したときに止める合図</param>
+        private static void V_書出_バッチ群(string p_出力パス, BlockingCollection<訂正バッチ> p_受け取り元, CancellationTokenSource p_中断)
+        {
+            try
+            {
+                using var l_書き込み = new FastqWriter(p_出力パス);
+                foreach (var l_バッチ in p_受け取り元.GetConsumingEnumerable(p_中断.Token))
+                {
+                    for (var i = 0; i < l_バッチ.A_件数; i++)
+                    {
+                        l_書き込み.V_書き込み(l_バッチ.A_ID群[i], string.Create(l_バッチ.A_結果群[i].A_塩基列.Length, l_バッチ.A_結果群[i].A_塩基列, static (l_文字, l_塩基列) =>
+                        {
+                            for (var j = 0; j < l_塩基列.Length; j++)
+                            {
+                                l_文字[j] = Util.Get_塩基文字(l_塩基列[j]);
+                            }
+                        }), l_バッチ.A_クオリティ群[i]);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (p_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                p_中断.Cancel();
+                throw;
+            }
         }
 
         /// <summary>
@@ -239,12 +336,14 @@ namespace Tsumiki.Cores.Preprocessing
         private static 訂正結果 Get_訂正結果_パック(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
             var l_窓数 = p_塩基列.Length - p_k長 + 1;
-            var l_パック = new UInt128[l_窓数];
-            var l_逆相補 = new UInt128[l_窓数];
-            var l_無効数 = new int[l_窓数];
-            var l_信頼状況 = new bool[l_窓数];
+            var l_作業域 = _作業域 ??= new 訂正作業域();
+            l_作業域.V_確保(l_窓数);
+            var l_パック = l_作業域.A_パック.AsSpan(0, l_窓数);
+            var l_逆相補 = l_作業域.A_逆相補.AsSpan(0, l_窓数);
+            var l_無効数 = l_作業域.A_無効数.AsSpan(0, l_窓数);
+            var l_信頼状況 = l_作業域.A_信頼状況.AsSpan(0, l_窓数);
 
-            var l_未信頼累積 = new int[l_窓数 + 1];
+            var l_未信頼累積 = l_作業域.A_未信頼累積.AsSpan(0, l_窓数 + 1);
             var l_訂正数 = 0;
 
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
@@ -319,7 +418,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_逆相補"></param>
         /// <param name="p_無効数"></param>
         /// <param name="p_信頼状況"></param>
-        private static void V_計算_窓状態(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況)
+        private static void V_計算_窓状態(byte[] p_塩基列, int p_k長, TrustedKmerIndex p_kmerインデックス, Span<UInt128> p_パック, Span<UInt128> p_逆相補, Span<int> p_無効数, Span<bool> p_信頼状況)
         {
             var l_マスク = Get_マスク(p_k長);
             var l_最上位への移動 = 2 * (p_k長 - 1);
@@ -379,7 +478,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_未信頼累積"></param>
         /// <param name="p_最良改善数"></param>
         /// <returns></returns>
-        private static int Get_置換改善数_パック(int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, TrustedKmerIndex p_kmerインデックス, UInt128[] p_パック, UInt128[] p_逆相補, int[] p_無効数, bool[] p_信頼状況, int[] p_未信頼累積, int p_最良改善数)
+        private static int Get_置換改善数_パック(int p_位置, byte p_候補, int p_窓開始, int p_窓終了, int p_k長, TrustedKmerIndex p_kmerインデックス, ReadOnlySpan<UInt128> p_パック, ReadOnlySpan<UInt128> p_逆相補, ReadOnlySpan<int> p_無効数, ReadOnlySpan<bool> p_信頼状況, ReadOnlySpan<int> p_未信頼累積, int p_最良改善数)
         {
             var l_コドン = Get_コドン(p_候補);
             var l_相補コドン = Get_相補コドン(p_候補);
@@ -539,6 +638,101 @@ namespace Tsumiki.Cores.Preprocessing
 
             p_塩基列[p_位置] = l_元の塩基;
             return l_改善数;
+        }
+
+        #endregion
+
+        #region 内部クラス
+
+        /// <summary>
+        /// 1 本の訂正で使う配列を、リードをまたいで使い回す置き場
+        /// </summary>
+        private sealed class 訂正作業域
+        {
+            #region プロパティ
+
+            /// <summary>
+            /// 窓ごとの順鎖のパック値
+            /// </summary>
+            public UInt128[] A_パック { get; private set; } = [];
+
+            /// <summary>
+            /// 窓ごとの逆相補のパック値
+            /// </summary>
+            public UInt128[] A_逆相補 { get; private set; } = [];
+
+            /// <summary>
+            /// 窓ごとの無効な塩基の数
+            /// </summary>
+            public int[] A_無効数 { get; private set; } = [];
+
+            /// <summary>
+            /// 窓ごとに信頼できるか
+            /// </summary>
+            public bool[] A_信頼状況 { get; private set; } = [];
+
+            /// <summary>
+            /// 信頼できない窓の数の累積
+            /// </summary>
+            public int[] A_未信頼累積 { get; private set; } = [];
+
+            #endregion
+
+            #region 公開メソッド
+
+            /// <summary>
+            /// 窓数ぶんの長さを確保する
+            /// </summary>
+            /// <param name="p_窓数">窓の数</param>
+            public void V_確保(int p_窓数)
+            {
+                if (this.A_パック.Length >= p_窓数)
+                {
+                    return;
+                }
+                this.A_パック = new UInt128[p_窓数];
+                this.A_逆相補 = new UInt128[p_窓数];
+                this.A_無効数 = new int[p_窓数];
+                this.A_信頼状況 = new bool[p_窓数];
+                this.A_未信頼累積 = new int[p_窓数 + 1];
+            }
+
+            #endregion
+        }
+
+        /// <summary>
+        /// まとめて訂正するリードの束
+        /// </summary>
+        private sealed class 訂正バッチ
+        {
+            #region プロパティ
+
+            /// <summary>
+            /// 入っているリード数
+            /// </summary>
+            public int A_件数 { get; set; }
+
+            /// <summary>
+            /// リードの ID
+            /// </summary>
+            public string[] A_ID群 { get; } = new string[訂正バッチサイズ];
+
+            /// <summary>
+            /// リードのクオリティ
+            /// </summary>
+            public string[] A_クオリティ群 { get; } = new string[訂正バッチサイズ];
+
+            /// <summary>
+            /// リードの塩基列
+            /// </summary>
+            public byte[][] A_塩基列群 { get; } = new byte[訂正バッチサイズ][];
+
+            /// <summary>
+            /// 訂正の結果
+            /// </summary>
+            public 訂正結果[] A_結果群 { get; } = new 訂正結果[訂正バッチサイズ];
+
+            #endregion
         }
 
         #endregion

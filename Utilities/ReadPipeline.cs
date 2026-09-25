@@ -8,18 +8,27 @@ namespace Tsumiki.Utilities
     /// </summary>
     internal static class ReadPipeline
     {
+        #region 定数
+
+        /// <summary>
+        /// ワーカーへ 1 回に渡す要素数
+        /// </summary>
+        private const int 束の要素数 = 256;
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
         /// p_供給元 の各要素を p_処理 へ並列に配る
         /// </summary>
         /// <param name="p_スレッド数"></param>
-        /// <param name="p_キュー容量"></param>
+        /// <param name="p_キュー容量">溜めておく要素数の目安</param>
         /// <param name="p_供給元"></param>
         /// <param name="p_処理"></param>
         public static void V_実行<T>(int p_スレッド数, int p_キュー容量, IEnumerable<T> p_供給元, Action<T, int> p_処理)
         {
-            using var l_キュー = new BlockingCollection<T>(p_キュー容量);
+            using var l_キュー = new BlockingCollection<T[]>(Math.Max(2 * p_スレッド数, p_キュー容量 / 束の要素数));
             using var l_中断 = new CancellationTokenSource();
 
             var l_ワーカー = new Task[p_スレッド数];
@@ -30,9 +39,12 @@ namespace Tsumiki.Utilities
                 {
                     try
                     {
-                        foreach (var l_項目 in l_キュー.GetConsumingEnumerable())
+                        foreach (var l_束 in l_キュー.GetConsumingEnumerable())
                         {
-                            p_処理(l_項目, l_ワーカー番号);
+                            foreach (var l_項目 in l_束)
+                            {
+                                p_処理(l_項目, l_ワーカー番号);
+                            }
                         }
                     }
                     catch
@@ -46,9 +58,9 @@ namespace Tsumiki.Utilities
             ExceptionDispatchInfo? l_供給側の例外 = null;
             try
             {
-                foreach (var l_項目 in p_供給元)
+                foreach (var l_束 in p_供給元.Chunk(束の要素数))
                 {
-                    l_キュー.Add(l_項目, l_中断.Token);
+                    l_キュー.Add(l_束, l_中断.Token);
                 }
             }
             catch (OperationCanceledException)

@@ -290,12 +290,9 @@
                 }
             }
 
-            if (p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2'))
-            {
-                return p_ID[..^2];
-            }
-
-            return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
+            return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2')
+                ? p_ID[..^2]
+                : p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
         }
 
         #endregion
