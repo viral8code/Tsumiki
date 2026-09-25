@@ -19,7 +19,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 経路上の各 k-mer に求める最小カバレッジ
         /// </summary>
-        private const ulong 経路の最小カバレッジ = 2UL;
+        private const ulong C_経路の最小カバレッジ = 2UL;
 
         #endregion
 
@@ -61,6 +61,7 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         l_位置++;
                     }
+
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
 
@@ -81,6 +82,7 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             l_到達不能数++;
                         }
+
                         var l_種別 = l_Isアンカー不足 ? 曖昧箇所の種別.アンカー不足
                             : l_Is支持不足 ? 曖昧箇所の種別.支持なし
                             : l_判定 switch
@@ -93,6 +95,7 @@ namespace Tsumiki.Cores.Scaffolding
                         _ = l_出力.Append('N', l_ギャップ長);
                     }
                 }
+
                 l_結果.Add((l_ID, l_出力.ToString()));
             }
 
@@ -118,6 +121,7 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.ギャップ充填_対象なし);
                 return;
             }
+
             Logger.V_出力(メッセージID.ギャップ充填統計, p_統計.A_埋めたギャップ数, p_統計.A_総ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
 
@@ -144,7 +148,7 @@ namespace Tsumiki.Cores.Scaffolding
             p_判定 = ギャップ充填判定.到達不能;
             p_Isアンカー不足 = false;
             p_Is支持不足 = false;
-            p_安定ID = "";
+            p_安定ID = string.Empty;
 
             if (p_ギャップ長 > Consts.ギャップ充填のギャップ長上限 || p_左側の出力.Length < p_k長)
             {
@@ -195,6 +199,7 @@ namespace Tsumiki.Cores.Scaffolding
                 p_Is支持不足 = true;
                 return null;
             }
+
             return l_経路;
         }
 
@@ -214,11 +219,12 @@ namespace Tsumiki.Cores.Scaffolding
             for (var i = 0; i + p_k長 <= l_接続.Length; i++)
             {
                 var l_kmer = Get_kmerバイト列(l_接続, i, p_k長);
-                if (l_kmer is null || p_kmerインデックス.Get_カバレッジ(l_kmer) < 経路の最小カバレッジ)
+                if (l_kmer is null || p_kmerインデックス.Get_カバレッジ(l_kmer) < C_経路の最小カバレッジ)
                 {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -239,8 +245,10 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     return null;
                 }
+
                 l_kmer[i] = l_塩基ID;
             }
+
             return l_kmer;
         }
 

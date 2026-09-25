@@ -10,7 +10,7 @@
         /// <summary>
         /// 使い回さずに作り直す状態数
         /// </summary>
-        public const int 作り直す状態数 = 8_192;
+        public const int C_作り直す状態数 = 8_192;
 
         #endregion
 

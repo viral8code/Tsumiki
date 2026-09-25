@@ -14,12 +14,12 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 集合を分割する数のビット数
         /// </summary>
-        private const int 分割のビット数 = 6;
+        private const int C_分割のビット数 = 6;
 
         /// <summary>
         /// 集合の分割数
         /// </summary>
-        private const int 分割数 = 1 << 分割のビット数;
+        internal const int C_分割数 = 1 << C_分割のビット数;
 
         #endregion
 
@@ -110,22 +110,22 @@ namespace Tsumiki.Utilities
         private RepeatRMerVerifier(int p_r長)
         {
             this._r長 = p_r長;
-            this._分割錠 = [.. Enumerable.Range(0, 分割数).Select(_ => new Lock())];
+            this._分割錠 = [.. Enumerable.Range(0, C_分割数).Select(_ => new Lock())];
             if (p_r長 <= 32)
             {
-                this._小集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<ulong>())];
+                this._小集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<ulong>())];
             }
             else if (p_r長 <= 64)
             {
-                this._中集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<UInt128>())];
+                this._中集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<UInt128>())];
             }
             else if (p_r長 <= 128)
             {
-                this._長集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>())];
+                this._長集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>())];
             }
             else
             {
-                this._大集合 = [.. Enumerable.Range(0, 分割数).Select(_ => new HashSet<KmerKey>())];
+                this._大集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<KmerKey>())];
             }
         }
 
@@ -154,7 +154,7 @@ namespace Tsumiki.Utilities
                 .Where(中間データ置き場.Is存在)
                 .ToList();
 
-            if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.最短の問い合わせ長 && l_パス群.Count > 0)
+            if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.C_最短の問い合わせ長 && l_パス群.Count > 0)
             {
                 return new RepeatRMerVerifier(p_r長)
                 {
@@ -172,8 +172,10 @@ namespace Tsumiki.Utilities
                 {
                     l_候補.V_登録_rMer(l_配列, p_r長, null, 0, null);
                 }
+
                 l_検証器._候補集合 = l_候補;
             }
+
             var l_絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
@@ -249,6 +251,7 @@ namespace Tsumiki.Utilities
                     {
                         l_連続開始 = i;
                     }
+
                     continue;
                 }
 
@@ -256,6 +259,7 @@ namespace Tsumiki.Utilities
                 {
                     p_範囲.Add((l_連続開始, i - 1));
                 }
+
                 l_連続開始 = -1;
             }
 
@@ -286,6 +290,7 @@ namespace Tsumiki.Utilities
                     break;
                 }
             }
+
             var l_上位 = (UInt128)0;
             var l_下位 = (UInt128)0;
             for (var i = 0; i < p_配列.Length; i++)
@@ -294,6 +299,7 @@ namespace Tsumiki.Utilities
                 l_上位 = (l_上位 << 2) | (l_下位 >> 126);
                 l_下位 = (l_下位 << 2) | (uint)l_値;
             }
+
             return (l_上位, l_下位);
         }
 
@@ -387,6 +393,7 @@ namespace Tsumiki.Utilities
                     l_出口支持数 += l_接合点2を跨ぐ ? 1 : 0;
                 }
             }
+
             return (l_支持数, l_入口支持数, l_出口支持数);
         }
 
@@ -395,7 +402,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_分割">分割番号</param>
         /// <param name="p_値群">正準化した r-mer の値</param>
-        private void V_登録_束(int p_分割, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
+        internal void V_登録_束(int p_分割, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
         {
             lock (this._分割錠[p_分割])
             {
@@ -470,6 +477,7 @@ namespace Tsumiki.Utilities
             {
                 return true;
             }
+
             Span<byte> l_塩基 = stackalloc byte[this._絞り込みのk長];
             foreach (var l_開始 in new[] { 0, p_窓.Length - this._絞り込みのk長 })
             {
@@ -477,11 +485,13 @@ namespace Tsumiki.Utilities
                 {
                     l_塩基[i] = Util.Get_塩基ID(p_窓[l_開始 + i]);
                 }
+
                 if (!l_絞り込み.Haskmer(l_塩基))
                 {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -502,6 +512,7 @@ namespace Tsumiki.Utilities
                     _共有索引 = ReadMinimizerIndex.V_構築(() => FastqReader.Get_生リード列([.. p_パス群]));
                     _共有索引の元 = l_元;
                 }
+
                 return _共有索引;
             }
         }
@@ -521,10 +532,10 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_値">正準化した r-mer の値</param>
         /// <returns></returns>
-        private static int Get_分割番号((UInt128 A_上位, UInt128 A_下位) p_値)
+        internal static int Get_分割番号((UInt128 A_上位, UInt128 A_下位) p_値)
         {
             var l_混合 = (ulong)p_値.A_下位 ^ (ulong)(p_値.A_下位 >> 64) ^ (ulong)p_値.A_上位;
-            return (int)((l_混合 * 0x9E37_79B9_7F4A_7C15UL) >> (64 - 分割のビット数));
+            return (int)((l_混合 * 0x9E37_79B9_7F4A_7C15UL) >> (64 - C_分割のビット数));
         }
 
         /// <summary>
@@ -534,7 +545,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static int Get_分割番号(KmerKey p_キー)
         {
-            return (int)(((ulong)p_キー.GetHashCode() * 0x9E37_79B9_7F4A_7C15UL) >> (64 - 分割のビット数));
+            return (int)(((ulong)p_キー.GetHashCode() * 0x9E37_79B9_7F4A_7C15UL) >> (64 - C_分割のビット数));
         }
 
         /// <summary>
@@ -571,6 +582,7 @@ namespace Tsumiki.Utilities
                         }
                     }
                 }
+
                 return;
             }
 
@@ -595,7 +607,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_信頼">書き留め先</param>
         private static void V_収集_k窓の信頼(string p_リード, TrustedKmerIndex p_絞り込み, int p_k長, Span<bool> p_信頼)
         {
-            if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
             {
                 var l_k窓 = new RollingKmer(p_k長);
                 for (var i = 0; i < p_リード.Length; i++)
@@ -605,6 +617,7 @@ namespace Tsumiki.Utilities
                         p_信頼[i - p_k長 + 1] = p_絞り込み.Haskmer_正規形(l_kキー.A_上位, l_kキー.A_下位);
                     }
                 }
+
                 return;
             }
 
@@ -634,73 +647,5 @@ namespace Tsumiki.Utilities
 
         #endregion
 
-        #region 内部クラス
-
-        /// <summary>
-        /// 1 ワーカーが見つけた r-mer を分割ごとに溜め、溜まったらまとめて登録する
-        /// </summary>
-        /// <param name="p_検証器">登録先</param>
-        private sealed class 登録束(RepeatRMerVerifier p_検証器)
-        {
-            #region 定数
-
-            /// <summary>
-            /// 1 分割に溜める件数
-            /// </summary>
-            private const int 束の件数 = 1_024;
-
-            #endregion
-
-            #region 内部変数
-
-            /// <summary>
-            /// 分割ごとの溜め置き
-            /// </summary>
-            private readonly (UInt128 A_上位, UInt128 A_下位)[]?[] _束 = new (UInt128 A_上位, UInt128 A_下位)[]?[分割数];
-
-            /// <summary>
-            /// 分割ごとの溜めた件数
-            /// </summary>
-            private readonly int[] _件数 = new int[分割数];
-
-            #endregion
-
-            #region 公開メソッド
-
-            /// <summary>
-            /// r-mer を 1 件溜める
-            /// </summary>
-            /// <param name="p_値">正準化した r-mer の値</param>
-            public void V_追加((UInt128 A_上位, UInt128 A_下位) p_値)
-            {
-                var l_分割 = Get_分割番号(p_値);
-                var l_束 = this._束[l_分割] ??= new (UInt128 A_上位, UInt128 A_下位)[束の件数];
-                l_束[this._件数[l_分割]++] = p_値;
-                if (this._件数[l_分割] == 束の件数)
-                {
-                    p_検証器.V_登録_束(l_分割, l_束);
-                    this._件数[l_分割] = 0;
-                }
-            }
-
-            /// <summary>
-            /// 溜めた分をすべて登録する
-            /// </summary>
-            public void V_吐き出し()
-            {
-                for (var l_分割 = 0; l_分割 < 分割数; l_分割++)
-                {
-                    if (this._件数[l_分割] > 0)
-                    {
-                        p_検証器.V_登録_束(l_分割, this._束[l_分割].AsSpan(0, this._件数[l_分割]));
-                        this._件数[l_分割] = 0;
-                    }
-                }
-            }
-
-            #endregion
-        }
-
-        #endregion
     }
 }

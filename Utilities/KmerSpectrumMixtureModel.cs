@@ -13,67 +13,67 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 混合する真の k-mer 成分のコピー数上限
         /// </summary>
-        private const int コピー数の上限 = 10;
+        private const int C_コピー数の上限 = 10;
 
         /// <summary>
         /// 最大反復数
         /// </summary>
-        private const int 最大反復数 = 500;
+        private const int C_最大反復数 = 500;
 
         /// <summary>
         /// 対数尤度の変化がこれを下回ったら収束とみなす (相対値)
         /// </summary>
-        private const double 収束判定 = 1e-8D;
+        private const double C_収束判定 = 1e-8D;
 
         /// <summary>
         /// 事後誤り確率がこれを下回ったら「誤りではない」と判定する有意水準
         /// </summary>
-        private const double 有意水準 = 0.5D;
+        private const double C_有意水準 = 0.5D;
 
         /// <summary>
         /// これに満たない走査範囲では、単一コピーの山とその整数倍の山を区別する材料が無いためモデルを当てない
         /// </summary>
-        private const int 最小走査範囲 = コピー数の上限 << 1;
+        private const int C_最小走査範囲 = C_コピー数の上限 << 1;
 
         /// <summary>
         /// 単一コピー平均がこれを下回る場合、誤り成分 (平均カバレッジが低い) との分離が実質的にできていないとみなし、その初期値・結果を採用しない
         /// </summary>
-        private const double 単一コピー平均の下限 = 3D;
+        private const double C_単一コピー平均の下限 = 3D;
 
         /// <summary>
         /// 過分散パラメータの初期値
         /// </summary>
-        private const double 過分散パラメータの初期値 = 50D;
+        private const double C_過分散パラメータの初期値 = 50D;
 
         /// <summary>
         /// 過分散パラメータの下限
         /// </summary>
-        private const double 過分散パラメータの下限 = 0.5D;
+        private const double C_過分散パラメータの下限 = 0.5D;
 
         /// <summary>
         /// 過分散パラメータの上限
         /// </summary>
-        private const double 過分散パラメータの上限 = 10_000D;
+        private const double C_過分散パラメータの上限 = 10_000D;
 
         /// <summary>
         /// M-step で過分散パラメータを動かすニュートン法の反復数
         /// </summary>
-        private const int 過分散の更新反復数 = 5;
+        private const int C_過分散の更新反復数 = 5;
 
         /// <summary>
         /// 採用する λ の、観測された山に対する下限比
         /// </summary>
-        private const double 山に対するλの下限比 = 0.6D;
+        private const double C_山に対するλの下限比 = 0.6D;
 
         /// <summary>
         /// 採用する λ の、観測された山に対する上限比
         /// </summary>
-        private const double 山に対するλの上限比 = 2.5D;
+        private const double C_山に対するλの上限比 = 2.5D;
 
         /// <summary>
         /// 局所極大から拾う初期値候補の上限数
         /// </summary>
-        private const int 局所極大候補の上限数 = 20;
+        private const int C_局所極大候補の上限数 = 20;
 
         #endregion
 
@@ -94,7 +94,7 @@ namespace Tsumiki.Utilities
 
             var l_最大キー = p_ヒストグラム.Keys.Max();
             var l_走査上限 = (int)Math.Min(l_最大キー, p_走査上限);
-            if (l_走査上限 < 最小走査範囲)
+            if (l_走査上限 < C_最小走査範囲)
             {
                 return null;
             }
@@ -106,6 +106,7 @@ namespace Tsumiki.Utilities
                 l_出現回数[i] = i + 1;
                 l_頻度[i] = p_ヒストグラム.GetValueOrDefault((ulong)(i + 1), 0L);
             }
+
             var l_総数 = l_頻度.Sum();
             if (l_総数 <= 0D)
             {
@@ -131,7 +132,7 @@ namespace Tsumiki.Utilities
             ulong? l_カットオフ = null;
             for (var i = 0; i < l_走査上限; i++)
             {
-                if (l_事後誤り確率[i] < 有意水準)
+                if (l_事後誤り確率[i] < C_有意水準)
                 {
                     l_カットオフ = (ulong)l_出現回数[i];
                     break;
@@ -156,11 +157,12 @@ namespace Tsumiki.Utilities
             var l_開始 = checked((int)Math.Max(0UL, p_カットオフ - 1UL));
             for (var i = l_開始; i < p_事後誤り確率.Count && i < p_頻度.Count; i++)
             {
-                if (p_頻度[i] > 0D && p_事後誤り確率[i] >= 有意水準)
+                if (p_頻度[i] > 0D && p_事後誤り確率[i] >= C_有意水準)
                 {
                     return ulong.MaxValue;
                 }
             }
+
             return p_カットオフ;
         }
 
@@ -182,9 +184,10 @@ namespace Tsumiki.Utilities
             var l_上限 = 0D;
             if (p_山 is { } l_山)
             {
-                l_下限 = 山に対するλの下限比 * l_山;
-                l_上限 = 山に対するλの上限比 * l_山;
+                l_下限 = C_山に対するλの下限比 * l_山;
+                l_上限 = C_山に対するλの上限比 * l_山;
             }
+
             foreach (var l_試行 in p_試行群)
             {
                 if (l_試行 is not { } l_結果)
@@ -203,6 +206,7 @@ namespace Tsumiki.Utilities
                     l_帯内の最良 = l_結果;
                 }
             }
+
             return l_帯内の最良 ?? l_最良;
         }
 
@@ -213,17 +217,19 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static double[] Get_コピー数別混合比(double p_コピー数減衰率)
         {
-            var l_重み = new double[コピー数の上限];
+            var l_重み = new double[C_コピー数の上限];
             var l_合計 = 0D;
-            for (var k = 0; k < コピー数の上限; k++)
+            for (var k = 0; k < C_コピー数の上限; k++)
             {
                 l_重み[k] = Math.Pow(p_コピー数減衰率, k);
                 l_合計 += l_重み[k];
             }
-            for (var k = 0; k < コピー数の上限; k++)
+
+            for (var k = 0; k < C_コピー数の上限; k++)
             {
                 l_重み[k] /= l_合計;
             }
+
             return l_重み;
         }
 
@@ -242,11 +248,11 @@ namespace Tsumiki.Utilities
             var l_誤り平均 = Get_初期誤り平均(p_出現回数, p_頻度);
             var l_誤り混合比 = 0.5D;
             var l_コピー数減衰率 = 0.3D;
-            var l_過分散 = 過分散パラメータの初期値;
+            var l_過分散 = C_過分散パラメータの初期値;
 
             var l_r誤り = new double[p_出現回数.Length];
-            var l_rコピー = new double[コピー数の上限][];
-            for (var k = 0; k < コピー数の上限; k++)
+            var l_rコピー = new double[C_コピー数の上限][];
+            for (var k = 0; k < C_コピー数の上限; k++)
             {
                 l_rコピー[k] = new double[p_出現回数.Length];
             }
@@ -254,7 +260,7 @@ namespace Tsumiki.Utilities
             var l_前回対数尤度 = double.NegativeInfinity;
             var l_対数尤度 = double.NegativeInfinity;
             int l_反復数;
-            for (l_反復数 = 1; l_反復数 <= 最大反復数; l_反復数++)
+            for (l_反復数 = 1; l_反復数 <= C_最大反復数; l_反復数++)
             {
                 var l_コピー数別混合比 = Get_コピー数別混合比(l_コピー数減衰率);
                 var l_logガンマ = Get_logガンマテーブル(p_出現回数.Length, l_過分散);
@@ -273,14 +279,15 @@ namespace Tsumiki.Utilities
                 l_過分散 = Get_更新後の過分散(p_出現回数, p_頻度, l_rコピー, l_λ, l_過分散);
 
                 var l_基準 = Math.Abs(l_前回対数尤度) < 1D ? 1D : Math.Abs(l_前回対数尤度);
-                if (Math.Abs(l_対数尤度 - l_前回対数尤度) < 収束判定 * l_基準)
+                if (Math.Abs(l_対数尤度 - l_前回対数尤度) < C_収束判定 * l_基準)
                 {
                     break;
                 }
+
                 l_前回対数尤度 = l_対数尤度;
             }
 
-            return double.IsNaN(l_λ) || double.IsInfinity(l_λ) || l_λ < 単一コピー平均の下限 ? null : new ヒストグラム試行結果(l_λ, l_誤り平均, l_誤り混合比, l_コピー数減衰率, l_過分散, l_対数尤度, l_反復数);
+            return double.IsNaN(l_λ) || double.IsInfinity(l_λ) || l_λ < C_単一コピー平均の下限 ? null : new ヒストグラム試行結果(l_λ, l_誤り平均, l_誤り混合比, l_コピー数減衰率, l_過分散, l_対数尤度, l_反復数);
         }
 
         /// <summary>
@@ -313,6 +320,7 @@ namespace Tsumiki.Utilities
             {
                 l_表[c] = SpecialFunctions.Get_対数ガンマ(c + p_過分散);
             }
+
             return l_表;
         }
 
@@ -328,7 +336,7 @@ namespace Tsumiki.Utilities
         private static double Get_更新後の過分散(double[] p_出現回数, double[] p_頻度, double[][] p_rコピー, double p_λ, double p_過分散)
         {
             var l_過分散 = p_過分散;
-            for (var l_反復 = 0; l_反復 < 過分散の更新反復数; l_反復++)
+            for (var l_反復 = 0; l_反復 < C_過分散の更新反復数; l_反復++)
             {
                 var l_ディガンマ過分散 = SpecialFunctions.Get_ディガンマ(l_過分散);
                 var l_トリガンマ過分散 = SpecialFunctions.Get_トリガンマ(l_過分散);
@@ -343,7 +351,7 @@ namespace Tsumiki.Utilities
 
                 var l_勾配 = 0D;
                 var l_曲率 = 0D;
-                for (var k = 0; k < コピー数の上限; k++)
+                for (var k = 0; k < C_コピー数の上限; k++)
                 {
                     var l_μ = (k + 1) * p_λ;
                     var l_和 = l_過分散 + l_μ;
@@ -355,6 +363,7 @@ namespace Tsumiki.Utilities
                         {
                             continue;
                         }
+
                         var l_c = p_出現回数[i];
                         l_勾配 += l_重み * (l_ディガンマ[i] + l_log比 + ((l_μ - l_c) / l_和));
                         l_曲率 += l_重み * (l_トリガンマ[i] + (1D / l_過分散) - (2D / l_和) + ((l_c - l_μ) / (l_和 * l_和)));
@@ -367,7 +376,7 @@ namespace Tsumiki.Utilities
                 }
 
                 var l_次 = l_過分散 - (l_勾配 / l_曲率);
-                if (double.IsNaN(l_次) || l_次 < 過分散パラメータの下限 || l_次 > 過分散パラメータの上限)
+                if (double.IsNaN(l_次) || l_次 < C_過分散パラメータの下限 || l_次 > C_過分散パラメータの上限)
                 {
                     break;
                 }
@@ -379,6 +388,7 @@ namespace Tsumiki.Utilities
                     break;
                 }
             }
+
             return l_過分散;
         }
 
@@ -398,6 +408,7 @@ namespace Tsumiki.Utilities
                 l_重み合計 += p_頻度[i];
                 l_加重和 += p_頻度[i] * p_出現回数[i];
             }
+
             return l_重み合計 > 0D ? Math.Max(1.5D, l_加重和 / l_重み合計) : 2.0D;
         }
 
@@ -421,16 +432,16 @@ namespace Tsumiki.Utilities
 
             var l_候補 = l_極大インデックス
                 .OrderByDescending(i => p_頻度[i])
-                .Take(局所極大候補の上限数)
+                .Take(C_局所極大候補の上限数)
                 .Select(i => p_出現回数[i])
                 .ToList();
 
-            for (var l_値 = 単一コピー平均の下限; l_値 <= p_走査上限; l_値 *= 2D)
+            for (var l_値 = C_単一コピー平均の下限; l_値 <= p_走査上限; l_値 *= 2D)
             {
                 l_候補.Add(l_値);
             }
 
-            return [.. l_候補.Where(x => x >= 単一コピー平均の下限).Distinct()];
+            return [.. l_候補.Where(x => x >= C_単一コピー平均の下限).Distinct()];
         }
 
         /// <summary>
@@ -455,7 +466,7 @@ namespace Tsumiki.Utilities
             var l_logw真 = Math.Log(Math.Max(1e-300D, 1D - p_誤り混合比));
 
             var l_対数尤度 = 0D;
-            var l_項 = new double[1 + コピー数の上限];
+            var l_項 = new double[1 + C_コピー数の上限];
             var (l_μ群, l_log混合比群) = Get_コピー数別の定数(p_λ, p_コピー数別混合比);
             var l_logガンマ過分散 = SpecialFunctions.Get_対数ガンマ(p_過分散);
 
@@ -465,7 +476,7 @@ namespace Tsumiki.Utilities
 
                 l_項[0] = l_logw誤り + (l_末尾配列 - 1D) * l_log1マイナスp + l_logP;
 
-                for (var k = 1; k <= コピー数の上限; k++)
+                for (var k = 1; k <= C_コピー数の上限; k++)
                 {
                     l_項[k] = l_logw真 + l_log混合比群[k - 1]
                         + Get_負の二項対数確率(l_末尾配列, l_μ群[k - 1], p_過分散, p_log階乗, p_logガンマ, l_logガンマ過分散);
@@ -478,7 +489,7 @@ namespace Tsumiki.Utilities
                 }
 
                 p_r誤り[i] = Math.Exp(l_項[0] - l_logP_c);
-                for (var k = 1; k <= コピー数の上限; k++)
+                for (var k = 1; k <= C_コピー数の上限; k++)
                 {
                     p_rコピー[k - 1][i] = Math.Exp(l_項[k] - l_logP_c);
                 }
@@ -511,10 +522,10 @@ namespace Tsumiki.Utilities
                 l_誤りの加重カウント合計 += l_終点 * p_出現回数[i];
             }
 
-            var l_コピー別重み合計 = new double[コピー数の上限];
-            var l_コピー別加重カウント合計 = new double[コピー数の上限];
+            var l_コピー別重み合計 = new double[C_コピー数の上限];
+            var l_コピー別加重カウント合計 = new double[C_コピー数の上限];
             var l_ゲノム成分の重み合計 = 0D;
-            for (var k = 0; k < コピー数の上限; k++)
+            for (var k = 0; k < C_コピー数の上限; k++)
             {
                 for (var i = 0; i < p_出現回数.Length; i++)
                 {
@@ -522,6 +533,7 @@ namespace Tsumiki.Utilities
                     l_コピー別重み合計[k] += l_終点;
                     l_コピー別加重カウント合計[k] += l_終点 * p_出現回数[i];
                 }
+
                 l_ゲノム成分の重み合計 += l_コピー別重み合計[k];
             }
 
@@ -535,15 +547,17 @@ namespace Tsumiki.Utilities
 
             var l_分子 = 0D;
             var l_コピー数の加重合計 = 0D;
-            for (var k = 0; k < コピー数の上限; k++)
+            for (var k = 0; k < C_コピー数の上限; k++)
             {
                 l_分子 += l_コピー別加重カウント合計[k];
                 l_コピー数の加重合計 += (k + 1) * l_コピー別重み合計[k];
             }
+
             if (l_コピー数の加重合計 <= 0D)
             {
                 return false;
             }
+
             p_λ = l_分子 / l_コピー数の加重合計;
 
             var l_平均コピー数 = l_コピー数の加重合計 / l_ゲノム成分の重み合計;
@@ -571,7 +585,7 @@ namespace Tsumiki.Utilities
             var l_logw真 = Math.Log(Math.Max(1e-300D, 1D - p_誤り混合比));
 
             var l_結果 = new double[p_出現回数.Length];
-            var l_項 = new double[1 + コピー数の上限];
+            var l_項 = new double[1 + C_コピー数の上限];
             var (l_μ群, l_log混合比群) = Get_コピー数別の定数(p_λ, p_コピー数別混合比);
             var l_logガンマ = Get_logガンマテーブル(p_出現回数.Length, p_過分散);
             var l_logガンマ過分散 = SpecialFunctions.Get_対数ガンマ(p_過分散);
@@ -579,14 +593,16 @@ namespace Tsumiki.Utilities
             {
                 var l_末尾配列 = p_出現回数[i];
                 l_項[0] = l_logw誤り + (l_末尾配列 - 1D) * l_log1マイナスp + l_logP;
-                for (var k = 1; k <= コピー数の上限; k++)
+                for (var k = 1; k <= C_コピー数の上限; k++)
                 {
                     l_項[k] = l_logw真 + l_log混合比群[k - 1]
                         + Get_負の二項対数確率(l_末尾配列, l_μ群[k - 1], p_過分散, p_log階乗, l_logガンマ, l_logガンマ過分散);
                 }
+
                 var l_logP_c = Get_LogSumExp(l_項);
                 l_結果[i] = Math.Exp(l_項[0] - l_logP_c);
             }
+
             return l_結果;
         }
 
@@ -598,13 +614,14 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static (double[] A_μ群, double[] A_log混合比群) Get_コピー数別の定数(double p_λ, double[] p_コピー数別混合比)
         {
-            var l_μ群 = new double[コピー数の上限];
-            var l_log混合比群 = new double[コピー数の上限];
-            for (var k = 1; k <= コピー数の上限; k++)
+            var l_μ群 = new double[C_コピー数の上限];
+            var l_log混合比群 = new double[C_コピー数の上限];
+            for (var k = 1; k <= C_コピー数の上限; k++)
             {
                 l_μ群[k - 1] = k * p_λ;
                 l_log混合比群[k - 1] = Math.Log(Math.Max(1e-300D, p_コピー数別混合比[k - 1]));
             }
+
             return (l_μ群, l_log混合比群);
         }
 
@@ -620,11 +637,13 @@ namespace Tsumiki.Utilities
             {
                 return double.NegativeInfinity;
             }
+
             var l_合計 = 0D;
             foreach (var l_値 in p_対数値)
             {
                 l_合計 += Math.Exp(l_値 - l_最大);
             }
+
             return l_最大 + Math.Log(l_合計);
         }
 
@@ -641,6 +660,7 @@ namespace Tsumiki.Utilities
             {
                 l_表[i] = l_表[i - 1] + Math.Log(i);
             }
+
             return l_表;
         }
 

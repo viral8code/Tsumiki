@@ -18,7 +18,7 @@
         public List<byte[]>? A_塩基候補列 { get; set; }
 
         /// <summary>
-        /// 曖昧塩基を無視する経路 (KmerCounting.V_読込_リードファイル) 向けの軽量表現
+        /// 曖昧塩基を無視する経路 (<see cref="KmerCounting.V_読込_リードファイル"/>) 向けの軽量表現
         /// </summary>
         public byte[]? A_塩基列 { get; set; }
 

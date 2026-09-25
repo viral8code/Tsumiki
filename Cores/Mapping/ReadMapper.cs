@@ -15,47 +15,47 @@ namespace Tsumiki.Cores.Mapping
         /// <summary>
         /// 種の長さ
         /// </summary>
-        private const int 種長 = 21;
+        private const int C_種長 = 21;
 
         /// <summary>
         /// 参照で種を取る間隔
         /// </summary>
-        private const int 種間隔 = 4;
+        private const int C_種間隔 = 4;
 
         /// <summary>
         /// 1 種で保持する位置の上限
         /// </summary>
-        private const int 種ヒット上限 = 16;
+        private const int C_種ヒット上限 = 16;
 
         /// <summary>
         /// 整列で許容する対角線からのずれ
         /// </summary>
-        private const int 帯域幅 = 24;
+        private const int C_帯域幅 = 24;
 
         /// <summary>
         /// 一致の得点
         /// </summary>
-        private const int 一致得点 = 2;
+        private const int C_一致得点 = 2;
 
         /// <summary>
         /// 不一致の罰点
         /// </summary>
-        private const int 不一致罰点 = -3;
+        private const int C_不一致罰点 = -3;
 
         /// <summary>
         /// ギャップを開く罰点
         /// </summary>
-        private const int ギャップ開始罰点 = -5;
+        private const int C_ギャップ開始罰点 = -5;
 
         /// <summary>
         /// ギャップを延長する罰点
         /// </summary>
-        private const int ギャップ延長罰点 = -1;
+        private const int C_ギャップ延長罰点 = -1;
 
         /// <summary>
         /// 配置に必要な最小スコア
         /// </summary>
-        private const int 最小スコア = 30;
+        private const int C_最小スコア = 30;
 
         #endregion
 
@@ -97,20 +97,20 @@ namespace Tsumiki.Cores.Mapping
         /// <returns>配置結果</returns>
         public リード配置 Get_配置(string p_リード)
         {
-            if (p_リード.Length < 種長)
+            if (p_リード.Length < C_種長)
             {
-                return リード配置.配置なし;
+                return リード配置.C_配置なし;
             }
 
             var l_候補数 = this.Get_候補数(p_リード);
             if (l_候補数.Count == 0)
             {
-                return リード配置.配置なし;
+                return リード配置.C_配置なし;
             }
 
             List<リード配置> l_配置候補 = [];
             string? l_逆相補リード = null;
-            foreach (var l_候補 in l_候補数.OrderByDescending(x => x.Value).Take(種ヒット上限))
+            foreach (var l_候補 in l_候補数.OrderByDescending(x => x.Value).Take(C_種ヒット上限))
             {
                 var l_照合リード = l_候補.Key.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
                 l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.Key));
@@ -118,9 +118,9 @@ namespace Tsumiki.Cores.Mapping
 
             var l_最良 = l_配置候補.MaxBy(x => x.A_スコア);
 
-            if (l_最良.A_スコア < 最小スコア)
+            if (l_最良.A_スコア < C_最小スコア)
             {
-                return リード配置.配置なし;
+                return リード配置.C_配置なし;
             }
 
             var l_次善スコア = 0;
@@ -131,6 +131,7 @@ namespace Tsumiki.Cores.Mapping
                     l_次善スコア = Math.Max(l_次善スコア, l_配置.A_スコア);
                 }
             }
+
             var l_信頼度 = Math.Clamp((l_最良.A_スコア - Math.Max(0, l_次善スコア)) * 3, 0, 60);
             return l_最良 with { A_信頼度 = l_信頼度 };
         }
@@ -147,15 +148,15 @@ namespace Tsumiki.Cores.Mapping
             for (var i = 0; i < this._参照配列群.Count; i++)
             {
                 var l_配列 = this._参照配列群[i];
-                for (var j = 0; j + 種長 <= l_配列.Length; j += 種間隔)
+                for (var j = 0; j + C_種長 <= l_配列.Length; j += C_種間隔)
                 {
-                    if (!KmerPacking.TryGet_パック(l_配列, j, 種長, out var l_順鎖))
+                    if (!KmerPacking.TryGet_パック(l_配列, j, C_種長, out var l_順鎖))
                     {
                         continue;
                     }
 
                     this.V_登録_種(l_順鎖, new 種ヒット(i, j, false));
-                    this.V_登録_種(KmerPacking.Get_逆相補(l_順鎖, 種長), new 種ヒット(i, j, true));
+                    this.V_登録_種(KmerPacking.Get_逆相補(l_順鎖, C_種長), new 種ヒット(i, j, true));
                 }
             }
         }
@@ -173,7 +174,7 @@ namespace Tsumiki.Cores.Mapping
                 this._種索引[p_種] = l_ヒット群;
             }
 
-            if (l_ヒット群.Count < 種ヒット上限)
+            if (l_ヒット群.Count < C_種ヒット上限)
             {
                 l_ヒット群.Add(p_ヒット);
             }
@@ -187,20 +188,21 @@ namespace Tsumiki.Cores.Mapping
         private Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
         {
             Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = [];
-            for (var i = 0; i + 種長 <= p_リード.Length; i++)
+            for (var i = 0; i + C_種長 <= p_リード.Length; i++)
             {
-                if (!KmerPacking.TryGet_パック(p_リード, i, 種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
+                if (!KmerPacking.TryGet_パック(p_リード, i, C_種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
                 {
                     continue;
                 }
 
                 foreach (var l_ヒット in l_ヒット群)
                 {
-                    var l_リード位置 = l_ヒット.A_Is逆鎖 ? p_リード.Length - i - 種長 : i;
+                    var l_リード位置 = l_ヒット.A_Is逆鎖 ? p_リード.Length - i - C_種長 : i;
                     var l_候補 = (l_ヒット.A_配列番号, l_ヒット.A_Is逆鎖, l_ヒット.A_参照位置 - l_リード位置);
                     l_候補数[l_候補] = l_候補数.GetValueOrDefault(l_候補) + 1;
                 }
             }
+
             return l_候補数;
         }
 
@@ -241,11 +243,11 @@ namespace Tsumiki.Cores.Mapping
         {
             var l_照合リード = p_照合リード;
             var l_参照 = this._参照配列群[p_候補.A_配列番号];
-            var l_開始 = Math.Max(0, p_候補.A_対角線 - 帯域幅);
-            var l_終了 = Math.Min(l_参照.Length, p_候補.A_対角線 + l_照合リード.Length + 帯域幅);
-            if (l_終了 - l_開始 < 種長)
+            var l_開始 = Math.Max(0, p_候補.A_対角線 - C_帯域幅);
+            var l_終了 = Math.Min(l_参照.Length, p_候補.A_対角線 + l_照合リード.Length + C_帯域幅);
+            if (l_終了 - l_開始 < C_種長)
             {
-                return リード配置.配置なし;
+                return リード配置.C_配置なし;
             }
 
             var l_幅 = l_終了 - l_開始;
@@ -268,9 +270,9 @@ namespace Tsumiki.Cores.Mapping
                 l_経路[..l_列数].Clear();
                 for (var i = 1; i <= l_行数; i++)
                 {
-                    var l_中心 = i + 帯域幅;
-                    var l_初期化左 = i == l_行数 ? 0 : Math.Max(0, l_中心 - (帯域幅 * 2) - 1);
-                    var l_初期化右 = i == l_行数 ? l_幅 : Math.Min(l_幅, l_中心 + (帯域幅 * 2) + 1);
+                    var l_中心 = i + C_帯域幅;
+                    var l_初期化左 = i == l_行数 ? 0 : Math.Max(0, l_中心 - (C_帯域幅 * 2) - 1);
+                    var l_初期化右 = i == l_行数 ? l_幅 : Math.Min(l_幅, l_中心 + (C_帯域幅 * 2) + 1);
                     var l_行頭 = i * l_列数;
                     var l_初期化幅 = Math.Max(0, l_初期化右 - l_初期化左 + 1);
                     l_得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
@@ -278,7 +280,7 @@ namespace Tsumiki.Cores.Mapping
                     l_削除得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
                     l_経路.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Clear();
 
-                    l_得点[l_行頭] = ギャップ開始罰点 + (i - 1) * ギャップ延長罰点;
+                    l_得点[l_行頭] = C_ギャップ開始罰点 + (i - 1) * C_ギャップ延長罰点;
                     l_挿入得点[l_行頭] = l_得点[l_行頭];
                     l_削除得点[l_行頭] = l_最小値;
                     l_経路[l_行頭] = 1;
@@ -286,18 +288,18 @@ namespace Tsumiki.Cores.Mapping
 
                 for (var i = 1; i <= l_照合リード.Length; i++)
                 {
-                    var l_中心 = i + 帯域幅;
-                    var l_左 = Math.Max(1, l_中心 - 帯域幅 * 2);
-                    var l_右 = Math.Min(l_幅, l_中心 + 帯域幅 * 2);
+                    var l_中心 = i + C_帯域幅;
+                    var l_左 = Math.Max(1, l_中心 - C_帯域幅 * 2);
+                    var l_右 = Math.Min(l_幅, l_中心 + C_帯域幅 * 2);
                     for (var j = l_左; j <= l_右; j++)
                     {
                         var l_添字 = i * (l_幅 + 1) + j;
                         var l_左上添字 = (i - 1) * (l_幅 + 1) + j - 1;
                         var l_上添字 = (i - 1) * (l_幅 + 1) + j;
                         var l_左添字 = i * (l_幅 + 1) + j - 1;
-                        var l_対角 = l_得点[l_左上添字] + (l_照合リード[i - 1] == l_参照[l_開始 + j - 1] ? 一致得点 : 不一致罰点);
-                        l_挿入得点[l_添字] = Math.Max(l_得点[l_上添字] + ギャップ開始罰点, l_挿入得点[l_上添字] + ギャップ延長罰点);
-                        l_削除得点[l_添字] = Math.Max(l_得点[l_左添字] + ギャップ開始罰点, l_削除得点[l_左添字] + ギャップ延長罰点);
+                        var l_対角 = l_得点[l_左上添字] + (l_照合リード[i - 1] == l_参照[l_開始 + j - 1] ? C_一致得点 : C_不一致罰点);
+                        l_挿入得点[l_添字] = Math.Max(l_得点[l_上添字] + C_ギャップ開始罰点, l_挿入得点[l_上添字] + C_ギャップ延長罰点);
+                        l_削除得点[l_添字] = Math.Max(l_得点[l_左添字] + C_ギャップ開始罰点, l_削除得点[l_左添字] + C_ギャップ延長罰点);
                         l_得点[l_添字] = Math.Max(l_対角, Math.Max(l_挿入得点[l_添字], l_削除得点[l_添字]));
                         l_経路[l_添字] = l_得点[l_添字] == l_対角 ? (byte)0 : l_得点[l_添字] == l_挿入得点[l_添字] ? (byte)1 : (byte)2;
                     }

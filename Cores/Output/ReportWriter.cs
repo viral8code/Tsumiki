@@ -63,6 +63,7 @@ namespace Tsumiki.Cores.Output
                 var l_末尾 = i == p_判定.A_検査項目.Count - 1 ? string.Empty : ",";
                 V_追加(l_文, "    {{\"name\": {0}, \"result\": {1}, \"detail\": {2}}}{3}", Get_文字列(l_項目.A_キー), Get_文字列(CompletenessValidator.Get_判定コード(l_項目.A_判定)), Get_文字列(l_項目.A_内訳), l_末尾);
             }
+
             _ = l_文.AppendLine("  ],");
 
             V_追加_自己検査(l_文, p_整合性);
@@ -82,7 +83,7 @@ namespace Tsumiki.Cores.Output
         /// </summary>
         /// <param name="p_出力パス">書き出し先</param>
         /// <param name="p_k長">採用した k の長さ</param>
-        /// <param name="p_統計表">AssemblyStatsReporter.Get_統計表 の行</param>
+        /// <param name="p_統計表"><see cref="AssemblyStatsReporter.Get_統計表"/> の行</param>
         /// <param name="p_判定">完全長の判定結果</param>
         /// <param name="p_未解決ギャップ数">埋まらなかったギャップの数</param>
         /// <param name="p_環状本数">環状に閉じた配列の本数</param>
@@ -117,6 +118,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine(l_行);
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Completeness checks").AppendLine().AppendLine("| check | result | detail |").AppendLine("|---|---|---|");
@@ -124,6 +126,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine($"| {Get_表の値(l_項目.A_キー)} | {CompletenessValidator.Get_判定コード(l_項目.A_判定)} | {Get_表の値(l_項目.A_内訳)} |");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Self-check against trusted k-mers").AppendLine();
@@ -138,6 +141,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine("not measured");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Fixed-anchor evaluation").AppendLine();
@@ -154,6 +158,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine("not measured");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Polishing").AppendLine();
@@ -169,6 +174,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine("not measured");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Read support").AppendLine();
@@ -183,6 +189,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine("not measured");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Circular closure").AppendLine();
@@ -198,6 +205,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine(p_閉鎖検証 is null ? "not measured" : "no circular sequences");
             }
+
             _ = l_文.AppendLine();
 
             _ = l_文.AppendLine("## Stage timings").AppendLine().AppendLine("| stage | elapsed s | CPU s | peak working set MB |").AppendLine("|---|---:|---:|---:|");
@@ -223,6 +231,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine(string.Join('\t', l_区間.A_配列ID, l_区間.A_開始, l_区間.A_終了, l_区間.A_長さ, p_r長));
             }
+
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
@@ -239,6 +248,7 @@ namespace Tsumiki.Cores.Output
             {
                 _ = l_文.AppendLine(string.Join('\t', l_箇所.A_k長, Get_種別コード(l_箇所.A_種別), l_箇所.A_場所, l_箇所.A_安定ID, Get_数値(l_箇所.A_首位の支持), Get_数値(l_箇所.A_次点の支持), Get_数値(l_箇所.A_余裕), l_箇所.A_首位の生支持数, Get_数値(l_箇所.A_確信度)));
             }
+
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
@@ -316,6 +326,7 @@ namespace Tsumiki.Cores.Output
                 V_追加(p_文, "    {{\"stage\": {0}, \"elapsed_s\": {1}, \"cpu_s\": {2}, \"allocated_mb\": {3}, \"working_set_mb\": {4}, \"peak_working_set_mb\": {5}, \"gen2_gc\": {6}}}{7}",
                     Get_文字列(l_計測.A_工程), Get_数値(l_計測.A_経過秒), Get_数値(l_計測.A_CPU秒), Get_数値(l_計測.A_確保MB), Get_数値(l_計測.A_ワーキングセットMB), Get_数値(l_計測.A_ピークワーキングセットMB), l_計測.A_世代2回収回数, l_末尾);
             }
+
             _ = p_文.AppendLine("  ]");
         }
 
@@ -331,6 +342,7 @@ namespace Tsumiki.Cores.Output
                 _ = p_文.AppendLine("  \"self_check\": null,");
                 return;
             }
+
             _ = p_文.AppendLine("  \"self_check\": {");
             V_追加(p_文, "    \"trusted_kmers\": {0},", l_整合性.A_信頼kmer数);
             V_追加(p_文, "    \"missing_kmers\": {0},", l_整合性.A_取りこぼし数);
@@ -351,6 +363,7 @@ namespace Tsumiki.Cores.Output
                 _ = p_文.AppendLine("  \"anchor_evaluation\": null,");
                 return;
             }
+
             _ = p_文.AppendLine("  \"anchor_evaluation\": {");
             V_追加(p_文, "    \"expected_copies\": {0},", l_評価.A_期待延べ数);
             V_追加(p_文, "    \"missing_copies\": {0},", l_評価.A_欠損延べ数);
@@ -375,6 +388,7 @@ namespace Tsumiki.Cores.Output
                 _ = p_文.AppendLine("  \"polish\": null,");
                 return;
             }
+
             _ = p_文.AppendLine("  \"polish\": {");
             V_追加(p_文, "    \"mapped_reads\": {0},", l_ポリッシュ.A_マップされたリード数);
             V_追加(p_文, "    \"rejected_reads\": {0},", l_ポリッシュ.A_棄却されたリード数);
@@ -396,6 +410,7 @@ namespace Tsumiki.Cores.Output
                 _ = p_文.AppendLine("  \"circular_closure\": null,");
                 return;
             }
+
             _ = p_文.AppendLine("  \"circular_closure\": [");
             for (var i = 0; i < p_閉鎖検証.Count; i++)
             {
@@ -403,6 +418,7 @@ namespace Tsumiki.Cores.Output
                 var l_末尾 = i == p_閉鎖検証.Count - 1 ? string.Empty : ",";
                 V_追加(p_文, "    {{\"id\": {0}, \"length\": {1}, \"spanning_reads\": {2}, \"required\": {3}, \"supported\": {4}}}{5}", Get_文字列(l_検証.A_配列ID), l_検証.A_長さ, l_検証.A_跨いだリード数, l_検証.A_必要本数, l_検証.A_Has支持 ? "true" : "false", l_末尾);
             }
+
             _ = p_文.AppendLine("  ],");
         }
 
@@ -438,6 +454,7 @@ namespace Tsumiki.Cores.Output
             {
                 return "null";
             }
+
             var l_文 = new StringBuilder("\"");
             foreach (var l_文字 in p_値)
             {
@@ -451,6 +468,7 @@ namespace Tsumiki.Cores.Output
                     _ => l_文字 < ' ' ? l_文.Append(CultureInfo.InvariantCulture, $"\\u{(int)l_文字:x4}") : l_文.Append(l_文字),
                 };
             }
+
             return l_文.Append('"').ToString();
         }
 

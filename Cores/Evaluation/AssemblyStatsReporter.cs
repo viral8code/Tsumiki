@@ -15,7 +15,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)
         /// </summary>
-        public const int 比較用の最小長 = 500;
+        public const int C_比較用の最小長 = 500;
 
         #endregion
 
@@ -74,11 +74,13 @@ namespace Tsumiki.Cores.Evaluation
             {
                 throw new ArgumentOutOfRangeException(nameof(p_最小長));
             }
+
             List<string> l_断片群 = [];
             foreach (var l_配列 in p_配列群)
             {
                 l_断片群.AddRange(l_配列.Split(['N', 'n'], StringSplitOptions.RemoveEmptyEntries).Where(x => x.Length >= p_最小長));
             }
+
             return Get_統計(l_断片群);
         }
 
@@ -108,11 +110,11 @@ namespace Tsumiki.Cores.Evaluation
             var l_統計 = Get_統計_FASTA(p_FASTAパス);
             Logger.V_出力(メッセージID.統計, p_ラベル, l_統計);
 
-            var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= 比較用の最小長));
-            Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, 比較用の最小長, l_絞り込み統計);
+            var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= C_比較用の最小長));
+            Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, C_比較用の最小長, l_絞り込み統計);
 
-            var l_N分割統計 = Get_N分割統計(Get_配列群(p_FASTAパス), 比較用の最小長);
-            Logger.V_出力_そのまま($"[Stats] {p_ラベル} (N-split, >= {比較用の最小長}bp): {l_N分割統計}");
+            var l_N分割統計 = Get_N分割統計(Get_配列群(p_FASTAパス), C_比較用の最小長);
+            Logger.V_出力_そのまま($"[Stats] {p_ラベル} (N-split, >= {C_比較用の最小長}bp): {l_N分割統計}");
         }
 
         /// <summary>
@@ -138,14 +140,15 @@ namespace Tsumiki.Cores.Evaluation
                 (string A_条件, アセンブリ統計 A_統計)[] l_絞り込み群 =
                 [
                     ("all", Get_統計(l_配列群)),
-                    ($">= {比較用の最小長}bp", Get_統計(l_配列群.Where(x => x.Length >= 比較用の最小長))),
-                    ($"N-split, >= {比較用の最小長}bp", Get_N分割統計(l_配列群, 比較用の最小長)),
+                    ($">= {C_比較用の最小長}bp", Get_統計(l_配列群.Where(x => x.Length >= C_比較用の最小長))),
+                    ($"N-split, >= {C_比較用の最小長}bp", Get_N分割統計(l_配列群, C_比較用の最小長)),
                 ];
                 foreach (var (l_条件, l_統計) in l_絞り込み群)
                 {
                     l_行群.Add(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"| {l_ラベル} | {l_条件} | {l_統計.A_配列数:N0} | {l_統計.A_総延長:N0} | {l_統計.A_最大長:N0} | {l_統計.A_最小長:N0} | {l_統計.A_N50:N0} | {l_統計.A_L50:N0} | {l_統計.A_GC率:F2} |"));
                 }
             }
+
             return l_行群;
         }
 

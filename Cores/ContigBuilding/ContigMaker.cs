@@ -104,6 +104,7 @@ namespace Tsumiki.Core
                     l_分岐頂点数++;
                 }
             }
+
             Logger.V_出力(メッセージID.deBruijnグラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
 
             var (l_支持, l_ペア連結) = this.Get_辺重み(l_グラフ);
@@ -163,6 +164,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 var l_始点番号 = Get_頂点番号(l_始点);
                 var l_終点番号 = Get_頂点番号(l_終点);
                 l_支持[(l_始点番号, l_終点番号)] = l_支持.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
@@ -177,6 +179,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 var l_始点番号 = Get_頂点番号(l_始点);
                 var l_終点番号 = Get_頂点番号(l_終点);
                 var l_件数 = (ulong)l_標本.Count;
@@ -186,6 +189,7 @@ namespace Tsumiki.Core
                 l_ペア連結[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_ペア連結.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
                 l_ペア支持を足した数++;
             }
+
             Logger.V_出力(メッセージID.分岐選択の重み内訳, this._リード隣接.Count, l_ペア支持を足した数);
 
             return (l_支持, l_ペア連結);
@@ -231,6 +235,7 @@ namespace Tsumiki.Core
                     Logger.V_出力(メッセージID.単純化の打ち切り, C_ラウンド数上限);
                 }
             }
+
             if (l_外した枝数 > 0)
             {
                 Logger.V_出力(メッセージID.行き止まり枝の除去数, l_外した枝数);
@@ -240,6 +245,7 @@ namespace Tsumiki.Core
             {
                 Logger.V_出力(メッセージID.バブル除去数, l_除去バブル数);
             }
+
             Logger.V_出力(メッセージID.反復解決数, l_解決した反復数, p_反復長の上限);
         }
 
@@ -295,6 +301,7 @@ namespace Tsumiki.Core
                         l_多コピーを経路で解決した数++;
                         continue;
                     }
+
                     l_反復由来で未解決の数++;
                     AmbiguityRecorder.V_記録(曖昧箇所の種別.反復の内側, AmbiguityRecorder.Get_場所名(v));
                     continue;
@@ -355,6 +362,7 @@ namespace Tsumiki.Core
                 var l_次点の支持 = l_正規化合計 - (l_最良の正規化 is double.NegativeInfinity ? 0D : l_最良の正規化);
                 AmbiguityRecorder.V_記録(l_種別, l_場所, l_首位の支持, l_次点の支持, (long)l_最良の生本数);
             }
+
             Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);
 
             if (l_引き継ぎで解決した数 > 0)
@@ -404,8 +412,10 @@ namespace Tsumiki.Core
                 {
                     return p_経路索引.Get_優勢な行き先(l_上流, p_グラフ.A_出辺[p_分岐元], p_優勢閾値, p_最小証拠数);
                 }
+
                 l_現在 = l_直前;
             }
+
             return null;
         }
 
@@ -423,11 +433,13 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 var l_始点番号 = Get_頂点番号(l_始点);
                 var l_終点番号 = Get_頂点番号(l_終点);
                 l_結果[(l_始点番号, l_終点番号)] = l_結果.GetValueOrDefault((l_始点番号, l_終点番号)) + l_件数;
                 l_結果[(l_終点番号 ^ 1, l_始点番号 ^ 1)] = l_結果.GetValueOrDefault((l_終点番号 ^ 1, l_始点番号 ^ 1)) + l_件数;
             }
+
             return l_結果;
         }
 
@@ -455,6 +467,7 @@ namespace Tsumiki.Core
 
                 l_一意な行き先 = w;
             }
+
             return l_一意な行き先;
         }
 
@@ -512,6 +525,7 @@ namespace Tsumiki.Core
             {
                 Logger.V_出力(メッセージID.反復通り抜けで棄却した結合数, l_反復通り抜けで棄却した数 >> 1);
             }
+
             Logger.V_出力(メッセージID.相互一意で残った結合数, l_結合数, l_結合数 >> 1);
 
             return l_結合;
@@ -540,6 +554,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 V_実行_walk(p_unitig配列, p_結合, l_訪問済み, p_重なり長, v, l_contig群, l_walk順群, l_環状フラグ群);
             }
 
@@ -549,6 +564,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 V_実行_walk(p_unitig配列, p_結合, l_訪問済み, p_重なり長, v, l_contig群, l_walk順群, l_環状フラグ群);
             }
 
@@ -570,6 +586,7 @@ namespace Tsumiki.Core
                 {
                     l_出力配列 = Util.Get_最小回転(l_出力配列);
                 }
+
                 l_書き込み.V_書き込み(l_名前, l_出力配列);
 
                 foreach (var l_辺 in Get_分岐の継ぎ目(p_グラフ, p_unitig配列, l_walk順, p_重なり長 + 1))
@@ -587,6 +604,7 @@ namespace Tsumiki.Core
                 l_ID++;
                 l_総延長 += l_contig.Length;
             }
+
             Logger.V_出力(メッセージID.Contig総延長, l_総延長);
 
             var l_環状contig = Enumerable.Range(0, l_contig群.Count)

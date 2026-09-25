@@ -54,6 +54,7 @@ namespace Tsumiki.IO
                 var l_長さ = l_読み込み.Get_次のリード_軽量().A_生リード!.Length;
                 l_分布[l_長さ] = l_分布.GetValueOrDefault(l_長さ) + 1;
             }
+
             return l_分布;
         }
 
@@ -86,6 +87,7 @@ namespace Tsumiki.IO
                     return l_長さ;
                 }
             }
+
             return l_長い順[^1];
         }
 
@@ -127,6 +129,7 @@ namespace Tsumiki.IO
                     }
                 }
             }
+
             return Get_梯子上限のリード長(p_分布);
         }
 

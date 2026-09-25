@@ -10,32 +10,32 @@
         /// <summary>
         /// minimizer にする k-mer の長さ
         /// </summary>
-        public const int 種長 = 15;
+        public const int C_種長 = 15;
 
         /// <summary>
         /// minimizer を選ぶ窓に並ぶ k-mer の数
         /// </summary>
-        public const int 窓の種数 = 27;
+        public const int C_窓の種数 = 27;
 
         /// <summary>
         /// 問い合わせられる配列の最短の長さ (これより短いと、どの minimizer も丸ごと含むとは限らない)
         /// </summary>
-        public const int 最短の問い合わせ長 = 種長 + 窓の種数 - 1;
+        public const int C_最短の問い合わせ長 = C_種長 + C_窓の種数 - 1;
 
         /// <summary>
         /// 1 語に詰める文字数
         /// </summary>
-        private const int 語あたりの文字数 = 32;
+        private const int C_語あたりの文字数 = 32;
 
         /// <summary>
         /// minimizer を並列に集めるときの 1 束の区間数
         /// </summary>
-        private const int 区間の束の大きさ = 4_096;
+        private const int C_区間の束の大きさ = 4_096;
 
         /// <summary>
         /// 種の値のマスク
         /// </summary>
-        private const ulong 種のマスク = (1UL << (2 * 種長)) - 1;
+        private const ulong C_種のマスク = (1UL << (2 * C_種長)) - 1;
 
         #endregion
 
@@ -123,7 +123,7 @@
                 }
             }
 
-            var l_語 = new ulong[(l_長さ / 語あたりの文字数) + 2];
+            var l_語 = new ulong[(l_長さ / C_語あたりの文字数) + 2];
             var l_末尾印 = new ulong[(l_長さ / 64) + 2];
             List<(long A_開始, int A_長さ)> l_区間群 = [];
             long l_位置 = 0;
@@ -133,18 +133,19 @@
                 {
                     for (var i = 0; i < l_区間長; i++)
                     {
-                        l_語[l_位置 / 語あたりの文字数] |= (ulong)Get_2bit値(l_配列[l_開始 + i]) << (62 - (int)(2 * (l_位置 % 語あたりの文字数)));
+                        l_語[l_位置 / C_語あたりの文字数] |= (ulong)Get_2bit値(l_配列[l_開始 + i]) << (62 - (int)(2 * (l_位置 % C_語あたりの文字数)));
                         l_位置++;
                     }
+
                     l_末尾印[(l_位置 - 1) / 64] |= 1UL << (int)((l_位置 - 1) % 64);
-                    if (l_区間長 >= 最短の問い合わせ長)
+                    if (l_区間長 >= C_最短の問い合わせ長)
                     {
                         l_区間群.Add((l_位置 - l_区間長, l_区間長));
                     }
                 }
             }
 
-            var l_束数 = (l_区間群.Count + 区間の束の大きさ - 1) / 区間の束の大きさ;
+            var l_束数 = (l_区間群.Count + C_区間の束の大きさ - 1) / C_区間の束の大きさ;
             var l_束の先頭 = new long[l_束数 + 1];
             _ = Parallel.For(0, l_束数, l_束 =>
             {
@@ -182,31 +183,33 @@
         /// <returns>出てくれば true</returns>
         public bool Has出現(ReadOnlySpan<char> p_配列)
         {
-            if (p_配列.Length < 最短の問い合わせ長)
+            if (p_配列.Length < C_最短の問い合わせ長)
             {
-                throw new ArgumentException($"配列は {最短の問い合わせ長} 塩基以上が要る");
+                throw new ArgumentException($"配列は {C_最短の問い合わせ長} 塩基以上が要る");
             }
 
-            Span<ulong> l_ハッシュ = stackalloc ulong[窓の種数];
-            Span<uint> l_正準値 = stackalloc uint[窓の種数];
-            for (var j = 0; j < 窓の種数; j++)
+            Span<ulong> l_ハッシュ = stackalloc ulong[C_窓の種数];
+            Span<uint> l_正準値 = stackalloc uint[C_窓の種数];
+            for (var j = 0; j < C_窓の種数; j++)
             {
-                var l_値 = Get_種の値(p_配列.Slice(j, 種長));
+                var l_値 = Get_種の値(p_配列.Slice(j, C_種長));
                 if (l_値 < 0)
                 {
                     return false;
                 }
+
                 l_正準値[j] = (uint)l_値;
                 l_ハッシュ[j] = Get_ハッシュ((uint)l_値);
             }
+
             var l_最小 = ulong.MaxValue;
-            for (var j = 0; j < 窓の種数; j++)
+            for (var j = 0; j < C_窓の種数; j++)
             {
                 l_最小 = Math.Min(l_最小, l_ハッシュ[j]);
             }
 
             var l_種 = uint.MaxValue;
-            for (var j = 0; j < 窓の種数; j++)
+            for (var j = 0; j < C_窓の種数; j++)
             {
                 if (l_ハッシュ[j] == l_最小)
                 {
@@ -219,18 +222,20 @@
             for (var l_項 = l_下; l_項 < this._種.LongLength && this._種[l_項] == l_種; l_項++)
             {
                 var l_場所 = this._位置32?[l_項] ?? this._位置64![l_項];
-                for (var j = 0; j < 窓の種数; j++)
+                for (var j = 0; j < C_窓の種数; j++)
                 {
                     if (l_ハッシュ[j] != l_最小)
                     {
                         continue;
                     }
-                    if (this.Is一致(l_場所 - j, p_配列, false) || this.Is一致(l_場所 - (p_配列.Length - j - 種長), p_配列, true))
+
+                    if (this.Is一致(l_場所 - j, p_配列, false) || this.Is一致(l_場所 - (p_配列.Length - j - C_種長), p_配列, true))
                     {
                         return true;
                     }
                 }
             }
+
             return false;
         }
 
@@ -252,8 +257,8 @@
         private static long V_集める_束(ulong[] p_語, List<(long A_開始, int A_長さ)> p_区間群, int p_束, uint[]? p_種, uint[]? p_位置32, long[]? p_位置64, long p_書き始め)
         {
             var l_書く = p_書き始め;
-            var l_終わり = Math.Min(p_区間群.Count, (p_束 + 1) * 区間の束の大きさ);
-            for (var i = p_束 * 区間の束の大きさ; i < l_終わり; i++)
+            var l_終わり = Math.Min(p_区間群.Count, (p_束 + 1) * C_区間の束の大きさ);
+            for (var i = p_束 * C_区間の束の大きさ; i < l_終わり; i++)
             {
                 V_集める_minimizer(p_語, p_区間群[i].A_開始, p_区間群[i].A_長さ, (l_値, l_場所) =>
                 {
@@ -269,9 +274,11 @@
                             p_位置64![l_書く] = l_場所;
                         }
                     }
+
                     l_書く++;
                 });
             }
+
             return l_書く - p_書き始め;
         }
 
@@ -284,7 +291,7 @@
         /// <param name="p_渡し先">minimizer の正準値と位置を受け取る処理</param>
         private static void V_集める_minimizer(ulong[] p_語, long p_開始, int p_長さ, Action<uint, long> p_渡し先)
         {
-            var l_種数 = p_長さ - 種長 + 1;
+            var l_種数 = p_長さ - C_種長 + 1;
             var l_正準値 = new uint[l_種数];
             var l_ハッシュ = new ulong[l_種数];
             ulong l_順 = 0;
@@ -292,27 +299,28 @@
             for (var i = 0; i < p_長さ; i++)
             {
                 var l_文字 = Get_文字(p_語, p_開始 + i);
-                l_順 = ((l_順 << 2) | (uint)l_文字) & 種のマスク;
-                l_逆 = (l_逆 >> 2) | ((ulong)(3 - l_文字) << (2 * (種長 - 1)));
-                if (i >= 種長 - 1)
+                l_順 = ((l_順 << 2) | (uint)l_文字) & C_種のマスク;
+                l_逆 = (l_逆 >> 2) | ((ulong)(3 - l_文字) << (2 * (C_種長 - 1)));
+                if (i >= C_種長 - 1)
                 {
                     var l_値 = (uint)Math.Min(l_順, l_逆);
-                    l_正準値[i - 種長 + 1] = l_値;
-                    l_ハッシュ[i - 種長 + 1] = Get_ハッシュ(l_値);
+                    l_正準値[i - C_種長 + 1] = l_値;
+                    l_ハッシュ[i - C_種長 + 1] = Get_ハッシュ(l_値);
                 }
             }
 
             var l_前 = -1;
-            for (var l_窓 = 0; l_窓 + 窓の種数 <= l_種数; l_窓++)
+            for (var l_窓 = 0; l_窓 + C_窓の種数 <= l_種数; l_窓++)
             {
                 var l_最小位置 = l_窓;
-                for (var j = l_窓 + 1; j < l_窓 + 窓の種数; j++)
+                for (var j = l_窓 + 1; j < l_窓 + C_窓の種数; j++)
                 {
                     if (l_ハッシュ[j] < l_ハッシュ[l_最小位置])
                     {
                         l_最小位置 = j;
                     }
                 }
+
                 if (l_最小位置 != l_前)
                 {
                     p_渡し先(l_正準値[l_最小位置], p_開始 + l_最小位置);
@@ -334,6 +342,7 @@
             {
                 return false;
             }
+
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_位置 = p_開始 + i;
@@ -342,11 +351,13 @@
                 {
                     return false;
                 }
+
                 if (i < p_配列.Length - 1 && (this._末尾印[l_位置 / 64] & (1UL << (int)(l_位置 % 64))) != 0)
                 {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -372,6 +383,7 @@
                     l_上 = l_中;
                 }
             }
+
             return l_下;
         }
 
@@ -391,9 +403,11 @@
                 {
                     return -1;
                 }
+
                 l_順 = (l_順 << 2) | (uint)l_文字;
                 l_逆 |= (ulong)(3 - l_文字) << (2 * i);
             }
+
             return (long)Math.Min(l_順, l_逆);
         }
 
@@ -444,7 +458,7 @@
         /// <returns></returns>
         private static int Get_文字(ulong[] p_配列, long p_位置)
         {
-            return (int)((p_配列[p_位置 / 語あたりの文字数] >> (62 - (int)(2 * (p_位置 % 語あたりの文字数)))) & 3);
+            return (int)((p_配列[p_位置 / C_語あたりの文字数] >> (62 - (int)(2 * (p_位置 % C_語あたりの文字数)))) & 3);
         }
 
         /// <summary>

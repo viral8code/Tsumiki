@@ -14,22 +14,22 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 控えに残す出現回数の下限
         /// </summary>
-        public const ulong 控えの最小出現回数 = 2UL;
+        public const ulong C_控えの最小出現回数 = 2UL;
 
         /// <summary>
         /// 行き止まりの k-mer の出現回数に対して、続きに要求する出現回数の比
         /// </summary>
-        private const double 行き止まりに対する最小比 = 0.1D;
+        private const double C_行き止まりに対する最小比 = 0.1D;
 
         /// <summary>
         /// 続きの候補が複数あるとき、最多の候補に要求する次点との比
         /// </summary>
-        private const double 優勢とみなす比 = 3D;
+        private const double C_優勢とみなす比 = 3D;
 
         /// <summary>
         /// 辿ってよい k-mer 数のリード長に対する倍率
         /// </summary>
-        private const int 歩数上限のリード長倍率 = 4;
+        private const int C_歩数上限のリード長倍率 = 4;
 
         #endregion
 
@@ -51,7 +51,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            var l_歩数上限 = 歩数上限のリード長倍率 * Math.Max(p_リード長 ?? 0, p_k長);
+            var l_歩数上限 = C_歩数上限のリード長倍率 * Math.Max(p_リード長 ?? 0, p_k長);
 
             var l_行き止まり = p_kmerインデックス.Get_信頼kmer一覧()
                 .AsParallel()
@@ -94,7 +94,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns>足すべき k-mer と出現回数、合流できなければ null</returns>
         internal static List<(byte[] A_kmer, ulong A_出現回数)>? Get_架橋経路(TrustedKmerIndex p_kmerインデックス, byte[] p_行き止まり, int p_k長, int p_歩数上限)
         {
-            var l_最小出現回数 = Math.Max(控えの最小出現回数, (ulong)Math.Ceiling(p_kmerインデックス.Get_カバレッジ(p_行き止まり) * 行き止まりに対する最小比));
+            var l_最小出現回数 = Math.Max(C_控えの最小出現回数, (ulong)Math.Ceiling(p_kmerインデックス.Get_カバレッジ(p_行き止まり) * C_行き止まりに対する最小比));
             var l_現在 = (byte[])p_行き止まり.Clone();
             var l_候補 = new byte[p_k長];
             List<(byte[] A_kmer, ulong A_出現回数)> l_経路 = [];
@@ -142,7 +142,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return null;
                 }
 
-                if (l_次点 > 0UL && l_最多 < l_次点 * 優勢とみなす比)
+                if (l_次点 > 0UL && l_最多 < l_次点 * C_優勢とみなす比)
                 {
                     return null;
                 }
@@ -152,9 +152,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     return null;
                 }
+
                 l_経路.Add((l_候補.ToArray(), l_最多));
                 (l_現在, l_候補) = (l_候補, l_現在);
             }
+
             return null;
         }
 
@@ -174,6 +176,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 yield return p_kmer;
             }
+
             var l_逆相補 = Util.V_逆相補(p_kmer).ToArray();
             if (p_kmerインデックス.Get_出次数(l_逆相補) == 0)
             {

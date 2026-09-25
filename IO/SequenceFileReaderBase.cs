@@ -13,7 +13,7 @@ namespace Tsumiki.IO
         /// <summary>
         /// バッファサイズ
         /// </summary>
-        private const int バッファサイズ = 1 << 25;
+        private const int C_バッファサイズ = 1 << 25;
 
         #endregion
 
@@ -46,8 +46,8 @@ namespace Tsumiki.IO
             this.A_ファイルパス = p_パス;
             var l_入力ストリーム = 中間データ置き場.Get_読込ストリーム(p_パス);
             this._読み込み = Path.GetExtension(p_パス)?.ToLower() == ".gz"
-                ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: バッファサイズ)
-                : new StreamReader(l_入力ストリーム, bufferSize: バッファサイズ);
+                ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: C_バッファサイズ)
+                : new StreamReader(l_入力ストリーム, bufferSize: C_バッファサイズ);
         }
 
         #endregion
@@ -74,6 +74,7 @@ namespace Tsumiki.IO
             {
                 l_行 = this._読み込み.ReadLine();
             }
+
             return l_行;
         }
 

@@ -10,12 +10,12 @@
         /// <summary>
         /// フラグメント長の経験分布を刻むビン幅
         /// </summary>
-        private const int フラグメント長のビン幅 = 5;
+        private const int C_フラグメント長のビン幅 = 5;
 
         /// <summary>
         /// 既知長のばらつき幅の下限
         /// </summary>
-        private const int 既知長のばらつき幅の下限 = 25;
+        private const int C_既知長のばらつき幅の下限 = 25;
 
         #endregion
 
@@ -75,7 +75,7 @@
             var l_下限 = Get_分位(l_並び, 0.01D);
             var l_上限 = Get_分位(l_並び, 0.99D);
             this._中央フラグメント長 = Get_分位(l_並び, 0.5D);
-            this._窓幅 = Math.Max((l_上限 - l_下限) / 2, 既知長のばらつき幅の下限);
+            this._窓幅 = Math.Max((l_上限 - l_下限) / 2, C_既知長のばらつき幅の下限);
 
             var l_件数 = new Dictionary<int, int>();
             var l_総数 = 0;
@@ -85,7 +85,8 @@
                 {
                     continue;
                 }
-                var l_ビン = l_長さ / フラグメント長のビン幅 * フラグメント長のビン幅;
+
+                var l_ビン = l_長さ / C_フラグメント長のビン幅 * C_フラグメント長のビン幅;
                 l_件数[l_ビン] = l_件数.GetValueOrDefault(l_ビン) + 1;
                 l_総数++;
             }
@@ -120,10 +121,12 @@
                 {
                     l_右 = l_左;
                 }
+
                 while (l_右 < l_並び.Length && l_並び[l_右] - l_並び[l_左] <= l_幅)
                 {
                     l_右++;
                 }
+
                 if (l_右 - l_左 > l_最良数)
                 {
                     l_最良数 = l_右 - l_左;
@@ -154,6 +157,7 @@
                     l_合計 += l_確率 * (l_上 - l_下 + 1L);
                 }
             }
+
             return l_合計;
         }
 
@@ -173,6 +177,7 @@
                     l_合計 += l_確率 * l_個数;
                 }
             }
+
             return l_合計;
         }
 

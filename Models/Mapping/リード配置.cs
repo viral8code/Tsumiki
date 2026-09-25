@@ -15,7 +15,7 @@
         /// <summary>
         /// 配置できなかった結果
         /// </summary>
-        public static readonly リード配置 配置なし = new(-1, false, 0, 0, []);
+        public static readonly リード配置 C_配置なし = new(-1, false, 0, 0, []);
 
         #endregion
     }

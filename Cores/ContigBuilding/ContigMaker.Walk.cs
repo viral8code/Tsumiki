@@ -44,6 +44,7 @@ namespace Tsumiki.Core
                 {
                     continue;
                 }
+
                 yield return string.Concat(l_前の配列.AsSpan(l_前の配列.Length - p_k長), l_次の配列.AsSpan(p_k長 - 1, 1));
             }
         }
@@ -113,6 +114,7 @@ namespace Tsumiki.Core
                     l_Is環状 = l_次 == p_始点;
                     break;
                 }
+
                 var l_配列 = p_unitig配列[l_次];
 
                 if (l_配列.Length < p_重なり長 || l_出力.Length < p_重なり長)
@@ -124,6 +126,7 @@ namespace Tsumiki.Core
                 {
                     break;
                 }
+
                 _ = l_出力.Append(l_配列[p_重なり長..]);
                 p_訪問済み[l_次 >> 1] = true;
                 p_walk順.Add(l_次);
@@ -155,6 +158,7 @@ namespace Tsumiki.Core
                     return false;
                 }
             }
+
             return true;
         }
 

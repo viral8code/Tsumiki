@@ -10,7 +10,7 @@
         /// <summary>
         /// 1 シャードぶん溜める件数
         /// </summary>
-        private const int 束の件数 = 4_096;
+        private const int C_束の件数 = 4_096;
 
         #endregion
 
@@ -46,8 +46,9 @@
             this._束 = new (UInt128 A_上位, UInt128 A_下位)[l_シャード数][];
             for (var i = 0; i < l_シャード数; i++)
             {
-                this._束[i] = new (UInt128 A_上位, UInt128 A_下位)[束の件数];
+                this._束[i] = new (UInt128 A_上位, UInt128 A_下位)[C_束の件数];
             }
+
             this._件数 = new int[l_シャード数];
         }
 
@@ -64,7 +65,7 @@
         {
             var l_シャード = TrustedKmerIndex.Get_シャード番号((p_上位, p_下位), this._束.Length);
             this._束[l_シャード][this._件数[l_シャード]++] = (p_上位, p_下位);
-            if (this._件数[l_シャード] == 束の件数)
+            if (this._件数[l_シャード] == C_束の件数)
             {
                 this._索引.V_登録_値群(l_シャード, this._束[l_シャード]);
                 this._件数[l_シャード] = 0;

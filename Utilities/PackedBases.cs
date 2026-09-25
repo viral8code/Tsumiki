@@ -13,7 +13,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 2 bit レーンの下位ビットだけを立てたマスク
         /// </summary>
-        private const ulong 下位ビット = 0x5555555555555555UL;
+        private const ulong C_下位ビット = 0x5555555555555555UL;
 
         #endregion
 
@@ -67,10 +67,12 @@ namespace Tsumiki.Utilities
                 {
                     return null;
                 }
+
                 var l_語番号 = i / Consts.ワードあたりの塩基数;
                 var l_ずらし = 62 - (2 * (i % Consts.ワードあたりの塩基数));
                 l_語[l_語番号] |= (ulong)(l_塩基ID - 1) << l_ずらし;
             }
+
             return new PackedBases(l_語, p_塩基列.Length);
         }
 
@@ -100,12 +102,13 @@ namespace Tsumiki.Utilities
         {
             var l_差 = p_窓1 ^ p_窓2;
 
-            var l_レーン = (l_差 | (l_差 >> 1)) & 下位ビット;
+            var l_レーン = (l_差 | (l_差 >> 1)) & C_下位ビット;
 
             if (p_塩基数 < Consts.ワードあたりの塩基数)
             {
                 l_レーン &= ulong.MaxValue << (64 - (p_塩基数 << 1));
             }
+
             return BitOperations.PopCount(l_レーン);
         }
 

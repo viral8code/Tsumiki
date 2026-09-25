@@ -13,7 +13,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// ワーカーへ 1 回に渡す要素数
         /// </summary>
-        private const int 束の要素数 = 256;
+        private const int C_束の要素数 = 256;
 
         #endregion
 
@@ -28,7 +28,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_処理"></param>
         public static void V_実行<T>(int p_スレッド数, int p_キュー容量, IEnumerable<T> p_供給元, Action<T, int> p_処理)
         {
-            using var l_キュー = new BlockingCollection<T[]>(Math.Max(2 * p_スレッド数, p_キュー容量 / 束の要素数));
+            using var l_キュー = new BlockingCollection<T[]>(Math.Max(2 * p_スレッド数, p_キュー容量 / C_束の要素数));
             using var l_中断 = new CancellationTokenSource();
 
             var l_ワーカー = new Task[p_スレッド数];
@@ -58,7 +58,7 @@ namespace Tsumiki.Utilities
             ExceptionDispatchInfo? l_供給側の例外 = null;
             try
             {
-                foreach (var l_束 in p_供給元.Chunk(束の要素数))
+                foreach (var l_束 in p_供給元.Chunk(C_束の要素数))
                 {
                     l_キュー.Add(l_束, l_中断.Token);
                 }

@@ -14,25 +14,25 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 辞書が倍々に伸びるために、容量が件数に対して膨らみうる倍率
         /// </summary>
-        private const int 容量の膨らみ = 2;
+        private const int C_容量の膨らみ = 2;
 
         /// <summary>
         /// IO バッファサイズ
         /// </summary>
-        private const int IOバッファサイズ = 1 << 20;
+        private const int C_IOバッファサイズ = 1 << 20;
 
         /// <summary>実際の種類数が分かる前に確保する辞書容量の上限</summary>
-        private const int 初期容量の上限 = 16_384;
+        private const int C_初期容量の上限 = 16_384;
 
         /// <summary>
         /// 値を ulong で持つ k の上限
         /// </summary>
-        private const int 小さい値のk上限 = 32;
+        private const int C_小さい値のk上限 = 32;
 
         /// <summary>
         /// 値を UInt128 で持つ k の上限
         /// </summary>
-        private const int 中くらいの値のk上限 = 64;
+        private const int C_中くらいの値のk上限 = 64;
 
         #endregion
 
@@ -123,7 +123,7 @@ namespace Tsumiki.Utilities
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
             this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / Get_エントリあたりのバイト数(this._k長)));
-            this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
+            this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, C_初期容量の上限), this._等価比較器);
             this._値バッファ = [];
             this._値バッファ_小 = [];
             this._値バッファ_中 = [];
@@ -152,6 +152,7 @@ namespace Tsumiki.Utilities
                     l_バイト <<= 2;
                     l_バイト |= l_塩基ID - 1;
                 }
+
                 l_パック済み[l_書き込み位置++] = (byte)l_バイト;
             }
 
@@ -184,11 +185,11 @@ namespace Tsumiki.Utilities
         public void V_登録_値((UInt128 A_上位, UInt128 A_下位) p_値)
         {
             bool l_Is既存;
-            if (this._k長 <= 小さい値のk上限)
+            if (this._k長 <= C_小さい値のk上限)
             {
                 CollectionsMarshal.GetValueRefOrAddDefault(this._値バッファ_小, (ulong)p_値.A_下位, out l_Is既存)++;
             }
-            else if (this._k長 <= 中くらいの値のk上限)
+            else if (this._k長 <= C_中くらいの値のk上限)
             {
                 CollectionsMarshal.GetValueRefOrAddDefault(this._値バッファ_中, p_値.A_下位, out l_Is既存)++;
             }
@@ -258,6 +259,7 @@ namespace Tsumiki.Utilities
                 l_上位 = (l_上位 << l_余りビット) | (l_下位 >> (128 - l_余りビット));
                 l_下位 <<= l_余りビット;
             }
+
             for (var i = p_出力.Length - 1; i >= 0; i--)
             {
                 p_出力[i] = (byte)l_下位;
@@ -277,12 +279,12 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static int Get_エントリあたりのバイト数(int p_k長)
         {
-            if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
             {
                 const int l_容量に比例する分 = (32 + 8 + 4 + 4) + 4;
 
                 const int l_一時配列 = 32 + 8;
-                return (l_容量に比例する分 * 容量の膨らみ) + l_一時配列;
+                return (l_容量に比例する分 * C_容量の膨らみ) + l_一時配列;
             }
 
             const int l_辞書の分 = (8 + 8 + 4 + 4) + 4;
@@ -290,7 +292,7 @@ namespace Tsumiki.Utilities
             var l_鍵の実体 = 24 + (((((p_k長 + 3) / 4) + 7) / 8) * 8);
 
             const int l_一時配列_大 = 16;
-            return (l_辞書の分 * 容量の膨らみ) + l_鍵の実体 + l_一時配列_大;
+            return (l_辞書の分 * C_容量の膨らみ) + l_鍵の実体 + l_一時配列_大;
         }
 
         /// <summary>
@@ -307,10 +309,10 @@ namespace Tsumiki.Utilities
         /// </summary>
         private void V_用意_値バッファ()
         {
-            var l_容量 = Math.Min(this._フラッシュ閾値, 初期容量の上限);
-            this._値バッファ_小 = this._k長 <= 小さい値のk上限 ? new Dictionary<ulong, ulong>(l_容量) : [];
-            this._値バッファ_中 = this._k長 is > 小さい値のk上限 and <= 中くらいの値のk上限 ? new Dictionary<UInt128, ulong>(l_容量) : [];
-            this._値バッファ = this._k長 > 中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量) : [];
+            var l_容量 = Math.Min(this._フラッシュ閾値, C_初期容量の上限);
+            this._値バッファ_小 = this._k長 <= C_小さい値のk上限 ? new Dictionary<ulong, ulong>(l_容量) : [];
+            this._値バッファ_中 = this._k長 is > C_小さい値のk上限 and <= C_中くらいの値のk上限 ? new Dictionary<UInt128, ulong>(l_容量) : [];
+            this._値バッファ = this._k長 > C_中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量) : [];
         }
 
         /// <summary>
@@ -330,6 +332,7 @@ namespace Tsumiki.Utilities
                 l_キー[l_位置] = l_値;
                 l_回数[l_位置++] = l_出現回数;
             }
+
             Array.Sort(l_キー, l_回数);
 
             var l_バイト列 = new byte[this._パック長];
@@ -342,6 +345,7 @@ namespace Tsumiki.Utilities
                     l_書き込み.Write(l_回数[i]);
                 }
             }
+
             this._フラッシュ済みファイル.Add(l_ファイル名);
         }
 
@@ -354,7 +358,7 @@ namespace Tsumiki.Utilities
         {
             return 中間データ置き場.A_Is有効
                 ? 中間データ置き場.Get_書込ストリーム(p_ファイル名)
-                : new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, IOバッファサイズ, FileOptions.SequentialScan);
+                : new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, C_IOバッファサイズ, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -388,7 +392,7 @@ namespace Tsumiki.Utilities
                 }
 
                 this._フラッシュ済みファイル.Add(l_ファイル名);
-                this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, 初期容量の上限), this._等価比較器);
+                this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, C_初期容量の上限), this._等価比較器);
             }
 
             if (this._値バッファ.Count + this._値バッファ_小.Count + this._値バッファ_中.Count > 0)
@@ -397,14 +401,17 @@ namespace Tsumiki.Utilities
                 {
                     this.V_書出_値バッファ(this._値バッファ_小, static x => ((UInt128)0, (UInt128)x));
                 }
+
                 if (this._値バッファ_中.Count > 0)
                 {
                     this.V_書出_値バッファ(this._値バッファ_中, static x => ((UInt128)0, x));
                 }
+
                 if (this._値バッファ.Count > 0)
                 {
                     this.V_書出_値バッファ(this._値バッファ, static x => x);
                 }
+
                 this.V_用意_値バッファ();
             }
         }
@@ -431,7 +438,7 @@ namespace Tsumiki.Utilities
             using (var l_読み込み1 = new エントリ読み込み(Get_読み込みストリーム(p_ファイル1), p_パック長))
             {
                 using var l_読み込み2 = new エントリ読み込み(Get_読み込みストリーム(p_ファイル2), p_パック長);
-                using var l_書き込み = new BufferedStream(Get_書き込みストリーム(p_出力先), IOバッファサイズ);
+                using var l_書き込み = new BufferedStream(Get_書き込みストリーム(p_出力先), C_IOバッファサイズ);
                 while (l_読み込み1.Has項目 && l_読み込み2.Has項目)
                 {
                     var l_比較結果 = l_読み込み1.A_キー.SequenceCompareTo(l_読み込み2.A_キー);
@@ -452,6 +459,7 @@ namespace Tsumiki.Utilities
                         l_読み込み2.V_進む();
                     }
                 }
+
                 foreach (var l_残り in new[] { l_読み込み1, l_読み込み2 })
                 {
                     while (l_残り.Has項目)
@@ -492,141 +500,11 @@ namespace Tsumiki.Utilities
             using (Get_書き込みストリーム(l_ファイル名))
             {
             }
+
             return l_ファイル名;
         }
 
         #endregion
 
-        #region 内部クラス
-
-        /// <summary>
-        /// k-mer と出現回数の並んだファイルを、確保をせずに 1 件ずつ読む
-        /// </summary>
-        private sealed class エントリ読み込み : IDisposable
-        {
-            #region 定数
-
-            /// <summary>
-            /// 1 回に読み込む件数
-            /// </summary>
-            private const int 読み込む件数 = 4_096;
-
-            #endregion
-
-            #region 内部変数
-
-            /// <summary>
-            /// 読み込み元
-            /// </summary>
-            private readonly Stream _流れ;
-
-            /// <summary>
-            /// パック済みの k-mer の長さ
-            /// </summary>
-            private readonly int _パック長;
-
-            /// <summary>
-            /// 1 件の長さ
-            /// </summary>
-            private readonly int _エントリ長;
-
-            /// <summary>
-            /// 読み込んだ件の置き場
-            /// </summary>
-            private readonly byte[] _バッファ;
-
-            /// <summary>
-            /// バッファ内の有効な長さ
-            /// </summary>
-            private int _有効長;
-
-            /// <summary>
-            /// 今の件の位置
-            /// </summary>
-            private int _位置;
-
-            #endregion
-
-            #region プロパティ
-
-            /// <summary>
-            /// 今の件があるか
-            /// </summary>
-            public bool Has項目 => this._位置 + this._エントリ長 <= this._有効長;
-
-            /// <summary>
-            /// 今の件の k-mer
-            /// </summary>
-            public ReadOnlySpan<byte> A_キー => this._バッファ.AsSpan(this._位置, this._パック長);
-
-            /// <summary>
-            /// 今の件の出現回数
-            /// </summary>
-            public ulong A_出現回数 => BinaryPrimitives.ReadUInt64LittleEndian(this._バッファ.AsSpan(this._位置 + this._パック長, sizeof(ulong)));
-
-            #endregion
-
-            #region コンストラクタ
-
-            /// <summary>
-            /// 読み込み元を開いて最初の件を読む
-            /// </summary>
-            /// <param name="p_流れ">読み込み元</param>
-            /// <param name="p_パック長">パック済みの k-mer の長さ</param>
-            public エントリ読み込み(Stream p_流れ, int p_パック長)
-            {
-                this._流れ = p_流れ;
-                this._パック長 = p_パック長;
-                this._エントリ長 = p_パック長 + sizeof(ulong);
-                this._バッファ = new byte[this._エントリ長 * 読み込む件数];
-                this.V_補充();
-            }
-
-            #endregion
-
-            #region 公開メソッド
-
-            /// <summary>
-            /// 次の件へ進む
-            /// </summary>
-            public void V_進む()
-            {
-                this._位置 += this._エントリ長;
-                if (!this.Has項目)
-                {
-                    this.V_補充();
-                }
-            }
-
-            /// <summary>
-            /// 読み込み元を閉じる
-            /// </summary>
-            public void Dispose()
-            {
-                this._流れ.Dispose();
-            }
-
-            #endregion
-
-            #region 内部メソッド
-
-            /// <summary>
-            /// 読み残しを先頭へ寄せ、空いた分を読み込む
-            /// </summary>
-            private void V_補充()
-            {
-                var l_残り = this._有効長 - this._位置;
-                if (l_残り > 0)
-                {
-                    Array.Copy(this._バッファ, this._位置, this._バッファ, 0, l_残り);
-                }
-                this._位置 = 0;
-                this._有効長 = l_残り + this._流れ.ReadAtLeast(this._バッファ.AsSpan(l_残り), this._バッファ.Length - l_残り, throwOnEndOfStream: false);
-            }
-
-            #endregion
-        }
-
-        #endregion
     }
 }

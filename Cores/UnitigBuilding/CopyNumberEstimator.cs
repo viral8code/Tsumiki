@@ -15,37 +15,37 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// これを下回るカバレッジ比の unitig は、コピー数を推定できるだけの根拠が無いとみなして 1 として扱う (0 コピーにはしない)
         /// </summary>
-        private const double 多コピーとみなす比の下限 = 1.5D;
+        private const double C_多コピーとみなす比の下限 = 1.5D;
 
         /// <summary>
         /// コピー数の上限
         /// </summary>
-        private const int コピー数の上限 = 12;
+        private const int C_コピー数の上限 = 12;
 
         /// <summary>
         /// 「染色体側の確定成分と繋がりが無い、独立した島」を単一の複製単位 (プラスミド等) とみなすために要求する、島の合計長の下限
         /// </summary>
-        private const int 孤立複製単位とみなす最小合計長 = 500;
+        private const int C_孤立複製単位とみなす最小合計長 = 500;
 
         /// <summary>
         /// 分散指数 (分散 ÷ 平均) がこれを超えたら、ポアソン仮定では説明が付かない過分散とみなす
         /// </summary>
-        private const double 過分散とみなす分散指数の下限 = 1.5D;
+        private const double C_過分散とみなす分散指数の下限 = 1.5D;
 
         /// <summary>
         /// 分散診断を求めるために要求する単一コピー unitig の最小標本数
         /// </summary>
-        private const int 分散診断に使う最小標本数 = 5;
+        private const int C_分散診断に使う最小標本数 = 5;
 
         /// <summary>
         /// コピー数区間を求める際に使う片側の z 値 (90%)
         /// </summary>
-        private const double 区間のz値 = 1.645D;
+        private const double C_区間のz値 = 1.645D;
 
         /// <summary>
         /// 過分散のとき、単一コピーとみなす比の上限を決める片側の z 値 (99%)
         /// </summary>
-        private const double 過分散時の片側z値 = 2.326D;
+        private const double C_過分散時の片側z値 = 2.326D;
 
         #endregion
 
@@ -78,8 +78,10 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_合計 += p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長));
                     l_件数++;
                 }
+
                 l_カバレッジ[l_ID] = l_件数 == 0 ? 0D : (double)l_合計 / l_件数;
             }
+
             return l_カバレッジ;
         }
 
@@ -98,11 +100,11 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_実際の出所 = l_希望する出所 == コピー数基準の出所.Spectrum && l_モデルを使える ? コピー数基準の出所.Spectrum : コピー数基準の出所.Weighted;
             var l_基準値 = l_実際の出所 == コピー数基準の出所.Spectrum ? l_モデル基準値!.Value : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
 
-            var l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, 多コピーとみなす比の下限);
+            var l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, C_多コピーとみなす比の下限);
 
             if (l_基準値 > 0D && Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数) is { A_Is過分散: true } l_初回診断)
             {
-                var l_引き上げた下限 = Math.Max(多コピーとみなす比の下限, 1D + (過分散時の片側z値 * Math.Sqrt(l_初回診断.A_分散指数 / l_基準値)));
+                var l_引き上げた下限 = Math.Max(C_多コピーとみなす比の下限, 1D + (C_過分散時の片側z値 * Math.Sqrt(l_初回診断.A_分散指数 / l_基準値)));
                 l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, l_引き上げた下限);
                 Logger.V_出力_そのまま(FormattableString.Invariant($"[Copy number] multi-copy ratio threshold raised to {l_引き上げた下限:F2}x of baseline for overdispersed coverage"));
             }
@@ -145,13 +147,14 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 var l_標準偏差 = Math.Sqrt(l_分散指数 * l_カバレッジ値);
-                var l_下限カバレッジ = Math.Max(0D, l_カバレッジ値 - (区間のz値 * l_標準偏差));
-                var l_上限カバレッジ = l_カバレッジ値 + (区間のz値 * l_標準偏差);
-                var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, コピー数の上限);
-                var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, コピー数の上限);
+                var l_下限カバレッジ = Math.Max(0D, l_カバレッジ値 - (C_区間のz値 * l_標準偏差));
+                var l_上限カバレッジ = l_カバレッジ値 + (C_区間のz値 * l_標準偏差);
+                var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, C_コピー数の上限);
+                var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, C_コピー数の上限);
 
                 l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
             }
+
             return l_結果;
         }
 
@@ -165,12 +168,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
         {
             var l_単一コピー集団 = p_コピー数
-                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= 孤立複製単位とみなす最小合計長)
+                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= C_孤立複製単位とみなす最小合計長)
                 .Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D))
                 .Where(x => x > 0D)
                 .ToList();
 
-            if (l_単一コピー集団.Count < 分散診断に使う最小標本数)
+            if (l_単一コピー集団.Count < C_分散診断に使う最小標本数)
             {
                 return null;
             }
@@ -183,7 +186,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             var l_分散 = l_単一コピー集団.Sum(x => (x - l_平均) * (x - l_平均)) / l_単一コピー集団.Count;
             var l_分散指数 = l_分散 / l_平均;
-            return new カバレッジ分散診断(l_平均, l_分散, l_分散指数, l_分散指数 > 過分散とみなす分散指数の下限);
+            return new カバレッジ分散診断(l_平均, l_分散, l_分散指数, l_分散指数 > C_過分散とみなす分散指数の下限);
         }
 
         /// <summary>
@@ -197,7 +200,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             Logger.V_出力_そのまま($"[Copy number] baseline_source={p_推定結果.A_基準の出所}");
             if (p_推定結果.A_分散診断 is { } l_診断)
             {
-                var l_注記 = l_診断.A_Is過分散 ? " (overdispersed for a Poisson assumption; ratio-based copy number may be less reliable here)" : "";
+                var l_注記 = l_診断.A_Is過分散 ? " (overdispersed for a Poisson assumption; ratio-based copy number may be less reliable here)" : string.Empty;
                 Logger.V_出力_そのまま(FormattableString.Invariant($"[Copy number] single-copy coverage dispersion: mean={l_診断.A_平均:F2}, variance={l_診断.A_分散:F2}, index={l_診断.A_分散指数:F2}{l_注記}"));
             }
 
@@ -235,8 +238,9 @@ namespace Tsumiki.Cores.UnitigBuilding
             foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
             {
                 var l_比 = p_基準値 <= 0D ? 0D : l_カバレッジ値 / p_基準値;
-                l_コピー数[l_ID] = l_比 < p_多コピーの下限比 ? 1 : Math.Clamp((int)Math.Round(l_比), 2, コピー数の上限);
+                l_コピー数[l_ID] = l_比 < p_多コピーの下限比 ? 1 : Math.Clamp((int)Math.Round(l_比), 2, C_コピー数の上限);
             }
+
             return l_コピー数;
         }
 
@@ -262,7 +266,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             foreach (var l_島 in l_未確定の島一覧)
             {
                 var l_島の合計長 = l_島.Sum(l_ID => (long)p_unitig長.GetValueOrDefault(l_ID, 0));
-                if (l_島の合計長 < 孤立複製単位とみなす最小合計長)
+                if (l_島の合計長 < C_孤立複製単位とみなす最小合計長)
                 {
                     continue;
                 }
@@ -285,7 +289,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_Is内部一貫 = l_島.All(l_ID =>
                 {
                     var l_値 = p_カバレッジ.GetValueOrDefault(l_ID, 0D);
-                    return l_値 <= 0D || l_値 / l_局所基準値 < 多コピーとみなす比の下限;
+                    return l_値 <= 0D || l_値 / l_局所基準値 < C_多コピーとみなす比の下限;
                 });
                 if (!l_Is内部一貫)
                 {
@@ -382,7 +386,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                if (l_自身のカバレッジ / l_局所基準値 < 多コピーとみなす比の下限)
+                if (l_自身のカバレッジ / l_局所基準値 < C_多コピーとみなす比の下限)
                 {
                     p_コピー数[l_ID] = 1;
                 }
@@ -424,6 +428,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     l_キュー.Enqueue(l_次 ^ 1);
                 }
+
                 l_キュー.Enqueue(l_次);
             }
 

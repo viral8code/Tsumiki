@@ -14,7 +14,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// tip とみなすカバレッジ比
         /// </summary>
-        private const double tipとみなすカバレッジ比 = 0.5D;
+        private const double C_tipとみなすカバレッジ比 = 0.5D;
 
         #endregion
 
@@ -32,7 +32,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_tipカバレッジ比"></param>
         /// <param name="p_Is低カバレッジ端トリミング"></param>
         /// <returns></returns>
-        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true)
+        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = C_tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true)
         {
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(p_k長, l_リード長 / 2) : p_k長;
             var l_tip長閾値 = p_tip長閾値 ?? Math.Max(10 * l_基準長, p_リード長 ?? 0);
@@ -113,10 +113,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 _ = l_既出.Add(l_配列);
                 _ = l_既出.Add(Util.V_逆相補(l_配列));
                 l_unitig群.Add(l_配列);
             }
+
             return l_unitig群;
         }
 
@@ -163,9 +165,11 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 l_兄弟[0] = l_塩基;
                 l_対抗 = Math.Max(l_対抗, p_kmerインデックス.Get_カバレッジ(l_兄弟));
             }
+
             return l_対抗;
         }
 
@@ -207,6 +211,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 p_kmerインデックス.V_除去(p_塩基列.AsSpan(i, p_k長));
             }
+
             for (var i = 0; i < l_末尾から; i++)
             {
                 p_kmerインデックス.V_除去(p_塩基列.AsSpan(l_kmer数 - 1 - i, p_k長));
@@ -229,6 +234,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_カバレッジ.Add(p_kmerインデックス.Get_カバレッジ(p_塩基列.AsSpan(i, p_k長)));
             }
+
             return l_カバレッジ.Count == 0 ? 0D : StatsUtil.Get_中央値(l_カバレッジ);
         }
 
@@ -248,6 +254,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_合計 += p_kmerインデックス.Get_カバレッジ(p_塩基列.AsSpan(i, p_k長));
                 l_件数++;
             }
+
             return l_件数 == 0 ? 0D : (double)l_合計 / l_件数;
         }
 
@@ -307,6 +314,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_結果[i] = (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
             }
+
             return l_結果;
         }
 

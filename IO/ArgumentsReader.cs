@@ -64,6 +64,7 @@ namespace Tsumiki.IO
                             {
                                 throw new ArgumentException($"{Consts.引数キー.品質トリム閾値} must be 0 or greater (0 disables trimming)");
                             }
+
                             break;
 
                         case Consts.引数キー.メモリ予算:

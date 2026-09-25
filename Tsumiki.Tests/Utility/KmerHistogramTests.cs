@@ -154,7 +154,7 @@ namespace Tsumiki.Tests.Utility
 
             Assert.NotNull(l_analysis);
             Assert.Equal(1UL, l_analysis.A_谷);
-            Assert.Equal(KmerHistogram.推奨カットオフの下限, KmerHistogram.Get_推奨カットオフ(l_histogram));
+            Assert.Equal(KmerHistogram.C_推奨カットオフの下限, KmerHistogram.Get_推奨カットオフ(l_histogram));
         }
 
         /// <summary>

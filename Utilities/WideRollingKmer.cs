@@ -67,12 +67,14 @@ namespace Tsumiki.Utilities
             {
                 this._順[j] = (this._順[j] << 2) | (this._順[j + 1] >> 62);
             }
+
             this._順[l_末尾] = (this._順[l_末尾] << 2) | (l_値 << this._末尾のシフト量);
 
             for (var j = l_末尾; j > 0; j--)
             {
                 this._逆[j] = (this._逆[j] >> 2) | (this._逆[j - 1] << 62);
             }
+
             this._逆[0] = (this._逆[0] >> 2) | ((l_値 ^ 3UL) << 62);
             this._逆[l_末尾] &= this._末尾語のマスク;
 
@@ -105,6 +107,7 @@ namespace Tsumiki.Utilities
                     return p_順[i] < p_逆[i];
                 }
             }
+
             return true;
         }
 

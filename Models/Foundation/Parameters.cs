@@ -13,17 +13,17 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// インサートサイズ未指定表示
         /// </summary>
-        private const string インサートサイズ未指定表示 = "unspecified";
+        private const string C_インサートサイズ未指定表示 = "unspecified";
 
         /// <summary>
         /// k-mer カットオフの既定値
         /// </summary>
-        private const int kmerカットオフの既定値 = 2;
+        private const int C_kmerカットオフの既定値 = 2;
 
         /// <summary>
         /// k 長の既定値
         /// </summary>
-        private const int k長の既定値 = 31;
+        private const int C_k長の既定値 = 31;
 
         #endregion
 
@@ -52,7 +52,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k 長
         /// </summary>
-        private int _k長 = k長の既定値;
+        private int _k長 = C_k長の既定値;
 
         /// <summary>
         /// -k に指定された k の一覧
@@ -62,7 +62,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k-mer カットオフ
         /// </summary>
-        private ulong _kmerカットオフ = kmerカットオフの既定値;
+        private ulong _kmerカットオフ = C_kmerカットオフの既定値;
 
         /// <summary>
         /// Phred オフセット
@@ -114,6 +114,7 @@ namespace Tsumiki.Models.Foundation
                         throw new ArgumentException($"Read1's path {l_パス} is not found");
                     }
                 }
+
                 this._リード1のパス群 = l_群;
                 this._差し替えたライブラリ群 = null;
             }
@@ -135,6 +136,7 @@ namespace Tsumiki.Models.Foundation
                         throw new ArgumentException($"Read2's path {l_パス} is not found");
                     }
                 }
+
                 this._リード2のパス群 = l_群;
                 this._差し替えたライブラリ群 = null;
             }
@@ -156,6 +158,7 @@ namespace Tsumiki.Models.Foundation
                         throw new ArgumentException($"Single-end read's path {l_パス} is not found");
                     }
                 }
+
                 this._シングルのパス群 = l_群;
                 this._差し替えたライブラリ群 = null;
             }
@@ -213,6 +216,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException("Please make the value of kmer a positive integer");
                 }
+
                 this._k長 = value;
                 this.A_Isk長明示指定 = true;
             }
@@ -240,6 +244,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException("Please make the value of kmer cut off a positive integer");
                 }
+
                 this._kmerカットオフ = value;
                 this.A_Iskmerカットオフ明示指定 = true;
             }
@@ -262,6 +267,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.許容Phredオフセット)}");
                 }
+
                 this._Phredオフセット = value;
                 this._Phredオフセット群 = [];
                 this.A_IsPhred明示指定 = true;
@@ -291,6 +297,7 @@ namespace Tsumiki.Models.Foundation
             {
                 this._Phredオフセット群.Add(this._Phredオフセット);
             }
+
             this._Phredオフセット群[p_ライブラリ番号] = p_オフセット;
 
             if (p_ライブラリ番号 == 0)
@@ -455,6 +462,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException("Please make the value of thread count a positive integer");
                 }
+
                 this._スレッド数 = value;
             }
         }
@@ -471,6 +479,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException("Please make the value of pair unite threshold a ratio between 0 (exclusive) and 1");
                 }
+
                 this._ペア結合閾値 = value;
             }
         }
@@ -487,6 +496,7 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException("Please make the value of pair count threshold a positive integer");
                 }
+
                 this._ペア支持数閾値 = value;
             }
         }
@@ -568,6 +578,7 @@ namespace Tsumiki.Models.Foundation
             {
                 throw new ArgumentException("Please set at least one kmer length");
             }
+
             foreach (var l_k長 in l_一覧)
             {
                 if (l_k長 <= 0)
@@ -575,6 +586,7 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException("Please make the value of kmer a positive integer");
                 }
             }
+
             this._k長一覧 = l_一覧;
             this.A_k長 = l_一覧[^1];
         }
@@ -649,9 +661,11 @@ namespace Tsumiki.Models.Foundation
                     l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_リード1}"));
                     continue;
                 }
+
                 l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_リード1}"));
                 l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_リード2}"));
             }
+
             return string.Join(Environment.NewLine, l_行群);
         }
 
@@ -676,7 +690,7 @@ namespace Tsumiki.Models.Foundation
                 quality cutoff: {this.A_クオリティカットオフ}
                 3' quality trimming threshold: {this.A_品質トリム閾値}
                 counting memory budget: {this.A_メモリ予算}
-                insert size: {this.A_インサートサイズ?.ToString() ?? インサートサイズ未指定表示}
+                insert size: {this.A_インサートサイズ?.ToString() ?? C_インサートサイズ未指定表示}
                 allow ambiguous bases : {this.A_Is曖昧塩基許容}
                 error correction : {this.A_Isエラー訂正}
                 preprocess (adapter trim + pair correction) : {this.A_Is前処理}

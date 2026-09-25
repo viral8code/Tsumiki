@@ -17,22 +17,22 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 信頼できる k-mer の取りこぼしとして許す割合 (%)
         /// </summary>
-        private const double 取りこぼしの許容率 = 5D;
+        private const double C_取りこぼしの許容率 = 5D;
 
         /// <summary>
         /// コピー数の推定を超えて出している延べ数として許す割合 (%)
         /// </summary>
-        private const double 出しすぎの許容率 = 1D;
+        private const double C_出しすぎの許容率 = 1D;
 
         /// <summary>
         /// 深度が落ち込んだ位置として許す割合
         /// </summary>
-        private const double 深度不足の許容率 = 0.01D;
+        private const double C_深度不足の許容率 = 0.01D;
 
         /// <summary>
         /// リードに裏付けの無い位置として許す数
         /// </summary>
-        private const int 支持のない位置の許容数 = 0;
+        private const int C_支持のない位置の許容数 = 0;
 
         #endregion
 
@@ -56,19 +56,19 @@ namespace Tsumiki.Cores.Evaluation
             List<未達理由> l_理由 = [];
 
             var l_取りこぼし = p_整合性 is { } l_整合1
-                ? Get_判定(l_整合1.A_取りこぼし率 <= 取りこぼしの許容率, 未達理由.取りこぼしが多い, l_理由)
+                ? Get_判定(l_整合1.A_取りこぼし率 <= C_取りこぼしの許容率, 未達理由.取りこぼしが多い, l_理由)
                 : Get_判定不能(未達理由.自己検査を行えなかった, l_理由);
-            l_項目.Add(new 検査項目("graph_coverage", メッセージID.検査項目_グラフ被覆, l_取りこぼし, p_整合性 is { } l_整合2 ? $"{l_整合2.A_取りこぼし率:F2}% <= {取りこぼしの許容率:F2}%" : string.Empty));
+            l_項目.Add(new 検査項目("graph_coverage", メッセージID.検査項目_グラフ被覆, l_取りこぼし, p_整合性 is { } l_整合2 ? $"{l_整合2.A_取りこぼし率:F2}% <= {C_取りこぼしの許容率:F2}%" : string.Empty));
 
             var l_出しすぎ = p_整合性 is { } l_整合3
-                ? Get_判定(l_整合3.A_出しすぎ率 <= 出しすぎの許容率, 未達理由.出しすぎている, l_理由)
+                ? Get_判定(l_整合3.A_出しすぎ率 <= C_出しすぎの許容率, 未達理由.出しすぎている, l_理由)
                 : 検査判定.判定不能;
-            l_項目.Add(new 検査項目("copy_consistency", メッセージID.検査項目_コピー数整合, l_出しすぎ, p_整合性 is { } l_整合4 ? $"{l_整合4.A_出しすぎ率:F2}% <= {出しすぎの許容率:F2}%" : string.Empty));
+            l_項目.Add(new 検査項目("copy_consistency", メッセージID.検査項目_コピー数整合, l_出しすぎ, p_整合性 is { } l_整合4 ? $"{l_整合4.A_出しすぎ率:F2}% <= {C_出しすぎの許容率:F2}%" : string.Empty));
 
             var l_深度 = p_ポリッシュ is { } l_ポリッシュ1
-                ? Get_判定(l_ポリッシュ1.A_深度不足率 <= 深度不足の許容率, 未達理由.深度が不連続, l_理由)
+                ? Get_判定(l_ポリッシュ1.A_深度不足率 <= C_深度不足の許容率, 未達理由.深度が不連続, l_理由)
                 : Get_判定不能(未達理由.深度を測っていない, l_理由);
-            l_項目.Add(new 検査項目("coverage_continuity", メッセージID.検査項目_深度の連続性, l_深度, p_ポリッシュ is { } l_ポリッシュ2 ? $"{l_ポリッシュ2.A_深度不足率 * 100D:F2}% <= {深度不足の許容率 * 100D:F2}%" : string.Empty));
+            l_項目.Add(new 検査項目("coverage_continuity", メッセージID.検査項目_深度の連続性, l_深度, p_ポリッシュ is { } l_ポリッシュ2 ? $"{l_ポリッシュ2.A_深度不足率 * 100D:F2}% <= {C_深度不足の許容率 * 100D:F2}%" : string.Empty));
 
             var l_ギャップ = Get_判定(p_未解決ギャップ数 == 0, 未達理由.未解決のギャップが残る, l_理由);
             l_項目.Add(new 検査項目("unsupported_join", メッセージID.検査項目_未解決のギャップ, l_ギャップ, p_未解決ギャップ数.ToString()));
@@ -80,9 +80,9 @@ namespace Tsumiki.Cores.Evaluation
             l_項目.Add(new 検査項目("no_alternative_path", メッセージID.検査項目_競合経路, l_代替経路, l_僅差の数.ToString()));
 
             var l_支持 = p_支持検査 is { } l_支持1
-                ? Get_判定(l_支持1.A_支持のない位置数 <= 支持のない位置の許容数, 未達理由.リードに裏付けの無い箇所がある, l_理由)
+                ? Get_判定(l_支持1.A_支持のない位置数 <= C_支持のない位置の許容数, 未達理由.リードに裏付けの無い箇所がある, l_理由)
                 : Get_判定不能(未達理由.リードの支持を調べていない, l_理由);
-            l_項目.Add(new 検査項目("read_support", メッセージID.検査項目_リードの支持, l_支持, p_支持検査 is { } l_支持2 ? $"{l_支持2.A_支持のない位置数} <= {支持のない位置の許容数} ({l_支持2.A_区間.Count} stretch(es))" : string.Empty));
+            l_項目.Add(new 検査項目("read_support", メッセージID.検査項目_リードの支持, l_支持, p_支持検査 is { } l_支持2 ? $"{l_支持2.A_支持のない位置数} <= {C_支持のない位置の許容数} ({l_支持2.A_区間.Count} stretch(es))" : string.Empty));
 
             var (l_閉鎖, l_閉鎖の内訳) = Get_閉鎖の判定(p_閉鎖検証, l_理由);
             l_項目.Add(new 検査項目("circular_closure", メッセージID.検査項目_環状閉鎖, l_閉鎖, l_閉鎖の内訳));
@@ -167,6 +167,7 @@ namespace Tsumiki.Cores.Evaluation
                     l_数++;
                 }
             }
+
             return l_数;
         }
 
@@ -190,9 +191,11 @@ namespace Tsumiki.Cores.Evaluation
                     {
                         l_数++;
                     }
+
                     l_Is直前N = l_IsN;
                 }
             }
+
             return l_数;
         }
 
@@ -228,6 +231,7 @@ namespace Tsumiki.Cores.Evaluation
             {
                 return 検査判定.合格;
             }
+
             p_理由一覧.Add(p_理由);
             return 検査判定.不合格;
         }
@@ -262,12 +266,14 @@ namespace Tsumiki.Cores.Evaluation
                 p_理由一覧.Add(未達理由.環状に閉じていない);
                 return (検査判定.不合格, "0");
             }
+
             var l_支持数 = p_閉鎖検証.Count(x => x.A_Has支持);
             var l_内訳 = $"{l_支持数}/{p_閉鎖検証.Count}";
             if (l_支持数 == p_閉鎖検証.Count)
             {
                 return (検査判定.合格, l_内訳);
             }
+
             p_理由一覧.Add(未達理由.閉じ目がリードで裏付けられない);
             return (検査判定.不合格, l_内訳);
         }

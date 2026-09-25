@@ -17,7 +17,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 一時ディレクトリの中で塩基列の控えを置くディレクトリ名
         /// </summary>
-        private const string 塩基列控えの置き場所名 = "bases";
+        private const string C_塩基列控えの置き場所名 = "bases";
 
         #endregion
 
@@ -75,7 +75,7 @@ namespace Tsumiki.Cores.Pipeline
             Messages.A_言語 = l_引数.A_言語;
             Logger.A_水準 = l_引数.A_ログ水準;
             中間データ置き場.A_Is有効 = l_引数.A_Isオンメモリ;
-            塩基列控え.A_置き場所 = Path.Combine(l_引数.A_一時ディレクトリ, 塩基列控えの置き場所名);
+            塩基列控え.A_置き場所 = Path.Combine(l_引数.A_一時ディレクトリ, C_塩基列控えの置き場所名);
             RepeatRMerVerifier.A_Is索引使用 = true;
 
             if (l_引数.A_Isバージョンモード)
@@ -96,6 +96,7 @@ namespace Tsumiki.Cores.Pipeline
                 {
                     中間データ置き場.V_取り込み(l_パス);
                 }
+
                 Logger.V_出力_そのまま(FormattableString.Invariant($"[Info] 入力リードをメモリに読み込んだ (圧縮後 {中間データ置き場.A_使用量 / 1048576D:F0} MB)"));
             }
 
@@ -112,11 +113,13 @@ namespace Tsumiki.Cores.Pipeline
             {
                 Logger.V_出力(メッセージID.リード長の観測値, l_観測リード長);
             }
+
             if (l_リード長分布.Count > 1)
             {
                 Logger.V_出力_そのまま(FormattableString.Invariant(
                     $"[Info] リード長の分布: {string.Join(", ", l_リード長分布.OrderByDescending(x => x.Key).Select(x => $"{x.Key}bp x {x.Value:N0}"))}"));
             }
+
             KmerLengthSelector.V_解決_k長(l_引数, l_リード長);
 
             Logger.V_出力_そのまま(l_引数.ToString());
@@ -142,6 +145,7 @@ namespace Tsumiki.Cores.Pipeline
                     Logger.V_出力(メッセージID.パスの確認);
                     throw new IOException("Output directory already exists; choose a new -t directory or specify -rs");
                 }
+
                 Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_引数.A_一時ディレクトリ);
             }
 
@@ -164,6 +168,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_単一結果 = AssemblyPipeline.Get_実行結果(l_引数, l_引数.A_k長, l_一時ディレクトリ, l_リード長, p_原入力: l_原入力) ?? throw new InvalidOperationException("Assembly could not produce a result");
                 l_結果 = MultiKAssembler.Get_固定アンカー評価を付与(l_単一結果, l_引数, l_一時ディレクトリ, l_リード長);
             }
+
             RepeatRMerVerifier.V_解放_共有索引();
             FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長, l_処理済み設定);
 

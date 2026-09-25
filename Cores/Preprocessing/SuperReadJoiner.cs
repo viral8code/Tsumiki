@@ -17,37 +17,37 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// ペア結合に必要な最小重なり長
         /// </summary>
-        private const int ペア結合の最小重なり長 = 15;
+        private const int C_ペア結合の最小重なり長 = 15;
 
         /// <summary>
         /// ペア結合で許す不一致率
         /// </summary>
-        private const double ペア結合の許容不一致率 = 0.05D;
+        private const double C_ペア結合の許容不一致率 = 0.05D;
 
         /// <summary>
         /// 橋渡しする長さの上限
         /// </summary>
-        private const int 橋渡し長の上限 = 500;
+        private const int C_橋渡し長の上限 = 500;
 
         /// <summary>
         /// 書き出す合成リードに付けるクオリティ文字
         /// </summary>
-        private const char 合成リードのクオリティ = 'I';
+        private const char C_合成リードのクオリティ = 'I';
 
         /// <summary>
         /// 1 バッチあたりのペア数
         /// </summary>
-        private const int バッチサイズ = 5_000;
+        private const int C_バッチサイズ = 5_000;
 
         /// <summary>
         /// 1 ペアあたりに展開してよい探索状態の上限
         /// </summary>
-        private const int 橋渡しの状態数上限 = 20_000;
+        private const int C_橋渡しの状態数上限 = 20_000;
 
         /// <summary>
         /// -i でインサートサイズが分かっているときに、そこから見積もった橋渡し長に掛ける許容比
         /// </summary>
-        private const double インサートサイズの許容比 = 1.5D;
+        private const double C_インサートサイズの許容比 = 1.5D;
 
         #endregion
 
@@ -84,8 +84,8 @@ namespace Tsumiki.Cores.Preprocessing
             using var l_読み込み2 = new FastqReader(p_リード2のパス);
             using var l_書き出し = p_重なり結合の出力パス is null ? null : new FastqWriter(p_重なり結合の出力パス);
 
-            var l_統合結果群 = new (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数)[バッチサイズ];
-            var l_引き継ぎ群 = new 引き継ぎ配列?[バッチサイズ];
+            var l_統合結果群 = new (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数)[C_バッチサイズ];
+            var l_引き継ぎ群 = new 引き継ぎ配列?[C_バッチサイズ];
 
             var l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
             try
@@ -98,6 +98,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         break;
                     }
+
                     l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
                     l_総ペア数 += l_件数;
 
@@ -114,11 +115,12 @@ namespace Tsumiki.Cores.Preprocessing
                         {
                             continue;
                         }
+
                         l_統合数++;
                         if (l_統合結果群[i].A_Is重なり結合)
                         {
                             l_重なり結合数++;
-                            l_書き出し?.V_書き込み(FormattableString.Invariant($"@F{l_重なり結合数}"), l_配列, new string(合成リードのクオリティ, l_配列.Length));
+                            l_書き出し?.V_書き込み(FormattableString.Invariant($"@F{l_重なり結合数}"), l_配列, new string(C_合成リードのクオリティ, l_配列.Length));
                             continue;
                         }
 
@@ -202,6 +204,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 return (l_重なり結合, true, 0);
             }
+
             return (Get_橋渡しで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ), false, l_曖昧);
         }
 
@@ -225,7 +228,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_最小オフセット = p_断片長下限 is { } l_下限 ? l_下限 - p_配列2.Length : (int?)null;
             var l_最大オフセット = p_断片長上限 is { } l_上限 ? l_上限 - p_配列2.Length : (int?)null;
-            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), ペア結合の最小重なり長, ペア結合の許容不一致率, out var l_対抗馬があるか, l_最小オフセット, l_最大オフセット);
+            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), C_ペア結合の最小重なり長, C_ペア結合の許容不一致率, out var l_対抗馬があるか, l_最小オフセット, l_最大オフセット);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
@@ -270,6 +273,7 @@ namespace Tsumiki.Cores.Preprocessing
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -317,7 +321,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return null;
             }
 
-            var (l_橋渡し配列, l_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, p_最小長: 0, p_最大長: l_最大長, p_kmerインデックス, p_k長, 橋渡しの状態数上限);
+            var (l_橋渡し配列, l_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, p_最小長: 0, p_最大長: l_最大長, p_kmerインデックス, p_k長, C_橋渡しの状態数上限);
             return l_判定 == ギャップ充填判定.充填済み
                 ? p_配列1 + l_橋渡し配列 + Util.V_逆相補_曖昧塩基あり(p_配列2)
                 : null;
@@ -334,10 +338,11 @@ namespace Tsumiki.Cores.Preprocessing
         {
             if (p_インサートサイズ is not { } l_インサートサイズ)
             {
-                return 橋渡し長の上限;
+                return C_橋渡し長の上限;
             }
-            var l_見積もり = (int)(l_インサートサイズ * インサートサイズの許容比) - p_長さ1 - p_長さ2;
-            return Math.Min(橋渡し長の上限, l_見積もり);
+
+            var l_見積もり = (int)(l_インサートサイズ * C_インサートサイズの許容比) - p_長さ1 - p_長さ2;
+            return Math.Min(C_橋渡し長の上限, l_見積もり);
         }
 
         /// <summary>
@@ -362,11 +367,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns>読み込んだ配列</returns>
         private static List<string> Get_配列の束(FastqReader p_読み込み)
         {
-            List<string> l_束 = new(バッチサイズ);
-            while (l_束.Count < バッチサイズ && p_読み込み.Has続き())
+            List<string> l_束 = new(C_バッチサイズ);
+            while (l_束.Count < C_バッチサイズ && p_読み込み.Has続き())
             {
                 l_束.Add(p_読み込み.Get_次のレコード().A_配列);
             }
+
             return l_束;
         }
 
@@ -385,6 +391,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
             }
+
             return new 引き継ぎ配列(p_配列, l_カバレッジ, p_k長);
         }
 

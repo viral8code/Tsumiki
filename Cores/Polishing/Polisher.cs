@@ -17,32 +17,32 @@ namespace Tsumiki.Cores.Polishing
         /// <summary>
         /// リードの置き場所を探す種にする長さ
         /// </summary>
-        private const int シード長 = 21;
+        private const int C_シード長 = 21;
 
         /// <summary>
         /// 投票に使う整列として意味を持つ最小の対応塩基数
         /// </summary>
-        private const int 最小整列長 = シード長;
+        private const int C_最小整列長 = C_シード長;
 
         /// <summary>
         /// 置換を認めるのに必要な、その位置の深度
         /// </summary>
-        private const int 訂正に必要な深度 = 5;
+        private const int C_訂正に必要な深度 = 5;
 
         /// <summary>
         /// 置換を認めるのに必要な、対立塩基の占有率
         /// </summary>
-        private const double 訂正に必要な占有率 = 0.7D;
+        private const double C_訂正に必要な占有率 = 0.7D;
 
         /// <summary>
         /// 深度が不足しているとみなす、中央値に対する比
         /// </summary>
-        private const double 深度不足とみなす比 = 0.2D;
+        private const double C_深度不足とみなす比 = 0.2D;
 
         /// <summary>
         /// 深度のヒストグラムを取る上限
         /// </summary>
-        private const int 深度ヒストグラムの上限 = 65_535;
+        private const int C_深度ヒストグラムの上限 = 65_535;
 
         #endregion
 
@@ -70,9 +70,9 @@ namespace Tsumiki.Cores.Polishing
 
             Logger.V_出力(メッセージID.ポリッシュの索引構築, l_エントリ群.Count, l_総延長);
             var l_マッパー = new ReadMapper([.. l_配列群.Select(x => new string(x))]);
-            if (l_配列群.All(x => x.Length < シード長))
+            if (l_配列群.All(x => x.Length < C_シード長))
             {
-                Logger.V_出力(メッセージID.ポリッシュの種が無い, シード長);
+                Logger.V_出力(メッセージID.ポリッシュの種が無い, C_シード長);
                 return null;
             }
 
@@ -122,6 +122,7 @@ namespace Tsumiki.Cores.Polishing
                 Logger.V_出力(メッセージID.ポリッシュを行えず);
                 return;
             }
+
             Logger.V_出力(メッセージID.ポリッシュのマッピング結果, l_統計.A_マップされたリード数, l_統計.A_棄却されたリード数);
             Logger.V_出力(メッセージID.ポリッシュの訂正結果, l_統計.A_訂正した塩基数, l_統計.A_総延長);
             Logger.V_出力(メッセージID.ポリッシュの深度不足, l_統計.A_深度不足の位置数, l_統計.A_評価できた位置数, l_統計.A_深度不足率 * 100D);
@@ -141,7 +142,7 @@ namespace Tsumiki.Cores.Polishing
         private static bool Try集計_塩基票(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
         {
             var l_配置 = p_マッパー.Get_配置(p_リード);
-            if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0 || l_配置.A_整列位置群.Count < 最小整列長)
+            if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0 || l_配置.A_整列位置群.Count < C_最小整列長)
             {
                 return false;
             }
@@ -158,9 +159,11 @@ namespace Tsumiki.Cores.Polishing
                 {
                     l_塩基ID = Util.Get_相補塩基ID(l_塩基ID);
                 }
+
                 _ = Interlocked.Increment(ref p_得票[l_配置.A_配列番号][(l_整列位置.A_参照位置 * 4) + l_塩基ID - 1]);
             }
-            return l_配置.A_整列位置群.Count >= 最小整列長;
+
+            return l_配置.A_整列位置群.Count >= C_最小整列長;
         }
 
         /// <summary>
@@ -171,7 +174,7 @@ namespace Tsumiki.Cores.Polishing
         /// <returns></returns>
         private static double Get_深度中央値(List<char[]> p_配列群, int[][] p_得票)
         {
-            var l_ヒストグラム = new long[深度ヒストグラムの上限 + 1];
+            var l_ヒストグラム = new long[C_深度ヒストグラムの上限 + 1];
             var l_総数 = 0L;
             for (var i = 0; i < p_配列群.Count; i++)
             {
@@ -181,22 +184,25 @@ namespace Tsumiki.Cores.Polishing
                     {
                         continue;
                     }
+
                     var l_深度 = Get_深度(p_得票[i], l_位置);
                     if (l_深度 == 0)
                     {
                         continue;
                     }
-                    l_ヒストグラム[Math.Min(深度ヒストグラムの上限, l_深度)]++;
+
+                    l_ヒストグラム[Math.Min(C_深度ヒストグラムの上限, l_深度)]++;
                     l_総数++;
                 }
             }
+
             if (l_総数 == 0L)
             {
                 return 0D;
             }
 
             var l_累積 = 0L;
-            for (var l_深度 = 0; l_深度 <= 深度ヒストグラムの上限; l_深度++)
+            for (var l_深度 = 0; l_深度 <= C_深度ヒストグラムの上限; l_深度++)
             {
                 l_累積 += l_ヒストグラム[l_深度];
                 if (l_累積 * 2L >= l_総数)
@@ -204,6 +210,7 @@ namespace Tsumiki.Cores.Polishing
                     return l_深度;
                 }
             }
+
             return 0D;
         }
 
@@ -231,7 +238,7 @@ namespace Tsumiki.Cores.Polishing
         /// <returns></returns>
         private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数, bool p_Is訂正)
         {
-            var l_深度不足の閾値 = p_深度の中央値 * 深度不足とみなす比;
+            var l_深度不足の閾値 = p_深度の中央値 * C_深度不足とみなす比;
 
             var l_訂正数 = 0L;
             p_深度不足数 = 0L;
@@ -247,6 +254,7 @@ namespace Tsumiki.Cores.Polishing
                     {
                         continue;
                     }
+
                     p_評価位置数++;
 
                     var l_深度 = Get_深度(l_票, l_位置);
@@ -254,7 +262,8 @@ namespace Tsumiki.Cores.Polishing
                     {
                         p_深度不足数++;
                     }
-                    if (!p_Is訂正 || l_深度 < 訂正に必要な深度)
+
+                    if (!p_Is訂正 || l_深度 < C_訂正に必要な深度)
                     {
                         continue;
                     }
@@ -272,14 +281,16 @@ namespace Tsumiki.Cores.Polishing
                     }
 
                     var l_最多の塩基 = Util.Get_塩基文字(l_最多の塩基ID);
-                    if (l_最多の塩基 == l_配列[l_位置] || l_最多得票 < l_深度 * 訂正に必要な占有率)
+                    if (l_最多の塩基 == l_配列[l_位置] || l_最多得票 < l_深度 * C_訂正に必要な占有率)
                     {
                         continue;
                     }
+
                     l_配列[l_位置] = l_最多の塩基;
                     l_訂正数++;
                 }
             }
+
             return l_訂正数;
         }
 

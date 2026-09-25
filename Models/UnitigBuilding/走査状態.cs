@@ -55,6 +55,7 @@ namespace Tsumiki.Models.UnitigBuilding
             {
                 return this._参照実装.Get_Unitig(p_開始kmer).A_配列;
             }
+
             var l_塩基列 = this._k長 <= 64 ? l_高速walk.Get_塩基列(p_開始kmer, this._訪問済み) : l_高速walk.Get_塩基列_長(p_開始kmer, this._訪問済み_長);
             return string.Create(l_塩基列.Count, l_塩基列,
                 static (l_文字, l_元) =>

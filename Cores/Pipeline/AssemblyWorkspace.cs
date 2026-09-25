@@ -39,6 +39,7 @@
                     Directory.Delete(l_ディレクトリ, recursive: true);
                 }
             }
+
             foreach (var l_ファイル in Directory.EnumerateFiles(p_作業ディレクトリ))
             {
                 if (_成果物Regex_ファイル().IsMatch(Path.GetFileName(l_ファイル)) || Path.GetFileName(l_ファイル) is "polished.fasta" or "merged_scaffolds.fasta" or "merged_contigs.fasta")

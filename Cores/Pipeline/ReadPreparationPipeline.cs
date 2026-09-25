@@ -15,12 +15,12 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 前処理済みリードのファイル名の幹
         /// </summary>
-        private const string 前処理済みの幹 = "preprocessed";
+        private const string C_前処理済みの幹 = "preprocessed";
 
         /// <summary>
         /// 訂正済みリードのファイル名の幹
         /// </summary>
-        private const string 訂正済みの幹 = "corrected";
+        private const string C_訂正済みの幹 = "corrected";
 
         #endregion
 
@@ -86,8 +86,8 @@ namespace Tsumiki.Cores.Pipeline
                     continue;
                 }
 
-                var l_出力1 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 1);
-                var l_出力2 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 2);
+                var l_出力1 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 1);
+                var l_出力2 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 2);
 
                 if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
@@ -99,6 +99,7 @@ namespace Tsumiki.Cores.Pipeline
                     Preprocessor.V_出力_前処理統計(l_前処理統計);
                     V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
+
                 l_出力群.Add((l_出力1, l_出力2));
             }
 
@@ -127,8 +128,8 @@ namespace Tsumiki.Cores.Pipeline
             {
                 var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
                 var l_Hasリード2 = !string.IsNullOrWhiteSpace(A_リード2);
-                var l_出力1 = Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 1);
-                var l_出力2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 2) : null;
+                var l_出力1 = Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 1);
+                var l_出力2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
 
                 if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
@@ -139,6 +140,7 @@ namespace Tsumiki.Cores.Pipeline
                     ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
                     V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
+
                 l_出力群.Add((l_出力1, l_出力2 ?? string.Empty));
             }
 
@@ -169,7 +171,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
         internal static void V_削除_前処理済みリード(string p_一時ディレクトリ)
         {
-            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, 前処理済みの幹, ".fq"))
+            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, C_前処理済みの幹, ".fq"))
             {
                 中間データ置き場.V_削除(l_パス);
                 Logger.V_出力(メッセージID.中間リードを削除, l_パス);
@@ -221,14 +223,16 @@ namespace Tsumiki.Cores.Pipeline
                         continue;
                     }
 
-                    var l_前処理済み1 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 1);
-                    var l_前処理済み2 = Get_中間パス(p_一時ディレクトリ, 前処理済みの幹, i, 2);
+                    var l_前処理済み1 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 1);
+                    var l_前処理済み2 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 2);
                     if (StageCheckpoint.Get_保存済み記録(l_前処理済み1) is null && !(File.Exists(l_前処理済み1) && File.Exists(l_前処理済み2)))
                     {
                         return null;
                     }
+
                     l_前処理済み群.Add((l_前処理済み1, l_前処理済み2));
                 }
+
                 l_訂正前設定.Set_ライブラリ群(l_前処理済み群);
             }
 
@@ -237,14 +241,16 @@ namespace Tsumiki.Cores.Pipeline
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
                 var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_リード2);
-                var l_訂正済み1 = Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 1);
-                var l_訂正済み2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, 訂正済みの幹, i, 2) : null;
+                var l_訂正済み1 = Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 1);
+                var l_訂正済み2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
                 if (!StageCheckpoint.Is再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
                 {
                     return null;
                 }
+
                 l_訂正済み群.Add((l_訂正済み1, l_訂正済み2 ?? string.Empty));
             }
+
             return l_訂正済み群;
         }
 

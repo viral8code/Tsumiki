@@ -13,37 +13,37 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 推奨カットオフの下限
         /// </summary>
-        public const ulong 推奨カットオフの下限 = 2UL;
+        public const ulong C_推奨カットオフの下限 = 2UL;
 
         /// <summary>
         /// 残す k-mer の種類数が推定ゲノムサイズの何倍までなら許容できるか
         /// </summary>
-        private const double 許容するエラー混入比 = 1.2D;
+        private const double C_許容するエラー混入比 = 1.2D;
 
         /// <summary>
         /// ゲノムサイズ推定に含める出現回数の上限 (山の位置の倍数)
         /// </summary>
-        private const int ゲノムサイズ推定に含める倍率の上限 = 100;
+        private const int C_ゲノムサイズ推定に含める倍率の上限 = 100;
 
         /// <summary>
         /// 「山」と認めるために必要な、谷の頻度に対する比
         /// </summary>
-        private const double 山とみなす頻度比 = 1.5D;
+        private const double C_山とみなす頻度比 = 1.5D;
 
         /// <summary>
         /// 単一コピーとみなすカバレッジの上限を、基準値に対して最低限これだけは取る比
         /// </summary>
-        public const double 単一コピー上限の最小比 = 1.5D;
+        public const double C_単一コピー上限の最小比 = 1.5D;
 
         /// <summary>
         /// 基準値より下側の広がりを測る分位
         /// </summary>
-        private const double 下側1σの分位 = 0.1587D;
+        private const double C_下側1σの分位 = 0.1587D;
 
         /// <summary>
         /// 単一コピーとみなす上限を決める片側の z 値 (99%)
         /// </summary>
-        private const double 単一コピー上限のz値 = 2.326D;
+        private const double C_単一コピー上限のz値 = 2.326D;
 
         #endregion
 
@@ -80,12 +80,12 @@ namespace Tsumiki.Utilities
 
             var l_谷の頻度 = p_ヒストグラム.GetValueOrDefault(l_谷, 0L);
             var l_ピークの頻度 = p_ヒストグラム.GetValueOrDefault(l_ピーク, 0L);
-            if (l_ピーク <= l_谷 || l_ピークの頻度 < l_谷の頻度 * 山とみなす頻度比)
+            if (l_ピーク <= l_谷 || l_ピークの頻度 < l_谷の頻度 * C_山とみなす頻度比)
             {
                 return null;
             }
 
-            var l_加算上限 = Math.Min(l_最大キー, l_ピーク * ゲノムサイズ推定に含める倍率の上限);
+            var l_加算上限 = Math.Min(l_最大キー, l_ピーク * C_ゲノムサイズ推定に含める倍率の上限);
 
             var (l_単一コピー基準値, l_単一コピー上限) = Get_単一コピーの範囲(p_ヒストグラム, l_谷, l_加算上限, l_ピーク);
             var l_ゲノム由来の延べ数 = 0L;
@@ -97,6 +97,7 @@ namespace Tsumiki.Utilities
                 {
                     continue;
                 }
+
                 var l_延べ数 = (long)l_出現回数 * l_頻度;
                 l_延べ数の総和 += l_延べ数;
 
@@ -135,23 +136,25 @@ namespace Tsumiki.Utilities
                 return null;
             }
 
-            var l_許容種類数 = (long)(l_解析.A_推定ゲノムサイズ * 許容するエラー混入比);
+            var l_許容種類数 = (long)(l_解析.A_推定ゲノムサイズ * C_許容するエラー混入比);
 
             var l_残る種類数 = p_ヒストグラム.Values.Sum();
-            for (var l_出現回数 = 1UL; l_出現回数 < 推奨カットオフの下限; l_出現回数++)
+            for (var l_出現回数 = 1UL; l_出現回数 < C_推奨カットオフの下限; l_出現回数++)
             {
                 l_残る種類数 -= p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L);
             }
 
-            for (var l_出現回数 = 推奨カットオフの下限; l_出現回数 <= l_解析.A_谷; l_出現回数++)
+            for (var l_出現回数 = C_推奨カットオフの下限; l_出現回数 <= l_解析.A_谷; l_出現回数++)
             {
                 if (l_残る種類数 <= l_許容種類数)
                 {
                     return l_出現回数;
                 }
+
                 l_残る種類数 -= p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L);
             }
-            return Math.Max(推奨カットオフの下限, l_解析.A_谷);
+
+            return Math.Max(C_推奨カットオフの下限, l_解析.A_谷);
         }
 
         /// <summary>
@@ -197,6 +200,7 @@ namespace Tsumiki.Utilities
             {
                 l_項目.Add($"{l_出現回数}:{p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L)}");
             }
+
             return string.Join(", ", l_項目);
         }
 
@@ -221,13 +225,13 @@ namespace Tsumiki.Utilities
             var l_総数 = l_対象.Sum(x => x.Value);
             if (l_総数 <= 0L)
             {
-                return (p_ピーク, 単一コピー上限の最小比 * p_ピーク);
+                return (p_ピーク, C_単一コピー上限の最小比 * p_ピーク);
             }
 
             var l_中央値 = (double)Get_分位の出現回数(l_対象, l_総数, 0.5D);
-            var l_下側 = (double)Get_分位の出現回数(l_対象, l_総数, 下側1σの分位);
+            var l_下側 = (double)Get_分位の出現回数(l_対象, l_総数, C_下側1σの分位);
             var l_変動係数 = (l_中央値 - l_下側) / l_中央値;
-            return (l_中央値, l_中央値 * Math.Max(単一コピー上限の最小比, 1D + (単一コピー上限のz値 * l_変動係数)));
+            return (l_中央値, l_中央値 * Math.Max(C_単一コピー上限の最小比, 1D + (C_単一コピー上限のz値 * l_変動係数)));
         }
 
         /// <summary>
@@ -249,6 +253,7 @@ namespace Tsumiki.Utilities
                     return l_出現回数;
                 }
             }
+
             return p_整列済み[^1].Key;
         }
 
@@ -270,6 +275,7 @@ namespace Tsumiki.Utilities
                     return l_出現回数;
                 }
             }
+
             return null;
         }
 
@@ -293,6 +299,7 @@ namespace Tsumiki.Utilities
                     l_ピーク = l_出現回数;
                 }
             }
+
             return l_ピーク;
         }
 
@@ -319,6 +326,7 @@ namespace Tsumiki.Utilities
                     l_谷 = l_出現回数;
                 }
             }
+
             return l_谷;
         }
 

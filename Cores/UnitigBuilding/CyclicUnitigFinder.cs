@@ -33,11 +33,13 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 if (Try走査_閉路(p_kmerインデックス, l_kmer, p_k長, l_覆済み))
                 {
                     l_開始kmer.Add(l_kmer);
                 }
             }
+
             return l_開始kmer;
         }
 
@@ -65,6 +67,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     p_覆済み.V_追加(l_塩基列.AsSpan(i, p_k長));
                 }
+
                 return;
             }
 
@@ -123,6 +126,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         l_次の塩基 = i;
                     }
                 }
+
                 if (l_候補数 != 1)
                 {
                     return false;
@@ -133,6 +137,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     return 正規形集合.Is同一座位(l_次, p_開始kmer, p_k長);
                 }
+
                 l_次.CopyTo(l_現在, 0);
             }
         }

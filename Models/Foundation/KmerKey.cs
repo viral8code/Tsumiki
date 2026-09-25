@@ -140,6 +140,7 @@ namespace Tsumiki.Models.Foundation
             {
                 l_逆相補[this._長さ - 1 - i] = Util.Get_相補塩基ID(this.Get_塩基ID(i));
             }
+
             return new KmerKey(l_逆相補);
         }
 
@@ -154,11 +155,13 @@ namespace Tsumiki.Models.Foundation
             {
                 throw new ArgumentOutOfRangeException(nameof(p_長さ));
             }
+
             var l_塩基列 = new byte[p_長さ];
             for (var i = 0; i < p_長さ; i++)
             {
                 l_塩基列[i] = this.Get_塩基ID(i);
             }
+
             return l_塩基列;
         }
 
@@ -173,6 +176,7 @@ namespace Tsumiki.Models.Foundation
             {
                 return false;
             }
+
             var l_語数 = (this._長さ + 31) >> 5;
             for (var i = 0; i < l_語数; i++)
             {
@@ -181,6 +185,7 @@ namespace Tsumiki.Models.Foundation
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -211,6 +216,7 @@ namespace Tsumiki.Models.Foundation
                 l_ハッシュ ^= this.Get_語(i);
                 l_ハッシュ *= 1_099_511_628_211UL;
             }
+
             return (int)(l_ハッシュ ^ (l_ハッシュ >> 32));
         }
 
@@ -245,6 +251,7 @@ namespace Tsumiki.Models.Foundation
                     return l_左語 < l_右語 ? -1 : 1;
                 }
             }
+
             return 0;
         }
 

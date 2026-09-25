@@ -150,6 +150,7 @@ namespace Tsumiki.Core
             {
                 this._ペア経路群.Add([]);
             }
+
             return this._ペア経路群[p_ライブラリ番号];
         }
 
@@ -164,6 +165,7 @@ namespace Tsumiki.Core
             {
                 this.A_同一unitig標本群.Add([]);
             }
+
             return this.A_同一unitig標本群[p_ライブラリ番号];
         }
 
@@ -178,6 +180,7 @@ namespace Tsumiki.Core
             {
                 this.A_確定辺標本群.Add([]);
             }
+
             return this.A_確定辺標本群[p_ライブラリ番号];
         }
 
@@ -202,6 +205,7 @@ namespace Tsumiki.Core
                     }
                 }
             }
+
             return l_まとめ;
         }
 

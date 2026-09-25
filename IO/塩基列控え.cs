@@ -14,42 +14,42 @@ namespace Tsumiki.IO
         /// <summary>
         /// 控えの拡張子
         /// </summary>
-        private const string 控えの拡張子 = ".bases";
+        private const string C_控えの拡張子 = ".bases";
 
         /// <summary>
         /// 1 バイトに詰める塩基数
         /// </summary>
-        private const int バイトあたりの塩基数 = 4;
+        private const int C_バイトあたりの塩基数 = 4;
 
         /// <summary>
         /// 読み書きのバッファの大きさ
         /// </summary>
-        private const int バッファの大きさ = 1 << 20;
+        private const int C_バッファの大きさ = 1 << 20;
 
         /// <summary>
         /// 詰めたバイト列をスタックに置く大きさの上限
         /// </summary>
-        private const int スタックに置くバイト数の上限 = 1024;
+        private const int C_スタックに置くバイト数の上限 = 1024;
 
         /// <summary>
         /// 詰めずにそのまま書いた記録の目印 (長さの最下位ビット)
         /// </summary>
-        private const ulong そのままの目印 = 1UL;
+        private const ulong C_そのままの目印 = 1UL;
 
         /// <summary>
         /// 詰めた塩基の並び (2 bit の値の順)
         /// </summary>
-        private const string 塩基の並び = "ACGT";
+        private const string C_塩基の並び = "ACGT";
 
         /// <summary>
         /// パスの大文字小文字を区別するかは OS で違う
         /// </summary>
-        private static readonly StringComparer パスの比較 = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        private static readonly StringComparer C_パスの比較 = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
         /// <summary>
         /// 詰めた 1 バイトを 4 文字に戻す表
         /// </summary>
-        private static readonly char[] 展開表 = Get_展開表();
+        private static readonly char[] C_展開表 = Get_展開表();
 
         #endregion
 
@@ -58,12 +58,12 @@ namespace Tsumiki.IO
         /// <summary>
         /// 元のパスごとの、作り終えた控えの場所と、作ったときの元ファイルの版
         /// </summary>
-        private static readonly ConcurrentDictionary<string, (string A_控えパス, (long A_長さ, DateTime A_更新時刻) A_版)> _控え群 = new(パスの比較);
+        private static readonly ConcurrentDictionary<string, (string A_控えパス, (long A_長さ, DateTime A_更新時刻) A_版)> _控え群 = new(C_パスの比較);
 
         /// <summary>
         /// 控えを作っている途中の元のパス
         /// </summary>
-        private static readonly ConcurrentDictionary<string, byte> _作成中 = new(パスの比較);
+        private static readonly ConcurrentDictionary<string, byte> _作成中 = new(C_パスの比較);
 
         /// <summary>
         /// 控えの名前に振る通し番号
@@ -102,6 +102,7 @@ namespace Tsumiki.IO
                 {
                     return Get_控えの塩基列(l_控え.A_控えパス);
                 }
+
                 V_無効化(p_パス);
             }
 
@@ -172,7 +173,7 @@ namespace Tsumiki.IO
         private static IEnumerable<string> Get_控えながらの塩基列(string p_パス, string p_キー)
         {
             var l_版 = Get_版(p_パス);
-            var l_控えパス = Path.Combine(A_置き場所!, $"{Interlocked.Increment(ref _通し番号)}{控えの拡張子}");
+            var l_控えパス = Path.Combine(A_置き場所!, $"{Interlocked.Increment(ref _通し番号)}{C_控えの拡張子}");
             var l_Is完了 = false;
             try
             {
@@ -181,7 +182,7 @@ namespace Tsumiki.IO
                     _ = Directory.CreateDirectory(A_置き場所!);
                 }
 
-                using (var l_書き込み = new BufferedStream(中間データ置き場.Get_書込ストリーム(l_控えパス), バッファの大きさ))
+                using (var l_書き込み = new BufferedStream(中間データ置き場.Get_書込ストリーム(l_控えパス), C_バッファの大きさ))
                 {
                     foreach (var l_配列 in Get_FASTQの塩基列(p_パス))
                     {
@@ -189,6 +190,7 @@ namespace Tsumiki.IO
                         yield return l_配列;
                     }
                 }
+
                 l_Is完了 = true;
             }
             finally
@@ -201,6 +203,7 @@ namespace Tsumiki.IO
                 {
                     中間データ置き場.V_削除(l_控えパス);
                 }
+
                 _ = _作成中.TryRemove(p_キー, out _);
             }
         }
@@ -212,17 +215,18 @@ namespace Tsumiki.IO
         /// <returns></returns>
         private static IEnumerable<string> Get_控えの塩基列(string p_控えパス)
         {
-            using var l_読み込み = new BufferedStream(中間データ置き場.Get_読込ストリーム(p_控えパス), バッファの大きさ);
+            using var l_読み込み = new BufferedStream(中間データ置き場.Get_読込ストリーム(p_控えパス), C_バッファの大きさ);
             var l_バッファ = new byte[256];
             while (Get_可変長整数(l_読み込み) is { } l_頭)
             {
                 var l_長さ = (int)(l_頭 >> 1);
-                var l_Isそのまま = (l_頭 & そのままの目印) != 0;
-                var l_バイト数 = l_Isそのまま ? l_長さ : (l_長さ + バイトあたりの塩基数 - 1) / バイトあたりの塩基数;
+                var l_Isそのまま = (l_頭 & C_そのままの目印) != 0;
+                var l_バイト数 = l_Isそのまま ? l_長さ : (l_長さ + C_バイトあたりの塩基数 - 1) / C_バイトあたりの塩基数;
                 if (l_バッファ.Length < l_バイト数)
                 {
                     l_バッファ = new byte[l_バイト数];
                 }
+
                 l_読み込み.ReadExactly(l_バッファ, 0, l_バイト数);
                 yield return l_Isそのまま ? Encoding.UTF8.GetString(l_バッファ, 0, l_バイト数) : Get_展開済み(l_バッファ, l_長さ);
             }
@@ -238,20 +242,21 @@ namespace Tsumiki.IO
             if (!Is詰められる(p_配列))
             {
                 var l_バイト列 = Encoding.UTF8.GetBytes(p_配列);
-                V_書込_可変長整数(p_書き込み, ((ulong)l_バイト列.Length << 1) | そのままの目印);
+                V_書込_可変長整数(p_書き込み, ((ulong)l_バイト列.Length << 1) | C_そのままの目印);
                 p_書き込み.Write(l_バイト列);
                 return;
             }
 
             V_書込_可変長整数(p_書き込み, (ulong)p_配列.Length << 1);
-            var l_バイト数 = (p_配列.Length + バイトあたりの塩基数 - 1) / バイトあたりの塩基数;
-            var l_詰め = l_バイト数 <= スタックに置くバイト数の上限 ? stackalloc byte[l_バイト数] : new byte[l_バイト数];
+            var l_バイト数 = (p_配列.Length + C_バイトあたりの塩基数 - 1) / C_バイトあたりの塩基数;
+            var l_詰め = l_バイト数 <= C_スタックに置くバイト数の上限 ? stackalloc byte[l_バイト数] : new byte[l_バイト数];
             l_詰め.Clear();
             for (var i = 0; i < p_配列.Length; i++)
             {
-                var l_ずらし = 2 * (バイトあたりの塩基数 - 1 - (i % バイトあたりの塩基数));
-                l_詰め[i / バイトあたりの塩基数] |= (byte)(Get_2bit値(p_配列[i]) << l_ずらし);
+                var l_ずらし = 2 * (C_バイトあたりの塩基数 - 1 - (i % C_バイトあたりの塩基数));
+                l_詰め[i / C_バイトあたりの塩基数] |= (byte)(Get_2bit値(p_配列[i]) << l_ずらし);
             }
+
             p_書き込み.Write(l_詰め);
         }
 
@@ -262,7 +267,7 @@ namespace Tsumiki.IO
         /// <returns></returns>
         private static bool Is詰められる(string p_配列)
         {
-            return !p_配列.AsSpan().ContainsAnyExcept(塩基の並び);
+            return !p_配列.AsSpan().ContainsAnyExcept(C_塩基の並び);
         }
 
         /// <summary>
@@ -293,7 +298,7 @@ namespace Tsumiki.IO
             {
                 for (var i = 0; i < l_文字列.Length; i++)
                 {
-                    l_文字列[i] = 展開表[(l_詰め[i / バイトあたりの塩基数] * バイトあたりの塩基数) + (i % バイトあたりの塩基数)];
+                    l_文字列[i] = C_展開表[(l_詰め[i / C_バイトあたりの塩基数] * C_バイトあたりの塩基数) + (i % C_バイトあたりの塩基数)];
                 }
             });
         }
@@ -304,14 +309,15 @@ namespace Tsumiki.IO
         /// <returns></returns>
         private static char[] Get_展開表()
         {
-            var l_表 = new char[256 * バイトあたりの塩基数];
+            var l_表 = new char[256 * C_バイトあたりの塩基数];
             for (var l_値 = 0; l_値 < 256; l_値++)
             {
-                for (var j = 0; j < バイトあたりの塩基数; j++)
+                for (var j = 0; j < C_バイトあたりの塩基数; j++)
                 {
-                    l_表[(l_値 * バイトあたりの塩基数) + j] = 塩基の並び[(l_値 >> (2 * (バイトあたりの塩基数 - 1 - j))) & 3];
+                    l_表[(l_値 * C_バイトあたりの塩基数) + j] = C_塩基の並び[(l_値 >> (2 * (C_バイトあたりの塩基数 - 1 - j))) & 3];
                 }
             }
+
             return l_表;
         }
 
@@ -327,6 +333,7 @@ namespace Tsumiki.IO
                 p_書き込み.WriteByte((byte)(p_値 | 0x80));
                 p_値 >>= 7;
             }
+
             p_書き込み.WriteByte((byte)p_値);
         }
 
@@ -345,6 +352,7 @@ namespace Tsumiki.IO
                 {
                     return l_ずらし == 0 ? null : throw new InvalidDataException("塩基列の控えが途中で切れている");
                 }
+
                 l_値 |= (ulong)(l_バイト & 0x7F) << l_ずらし;
                 if (l_バイト < 0x80)
                 {

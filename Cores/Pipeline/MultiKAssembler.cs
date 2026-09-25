@@ -18,22 +18,22 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 自動で試す k のリード長に対する上限比
         /// </summary>
-        private const double マルチk上限のリード長比 = 0.9D;
+        private const double C_マルチk上限のリード長比 = 0.9D;
 
         /// <summary>
         /// 自動で試す k の下限
         /// </summary>
-        private const int マルチkの下限 = 21;
+        private const int C_マルチkの下限 = 21;
 
         /// <summary>
         /// アンカー k を候補の最小 k から下げる量
         /// </summary>
-        private const int アンカーk長の候補からの差 = 2;
+        private const int C_アンカーk長の候補からの差 = 2;
 
         /// <summary>
         /// アンカー k の下限
         /// </summary>
-        private const int アンカーk長の下限 = 11;
+        private const int C_アンカーk長の下限 = 11;
 
         #endregion
 
@@ -76,6 +76,7 @@ namespace Tsumiki.Cores.Pipeline
                     Logger.V_出力(メッセージID.kでアセンブリできず, l_k長);
                     continue;
                 }
+
                 l_実行結果一覧.Add(l_結果);
                 l_直前 = l_結果;
                 l_引き継ぎ = [.. l_次への引き継ぎ];
@@ -174,6 +175,7 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.候補を評価できない);
                 return p_結果;
             }
+
             return p_結果 with { A_固定アンカー評価 = l_評価 };
         }
 
@@ -195,8 +197,8 @@ namespace Tsumiki.Cores.Pipeline
                 return [p_引数.A_k長];
             }
 
-            var l_上限 = Get_奇数((int)(l_リード長 * マルチk上限のリード長比));
-            var l_下限 = マルチkの下限;
+            var l_上限 = Get_奇数((int)(l_リード長 * C_マルチk上限のリード長比));
+            var l_下限 = C_マルチkの下限;
             if (l_下限 >= l_上限)
             {
                 return [Get_奇数(Math.Min(l_上限, l_リード長 - 1))];
@@ -208,6 +210,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 _ = l_候補.Add(Get_奇数((int)Math.Round(l_下限 * Math.Pow(l_比, i))));
             }
+
             return [.. l_候補];
         }
 
@@ -230,13 +233,14 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns></returns>
         public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
         {
-            var l_k長 = p_k候補[0] - アンカーk長の候補からの差;
+            var l_k長 = p_k候補[0] - C_アンカーk長の候補からの差;
 
             if (l_k長 % 2 == 0)
             {
                 l_k長--;
             }
-            return Math.Max(アンカーk長の下限, l_k長);
+
+            return Math.Max(C_アンカーk長の下限, l_k長);
         }
 
         /// <summary>
@@ -282,7 +286,7 @@ namespace Tsumiki.Cores.Pipeline
                 return null;
             }
 
-            var l_統合contigパス = Path.Combine(p_一時ディレクトリ, "merged_" + AssemblyPipeline.Contigファイル名);
+            var l_統合contigパス = Path.Combine(p_一時ディレクトリ, "merged_" + AssemblyPipeline.C_Contigファイル名);
             V_書き出し_N分割(l_統合パス, l_統合contigパス);
 
             var l_統合結果 = p_最良.A_実行結果 with
@@ -297,6 +301,7 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.統合結果を評価できない);
                 return null;
             }
+
             l_統合結果 = l_統合結果 with { A_固定アンカー評価 = l_統合の評価 };
 
             Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
@@ -372,6 +377,7 @@ namespace Tsumiki.Cores.Pipeline
                     l_候補.Add((l_実行結果, l_評価));
                 }
             }
+
             return l_候補;
         }
 

@@ -13,17 +13,17 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 1 窓で許す曖昧塩基の組み合わせ数
         /// </summary>
-        private const int 曖昧塩基の展開上限 = 64;
+        private const int C_曖昧塩基の展開上限 = 64;
 
         /// <summary>
         /// パック値で扱える k の上限
         /// </summary>
-        public const int パック値のk上限 = 128;
+        public const int C_パック値のk上限 = 128;
 
         /// <summary>
         /// ヒストグラムを配列で数える出現回数の上限
         /// </summary>
-        private const int 配列で数える出現回数の上限 = 1 << 16;
+        private const int C_配列で数える出現回数の上限 = 1 << 16;
 
         #endregion
 
@@ -146,7 +146,7 @@ namespace Tsumiki.Utilities
             this._k長 = ConfigurationManager.A_実行時引数.A_k長;
             this._Is小経路使用 = this._k長 <= 32;
             this._Is中経路使用 = this._k長 is > 32 and <= 64;
-            this._Is長経路使用 = this._k長 is > 64 and <= パック値のk上限;
+            this._Is長経路使用 = this._k長 is > 64 and <= C_パック値のk上限;
             this._一時ディレクトリ = p_一時ディレクトリ;
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
@@ -173,15 +173,18 @@ namespace Tsumiki.Utilities
             {
                 return;
             }
+
             var l_組み合わせ数 = 1;
             foreach (var l_候補 in p_塩基候補列)
             {
-                if (l_候補.Length == 0 || l_候補.Length > 曖昧塩基の展開上限 / l_組み合わせ数)
+                if (l_候補.Length == 0 || l_候補.Length > C_曖昧塩基の展開上限 / l_組み合わせ数)
                 {
                     return;
                 }
+
                 l_組み合わせ数 *= l_候補.Length;
             }
+
             var l_kmer = new byte[p_塩基候補列.Length];
             this.V_登録_組み合わせ展開(p_塩基候補列, 0, l_kmer, p_ワーカー番号);
         }
@@ -197,7 +200,7 @@ namespace Tsumiki.Utilities
                 return;
             }
 
-            if (this._k長 <= パック値のk上限)
+            if (this._k長 <= C_パック値のk上限)
             {
                 var l_値 = Get_正規形_値(p_kmer);
                 var l_値のシャード = Get_シャード番号(l_値, l_カウンタ群.Length);
@@ -205,6 +208,7 @@ namespace Tsumiki.Utilities
                 {
                     l_カウンタ群[l_値のシャード].V_登録_値(l_値);
                 }
+
                 return;
             }
 
@@ -227,6 +231,7 @@ namespace Tsumiki.Utilities
             {
                 return;
             }
+
             lock (this._シャードロック![p_シャード])
             {
                 foreach (var l_値 in p_値群)
@@ -363,6 +368,7 @@ namespace Tsumiki.Utilities
             {
                 l_値 = (l_値 << 2) | (l_塩基ID - 1UL);
             }
+
             return l_値;
         }
 
@@ -379,6 +385,7 @@ namespace Tsumiki.Utilities
             {
                 l_値 = (l_値 << 8) | l_バイト;
             }
+
             return l_値 >> p_余りビット;
         }
 
@@ -395,6 +402,7 @@ namespace Tsumiki.Utilities
             {
                 l_値 = (l_値 << 8) | l_バイト;
             }
+
             return l_値 >> p_余りビット;
         }
 
@@ -413,11 +421,13 @@ namespace Tsumiki.Utilities
                 l_上位 = (l_上位 << 8) | (l_下位 >> 120);
                 l_下位 = (l_下位 << 8) | l_バイト;
             }
+
             if (p_余りビット > 0)
             {
                 l_下位 = (l_下位 >> p_余りビット) | (l_上位 << (128 - p_余りビット));
                 l_上位 >>= p_余りビット;
             }
+
             return (l_上位, l_下位);
         }
 
@@ -433,6 +443,7 @@ namespace Tsumiki.Utilities
             {
                 l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             return l_値;
         }
 
@@ -450,6 +461,7 @@ namespace Tsumiki.Utilities
                 l_上位 = (l_上位 << 2) | (l_下位 >> 126);
                 l_下位 = (l_下位 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             return (l_上位, l_下位);
         }
 
@@ -575,7 +587,7 @@ namespace Tsumiki.Utilities
             var l_シャード別 = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
             _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
-                var l_配列 = new long[配列で数える出現回数の上限];
+                var l_配列 = new long[C_配列で数える出現回数の上限];
                 Dictionary<ulong, long> l_大きい回数 = [];
                 V_走査_エントリ(l_ファイル群[s], l_パック長, (_, l_出現回数) => V_加算_ヒストグラム(l_配列, l_大きい回数, l_出現回数));
                 l_シャード別[s] = (l_配列, l_大きい回数);
@@ -609,7 +621,7 @@ namespace Tsumiki.Utilities
             var l_余りビット = (8 * l_パック長) - (2 * this._k長);
             var l_Is控え使用 = p_控え下限 > 0UL && p_控え下限 < p_カットオフ;
             var l_k長 = this._k長;
-            var l_Isパック値 = l_k長 <= パック値のk上限;
+            var l_Isパック値 = l_k長 <= C_パック値のk上限;
 
             var l_シャード別ヒストグラム = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
             var l_シャード別採用 = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)>[l_ファイル群.Count];
@@ -620,7 +632,7 @@ namespace Tsumiki.Utilities
 
             _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
-                var l_配列 = new long[配列で数える出現回数の上限];
+                var l_配列 = new long[C_配列で数える出現回数の上限];
                 Dictionary<ulong, long> l_大きい回数 = [];
                 List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)> l_採用 = [];
                 List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)> l_控え = [];
@@ -678,14 +690,17 @@ namespace Tsumiki.Utilities
                 {
                     this.V_加算_正規形(l_上位, l_下位, l_出現回数, p_Is控え: false);
                 }
+
                 foreach (var (l_上位, l_下位, l_出現回数) in l_シャード別控え[s])
                 {
                     this.V_加算_正規形(l_上位, l_下位, l_出現回数, p_Is控え: true);
                 }
+
                 foreach (var (l_キー, l_出現回数) in l_シャード別採用_大[s])
                 {
                     this._信頼kmer_大![l_キー] = this._信頼kmer_大.GetValueOrDefault(l_キー, 0UL) + l_出現回数;
                 }
+
                 foreach (var (l_キー, l_出現回数) in l_シャード別控え_大[s])
                 {
                     this._控えkmer_大![l_キー] = this._控えkmer_大.GetValueOrDefault(l_キー, 0UL) + l_出現回数;
@@ -700,6 +715,7 @@ namespace Tsumiki.Utilities
             {
                 中間データ置き場.V_削除(l_ファイル);
             }
+
             this._統合ファイル群 = null;
         }
 
@@ -742,6 +758,7 @@ namespace Tsumiki.Utilities
                     l_件数++;
                 }
             }
+
             return l_件数;
         }
 
@@ -757,6 +774,7 @@ namespace Tsumiki.Utilities
                     l_カウンタ.Dispose();
                 }
             }
+
             if (this._統合ファイル群 != null)
             {
                 foreach (var l_ファイル in this._統合ファイル群)
@@ -809,6 +827,7 @@ namespace Tsumiki.Utilities
                 l_逆上 = (l_逆上 << 2) | (l_逆下 >> 126);
                 l_逆下 = (l_逆下 << 2) | (UInt128)(4 - p_kmer[l_末尾 - i]);
             }
+
             return l_順上 < l_逆上 || (l_順上 == l_逆上 && l_順下 <= l_逆下) ? (l_順上, l_順下) : (l_逆上, l_逆下);
         }
 
@@ -838,6 +857,7 @@ namespace Tsumiki.Utilities
                 l_結果 = (l_結果 << 2) | (l_コドン ^ 0x3UL);
                 l_残り >>= 2;
             }
+
             return l_結果;
         }
 
@@ -857,6 +877,7 @@ namespace Tsumiki.Utilities
                 l_結果 = (l_結果 << 2) | (l_コドン ^ 3);
                 l_残り >>= 2;
             }
+
             return l_結果;
         }
 
@@ -878,6 +899,7 @@ namespace Tsumiki.Utilities
                 this.V_登録(p_kmer.AsSpan());
                 return;
             }
+
             foreach (var l_塩基ID in p_塩基候補列[p_位置])
             {
                 p_kmer[p_位置] = l_塩基ID;
@@ -926,6 +948,7 @@ namespace Tsumiki.Utilities
                 var l_逆 = Get_逆相補_中(l_値, p_k長);
                 return (0, l_値 < l_逆 ? l_値 : l_逆);
             }
+
             return Get_正規形_長(Get_復元_長(Get_読み替え_長(p_パック済み, p_余りビット), p_k長));
         }
 
@@ -978,6 +1001,7 @@ namespace Tsumiki.Utilities
                 p_配列[p_出現回数]++;
                 return;
             }
+
             p_大きい回数[p_出現回数] = p_大きい回数.GetValueOrDefault(p_出現回数, 0L) + 1L;
         }
 
@@ -998,11 +1022,13 @@ namespace Tsumiki.Utilities
                         l_結果[(ulong)i] = l_結果.GetValueOrDefault((ulong)i, 0L) + l_配列[i];
                     }
                 }
+
                 foreach (var (l_出現回数, l_種類数) in l_大きい回数)
                 {
                     l_結果[l_出現回数] = l_結果.GetValueOrDefault(l_出現回数, 0L) + l_種類数;
                 }
             }
+
             return l_結果;
         }
 
@@ -1020,6 +1046,7 @@ namespace Tsumiki.Utilities
                 var l_塩基ID = l_Is順鎖使用 ? p_kmer[i] : (byte)(5 - p_kmer[p_kmer.Length - 1 - i]);
                 l_パック済み[i >> 2] |= (byte)((l_塩基ID - 1) << ((3 - (i & 3)) << 1));
             }
+
             return l_パック済み;
         }
 
@@ -1039,9 +1066,11 @@ namespace Tsumiki.Utilities
                 {
                     return l_順鎖 < l_逆鎖;
                 }
+
                 l_i++;
                 l_j--;
             }
+
             return true;
         }
 
@@ -1058,6 +1087,7 @@ namespace Tsumiki.Utilities
                 l_ハッシュ ^= l_バイト;
                 l_ハッシュ *= 16_777_619U;
             }
+
             return l_ハッシュ;
         }
 
@@ -1076,6 +1106,7 @@ namespace Tsumiki.Utilities
                 var l_ずらし = 6 - (2 * (i % 4));
                 l_塩基列[i] = (byte)(((l_バイト >> l_ずらし) & 3) + 1);
             }
+
             return l_塩基列;
         }
 
@@ -1093,6 +1124,7 @@ namespace Tsumiki.Utilities
                 l_塩基列[i] = (byte)((p_パック済み & 0x3UL) + 1UL);
                 p_パック済み >>= 2;
             }
+
             return l_塩基列;
         }
 
@@ -1110,6 +1142,7 @@ namespace Tsumiki.Utilities
                 l_塩基列[i] = (byte)((ulong)(p_パック済み & 3) + 1UL);
                 p_パック済み >>= 2;
             }
+
             return l_塩基列;
         }
 
@@ -1129,6 +1162,7 @@ namespace Tsumiki.Utilities
                 l_下位 = (l_下位 >> 2) | (l_上位 << 126);
                 l_上位 >>= 2;
             }
+
             return l_塩基列;
         }
 
@@ -1143,6 +1177,7 @@ namespace Tsumiki.Utilities
             {
                 yield return p_kmer;
             }
+
             var l_逆相補 = Util.V_逆相補(p_kmer).ToArray();
             if (this.Is開始kmer(l_逆相補))
             {
@@ -1195,6 +1230,7 @@ namespace Tsumiki.Utilities
                     l_一致した塩基 = i;
                 }
             }
+
             if (l_件数 == 1)
             {
                 l_候補[0] = l_一致した塩基;
@@ -1204,6 +1240,7 @@ namespace Tsumiki.Utilities
             {
                 p_唯一の予測元 = null;
             }
+
             return l_件数;
         }
 

@@ -13,12 +13,12 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 1 窓ずつ数える上限。これを超える長さは幅を持った区間にまとめる
         /// </summary>
-        private const int 個別に数える上限 = 20;
+        private const int C_個別に数える上限 = 20;
 
         /// <summary>
         /// 個別に数える上限より長い連続をまとめる区間の上端
         /// </summary>
-        private static readonly int[] まとめる区間の上端 = [30, 50, 100, int.MaxValue];
+        private static readonly int[] C_まとめる区間の上端 = [30, 50, 100, int.MaxValue];
 
         #endregion
 
@@ -27,12 +27,12 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 継ぎ目に掛からない連続の度数
         /// </summary>
-        private readonly long[] _継ぎ目なし = new long[個別に数える上限 + まとめる区間の上端.Length];
+        private readonly long[] _継ぎ目なし = new long[C_個別に数える上限 + C_まとめる区間の上端.Length];
 
         /// <summary>
         /// 継ぎ目に掛かる連続の度数
         /// </summary>
-        private readonly long[] _継ぎ目あり = new long[個別に数える上限 + まとめる区間の上端.Length];
+        private readonly long[] _継ぎ目あり = new long[C_個別に数える上限 + C_まとめる区間の上端.Length];
 
         /// <summary>
         /// 連続 1 本ごとの位置 (配列名・窓の開始・窓の終了・継ぎ目に掛かるか)
@@ -94,19 +94,20 @@ namespace Tsumiki.Models.Foundation
         /// <returns></returns>
         private static int Get_区間番号(int p_長さ)
         {
-            if (p_長さ <= 個別に数える上限)
+            if (p_長さ <= C_個別に数える上限)
             {
                 return p_長さ - 1;
             }
 
-            for (var i = 0; i < まとめる区間の上端.Length; i++)
+            for (var i = 0; i < C_まとめる区間の上端.Length; i++)
             {
-                if (p_長さ <= まとめる区間の上端[i])
+                if (p_長さ <= C_まとめる区間の上端[i])
                 {
-                    return 個別に数える上限 + i;
+                    return C_個別に数える上限 + i;
                 }
             }
-            return 個別に数える上限 + まとめる区間の上端.Length - 1;
+
+            return C_個別に数える上限 + C_まとめる区間の上端.Length - 1;
         }
 
         /// <summary>
@@ -125,20 +126,22 @@ namespace Tsumiki.Models.Foundation
                 }
 
                 string l_ラベル;
-                if (i < 個別に数える上限)
+                if (i < C_個別に数える上限)
                 {
                     l_ラベル = FormattableString.Invariant($"{i + 1}");
                 }
                 else
                 {
-                    var j = i - 個別に数える上限;
-                    var l_下端 = (j == 0 ? 個別に数える上限 : まとめる区間の上端[j - 1]) + 1;
-                    l_ラベル = まとめる区間の上端[j] == int.MaxValue
+                    var j = i - C_個別に数える上限;
+                    var l_下端 = (j == 0 ? C_個別に数える上限 : C_まとめる区間の上端[j - 1]) + 1;
+                    l_ラベル = C_まとめる区間の上端[j] == int.MaxValue
                         ? FormattableString.Invariant($"{l_下端}+")
-                        : FormattableString.Invariant($"{l_下端}-{まとめる区間の上端[j]}");
+                        : FormattableString.Invariant($"{l_下端}-{C_まとめる区間の上端[j]}");
                 }
+
                 _ = l_文.Append(FormattableString.Invariant($"{l_ラベル}:{p_表[i]} "));
             }
+
             return l_文.Length == 0 ? "なし" : l_文.ToString().TrimEnd();
         }
 

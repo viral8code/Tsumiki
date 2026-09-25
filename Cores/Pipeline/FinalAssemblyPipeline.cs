@@ -21,22 +21,22 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 支持のない箇所のファイル名
         /// </summary>
-        private const string 支持のない箇所ファイル名 = "assembly.unsupported.tsv";
+        private const string C_支持のない箇所ファイル名 = "assembly.unsupported.tsv";
 
         /// <summary>
         /// リード支持検査の r 長
         /// </summary>
-        private const int 支持検査のr長 = 31;
+        private const int C_支持検査のr長 = 31;
 
         /// <summary>
         /// ポリッシュ結果の一時ファイル名
         /// </summary>
-        private const string ポリッシュ済みファイル名 = "polished.fasta";
+        private const string C_ポリッシュ済みファイル名 = "polished.fasta";
 
         /// <summary>
         /// 最終成果物の統計表のファイル名
         /// </summary>
-        private const string 統計表ファイル名 = "stats.md";
+        private const string C_統計表ファイル名 = "stats.md";
 
         #endregion
 
@@ -69,6 +69,7 @@ namespace Tsumiki.Cores.Pipeline
                     l_書き込み.V_書き込み(l_ID, l_配列);
                 }
             }
+
             Logger.V_出力(メッセージID.短い配列を除外, l_全件.Count - l_残す.Count, l_下限, l_落とした延長);
         }
 
@@ -129,7 +130,7 @@ namespace Tsumiki.Cores.Pipeline
         {
             return
             [
-                ("contigs", Path.Combine(p_一時ディレクトリ, AssemblyPipeline.Contigファイル名)),
+                ("contigs", Path.Combine(p_一時ディレクトリ, AssemblyPipeline.C_Contigファイル名)),
                 ("scaffolds", Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名)),
                 ("assembly", p_最終パス),
             ];
@@ -201,11 +202,13 @@ namespace Tsumiki.Cores.Pipeline
                 {
                     continue;
                 }
+
                 l_JSON.WriteStartObject();
                 l_JSON.WriteString("path", Path.GetFullPath(l_入力));
                 l_JSON.WriteString("sha256", StageCheckpoint.Get_ハッシュ(l_入力));
                 l_JSON.WriteEndObject();
             }
+
             l_JSON.WriteEndArray();
 
             if (p_処理済み設定 is { } l_処理済み設定)
@@ -217,11 +220,13 @@ namespace Tsumiki.Cores.Pipeline
                     {
                         continue;
                     }
+
                     l_JSON.WriteStartObject();
                     l_JSON.WriteString("path", Path.GetFullPath(l_入力));
                     l_JSON.WriteString("sha256", StageCheckpoint.Get_ハッシュ(l_入力));
                     l_JSON.WriteEndObject();
                 }
+
                 l_JSON.WriteEndArray();
 
                 l_JSON.WriteString("pipeline_fingerprint", StageCheckpoint.Get_入力署名(l_処理済み設定));
@@ -239,8 +244,8 @@ namespace Tsumiki.Cores.Pipeline
         private static 支持検査結果? V_検査_リード支持(Parameters p_引数, string p_最終パス)
         {
             Logger.V_出力_空行();
-            Logger.V_出力(メッセージID.支持検査の開始, 支持検査のr長);
-            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_ライブラリ群, 支持検査のr長);
+            Logger.V_出力(メッセージID.支持検査の開始, C_支持検査のr長);
+            var l_結果 = ReadSupportChecker.Get_検査結果(p_最終パス, p_引数.A_ライブラリ群, C_支持検査のr長);
             ReadSupportChecker.V_出力_検査結果(l_結果);
             return l_結果;
         }
@@ -261,13 +266,14 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.ポリッシュ開始);
-            var l_出力先 = Path.Combine(p_一時ディレクトリ, ポリッシュ済みファイル名);
+            var l_出力先 = Path.Combine(p_一時ディレクトリ, C_ポリッシュ済みファイル名);
             var l_統計 = Polisher.Get_磨いた結果(p_最終パス, p_引数.A_ライブラリ群, l_出力先);
             Polisher.V_出力_統計(l_統計);
             if (l_統計 is not null)
             {
                 File.Copy(l_出力先, p_最終パス, overwrite: true);
             }
+
             Logger.V_出力_タイムスタンプ();
             return l_統計;
         }
@@ -320,7 +326,7 @@ namespace Tsumiki.Cores.Pipeline
                 AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)), p_結果.A_固定アンカー評価, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
 
-            var l_Markdownパス = Path.Combine(p_出力ディレクトリ, 統計表ファイル名);
+            var l_Markdownパス = Path.Combine(p_出力ディレクトリ, C_統計表ファイル名);
             ReportWriter.V_書き出し_Markdownレポート(l_Markdownパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計表(Get_最終成果物群(p_出力ディレクトリ, p_最終パス)), l_判定, l_未解決ギャップ数, l_環状本数, l_曖昧箇所.Count, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_結果.A_整合性検査, p_結果.A_固定アンカー評価, p_ポリッシュ統計, p_支持検査, p_閉鎖検証, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.統計表を書き出した, l_Markdownパス);
 
@@ -331,7 +337,7 @@ namespace Tsumiki.Cores.Pipeline
 
             if (p_支持検査 is { } l_支持検査)
             {
-                var l_支持パス = Path.Combine(p_出力ディレクトリ, 支持のない箇所ファイル名);
+                var l_支持パス = Path.Combine(p_出力ディレクトリ, C_支持のない箇所ファイル名);
                 ReportWriter.V_書き出し_未支持箇所(l_支持パス, l_支持検査.A_区間, l_支持検査.A_r長);
                 Logger.V_出力(メッセージID.支持のない箇所を書き出した, l_支持検査.A_区間.Count, l_支持パス);
             }

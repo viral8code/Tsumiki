@@ -37,9 +37,9 @@ namespace Tsumiki.Core
         private const string C_採用ラベル_同一向き = "same-orientation";
 
         /// <summary>
-        /// 採用ラベル: 逆向き向き
+        /// 採用ラベル: 逆向き
         /// </summary>
-        private const string C_採用ラベル_逆向き向き = "opposite-orientation";
+        private const string C_採用ラベル_逆向き = "opposite-orientation";
 
         #endregion
 
@@ -137,6 +137,7 @@ namespace Tsumiki.Core
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー, l_ID, l_開始位置);
                     l_曖昧数 += V_登録_kmer(this._kmer辞書, l_逆鎖キー, -l_ID, l_逆鎖開始位置);
                 }
+
                 l_ID++;
             }
 
@@ -268,7 +269,7 @@ namespace Tsumiki.Core
             else
             {
                 l_採用する標本群 = l_ローカル逆向き標本;
-                l_採用ラベル = C_採用ラベル_逆向き向き;
+                l_採用ラベル = C_採用ラベル_逆向き;
             }
 
             var l_同一unitig標本 = new List<int>();
@@ -276,6 +277,7 @@ namespace Tsumiki.Core
             {
                 l_同一unitig標本.AddRange(l_標本);
             }
+
             this.A_インサートサイズ標本.AddRange(l_同一unitig標本);
             this.A_同一unitig標本.AddRange(l_同一unitig標本);
             this.Get_同一unitig標本(p_ライブラリ番号).AddRange(l_同一unitig標本);
@@ -304,6 +306,7 @@ namespace Tsumiki.Core
                 this.V_処理_1リード(l_配列, this._経路引き継ぎ隣接, this._引き継ぎ経路集計, l_作業域);
                 l_件数++;
             }
+
             Logger.V_出力(メッセージID.経路引き継ぎのマッピング数, l_件数, this._経路引き継ぎ隣接.Count);
         }
 
@@ -341,9 +344,11 @@ namespace Tsumiki.Core
                 {
                     return 0;
                 }
+
                 p_辞書[p_キー] = (C_曖昧kmerの番兵, 0);
                 return 1;
             }
+
             p_辞書[p_キー] = (p_ID, p_位置);
             return 0;
         }
@@ -417,6 +422,7 @@ namespace Tsumiki.Core
             {
                 yield return (l_読み込み1.Get_次のレコード().A_配列, string.Empty);
             }
+
             while (l_読み込み2.Has続き())
             {
                 yield return (l_読み込み2.Get_次のレコード().A_配列, string.Empty);
@@ -476,10 +482,11 @@ namespace Tsumiki.Core
         /// <param name="p_ローカル経路"></param>
         private static void V_集計_並び(ReadOnlySpan<int> p_符号付きID列, Dictionary<経路キー, ulong> p_ローカル経路)
         {
-            if (p_符号付きID列.Length < ReadPathIndex.最短の頂点数)
+            if (p_符号付きID列.Length < ReadPathIndex.C_最短の頂点数)
             {
                 return;
             }
+
             var l_キー = new 経路キー(ReadPathIndex.Get_正準経路(p_符号付きID列));
             p_ローカル経路[l_キー] = p_ローカル経路.GetValueOrDefault(l_キー) + 1UL;
         }
@@ -494,7 +501,7 @@ namespace Tsumiki.Core
         {
             var l_長さ1 = p_経路1.Count;
             var l_長さ2 = p_経路2.Count;
-            if (l_長さ1 < ReadPathIndex.最短の頂点数 && l_長さ2 < ReadPathIndex.最短の頂点数 && (l_長さ1 < C_ペア経路を繋ぐ最小の重なり || l_長さ2 < C_ペア経路を繋ぐ最小の重なり))
+            if (l_長さ1 < ReadPathIndex.C_最短の頂点数 && l_長さ2 < ReadPathIndex.C_最短の頂点数 && (l_長さ1 < C_ペア経路を繋ぐ最小の重なり || l_長さ2 < C_ペア経路を繋ぐ最小の重なり))
             {
                 return;
             }
@@ -530,6 +537,7 @@ namespace Tsumiki.Core
                 V_集計_並び(l_並び2, p_ローカル経路);
                 return;
             }
+
             V_集計_並び(l_並び1, p_ローカル経路);
             V_集計_並び(l_並び2, p_ローカル経路);
         }
@@ -549,6 +557,7 @@ namespace Tsumiki.Core
                     return l_重なり;
                 }
             }
+
             return 0;
         }
 
@@ -572,6 +581,7 @@ namespace Tsumiki.Core
                     }
                 }
             }
+
             return false;
         }
 
@@ -589,7 +599,7 @@ namespace Tsumiki.Core
 
             if (p_リード.Length < l_k長)
             {
-                return 代表Unitigヒット.A_ヒットなし;
+                return 代表Unitigヒット.C_ヒットなし;
             }
 
             var l_経路 = p_作業域.A_経路;
@@ -604,6 +614,7 @@ namespace Tsumiki.Core
                     l_曖昧塩基数++;
                 }
             }
+
             for (var i = l_k長; i <= p_リード.Length; i++)
             {
                 if (Util.Is曖昧塩基(p_リード[i - l_k長]))
@@ -637,6 +648,7 @@ namespace Tsumiki.Core
                     var l_経路キー = (l_経路[^1], l_ID);
                     p_ローカル隣接[l_経路キー] = p_ローカル隣接.GetValueOrDefault(l_経路キー) + 1UL;
                 }
+
                 l_経路.Add(l_ID);
                 l_票数.Add(1);
                 l_終端位置.Add(l_終端);
@@ -644,7 +656,7 @@ namespace Tsumiki.Core
 
             if (l_経路.Count == 0)
             {
-                return 代表Unitigヒット.A_ヒットなし;
+                return 代表Unitigヒット.C_ヒットなし;
             }
 
             var l_最良 = 0;
@@ -662,6 +674,7 @@ namespace Tsumiki.Core
                         l_最後の終端 = l_終端位置[t];
                     }
                 }
+
                 if (l_合計 > l_最多得票)
                 {
                     l_最良 = l_経路[s];

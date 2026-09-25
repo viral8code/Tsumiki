@@ -21,47 +21,47 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// r-mer 長を k より長くする量
         /// </summary>
-        private const int rMer長のk超過分の既定値 = 10;
+        private const int C_rMer長のk超過分の既定値 = 10;
 
         /// <summary>
         /// r-mer 検証に必要な窓数
         /// </summary>
-        private const int rMer検証に必要な窓数 = 20;
+        private const int C_rMer検証に必要な窓数 = 20;
 
         /// <summary>
         /// unitig ファイル名
         /// </summary>
-        private const string Unitigファイル名 = "unitigs.fasta";
+        private const string C_Unitigファイル名 = "unitigs.fasta";
 
         /// <summary>
         /// contig ファイル名
         /// </summary>
-        internal const string Contigファイル名 = "contigs.fasta";
+        internal const string C_Contigファイル名 = "contigs.fasta";
 
         /// <summary>
         /// 最終アセンブリファイル名
         /// </summary>
-        private const string 最終アセンブリファイル名 = "assembly.fasta";
+        private const string C_最終アセンブリファイル名 = "assembly.fasta";
 
         /// <summary>
         /// unitig 数の上限
         /// </summary>
-        private const int Unitig数の上限 = 100_000;
+        private const int C_Unitig数の上限 = 100_000;
 
         /// <summary>
         /// 合成リードの橋渡し長の上限を見積もる断片長の分位
         /// </summary>
-        private const double 橋渡しに使う断片長の分位 = 0.99D;
+        private const double C_橋渡しに使う断片長の分位 = 0.99D;
 
         /// <summary>
         /// 重なりを探すオフセットの下限を決める断片長の分位
         /// </summary>
-        private const double 重なりに使う断片長の分位 = 0.01D;
+        private const double C_重なりに使う断片長の分位 = 0.01D;
 
         /// <summary>
         /// 重なりで繋いだ断片を書き出すファイル名
         /// </summary>
-        private const string 合成リードファイル名 = "fragments.fq";
+        private const string C_合成リードファイル名 = "fragments.fq";
 
         #endregion
 
@@ -89,12 +89,12 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
-            var l_断片パス = Path.Combine(p_一時ディレクトリ, 合成リードファイル名);
+            var l_断片パス = Path.Combine(p_一時ディレクトリ, C_合成リードファイル名);
 
             AmbiguityRecorder.V_開始(p_k長);
 
-            var l_unitigパス = Path.Combine(l_作業ディレクトリ, Unitigファイル名);
-            var l_contigパス = Path.Combine(l_作業ディレクトリ, Contigファイル名);
+            var l_unitigパス = Path.Combine(l_作業ディレクトリ, C_Unitigファイル名);
+            var l_contigパス = Path.Combine(l_作業ディレクトリ, C_Contigファイル名);
             var l_scaffoldパス = Path.Combine(l_作業ディレクトリ, Consts.Scaffoldファイル名);
             var l_GFAパス = Path.Combine(l_作業ディレクトリ, Consts.GFAファイル名);
 
@@ -116,7 +116,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_kmerインデックス);
 
-                l_kmerインデックス.V_適用_カットオフ(p_引数.A_kmerカットオフ, p_引数.A_Is救済kmer使用 ? LowCoverageBridger.控えの最小出現回数 : 0UL);
+                l_kmerインデックス.V_適用_カットオフ(p_引数.A_kmerカットオフ, p_引数.A_Is救済kmer使用 ? LowCoverageBridger.C_控えの最小出現回数 : 0UL);
             }
 
             KmerHistogram.V_出力_スペクトル(l_kmerインデックス.A_出現回数ヒストグラム, p_k長, p_リード長);
@@ -161,7 +161,7 @@ namespace Tsumiki.Cores.Pipeline
 
             if (l_上限に達したか)
             {
-                Logger.V_出力(メッセージID.グラフが複雑すぎる, p_k長, Unitig数の上限);
+                Logger.V_出力(メッセージID.グラフが複雑すぎる, p_k長, C_Unitig数の上限);
                 return null;
             }
 
@@ -209,10 +209,10 @@ namespace Tsumiki.Cores.Pipeline
             RepeatRMerVerifier? l_r_mer検証器 = null;
             if (p_引数.A_Is反復rMer検証)
             {
-                var l_r長 = p_k長 + rMer長のk超過分の既定値;
+                var l_r長 = p_k長 + C_rMer長のk超過分の既定値;
 
                 var l_窓数 = (p_リード長 ?? 0) - l_r長 + 1;
-                if (l_窓数 >= rMer検証に必要な窓数)
+                if (l_窓数 >= C_rMer検証に必要な窓数)
                 {
                     l_r_mer検証器 = RepeatRMerVerifier.V_構築(Get_全リードパス(p_原入力 ?? p_引数), l_r長, l_kmerインデックス, p_k長);
                 }
@@ -227,6 +227,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 l_contig構築.V_結合_Contig(l_contigパス, p_引数.A_ペア結合閾値, p_引数.A_ペア支持数閾値, l_コピー数推定.A_コピー数, l_バブル敗者, p_リード長, l_r_mer検証器, p_引数.A_IsGFA出力 ? l_GFAパス : null, l_引き継ぎ経路群, l_コピー数推定.A_コピー数区間);
             }
+
             Logger.V_出力(メッセージID.Contig構築完了);
             AssemblyStatsReporter.V_出力_統計("contigs", l_contigパス);
 
@@ -242,6 +243,7 @@ namespace Tsumiki.Cores.Pipeline
                     var l_scaffold構築 = new Scaffolder(l_contig構築, l_contigパス, p_リード長);
                     l_scaffold構築.V_実行(l_scaffoldパス);
                 }
+
                 l_IsScaffold作成済み = File.Exists(l_scaffoldパス);
             }
 
@@ -296,18 +298,19 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns></returns>
         public static string V_複製_最終成果物(アセンブリ実行結果 p_結果, string p_出力ディレクトリ)
         {
-            V_複製(p_結果.A_unitigパス, Path.Combine(p_出力ディレクトリ, Unitigファイル名));
-            V_複製(p_結果.A_contigパス, Path.Combine(p_出力ディレクトリ, Contigファイル名));
+            V_複製(p_結果.A_unitigパス, Path.Combine(p_出力ディレクトリ, C_Unitigファイル名));
+            V_複製(p_結果.A_contigパス, Path.Combine(p_出力ディレクトリ, C_Contigファイル名));
             if (p_結果.A_scaffoldパス is { } l_scaffoldパス)
             {
                 V_複製(l_scaffoldパス, Path.Combine(p_出力ディレクトリ, Consts.Scaffoldファイル名));
             }
+
             if (p_結果.A_GFAパス is { } l_GFAパス)
             {
                 V_複製(l_GFAパス, Path.Combine(p_出力ディレクトリ, Consts.GFAファイル名));
             }
 
-            var l_最終パス = Path.Combine(p_出力ディレクトリ, 最終アセンブリファイル名);
+            var l_最終パス = Path.Combine(p_出力ディレクトリ, C_最終アセンブリファイル名);
             V_複製(p_結果.A_最終パス, l_最終パス);
             return l_最終パス;
         }
@@ -363,11 +366,11 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.引き継ぎの準備開始);
 
             RepeatRMerVerifier? l_持ち越し検証器 = null;
-            if ((p_リード長 ?? 0) - KmerCarryOver.持ち越し検証のr長 + 1 >= rMer検証に必要な窓数)
+            if ((p_リード長 ?? 0) - KmerCarryOver.C_持ち越し検証のr長 + 1 >= C_rMer検証に必要な窓数)
             {
                 l_持ち越し検証器 = RepeatRMerVerifier.V_構築(
                     Get_全リードパス(p_原入力 ?? p_引数),
-                    KmerCarryOver.持ち越し検証のr長,
+                    KmerCarryOver.C_持ち越し検証のr長,
                     p_問い合わせ配列: Get_配列列(p_FASTAパス));
             }
 
@@ -381,8 +384,10 @@ namespace Tsumiki.Cores.Pipeline
                 {
                     continue;
                 }
+
                 p_次への引き継ぎ.Add(Get_引き継ぎ配列(l_配列, p_kmerインデックス, p_k長));
             }
+
             Logger.V_出力(メッセージID.引き継ぎの準備完了, p_次への引き継ぎ.Count);
             Logger.V_出力_タイムスタンプ();
 
@@ -399,8 +404,8 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             var l_整列した断片長 = p_断片長標本.Count > 0 ? p_断片長標本.Order().ToArray() : null;
-            int? l_断片長上限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 橋渡しに使う断片長の分位);
-            int? l_断片長下限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, 重なりに使う断片長の分位);
+            int? l_断片長上限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, C_橋渡しに使う断片長の分位);
+            int? l_断片長下限 = l_整列した断片長 is null ? null : StatsUtil.Get_分位点(l_整列した断片長, C_重なりに使う断片長の分位);
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
                 var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
@@ -408,11 +413,13 @@ namespace Tsumiki.Cores.Pipeline
                 {
                     continue;
                 }
+
                 var l_合成リード = SuperReadJoiner.Get_合成リード(A_リード1, A_リード2, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, Get_断片パス(p_断片パス, i));
                 SuperReadJoiner.V_出力_統計(l_統計);
                 p_次への引き継ぎ.AddRange(l_合成リード);
                 p_合成リードの控え?.AddRange(l_合成リード);
             }
+
             Logger.V_出力_タイムスタンプ();
         }
 
@@ -459,6 +466,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 return p_基準パス;
             }
+
             var l_ディレクトリ = Path.GetDirectoryName(p_基準パス) ?? string.Empty;
             var l_幹 = Path.GetFileNameWithoutExtension(p_基準パス);
             return Path.Combine(l_ディレクトリ, FormattableString.Invariant($"{l_幹}.lib{p_ライブラリ番号 + 1}{Path.GetExtension(p_基準パス)}"));
@@ -486,6 +494,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
             }
+
             return new 引き継ぎ配列(p_配列, l_カバレッジ, p_k長);
         }
 
@@ -522,19 +531,20 @@ namespace Tsumiki.Cores.Pipeline
                     {
                         continue;
                     }
+
                     _ = l_既出.Add(l_配列);
                     _ = l_既出.Add(Util.V_逆相補(l_配列));
                     l_unitig配列[l_ID] = l_配列;
                     l_書き込み.V_書き込み(l_ID++, l_配列);
 
-                    if (l_ID > Unitig数の上限)
+                    if (l_ID > C_Unitig数の上限)
                     {
                         break;
                     }
                 }
             }
 
-            p_Is上限到達 = l_ID > Unitig数の上限;
+            p_Is上限到達 = l_ID > C_Unitig数の上限;
             return l_unitig配列;
         }
 

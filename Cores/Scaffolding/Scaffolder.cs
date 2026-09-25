@@ -24,37 +24,37 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比
         /// </summary>
-        private const int 偏りが無いとみなす長さ比 = 10;
+        private const int C_偏りが無いとみなす長さ比 = 10;
 
         /// <summary>
         /// scaffold 辺に必要なペア数
         /// </summary>
-        private const ulong Scaffold支持数の下限 = 3UL;
+        private const ulong C_Scaffold支持数の下限 = 3UL;
 
         /// <summary>
         /// インサートサイズ推定に必要な標本数
         /// </summary>
-        private const int インサートサイズ標本数の下限 = 30;
+        private const int C_インサートサイズ標本数の下限 = 30;
 
         /// <summary>
         /// 採用した辺をライブラリ別の支持と共に書き出すファイル名 (scaffold と同じ場所に置く)
         /// </summary>
-        private const string 採用辺の書き出し名 = "scaffold_edges.tsv";
+        private const string C_採用辺の書き出し名 = "scaffold_edges.tsv";
 
         /// <summary>
         /// 支持の下限を満たす候補が 2 本以上ある頂点の候補を書き出すファイル名 (scaffold と同じ場所に置く)
         /// </summary>
-        private const string 競合候補の書き出し名 = "scaffold_candidates.tsv";
+        private const string C_競合候補の書き出し名 = "scaffold_candidates.tsv";
 
         /// <summary>
         /// scaffold に挿入する最小ギャップ長
         /// </summary>
-        private const int ギャップ長の下限 = 1;
+        private const int C_ギャップ長の下限 = 1;
 
         /// <summary>
         /// k-1 に満たない重なりを畳むときに求める最短の一致長
         /// </summary>
-        private const int 短い重なりの下限 = 15;
+        private const int C_短い重なりの下限 = 15;
 
         #endregion
 
@@ -107,6 +107,7 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.Scaffolding省略_インサートサイズ不明);
                 return;
             }
+
             Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, this.A_有効インサートサイズ!.Value);
 
             this.V_読込_Contig();
@@ -205,12 +206,13 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         l_期待群[l_ライブラリ] = l_較正器群[l_ライブラリ].Get_期待本数(this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_最良ギャップ));
                     }
+
                     l_ライブラリ別本数![(l_始点, l_終点)] = (l_本数群, l_期待群);
                 }
             }
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
-            var l_最小証拠数 = Scaffold支持数の下限;
+            var l_最小証拠数 = C_Scaffold支持数の下限;
 
             Logger.V_出力(メッセージID.Scaffold候補辺数, l_候補キー.Count, Messages.Get_文言(l_較正器群.Any(x => x.A_Is使用可能) ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
 
@@ -222,7 +224,7 @@ namespace Tsumiki.Cores.Scaffolding
 
             if (l_ライブラリ別本数 is not null)
             {
-                this.V_書き出し_競合候補(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, 競合候補の書き出し名), l_隣接, l_確定辺, l_ライブラリ別本数, l_最小証拠数);
+                this.V_書き出し_競合候補(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_競合候補の書き出し名), l_隣接, l_確定辺, l_ライブラリ別本数, l_最小証拠数);
             }
 
             var l_確定数 = 0;
@@ -251,11 +253,12 @@ namespace Tsumiki.Cores.Scaffolding
                     AmbiguityRecorder.V_記録(曖昧箇所の種別.経路が一意でない, AmbiguityRecorder.Get_場所名(v, "contig"));
                 }
             }
+
             Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
 
             if (l_ライブラリ別本数 is not null)
             {
-                this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, 採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
+                this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
             }
 
             var l_始点群 = new List<int>();
@@ -345,6 +348,7 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         p_内部を指した数++;
                     }
+
                     continue;
                 }
 
@@ -358,6 +362,7 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         p_内部を指した数++;
                     }
+
                     continue;
                 }
 
@@ -394,6 +399,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
+
             return l_対称化;
         }
 
@@ -415,14 +421,14 @@ namespace Tsumiki.Cores.Scaffolding
             var l_同一unitig標本 = p_ライブラリ < p_contig構築.A_同一unitig標本群.Count
                 ? p_contig構築.A_同一unitig標本群[p_ライブラリ]
                 : [];
-            if (l_同一unitig標本.Count >= インサートサイズ標本数の下限)
+            if (l_同一unitig標本.Count >= C_インサートサイズ標本数の下限)
             {
                 var l_推定値 = StatsUtil.Get_中央値(l_同一unitig標本);
                 var l_unitigN50 = Get_UnitigN50(p_contig構築.A_unitig長);
-                if (l_推定値 > 0 && l_unitigN50 >= (long)l_推定値 * 偏りが無いとみなす長さ比)
+                if (l_推定値 > 0 && l_unitigN50 >= (long)l_推定値 * C_偏りが無いとみなす長さ比)
                 {
                     p_インサートサイズ = l_推定値;
-                    Logger.V_出力(メッセージID.インサートサイズ推定_同一unitig, p_インサートサイズ, l_同一unitig標本.Count, l_unitigN50, 偏りが無いとみなす長さ比);
+                    Logger.V_出力(メッセージID.インサートサイズ推定_同一unitig, p_インサートサイズ, l_同一unitig標本.Count, l_unitigN50, C_偏りが無いとみなす長さ比);
                     return true;
                 }
             }
@@ -430,7 +436,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_確定辺標本 = p_ライブラリ < p_contig構築.A_確定辺標本群.Count
                 ? p_contig構築.A_確定辺標本群[p_ライブラリ]
                 : [];
-            if (l_確定辺標本.Count >= インサートサイズ標本数の下限)
+            if (l_確定辺標本.Count >= C_インサートサイズ標本数の下限)
             {
                 p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
                 Logger.V_出力(メッセージID.インサートサイズ推定_確定辺, p_インサートサイズ, l_確定辺標本.Count);
@@ -438,7 +444,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力_そのまま(FormattableString.Invariant(
-                $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {インサートサイズ標本数の下限})"));
+                $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {C_インサートサイズ標本数の下限})"));
             p_インサートサイズ = 0;
             return false;
         }
@@ -459,6 +465,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_始点名 = this._contig名.GetValueOrDefault(v >> 1, string.Empty);
                 var l_終点名 = this._contig名.GetValueOrDefault(l_辺.A_行き先 >> 1, string.Empty);
                 l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_辺.A_行き先 & 1}\t{l_辺.A_ギャップ長}\t{string.Join(",", l_支持.A_本数)}\t{string.Join(",", l_支持.A_期待.Select(x => x.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}"));
@@ -624,6 +631,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 return null;
             }
+
             p_連結したcontig数 = 1;
 
             var l_出力 = new StringBuilder(l_Is逆鎖 ? Util.V_逆相補(l_配列) : l_配列);
@@ -646,7 +654,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
                 else
                 {
-                    _ = l_出力.Append('N', Math.Max(ギャップ長の下限, l_辺.A_ギャップ長));
+                    _ = l_出力.Append('N', Math.Max(C_ギャップ長の下限, l_辺.A_ギャップ長));
                     _ = l_出力.Append(l_次の向き付き配列);
                 }
 
@@ -674,13 +682,14 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_k引く1 = ConfigurationManager.A_実行時引数.A_k長 - 1;
             var l_末尾 = p_出力.ToString(p_出力.Length - l_最長, l_最長);
-            for (var l_長さ = l_最長; l_長さ == l_k引く1 || l_長さ >= 短い重なりの下限; l_長さ--)
+            for (var l_長さ = l_最長; l_長さ == l_k引く1 || l_長さ >= C_短い重なりの下限; l_長さ--)
             {
                 if (l_末尾.AsSpan(l_最長 - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
                 {
                     return l_長さ;
                 }
             }
+
             return 0;
         }
 

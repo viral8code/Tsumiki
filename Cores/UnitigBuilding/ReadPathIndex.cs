@@ -13,7 +13,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 索引に入れる並びの最短の頂点数
         /// </summary>
-        public const int 最短の頂点数 = 3;
+        public const int C_最短の頂点数 = 3;
 
         #endregion
 
@@ -62,8 +62,10 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     l_頂点列[i] = ContigMaker.Get_頂点番号(l_キー.A_頂点列[i]);
                 }
+
                 l_索引.V_追加(l_頂点列, l_件数);
             }
+
             return l_索引;
         }
 
@@ -92,6 +94,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_結果[i] = l_Is逆鎖採用 ? -p_符号付きID列[l_長さ - 1 - i] : p_符号付きID列[i];
             }
+
             return l_結果;
         }
 
@@ -139,6 +142,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_合計 += this._件数[l_番号];
                 }
             }
+
             return l_合計;
         }
 
@@ -233,6 +237,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_番号群 = [];
                 this._unitig別の経路[p_unitigID] = l_番号群;
             }
+
             if (l_番号群.Count == 0 || l_番号群[^1] != p_番号)
             {
                 l_番号群.Add(p_番号);
@@ -275,6 +280,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         break;
                     }
+
                     j++;
                     l_現在位置 = l_次位置;
                 }
@@ -298,6 +304,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     return -1;
                 }
+
                 if (l_入口判定 + l_出口判定 <= 0)
                 {
                     continue;
@@ -308,8 +315,10 @@ namespace Tsumiki.Cores.UnitigBuilding
                     var l_位置 = l_開始位置 + (l_歩幅 * (x - l_開始));
                     p_経路[x] = l_Is順 ? p_複製鎖[l_位置] : p_複製鎖[l_位置] ^ 1;
                 }
+
                 l_Is変更 = true;
             }
+
             return l_Is変更 ? 1 : 0;
         }
 
@@ -328,6 +337,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return i;
                 }
             }
+
             return -1;
         }
 

@@ -47,7 +47,7 @@ namespace Tsumiki.Utilities
             {
                 this._中 = [];
             }
-            else if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            else if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
             {
                 this._長 = [];
             }

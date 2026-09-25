@@ -93,7 +93,7 @@ namespace Tsumiki.Tests.Core
         {
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
             V_登録_谷つき(l_索引, 主配列);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.控えの最小出現回数);
+            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
             Assert.False(l_索引.Haskmer(Get_kmer(主配列, 谷の先頭)));
 
             var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
@@ -118,7 +118,7 @@ namespace Tsumiki.Tests.Core
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
             V_登録_全kmer(l_索引, 主配列, 主経路の深さ);
             V_登録_全kmer(l_索引, 主配列[^(k長 - 1)..] + "CGTCGA", 谷の深さ);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.控えの最小出現回数);
+            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
 
             var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
 
@@ -140,7 +140,7 @@ namespace Tsumiki.Tests.Core
             {
                 V_登録(l_索引, Get_kmer(l_対立配列, i), 谷の深さ);
             }
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.控えの最小出現回数);
+            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
 
             var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
 
@@ -165,7 +165,7 @@ namespace Tsumiki.Tests.Core
             var l_枝 = "TGTTTGCA" + "G" + l_合流先[..^1];
             Assert.NotEqual(主配列[谷の末尾], l_枝[^k長]);
             V_登録_全kmer(l_索引, l_枝, 主経路の深さ);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.控えの最小出現回数);
+            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
 
             var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
 

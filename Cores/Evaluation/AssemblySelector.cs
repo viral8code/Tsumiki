@@ -14,17 +14,17 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 足切りに使う完全性の許容差
         /// </summary>
-        public const double 完全性の許容差 = 0.01D;
+        public const double C_完全性の許容差 = 0.01D;
 
         /// <summary>
         /// 足切りに使う正確性の許容差
         /// </summary>
-        public const double 正確性の許容差 = 0.05D;
+        public const double C_正確性の許容差 = 0.05D;
 
         /// <summary>
         /// 完全性・正確性で同点とみなす差
         /// </summary>
-        public const double 同点とみなす差 = 0.005D;
+        public const double C_同点とみなす差 = 0.005D;
 
         #endregion
 
@@ -51,8 +51,8 @@ namespace Tsumiki.Cores.Evaluation
             var l_最良の正確性 = p_候補.Max(x => x.A_評価.A_正確性);
 
             var l_残った候補 = p_候補
-                .Where(x => x.A_評価.A_完全性 >= l_最良の完全性 - 完全性の許容差)
-                .Where(x => x.A_評価.A_正確性 >= l_最良の正確性 - 正確性の許容差)
+                .Where(x => x.A_評価.A_完全性 >= l_最良の完全性 - C_完全性の許容差)
+                .Where(x => x.A_評価.A_正確性 >= l_最良の正確性 - C_正確性の許容差)
                 .ToList();
 
             if (l_残った候補.Count == 0)
@@ -86,12 +86,14 @@ namespace Tsumiki.Cores.Evaluation
             var l_段 = 0;
             for (var i = 0; i < l_降順.Count; i++)
             {
-                if (i > 0 && l_降順[i - 1] - l_降順[i] > 同点とみなす差)
+                if (i > 0 && l_降順[i - 1] - l_降順[i] > C_同点とみなす差)
                 {
                     l_段++;
                 }
+
                 l_表[l_降順[i]] = l_段;
             }
+
             return l_表;
         }
 

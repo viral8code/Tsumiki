@@ -74,6 +74,7 @@ namespace Tsumiki.Commons
                 {
                     return;
                 }
+
                 _ファイル = new StreamWriter(Path.Combine(p_一時ディレクトリ, Consts.ログファイル名), append: true)
                 {
                     AutoFlush = true,
@@ -82,6 +83,7 @@ namespace Tsumiki.Commons
                 {
                     _ファイル.WriteLine(l_行);
                 }
+
                 _書き出し待ち.Clear();
             }
         }

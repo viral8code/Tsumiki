@@ -16,7 +16,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <summary>
         /// 1 つの反復として扱う unitig 列の最大頂点数
         /// </summary>
-        private const int 反復の鎖の最大頂点数 = 8;
+        private const int C_反復の鎖の最大頂点数 = 8;
 
         #endregion
 
@@ -142,6 +142,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         l_Has無効塩基 = true;
                         break;
                     }
+
                     l_候補[i] = l_塩基ID;
                 }
 
@@ -163,6 +164,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         continue;
                     }
+
                     var l_行き先 = ContigMaker.Get_頂点番号(l_ヒット.A_unitigID);
 
                     if (l_行き先 == l_頂点)
@@ -170,6 +172,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         _ = l_自己ループ.Add(l_頂点);
                         continue;
                     }
+
                     l_出辺[l_頂点].Add(l_行き先);
                 }
             }
@@ -193,8 +196,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// したがってこの検証は「対応付け A」と「対応付け B」のどちらが正しいかを区別する力は本質的に持たない (反復が反復である以上、局所的な文脈だけでは区別できないため) <br/>
         /// 実際に効くのは、ペア支持が示す対応付けについて個々の接合点すら生リードに一切裏付けられない (=そもそもその unitig 同士が隣接している根拠が生データに無い) 場合であり、この限定的だが無視できない安全網として使う
         /// </param>
-        /// <param name="p_経路索引">渡すと、入口から反復を通って出口まで 1 本で読んだ並びを証拠に加える (複製に合わせて書き換える)</param>
-        /// <param name="p_引き継ぎ経路索引">前段 k の確定経路の並び、この k の証拠が 1 件も無い反復に限って使う (複製に合わせて書き換える)</param>
+        /// <param name="p_経路索引">
+        /// 渡すと、入口から反復を通って出口まで 1 本で読んだ並びを証拠に加える (複製に合わせて書き換える)
+        /// </param>
+        /// <param name="p_引き継ぎ経路索引">
+        /// 前段 k の確定経路の並び、この k の証拠が 1 件も無い反復に限って使う (複製に合わせて書き換える)
+        /// </param>
         /// <returns>解きほぐした反復の数</returns>
         public int V_解決_短い反復(List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null, ReadPathIndex? p_経路索引 = null, ReadPathIndex? p_引き継ぎ経路索引 = null)
         {
@@ -289,6 +296,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     l_一本道になる組.Add((l_残る入口[0], l_残る出口[0]));
                 }
+
                 if (l_一本道になる組.Exists(x => !Is組が優勢(l_経路行列, l_入口群.IndexOf(x.A_入口), l_出口群.IndexOf(x.A_出口), p_優勢閾値) || !Is組が優勢(l_ペア行列, l_入口群.IndexOf(x.A_入口), l_出口群.IndexOf(x.A_出口), p_優勢閾値)))
                 {
                     l_僅差の数++;
@@ -302,6 +310,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         l_検証する組.Add((l_残る入口[0], l_残る出口[0]));
                     }
+
                     var l_鎖配列 = Get_経路配列(p_unitig配列, l_鎖, l_k長);
                     if (l_検証する組.Exists(x => !p_r_mer検証器.Has接合点支持(p_unitig配列[x.A_入口], l_鎖配列, p_unitig配列[x.A_出口], Consts.r_mer接合点支持の閾値の既定値)))
                     {
@@ -335,6 +344,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 Logger.V_出力(メッセージID.rMer検証による棄却, l_r_mer検証で棄却した数);
             }
+
             Logger.V_出力(メッセージID.短い反復の見送り内訳, l_長さで見送った数, l_形で見送った数, l_証拠不足の数, l_僅差の数, l_足場で解決した数);
             Logger.V_出力(メッセージID.反復解決の証拠内訳, l_経路で解決した数, l_部分解決の数, l_矛盾の数, l_鎖で解決した数, l_引き継ぎで解決した数);
 
@@ -372,16 +382,19 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         continue;
                     }
+
                     var (l_経路, l_再合流先) = l_結果;
                     if (l_再合流先 == l_分岐元 || (l_再合流先 >> 1) == (l_経路[0] >> 1))
                     {
                         continue;
                     }
+
                     if (!l_再合流先ごと.TryGetValue(l_再合流先, out var l_経路一覧))
                     {
                         l_経路一覧 = [];
                         l_再合流先ごと[l_再合流先] = l_経路一覧;
                     }
+
                     l_経路一覧.Add(l_経路);
                 }
 
@@ -418,12 +431,14 @@ namespace Tsumiki.Cores.UnitigBuilding
                         {
                             continue;
                         }
+
                         var l_敗者経路 = l_経路群[i];
                         this.V_除去_双方向辺(l_分岐元, l_敗者経路[0]);
                         for (var j = 0; j + 1 < l_敗者経路.Count; j++)
                         {
                             this.V_除去_双方向辺(l_敗者経路[j], l_敗者経路[j + 1]);
                         }
+
                         this.V_除去_双方向辺(l_敗者経路[^1], l_再合流先);
                         l_除去数++;
                         p_敗者への引き継ぎ先?.Add(l_配列群[i]);
@@ -485,6 +500,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_除去数++;
                 }
             }
+
             return l_除去数;
         }
 
@@ -503,6 +519,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 return null;
             }
+
             if (this.A_出辺[p_始点].Count >= 2)
             {
                 return [p_始点];
@@ -510,20 +527,23 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             List<int> l_鎖 = [p_始点];
             var l_現在 = p_始点;
-            while (this.A_出辺[l_現在].Count == 1 && l_鎖.Count < 反復の鎖の最大頂点数)
+            while (this.A_出辺[l_現在].Count == 1 && l_鎖.Count < C_反復の鎖の最大頂点数)
             {
                 var l_次 = this.A_出辺[l_現在][0];
                 if (this.Get_入次数(l_次) != 1 || l_鎖.Exists(x => (x >> 1) == (l_次 >> 1)))
                 {
                     return null;
                 }
+
                 l_鎖.Add(l_次);
                 if (this.A_出辺[l_次].Count >= 2)
                 {
                     return l_鎖;
                 }
+
                 l_現在 = l_次;
             }
+
             return null;
         }
 
@@ -581,6 +601,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_行列[i, j] = p_経路索引.Get_出現数(l_部分列);
                 }
             }
+
             return l_行列;
         }
 
@@ -601,6 +622,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_行列[i, j] = p_ペア連結.GetValueOrDefault((p_入口群[i], p_出口群[j]));
                 }
             }
+
             return l_行列;
         }
 
@@ -616,6 +638,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_合計 += l_値;
             }
+
             return l_合計;
         }
 
@@ -671,6 +694,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 l_対応[i] = l_最良;
             }
 
@@ -685,6 +709,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
                 }
             }
+
             return l_対応;
         }
 
@@ -703,11 +728,13 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_行和 += p_行列[p_行, j];
             }
+
             var l_列和 = 0UL;
             for (var i = 0; i < p_行列.GetLength(0); i++)
             {
                 l_列和 += p_行列[i, p_列];
             }
+
             var l_値 = p_行列[p_行, p_列];
             return (l_行和 == 0UL || (decimal)l_値 / l_行和 >= p_優勢閾値) && (l_列和 == 0UL || (decimal)l_値 / l_列和 >= p_優勢閾値);
         }
@@ -727,12 +754,15 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 if (l_対応[i] >= 0 && l_対応[i] != p_対応2[i])
                 {
                     return null;
                 }
+
                 l_対応[i] = p_対応2[i];
             }
+
             var l_決着した出口 = l_対応.Where(x => x >= 0).ToList();
             return l_決着した出口.Distinct().Count() == l_決着した出口.Count ? l_対応 : null;
         }
@@ -772,6 +802,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 this.V_追加_双方向辺(l_複製鎖[i], l_複製鎖[i + 1]);
                 V_設定_双方向支持(p_支持, l_複製鎖[i], l_複製鎖[i + 1], p_支持.GetValueOrDefault((p_鎖[i], p_鎖[i + 1])));
             }
+
             return l_複製鎖;
         }
 
@@ -811,6 +842,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_行列[i, j] = Get_鎖間ペア数(l_上流群[i], l_下流群[j], p_ペア連結);
                 }
             }
+
             return l_行列;
         }
 
@@ -843,10 +875,12 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     break;
                 }
+
                 l_鎖.Add(l_次);
                 l_累積長 += Math.Max(0, p_unitig配列[l_次].Length - l_重なり長);
                 l_現在 = l_次;
             }
+
             return l_鎖;
         }
 
@@ -867,6 +901,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     l_合計 += p_ペア連結.GetValueOrDefault((u, w));
                 }
             }
+
             return l_合計;
         }
 
@@ -892,12 +927,15 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     continue;
                 }
+
                 if (p_unitig配列[w].Length > l_脇道の長さ上限)
                 {
                     return false;
                 }
+
                 l_脇道数++;
             }
+
             return l_脇道数 == 1;
         }
 
@@ -973,6 +1011,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 {
                     return null;
                 }
+
                 l_現在 = l_出辺[0];
             }
         }
@@ -993,6 +1032,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_配列 = p_unitig配列[p_経路[i]];
                 _ = l_出力.Append(l_配列.Length > l_重なり長 ? l_配列[l_重なり長..] : string.Empty);
             }
+
             return l_出力.ToString();
         }
 
@@ -1022,6 +1062,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_前行[j] = j;
             }
+
             for (var i = 1; i <= p_先頭配列.Length; i++)
             {
                 l_今行[0] = i;
@@ -1030,8 +1071,10 @@ namespace Tsumiki.Cores.UnitigBuilding
                     var l_コスト = p_先頭配列[i - 1] == p_中間配列[j - 1] ? 0 : 1;
                     l_今行[j] = Math.Min(Math.Min(l_今行[j - 1] + 1, l_前行[j] + 1), l_前行[j - 1] + l_コスト);
                 }
+
                 (l_前行, l_今行) = (l_今行, l_前行);
             }
+
             return l_前行[p_中間配列.Length];
         }
 

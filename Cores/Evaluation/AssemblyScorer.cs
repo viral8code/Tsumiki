@@ -15,7 +15,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 評価に含める配列の最小長
         /// </summary>
-        private const int 評価に含める最小長 = 500;
+        private const int C_評価に含める最小長 = 500;
 
         #endregion
 
@@ -43,7 +43,7 @@ namespace Tsumiki.Cores.Evaluation
             var l_期待延べ数 = 0L;
             var l_欠損延べ数 = 0L;
             var l_過剰延べ数 = 0L;
-            var l_単一コピー上限 = p_単一コピー上限 ?? KmerHistogram.単一コピー上限の最小比 * p_単一コピー基準値;
+            var l_単一コピー上限 = p_単一コピー上限 ?? KmerHistogram.C_単一コピー上限の最小比 * p_単一コピー基準値;
 
             foreach (var l_kmer in p_アンカーインデックス.Get_信頼kmer一覧())
             {
@@ -63,7 +63,7 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
 
-            var l_統計対象 = l_長さ一覧.Where(x => x >= 評価に含める最小長).ToList();
+            var l_統計対象 = l_長さ一覧.Where(x => x >= C_評価に含める最小長).ToList();
 
             return new アセンブリ評価(A_期待延べ数: l_期待延べ数, A_欠損延べ数: l_欠損延べ数, A_過剰延べ数: l_過剰延べ数, A_総延長: l_統計対象.Sum(), A_本数: l_統計対象.Count, A_NG50: Get_NG50(l_統計対象, p_推定ゲノムサイズ, l_総延長), A_環状本数: l_環状本数, A_環状化率: p_推定ゲノムサイズ > 0L ? (double)l_環状延長 / p_推定ゲノムサイズ : 0D);
         }
@@ -95,10 +95,11 @@ namespace Tsumiki.Cores.Evaluation
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
                 var l_配列 = l_エントリ.A_配列;
-                if (l_配列.Length < 評価に含める最小長)
+                if (l_配列.Length < C_評価に含める最小長)
                 {
                     continue;
                 }
+
                 p_長さ一覧.Add(l_配列.Length);
                 p_総延長 += l_配列.Length;
 
@@ -116,6 +117,7 @@ namespace Tsumiki.Cores.Evaluation
                     }
                 }
             }
+
             return l_観測;
         }
 
@@ -143,6 +145,7 @@ namespace Tsumiki.Cores.Evaluation
                     return l_長さ;
                 }
             }
+
             return 0L;
         }
 

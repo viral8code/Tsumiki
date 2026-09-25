@@ -23,7 +23,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
 
-            var l_束群 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.パック値のk上限
+            var l_束群 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.C_パック値のk上限
                 ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray()
                 : null;
 
@@ -78,6 +78,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         Logger.V_出力(メッセージID.リード2の読込開始);
                     }
+
                     Parallel.Invoke(
                         () => V_読込_リードファイル(A_リード1, p_kmerインデックス, l_Phred),
                         () => V_読込_リードファイル(A_リード2!, p_kmerインデックス, l_Phred));
@@ -95,6 +96,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     Logger.V_出力(メッセージID.リード2の読込開始);
                 }
+
                 V_読込_1ファイル(A_リード2, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
             }
         }
@@ -120,6 +122,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     continue;
                 }
+
                 var l_塩基候補 = CollectionsMarshal.AsSpan(l_リード.A_塩基候補列);
                 for (var i = 0; i < l_リード.A_クオリティ.Length; i++)
                 {
@@ -128,17 +131,20 @@ namespace Tsumiki.Cores.Preprocessing
                         l_塩基候補[i] = [];
                     }
                 }
+
                 p_kmerインデックス.V_登録_曖昧塩基あり(l_塩基候補[..l_k長], 0);
                 for (var i = l_k長; i < l_リード.A_塩基候補列.Count; i++)
                 {
                     p_kmerインデックス.V_登録_曖昧塩基あり(l_塩基候補.Slice(i - l_k長 + 1, l_k長), 0);
                 }
+
                 if (++l_件数 == Consts.進捗ログ間隔)
                 {
                     Logger.V_出力(メッセージID.リード読込の進捗, ++l_ログ回数 * Consts.進捗ログ間隔);
                     l_件数 = 0UL;
                 }
             }
+
             Logger.V_出力(メッセージID.リード読込完了, (l_ログ回数 * Consts.進捗ログ間隔) + l_件数, Path.GetFileName(p_ファイルパス));
         }
 
@@ -235,6 +241,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_低品質数++;
                 }
             }
+
             if (l_低品質数 == 0)
             {
                 p_kmerインデックス.V_登録(l_塩基[..l_k長]);

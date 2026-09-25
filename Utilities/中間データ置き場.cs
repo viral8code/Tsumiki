@@ -14,22 +14,22 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 1 つの塊の大きさ
         /// </summary>
-        private const int 塊の大きさ = 16 << 20;
+        internal const int C_塊の大きさ = 16 << 20;
 
         /// <summary>
         /// ファイルとして開くときのバッファの大きさ
         /// </summary>
-        private const int ファイルのバッファ = 1 << 20;
+        private const int C_ファイルのバッファ = 1 << 20;
 
         /// <summary>
         /// パスの大文字小文字を区別するかは OS で違う
         /// </summary>
-        private static readonly StringComparer パスの比較 = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        private static readonly StringComparer C_パスの比較 = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
         /// <summary>
         /// 名前の比較 (パスの比較と揃える)
         /// </summary>
-        private static readonly StringComparison 名前の比較 = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        private static readonly StringComparison C_名前の比較 = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
         #endregion
 
@@ -38,12 +38,12 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// パスごとの圧縮済みの中身
         /// </summary>
-        private static readonly ConcurrentDictionary<string, (List<byte[]> A_塊群, long A_元の長さ)> _置き場 = new(パスの比較);
+        private static readonly ConcurrentDictionary<string, (List<byte[]> A_塊群, long A_元の長さ)> _置き場 = new(C_パスの比較);
 
         /// <summary>
         /// 取り込んだ入力のキー
         /// </summary>
-        private static readonly ConcurrentDictionary<string, byte> _取り込み済み = new(パスの比較);
+        private static readonly ConcurrentDictionary<string, byte> _取り込み済み = new(C_パスの比較);
 
         #endregion
 
@@ -73,7 +73,7 @@ namespace Tsumiki.Utilities
             塩基列控え.V_無効化(p_パス);
             if (!A_Is有効)
             {
-                return new FileStream(p_パス, FileMode.Create, FileAccess.Write, FileShare.Read, ファイルのバッファ, FileOptions.SequentialScan);
+                return new FileStream(p_パス, FileMode.Create, FileAccess.Write, FileShare.Read, C_ファイルのバッファ, FileOptions.SequentialScan);
             }
 
             var l_キー = Get_キー(p_パス);
@@ -94,7 +94,7 @@ namespace Tsumiki.Utilities
             }
 
             _取り込み済み[Get_キー(p_パス)] = 0;
-            using var l_元 = new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, ファイルのバッファ, FileOptions.SequentialScan);
+            using var l_元 = new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, C_ファイルのバッファ, FileOptions.SequentialScan);
             using var l_先 = Get_書込ストリーム(p_パス);
             l_元.CopyTo(l_先);
         }
@@ -108,7 +108,7 @@ namespace Tsumiki.Utilities
         {
             return _置き場.TryGetValue(Get_キー(p_パス), out var l_項目)
                 ? new 計数ストリーム(new DeflateStream(new 塊読込ストリーム(l_項目.A_塊群), CompressionMode.Decompress), l_項目.A_元の長さ)
-                : new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, ファイルのバッファ, FileOptions.SequentialScan);
+                : new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, C_ファイルのバッファ, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Tsumiki.Utilities
         public static IReadOnlyList<string> Get_一覧(string p_ディレクトリ, string p_接頭辞, string p_接尾辞)
         {
             var l_場所 = Get_キー(p_ディレクトリ);
-            var l_置き場 = _置き場.Keys.Where(x => string.Equals(Path.GetDirectoryName(x), l_場所, 名前の比較) && Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞));
+            var l_置き場 = _置き場.Keys.Where(x => string.Equals(Path.GetDirectoryName(x), l_場所, C_名前の比較) && Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞));
             var l_ディスク = Directory.Exists(p_ディレクトリ)
                 ? Directory.EnumerateFiles(p_ディレクトリ).Where(x => Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞))
                 : [];
@@ -188,361 +188,10 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static bool Is名前が一致(string p_名前, string p_接頭辞, string p_接尾辞)
         {
-            return p_名前.StartsWith(p_接頭辞, 名前の比較) && p_名前.EndsWith(p_接尾辞, 名前の比較);
+            return p_名前.StartsWith(p_接頭辞, C_名前の比較) && p_名前.EndsWith(p_接尾辞, C_名前の比較);
         }
 
         #endregion
 
-        #region 内部クラス
-
-        /// <summary>
-        /// 展開後の読み書きの量を数え、長さと位置を答える
-        /// </summary>
-        private sealed class 計数ストリーム : Stream
-        {
-            #region 内部変数
-
-            /// <summary>
-            /// 包んでいるストリーム
-            /// </summary>
-            private readonly Stream _中身;
-
-            /// <summary>
-            /// 書き終えたときに展開後の長さを渡す先 (読み込み用なら null)
-            /// </summary>
-            private readonly Action<long>? _確定;
-
-            /// <summary>
-            /// 展開後の長さ (読み込み用のときだけ分かる)
-            /// </summary>
-            private readonly long _長さ;
-
-            /// <summary>
-            /// ここまでに読み書きした展開後の量
-            /// </summary>
-            private long _位置;
-
-            /// <summary>
-            /// 閉じたか
-            /// </summary>
-            private bool _Is確定済み;
-
-            #endregion
-
-            #region コンストラクタ
-
-            /// <summary>
-            /// 書き込み用
-            /// </summary>
-            /// <param name="p_中身">包む圧縮ストリーム</param>
-            /// <param name="p_確定">閉じたときに展開後の長さを渡す先</param>
-            public 計数ストリーム(Stream p_中身, Action<long> p_確定)
-            {
-                this._中身 = p_中身;
-                this._確定 = p_確定;
-            }
-
-            /// <summary>
-            /// 読み込み用
-            /// </summary>
-            /// <param name="p_中身">包む展開ストリーム</param>
-            /// <param name="p_長さ">展開後の長さ</param>
-            public 計数ストリーム(Stream p_中身, long p_長さ)
-            {
-                this._中身 = p_中身;
-                this._長さ = p_長さ;
-            }
-
-            #endregion
-
-            #region 継承メソッド
-
-            /// <inheritdoc/>
-            public override bool CanRead => this._確定 is null;
-
-            /// <inheritdoc/>
-            public override bool CanSeek => false;
-
-            /// <inheritdoc/>
-            public override bool CanWrite => this._確定 is not null;
-
-            /// <inheritdoc/>
-            public override long Length => this._確定 is null ? this._長さ : this._位置;
-
-            /// <inheritdoc/>
-            public override long Position { get => this._位置; set => throw new NotSupportedException(); }
-
-            /// <inheritdoc/>
-            public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                return this.Read(p_バッファ.AsSpan(p_開始, p_長さ));
-            }
-
-            /// <inheritdoc/>
-            public override int Read(Span<byte> p_バッファ)
-            {
-                var l_読んだ = this._中身.Read(p_バッファ);
-                this._位置 += l_読んだ;
-                return l_読んだ;
-            }
-
-            /// <inheritdoc/>
-            public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
-            }
-
-            /// <inheritdoc/>
-            public override void Write(ReadOnlySpan<byte> p_バッファ)
-            {
-                this._中身.Write(p_バッファ);
-                this._位置 += p_バッファ.Length;
-            }
-
-            /// <inheritdoc/>
-            public override void Flush()
-            {
-                this._中身.Flush();
-            }
-
-            /// <inheritdoc/>
-            public override long Seek(long p_位置, SeekOrigin p_起点)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <inheritdoc/>
-            public override void SetLength(long p_長さ)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <summary>
-            /// 包んでいるストリームを閉じてから、展開後の長さを渡す
-            /// </summary>
-            /// <param name="p_Is明示">Dispose から呼ばれたか</param>
-            protected override void Dispose(bool p_Is明示)
-            {
-                if (!this._Is確定済み)
-                {
-                    this._Is確定済み = true;
-                    this._中身.Dispose();
-                    this._確定?.Invoke(this._位置);
-                }
-                base.Dispose(p_Is明示);
-            }
-
-            #endregion
-        }
-
-        /// <summary>
-        /// 塊の列へ追記する
-        /// </summary>
-        private sealed class 塊書込ストリーム : Stream
-        {
-            #region 内部変数
-
-            /// <summary>
-            /// 書きかけの塊
-            /// </summary>
-            private byte[] _今の塊 = new byte[塊の大きさ];
-
-            /// <summary>
-            /// 書きかけの塊の使用量
-            /// </summary>
-            private int _今の位置;
-
-            /// <summary>
-            /// 閉じたか
-            /// </summary>
-            private bool _Is確定済み;
-
-            #endregion
-
-            #region プロパティ
-
-            /// <summary>
-            /// 書き終えた塊 (閉じた後は書きかけの塊も含む)
-            /// </summary>
-            public List<byte[]> A_塊群 { get; } = [];
-
-            #endregion
-
-            #region 継承メソッド
-
-            /// <inheritdoc/>
-            public override bool CanRead => false;
-
-            /// <inheritdoc/>
-            public override bool CanSeek => false;
-
-            /// <inheritdoc/>
-            public override bool CanWrite => true;
-
-            /// <inheritdoc/>
-            public override long Length => throw new NotSupportedException();
-
-            /// <inheritdoc/>
-            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-            /// <inheritdoc/>
-            public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
-            }
-
-            /// <inheritdoc/>
-            public override void Write(ReadOnlySpan<byte> p_バッファ)
-            {
-                while (!p_バッファ.IsEmpty)
-                {
-                    if (this._今の位置 == this._今の塊.Length)
-                    {
-                        this.A_塊群.Add(this._今の塊);
-                        this._今の塊 = new byte[塊の大きさ];
-                        this._今の位置 = 0;
-                    }
-                    var l_書く分 = Math.Min(p_バッファ.Length, this._今の塊.Length - this._今の位置);
-                    p_バッファ[..l_書く分].CopyTo(this._今の塊.AsSpan(this._今の位置));
-                    this._今の位置 += l_書く分;
-                    p_バッファ = p_バッファ[l_書く分..];
-                }
-            }
-
-            /// <inheritdoc/>
-            public override void Flush()
-            {
-            }
-
-            /// <inheritdoc/>
-            public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <inheritdoc/>
-            public override long Seek(long p_位置, SeekOrigin p_起点)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <inheritdoc/>
-            public override void SetLength(long p_長さ)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <summary>
-            /// 書きかけの塊を、使った分だけに詰めて塊の列へ加える
-            /// </summary>
-            /// <param name="p_Is明示">Dispose から呼ばれたか</param>
-            protected override void Dispose(bool p_Is明示)
-            {
-                if (!this._Is確定済み)
-                {
-                    this._Is確定済み = true;
-                    if (this._今の位置 > 0)
-                    {
-                        this.A_塊群.Add(this._今の塊.AsSpan(0, this._今の位置).ToArray());
-                    }
-                }
-                base.Dispose(p_Is明示);
-            }
-
-            #endregion
-        }
-
-        /// <summary>
-        /// 塊の列を先頭から順に読む
-        /// </summary>
-        /// <param name="p_塊群">読む塊の列</param>
-        private sealed class 塊読込ストリーム(List<byte[]> p_塊群) : Stream
-        {
-            #region 内部変数
-
-            /// <summary>
-            /// 読んでいる塊の番号
-            /// </summary>
-            private int _塊番号;
-
-            /// <summary>
-            /// 読んでいる塊の中の位置
-            /// </summary>
-            private int _位置;
-
-            #endregion
-
-            #region 継承メソッド
-
-            /// <inheritdoc/>
-            public override bool CanRead => true;
-
-            /// <inheritdoc/>
-            public override bool CanSeek => false;
-
-            /// <inheritdoc/>
-            public override bool CanWrite => false;
-
-            /// <inheritdoc/>
-            public override long Length => throw new NotSupportedException();
-
-            /// <inheritdoc/>
-            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
-
-            /// <inheritdoc/>
-            public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                return this.Read(p_バッファ.AsSpan(p_開始, p_長さ));
-            }
-
-            /// <inheritdoc/>
-            public override int Read(Span<byte> p_バッファ)
-            {
-                var l_読んだ = 0;
-                while (!p_バッファ.IsEmpty && this._塊番号 < p_塊群.Count)
-                {
-                    var l_塊 = p_塊群[this._塊番号];
-                    if (this._位置 == l_塊.Length)
-                    {
-                        this._塊番号++;
-                        this._位置 = 0;
-                        continue;
-                    }
-                    var l_読む分 = Math.Min(p_バッファ.Length, l_塊.Length - this._位置);
-                    l_塊.AsSpan(this._位置, l_読む分).CopyTo(p_バッファ);
-                    this._位置 += l_読む分;
-                    l_読んだ += l_読む分;
-                    p_バッファ = p_バッファ[l_読む分..];
-                }
-                return l_読んだ;
-            }
-
-            /// <inheritdoc/>
-            public override void Flush()
-            {
-            }
-
-            /// <inheritdoc/>
-            public override long Seek(long p_位置, SeekOrigin p_起点)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <inheritdoc/>
-            public override void SetLength(long p_長さ)
-            {
-                throw new NotSupportedException();
-            }
-
-            /// <inheritdoc/>
-            public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
-            {
-                throw new NotSupportedException();
-            }
-
-            #endregion
-        }
-
-        #endregion
     }
 }

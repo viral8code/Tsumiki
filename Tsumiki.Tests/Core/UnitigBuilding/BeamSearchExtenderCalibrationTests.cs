@@ -31,7 +31,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// アンカーとして使う長さ
         /// </summary>
-        private const int アンカー長 = k長 - 1;
+        private const int C_アンカー長 = k長 - 1;
 
         #endregion
 
@@ -151,7 +151,7 @@ namespace Tsumiki.Tests.Core
         {
             ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
 
-            var l_anchor = V_生成_乱数配列(アンカー長, p_乱数種: 20_260_908);
+            var l_anchor = V_生成_乱数配列(C_アンカー長, p_乱数種: 20_260_908);
             var l_unitigA = V_生成_乱数配列(230, p_乱数種: 1) + l_anchor; // 250 bp
             var l_unitigB = l_anchor + V_生成_乱数配列(15, p_乱数種: 2); // 35 bp (短い)
             var l_unitigC = l_anchor + V_生成_乱数配列(2_000, p_乱数種: 3); // 2020 bp (長い)

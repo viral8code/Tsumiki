@@ -13,12 +13,12 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 自動選択する k 長のリード長に対する比
         /// </summary>
-        private const double 自動k長のリード長比 = 0.6D;
+        private const double C_自動k長のリード長比 = 0.6D;
 
         /// <summary>
         /// k 長の自動選択に必要な最小リード長
         /// </summary>
-        private const int 自動k長に必要な最小リード長 = 32;
+        private const int C_自動k長に必要な最小リード長 = 32;
 
         #endregion
 
@@ -43,6 +43,7 @@ namespace Tsumiki.Utilities
                 {
                     Logger.V_出力(メッセージID.k自動選択_kが長すぎる, p_引数.A_k長, l_リード長);
                 }
+
                 return;
             }
 
@@ -68,17 +69,18 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public static int? Get_推奨k長(int p_リード長)
         {
-            if (p_リード長 < 自動k長に必要な最小リード長)
+            if (p_リード長 < C_自動k長に必要な最小リード長)
             {
                 return null;
             }
 
-            var l_候補 = (int)(p_リード長 * 自動k長のリード長比);
+            var l_候補 = (int)(p_リード長 * C_自動k長のリード長比);
             l_候補 = Math.Min(l_候補, Consts.自動k長の上限);
             if (l_候補 % 2 == 0)
             {
                 l_候補 -= 1;
             }
+
             return l_候補;
         }
 

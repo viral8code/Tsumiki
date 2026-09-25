@@ -19,6 +19,7 @@
             {
                 l_結果[p_塩基列.Length - 1 - i] = Get_相補塩基ID(p_塩基列[i]);
             }
+
             return l_結果.AsSpan();
         }
 
@@ -71,6 +72,7 @@
                     ? throw new ArgumentException($"{p_配列[i]} is not the expected value for a base")
                     : l_塩基;
             }
+
             return new string(l_結果);
         }
 
@@ -85,6 +87,7 @@
             {
                 return p_配列;
             }
+
             var l_開始位置 = Get_最小回転開始位置(p_配列);
             return l_開始位置 == 0 ? p_配列 : p_配列[l_開始位置..] + p_配列[..l_開始位置];
         }
@@ -101,6 +104,7 @@
             {
                 l_結果[p_配列.Length - 1 - i] = Get_相補塩基(p_配列[i]);
             }
+
             return new string(l_結果);
         }
 
@@ -210,6 +214,7 @@
             {
                 l_結果[i] = Get_塩基ID(p_リード[i]);
             }
+
             return l_結果;
         }
 
@@ -288,6 +293,7 @@
                 l_サイズ /= 1_024D;
                 l_単位位置++;
             }
+
             return $"{l_サイズ:0.#} {l_単位[l_単位位置]}B";
         }
 
@@ -333,8 +339,10 @@
                 {
                     l_変換後[j] = Get_相補塩基ID(l_候補[j]);
                 }
+
                 l_結果[i] = l_変換後;
             }
+
             return l_結果.AsSpan();
         }
 
@@ -404,9 +412,11 @@
                 {
                     l_結果 *= p_底;
                 }
+
                 p_底 *= p_底;
                 p_指数 >>= 1;
             }
+
             return l_結果;
         }
 
@@ -436,6 +446,7 @@
                     {
                         l_k長 = j - l_i - 1;
                     }
+
                     l_i = l_失敗関数[l_i];
                 }
 
@@ -445,6 +456,7 @@
                     {
                         l_k長 = j;
                     }
+
                     l_失敗関数[j - l_k長] = -1;
                 }
                 else
@@ -452,6 +464,7 @@
                     l_失敗関数[j - l_k長] = l_i + 1;
                 }
             }
+
             return l_k長 % l_長さ;
         }
 

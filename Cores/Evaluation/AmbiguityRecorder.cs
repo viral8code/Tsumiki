@@ -16,17 +16,17 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// k ごとの作業ディレクトリに残す控え
         /// </summary>
-        private const string 保存ファイル名 = "ambiguous.tsv";
+        private const string C_保存ファイル名 = "ambiguous.tsv";
 
         /// <summary>
         /// 全 k を通じた累積履歴のファイル名
         /// </summary>
-        private const string 履歴ファイル名 = "ambiguous.history.tsv";
+        private const string C_履歴ファイル名 = "ambiguous.history.tsv";
 
         /// <summary>
         /// 場所名の既定接頭辞
         /// </summary>
-        private const string 既定接頭辞 = "unitig";
+        private const string C_既定接頭辞 = "unitig";
 
         #endregion
 
@@ -109,7 +109,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_頂点"></param>
         /// <param name="p_接頭辞"></param>
         /// <returns></returns>
-        public static string Get_場所名(int p_頂点, string p_接頭辞 = 既定接頭辞)
+        public static string Get_場所名(int p_頂点, string p_接頭辞 = C_既定接頭辞)
         {
             return $"{p_接頭辞}{p_頂点 >> 1}{((p_頂点 & 1) == 0 ? '+' : '-')}";
         }
@@ -121,7 +121,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_k長"></param>
         public static void V_保存(string p_作業ディレクトリ, int p_k長)
         {
-            File.WriteAllText(Path.Combine(p_作業ディレクトリ, 保存ファイル名), Get_行群(Get_記録(p_k長)));
+            File.WriteAllText(Path.Combine(p_作業ディレクトリ, C_保存ファイル名), Get_行群(Get_記録(p_k長)));
         }
 
         /// <summary>
@@ -132,7 +132,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             lock (_錠)
             {
-                File.WriteAllText(Path.Combine(p_作業ディレクトリ, 履歴ファイル名), Get_行群(_履歴));
+                File.WriteAllText(Path.Combine(p_作業ディレクトリ, C_履歴ファイル名), Get_行群(_履歴));
             }
         }
 
@@ -148,6 +148,7 @@ namespace Tsumiki.Cores.Evaluation
             {
                 _ = l_文.AppendLine(string.Join('	', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
             }
+
             return l_文.ToString();
         }
 

@@ -10,7 +10,7 @@
         /// <summary>
         /// 支持本数を 0〜1 の確信度へ潰すときの時定数
         /// </summary>
-        public const double 飽和の時定数 = 3.0D;
+        public const double C_飽和の時定数 = 3.0D;
 
         #endregion
 
@@ -61,7 +61,7 @@
         /// <returns></returns>
         public static double Get_飽和支持(double p_独立支持数)
         {
-            return p_独立支持数 <= 0D ? 0D : 1D - Math.Exp(-p_独立支持数 / 飽和の時定数);
+            return p_独立支持数 <= 0D ? 0D : 1D - Math.Exp(-p_独立支持数 / C_飽和の時定数);
         }
 
         /// <summary>
@@ -89,6 +89,7 @@
             {
                 l_期待位置数合計 += l_モデル.Get_期待位置数_単一(l_長さ);
             }
+
             if (l_期待位置数合計 <= 0D)
             {
                 return new 証拠較正器(null, 0D);
@@ -145,6 +146,7 @@
             {
                 _ = l_相異なる距離.Add(l_距離);
             }
+
             return l_相異なる距離.Count;
         }
 

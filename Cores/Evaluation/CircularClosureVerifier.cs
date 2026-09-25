@@ -16,17 +16,17 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 閉じ目の左右それぞれに要求する踏み込みの長さ
         /// </summary>
-        private const int 接合フランク長 = 30;
+        private const int C_接合フランク長 = 30;
 
         /// <summary>
         /// 閉じ目を跨いだとみなす窓の長さ
         /// </summary>
-        private const int 接合窓長 = 接合フランク長 << 1;
+        private const int C_接合窓長 = C_接合フランク長 << 1;
 
         /// <summary>
         /// 閉じ目を支持されたとみなすのに必要なリード本数
         /// </summary>
-        private const int 閉じ目に必要なリード数 = 5;
+        private const int C_閉じ目に必要なリード数 = 5;
 
         #endregion
 
@@ -48,17 +48,18 @@ namespace Tsumiki.Cores.Evaluation
             foreach (var (l_ID, l_配列) in l_エントリ群)
             {
                 if (!l_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase)
-                    || l_配列.Length < 接合窓長)
+                    || l_配列.Length < C_接合窓長)
                 {
                     continue;
                 }
 
-                var l_窓 = string.Concat(l_配列.AsSpan(l_配列.Length - 接合フランク長), l_配列.AsSpan(0, 接合フランク長));
-                if (!KmerPacking.TryGet_パック(l_窓, 0, 接合窓長, out var l_順鎖))
+                var l_窓 = string.Concat(l_配列.AsSpan(l_配列.Length - C_接合フランク長), l_配列.AsSpan(0, C_接合フランク長));
+                if (!KmerPacking.TryGet_パック(l_窓, 0, C_接合窓長, out var l_順鎖))
                 {
                     continue;
                 }
-                l_接合窓[KmerPacking.Get_小さいほう(l_順鎖, 接合窓長)] = l_対象.Count;
+
+                l_接合窓[KmerPacking.Get_小さいほう(l_順鎖, C_接合窓長)] = l_対象.Count;
                 l_対象.Add((l_ID, l_配列.Length));
             }
 
@@ -67,7 +68,7 @@ namespace Tsumiki.Cores.Evaluation
                 return [];
             }
 
-            Logger.V_出力(メッセージID.閉じ目の検証開始, l_対象.Count, 接合窓長);
+            Logger.V_出力(メッセージID.閉じ目の検証開始, l_対象.Count, C_接合窓長);
 
             var l_支持数 = new int[l_対象.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -76,8 +77,9 @@ namespace Tsumiki.Cores.Evaluation
             List<環状閉鎖検証結果> l_結果 = [];
             for (var i = 0; i < l_対象.Count; i++)
             {
-                l_結果.Add(new 環状閉鎖検証結果(l_対象[i].A_ID, l_対象[i].A_長さ, l_支持数[i], 閉じ目に必要なリード数));
+                l_結果.Add(new 環状閉鎖検証結果(l_対象[i].A_ID, l_対象[i].A_長さ, l_支持数[i], C_閉じ目に必要なリード数));
             }
+
             return l_結果;
         }
 
@@ -111,13 +113,13 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_支持数">配列番号ごとの支持数、見つかれば加算する</param>
         private static void V_集計_接合支持(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
-            if (p_リード.Length < 接合窓長)
+            if (p_リード.Length < C_接合窓長)
             {
                 return;
             }
 
-            var l_マスク = (UInt128.One << (接合窓長 << 1)) - 1;
-            var l_最上位へ = (接合窓長 - 1) << 1;
+            var l_マスク = (UInt128.One << (C_接合窓長 << 1)) - 1;
+            var l_最上位へ = (C_接合窓長 - 1) << 1;
             UInt128 l_順鎖 = 0;
             UInt128 l_逆鎖 = 0;
             var l_直近の曖昧位置 = -1;
@@ -135,7 +137,7 @@ namespace Tsumiki.Cores.Evaluation
                     l_直近の曖昧位置 = i;
                 }
 
-                var l_開始 = i - 接合窓長 + 1;
+                var l_開始 = i - C_接合窓長 + 1;
                 if (l_開始 < 0 || l_直近の曖昧位置 >= l_開始)
                 {
                     continue;
@@ -152,6 +154,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 _ = Interlocked.Increment(ref p_支持数[l_配列番号]);
             }
         }

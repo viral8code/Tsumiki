@@ -25,6 +25,7 @@ namespace Tsumiki.IO
                 var l_エントリ = l_読み込み.Get_次の配列();
                 l_結果.Add((l_エントリ.A_ID.TrimStart('>'), l_エントリ.A_配列));
             }
+
             return l_結果;
         }
 

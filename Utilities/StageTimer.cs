@@ -74,6 +74,7 @@ namespace Tsumiki.Utilities
                 using var l_プロセス = Process.GetCurrentProcess();
                 return GetProcessIoCounters(l_プロセス.Handle, out var l_計数) ? (l_計数.A_読込量, l_計数.A_書込量) : null;
             }
+
             return OperatingSystem.IsLinux() ? Get_入出力量_Linux() : null;
         }
 
@@ -92,6 +93,7 @@ namespace Tsumiki.Utilities
                     {
                         continue;
                     }
+
                     switch (l_行[..l_区切り])
                     {
                         case "rchar":
@@ -102,6 +104,7 @@ namespace Tsumiki.Utilities
                             break;
                     }
                 }
+
                 return l_読込 is { } l_r && l_書込 is { } l_w ? (l_r, l_w) : null;
             }
             catch (IOException)
@@ -112,18 +115,6 @@ namespace Tsumiki.Utilities
             {
                 return null;
             }
-        }
-
-        /// <summary>Win32 の IO_COUNTERS</summary>
-        [StructLayout(LayoutKind.Sequential)]
-        private struct 入出力計数
-        {
-            public ulong A_読込回数;
-            public ulong A_書込回数;
-            public ulong A_その他回数;
-            public ulong A_読込量;
-            public ulong A_書込量;
-            public ulong A_その他量;
         }
 
         /// <summary>プロセスの読み書き量を取る</summary>

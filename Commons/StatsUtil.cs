@@ -66,6 +66,7 @@
                     return l_値;
                 }
             }
+
             return l_整列済み[^1].A_値;
         }
 
@@ -92,6 +93,7 @@
                     return (l_降順[i], i + 1);
                 }
             }
+
             return (l_降順[^1], l_降順.Count);
         }
 

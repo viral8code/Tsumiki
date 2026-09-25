@@ -38,6 +38,7 @@ namespace Tsumiki.Cores.Evaluation
                         {
                             continue;
                         }
+
                         l_観測[l_正規形] = l_観測.GetValueOrDefault(l_正規形) + 1;
                         l_延べ数++;
                     }
@@ -65,6 +66,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 var l_カバレッジ = p_kmerインデックス.Get_カバレッジ(l_kmer);
                 var l_期待コピー数 = Math.Max(1, (int)Math.Round(l_カバレッジ / p_単一コピー基準値));
 

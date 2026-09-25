@@ -74,7 +74,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, l_最小値列[100 - l_k長 + 1]);
             Assert.Equal(0, l_最小値列[113]);
             Assert.Equal(40, l_最小値列[100 - l_k長]);
-            Assert.Equal(40, l_最小値列[113 + KmerCarryOver.持ち越し検証のr長]);
+            Assert.Equal(40, l_最小値列[113 + KmerCarryOver.C_持ち越し検証のr長]);
         }
 
         /// <summary>
@@ -322,7 +322,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_未観測の連続範囲_下限で絞った範囲は検証器へ直接渡した場合と同じ()
         {
-            const int l_r長 = KmerCarryOver.持ち越し検証のr長;
+            const int l_r長 = KmerCarryOver.C_持ち越し検証のr長;
             var l_配列 = V_生成_ランダム配列(500, p_シード: 2301);
 
             // リード同士の重なりが o 塩基なら、どのリードにも収まらない窓が (r長 - 1 - o) 個続く
@@ -337,7 +337,7 @@ namespace Tsumiki.Tests.Core
             Assert.Equal([5, 20], l_全連続.Select(x => x.A_終了 - x.A_開始 + 1));
 
             List<(int A_開始, int A_終了)> l_直接 = [];
-            l_検証器.V_収集_未観測の連続範囲(l_配列, KmerCarryOver.未観測の連続の下限, l_直接);
+            l_検証器.V_収集_未観測の連続範囲(l_配列, KmerCarryOver.C_未観測の連続の下限, l_直接);
             var l_絞った = KmerCarryOver.Get_未観測の連続範囲(l_配列, l_検証器, p_度数: new 連続長の度数());
 
             Assert.NotNull(l_絞った);
@@ -360,14 +360,14 @@ namespace Tsumiki.Tests.Core
             var l_パス = Path.Combine(this._作業ディレクトリ, "tail.fq");
             var l_リード = l_配列[..380];
             File.WriteAllText(l_パス, "@r0\n" + l_リード + "\n+\n" + new string('I', l_リード.Length) + "\n");
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], KmerCarryOver.持ち越し検証のr長);
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], KmerCarryOver.C_持ち越し検証のr長);
             var l_カバレッジ = Enumerable.Repeat(10, l_配列.Length - l_k長 + 1).ToArray();
 
             var l_度数 = new 連続長の度数();
             var l_範囲 = KmerCarryOver.Get_未観測の連続範囲(l_配列, l_検証器, null, l_k長, l_度数, "s", l_カバレッジ);
 
             var l_末尾 = Assert.Single(l_範囲!);
-            Assert.Equal(l_配列.Length - KmerCarryOver.持ち越し検証のr長, l_末尾.A_終了);
+            Assert.Equal(l_配列.Length - KmerCarryOver.C_持ち越し検証のr長, l_末尾.A_終了);
             Assert.True(l_末尾.A_開始 >= l_カバレッジ.Length);
         }
 

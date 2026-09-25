@@ -148,7 +148,7 @@ namespace Tsumiki.Tests.Core
             Assert.True(l_評価キメラ.A_欠損延べ数 > l_評価正直.A_欠損延べ数, $"chimera missing={l_評価キメラ.A_欠損延べ数}, honest missing={l_評価正直.A_欠損延べ数}");
             Assert.True(l_評価キメラ.A_完全性 < l_評価正直.A_完全性);
             // 完全性の差は足切りの許容差を大きく超えていること
-            Assert.True(l_評価正直.A_完全性 - l_評価キメラ.A_完全性 > AssemblySelector.完全性の許容差, $"chimera completeness={l_評価キメラ.A_完全性:F3}, honest={l_評価正直.A_完全性:F3}");
+            Assert.True(l_評価正直.A_完全性 - l_評価キメラ.A_完全性 > AssemblySelector.C_完全性の許容差, $"chimera completeness={l_評価キメラ.A_完全性:F3}, honest={l_評価正直.A_完全性:F3}");
             // 連続性だけを見るとキメラのほうが良く見えることを明示しておく
             Assert.True(l_評価キメラ.A_NG50 > l_評価正直.A_NG50, "this test is only meaningful while the chimera looks better on contiguity alone");
         }

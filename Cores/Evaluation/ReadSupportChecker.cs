@@ -16,7 +16,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 1 バッチあたりのリード数
         /// </summary>
-        private const int 照合バッチサイズ = 20_000;
+        private const int C_照合バッチサイズ = 20_000;
 
         #endregion
 
@@ -95,13 +95,16 @@ namespace Tsumiki.Cores.Evaluation
                         l_番号列[i] = -1;
                         continue;
                     }
+
                     if (!l_表.TryGetValue(l_正規形, out var l_番号))
                     {
                         l_番号 = l_表.Count;
                         l_表[l_正規形] = l_番号;
                     }
+
                     l_番号列[i] = l_番号;
                 }
+
                 l_位置ごと[l_ID] = l_番号列;
             }
 
@@ -118,18 +121,19 @@ namespace Tsumiki.Cores.Evaluation
         private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_r長)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            var l_バッチ = new string[照合バッチサイズ];
+            var l_バッチ = new string[C_照合バッチサイズ];
             var l_件数 = 0;
 
             foreach (var l_リード in FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]))
             {
                 l_バッチ[l_件数++] = l_リード;
-                if (l_件数 == 照合バッチサイズ)
+                if (l_件数 == C_照合バッチサイズ)
                 {
                     V_照合(p_表, p_観測状態, l_バッチ, l_件数, p_r長, l_スレッド数);
                     l_件数 = 0;
                 }
             }
+
             if (l_件数 > 0)
             {
                 V_照合(p_表, p_観測状態, l_バッチ, l_件数, p_r長, l_スレッド数);
@@ -202,6 +206,7 @@ namespace Tsumiki.Cores.Evaluation
                         l_開始 = i;
                     }
                 }
+
                 V_閉じる(l_区間, l_ID, ref l_開始, l_番号列.Length - 1, p_r長);
             }
 
@@ -222,6 +227,7 @@ namespace Tsumiki.Cores.Evaluation
             {
                 return;
             }
+
             p_区間.Add(new 支持のない区間(p_ID, p_開始 + 1, p_終わり + p_r長));
             p_開始 = -1;
         }

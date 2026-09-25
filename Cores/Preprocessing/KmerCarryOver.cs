@@ -15,22 +15,22 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 引き継ぐ配列の最小長
         /// </summary>
-        private const int 引き継ぐ配列の最小長 = 500;
+        private const int C_引き継ぐ配列の最小長 = 500;
 
         /// <summary>
         /// 持ち越しの裏付けを確かめる r-mer の長さ
         /// </summary>
-        internal const int 持ち越し検証のr長 = 41;
+        internal const int C_持ち越し検証のr長 = 41;
 
         /// <summary>
         /// 持ち越さないと判断する、未観測の窓の連続数
         /// </summary>
-        internal const int 未観測の連続の下限 = 14;
+        internal const int C_未観測の連続の下限 = 14;
 
         /// <summary>
         /// 未観測の連続の位置を書き出すファイル名 (持ち越し元の FASTA と同じ場所に置く)
         /// </summary>
-        private const string 未観測の連続の書き出し名 = "unobserved_runs.tsv";
+        private const string C_未観測の連続の書き出し名 = "unobserved_runs.tsv";
 
         #endregion
 
@@ -55,7 +55,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
                 var l_配列 = l_エントリ.A_配列;
-                if (l_配列.Length < Math.Max(引き継ぐ配列の最小長, p_k長))
+                if (l_配列.Length < Math.Max(C_引き継ぐ配列の最小長, p_k長))
                 {
                     continue;
                 }
@@ -66,6 +66,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
                 }
+
                 var l_継ぎ目位置 = Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長);
                 l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数, l_エントリ.A_ID.TrimStart('>'), l_カバレッジ)));
             }
@@ -73,8 +74,9 @@ namespace Tsumiki.Cores.Preprocessing
             if (l_度数 is not null)
             {
                 l_度数.V_出力(p_k長);
-                l_度数.V_書き出し(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_FASTAパス))!, 未観測の連続の書き出し名));
+                l_度数.V_書き出し(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_FASTAパス))!, C_未観測の連続の書き出し名));
             }
+
             return l_結果;
         }
 
@@ -102,6 +104,7 @@ namespace Tsumiki.Cores.Preprocessing
                     (l_位置群 ??= []).Add(i);
                 }
             }
+
             return l_位置群;
         }
 
@@ -134,11 +137,13 @@ namespace Tsumiki.Cores.Preprocessing
                     var (l_内側, l_外側) = Get_内外のカバレッジ(l_連続, p_カバレッジ);
                     p_度数.V_加算(p_配列名, l_連続.A_開始, l_連続.A_終了, Is継ぎ目に掛かる(l_連続, p_継ぎ目位置, p_k長), l_内側, l_外側);
                 }
-                if (l_連続.A_終了 - l_連続.A_開始 + 1 >= 未観測の連続の下限)
+
+                if (l_連続.A_終了 - l_連続.A_開始 + 1 >= C_未観測の連続の下限)
                 {
                     l_範囲.Add(l_連続);
                 }
             }
+
             return l_範囲.Count > 0 ? l_範囲 : null;
         }
 
@@ -158,7 +163,7 @@ namespace Tsumiki.Cores.Preprocessing
             const int l_前後の幅 = 150;
             var l_長さ = p_カバレッジ.Length;
             var l_開始 = Math.Min(p_連続.A_開始, l_長さ - 1);
-            var l_終端 = Math.Clamp(p_連続.A_終了 + 持ち越し検証のr長 - 1, l_開始, l_長さ - 1);
+            var l_終端 = Math.Clamp(p_連続.A_終了 + C_持ち越し検証のr長 - 1, l_開始, l_長さ - 1);
             var l_内側 = p_カバレッジ[l_開始..(l_終端 + 1)];
             var l_前 = p_カバレッジ[Math.Max(0, l_開始 - l_前後の幅)..l_開始];
             var l_後 = p_カバレッジ[(l_終端 + 1)..Math.Min(l_長さ, l_終端 + 1 + l_前後の幅)];
@@ -176,6 +181,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 return 0;
             }
+
             var l_並び = p_値群.Order().ToArray();
             return l_並び[l_並び.Length / 2];
         }
@@ -194,7 +200,7 @@ namespace Tsumiki.Cores.Preprocessing
                 return false;
             }
 
-            var l_塩基の終端 = p_連続.A_終了 + 持ち越し検証のr長 - 1;
+            var l_塩基の終端 = p_連続.A_終了 + C_持ち越し検証のr長 - 1;
             foreach (var l_位置 in p_継ぎ目位置)
             {
                 if (l_位置 <= l_塩基の終端 && l_位置 + p_k長 >= p_連続.A_開始)
@@ -202,6 +208,7 @@ namespace Tsumiki.Cores.Preprocessing
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -221,7 +228,7 @@ namespace Tsumiki.Cores.Preprocessing
             foreach (var (l_開始, l_終了) in l_範囲群)
             {
                 var l_下 = Math.Max(0, l_開始 - p_k長 + 1);
-                var l_上 = Math.Min(p_最小値列.Length - 1, l_終了 + 持ち越し検証のr長 - 1);
+                var l_上 = Math.Min(p_最小値列.Length - 1, l_終了 + C_持ち越し検証のr長 - 1);
                 for (var s = l_下; s <= l_上; s++)
                 {
                     p_最小値列[s] = 0;
@@ -264,7 +271,7 @@ namespace Tsumiki.Cores.Preprocessing
         public static int V_引き継ぎ(IReadOnlyList<引き継ぎ配列> p_引き継ぎ配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長)
         {
             using var l_計測 = new StageTimer($"carry-over k={p_k長}");
-            return p_k長 <= TrustedKmerIndex.パック値のk上限
+            return p_k長 <= TrustedKmerIndex.C_パック値のk上限
                 ? Get_追加数_パック値(p_引き継ぎ配列, p_kmerインデックス, p_k長, p_リード長)
                 : Get_追加数_塩基列(p_引き継ぎ配列, p_kmerインデックス, p_k長, p_リード長);
         }
@@ -285,6 +292,7 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_先頭++;
                 }
+
                 var l_終端 = Math.Min(p_値.Length, i + p_幅);
                 while (l_読込位置 < l_終端)
                 {
@@ -292,8 +300,10 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         l_末尾--;
                     }
+
                     p_待ち行列[l_末尾++] = l_読込位置++;
                 }
+
                 p_結果[i] = p_幅 <= 0 || i >= p_値.Length || l_先頭 == l_末尾 ? 0 : p_値[p_待ち行列[l_先頭]];
             }
         }
@@ -328,6 +338,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 l_最小 = Math.Min(l_最小, p_引き継ぎ.A_カバレッジ[i]);
             }
+
             return Get_換算カバレッジ(l_最小, p_引き継ぎ.A_k長, p_k長, p_リード長);
         }
 
@@ -365,6 +376,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         continue;
                     }
+
                     foreach (var (l_上位, l_下位, l_カバレッジ) in l_未登録)
                     {
                         if (p_kmerインデックス.Try追加_信頼kmer_正規形(l_上位, l_下位, l_カバレッジ))
@@ -372,6 +384,7 @@ namespace Tsumiki.Cores.Preprocessing
                             l_追加数++;
                         }
                     }
+
                     l_未登録群[i] = null;
                 }
 
@@ -380,6 +393,7 @@ namespace Tsumiki.Cores.Preprocessing
                     Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_開始 + l_件数, p_引き継ぎ配列.Count);
                 }
             }
+
             return l_追加数;
         }
 
@@ -405,10 +419,12 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 p_最小値列 = new int[l_窓数];
             }
+
             if (p_待ち行列.Length < p_引き継ぎ.A_カバレッジ.Length)
             {
                 p_待ち行列 = new int[p_引き継ぎ.A_カバレッジ.Length];
             }
+
             V_計算_最小値列(p_引き継ぎ.A_カバレッジ, p_k長 - p_引き継ぎ.A_k長 + 1, p_最小値列.AsSpan(0, l_窓数), p_待ち行列);
             V_除外_継ぎ目を含む窓(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
             V_除外_未観測の範囲(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
@@ -421,12 +437,14 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     continue;
                 }
+
                 var l_カバレッジ = Get_換算カバレッジ(p_最小値列[i - p_k長 + 1], p_引き継ぎ.A_k長, p_k長, p_リード長);
                 if (l_カバレッジ > 0UL)
                 {
                     (l_未登録 ??= []).Add((l_キー.A_上位, l_キー.A_下位, l_カバレッジ));
                 }
             }
+
             return l_未登録;
         }
 
@@ -460,6 +478,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         continue;
                     }
+
                     foreach (var (l_キー, l_カバレッジ) in l_未登録)
                     {
                         if (p_kmerインデックス.Try追加_信頼kmer_正規形(l_キー, l_カバレッジ))
@@ -467,6 +486,7 @@ namespace Tsumiki.Cores.Preprocessing
                             l_追加数++;
                         }
                     }
+
                     l_未登録群[i] = null;
                 }
 
@@ -475,6 +495,7 @@ namespace Tsumiki.Cores.Preprocessing
                     Logger.V_出力(メッセージID.引き継ぎの統合進捗, l_開始 + l_件数, p_引き継ぎ配列.Count);
                 }
             }
+
             return l_追加数;
         }
 
@@ -500,10 +521,12 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 p_最小値列 = new int[l_窓数];
             }
+
             if (p_待ち行列.Length < p_引き継ぎ.A_カバレッジ.Length)
             {
                 p_待ち行列 = new int[p_引き継ぎ.A_カバレッジ.Length];
             }
+
             V_計算_最小値列(p_引き継ぎ.A_カバレッジ, p_k長 - p_引き継ぎ.A_k長 + 1, p_最小値列.AsSpan(0, l_窓数), p_待ち行列);
             V_除外_継ぎ目を含む窓(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
             V_除外_未観測の範囲(p_引き継ぎ, p_k長, p_最小値列.AsSpan(0, l_窓数));
@@ -523,6 +546,7 @@ namespace Tsumiki.Cores.Preprocessing
                     (l_未登録 ??= []).Add((l_キー.Get_複製(), l_カバレッジ));
                 }
             }
+
             return l_未登録;
         }
 

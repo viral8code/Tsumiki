@@ -20,32 +20,32 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// ギャップの両端からアンカーとして使う長さ
         /// </summary>
-        private const int アンカー長 = 300;
+        private const int C_アンカー長 = 300;
 
         /// <summary>
         /// 1 ギャップに集める局所リードの上限
         /// </summary>
-        private const int 局所リード数の上限 = 4_000;
+        private const int C_局所リード数の上限 = 4_000;
 
         /// <summary>
         /// 並列に照合するペアの 1 まとまりの数
         /// </summary>
-        private const int 照合のバッチサイズ = 16_384;
+        private const int C_照合のバッチサイズ = 16_384;
 
         /// <summary>
         /// 局所リードの reservoir sampling に使う乱数の種
         /// </summary>
-        private const int 局所リード選択の乱数種 = 20_260_914;
+        private const int C_局所リード選択の乱数種 = 20_260_914;
 
         /// <summary>
         /// 近傍thread拡張回収の reservoir sampling に使う乱数のシード値
         /// </summary>
-        private const int 近傍拡張の乱数シード値 = 20_260_915;
+        private const int C_近傍拡張の乱数シード値 = 20_260_915;
 
         /// <summary>
         /// どのギャップにも当たらなかったことを表す空の集合 (リードごとに作らないために共有する)
         /// </summary>
-        private static readonly IReadOnlySet<int> 一致なし = new HashSet<int>();
+        private static readonly IReadOnlySet<int> C_一致なし = new HashSet<int>();
 
         #endregion
 
@@ -86,6 +86,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
+
             var l_局所リード = Get_局所リード(l_アンカー索引, p_ライブラリ群, p_k長, l_ギャップ一覧.Count, l_種集合, l_種長);
 
             var l_結果 = new string?[l_ギャップ一覧.Count];
@@ -98,6 +99,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     return;
                 }
+
                 l_結果[g] = Get_適応kの局所結果(l_ギャップ一覧[g], l_局所リード[g], p_k長, out var l_判定);
                 l_判定群[g] = l_判定;
             });
@@ -165,6 +167,7 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.局所アセンブリ_対象なし);
                 return;
             }
+
             Logger.V_出力(メッセージID.局所アセンブリ統計, p_統計.A_埋めたギャップ数, p_統計.A_対象ギャップ数, p_統計.A_埋めた塩基数, p_統計.A_局所リードが集まらなかった数, p_統計.A_一意に定まらなかった数, p_統計.A_到達できなかった数);
         }
 
@@ -230,21 +233,24 @@ namespace Tsumiki.Cores.Scaffolding
                         l_i++;
                         continue;
                     }
+
                     var l_開始 = l_i;
                     while (l_i < l_配列.Length && l_配列[l_i] == 'N')
                     {
                         l_i++;
                     }
+
                     var l_長さ = l_i - l_開始;
 
                     if (l_長さ <= Consts.ギャップ充填のギャップ長上限 && l_開始 >= p_k長 && l_i + p_k長 <= l_配列.Length)
                     {
-                        var l_左長 = Math.Min(アンカー長, l_開始);
-                        var l_右長 = Math.Min(アンカー長, l_配列.Length - l_i);
+                        var l_左長 = Math.Min(C_アンカー長, l_開始);
+                        var l_右長 = Math.Min(C_アンカー長, l_配列.Length - l_i);
                         l_結果.Add(new 局所ギャップ(s, l_開始, l_長さ, l_配列.Substring(l_開始 - l_左長, l_左長), l_配列.Substring(l_i, l_右長)));
                     }
                 }
             }
+
             return l_結果;
         }
 
@@ -262,6 +268,7 @@ namespace Tsumiki.Cores.Scaffolding
                 V_登録_kmer列(l_索引, p_ギャップ一覧[g].A_左アンカー, p_k長, g);
                 V_登録_kmer列(l_索引, p_ギャップ一覧[g].A_右アンカー, p_k長, g);
             }
+
             return l_索引;
         }
 
@@ -311,6 +318,7 @@ namespace Tsumiki.Cores.Scaffolding
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -333,7 +341,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_遭遇数 = new int[p_ギャップ数];
-            var l_乱数 = new Random(局所リード選択の乱数種);
+            var l_乱数 = new Random(C_局所リード選択の乱数種);
 
             foreach (var (l_リード1のパス, l_リード2のパス) in p_ライブラリ群)
             {
@@ -348,8 +356,8 @@ namespace Tsumiki.Cores.Scaffolding
 
                         if (l_pairID1 != l_pairID2)
                         {
-                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, ""));
-                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, ""));
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, string.Empty));
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, string.Empty));
                             continue;
                         }
 
@@ -360,7 +368,7 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             l_遭遇数[l_g]++;
 
-                            var l_残り枠 = 局所リード数の上限 - l_局所リード[l_g].Count;
+                            var l_残り枠 = C_局所リード数の上限 - l_局所リード[l_g].Count;
                             if (l_残り枠 >= 2)
                             {
                                 l_局所リード[l_g].Add(l_証拠1);
@@ -373,7 +381,7 @@ namespace Tsumiki.Cores.Scaffolding
                             else
                             {
                                 var l_置き換え位置 = l_乱数.Next(l_遭遇数[l_g]);
-                                if (l_置き換え位置 < 局所リード数の上限)
+                                if (l_置き換え位置 < C_局所リード数の上限)
                                 {
                                     l_局所リード[l_g][l_置き換え位置] = l_一致1.Contains(l_g) ? l_証拠1 : l_証拠2;
                                 }
@@ -389,9 +397,10 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             continue;
                         }
+
                         foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
                         {
-                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, ""));
+                            V_追加_局所リード(l_局所リード, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(p_アンカー索引, l_リード, p_k長, p_種集合, p_種長), new 読取証拠(l_リード, string.Empty));
                         }
                     }
                 }
@@ -429,6 +438,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
+
             if (l_拡張索引.Count == 0)
             {
                 return;
@@ -439,8 +449,9 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 l_拡張プール[i] = [];
             }
+
             var l_遭遇数 = new int[p_未解決gap.Count];
-            var l_乱数 = new Random(近傍拡張の乱数シード値);
+            var l_乱数 = new Random(C_近傍拡張の乱数シード値);
 
             foreach (var (l_リード1のパス, l_リード2のパス) in p_ライブラリ群)
             {
@@ -452,7 +463,7 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         var l_pairID1 = Util.Get_ペア共通ID(A_ID1);
                         var l_pairID2 = Util.Get_ペア共通ID(A_ID2);
-                        var l_pairID = l_pairID1 == l_pairID2 ? l_pairID1 : "";
+                        var l_pairID = l_pairID1 == l_pairID2 ? l_pairID1 : string.Empty;
 
                         V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致1, new 読取証拠(A_配列1, l_pairID));
                         V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, l_一致2, new 読取証拠(A_配列2, l_pairID));
@@ -466,9 +477,10 @@ namespace Tsumiki.Cores.Scaffolding
                         {
                             continue;
                         }
+
                         foreach (var l_リード in FastqReader.Get_生リード列(l_パス))
                         {
-                            V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, l_リード, p_k長, l_種集合, l_種長), new 読取証拠(l_リード, ""));
+                            V_追加_局所リード(l_拡張プール, l_遭遇数, l_乱数, Get_一致するギャップ_候補選別付き(l_拡張索引, l_リード, p_k長, l_種集合, l_種長), new 読取証拠(l_リード, string.Empty));
                         }
                     }
                 }
@@ -480,14 +492,16 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     continue;
                 }
+
                 var l_g = p_未解決gap[i];
                 var l_既存配列 = p_局所リード[l_g].Select(x => x.A_配列).ToHashSet(StringComparer.Ordinal);
                 foreach (var l_証拠 in l_拡張プール[i])
                 {
-                    if (p_局所リード[l_g].Count >= 局所リード数の上限)
+                    if (p_局所リード[l_g].Count >= C_局所リード数の上限)
                     {
                         break;
                     }
+
                     if (l_既存配列.Add(l_証拠.A_配列))
                     {
                         p_局所リード[l_g].Add(l_証拠);
@@ -521,6 +535,7 @@ namespace Tsumiki.Cores.Scaffolding
                     {
                         yield break;
                     }
+
                     l_次の読み込み = Task.Run(() => Get_ペアのバッチ(l_読み込み1, l_読み込み2));
 
                     _ = Parallel.For(0, l_バッチ.Count, l_並列設定, i =>
@@ -566,8 +581,9 @@ namespace Tsumiki.Cores.Scaffolding
             List<(string A_ID1, string A_配列1, IReadOnlySet<int> A_一致1, string A_ID2, string A_配列2, IReadOnlySet<int> A_一致2)> l_バッチ = new(l_件数);
             for (var i = 0; i < l_件数; i++)
             {
-                l_バッチ.Add((l_束1[i].A_ID, l_束1[i].A_配列, 一致なし, l_束2[i].A_ID, l_束2[i].A_配列, 一致なし));
+                l_バッチ.Add((l_束1[i].A_ID, l_束1[i].A_配列, C_一致なし, l_束2[i].A_ID, l_束2[i].A_配列, C_一致なし));
             }
+
             return l_バッチ;
         }
 
@@ -578,12 +594,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// <returns>読み込んだ ID と配列</returns>
         private static List<(string A_ID, string A_配列)> Get_レコードの束(FastqReader p_読み込み)
         {
-            List<(string A_ID, string A_配列)> l_束 = new(照合のバッチサイズ);
-            while (l_束.Count < 照合のバッチサイズ && p_読み込み.Has続き())
+            List<(string A_ID, string A_配列)> l_束 = new(C_照合のバッチサイズ);
+            while (l_束.Count < C_照合のバッチサイズ && p_読み込み.Has続き())
             {
                 var (l_ID, l_配列, _) = p_読み込み.Get_次のレコード();
                 l_束.Add((l_ID, l_配列));
             }
+
             return l_束;
         }
 
@@ -591,7 +608,7 @@ namespace Tsumiki.Cores.Scaffolding
         {
             return p_リード.Length >= p_k長 && Has種一致(p_リード, p_種集合, p_種長)
                 ? Get_一致するギャップ(p_アンカー索引, p_リード, p_k長)
-                : 一致なし;
+                : C_一致なし;
         }
 
         /// <summary>
@@ -607,14 +624,14 @@ namespace Tsumiki.Cores.Scaffolding
             foreach (var l_g in p_ギャップ群)
             {
                 p_遭遇数[l_g]++;
-                if (p_局所リード[l_g].Count < 局所リード数の上限)
+                if (p_局所リード[l_g].Count < C_局所リード数の上限)
                 {
                     p_局所リード[l_g].Add(p_証拠);
                     continue;
                 }
 
                 var l_置き換え位置 = p_乱数.Next(p_遭遇数[l_g]);
-                if (l_置き換え位置 < 局所リード数の上限)
+                if (l_置き換え位置 < C_局所リード数の上限)
                 {
                     p_局所リード[l_g][l_置き換え位置] = p_証拠;
                 }
@@ -636,6 +653,7 @@ namespace Tsumiki.Cores.Scaffolding
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -666,7 +684,8 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
             }
-            return l_見つかった ?? 一致なし;
+
+            return l_見つかった ?? C_一致なし;
         }
 
         /// <summary>
@@ -721,13 +740,16 @@ namespace Tsumiki.Cores.Scaffolding
                     p_判定 = ギャップ充填判定.一意でない;
                     return null;
                 }
+
                 l_一致した経路 = l_候補;
             }
+
             if (l_一致した経路 is not null)
             {
                 p_判定 = ギャップ充填判定.充填済み;
                 return l_一致した経路;
             }
+
             p_判定 = l_競合あり ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能;
             return null;
         }
@@ -783,6 +805,7 @@ namespace Tsumiki.Cores.Scaffolding
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -822,6 +845,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 return null;
             }
+
             var l_kmer = new byte[p_k長];
             for (var i = 0; i < p_k長; i++)
             {
@@ -830,8 +854,10 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     return null;
                 }
+
                 l_kmer[i] = l_塩基ID;
             }
+
             return l_kmer;
         }
 
@@ -868,6 +894,7 @@ namespace Tsumiki.Cores.Scaffolding
                     _ = l_埋め != null ? l_出力.Append(l_埋め) : l_出力.Append('N', l_ギャップ.A_長さ);
                     l_直前終端 = l_ギャップ.A_開始 + l_ギャップ.A_長さ;
                 }
+
                 _ = l_出力.Append(l_配列, l_直前終端, l_配列.Length - l_直前終端);
                 l_書き込み.V_書き込み(l_ID, l_出力.ToString());
             }

@@ -24,6 +24,7 @@ namespace Tsumiki.IO
                 {
                     continue;
                 }
+
                 foreach (var l_配列 in 塩基列控え.Get_塩基列(l_パス))
                 {
                     yield return l_配列;
@@ -96,8 +97,10 @@ namespace Tsumiki.IO
                 {
                     throw new InvalidDataException($"{this.A_ファイルパス}: FASTQ が4行の途中で終わっている。");
                 }
+
                 l_行 = this.Get_次の行_生();
             }
+
             return l_行;
         }
 

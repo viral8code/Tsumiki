@@ -108,7 +108,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_完全性の差が同点とみなす幅を超えていれば連続性より先に負ける()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.同点とみなす差 - 0.001D), ]);
+            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 - 0.001D), ]);
 
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
@@ -123,7 +123,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_完全性の差が同点とみなす幅に収まれば連続性で決める()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.同点とみなす差 + 0.001D), ]);
+            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 + 0.001D), ]);
 
             Assert.NotNull(l_選択);
             Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
@@ -135,7 +135,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_完全性の差が許容差をわずかに超えると候補が選ばれない()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.完全性の許容差 - 0.001D), ]);
+            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_完全性の許容差 - 0.001D), ]);
 
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);

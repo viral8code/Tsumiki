@@ -13,7 +13,7 @@
         /// <summary>
         /// ヒットなし
         /// </summary>
-        public static readonly 代表Unitigヒット A_ヒットなし = new(0, 0, 0);
+        public static readonly 代表Unitigヒット C_ヒットなし = new(0, 0, 0);
 
         #endregion
 

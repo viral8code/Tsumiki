@@ -13,7 +13,7 @@ namespace Tsumiki.IO
         /// <summary>
         /// 現実的な Q 上限
         /// </summary>
-        private const int 現実的なQ上限 = 45;
+        private const int C_現実的なQ上限 = 45;
 
         #endregion
 
@@ -38,6 +38,7 @@ namespace Tsumiki.IO
                 {
                     break;
                 }
+
                 l_リード数++;
                 foreach (var l_文字 in l_クオリティ)
                 {
@@ -46,6 +47,7 @@ namespace Tsumiki.IO
                     {
                         l_最小ASCII = l_文字;
                     }
+
                     if (l_文字 > l_最大ASCII)
                     {
                         l_最大ASCII = l_文字;
@@ -76,9 +78,9 @@ namespace Tsumiki.IO
             var l_別のオフセット = p_有効オフセット == 33 ? 64 : 33;
 
             List<string> l_指摘 = [];
-            if (l_最小Q < 0 || l_最大Q > 現実的なQ上限)
+            if (l_最小Q < 0 || l_最大Q > C_現実的なQ上限)
             {
-                l_指摘.Add($"observed quality ASCII range [{p_標本.A_最小ASCII}, {p_標本.A_最大ASCII}] decodes to Q[{l_最小Q}, {l_最大Q}] under Phred{p_有効オフセット}, which is implausible for real sequencing data (negative or > {現実的なQ上限}). This data may actually be Phred{l_別のオフセット} -- consider re-running with -p {l_別のオフセット} if so.");
+                l_指摘.Add($"observed quality ASCII range [{p_標本.A_最小ASCII}, {p_標本.A_最大ASCII}] decodes to Q[{l_最小Q}, {l_最大Q}] under Phred{p_有効オフセット}, which is implausible for real sequencing data (negative or > {C_現実的なQ上限}). This data may actually be Phred{l_別のオフセット} -- consider re-running with -p {l_別のオフセット} if so.");
             }
 
             if (p_標本.A_Is一様)
@@ -178,7 +180,7 @@ namespace Tsumiki.IO
         /// <returns></returns>
         private static bool Is妥当オフセット(Phred標本 p_標本, int p_オフセット)
         {
-            return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= 現実的なQ上限;
+            return p_標本.A_最小ASCII - p_オフセット >= 0 && p_標本.A_最大ASCII - p_オフセット <= C_現実的なQ上限;
         }
 
         /// <summary>

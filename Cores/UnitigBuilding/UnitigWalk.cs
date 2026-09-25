@@ -44,7 +44,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns>扱えれば true</returns>
         public static bool Is対応k長(int p_k長)
         {
-            return p_k長 <= TrustedKmerIndex.パック値のk上限;
+            return p_k長 <= TrustedKmerIndex.C_パック値のk上限;
         }
 
         /// <summary>
@@ -89,6 +89,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         break;
                     }
+
                     l_次の塩基 = i;
                     (l_次順, l_次逆) = (l_順, l_逆);
                 }
@@ -143,6 +144,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     {
                         break;
                     }
+
                     l_次の塩基 = i;
                     l_次 = l_後続;
                 }
@@ -222,6 +224,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return false;
                 }
             }
+
             return l_件数 == 1;
         }
 
@@ -285,6 +288,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     return false;
                 }
             }
+
             return l_件数 == 1;
         }
 

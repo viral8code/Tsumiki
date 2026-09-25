@@ -16,12 +16,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 救済の対象とする、信頼できない窓の連続長の上限
         /// </summary>
-        private const int 救済する連の上限 = 8;
+        private const int C_救済する連の上限 = 8;
 
         /// <summary>
         /// 救済に必要な観測回数
         /// </summary>
-        private const int 救済に必要な観測数 = 2;
+        private const int C_救済に必要な観測数 = 2;
 
         #endregion
 
@@ -45,10 +45,11 @@ namespace Tsumiki.Cores.Preprocessing
             var l_追加数 = 0;
             foreach (var (_, l_候補中身) in l_候補)
             {
-                if (l_候補中身.A_観測数 < 救済に必要な観測数)
+                if (l_候補中身.A_観測数 < C_救済に必要な観測数)
                 {
                     continue;
                 }
+
                 if (p_kmerインデックス.Try追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
                 {
                     l_追加数++;
@@ -82,7 +83,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_有効 = new bool[l_窓数];
             var l_信頼 = new bool[l_窓数];
-            if (p_k長 <= TrustedKmerIndex.パック値のk上限)
+            if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
             {
                 V_判定_窓_パック(p_リード, p_kmerインデックス, p_k長, l_有効, l_信頼);
             }
@@ -103,8 +104,9 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     l_終わり++;
                 }
+
                 var l_連の長さ = l_終わり - i;
-                if (l_終わり < l_窓数 && l_信頼[l_終わり] && l_連の長さ <= 救済する連の上限 && Is行き止まり同士(p_kmerインデックス, l_塩基列.AsSpan(i - 1, p_k長), l_塩基列.AsSpan(l_終わり, p_k長)))
+                if (l_終わり < l_窓数 && l_信頼[l_終わり] && l_連の長さ <= C_救済する連の上限 && Is行き止まり同士(p_kmerインデックス, l_塩基列.AsSpan(i - 1, p_k長), l_塩基列.AsSpan(l_終わり, p_k長)))
                 {
                     for (var j = i; j < l_終わり; j++)
                     {
@@ -114,6 +116,7 @@ namespace Tsumiki.Cores.Preprocessing
                         _ = p_候補.AddOrUpdate(l_キー, _ => (1, l_控え), (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
                     }
                 }
+
                 i = l_終わり;
             }
         }
@@ -172,6 +175,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_曖昧数++;
                 }
             }
+
             for (var i = 0; i < p_有効.Length; i++)
             {
                 if (i > 0)
@@ -186,6 +190,7 @@ namespace Tsumiki.Cores.Preprocessing
                         l_曖昧数++;
                     }
                 }
+
                 p_有効[i] = l_曖昧数 == 0;
                 p_信頼[i] = p_有効[i] && p_kmerインデックス.Haskmer(p_塩基列.AsSpan(i, p_k長));
             }

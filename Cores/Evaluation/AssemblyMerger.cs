@@ -18,37 +18,37 @@ namespace Tsumiki.Cores.Evaluation
         /// <summary>
         /// 骨格側の末端でアンカーを探す長さ
         /// </summary>
-        private const int 末端とみなす長さ = 2_000;
+        private const int C_末端とみなす長さ = 2_000;
 
         /// <summary>
         /// 橋渡しとして認める最大の挟み込み長
         /// </summary>
-        private const int 橋渡し長の上限 = 50_000;
+        private const int C_橋渡し長の上限 = 50_000;
 
         /// <summary>
         /// 連結を認めるために必要な、独立に同じ隣接を主張した k の数
         /// </summary>
-        private const int 必要な独立支持数の既定値 = 2;
+        private const int C_必要な独立支持数の既定値 = 2;
 
         /// <summary>
         /// アンカーから骨格の末端までの区間を跨いだ配列と照合するときに許す不一致率
         /// </summary>
-        private const double 末端照合の許容不一致率 = 0.01D;
+        private const double C_末端照合の許容不一致率 = 0.01D;
 
         /// <summary>
         /// 隣接の証拠に使う当たりの塊に要求する、連続した当たりの数
         /// </summary>
-        private const int 塊とみなす当たり数 = 20;
+        private const int C_塊とみなす当たり数 = 20;
 
         /// <summary>
         /// 接合の端点に使う骨格配列の最小長
         /// </summary>
-        private const int 端点に使う最小長 = 500;
+        private const int C_端点に使う最小長 = 500;
 
         /// <summary>
         /// 繋ぎ目の k-mer のうち、骨格に既にあってよい割合
         /// </summary>
-        private const double 繋ぎ目に許す既知kmerの割合 = 0.05D;
+        private const double C_繋ぎ目に許す既知kmerの割合 = 0.05D;
 
         #endregion
 
@@ -63,7 +63,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_出力パス"></param>
         /// <param name="p_必要な独立支持数"></param>
         /// <returns></returns>
-        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = 必要な独立支持数の既定値)
+        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = C_必要な独立支持数の既定値)
         {
             var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
             if (l_骨格配列.Count == 0)
@@ -80,6 +80,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 l_候補.AddRange(Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長).Where(x => !Has既知の配列(x.A_橋渡し配列, l_骨格kmer, p_アンカーk長)));
             }
 
@@ -115,6 +116,7 @@ namespace Tsumiki.Cores.Evaluation
                 l_名前.Add(l_項目.A_ID);
                 l_配列.Add(l_項目.A_配列);
             }
+
             return (l_名前, l_配列);
         }
 
@@ -132,10 +134,11 @@ namespace Tsumiki.Cores.Evaluation
             for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
             {
                 var l_配列 = p_骨格配列[l_番号];
-                if (l_配列.Length < 端点に使う最小長)
+                if (l_配列.Length < C_端点に使う最小長)
                 {
                     continue;
                 }
+
                 foreach (var l_位置 in Get_末端位置範囲(l_配列.Length, p_アンカーk長))
                 {
                     if (!KmerPacking.TryGet_正規化パック(l_配列, l_位置, p_アンカーk長, out var l_鍵))
@@ -154,9 +157,11 @@ namespace Tsumiki.Cores.Evaluation
                         _ = l_重複.Add(l_鍵);
                         continue;
                     }
+
                     l_索引[l_鍵] = (l_番号, l_位置, Is順鎖(l_配列, l_位置, p_アンカーk長));
                 }
             }
+
             return l_索引;
         }
 
@@ -179,6 +184,7 @@ namespace Tsumiki.Cores.Evaluation
                     }
                 }
             }
+
             return l_集合;
         }
 
@@ -199,13 +205,15 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 l_件数++;
                 if (p_骨格kmer.Contains(l_鍵))
                 {
                     l_既知++;
                 }
             }
-            return l_既知 > p_アンカーk長 && l_既知 > l_件数 * 繋ぎ目に許す既知kmerの割合;
+
+            return l_既知 > p_アンカーk長 && l_既知 > l_件数 * C_繋ぎ目に許す既知kmerの割合;
         }
 
         /// <summary>
@@ -222,12 +230,14 @@ namespace Tsumiki.Cores.Evaluation
             {
                 yield break;
             }
-            var l_先頭の終わり = Math.Min(l_最終位置, 末端とみなす長さ);
+
+            var l_先頭の終わり = Math.Min(l_最終位置, C_末端とみなす長さ);
             for (var i = 0; i <= l_先頭の終わり; i++)
             {
                 yield return i;
             }
-            var l_末尾の始まり = Math.Max(l_先頭の終わり + 1, l_最終位置 - 末端とみなす長さ);
+
+            var l_末尾の始まり = Math.Max(l_先頭の終わり + 1, l_最終位置 - C_末端とみなす長さ);
             for (var i = l_末尾の始まり; i <= l_最終位置; i++)
             {
                 yield return i;
@@ -249,6 +259,7 @@ namespace Tsumiki.Cores.Evaluation
             {
                 l_順鎖 = (l_順鎖 << 2) | (UInt128)(Util.Get_塩基ID(p_配列[p_位置 + i]) - 1);
             }
+
             return l_順鎖 == l_正規形;
         }
 
@@ -275,11 +286,13 @@ namespace Tsumiki.Cores.Evaluation
                     {
                         continue;
                     }
+
                     l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Is順鎖(l_配列, i, p_アンカーk長) == l_骨格側.A_Is順鎖));
                 }
 
                 l_結果.AddRange(Get_連続2本跨ぎ(Get_塊として続く当たり(l_当たり), l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
             }
+
             return l_結果;
         }
 
@@ -299,12 +312,14 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                if (i - l_塊の開始 >= 塊とみなす当たり数)
+                if (i - l_塊の開始 >= C_塊とみなす当たり数)
                 {
                     l_結果.AddRange(p_当たり.Skip(l_塊の開始).Take(i - l_塊の開始));
                 }
+
                 l_塊の開始 = i;
             }
+
             return l_結果;
         }
 
@@ -369,7 +384,7 @@ namespace Tsumiki.Cores.Evaluation
                 }
 
                 var l_長さ = l_終了 - l_開始;
-                if (l_長さ > 橋渡し長の上限)
+                if (l_長さ > C_橋渡し長の上限)
                 {
                     continue;
                 }
@@ -385,6 +400,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長);
             }
         }
@@ -417,7 +433,7 @@ namespace Tsumiki.Cores.Evaluation
                 return false;
             }
 
-            var l_許容不一致数 = (int)(p_長さ * 末端照合の許容不一致率);
+            var l_許容不一致数 = (int)(p_長さ * C_末端照合の許容不一致率);
             var l_不一致数 = 0;
             for (var i = 0; i < p_長さ; i++)
             {
@@ -426,6 +442,7 @@ namespace Tsumiki.Cores.Evaluation
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -440,7 +457,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            return p_当たり.A_Is同方向 ? l_末尾からの距離 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_Is同方向 ? l_末尾からの距離 <= C_末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : p_当たり.A_位置 <= C_末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         /// <summary>
@@ -454,7 +471,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             var l_配列長 = p_骨格配列[p_当たり.A_配列番号].Length;
             var l_末尾からの距離 = l_配列長 - p_アンカーk長 - p_当たり.A_位置;
-            return p_当たり.A_Is同方向 ? p_当たり.A_位置 <= 末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : l_末尾からの距離 <= 末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
+            return p_当たり.A_Is同方向 ? p_当たり.A_位置 <= C_末端とみなす長さ ? p_当たり.A_配列番号 << 1 : null : l_末尾からの距離 <= C_末端とみなす長さ ? (p_当たり.A_配列番号 << 1) | 1 : null;
         }
 
         /// <summary>
@@ -508,8 +525,10 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 l_確定[l_始点] = l_代表[(l_始点, l_終点)];
             }
+
             return l_確定;
         }
 
@@ -526,6 +545,7 @@ namespace Tsumiki.Cores.Evaluation
                 l_集合 = [];
                 p_支持したk[p_辺] = l_集合;
             }
+
             _ = l_集合.Add(p_k長);
         }
 
@@ -542,6 +562,7 @@ namespace Tsumiki.Cores.Evaluation
                 l_集合 = [];
                 p_行き先[p_候補.A_始点] = l_集合;
             }
+
             _ = l_集合.Add(p_候補.A_終点);
             _ = p_代表.TryAdd((p_候補.A_始点, p_候補.A_終点), p_候補);
         }
@@ -565,6 +586,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     continue;
                 }
+
                 l_書き込み.V_書き込み(Get_名前(p_骨格名一覧, l_番号, l_ID++), Get_連結配列(l_番号 << 1, p_骨格配列, p_確定, l_使用済み));
             }
 
@@ -621,6 +643,7 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     break;
                 }
+
                 p_使用済み[l_番号] = true;
 
                 var l_配列 = Get_向き付き配列(p_骨格配列, l_頂点);
@@ -630,10 +653,12 @@ namespace Tsumiki.Cores.Evaluation
                 {
                     break;
                 }
+
                 _ = l_結果.Append(l_橋渡し.A_橋渡し配列);
                 l_削る長さ = l_橋渡し.A_重なり長;
                 l_頂点 = l_橋渡し.A_終点;
             }
+
             return l_結果.ToString();
         }
 

@@ -93,6 +93,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                         {
                             break;
                         }
+
                         l_次の塩基 = i;
                     }
                 }
@@ -130,6 +131,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 l_値 = (l_値 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             return l_値;
         }
 

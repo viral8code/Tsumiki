@@ -28,8 +28,10 @@ namespace Tsumiki.Utilities
                     p_正規形 = 0;
                     return false;
                 }
+
                 l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             p_正規形 = Get_小さいほう(l_順鎖, p_k長);
             return true;
         }
@@ -46,6 +48,7 @@ namespace Tsumiki.Utilities
             {
                 l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             return Get_小さいほう(l_順鎖, p_kmer.Length);
         }
 
@@ -83,8 +86,10 @@ namespace Tsumiki.Utilities
                     p_キー = 0;
                     return false;
                 }
+
                 l_塩基列[i] = l_塩基ID;
             }
+
             p_キー = Get_正規化ハッシュ(l_塩基列);
             return true;
         }
@@ -108,8 +113,10 @@ namespace Tsumiki.Utilities
                     p_順鎖 = 0;
                     return false;
                 }
+
                 l_順鎖 = (l_順鎖 << 2) | (UInt128)(l_塩基ID - 1);
             }
+
             p_順鎖 = l_順鎖;
             return true;
         }
@@ -130,6 +137,7 @@ namespace Tsumiki.Utilities
                 l_逆相補 = (l_逆相補 << 2) | (l_コドン ^ 3);
                 l_残り >>= 2;
             }
+
             return l_逆相補;
         }
 
@@ -181,6 +189,7 @@ namespace Tsumiki.Utilities
                 l_上位 = (l_上位 ^ l_塩基) * 1_099_511_628_211UL;
                 l_下位 = (l_下位 ^ l_塩基) * 14_695_981_039_346_656_037UL;
             }
+
             return ((UInt128)l_上位 << 64) | l_下位;
         }
 
@@ -199,6 +208,7 @@ namespace Tsumiki.Utilities
                     return p_kmer[i] < l_逆;
                 }
             }
+
             return true;
         }
 

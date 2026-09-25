@@ -16,27 +16,27 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// ペアの重なりとみなすために要求する最小長
         /// </summary>
-        private const int 最小オーバーラップ長 = 30;
+        private const int C_最小オーバーラップ長 = 30;
 
         /// <summary>
         /// この不一致率までは同一断片から重なって読んだものとみなす
         /// </summary>
-        private const double 許容不一致率 = 0.2D;
+        private const double C_許容不一致率 = 0.2D;
 
         /// <summary>
         /// 相互訂正で高信頼とみなす最小 Phred スコア
         /// </summary>
-        private const int 高信頼スコア = 30;
+        private const int C_高信頼スコア = 30;
 
         /// <summary>
         /// 相互訂正で低信頼とみなす最大 Phred スコア
         /// </summary>
-        private const int 低信頼スコア = 14;
+        private const int C_低信頼スコア = 14;
 
         /// <summary>
         /// 1 バッチあたりのペア数
         /// </summary>
-        private const int 前処理バッチサイズ = 20_000;
+        private const int C_前処理バッチサイズ = 20_000;
 
         #endregion
 
@@ -67,18 +67,18 @@ namespace Tsumiki.Cores.Preprocessing
             using var l_書き込み1 = new FastqWriter(p_出力先1);
             using var l_書き込み2 = new FastqWriter(p_出力先2);
 
-            var l_ID1群 = new string[前処理バッチサイズ];
-            var l_ID2群 = new string[前処理バッチサイズ];
-            var l_配列1群 = new string[前処理バッチサイズ];
-            var l_配列2群 = new string[前処理バッチサイズ];
-            var l_クオリティ1群 = new string[前処理バッチサイズ];
-            var l_クオリティ2群 = new string[前処理バッチサイズ];
-            var l_結果群 = new ペア前処理結果[前処理バッチサイズ];
+            var l_ID1群 = new string[C_前処理バッチサイズ];
+            var l_ID2群 = new string[C_前処理バッチサイズ];
+            var l_配列1群 = new string[C_前処理バッチサイズ];
+            var l_配列2群 = new string[C_前処理バッチサイズ];
+            var l_クオリティ1群 = new string[C_前処理バッチサイズ];
+            var l_クオリティ2群 = new string[C_前処理バッチサイズ];
+            var l_結果群 = new ペア前処理結果[C_前処理バッチサイズ];
 
             while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
                 var l_件数 = 0;
-                while (l_件数 < 前処理バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                while (l_件数 < C_前処理バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
                 {
                     var l_リード1 = l_読み込み1.Get_次のリード_軽量();
                     var l_リード2 = l_読み込み2.Get_次のリード_軽量();
@@ -90,6 +90,7 @@ namespace Tsumiki.Cores.Preprocessing
                     l_クオリティ2群[l_件数] = l_リード2.A_クオリティ;
                     l_件数++;
                 }
+
                 l_総ペア数 += l_件数;
 
                 _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
@@ -104,6 +105,7 @@ namespace Tsumiki.Cores.Preprocessing
                     {
                         l_アダプタ検出ペア数++;
                     }
+
                     l_訂正塩基数 += l_結果.A_訂正塩基数;
                     l_総塩基数 += l_配列1群[i].Length + l_配列2群[i].Length;
                     l_トリム塩基数 += l_結果.A_品質トリム塩基数;
@@ -175,12 +177,14 @@ namespace Tsumiki.Cores.Preprocessing
                 {
                     break;
                 }
+
                 if (l_和 > l_最大)
                 {
                     l_最大 = l_和;
                     l_長さ = i;
                 }
             }
+
             return l_長さ;
         }
 
@@ -199,7 +203,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
             var l_塩基列2RC = Util.V_変換_塩基列(l_RC配列2);
 
-            var l_オーバーラップ = Get_最適オーバーラップ(l_塩基列1, l_塩基列2RC, 最小オーバーラップ長, 許容不一致率, out _);
+            var l_オーバーラップ = Get_最適オーバーラップ(l_塩基列1, l_塩基列2RC, C_最小オーバーラップ長, C_許容不一致率, out _);
             if (l_オーバーラップ is not { } l_重なり)
             {
                 return new ペア前処理結果(p_配列1, p_クオリティ1, p_配列2, p_クオリティ2, false, 0);
@@ -230,12 +234,12 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_スコア1 = p_クオリティ1[l_位置1] - p_Phredオフセット;
                 var l_スコア2 = p_クオリティ2[l_位置2] - p_Phredオフセット;
 
-                if (l_スコア1 >= 高信頼スコア && l_スコア2 <= 低信頼スコア)
+                if (l_スコア1 >= C_高信頼スコア && l_スコア2 <= C_低信頼スコア)
                 {
                     l_配列2文字[l_位置2] = Util.Get_相補塩基(l_RC配列2[l_位置2RC]);
                     l_訂正数++;
                 }
-                else if (l_スコア2 >= 高信頼スコア && l_スコア1 <= 低信頼スコア)
+                else if (l_スコア2 >= C_高信頼スコア && l_スコア1 <= C_低信頼スコア)
                 {
                     l_配列1文字[l_位置1] = l_RC配列2[l_位置2RC];
                     l_訂正数++;
@@ -338,6 +342,7 @@ namespace Tsumiki.Cores.Preprocessing
                     return l_不一致数;
                 }
             }
+
             return l_不一致数;
         }
 
@@ -365,6 +370,7 @@ namespace Tsumiki.Cores.Preprocessing
                     }
                 }
             }
+
             return l_不一致数;
         }
 

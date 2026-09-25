@@ -45,7 +45,7 @@ namespace Tsumiki.Tests.Utility
             var l_調べる = new List<string>();
             for (var i = 0; i < 3_000; i++)
             {
-                var l_長さ = l_乱数.Next(ReadMinimizerIndex.最短の問い合わせ長, 90);
+                var l_長さ = l_乱数.Next(ReadMinimizerIndex.C_最短の問い合わせ長, 90);
                 var l_元 = i % 3 == 0 ? l_ゲノム : l_リード群[l_乱数.Next(l_リード群.Count)];
                 if (l_元.Length < l_長さ)
                 {
