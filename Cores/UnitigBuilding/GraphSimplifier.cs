@@ -256,9 +256,9 @@ namespace Tsumiki.Cores.UnitigBuilding
             for (var i = 0; i < p_判定群.Length; i++)
             {
                 var l_判定 = p_判定群[i];
-                foreach (var l_位置 in Get_削る位置(l_判定, p_k長))
+                foreach (var (A_開始, A_長さ) in Get_削る位置(l_判定, p_k長))
                 {
-                    _ = l_除くkmer.Add(Get_正規キー(l_判定.A_塩基列.AsSpan(l_位置.A_開始, l_位置.A_長さ)));
+                    _ = l_除くkmer.Add(Get_正規キー(l_判定.A_塩基列.AsSpan(A_開始, A_長さ)));
                 }
 
                 foreach (var l_端 in l_判定.A_合流側kmer群)
