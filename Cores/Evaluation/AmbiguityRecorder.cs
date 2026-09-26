@@ -143,10 +143,18 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns></returns>
         private static string Get_行群(IReadOnlyList<曖昧箇所> p_記録)
         {
-            var l_文 = new System.Text.StringBuilder();
+            var l_文 = new StringBuilder();
             foreach (var l_箇所 in p_記録)
             {
-                _ = l_文.AppendLine(string.Join('	', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
+                _ = l_文.AppendLine(string.Join('	',
+                    (int)l_箇所.A_種別,
+                    l_箇所.A_場所,
+                    l_箇所.A_安定ID,
+                    l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture),
+                    l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture),
+                    l_箇所.A_首位の生支持数,
+                    l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)
+                    ));
             }
 
             return l_文.ToString();

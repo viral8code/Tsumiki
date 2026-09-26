@@ -51,11 +51,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_ギャップ長の下限 = 1;
 
-        /// <summary>
-        /// k-1 に満たない重なりを畳むときに求める最短の一致長
-        /// </summary>
-        private const int C_短い重なりの下限 = 15;
-
         #endregion
 
         #region 内部変数
@@ -671,26 +666,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_出力">ここまでの scaffold 配列</param>
         /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <returns>畳んでよい重なりの長さ (k-1 が一致しなければ、それより短く 15 塩基以上で完全に一致する最長のもの)、畳めないなら 0</returns>
+        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
         internal static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
         {
-            var l_最長 = Math.Min(ConfigurationManager.A_実行時引数.A_k長 - 1, Math.Min(p_出力.Length, p_次の配列.Length));
-            if (l_最長 <= 0)
-            {
-                return 0;
-            }
-
-            var l_k引く1 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-            var l_末尾 = p_出力.ToString(p_出力.Length - l_最長, l_最長);
-            for (var l_長さ = l_最長; l_長さ == l_k引く1 || l_長さ >= C_短い重なりの下限; l_長さ--)
-            {
-                if (l_末尾.AsSpan(l_最長 - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
-                {
-                    return l_長さ;
-                }
-            }
-
-            return 0;
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
+            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長
+                ? 0
+                : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
         }
 
         /// <summary>

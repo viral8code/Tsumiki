@@ -43,7 +43,7 @@ namespace Tsumiki.Cores.Preprocessing
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
 
             var l_追加数 = 0;
-            foreach (var (_, l_候補中身) in l_候補)
+            foreach (var (_, l_候補中身) in l_候補.OrderBy(x => x.Key))
             {
                 if (l_候補中身.A_観測数 < C_救済に必要な観測数)
                 {

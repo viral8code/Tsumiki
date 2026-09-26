@@ -284,6 +284,52 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_前, l_インデックス.Get_信頼kmer一覧().Count());
         }
 
+        /// <summary>
+        /// 後から足した k-mer の順番を変えても、整理の結果は変わらない
+        /// </summary>
+        [Fact]
+        public void V_kmerを足す順番を変えても整理の結果は同じ()
+        {
+            const string l_主配列 = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
+            const int l_k長 = 8;
+            string[] l_枝群 = ["GGATCCTTCACGT", "ACATAACAGTCA", "ACATAACCTTGA", "CAATTGACGATC", "GACAATTTGCA"];
+
+            List<string>[] l_結果 = [[], []];
+            for (var l_回 = 0; l_回 < 2; l_回++)
+            {
+                ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 4 };
+                var l_場所 = Directory.CreateDirectory(Path.Combine(this._作業ディレクトリ, l_回.ToString())).FullName;
+                using var l_インデックス = new TrustedKmerIndex(l_場所);
+                V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_主配列), l_k長, 10);
+                _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
+
+                List<(byte[] A_kmer, ulong A_出現回数)> l_足すkmer = [];
+                for (var i = 0; i < l_枝群.Length; i++)
+                {
+                    var l_塩基列 = V_変換_塩基ID列(l_枝群[i]);
+                    for (var j = 0; j + l_k長 <= l_塩基列.Length; j++)
+                    {
+                        l_足すkmer.Add((l_塩基列[j..(j + l_k長)], (ulong)(2 + i)));
+                    }
+                }
+
+                if (l_回 == 1)
+                {
+                    l_足すkmer.Reverse();
+                }
+
+                foreach (var (l_kmer, l_出現回数) in l_足すkmer)
+                {
+                    _ = l_インデックス.Try追加_信頼kmer(l_kmer, l_出現回数);
+                }
+
+                _ = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2);
+                l_結果[l_回] = [.. l_インデックス.Get_信頼kmer一覧().Select(x => string.Concat(x.Select(Util.V_変換_塩基文字))).Order(StringComparer.Ordinal)];
+            }
+
+            Assert.Equal(l_結果[0], l_結果[1]);
+        }
+
         #endregion
 
         #region 内部メソッド
