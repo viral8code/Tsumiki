@@ -260,6 +260,25 @@ namespace Tsumiki.Cores.Pipeline
                 : p_直前の基準値 * l_次の本数 / l_直前の本数;
         }
 
+        /// <summary>
+        /// 配列を N の連続で分断して書き出す
+        /// </summary>
+        /// <param name="p_入力パス">分断する FASTA</param>
+        /// <param name="p_出力パス">書き出す FASTA</param>
+        public static void V_書き出し_N分割(string p_入力パス, string p_出力パス)
+        {
+            using var l_書き込み = new FastaWriter(p_出力パス);
+            var l_連番 = 1;
+            foreach (var (A_ID, A_配列) in FastaReader.Get_全エントリ(p_入力パス))
+            {
+                foreach (var l_片 in A_配列.Split(['N', Consts.未確認の繋ぎ目], StringSplitOptions.RemoveEmptyEntries))
+                {
+                    l_書き込み.V_書き込み($"NODE{l_連番}", l_片);
+                    l_連番++;
+                }
+            }
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -279,14 +298,14 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.統合開始);
 
-            var l_統合パス = Path.Combine(p_一時ディレクトリ, "merged_" + Consts.Scaffoldファイル名);
+            var l_統合パス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + Consts.Scaffoldファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
             if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
             {
                 return null;
             }
 
-            var l_統合contigパス = Path.Combine(p_一時ディレクトリ, "merged_" + AssemblyPipeline.C_Contigファイル名);
+            var l_統合contigパス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + AssemblyPipeline.C_Contigファイル名);
             V_書き出し_N分割(l_統合パス, l_統合contigパス);
 
             var l_統合結果 = p_最良.A_実行結果 with
@@ -316,25 +335,6 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力(メッセージID.統合結果を採用);
             return l_統合結果;
-        }
-
-        /// <summary>
-        /// 配列を N の連続で分断して書き出す
-        /// </summary>
-        /// <param name="p_入力パス">分断する FASTA</param>
-        /// <param name="p_出力パス">書き出す FASTA</param>
-        internal static void V_書き出し_N分割(string p_入力パス, string p_出力パス)
-        {
-            using var l_書き込み = new FastaWriter(p_出力パス);
-            var l_連番 = 1;
-            foreach (var (A_ID, A_配列) in FastaReader.Get_全エントリ(p_入力パス))
-            {
-                foreach (var l_片 in A_配列.Split(['N', Consts.未確認の繋ぎ目], StringSplitOptions.RemoveEmptyEntries))
-                {
-                    l_書き込み.V_書き込み($"NODE{l_連番}", l_片);
-                    l_連番++;
-                }
-            }
         }
 
         /// <summary>

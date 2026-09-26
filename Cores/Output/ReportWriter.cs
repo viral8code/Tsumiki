@@ -30,6 +30,12 @@ namespace Tsumiki.Cores.Output
         /// <param name="p_曖昧箇所">決めきれなかった箇所</param>
         /// <param name="p_固定アンカー評価">採用した k・コピー数基準に依らない固定アンカーでの独立評価</param>
         /// <param name="p_フェーズ計測">工程ごとの資源使用量</param>
+        /// <param name="p_N分割統計"></param>
+        /// <param name="p_統計の最小長"></param>
+        /// <param name="p_要求コピー数基準"></param>
+        /// <param name="p_実際のコピー数基準"></param>
+        /// <param name="p_Is低カバレッジ端トリミング"></param>
+        /// <param name="p_scaffold比較統計"></param>
         public static void V_書き出し_レポート(string p_出力パス, int p_k長, アセンブリ統計 p_統計, int p_未解決ギャップ数, int p_環状本数, 完全性判定結果 p_判定, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, アセンブリ統計? p_N分割統計 = null, int p_統計の最小長 = 500, string? p_要求コピー数基準 = null, string? p_実際のコピー数基準 = null, bool? p_Is低カバレッジ端トリミング = null, アセンブリ統計? p_scaffold比較統計 = null, アセンブリ評価? p_固定アンカー評価 = null, IReadOnlyList<フェーズ計測>? p_フェーズ計測 = null)
         {
             var l_文 = new StringBuilder();
@@ -277,6 +283,13 @@ namespace Tsumiki.Cores.Output
             return string.IsNullOrEmpty(p_値) ? "-" : p_値.Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
         }
 
+        /// <summary>
+        /// アセンブリ統計を JSON の本文へ追加する
+        /// </summary>
+        /// <param name="p_文"></param>
+        /// <param name="p_名前"></param>
+        /// <param name="p_統計"></param>
+        /// <param name="p_最小長"></param>
         private static void V_追加_統計(StringBuilder p_文, string p_名前, アセンブリ統計 p_統計, int p_最小長)
         {
             V_追加(p_文, "  \"{0}\": {{", p_名前);

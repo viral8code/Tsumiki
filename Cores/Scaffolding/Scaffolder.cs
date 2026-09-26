@@ -163,7 +163,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数
                     ? p_contig構築.A_ペア経路群[l_ライブラリ]
                     : new Dictionary<(int, int), List<int>>();
-                l_対称化群[l_ライブラリ] = this.Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
+                l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
 
                 var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count
                     ? p_contig構築.A_同一unitig標本群[l_ライブラリ]
@@ -337,6 +337,90 @@ namespace Tsumiki.Cores.Scaffolding
             Logger.V_出力(メッセージID.Scaffold繋ぎ目の判定, this._k引く1で畳んだ数, this._リードで畳んだ数, this._確かめられなかった数);
         }
 
+        /// <summary>
+        /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す
+        /// </summary>
+        /// <param name="p_候補"></param>
+        /// <param name="p_優勢閾値"></param>
+        /// <param name="p_最小証拠数"></param>
+        /// <returns></returns>
+        public static Scaffold候補? Get_優勢な候補(IReadOnlyList<Scaffold候補> p_候補, decimal p_優勢閾値, ulong p_最小証拠数)
+        {
+            var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
+            if (l_候補.Count == 0)
+            {
+                return null;
+            }
+
+            var l_合計 = l_候補.Sum(x => x.A_期待に対する比);
+            var l_最良 = l_候補.OrderByDescending(x => x.A_期待に対する比).First();
+            return l_合計 <= 0D || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値 ? null : l_最良;
+        }
+
+        /// <summary>
+        /// k-1 より短い重なり (0 を含む) のうち、繋いだ配列がリードに出てくるものがただ 1 つなら、その長さを返す
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <returns>確かめた重なりの長さ、無いか 2 つ以上なら null</returns>
+        public static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長)
+        {
+            var l_最長 = Math.Min(p_k長 - 2, Math.Min(p_出力.Length, p_次の配列.Length) - C_繋ぎ目の余白の下限);
+            if (l_最長 < 0)
+            {
+                return null;
+            }
+
+            var l_末尾 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長), Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長));
+            int? l_見つけた長さ = null;
+            for (var l_長さ = l_最長; l_長さ >= 0; l_長さ--)
+            {
+                if (!l_末尾.AsSpan(l_末尾.Length - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
+                {
+                    continue;
+                }
+
+                var l_余白 = Math.Max(C_繋ぎ目の余白, (ReadMinimizerIndex.C_最短の問い合わせ長 - l_長さ + 1) / 2);
+                l_余白 = Math.Min(l_余白, Math.Min((p_リード長 - l_長さ) / 2, Math.Min(l_末尾.Length - l_長さ, p_次の配列.Length - l_長さ)));
+                if (l_余白 < C_繋ぎ目の余白の下限 || l_長さ + (2 * l_余白) < ReadMinimizerIndex.C_最短の問い合わせ長)
+                {
+                    continue;
+                }
+
+                var l_繋いだ配列 = string.Concat(l_末尾.AsSpan(l_末尾.Length - l_長さ - l_余白), p_次の配列.AsSpan(l_長さ, l_余白));
+                if (p_リード索引.Get_出現数(l_繋いだ配列, C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限)
+                {
+                    continue;
+                }
+
+                if (l_見つけた長さ is not null)
+                {
+                    return null;
+                }
+
+                l_見つけた長さ = l_長さ;
+            }
+
+            return l_見つけた長さ;
+        }
+
+        /// <summary>
+        /// 連結の際に畳んでよい重なりの長さを返す
+        /// </summary>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
+        public static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
+        {
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
+            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長
+                ? 0
+                : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -349,7 +433,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_内部を指した数">contig 内部を指した観測の数</param>
         /// <param name="p_未配置を指した数">contig に載っていない unitig を指した観測の数</param>
         /// <returns>対称化した辺の集計</returns>
-        private Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(
+        private static Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(
             IReadOnlyDictionary<int, Unitig配置> p_配置,
             IReadOnlyDictionary<(int, int), List<int>> p_ペア経路,
             ref int p_内部を指した数,
@@ -430,6 +514,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// インサートサイズを確定する
         /// </summary>
         /// <param name="p_インサートサイズ"></param>
+        /// <param name="p_ライブラリ"></param>
         /// <returns></returns>
         private bool TryGet_インサートサイズ(int p_ライブラリ, out int p_インサートサイズ)
         {
@@ -608,26 +693,6 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 支持数と期待本数比の下限を満たし、その中で優勢比を超える辺を返す
-        /// </summary>
-        /// <param name="p_候補"></param>
-        /// <param name="p_優勢閾値"></param>
-        /// <param name="p_最小証拠数"></param>
-        /// <returns></returns>
-        internal static Scaffold候補? Get_優勢な候補(IReadOnlyList<Scaffold候補> p_候補, decimal p_優勢閾値, ulong p_最小証拠数)
-        {
-            var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
-            if (l_候補.Count == 0)
-            {
-                return null;
-            }
-
-            var l_合計 = l_候補.Sum(x => x.A_期待に対する比);
-            var l_最良 = l_候補.OrderByDescending(x => x.A_期待に対する比).First();
-            return l_合計 <= 0D || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値 ? null : l_最良;
-        }
-
-        /// <summary>
         /// 頂点に対応する contig の長さを返す
         /// </summary>
         /// <param name="p_頂点">向き付きの頂点番号</param>
@@ -713,70 +778,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             this._リードで畳んだ数++;
             return l_確かめた長さ;
-        }
-
-        /// <summary>
-        /// k-1 より短い重なり (0 を含む) のうち、繋いだ配列がリードに出てくるものがただ 1 つなら、その長さを返す
-        /// </summary>
-        /// <param name="p_リード索引">リードの索引</param>
-        /// <param name="p_出力">ここまでの scaffold 配列</param>
-        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <param name="p_k長">k 長</param>
-        /// <param name="p_リード長">リード長</param>
-        /// <returns>確かめた重なりの長さ、無いか 2 つ以上なら null</returns>
-        internal static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長)
-        {
-            var l_最長 = Math.Min(p_k長 - 2, Math.Min(p_出力.Length, p_次の配列.Length) - C_繋ぎ目の余白の下限);
-            if (l_最長 < 0)
-            {
-                return null;
-            }
-
-            var l_末尾 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長), Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長));
-            int? l_見つけた長さ = null;
-            for (var l_長さ = l_最長; l_長さ >= 0; l_長さ--)
-            {
-                if (!l_末尾.AsSpan(l_末尾.Length - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
-                {
-                    continue;
-                }
-
-                var l_余白 = Math.Max(C_繋ぎ目の余白, (ReadMinimizerIndex.C_最短の問い合わせ長 - l_長さ + 1) / 2);
-                l_余白 = Math.Min(l_余白, Math.Min((p_リード長 - l_長さ) / 2, Math.Min(l_末尾.Length - l_長さ, p_次の配列.Length - l_長さ)));
-                if (l_余白 < C_繋ぎ目の余白の下限 || l_長さ + (2 * l_余白) < ReadMinimizerIndex.C_最短の問い合わせ長)
-                {
-                    continue;
-                }
-
-                var l_繋いだ配列 = string.Concat(l_末尾.AsSpan(l_末尾.Length - l_長さ - l_余白), p_次の配列.AsSpan(l_長さ, l_余白));
-                if (p_リード索引.Get_出現数(l_繋いだ配列, C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限)
-                {
-                    continue;
-                }
-
-                if (l_見つけた長さ is not null)
-                {
-                    return null;
-                }
-
-                l_見つけた長さ = l_長さ;
-            }
-
-            return l_見つけた長さ;
-        }
-
-        /// <summary>
-        /// 連結の際に畳んでよい重なりの長さを返す
-        /// </summary>
-        /// <param name="p_出力">ここまでの scaffold 配列</param>
-        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
-        internal static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
-        {
-            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長
-                ? 0
-                : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
         }
 
         /// <summary>

@@ -173,48 +173,6 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// 中央値 (空なら 0)
-        /// </summary>
-        /// <param name="p_値群"></param>
-        /// <returns></returns>
-        private static int Get_中央値(int[] p_値群)
-        {
-            if (p_値群.Length == 0)
-            {
-                return 0;
-            }
-
-            var l_並び = p_値群.Order().ToArray();
-            return l_並び[l_並び.Length / 2];
-        }
-
-        /// <summary>
-        /// 未観測の連続が、分岐のある継ぎ目の辺と塩基で重なるか
-        /// </summary>
-        /// <param name="p_連続">r-mer の窓の開始と終了</param>
-        /// <param name="p_継ぎ目位置">継ぎ目の辺 ((k+1)-mer) の開始位置</param>
-        /// <param name="p_k長">継ぎ目の辺を作った k</param>
-        /// <returns></returns>
-        private static bool Is継ぎ目に掛かる((int A_開始, int A_終了) p_連続, IReadOnlyList<int>? p_継ぎ目位置, int p_k長)
-        {
-            if (p_継ぎ目位置 is null)
-            {
-                return false;
-            }
-
-            var l_塩基の終端 = p_連続.A_終了 + C_持ち越し検証のr長 - 1;
-            foreach (var l_位置 in p_継ぎ目位置)
-            {
-                if (l_位置 <= l_塩基の終端 && l_位置 + p_k長 >= p_連続.A_開始)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
         /// リードで観測されていない範囲に掛かる窓の最小カバレッジを 0 にして、足さないようにする
         /// </summary>
         /// <param name="p_引き継ぎ"></param>
@@ -573,6 +531,48 @@ namespace Tsumiki.Cores.Preprocessing
             var l_前段の本数 = l_リード長 - p_前k長 + 1;
             var l_今の本数 = l_リード長 - p_k長 + 1;
             return l_前段の本数 <= 0 || l_今の本数 <= 0 ? (ulong)p_最小 : (ulong)Math.Max(1L, (long)Math.Round((double)p_最小 * l_今の本数 / l_前段の本数));
+        }
+
+        /// <summary>
+        /// 中央値 (空なら 0)
+        /// </summary>
+        /// <param name="p_値群"></param>
+        /// <returns></returns>
+        private static int Get_中央値(int[] p_値群)
+        {
+            if (p_値群.Length == 0)
+            {
+                return 0;
+            }
+
+            var l_並び = p_値群.Order().ToArray();
+            return l_並び[l_並び.Length / 2];
+        }
+
+        /// <summary>
+        /// 未観測の連続が、分岐のある継ぎ目の辺と塩基で重なるか
+        /// </summary>
+        /// <param name="p_連続">r-mer の窓の開始と終了</param>
+        /// <param name="p_継ぎ目位置">継ぎ目の辺 ((k+1)-mer) の開始位置</param>
+        /// <param name="p_k長">継ぎ目の辺を作った k</param>
+        /// <returns></returns>
+        private static bool Is継ぎ目に掛かる((int A_開始, int A_終了) p_連続, IReadOnlyList<int>? p_継ぎ目位置, int p_k長)
+        {
+            if (p_継ぎ目位置 is null)
+            {
+                return false;
+            }
+
+            var l_塩基の終端 = p_連続.A_終了 + C_持ち越し検証のr長 - 1;
+            foreach (var l_位置 in p_継ぎ目位置)
+            {
+                if (l_位置 <= l_塩基の終端 && l_位置 + p_k長 >= p_連続.A_開始)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         #endregion

@@ -62,28 +62,48 @@
 
         #region 継承メソッド
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 読み込み可能かを返す
+        /// </summary>
         public override bool CanRead => this._確定 is null;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 位置を移動できるかを返す
+        /// </summary>
         public override bool CanSeek => false;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 書き込み可能かを返す
+        /// </summary>
         public override bool CanWrite => this._確定 is not null;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) ストリームの長さを返す
+        /// </summary>
         public override long Length => this._確定 is null ? this._長さ : this._位置;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 現在位置を返す
+        /// </summary>
         public override long Position { get => this._位置; set => throw new NotSupportedException(); }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファへ読み込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
+        /// <param name="p_開始"></param>
+        /// <param name="p_長さ"></param>
+        /// <returns></returns>
         public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
         {
             return this.Read(p_バッファ.AsSpan(p_開始, p_長さ));
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファへ読み込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
+        /// <returns></returns>
         public override int Read(Span<byte> p_バッファ)
         {
             var l_読んだ = this._中身.Read(p_バッファ);
@@ -91,39 +111,57 @@
             return l_読んだ;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファを書き込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
+        /// <param name="p_開始"></param>
+        /// <param name="p_長さ"></param>
         public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
         {
             this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファを書き込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
         public override void Write(ReadOnlySpan<byte> p_バッファ)
         {
             this._中身.Write(p_バッファ);
             this._位置 += p_バッファ.Length;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 書き込み内容を確定する
+        /// </summary>
         public override void Flush()
         {
             this._中身.Flush();
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 読み書き位置を移動する
+        /// </summary>
+        /// <param name="p_位置"></param>
+        /// <param name="p_起点"></param>
+        /// <returns></returns>
         public override long Seek(long p_位置, SeekOrigin p_起点)
         {
             throw new NotSupportedException();
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) ストリームの長さを変更する
+        /// </summary>
+        /// <param name="p_長さ"></param>
         public override void SetLength(long p_長さ)
         {
             throw new NotSupportedException();
         }
 
         /// <summary>
-        /// 包んでいるストリームを閉じてから、展開後の長さを渡す
+        /// (オーバーライド) 包んでいるストリームを閉じてから、展開後の長さを渡す
         /// </summary>
         /// <param name="p_Is明示">Dispose から呼ばれたか</param>
         protected override void Dispose(bool p_Is明示)

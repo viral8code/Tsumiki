@@ -21,7 +21,7 @@ namespace Tsumiki.Tests.Common
         [InlineData("ACnNNGT", 2, 3)]
         [InlineData("ACNNnGT", 2, 4)]
         [InlineData("ACNN", 2, 4)]
-        public void Get_ギャップの終わり_Nの連続と印を分けて返す(string p_配列, int p_開始, int p_期待)
+        public void V_ギャップの終わり_Nの連続と印を分けて返す(string p_配列, int p_開始, int p_期待)
         {
             Assert.True(Util.Isギャップ文字(p_配列[p_開始]));
             Assert.Equal(p_期待, Util.Get_ギャップの終わり(p_配列, p_開始));

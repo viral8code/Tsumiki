@@ -24,7 +24,7 @@
         /// <param name="p_配列">配列</param>
         public void V_書き込み(object p_配列ID, string p_配列)
         {
-            this._書き込み.Write(">");
+            this._書き込み.Write('>');
             this._書き込み.WriteLine(p_配列ID);
             this._書き込み.WriteLine(p_配列);
         }

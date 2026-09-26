@@ -159,7 +159,7 @@
 
         #endregion
 
-        #region 定数クラス
+        #region 内部クラス
 
         /// <summary>
         /// コマンドライン引数のキー

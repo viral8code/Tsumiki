@@ -38,6 +38,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_FASTAパス">検証する配列を含む FASTA のパス</param>
         /// <param name="p_リード1のパス">支持を数えるリードのパス</param>
         /// <param name="p_リード2のパス">ペアの相方のパス、無ければ null</param>
+        /// <param name="p_ライブラリ群"></param>
         /// <returns>配列ごとの環状閉鎖検証結果</returns>
         public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
         {

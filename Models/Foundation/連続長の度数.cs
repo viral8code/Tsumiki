@@ -11,7 +11,7 @@ namespace Tsumiki.Models.Foundation
         #region 定数
 
         /// <summary>
-        /// 1 窓ずつ数える上限。これを超える長さは幅を持った区間にまとめる
+        /// 1 窓ずつ数え、それより長い連続を幅のある区間にまとめる上限
         /// </summary>
         private const int C_個別に数える上限 = 20;
 

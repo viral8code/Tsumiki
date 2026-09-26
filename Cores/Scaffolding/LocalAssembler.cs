@@ -209,6 +209,104 @@ namespace Tsumiki.Cores.Scaffolding
             return l_経路;
         }
 
+        /// <summary>リードがアンカーと短い完全一致キーを共有するか調べる</summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_種集合">アンカーの正準キー集合</param>
+        /// <param name="p_種長">キーの長さ</param>
+        /// <returns>候補になれば true</returns>
+        public static bool Has種一致(string p_リード, HashSet<ulong> p_種集合, int p_種長)
+        {
+            var l_窓 = new RollingKmer(p_種長);
+            foreach (var l_塩基 in p_リード)
+            {
+                if (l_窓.Try追加(l_塩基, out var l_キー) && p_種集合.Contains((ulong)l_キー.A_下位))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 1 ギャップぶんのミニアセンブリ
+        /// </summary>
+        /// <param name="p_ギャップ"></param>
+        /// <param name="p_局所リード"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_判定"></param>
+        /// <returns></returns>
+        public static string? Get_適応kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定)
+        {
+            var l_異なるリード = p_局所リード.DistinctBy(x => x.A_配列, StringComparer.Ordinal).ToList();
+
+            var l_経路 = Get_固定kの局所結果(p_ギャップ, p_局所リード, p_k長, out p_判定);
+            if (l_経路 is not null && Has経路支持(p_ギャップ, l_経路, l_異なるリード, p_k長))
+            {
+                return l_経路;
+            }
+
+            string? l_一致した経路 = null;
+            var l_候補k = p_判定 == ギャップ充填判定.到達不能
+                ? Get_低k候補(p_k長)
+                : [p_k長 + 10, p_k長 + 20];
+            var l_競合あり = false;
+            foreach (var l_局所k in l_候補k)
+            {
+                if (l_異なるリード.Count(x => x.A_配列.Length >= l_局所k + 1) < 2)
+                {
+                    continue;
+                }
+
+                var l_候補 = Get_固定kの局所結果(p_ギャップ, l_異なるリード, l_局所k, out var l_局所判定);
+                if (l_局所判定 == ギャップ充填判定.一意でない)
+                {
+                    l_競合あり = true;
+                    continue;
+                }
+
+                if (l_候補 is null)
+                {
+                    continue;
+                }
+
+                if (!Has経路支持(p_ギャップ, l_候補, l_異なるリード, l_局所k))
+                {
+                    continue;
+                }
+
+                if (l_一致した経路 is not null && l_一致した経路 != l_候補)
+                {
+                    p_判定 = ギャップ充填判定.一意でない;
+                    return null;
+                }
+
+                l_一致した経路 = l_候補;
+            }
+
+            if (l_一致した経路 is not null)
+            {
+                p_判定 = ギャップ充填判定.充填済み;
+                return l_一致した経路;
+            }
+
+            p_判定 = l_競合あり ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能;
+            return null;
+        }
+
+        /// <summary>
+        /// 高 k で非連結だった局所グラフを救済する低 k 候補
+        /// </summary>
+        /// <param name="p_k長"></param>
+        /// <returns></returns>
+        public static IReadOnlyList<int> Get_低k候補(int p_k長)
+        {
+            return [.. new[] { p_k長 - 10, p_k長 - 16, 27, 21 }
+                .Where(x => x >= 15 && x < p_k長)
+                .Distinct()
+                .OrderByDescending(x => x)];
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -601,6 +699,15 @@ namespace Tsumiki.Cores.Scaffolding
             return l_束;
         }
 
+        /// <summary>
+        /// 種に一致したリードが当たるギャップの番号を返す
+        /// </summary>
+        /// <param name="p_アンカー索引"></param>
+        /// <param name="p_リード"></param>
+        /// <param name="p_k長"></param>
+        /// <param name="p_種集合"></param>
+        /// <param name="p_種長"></param>
+        /// <returns></returns>
         private static IReadOnlySet<int> Get_一致するギャップ_候補選別付き(Dictionary<KmerKey, List<int>> p_アンカー索引, string p_リード, int p_k長, HashSet<ulong> p_種集合, int p_種長)
         {
             return p_リード.Length >= p_k長 && Has種一致(p_リード, p_種集合, p_種長)
@@ -635,25 +742,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
         }
 
-        /// <summary>リードがアンカーと短い完全一致キーを共有するか調べる</summary>
-        /// <param name="p_リード">リードの配列</param>
-        /// <param name="p_種集合">アンカーの正準キー集合</param>
-        /// <param name="p_種長">キーの長さ</param>
-        /// <returns>候補になれば true</returns>
-        internal static bool Has種一致(string p_リード, HashSet<ulong> p_種集合, int p_種長)
-        {
-            var l_窓 = new RollingKmer(p_種長);
-            foreach (var l_塩基 in p_リード)
-            {
-                if (l_窓.Try追加(l_塩基, out var l_キー) && p_種集合.Contains((ulong)l_キー.A_下位))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         /// <summary>
         /// そのリードが端に当たるギャップの番号を返す
         /// </summary>
@@ -686,85 +774,13 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 1 ギャップぶんのミニアセンブリ
-        /// </summary>
-        /// <param name="p_ギャップ"></param>
-        /// <param name="p_局所リード"></param>
-        /// <param name="p_k長"></param>
-        /// <param name="p_判定"></param>
-        /// <returns></returns>
-        internal static string? Get_適応kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定)
-        {
-            var l_異なるリード = p_局所リード.DistinctBy(x => x.A_配列, StringComparer.Ordinal).ToList();
-
-            var l_経路 = Get_固定kの局所結果(p_ギャップ, p_局所リード, p_k長, out p_判定);
-            if (l_経路 is not null && Has経路支持(p_ギャップ, l_経路, l_異なるリード, p_k長))
-            {
-                return l_経路;
-            }
-
-            string? l_一致した経路 = null;
-            var l_候補k = p_判定 == ギャップ充填判定.到達不能
-                ? Get_低k候補(p_k長)
-                : [p_k長 + 10, p_k長 + 20];
-            var l_競合あり = false;
-            foreach (var l_局所k in l_候補k)
-            {
-                if (l_異なるリード.Count(x => x.A_配列.Length >= l_局所k + 1) < 2)
-                {
-                    continue;
-                }
-
-                var l_候補 = Get_固定kの局所結果(p_ギャップ, l_異なるリード, l_局所k, out var l_局所判定);
-                if (l_局所判定 == ギャップ充填判定.一意でない)
-                {
-                    l_競合あり = true;
-                    continue;
-                }
-
-                if (l_候補 is null)
-                {
-                    continue;
-                }
-
-                if (!Has経路支持(p_ギャップ, l_候補, l_異なるリード, l_局所k))
-                {
-                    continue;
-                }
-
-                if (l_一致した経路 is not null && l_一致した経路 != l_候補)
-                {
-                    p_判定 = ギャップ充填判定.一意でない;
-                    return null;
-                }
-
-                l_一致した経路 = l_候補;
-            }
-
-            if (l_一致した経路 is not null)
-            {
-                p_判定 = ギャップ充填判定.充填済み;
-                return l_一致した経路;
-            }
-
-            p_判定 = l_競合あり ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能;
-            return null;
-        }
-
-        /// <summary>
-        /// 高 k で非連結だった局所グラフを救済する低 k 候補
-        /// </summary>
-        internal static IReadOnlyList<int> Get_低k候補(int p_k長)
-        {
-            return [.. new[] { p_k長 - 10, p_k長 - 16, 27, 21 }
-                .Where(x => x >= 15 && x < p_k長)
-                .Distinct()
-                .OrderByDescending(x => x)];
-        }
-
-        /// <summary>
         /// 候補経路の各辺が、アンカー合成ではなく複数の独立した分子で観測されていることを確かめる
         /// </summary>
+        /// <param name="p_ギャップ"></param>
+        /// <param name="p_経路"></param>
+        /// <param name="p_リード群"></param>
+        /// <param name="p_k長"></param>
+        /// <returns></returns>
         private static bool Has経路支持(局所ギャップ p_ギャップ, string p_経路, IReadOnlyList<読取証拠> p_リード群, int p_k長)
         {
             var l_窓長 = p_k長 + 1;

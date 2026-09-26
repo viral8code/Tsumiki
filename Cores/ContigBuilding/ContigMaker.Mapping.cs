@@ -205,6 +205,7 @@ namespace Tsumiki.Core
         /// </summary>
         /// <param name="p_リード1のパス"></param>
         /// <param name="p_リード2のパス"></param>
+        /// <param name="p_ライブラリ番号"></param>
         public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス, int p_ライブラリ番号 = 0)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);

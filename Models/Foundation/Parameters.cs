@@ -16,6 +16,16 @@ namespace Tsumiki.Models.Foundation
         private const string C_インサートサイズ未指定表示 = "unspecified";
 
         /// <summary>
+        /// パス一覧の区切り
+        /// </summary>
+        private const string C_パス一覧の区切り = ",";
+
+        /// <summary>
+        /// リード 2 が無いライブラリの表示
+        /// </summary>
+        private const string C_リード2未指定表示 = "-";
+
+        /// <summary>
         /// k-mer カットオフの既定値
         /// </summary>
         private const int C_kmerカットオフの既定値 = 2;
@@ -103,7 +113,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         public string A_リード1のパス
         {
-            get => string.Join(",", this.A_ライブラリ群.Select(x => x.A_リード1));
+            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => x.A_リード1));
             set
             {
                 var l_群 = Get_パス群(value);
@@ -125,7 +135,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         public string A_リード2のパス
         {
-            get => string.Join(",", this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? "-" : x.A_リード2));
+            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? C_リード2未指定表示 : x.A_リード2));
             set
             {
                 var l_群 = Get_パス群(value);
@@ -147,7 +157,7 @@ namespace Tsumiki.Models.Foundation
         /// </summary>
         public string A_シングルのパス
         {
-            get => string.Join(",", this._シングルのパス群);
+            get => string.Join(C_パス一覧の区切り, this._シングルのパス群);
             set
             {
                 var l_群 = Get_パス群(value);
@@ -537,17 +547,9 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
-        /// カンマ区切りのパス指定を 1 本ずつに分ける
+        /// 独立して変更できる実行時引数の複製を作る
         /// </summary>
-        /// <param name="p_指定">カンマ区切りのパス</param>
         /// <returns></returns>
-        private static List<string> Get_パス群(string? p_指定)
-        {
-            return string.IsNullOrWhiteSpace(p_指定)
-                ? []
-                : [.. p_指定.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)];
-        }
-
         public Parameters Get_複製()
         {
             var l_複製 = (Parameters)this.MemberwiseClone();
@@ -646,29 +648,6 @@ namespace Tsumiki.Models.Foundation
             this.A_IsPhred明示指定 = l_Is明示指定済み;
         }
 
-        /// <summary>
-        /// ライブラリごとに行を分けた入力の一覧
-        /// </summary>
-        /// <returns></returns>
-        private string Get_ライブラリ表示()
-        {
-            List<string> l_行群 = [];
-            for (var i = 0; i < this.A_ライブラリ群.Count; i++)
-            {
-                var (l_リード1, l_リード2) = this.A_ライブラリ群[i];
-                if (string.IsNullOrWhiteSpace(l_リード2))
-                {
-                    l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_リード1}"));
-                    continue;
-                }
-
-                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_リード1}"));
-                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_リード2}"));
-            }
-
-            return string.Join(Environment.NewLine, l_行群);
-        }
-
         #endregion
 
         #region 継承メソッド
@@ -753,6 +732,41 @@ namespace Tsumiki.Models.Foundation
                 言語.中国語 => Consts.言語名.中国語,
                 _ => Consts.言語名.英語,
             };
+        }
+
+        /// <summary>
+        /// カンマ区切りのパス指定を 1 本ずつに分ける
+        /// </summary>
+        /// <param name="p_指定">カンマ区切りのパス</param>
+        /// <returns></returns>
+        private static List<string> Get_パス群(string? p_指定)
+        {
+            return string.IsNullOrWhiteSpace(p_指定)
+                ? []
+                : [.. p_指定.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)];
+        }
+
+        /// <summary>
+        /// ライブラリごとに行を分けた入力の一覧
+        /// </summary>
+        /// <returns></returns>
+        private string Get_ライブラリ表示()
+        {
+            List<string> l_行群 = [];
+            for (var i = 0; i < this.A_ライブラリ群.Count; i++)
+            {
+                var (l_リード1, l_リード2) = this.A_ライブラリ群[i];
+                if (string.IsNullOrWhiteSpace(l_リード2))
+                {
+                    l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_リード1}"));
+                    continue;
+                }
+
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_リード1}"));
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_リード2}"));
+            }
+
+            return string.Join(Environment.NewLine, l_行群);
         }
 
         #endregion

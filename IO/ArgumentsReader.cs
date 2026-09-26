@@ -228,17 +228,13 @@ namespace Tsumiki.IO
             return l_引数;
         }
 
-        #endregion
-
-        #region 内部メソッド
-
         /// <summary>
         /// 同時に指定すると意味が通らない組を探す
         /// </summary>
         /// <param name="p_指定済み">コマンドラインに書かれたキー</param>
         /// <param name="p_引数">組み立て済みの実行時引数</param>
         /// <returns>見つかれば理由、無ければ null</returns>
-        internal static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
+        public static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
         {
             return p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算)
                 ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget"
@@ -250,6 +246,10 @@ namespace Tsumiki.IO
                 ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately"
                 : null;
         }
+
+        #endregion
+
+        #region 内部メソッド
 
         /// <summary>
         /// -lang に渡された言語名を解釈する

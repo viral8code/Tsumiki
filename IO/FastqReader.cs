@@ -80,6 +80,20 @@ namespace Tsumiki.IO
             }
         }
 
+        /// <summary>
+        /// ID ・配列・クオリティの 1 レコードを読み込んで返す
+        /// </summary>
+        /// <returns></returns>
+        public (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
+        {
+            var l_ID = this.Get_次の行();
+            var l_配列 = this.Get_次の行();
+            _ = this.Get_次の行();
+            var l_クオリティ = this.Get_次の行();
+            this.V_検査(l_ID, l_配列, l_クオリティ);
+            return (l_ID, l_配列, l_クオリティ);
+        }
+
         #endregion
 
         #region 継承メソッド
@@ -109,7 +123,7 @@ namespace Tsumiki.IO
         #region 内部メソッド
 
         /// <summary>
-        /// 配列とクオリティの長さが合わない FASTQ は、そのまま進めると品質判定が配列の範囲外を触って落ちる
+        /// 配列とクオリティの長さを確かめる
         /// </summary>
         /// <param name="p_ID"></param>
         /// <param name="p_配列"></param>
@@ -120,20 +134,6 @@ namespace Tsumiki.IO
             {
                 throw new InvalidDataException($"{this.A_ファイルパス}: リード {p_ID} の塩基列({p_配列.Length}文字)とクオリティ({p_クオリティ.Length}文字)の長さが一致しない。");
             }
-        }
-
-        /// <summary>
-        /// ID ・配列・クオリティの 1 レコードを読み込んで返す
-        /// </summary>
-        /// <returns></returns>
-        internal (string A_ID, string A_配列, string A_クオリティ) Get_次のレコード()
-        {
-            var l_ID = this.Get_次の行();
-            var l_配列 = this.Get_次の行();
-            _ = this.Get_次の行();
-            var l_クオリティ = this.Get_次の行();
-            this.V_検査(l_ID, l_配列, l_クオリティ);
-            return (l_ID, l_配列, l_クオリティ);
         }
 
         #endregion

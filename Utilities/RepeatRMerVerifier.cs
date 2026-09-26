@@ -325,6 +325,33 @@ namespace Tsumiki.Utilities
             }
         }
 
+        /// <summary>
+        /// 同じ分割の r-mer をまとめて集合へ登録する
+        /// </summary>
+        /// <param name="p_分割">分割番号</param>
+        /// <param name="p_値群">正準化した r-mer の値</param>
+        public void V_登録_束(int p_分割, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
+        {
+            lock (this._分割錠[p_分割])
+            {
+                foreach (var l_値 in p_値群)
+                {
+                    _ = this._小集合?[p_分割].Add((ulong)l_値.A_下位) ?? this._中集合?[p_分割].Add(l_値.A_下位) ?? this._長集合![p_分割].Add(l_値);
+                }
+            }
+        }
+
+        /// <summary>
+        /// r-mer の値から、登録先の分割を決める
+        /// </summary>
+        /// <param name="p_値">正準化した r-mer の値</param>
+        /// <returns></returns>
+        public static int Get_分割番号((UInt128 A_上位, UInt128 A_下位) p_値)
+        {
+            var l_混合 = (ulong)p_値.A_下位 ^ (ulong)(p_値.A_下位 >> 64) ^ (ulong)p_値.A_上位;
+            return (int)((l_混合 * 0x9E37_79B9_7F4A_7C15UL) >> (64 - C_分割のビット数));
+        }
+
         #endregion
 
         #region テストメソッド
@@ -405,22 +432,6 @@ namespace Tsumiki.Utilities
             }
 
             return (l_支持数, l_入口支持数, l_出口支持数);
-        }
-
-        /// <summary>
-        /// 同じ分割の r-mer をまとめて集合へ登録する
-        /// </summary>
-        /// <param name="p_分割">分割番号</param>
-        /// <param name="p_値群">正準化した r-mer の値</param>
-        internal void V_登録_束(int p_分割, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
-        {
-            lock (this._分割錠[p_分割])
-            {
-                foreach (var l_値 in p_値群)
-                {
-                    _ = this._小集合?[p_分割].Add((ulong)l_値.A_下位) ?? this._中集合?[p_分割].Add(l_値.A_下位) ?? this._長集合![p_分割].Add(l_値);
-                }
-            }
         }
 
         /// <summary>
@@ -538,17 +549,6 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// r-mer の値から、登録先の分割を決める
-        /// </summary>
-        /// <param name="p_値">正準化した r-mer の値</param>
-        /// <returns></returns>
-        internal static int Get_分割番号((UInt128 A_上位, UInt128 A_下位) p_値)
-        {
-            var l_混合 = (ulong)p_値.A_下位 ^ (ulong)(p_値.A_下位 >> 64) ^ (ulong)p_値.A_上位;
-            return (int)((l_混合 * 0x9E37_79B9_7F4A_7C15UL) >> (64 - C_分割のビット数));
-        }
-
-        /// <summary>
         /// 128 塩基を超える r-mer のキーから、登録先の分割を決める
         /// </summary>
         /// <param name="p_キー">正準化した r-mer のキー</param>
@@ -565,6 +565,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_r長">r-mer の長さ</param>
         /// <param name="p_絞り込み">両端の k-mer がこの集合にある r-mer だけを登録する、null なら絞り込まない</param>
         /// <param name="p_k長">p_絞り込み の k</param>
+        /// <param name="p_束"></param>
         private void V_登録_rMer(string p_リード, int p_r長, TrustedKmerIndex? p_絞り込み, int p_k長, 登録束? p_束)
         {
             var l_k窓の信頼 = p_絞り込み is null ? default : p_リード.Length <= 1_024 ? stackalloc bool[p_リード.Length] : new bool[p_リード.Length];

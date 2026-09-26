@@ -115,6 +115,7 @@ namespace Tsumiki.IO
         /// <param name="p_リード1のパス">リード 1 のパス</param>
         /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
         /// <param name="p_標本上限">見る行数の上限</param>
+        /// <param name="p_ライブラリ番号"></param>
         public static void V_解決_Phredオフセット(Parameters p_引数, int p_ライブラリ番号, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
         {
             var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);

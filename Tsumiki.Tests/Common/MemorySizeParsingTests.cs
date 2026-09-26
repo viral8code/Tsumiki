@@ -6,11 +6,6 @@ namespace Tsumiki.Tests.Common
     /// <summary>
     /// -mem のサイズ指定 ("2G" など) の解釈を固定する
     /// </summary>
-    /// <remarks>
-    /// 接尾辞は 2 進接頭辞 (1 K = 1024) <br/>
-    /// メモリ量の指定なので 1000 刻みより 1024 刻みのほうが直感に合う<br/>
-    /// 接尾辞が無い場合は MB とみなす
-    /// </remarks>
     public class MemorySizeParsingTests
     {
         #region 公開メソッド
@@ -38,9 +33,6 @@ namespace Tsumiki.Tests.Common
         /// <summary>
         /// 接尾辞なしは MB
         /// </summary>
-        /// <remarks>
-        /// 単なる数値で指定したときに「バイト」と解釈すると現実的にありえない小ささになるため
-        /// </remarks>
         /// <param name="p_文字列"></param>
         /// <param name="p_期待値"></param>
         [Theory]

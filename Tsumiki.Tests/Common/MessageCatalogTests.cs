@@ -11,11 +11,17 @@ namespace Tsumiki.Tests.Common
     /// <summary>
     /// 文言カタログの検査
     /// </summary>
-    /// <remarks>
-    /// ID を増やしたときに訳を入れ忘れる、あるいは訳の差し込み位置が原文とずれる、といった取りこぼしを防ぐ
-    /// </remarks>
     public class MessageCatalogTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 文言の差し込み位置を取り出す正規表現
+        /// </summary>
+        private const string C_差し込み位置パターン = @"(?<!\{)\{(\d+)[^}]*\}";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -80,14 +86,11 @@ namespace Tsumiki.Tests.Common
         /// <summary>
         /// 差し込み位置 ({0} など) の並び
         /// </summary>
-        /// <remarks>
-        /// 書式指定は無視する
-        /// </remarks>
         /// <param name="p_書式"></param>
         /// <returns></returns>
         private static List<int> Get_差し込み位置(string p_書式)
         {
-            return [.. Regex.Matches(p_書式, @"(?<!\{)\{(\d+)[^}]*\}")
+            return [.. Regex.Matches(p_書式, C_差し込み位置パターン)
                 .Select(x => int.Parse(x.Groups[1].Value))
                 .Distinct()
                 .Order()];

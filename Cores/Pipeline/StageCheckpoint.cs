@@ -10,6 +10,25 @@ namespace Tsumiki.Cores.Pipeline
     /// </summary>
     internal static class StageCheckpoint
     {
+        #region 定数
+
+        /// <summary>
+        /// 工程記録の拡張子
+        /// </summary>
+        private const string C_記録の拡張子 = ".sha256";
+
+        /// <summary>
+        /// 書き込み途中の工程記録の拡張子
+        /// </summary>
+        private const string C_一時記録の拡張子 = ".sha256.tmp";
+
+        /// <summary>
+        /// 工程記録の項目区切り
+        /// </summary>
+        private const string C_項目区切り = "\n";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -22,9 +41,9 @@ namespace Tsumiki.Cores.Pipeline
             var l_設定 = p_引数.Get_複製();
             l_設定.A_Is再開 = false;
 
-            var l_入力の識別 = string.Join("\n", l_設定.A_ライブラリ群.Select(x =>
-                Get_保存済み記録(x.A_リード1) ?? (Get_ハッシュ(x.A_リード1) + "\n" + Get_ハッシュ(x.A_リード2))));
-            var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + "\n" + l_設定 + "\n" + l_入力の識別;
+            var l_入力の識別 = string.Join(C_項目区切り, l_設定.A_ライブラリ群.Select(x =>
+                Get_保存済み記録(x.A_リード1) ?? (Get_ハッシュ(x.A_リード1) + C_項目区切り + Get_ハッシュ(x.A_リード2))));
+            var l_本文 = typeof(StageCheckpoint).Assembly.ManifestModule.ModuleVersionId + C_項目区切り + l_設定 + C_項目区切り + l_入力の識別;
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(l_本文)));
         }
 
@@ -35,7 +54,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns>記録の中身、無ければ null</returns>
         public static string? Get_保存済み記録(string? p_出力)
         {
-            return !string.IsNullOrWhiteSpace(p_出力) && File.Exists(p_出力 + ".sha256") ? File.ReadAllText(p_出力 + ".sha256") : null;
+            return !string.IsNullOrWhiteSpace(p_出力) && File.Exists(p_出力 + C_記録の拡張子) ? File.ReadAllText(p_出力 + C_記録の拡張子) : null;
         }
 
         /// <summary>
@@ -63,7 +82,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns>完全に一致すれば true</returns>
         public static bool Is再利用可能(string p_署名, string p_出力, string? p_対出力)
         {
-            return File.Exists(p_出力 + ".sha256") && File.Exists(p_出力) && (p_対出力 is null || File.Exists(p_対出力)) && File.ReadAllText(p_出力 + ".sha256") == p_署名 + "\n" + Get_ハッシュ(p_出力) + "\n" + Get_ハッシュ(p_対出力);
+            return File.Exists(p_出力 + C_記録の拡張子) && File.Exists(p_出力) && (p_対出力 is null || File.Exists(p_対出力)) && File.ReadAllText(p_出力 + C_記録の拡張子) == p_署名 + C_項目区切り + Get_ハッシュ(p_出力) + C_項目区切り + Get_ハッシュ(p_対出力);
         }
 
         /// <summary>
@@ -74,9 +93,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_対出力">対になる出力</param>
         public static void V_保存(string p_署名, string p_出力, string? p_対出力)
         {
-            var l_一時パス = p_出力 + ".sha256.tmp";
-            File.WriteAllText(l_一時パス, p_署名 + "\n" + Get_ハッシュ(p_出力) + "\n" + Get_ハッシュ(p_対出力));
-            File.Move(l_一時パス, p_出力 + ".sha256", overwrite: true);
+            var l_一時パス = p_出力 + C_一時記録の拡張子;
+            File.WriteAllText(l_一時パス, p_署名 + C_項目区切り + Get_ハッシュ(p_出力) + C_項目区切り + Get_ハッシュ(p_対出力));
+            File.Move(l_一時パス, p_出力 + C_記録の拡張子, overwrite: true);
         }
 
         #endregion

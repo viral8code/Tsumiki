@@ -49,6 +49,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_リード2のパス">リード 2 のパス</param>
         /// <param name="p_出力先1">前処理したリード 1 の書き出し先</param>
         /// <param name="p_出力先2">前処理したリード 2 の書き出し先</param>
+        /// <param name="p_Phredオフセット"></param>
         /// <returns>前処理の集計</returns>
         public static 前処理統計 V_前処理_リードファイル(string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2, int p_Phredオフセット)
         {

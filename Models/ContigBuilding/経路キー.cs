@@ -32,7 +32,7 @@
         #region 継承メソッド
 
         /// <summary>
-        /// 並びが要素ごとに一致するか
+        /// (オーバーライド) 並びが要素ごとに一致するか
         /// </summary>
         /// <param name="p_他"></param>
         /// <returns></returns>
@@ -42,7 +42,7 @@
         }
 
         /// <summary>
-        /// 並び全体から求めたハッシュ値
+        /// (オーバーライド) 並び全体から求めたハッシュ値
         /// </summary>
         /// <returns></returns>
         public override int GetHashCode()

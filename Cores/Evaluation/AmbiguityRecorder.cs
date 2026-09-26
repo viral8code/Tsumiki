@@ -137,30 +137,6 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 記録を TSV の本文へ整形する
-        /// </summary>
-        /// <param name="p_記録"></param>
-        /// <returns></returns>
-        private static string Get_行群(IReadOnlyList<曖昧箇所> p_記録)
-        {
-            var l_文 = new StringBuilder();
-            foreach (var l_箇所 in p_記録)
-            {
-                _ = l_文.AppendLine(string.Join('	',
-                    (int)l_箇所.A_種別,
-                    l_箇所.A_場所,
-                    l_箇所.A_安定ID,
-                    l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture),
-                    l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture),
-                    l_箇所.A_首位の生支持数,
-                    l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)
-                    ));
-            }
-
-            return l_文.ToString();
-        }
-
-        /// <summary>
         /// その k で書き留めた箇所の一覧
         /// </summary>
         /// <param name="p_k長"></param>
@@ -190,5 +166,26 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 記録を TSV の本文へ整形する
+        /// </summary>
+        /// <param name="p_記録"></param>
+        /// <returns></returns>
+        private static string Get_行群(IReadOnlyList<曖昧箇所> p_記録)
+        {
+            var l_文 = new StringBuilder();
+            foreach (var l_箇所 in p_記録)
+            {
+                _ = l_文.AppendLine(string.Join('\t', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
+            }
+
+            return l_文.ToString();
+        }
+
+        #endregion
+
     }
 }

@@ -5,9 +5,6 @@ namespace Tsumiki.Tests.IO
     /// <summary>
     /// リードファイルからの代表リード長の抽出
     /// </summary>
-    /// <remarks>
-    /// k 長の自動選択の入力になる
-    /// </remarks>
     public class ReadLengthSnifferTests : IDisposable
     {
         #region 内部変数
@@ -59,9 +56,6 @@ namespace Tsumiki.Tests.IO
         /// <summary>
         /// トリミング済みのデータではリード長がばらつく
         /// </summary>
-        /// <remarks>
-        /// 平均や最大ではなく中央値を使うことで、少数の極端に短いリードに引きずられない
-        /// </remarks>
         [Fact]
         public void V_トリミング済みデータでは平均や最大ではなく中央値を返す()
         {
@@ -76,8 +70,6 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_標本上限に達したら打ち切る()
         {
-            // 先頭 2 本だけを見れば 200 が中央値になる
-            // ファイル全体を見ると 50
             var l_長さ一覧 = new[] { 200, 200 }.Concat(Enumerable.Repeat(50, 100)).ToArray();
             var l_パス = this.V_書き出し_FASTQ("limited.fq", l_長さ一覧);
 
@@ -138,7 +130,7 @@ namespace Tsumiki.Tests.IO
             {
                 l_書き込み.WriteLine($"@read{l_ID++}");
                 l_書き込み.WriteLine(new string('A', l_長さ));
-                l_書き込み.WriteLine("+");
+                l_書き込み.WriteLine('+');
                 l_書き込み.WriteLine(new string('I', l_長さ));
             }
             return l_パス;

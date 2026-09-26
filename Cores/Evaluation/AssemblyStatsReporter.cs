@@ -67,13 +67,11 @@ namespace Tsumiki.Cores.Evaluation
         /// N 連続区間で分割した contig の統計を求めて返す
         /// </summary>
         /// <param name="p_配列群"></param>
+        /// <param name="p_最小長"></param>
         /// <returns></returns>
         public static アセンブリ統計 Get_N分割統計(IEnumerable<string> p_配列群, int p_最小長 = 0)
         {
-            if (p_最小長 < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(p_最小長));
-            }
+            ArgumentOutOfRangeException.ThrowIfNegative(p_最小長);
 
             List<string> l_断片群 = [];
             foreach (var l_配列 in p_配列群)

@@ -29,7 +29,7 @@ namespace Tsumiki.IO
         {
             this._書き込み.WriteLine(p_ID);
             this._書き込み.WriteLine(p_配列);
-            this._書き込み.WriteLine("+");
+            this._書き込み.WriteLine('+');
             this._書き込み.WriteLine(p_クオリティ);
         }
 

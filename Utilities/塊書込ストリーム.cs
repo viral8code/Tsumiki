@@ -35,28 +35,46 @@
 
         #region 継承メソッド
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 読み込み可能かを返す
+        /// </summary>
         public override bool CanRead => false;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 位置を移動できるかを返す
+        /// </summary>
         public override bool CanSeek => false;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 書き込み可能かを返す
+        /// </summary>
         public override bool CanWrite => true;
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) ストリームの長さを返す
+        /// </summary>
         public override long Length => throw new NotSupportedException();
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 現在位置を返す
+        /// </summary>
         public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファを書き込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
+        /// <param name="p_開始"></param>
+        /// <param name="p_長さ"></param>
         public override void Write(byte[] p_バッファ, int p_開始, int p_長さ)
         {
             this.Write(p_バッファ.AsSpan(p_開始, p_長さ));
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファを書き込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
         public override void Write(ReadOnlySpan<byte> p_バッファ)
         {
             while (!p_バッファ.IsEmpty)
@@ -75,31 +93,47 @@
             }
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 書き込み内容を確定する
+        /// </summary>
         public override void Flush()
         {
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) バッファへ読み込む
+        /// </summary>
+        /// <param name="p_バッファ"></param>
+        /// <param name="p_開始"></param>
+        /// <param name="p_長さ"></param>
+        /// <returns></returns>
         public override int Read(byte[] p_バッファ, int p_開始, int p_長さ)
         {
             throw new NotSupportedException();
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) 読み書き位置を移動する
+        /// </summary>
+        /// <param name="p_位置"></param>
+        /// <param name="p_起点"></param>
+        /// <returns></returns>
         public override long Seek(long p_位置, SeekOrigin p_起点)
         {
             throw new NotSupportedException();
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// (オーバーライド) ストリームの長さを変更する
+        /// </summary>
+        /// <param name="p_長さ"></param>
         public override void SetLength(long p_長さ)
         {
             throw new NotSupportedException();
         }
 
         /// <summary>
-        /// 書きかけの塊を、使った分だけに詰めて塊の列へ加える
+        /// (オーバーライド) 書きかけの塊を、使った分だけに詰めて塊の列へ加える
         /// </summary>
         /// <param name="p_Is明示">Dispose から呼ばれたか</param>
         protected override void Dispose(bool p_Is明示)

@@ -5,9 +5,6 @@ namespace Tsumiki.Tests.Common
     /// <summary>
     /// 環状配列の開始位置を辞書式順序で最小の回転へ正規化する処理 (Booth のアルゴリズム) の検証
     /// </summary>
-    /// <remarks>
-    /// 環状 contig は開始位置が walk の起点という偶然の産物でしかないため、同じ環状配列ならどの回転から出発しても同じ正規化結果になることが下流の比較・再現性の前提になる
-    /// </remarks>
     public class UtilRotationTests
     {
         #region 公開メソッド
@@ -30,8 +27,6 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_辞書式最小の回転を求める()
         {
-            // "BAAB" の回転は BAAB, AABB, ABBA, BBAA
-            // 辞書式最小は AABB
             Assert.Equal("AABB", Util.Get_最小回転("BAAB"));
         }
 
@@ -47,7 +42,7 @@ namespace Tsumiki.Tests.Common
         [InlineData(19)]
         public void V_どの回転から始めても結果は同じ(int p_回転量)
         {
-            const string l_元 = "ACGTTGCAACGTAGGCTTAA"; // 20 bp、非反復的
+            const string l_元 = "ACGTTGCAACGTAGGCTTAA";
             var l_回転後 = l_元[p_回転量..] + l_元[..p_回転量];
 
             Assert.Equal(Util.Get_最小回転(l_元), Util.Get_最小回転(l_回転後));
@@ -59,7 +54,6 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_反復配列も扱える()
         {
-            // 全て同じ文字なら、どの回転でも結果は同じ文字列になる
             const string l_反復配列 = "AAAAAA";
             Assert.Equal(l_反復配列, Util.Get_最小回転(l_反復配列));
         }

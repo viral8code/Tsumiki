@@ -60,6 +60,18 @@ namespace Tsumiki.Cores.Preprocessing
             return l_追加数;
         }
 
+        /// <summary>
+        /// 救済する連の左の信頼 k-mer に他の出口が無く、右の信頼 k-mer に他の入口が無いか
+        /// </summary>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_左">連の直前の信頼できる k-mer</param>
+        /// <param name="p_右">連の直後の信頼できる k-mer</param>
+        /// <returns>両側とも行き止まりなら true</returns>
+        public static bool Is行き止まり同士(TrustedKmerIndex p_kmerインデックス, Span<byte> p_左, Span<byte> p_右)
+        {
+            return p_kmerインデックス.Get_出次数(p_左) == 0 && p_kmerインデックス.Get_入次数(p_右) == 0;
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -119,18 +131,6 @@ namespace Tsumiki.Cores.Preprocessing
 
                 i = l_終わり;
             }
-        }
-
-        /// <summary>
-        /// 救済する連の左の信頼 k-mer に他の出口が無く、右の信頼 k-mer に他の入口が無いか
-        /// </summary>
-        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
-        /// <param name="p_左">連の直前の信頼できる k-mer</param>
-        /// <param name="p_右">連の直後の信頼できる k-mer</param>
-        /// <returns>両側とも行き止まりなら true</returns>
-        internal static bool Is行き止まり同士(TrustedKmerIndex p_kmerインデックス, Span<byte> p_左, Span<byte> p_右)
-        {
-            return p_kmerインデックス.Get_出次数(p_左) == 0 && p_kmerインデックス.Get_入次数(p_右) == 0;
         }
 
         /// <summary>

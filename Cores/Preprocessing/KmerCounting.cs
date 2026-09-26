@@ -18,6 +18,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_Phredオフセット"></param>
         public static void V_読込_リードファイル(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
@@ -106,6 +107,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// </summary>
         /// <param name="p_ファイルパス"></param>
         /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_Phredオフセット"></param>
         public static void V_読込_リードファイル_曖昧塩基あり(string p_ファイルパス, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_件数 = 0UL;
@@ -158,6 +160,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_パス">読み込むリードのパス</param>
         /// <param name="p_Is曖昧塩基許容">曖昧塩基を展開して数えるか</param>
         /// <param name="p_kmerインデックス">数え上げ先</param>
+        /// <param name="p_Phredオフセット"></param>
         private static void V_読込_1ファイル(string p_パス, bool p_Is曖昧塩基許容, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             if (p_Is曖昧塩基許容)
@@ -191,6 +194,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_束"></param>
+        /// <param name="p_Phredオフセット"></param>
         private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束, int p_Phredオフセット)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -217,6 +221,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_塩基列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_Phredオフセット"></param>
         private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
         {
             var l_塩基列 = p_塩基列;

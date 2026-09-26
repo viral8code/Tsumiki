@@ -52,6 +52,19 @@ namespace Tsumiki.Cores.Pipeline
             }
         }
 
+        /// <summary>
+        /// 訂正済みリードが揃った後、要らなくなった前処理済みリードを消す
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
+        public static void V_削除_前処理済みリード(string p_一時ディレクトリ)
+        {
+            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, C_前処理済みの幹, ".fq"))
+            {
+                中間データ置き場.V_削除(l_パス);
+                Logger.V_出力(メッセージID.中間リードを削除, l_パス);
+            }
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -163,19 +176,6 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_接尾 = p_ライブラリ番号 == 0 ? string.Empty : FormattableString.Invariant($".lib{p_ライブラリ番号 + 1}");
             return Path.Combine(p_一時ディレクトリ, FormattableString.Invariant($"{p_幹}{l_接尾}.{p_side}.fq"));
-        }
-
-        /// <summary>
-        /// 訂正済みリードが揃った後、要らなくなった前処理済みリードを消す
-        /// </summary>
-        /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
-        internal static void V_削除_前処理済みリード(string p_一時ディレクトリ)
-        {
-            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, C_前処理済みの幹, ".fq"))
-            {
-                中間データ置き場.V_削除(l_パス);
-                Logger.V_出力(メッセージID.中間リードを削除, l_パス);
-            }
         }
 
         /// <summary>

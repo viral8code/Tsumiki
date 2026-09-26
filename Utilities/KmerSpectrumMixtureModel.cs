@@ -152,6 +152,10 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 「この深度以上はすべて信頼できる」と言える一方向境界だけを返す
         /// </summary>
+        /// <param name="p_事後誤り確率"></param>
+        /// <param name="p_頻度"></param>
+        /// <param name="p_カットオフ"></param>
+        /// <returns></returns>
         internal static ulong Get_単調な信頼下限(IReadOnlyList<double> p_事後誤り確率, IReadOnlyList<double> p_頻度, ulong p_カットオフ)
         {
             var l_開始 = checked((int)Math.Max(0UL, p_カットオフ - 1UL));
@@ -456,6 +460,8 @@ namespace Tsumiki.Utilities
         /// <param name="p_コピー数別混合比"></param>
         /// <param name="p_r誤り">出現回数ごとの誤り成分への責任度、この呼び出しで書き込む</param>
         /// <param name="p_rコピー">出現回数・コピー数ごとの責任度、この呼び出しで書き込む</param>
+        /// <param name="p_過分散"></param>
+        /// <param name="p_logガンマ"></param>
         /// <returns></returns>
         private static double Get_Estep(double[] p_出現回数, double[] p_頻度, double[] p_log階乗, double p_誤り平均, double p_誤り混合比, double p_λ, double[] p_コピー数別混合比, double p_過分散, double[] p_logガンマ, double[] p_r誤り, double[][] p_rコピー)
         {
@@ -575,6 +581,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_誤り混合比"></param>
         /// <param name="p_λ"></param>
         /// <param name="p_コピー数別混合比"></param>
+        /// <param name="p_過分散"></param>
         /// <returns></returns>
         private static double[] Get_事後誤り確率(double[] p_出現回数, double[] p_log階乗, double p_誤り平均, double p_誤り混合比, double p_λ, double[] p_コピー数別混合比, double p_過分散)
         {

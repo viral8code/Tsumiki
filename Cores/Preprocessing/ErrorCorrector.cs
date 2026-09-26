@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Tsumiki.Commons;
+using Tsumiki.Cores.Pipeline;
 using Tsumiki.IO;
 using Tsumiki.Models.Correction;
 using Tsumiki.Models.Foundation;
@@ -46,12 +47,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_出力先1"></param>
         /// <param name="p_出力先2"></param>
+        /// <param name="p_Phredオフセット"></param>
         public static void V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2, int p_Phredオフセット)
         {
             using var l_計測 = new StageTimer("error-correction");
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, "error_correction");
+            var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_エラー訂正ディレクトリ名);
             _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
 
             Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);

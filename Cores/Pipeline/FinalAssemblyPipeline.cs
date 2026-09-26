@@ -220,16 +220,6 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// FASTA の ID 行から配列名 (最初の空白まで) を取り出す
-        /// </summary>
-        /// <param name="p_ID">ID 行</param>
-        /// <returns>配列名</returns>
-        private static string Get_配列名(string p_ID)
-        {
-            return p_ID.TrimStart('>').Split(' ', 2)[0];
-        }
-
-        /// <summary>
         /// 最終配列を整形して元リードと照合し、レポートを出力する
         /// </summary>
         /// <param name="p_結果">採用したアセンブリ</param>
@@ -313,7 +303,7 @@ namespace Tsumiki.Cores.Pipeline
             try
             {
                 ConfigurationManager.A_実行時引数 = l_設定;
-                var l_検査パス = Path.Combine(p_作業パス, "validation");
+                var l_検査パス = Path.Combine(p_作業パス, AssemblyWorkspace.C_検査ディレクトリ名);
                 _ = Directory.CreateDirectory(l_検査パス);
                 using var l_索引 = new TrustedKmerIndex(l_検査パス);
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
@@ -338,6 +328,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_最終パス">最終配列</param>
         /// <param name="p_作業パス">出力先</param>
         /// <param name="p_処理済み設定">前処理・エラー訂正後のパスを保持した設定、無ければ null</param>
+        /// <param name="p_結果"></param>
         private static void V_記録_出所(Parameters p_原入力, アセンブリ実行結果 p_結果, string p_最終パス, string p_作業パス, Parameters? p_処理済み設定)
         {
             using var l_出力 = File.Create(Path.Combine(p_作業パス, "assembly.provenance.json"));
@@ -466,6 +457,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果、実行していなければ null</param>
         /// <param name="p_支持検査">リード支持の検査結果</param>
         /// <param name="p_出力ディレクトリ">レポートの出力先ディレクトリ</param>
+        /// <param name="p_原入力"></param>
         private static void V_出力_完全性レポート(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_最終パス, ポリッシュ統計? p_ポリッシュ統計, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, 支持検査結果? p_支持検査, string p_出力ディレクトリ)
         {
             var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
@@ -500,6 +492,16 @@ namespace Tsumiki.Cores.Pipeline
                 ReportWriter.V_書き出し_未支持箇所(l_支持パス, l_支持検査.A_区間, l_支持検査.A_r長);
                 Logger.V_出力(メッセージID.支持のない箇所を書き出した, l_支持検査.A_区間.Count, l_支持パス);
             }
+        }
+
+        /// <summary>
+        /// FASTA の ID 行から配列名 (最初の空白まで) を取り出す
+        /// </summary>
+        /// <param name="p_ID">ID 行</param>
+        /// <returns>配列名</returns>
+        private static string Get_配列名(string p_ID)
+        {
+            return p_ID.TrimStart('>').Split(' ', 2)[0];
         }
 
         #endregion

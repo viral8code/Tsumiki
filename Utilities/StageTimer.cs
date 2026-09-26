@@ -9,28 +9,74 @@ namespace Tsumiki.Utilities
     /// <summary>工程の経過時間とプロセス全体の資源使用量を記録する</summary>
     internal sealed class StageTimer : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// Linux のプロセス入出力情報のパス
+        /// </summary>
+        private const string C_Linux入出力情報パス = "/proc/self/io";
+
+        /// <summary>
+        /// Linux の読み込み文字数のキー
+        /// </summary>
+        private const string C_読込文字数キー = "rchar";
+
+        /// <summary>
+        /// Linux の書き込み文字数のキー
+        /// </summary>
+        private const string C_書込文字数キー = "wchar";
+
+        /// <summary>
+        /// Windows のシステムライブラリ名
+        /// </summary>
+        private const string C_Windowsシステムライブラリ = "kernel32.dll";
+
+        #endregion
+
         #region 内部変数
 
-        /// <summary>工程名</summary>
+        /// <summary>
+        /// 工程名
+        /// </summary>
         private readonly string _工程;
-        /// <summary>経過時間</summary>
+
+        /// <summary>
+        /// 経過時間
+        /// </summary>
         private readonly Stopwatch _時計 = Stopwatch.StartNew();
-        /// <summary>計測するプロセス</summary>
+
+        /// <summary>
+        /// 計測するプロセス
+        /// </summary>
         private readonly Process _プロセス = Process.GetCurrentProcess();
-        /// <summary>開始時の CPU 時間</summary>
+
+        /// <summary>
+        /// 開始時の CPU 時間
+        /// </summary>
         private readonly TimeSpan _CPU;
-        /// <summary>開始時の累積確保量</summary>
+
+        /// <summary>
+        /// 開始時の累積確保量
+        /// </summary>
         private readonly long _確保量 = GC.GetTotalAllocatedBytes(false);
-        /// <summary>開始時の世代 2 回収回数</summary>
+
+        /// <summary>
+        /// 開始時の世代 2 回収回数
+        /// </summary>
         private readonly int _回収数 = GC.CollectionCount(2);
-        /// <summary>開始時のプロセス全体の読み書き量</summary>
+
+        /// <summary>
+        /// 開始時のプロセス全体の読み書き量
+        /// </summary>
         private readonly (ulong A_読込, ulong A_書込)? _入出力 = Get_入出力量();
 
         #endregion
 
         #region コンストラクタ
 
-        /// <summary>工程の計測を始める</summary>
+        /// <summary>
+        /// 工程の計測を始める
+        /// </summary>
         /// <param name="p_工程">配列や入力パスを含まない工程名</param>
         public StageTimer(string p_工程)
         {
@@ -43,7 +89,9 @@ namespace Tsumiki.Utilities
 
         #region 公開メソッド
 
-        /// <summary>計測区間の終了時点の資源使用量を記録する</summary>
+        /// <summary>
+        /// 計測区間の終了時点の資源使用量を記録する
+        /// </summary>
         public void Dispose()
         {
             this._プロセス.Refresh();
@@ -65,7 +113,9 @@ namespace Tsumiki.Utilities
 
         #region 内部メソッド
 
-        /// <summary>プロセスがこれまでに読み書きした量</summary>
+        /// <summary>
+        /// プロセスがこれまでに読み書きした量
+        /// </summary>
         /// <returns>取れなければ null</returns>
         private static (ulong A_読込, ulong A_書込)? Get_入出力量()
         {
@@ -78,7 +128,9 @@ namespace Tsumiki.Utilities
             return OperatingSystem.IsLinux() ? Get_入出力量_Linux() : null;
         }
 
-        /// <summary>/proc/self/io から読み書きした量を取る</summary>
+        /// <summary>
+        /// /proc/self/io から読み書きした量を取る
+        /// </summary>
         /// <returns>取れなければ null</returns>
         private static (ulong A_読込, ulong A_書込)? Get_入出力量_Linux()
         {
@@ -86,7 +138,7 @@ namespace Tsumiki.Utilities
             {
                 ulong? l_読込 = null;
                 ulong? l_書込 = null;
-                foreach (var l_行 in File.ReadLines("/proc/self/io"))
+                foreach (var l_行 in File.ReadLines(C_Linux入出力情報パス))
                 {
                     var l_区切り = l_行.IndexOf(':');
                     if (l_区切り < 0 || !ulong.TryParse(l_行.AsSpan(l_区切り + 1).Trim(), out var l_値))
@@ -96,10 +148,10 @@ namespace Tsumiki.Utilities
 
                     switch (l_行[..l_区切り])
                     {
-                        case "rchar":
+                        case C_読込文字数キー:
                             l_読込 = l_値;
                             break;
-                        case "wchar":
+                        case C_書込文字数キー:
                             l_書込 = l_値;
                             break;
                     }
@@ -117,8 +169,13 @@ namespace Tsumiki.Utilities
             }
         }
 
-        /// <summary>プロセスの読み書き量を取る</summary>
-        [DllImport("kernel32.dll")]
+        /// <summary>
+        /// プロセスの読み書き量を取る
+        /// </summary>
+        /// <param name="p_プロセス"></param>
+        /// <param name="p_計数"></param>
+        /// <returns></returns>
+        [DllImport(C_Windowsシステムライブラリ)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetProcessIoCounters(IntPtr p_プロセス, out 入出力計数 p_計数);
 

@@ -356,6 +356,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_分岐の継ぎ目">この k の contig が分岐のある継ぎ目で通った辺 ((k+1)-mer、両向き)</param>
         /// <param name="p_原入力">r-mer の裏付けを数える元のリードを持つ設定</param>
         /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_断片パス"></param>
         private static void V_用意_次段引き継ぎ(List<引き継ぎ配列>? p_次への引き継ぎ, string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, Parameters p_引数, IReadOnlyList<string> p_バブル敗者, List<引き継ぎ配列>? p_合成リードの控え, List<int> p_断片長標本, HashSet<string> p_分岐の継ぎ目, string p_断片パス, Parameters? p_原入力 = null, int? p_リード長 = null)
         {
             if (p_次への引き継ぎ is null)
@@ -486,6 +487,13 @@ namespace Tsumiki.Cores.Pipeline
             }
         }
 
+        /// <summary>
+        /// 配列と各 k-mer のカバレッジから引き継ぎ配列を作る
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_k長"></param>
+        /// <returns></returns>
         private static 引き継ぎ配列 Get_引き継ぎ配列(string p_配列, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();

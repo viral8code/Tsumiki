@@ -318,7 +318,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 値と出現回数を値の昇順に並べて、パック済みバイト列でファイルへ書き出す
         /// </summary>
-        /// <typeparam name="T">値の型</typeparam>
         /// <param name="p_バッファ">書き出す値と出現回数</param>
         /// <param name="p_変換">値を右詰めのパック値に直す</param>
         private void V_書出_値バッファ<T>(Dictionary<T, ulong> p_バッファ, Func<T, (UInt128 A_上位, UInt128 A_下位)> p_変換) where T : notnull

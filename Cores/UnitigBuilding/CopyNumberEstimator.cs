@@ -91,6 +91,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_カバレッジ"></param>
         /// <param name="p_unitig長"></param>
         /// <param name="p_グラフ"></param>
+        /// <param name="p_基準の出所"></param>
         /// <returns></returns>
         public static コピー数推定結果 Get_推定結果(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, UnitigGraph? p_グラフ = null, コピー数基準の出所? p_基準の出所 = null)
         {
@@ -118,75 +119,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_分散診断 = Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数);
             var l_コピー数区間 = Get_コピー数区間(p_カバレッジ, l_基準値, l_分散診断, l_コピー数);
             return new コピー数推定結果(l_基準値, l_実際の出所, p_カバレッジ, l_コピー数, l_分散診断, l_コピー数区間);
-        }
-
-        /// <summary>
-        /// 観測されたカバレッジの分散を踏まえた、コピー数の妥当な範囲を求める
-        /// </summary>
-        /// <param name="p_カバレッジ"></param>
-        /// <param name="p_基準値">単一コピー基準値</param>
-        /// <param name="p_分散診断">単一コピー集団の過分散診断</param>
-        /// <param name="p_コピー数">点推定 (区間は必ずこれを含むよう広げる)</param>
-        /// <returns>コピー数区間、求められない場合は null</returns>
-        private static Dictionary<int, コピー数区間>? Get_コピー数区間(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, カバレッジ分散診断? p_分散診断, Dictionary<int, int> p_コピー数)
-        {
-            if (p_分散診断 is not { } l_診断 || p_基準値 <= 0D)
-            {
-                return null;
-            }
-
-            var l_分散指数 = Math.Max(1D, l_診断.A_分散指数);
-            Dictionary<int, コピー数区間> l_結果 = [];
-            foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
-            {
-                var l_点推定 = p_コピー数.GetValueOrDefault(l_ID, 1);
-                if (l_カバレッジ値 <= 0D)
-                {
-                    l_結果[l_ID] = new コピー数区間(1, Math.Max(1, l_点推定));
-                    continue;
-                }
-
-                var l_標準偏差 = Math.Sqrt(l_分散指数 * l_カバレッジ値);
-                var l_下限カバレッジ = Math.Max(0D, l_カバレッジ値 - (C_区間のz値 * l_標準偏差));
-                var l_上限カバレッジ = l_カバレッジ値 + (C_区間のz値 * l_標準偏差);
-                var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, C_コピー数の上限);
-                var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, C_コピー数の上限);
-
-                l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
-            }
-
-            return l_結果;
-        }
-
-        /// <summary>
-        /// 単一コピーと判定された unitig 集団のカバレッジが、ポアソン仮定で説明できる範囲に収まっているかを診断する
-        /// </summary>
-        /// <param name="p_カバレッジ"></param>
-        /// <param name="p_unitig長"></param>
-        /// <param name="p_コピー数"></param>
-        /// <returns>診断結果、求められない場合は null</returns>
-        private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
-        {
-            var l_単一コピー集団 = p_コピー数
-                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= C_孤立複製単位とみなす最小合計長)
-                .Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D))
-                .Where(x => x > 0D)
-                .ToList();
-
-            if (l_単一コピー集団.Count < C_分散診断に使う最小標本数)
-            {
-                return null;
-            }
-
-            var l_平均 = l_単一コピー集団.Average();
-            if (l_平均 <= 0D)
-            {
-                return null;
-            }
-
-            var l_分散 = l_単一コピー集団.Sum(x => (x - l_平均) * (x - l_平均)) / l_単一コピー集団.Count;
-            var l_分散指数 = l_分散 / l_平均;
-            return new カバレッジ分散診断(l_平均, l_分散, l_分散指数, l_分散指数 > C_過分散とみなす分散指数の下限);
         }
 
         /// <summary>
@@ -447,6 +379,75 @@ namespace Tsumiki.Cores.UnitigBuilding
                 .Where(x => p_unitig長.ContainsKey(x.Key) && x.Value > 0D)
                 .Select(x => ((long)p_unitig長[x.Key], x.Value));
             return StatsUtil.Get_長さ加重中央値(l_組);
+        }
+
+        /// <summary>
+        /// 観測されたカバレッジの分散を踏まえた、コピー数の妥当な範囲を求める
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_基準値">単一コピー基準値</param>
+        /// <param name="p_分散診断">単一コピー集団の過分散診断</param>
+        /// <param name="p_コピー数">点推定 (区間は必ずこれを含むよう広げる)</param>
+        /// <returns>コピー数区間、求められない場合は null</returns>
+        private static Dictionary<int, コピー数区間>? Get_コピー数区間(IReadOnlyDictionary<int, double> p_カバレッジ, double p_基準値, カバレッジ分散診断? p_分散診断, Dictionary<int, int> p_コピー数)
+        {
+            if (p_分散診断 is not { } l_診断 || p_基準値 <= 0D)
+            {
+                return null;
+            }
+
+            var l_分散指数 = Math.Max(1D, l_診断.A_分散指数);
+            Dictionary<int, コピー数区間> l_結果 = [];
+            foreach (var (l_ID, l_カバレッジ値) in p_カバレッジ)
+            {
+                var l_点推定 = p_コピー数.GetValueOrDefault(l_ID, 1);
+                if (l_カバレッジ値 <= 0D)
+                {
+                    l_結果[l_ID] = new コピー数区間(1, Math.Max(1, l_点推定));
+                    continue;
+                }
+
+                var l_標準偏差 = Math.Sqrt(l_分散指数 * l_カバレッジ値);
+                var l_下限カバレッジ = Math.Max(0D, l_カバレッジ値 - (C_区間のz値 * l_標準偏差));
+                var l_上限カバレッジ = l_カバレッジ値 + (C_区間のz値 * l_標準偏差);
+                var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, C_コピー数の上限);
+                var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, C_コピー数の上限);
+
+                l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
+            }
+
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 単一コピーと判定された unitig 集団のカバレッジが、ポアソン仮定で説明できる範囲に収まっているかを診断する
+        /// </summary>
+        /// <param name="p_カバレッジ"></param>
+        /// <param name="p_unitig長"></param>
+        /// <param name="p_コピー数"></param>
+        /// <returns>診断結果、求められない場合は null</returns>
+        private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
+        {
+            var l_単一コピー集団 = p_コピー数
+                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= C_孤立複製単位とみなす最小合計長)
+                .Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D))
+                .Where(x => x > 0D)
+                .ToList();
+
+            if (l_単一コピー集団.Count < C_分散診断に使う最小標本数)
+            {
+                return null;
+            }
+
+            var l_平均 = l_単一コピー集団.Average();
+            if (l_平均 <= 0D)
+            {
+                return null;
+            }
+
+            var l_分散 = l_単一コピー集団.Sum(x => (x - l_平均) * (x - l_平均)) / l_単一コピー集団.Count;
+            var l_分散指数 = l_分散 / l_平均;
+            return new カバレッジ分散診断(l_平均, l_分散, l_分散指数, l_分散指数 > C_過分散とみなす分散指数の下限);
         }
 
         #endregion
