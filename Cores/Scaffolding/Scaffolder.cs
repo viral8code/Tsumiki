@@ -18,8 +18,7 @@ namespace Tsumiki.Cores.Scaffolding
     /// <param name="p_contig構築">確定辺・配置情報を持つ contig 構築器</param>
     /// <param name="p_contigファイルパス">読み直す contig ファイルのパス</param>
     /// <param name="p_リード長">リード長、不明なら null</param>
-    /// <param name="p_リード索引">繋ぎ目をリードで確かめるための索引、確かめないなら null</param>
-    internal class Scaffolder(ContigMaker p_contig構築, string p_contigファイルパス, int? p_リード長, ReadMinimizerIndex? p_リード索引 = null)
+    internal class Scaffolder(ContigMaker p_contig構築, string p_contigファイルパス, int? p_リード長)
     {
         #region 定数
 
@@ -81,11 +80,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// k-1 の重なりで畳んだ繋ぎ目の数
         /// </summary>
         private int _k引く1で畳んだ数;
-
-        /// <summary>
-        /// リードで確かめた重なりで畳んだ繋ぎ目の数
-        /// </summary>
-        private int _リードで畳んだ数;
 
         /// <summary>
         /// 重なりを確かめられず、未確認の繋ぎ目の印で繋いだ繋ぎ目の数
@@ -334,7 +328,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力(メッセージID.Scaffold出力完了, l_scaffold群.Count, l_総延長, p_scaffoldパス);
-            Logger.V_出力(メッセージID.Scaffold繋ぎ目の判定, this._k引く1で畳んだ数, this._リードで畳んだ数, this._確かめられなかった数);
+            Logger.V_出力(メッセージID.Scaffold繋ぎ目の判定, this._k引く1で畳んだ数, this._確かめられなかった数);
         }
 
         /// <summary>
@@ -759,7 +753,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_出力">ここまでの scaffold 配列</param>
         /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <returns>畳む重なりの長さ (0 はそのまま続ける)、確かめられなければ null</returns>
+        /// <returns>畳む重なりの長さ、k-1 の重なりが一致しなければ null (最終出力でリードで確かめる)</returns>
         private int? Get_繋ぎ目の重なり長(StringBuilder p_出力, string p_次の配列)
         {
             var l_k引く1 = Get_畳める重なり長(p_出力, p_次の配列);
@@ -769,15 +763,8 @@ namespace Tsumiki.Cores.Scaffolding
                 return l_k引く1;
             }
 
-            var l_確かめた長さ = p_リード索引 is null ? null : Get_リードで確かめた重なり長(p_リード索引, p_出力, p_次の配列, ConfigurationManager.A_実行時引数.A_k長, p_リード長 ?? 0);
-            if (l_確かめた長さ is null)
-            {
-                this._確かめられなかった数++;
-                return null;
-            }
-
-            this._リードで畳んだ数++;
-            return l_確かめた長さ;
+            this._確かめられなかった数++;
+            return null;
         }
 
         /// <summary>

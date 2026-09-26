@@ -4,6 +4,7 @@ using Tsumiki.Cores.Evaluation;
 using Tsumiki.Cores.Output;
 using Tsumiki.Cores.Polishing;
 using Tsumiki.Cores.Preprocessing;
+using Tsumiki.Cores.Scaffolding;
 using Tsumiki.IO;
 using Tsumiki.Models.Evaluation;
 using Tsumiki.Models.Foundation;
@@ -85,11 +86,90 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 未確認の繋ぎ目のうち、重なりをリードで確かめられるものを畳む
+        /// </summary>
+        /// <param name="p_パス群">対象の FASTA パス (最初のものの件数をログに出す)</param>
+        /// <param name="p_k長">採用した k 長</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_リードパス群">生リードのパス</param>
+        public static void V_畳む_リードで確かめた繋ぎ目(string[] p_パス群, int p_k長, int p_リード長, IEnumerable<string> p_リードパス群)
+        {
+            var l_対象 = p_パス群.Where(File.Exists).Select(x => (A_パス: x, A_全件: FastaReader.Get_全エントリ(x))).Where(x => x.A_全件.Any(y => y.A_配列.Contains(Consts.未確認の繋ぎ目))).ToList();
+            if (l_対象.Count == 0 || RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
+            {
+                return;
+            }
+
+            for (var i = 0; i < l_対象.Count; i++)
+            {
+                var l_総数 = 0;
+                var l_畳んだ数 = 0;
+                using (var l_書き込み = new FastaWriter(l_対象[i].A_パス))
+                {
+                    foreach (var (l_ID, l_配列) in l_対象[i].A_全件)
+                    {
+                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, ref l_総数, ref l_畳んだ数));
+                    }
+                }
+
+                if (l_対象[i].A_パス == p_パス群[0])
+                {
+                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_k長">採用した k 長</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_総数">未確認の繋ぎ目の数 (加算する)</param>
+        /// <param name="p_畳んだ数">畳んだ数 (加算する)</param>
+        /// <returns>畳んだ後の配列</returns>
+        internal static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, ref int p_総数, ref int p_畳んだ数)
+        {
+            var l_出力 = new StringBuilder(p_配列.Length);
+            var i = 0;
+            while (i < p_配列.Length)
+            {
+                if (p_配列[i] != Consts.未確認の繋ぎ目)
+                {
+                    _ = l_出力.Append(p_配列[i]);
+                    i++;
+                    continue;
+                }
+
+                p_総数++;
+                var l_次の終わり = i + 1;
+                while (l_次の終わり < p_配列.Length && !Util.Isギャップ文字(p_配列[l_次の終わり]))
+                {
+                    l_次の終わり++;
+                }
+
+                if (Scaffolder.Get_リードで確かめた重なり長(p_索引, l_出力, p_配列[(i + 1)..l_次の終わり], p_k長, p_リード長) is { } l_重なり長)
+                {
+                    p_畳んだ数++;
+                    i += 1 + l_重なり長;
+                    continue;
+                }
+
+                _ = l_出力.Append(Consts.未確認の繋ぎ目);
+                i++;
+            }
+
+            return l_出力.ToString();
+        }
+
+        /// <summary>
         /// 未確認の繋ぎ目の印を、長さ不明のギャップ (N を 100 個) に置き換える
         /// </summary>
         /// <param name="p_パス">対象の FASTA パス</param>
+        /// <param name="p_Isログ出力">置き換えた数をログに出すか</param>
         /// <returns>配列 ID ごとの、長さ不明のギャップになった N の連続の番号 (0 始まり)</returns>
-        public static Dictionary<string, HashSet<int>> V_置換_未確認の繋ぎ目(string p_パス)
+        public static Dictionary<string, HashSet<int>> V_置換_未確認の繋ぎ目(string p_パス, bool p_Isログ出力)
         {
             Dictionary<string, HashSet<int>> l_長さ不明の番号 = [];
             if (!File.Exists(p_パス))
@@ -118,7 +198,11 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            Logger.V_出力(メッセージID.長さ不明のギャップへ置換, l_置換数, C_長さ不明のギャップ長);
+            if (p_Isログ出力)
+            {
+                Logger.V_出力(メッセージID.長さ不明のギャップへ置換, l_置換数, C_長さ不明のギャップ長);
+            }
+
             return l_長さ不明の番号;
         }
 
@@ -232,8 +316,11 @@ namespace Tsumiki.Cores.Pipeline
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
 
             V_除外_短い配列(l_最終パス, p_リード長);
-            var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス);
-            _ = V_置換_未確認の繋ぎ目(Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名));
+            var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
+            V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
+            RepeatRMerVerifier.V_解放_共有索引();
+            var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス, p_Isログ出力: true);
+            _ = V_置換_未確認の繋ぎ目(l_scaffoldパス, p_Isログ出力: false);
 
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
             V_書き出し_AGP(l_最終パス, l_長さ不明の番号, Path.ChangeExtension(l_最終パス, C_AGP拡張子));

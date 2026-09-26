@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Pipeline;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Core
 {
@@ -47,6 +48,34 @@ namespace Tsumiki.Tests.Core
             Assert.Equal("3", l_行群[3][5]);
             Assert.Equal(["S1_1", "S1_2", "S1_3"], l_行群.Where(x => x[4] == "W").Select(x => x[5]));
             Assert.Equal(l_配列.Length.ToString(), l_行群[^1][2]);
+        }
+
+        /// <summary>
+        /// 未確認の繋ぎ目は、重なりをリードで確かめられれば畳み、確かめられなければ印のまま残す
+        /// </summary>
+        /// <param name="p_リード数">繋いだ配列を含むリードの本数</param>
+        /// <param name="p_Is畳む">畳むはずか</param>
+        [Theory]
+        [InlineData(3, true)]
+        [InlineData(1, false)]
+        public void Get_確かめた繋ぎ目を畳んだ配列_リードで確かめられれば畳む(int p_リード数, bool p_Is畳む)
+        {
+            var l_乱数 = new Random(11);
+            string Get_乱配列(int p_長さ) => new([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_共通 = Get_乱配列(30);
+            var l_左 = Get_乱配列(200) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(200);
+            var l_繋いだ配列 = l_左 + l_右[30..];
+            var l_リード群 = Enumerable.Range(0, p_リード数).Select(i => l_繋いだ配列.Substring(170 + i, 100)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+            var l_総数 = 0;
+            var l_畳んだ数 = 0;
+
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 89, 100, ref l_総数, ref l_畳んだ数);
+
+            Assert.Equal(1, l_総数);
+            Assert.Equal(p_Is畳む ? 1 : 0, l_畳んだ数);
+            Assert.Equal(p_Is畳む ? l_繋いだ配列 : l_左 + Consts.未確認の繋ぎ目 + l_右, l_結果);
         }
 
         #endregion

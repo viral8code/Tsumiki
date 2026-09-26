@@ -240,7 +240,7 @@ namespace Tsumiki.Cores.Pipeline
                 Logger.V_出力(メッセージID.Scaffolding開始);
                 using (new StageTimer($"scaffolding k={p_k長}"))
                 {
-                    var l_scaffold構築 = new Scaffolder(l_contig構築, l_contigパス, p_リード長, RepeatRMerVerifier.Get_リード索引(Get_全リードパス(p_原入力 ?? p_引数)));
+                    var l_scaffold構築 = new Scaffolder(l_contig構築, l_contigパス, p_リード長);
                     l_scaffold構築.V_実行(l_scaffoldパス);
                 }
 
@@ -450,7 +450,7 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_引数">実行時引数</param>
         /// <returns></returns>
-        private static string[] Get_全リードパス(Parameters p_引数)
+        internal static string[] Get_全リードパス(Parameters p_引数)
         {
             return [.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })];
         }

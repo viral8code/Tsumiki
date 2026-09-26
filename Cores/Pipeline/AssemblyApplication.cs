@@ -169,7 +169,6 @@ namespace Tsumiki.Cores.Pipeline
                 l_結果 = MultiKAssembler.Get_固定アンカー評価を付与(l_単一結果, l_引数, l_一時ディレクトリ, l_リード長);
             }
 
-            RepeatRMerVerifier.V_解放_共有索引();
             FinalAssemblyPipeline.V_実行(l_結果, l_原入力, l_一時ディレクトリ, l_リード長, l_処理済み設定);
 
             if (l_引数.A_Is一時ディレクトリ削除)
