@@ -411,6 +411,16 @@
         Scaffold出力完了,
 
         /// <summary>
+        /// scaffold の繋ぎ目の重なりをどう扱ったか
+        /// </summary>
+        Scaffold繋ぎ目の判定,
+
+        /// <summary>
+        /// 最終成果物の未確認の繋ぎ目を長さ不明のギャップにした
+        /// </summary>
+        長さ不明のギャップへ置換,
+
+        /// <summary>
         /// 同一 unitig 内のペアからのインサートサイズ推定
         /// </summary>
         インサートサイズ推定_同一unitig,

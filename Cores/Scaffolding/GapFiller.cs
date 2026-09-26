@@ -49,7 +49,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_位置 = 0;
                 while (l_位置 < l_配列.Length)
                 {
-                    if (l_配列[l_位置] != 'N')
+                    if (!Util.Isギャップ文字(l_配列[l_位置]))
                     {
                         _ = l_出力.Append(l_配列[l_位置]);
                         l_位置++;
@@ -57,10 +57,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
 
                     var l_ギャップ開始 = l_位置;
-                    while (l_位置 < l_配列.Length && l_配列[l_位置] == 'N')
-                    {
-                        l_位置++;
-                    }
+                    l_位置 = Util.Get_ギャップの終わり(l_配列, l_位置);
 
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
@@ -92,7 +89,7 @@ namespace Tsumiki.Cores.Scaffolding
                                 _ => 曖昧箇所の種別.到達不能,
                             };
                         AmbiguityRecorder.V_記録(l_種別, $"{l_ID.TrimStart('>')}:{l_ギャップ開始}-{l_位置}", p_安定ID: l_安定ID);
-                        _ = l_出力.Append('N', l_ギャップ長);
+                        _ = l_出力.Append(l_配列, l_ギャップ開始, l_ギャップ長);
                     }
                 }
 

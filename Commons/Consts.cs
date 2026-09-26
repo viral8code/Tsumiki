@@ -103,6 +103,11 @@
         public const string GFAファイル名 = "assembly.gfa";
 
         /// <summary>
+        /// ペアでは繋がるが重なりを確かめられなかった scaffold の繋ぎ目の印 (最終出力で長さ不明のギャップにする)
+        /// </summary>
+        public const char 未確認の繋ぎ目 = 'n';
+
+        /// <summary>
         /// 環状に閉じた複製単位であることを示す、配列 ID 中の目印
         /// </summary>
         public const string 環状の目印 = "circular";

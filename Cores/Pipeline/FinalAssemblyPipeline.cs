@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Text;
+using Tsumiki.Commons;
 using Tsumiki.Cores.Evaluation;
 using Tsumiki.Cores.Output;
 using Tsumiki.Cores.Polishing;
@@ -32,6 +33,16 @@ namespace Tsumiki.Cores.Pipeline
         /// ポリッシュ結果の一時ファイル名
         /// </summary>
         private const string C_ポリッシュ済みファイル名 = "polished.fasta";
+
+        /// <summary>
+        /// 長さが分からない繋ぎ目に入れる N の数 (NCBI の慣例)
+        /// </summary>
+        internal const int C_長さ不明のギャップ長 = 100;
+
+        /// <summary>
+        /// 最終成果物の構成を書き出す AGP ファイルの拡張子
+        /// </summary>
+        private const string C_AGP拡張子 = ".agp";
 
         /// <summary>
         /// 最終成果物の統計表のファイル名
@@ -74,6 +85,151 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 未確認の繋ぎ目の印を、長さ不明のギャップ (N を 100 個) に置き換える
+        /// </summary>
+        /// <param name="p_パス">対象の FASTA パス</param>
+        /// <returns>配列 ID ごとの、長さ不明のギャップになった N の連続の番号 (0 始まり)</returns>
+        public static Dictionary<string, HashSet<int>> V_置換_未確認の繋ぎ目(string p_パス)
+        {
+            Dictionary<string, HashSet<int>> l_長さ不明の番号 = [];
+            if (!File.Exists(p_パス))
+            {
+                return l_長さ不明の番号;
+            }
+
+            var l_全件 = FastaReader.Get_全エントリ(p_パス);
+            if (!l_全件.Any(x => x.A_配列.Contains(Consts.未確認の繋ぎ目)))
+            {
+                return l_長さ不明の番号;
+            }
+
+            var l_置換数 = 0;
+            using (var l_書き込み = new FastaWriter(p_パス))
+            {
+                foreach (var (l_ID, l_配列) in l_全件)
+                {
+                    var l_番号群 = new HashSet<int>();
+                    l_書き込み.V_書き込み(l_ID, Get_長さ不明のギャップへ置換(l_配列, l_番号群));
+                    if (l_番号群.Count > 0)
+                    {
+                        l_長さ不明の番号[Get_配列名(l_ID)] = l_番号群;
+                        l_置換数 += l_番号群.Count;
+                    }
+                }
+            }
+
+            Logger.V_出力(メッセージID.長さ不明のギャップへ置換, l_置換数, C_長さ不明のギャップ長);
+            return l_長さ不明の番号;
+        }
+
+        /// <summary>
+        /// 未確認の繋ぎ目の印を長さ不明のギャップに置き換え、それが何番目の N の連続になったかを集める
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_長さ不明の番号">長さ不明のギャップになった N の連続の番号 (0 始まり) を足す先</param>
+        /// <returns>置き換えた配列</returns>
+        internal static string Get_長さ不明のギャップへ置換(string p_配列, HashSet<int> p_長さ不明の番号)
+        {
+            var l_出力 = new StringBuilder(p_配列.Length);
+            var l_連続の番号 = -1;
+            for (var i = 0; i < p_配列.Length; i++)
+            {
+                var l_文字 = p_配列[i];
+                if (Util.Isギャップ文字(l_文字) && (i == 0 || !Util.Isギャップ文字(p_配列[i - 1])))
+                {
+                    l_連続の番号++;
+                }
+
+                if (l_文字 == Consts.未確認の繋ぎ目)
+                {
+                    _ = l_出力.Append('N', C_長さ不明のギャップ長);
+                    _ = p_長さ不明の番号.Add(l_連続の番号);
+                }
+                else
+                {
+                    _ = l_出力.Append(l_文字);
+                }
+            }
+
+            return l_出力.ToString();
+        }
+
+        /// <summary>
+        /// 最終成果物の構成を AGP (v2.1) で書き出す
+        /// </summary>
+        /// <param name="p_FASTAパス">最終成果物</param>
+        /// <param name="p_長さ不明の番号">配列 ID ごとの、長さ不明のギャップの N の連続の番号</param>
+        /// <param name="p_AGPパス">書き出す先</param>
+        public static void V_書き出し_AGP(string p_FASTAパス, Dictionary<string, HashSet<int>> p_長さ不明の番号, string p_AGPパス)
+        {
+            if (!File.Exists(p_FASTAパス))
+            {
+                return;
+            }
+
+            using var l_書き込み = new StreamWriter(p_AGPパス);
+            l_書き込み.WriteLine("##agp-version	2.1");
+            foreach (var (l_ID, l_配列) in FastaReader.Get_全エントリ(p_FASTAパス))
+            {
+                var l_名前 = Get_配列名(l_ID);
+                foreach (var l_行 in Get_AGP行(l_名前, l_配列, p_長さ不明の番号.GetValueOrDefault(l_名前)))
+                {
+                    l_書き込み.WriteLine(l_行);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 1 本の配列の AGP の行
+        /// </summary>
+        /// <param name="p_名前">配列名</param>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_長さ不明の番号">長さ不明のギャップの N の連続の番号、無ければ null</param>
+        /// <returns>AGP の行</returns>
+        internal static IEnumerable<string> Get_AGP行(string p_名前, string p_配列, IReadOnlySet<int>? p_長さ不明の番号)
+        {
+            var l_部品番号 = 1;
+            var l_片番号 = 1;
+            var l_連続の番号 = 0;
+            var l_位置 = 0;
+            while (l_位置 < p_配列.Length)
+            {
+                var l_終わり = l_位置;
+                var l_Isギャップ = p_配列[l_位置] == 'N';
+                while (l_終わり < p_配列.Length && (p_配列[l_終わり] == 'N') == l_Isギャップ)
+                {
+                    l_終わり++;
+                }
+
+                var l_長さ = l_終わり - l_位置;
+                if (l_Isギャップ)
+                {
+                    var l_種類 = p_長さ不明の番号?.Contains(l_連続の番号) == true ? "U" : "N";
+                    yield return FormattableString.Invariant($"{p_名前}	{l_位置 + 1}	{l_終わり}	{l_部品番号}	{l_種類}	{l_長さ}	scaffold	yes	paired-ends");
+                    l_連続の番号++;
+                }
+                else
+                {
+                    yield return FormattableString.Invariant($"{p_名前}	{l_位置 + 1}	{l_終わり}	{l_部品番号}	W	{p_名前}_{l_片番号}	1	{l_長さ}	+");
+                    l_片番号++;
+                }
+
+                l_部品番号++;
+                l_位置 = l_終わり;
+            }
+        }
+
+        /// <summary>
+        /// FASTA の ID 行から配列名 (最初の空白まで) を取り出す
+        /// </summary>
+        /// <param name="p_ID">ID 行</param>
+        /// <returns>配列名</returns>
+        private static string Get_配列名(string p_ID)
+        {
+            return p_ID.TrimStart('>').Split(' ', 2)[0];
+        }
+
+        /// <summary>
         /// 最終配列を整形して元リードと照合し、レポートを出力する
         /// </summary>
         /// <param name="p_結果">採用したアセンブリ</param>
@@ -86,8 +242,11 @@ namespace Tsumiki.Cores.Pipeline
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
 
             V_除外_短い配列(l_最終パス, p_リード長);
+            var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス);
+            _ = V_置換_未確認の繋ぎ目(Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名));
 
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
+            V_書き出し_AGP(l_最終パス, l_長さ不明の番号, Path.ChangeExtension(l_最終パス, C_AGP拡張子));
             var l_閉鎖検証 = V_検証_環状閉鎖(p_原入力, l_最終パス);
             var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
 

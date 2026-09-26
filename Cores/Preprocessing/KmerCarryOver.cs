@@ -37,7 +37,7 @@ namespace Tsumiki.Cores.Preprocessing
         #region 公開メソッド
 
         /// <summary>
-        /// 引き継ぎ元の配列とカバレッジを、その k の成果物から作る
+        /// 引き継ぎ元の配列とカバレッジを、その k の成果物から作る (未確認の繋ぎ目では切る)
         /// </summary>
         /// <param name="p_FASTAパス"></param>
         /// <param name="p_kmerインデックス"></param>
@@ -54,21 +54,23 @@ namespace Tsumiki.Cores.Preprocessing
             while (l_読み込み.Has続き())
             {
                 var l_エントリ = l_読み込み.Get_次の配列();
-                var l_配列 = l_エントリ.A_配列;
-                if (l_配列.Length < Math.Max(C_引き継ぐ配列の最小長, p_k長))
+                foreach (var l_配列 in l_エントリ.A_配列.Split(Consts.未確認の繋ぎ目))
                 {
-                    continue;
-                }
+                    if (l_配列.Length < Math.Max(C_引き継ぐ配列の最小長, p_k長))
+                    {
+                        continue;
+                    }
 
-                var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();
-                var l_カバレッジ = new int[l_配列.Length - p_k長 + 1];
-                for (var i = 0; i < l_カバレッジ.Length; i++)
-                {
-                    l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
-                }
+                    var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();
+                    var l_カバレッジ = new int[l_配列.Length - p_k長 + 1];
+                    for (var i = 0; i < l_カバレッジ.Length; i++)
+                    {
+                        l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
+                    }
 
-                var l_継ぎ目位置 = Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長);
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数, l_エントリ.A_ID.TrimStart('>'), l_カバレッジ)));
+                    var l_継ぎ目位置 = Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長);
+                    l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数, l_エントリ.A_ID.TrimStart('>'), l_カバレッジ)));
+                }
             }
 
             if (l_度数 is not null)

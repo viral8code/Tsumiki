@@ -8,6 +8,7 @@ using Tsumiki.Models.ContigBuilding;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Reporting;
 using Tsumiki.Models.Scaffolding;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Scaffolding
 {
@@ -17,7 +18,8 @@ namespace Tsumiki.Cores.Scaffolding
     /// <param name="p_contig構築">確定辺・配置情報を持つ contig 構築器</param>
     /// <param name="p_contigファイルパス">読み直す contig ファイルのパス</param>
     /// <param name="p_リード長">リード長、不明なら null</param>
-    internal class Scaffolder(ContigMaker p_contig構築, string p_contigファイルパス, int? p_リード長)
+    /// <param name="p_リード索引">繋ぎ目をリードで確かめるための索引、確かめないなら null</param>
+    internal class Scaffolder(ContigMaker p_contig構築, string p_contigファイルパス, int? p_リード長, ReadMinimizerIndex? p_リード索引 = null)
     {
         #region 定数
 
@@ -47,9 +49,19 @@ namespace Tsumiki.Cores.Scaffolding
         private const string C_競合候補の書き出し名 = "scaffold_candidates.tsv";
 
         /// <summary>
-        /// scaffold に挿入する最小ギャップ長
+        /// 繋ぎ目を確かめるのに要る、繋いだ配列を含むリードの箇所数
         /// </summary>
-        private const int C_ギャップ長の下限 = 1;
+        private const int C_繋ぎ目の支持数の下限 = 2;
+
+        /// <summary>
+        /// 繋ぎ目を確かめる配列に、重なりの両側から含める塩基数の目安
+        /// </summary>
+        private const int C_繋ぎ目の余白 = 16;
+
+        /// <summary>
+        /// 繋ぎ目を確かめる配列に、重なりの両側から含める塩基数の下限
+        /// </summary>
+        private const int C_繋ぎ目の余白の下限 = 4;
 
         #endregion
 
@@ -64,6 +76,21 @@ namespace Tsumiki.Cores.Scaffolding
         /// contig 名
         /// </summary>
         private readonly Dictionary<int, string> _contig名 = [];
+
+        /// <summary>
+        /// k-1 の重なりで畳んだ繋ぎ目の数
+        /// </summary>
+        private int _k引く1で畳んだ数;
+
+        /// <summary>
+        /// リードで確かめた重なりで畳んだ繋ぎ目の数
+        /// </summary>
+        private int _リードで畳んだ数;
+
+        /// <summary>
+        /// 重なりを確かめられず、未確認の繋ぎ目の印で繋いだ繋ぎ目の数
+        /// </summary>
+        private int _確かめられなかった数;
 
         #endregion
 
@@ -307,6 +334,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力(メッセージID.Scaffold出力完了, l_scaffold群.Count, l_総延長, p_scaffoldパス);
+            Logger.V_出力(メッセージID.Scaffold繋ぎ目の判定, this._k引く1で畳んだ数, this._リードで畳んだ数, this._確かめられなかった数);
         }
 
         #endregion
@@ -642,14 +670,14 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 var l_次の向き付き配列 = l_Is次が逆鎖 ? Util.V_逆相補(l_次の配列) : l_次の配列;
-                var l_重なり長 = l_辺.A_ギャップ長 <= 0 ? Get_畳める重なり長(l_出力, l_次の向き付き配列) : 0;
-                if (l_重なり長 > 0)
+                var l_重なり長 = l_辺.A_ギャップ長 <= 0 ? this.Get_繋ぎ目の重なり長(l_出力, l_次の向き付き配列) : null;
+                if (l_重なり長 is { } l_長さ)
                 {
-                    _ = l_出力.Append(l_次の向き付き配列, l_重なり長, l_次の向き付き配列.Length - l_重なり長);
+                    _ = l_出力.Append(l_次の向き付き配列, l_長さ, l_次の向き付き配列.Length - l_長さ);
                 }
                 else
                 {
-                    _ = l_出力.Append('N', Math.Max(C_ギャップ長の下限, l_辺.A_ギャップ長));
+                    _ = l_辺.A_ギャップ長 <= 0 ? l_出力.Append(Consts.未確認の繋ぎ目) : l_出力.Append('N', l_辺.A_ギャップ長);
                     _ = l_出力.Append(l_次の向き付き配列);
                 }
 
@@ -659,6 +687,82 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_出力.ToString();
+        }
+
+        /// <summary>
+        /// 重なると見込まれる繋ぎ目で、畳む重なりの長さを決める
+        /// </summary>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <returns>畳む重なりの長さ (0 はそのまま続ける)、確かめられなければ null</returns>
+        private int? Get_繋ぎ目の重なり長(StringBuilder p_出力, string p_次の配列)
+        {
+            var l_k引く1 = Get_畳める重なり長(p_出力, p_次の配列);
+            if (l_k引く1 > 0)
+            {
+                this._k引く1で畳んだ数++;
+                return l_k引く1;
+            }
+
+            var l_確かめた長さ = p_リード索引 is null ? null : Get_リードで確かめた重なり長(p_リード索引, p_出力, p_次の配列, ConfigurationManager.A_実行時引数.A_k長, p_リード長 ?? 0);
+            if (l_確かめた長さ is null)
+            {
+                this._確かめられなかった数++;
+                return null;
+            }
+
+            this._リードで畳んだ数++;
+            return l_確かめた長さ;
+        }
+
+        /// <summary>
+        /// k-1 より短い重なり (0 を含む) のうち、繋いだ配列がリードに出てくるものがただ 1 つなら、その長さを返す
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <returns>確かめた重なりの長さ、無いか 2 つ以上なら null</returns>
+        internal static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長)
+        {
+            var l_最長 = Math.Min(p_k長 - 2, Math.Min(p_出力.Length, p_次の配列.Length) - C_繋ぎ目の余白の下限);
+            if (l_最長 < 0)
+            {
+                return null;
+            }
+
+            var l_末尾 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長), Math.Min(p_出力.Length, l_最長 + ReadMinimizerIndex.C_最短の問い合わせ長));
+            int? l_見つけた長さ = null;
+            for (var l_長さ = l_最長; l_長さ >= 0; l_長さ--)
+            {
+                if (!l_末尾.AsSpan(l_末尾.Length - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
+                {
+                    continue;
+                }
+
+                var l_余白 = Math.Max(C_繋ぎ目の余白, (ReadMinimizerIndex.C_最短の問い合わせ長 - l_長さ + 1) / 2);
+                l_余白 = Math.Min(l_余白, Math.Min((p_リード長 - l_長さ) / 2, Math.Min(l_末尾.Length - l_長さ, p_次の配列.Length - l_長さ)));
+                if (l_余白 < C_繋ぎ目の余白の下限 || l_長さ + (2 * l_余白) < ReadMinimizerIndex.C_最短の問い合わせ長)
+                {
+                    continue;
+                }
+
+                var l_繋いだ配列 = string.Concat(l_末尾.AsSpan(l_末尾.Length - l_長さ - l_余白), p_次の配列.AsSpan(l_長さ, l_余白));
+                if (p_リード索引.Get_出現数(l_繋いだ配列, C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限)
+                {
+                    continue;
+                }
+
+                if (l_見つけた長さ is not null)
+                {
+                    return null;
+                }
+
+                l_見つけた長さ = l_長さ;
+            }
+
+            return l_見つけた長さ;
         }
 
         /// <summary>

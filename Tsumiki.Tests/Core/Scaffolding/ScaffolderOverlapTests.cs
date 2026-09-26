@@ -2,6 +2,7 @@
 using Tsumiki.Commons;
 using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Models.Foundation;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Core
 {
@@ -50,6 +51,67 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, Scaffolder.Get_畳める重なり長(new StringBuilder("CCTTAGG"), "CCTTAG"));
         }
 
+        /// <summary>
+        /// k-1 より短い重なりは、繋いだ配列がリードに 2 か所以上あれば畳む
+        /// </summary>
+        [Theory]
+        [InlineData(40, 3, 40)]
+        [InlineData(5, 2, 5)]
+        [InlineData(0, 2, 0)]
+        [InlineData(40, 1, null)]
+        [InlineData(40, 0, null)]
+        public void Get_リードで確かめた重なり長_リードに繋いだ配列があれば畳む(int p_真の重なり, int p_リード数, int? p_期待)
+        {
+            var l_乱数 = new Random(p_真の重なり * 10 + p_リード数);
+            var l_共通 = Get_乱配列(l_乱数, p_真の重なり);
+            var l_左 = Get_乱配列(l_乱数, 200) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(l_乱数, 200);
+            var l_繋いだ配列 = l_左 + l_右[p_真の重なり..];
+            var l_リード群 = Enumerable.Range(0, p_リード数).Select(i => l_繋いだ配列.Substring(150 + (p_真の重なり / 2) + i, 100)).Append(Get_乱配列(l_乱数, 100)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100));
+        }
+
+        /// <summary>
+        /// 繋ぎ方が 2 通りともリードにあるときは、どちらとも決めずに畳まない
+        /// </summary>
+        [Fact]
+        public void Get_リードで確かめた重なり長_繋ぎ方が2通りあれば畳まない()
+        {
+            var l_乱数 = new Random(7);
+            var l_単位 = Get_乱配列(l_乱数, 20);
+            var l_左 = Get_乱配列(l_乱数, 200) + l_単位 + l_単位;
+            var l_右 = l_単位 + l_単位 + Get_乱配列(l_乱数, 200);
+            List<string> l_リード群 = [];
+            foreach (var l_重なり in new[] { 40, 20 })
+            {
+                var l_繋いだ配列 = l_左 + l_右[l_重なり..];
+                l_リード群.Add(l_繋いだ配列.Substring(170, 100));
+                l_リード群.Add(l_繋いだ配列.Substring(171, 100));
+            }
+
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            Assert.Null(Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100));
+        }
+
         #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 乱数で配列を作る
+        /// </summary>
+        /// <param name="p_乱数">乱数</param>
+        /// <param name="p_長さ">配列の長さ</param>
+        /// <returns>A・C・G・T からなる配列</returns>
+        private static string Get_乱配列(Random p_乱数, int p_長さ)
+        {
+            return new string([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[p_乱数.Next(4)])]);
+        }
+
+        #endregion
+
     }
 }

@@ -329,7 +329,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_連番 = 1;
             foreach (var (A_ID, A_配列) in FastaReader.Get_全エントリ(p_入力パス))
             {
-                foreach (var l_片 in A_配列.Split('N', StringSplitOptions.RemoveEmptyEntries))
+                foreach (var l_片 in A_配列.Split(['N', Consts.未確認の繋ぎ目], StringSplitOptions.RemoveEmptyEntries))
                 {
                     l_書き込み.V_書き込み($"NODE{l_連番}", l_片);
                     l_連番++;

@@ -183,6 +183,17 @@
         /// <returns>出てくれば true</returns>
         public bool Has出現(ReadOnlySpan<char> p_配列)
         {
+            return this.Get_出現数(p_配列, 1) > 0;
+        }
+
+        /// <summary>
+        /// 配列がリードかその逆相補に出てくる箇所の数を、上限まで数える
+        /// </summary>
+        /// <param name="p_配列">調べる配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
+        /// <param name="p_上限">ここまで数えたら打ち切る</param>
+        /// <returns>出てくる箇所の数 (上限で頭打ち)</returns>
+        public int Get_出現数(ReadOnlySpan<char> p_配列, int p_上限)
+        {
             if (p_配列.Length < C_最短の問い合わせ長)
             {
                 throw new ArgumentException($"配列は {C_最短の問い合わせ長} 塩基以上が要る");
@@ -195,7 +206,7 @@
                 var l_値 = Get_種の値(p_配列.Slice(j, C_種長));
                 if (l_値 < 0)
                 {
-                    return false;
+                    return 0;
                 }
 
                 l_正準値[j] = (uint)l_値;
@@ -218,6 +229,7 @@
                 }
             }
 
+            HashSet<(long A_開始, bool A_Is逆鎖)>? l_見つけた場所 = null;
             var l_下 = Get_下限(this._種, l_種);
             for (var l_項 = l_下; l_項 < this._種.LongLength && this._種[l_項] == l_種; l_項++)
             {
@@ -229,14 +241,29 @@
                         continue;
                     }
 
-                    if (this.Is一致(l_場所 - j, p_配列, false) || this.Is一致(l_場所 - (p_配列.Length - j - C_種長), p_配列, true))
+                    var l_逆鎖の開始 = l_場所 - (p_配列.Length - j - C_種長);
+                    foreach (var (l_開始, l_Is逆鎖) in (ReadOnlySpan<(long, bool)>)[(l_場所 - j, false), (l_逆鎖の開始, true)])
                     {
-                        return true;
+                        if (!this.Is一致(l_開始, p_配列, l_Is逆鎖))
+                        {
+                            continue;
+                        }
+
+                        if (p_上限 <= 1)
+                        {
+                            return 1;
+                        }
+
+                        l_見つけた場所 ??= [];
+                        if (l_見つけた場所.Add((l_開始, l_Is逆鎖)) && l_見つけた場所.Count >= p_上限)
+                        {
+                            return l_見つけた場所.Count;
+                        }
                     }
                 }
             }
 
-            return false;
+            return l_見つけた場所?.Count ?? 0;
         }
 
         #endregion

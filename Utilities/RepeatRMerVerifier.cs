@@ -304,6 +304,16 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// リードの索引を使う設定なら、共有しているリードの索引を返す
+        /// </summary>
+        /// <param name="p_パス群">生リードのパス</param>
+        /// <returns>リードの索引、使わない設定なら null</returns>
+        public static ReadMinimizerIndex? Get_リード索引(IEnumerable<string> p_パス群)
+        {
+            return A_Is索引使用 ? Get_共有索引([.. p_パス群]) : null;
+        }
+
+        /// <summary>
         /// 共有しているリードの索引を捨てる
         /// </summary>
         public static void V_解放_共有索引()

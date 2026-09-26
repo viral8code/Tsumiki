@@ -118,9 +118,41 @@
             return p_塩基文字 switch
             {
                 'A' or 'C' or 'G' or 'T' => false,
-                'M' or 'V' or 'N' or 'H' or 'R' or 'D' or 'W' or 'S' or 'B' or 'Y' or 'K' => true,
+                'M' or 'V' or 'N' or 'H' or 'R' or 'D' or 'W' or 'S' or 'B' or 'Y' or 'K' or Consts.未確認の繋ぎ目 => true,
                 _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code"),
             };
+        }
+
+        /// <summary>
+        /// scaffold のギャップを表す文字 (N か、未確認の繋ぎ目の印) か
+        /// </summary>
+        /// <param name="p_文字">調べる文字</param>
+        /// <returns>ギャップの文字なら true</returns>
+        public static bool Isギャップ文字(char p_文字)
+        {
+            return p_文字 is 'N' or Consts.未確認の繋ぎ目;
+        }
+
+        /// <summary>
+        /// 位置から始まるギャップの終わり (未確認の繋ぎ目の印は 1 文字で 1 つ、N は続く限り 1 つ)
+        /// </summary>
+        /// <param name="p_配列">scaffold 配列</param>
+        /// <param name="p_開始">ギャップの文字がある位置</param>
+        /// <returns>ギャップの直後の位置</returns>
+        public static int Get_ギャップの終わり(string p_配列, int p_開始)
+        {
+            if (p_配列[p_開始] == Consts.未確認の繋ぎ目)
+            {
+                return p_開始 + 1;
+            }
+
+            var l_位置 = p_開始;
+            while (l_位置 < p_配列.Length && p_配列[l_位置] == 'N')
+            {
+                l_位置++;
+            }
+
+            return l_位置;
         }
 
         /// <summary>

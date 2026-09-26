@@ -228,17 +228,14 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_i = 0;
                 while (l_i < l_配列.Length)
                 {
-                    if (l_配列[l_i] != 'N')
+                    if (!Util.Isギャップ文字(l_配列[l_i]))
                     {
                         l_i++;
                         continue;
                     }
 
                     var l_開始 = l_i;
-                    while (l_i < l_配列.Length && l_配列[l_i] == 'N')
-                    {
-                        l_i++;
-                    }
+                    l_i = Util.Get_ギャップの終わり(l_配列, l_i);
 
                     var l_長さ = l_i - l_開始;
 
@@ -891,7 +888,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     _ = l_出力.Append(l_配列, l_直前終端, l_ギャップ.A_開始 - l_直前終端);
                     var l_埋め = p_結果[l_番号];
-                    _ = l_埋め != null ? l_出力.Append(l_埋め) : l_出力.Append('N', l_ギャップ.A_長さ);
+                    _ = l_埋め != null ? l_出力.Append(l_埋め) : l_出力.Append(l_配列, l_ギャップ.A_開始, l_ギャップ.A_長さ);
                     l_直前終端 = l_ギャップ.A_開始 + l_ギャップ.A_長さ;
                 }
 
