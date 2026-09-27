@@ -606,29 +606,15 @@ namespace Tsumiki.Core
             var l_経路 = p_作業域.A_経路;
             var l_票数 = p_作業域.A_票数;
             var l_終端位置 = p_作業域.A_終端位置;
-            var l_曖昧塩基数 = 0;
+            var l_窓 = new 順鎖Kmer転がし(l_k長);
 
-            for (var i = 0; i < l_k長; i++)
+            foreach (var l_塩基 in p_リード)
             {
-                if (Util.Is曖昧塩基(p_リード[i]))
-                {
-                    l_曖昧塩基数++;
-                }
-            }
-
-            for (var i = l_k長; i <= p_リード.Length; i++)
-            {
-                if (Util.Is曖昧塩基(p_リード[i - l_k長]))
-                {
-                    l_曖昧塩基数--;
-                }
-
-                if (l_曖昧塩基数 != 0)
+                if (!l_窓.Try追加(l_塩基, out var l_キー))
                 {
                     continue;
                 }
 
-                var l_キー = new KmerKey(p_リード.AsSpan(i - l_k長, l_k長));
                 if (!this._kmer辞書.TryGetValue(l_キー, out var l_項目) || l_項目.A_unitigID == C_曖昧kmerの番兵)
                 {
                     continue;

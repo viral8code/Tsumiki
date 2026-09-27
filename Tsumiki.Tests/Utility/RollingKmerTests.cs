@@ -48,6 +48,12 @@ namespace Tsumiki.Tests.Utility
         /// <summary>128 塩基を超える窓を、境界長と曖昧塩基を含めて従来の正規形キーと比較する</summary>
         /// <param name="p_長さ">窓の長さ</param>
         [Theory]
+        [InlineData(21)]
+        [InlineData(32)]
+        [InlineData(33)]
+        [InlineData(64)]
+        [InlineData(65)]
+        [InlineData(128)]
         [InlineData(129)]
         [InlineData(135)]
         [InlineData(139)]

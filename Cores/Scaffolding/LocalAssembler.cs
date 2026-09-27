@@ -376,14 +376,15 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_ギャップ番号">ギャップの番号</param>
         private static void V_登録_kmer列(Dictionary<KmerKey, List<int>> p_索引, string p_配列, int p_k長, int p_ギャップ番号)
         {
-            for (var i = 0; i + p_k長 <= p_配列.Length; i++)
+            var l_窓 = new WideRollingKmer(p_k長);
+            foreach (var l_塩基 in p_配列)
             {
-                if (Has曖昧塩基(p_配列, i, p_k長))
+                if (!l_窓.Try追加(l_塩基, out var l_窓の鍵))
                 {
                     continue;
                 }
 
-                var l_鍵 = new KmerKey(p_配列.AsSpan(i, p_k長)).Get_正規形();
+                var l_鍵 = l_窓の鍵.Get_複製();
                 if (!p_索引.TryGetValue(l_鍵, out var l_一覧))
                 {
                     l_一覧 = [];
@@ -752,14 +753,14 @@ namespace Tsumiki.Cores.Scaffolding
         private static IReadOnlySet<int> Get_一致するギャップ(Dictionary<KmerKey, List<int>> p_索引, string p_リード, int p_k長)
         {
             HashSet<int>? l_見つかった = null;
-            for (var i = 0; i + p_k長 <= p_リード.Length; i++)
+            var l_窓 = new WideRollingKmer(p_k長);
+            foreach (var l_塩基 in p_リード)
             {
-                if (Has曖昧塩基(p_リード, i, p_k長))
+                if (!l_窓.Try追加(l_塩基, out var l_鍵))
                 {
                     continue;
                 }
 
-                var l_鍵 = new KmerKey(p_リード.AsSpan(i, p_k長)).Get_正規形();
                 if (p_索引.TryGetValue(l_鍵, out var l_一覧))
                 {
                     l_見つかった ??= [];

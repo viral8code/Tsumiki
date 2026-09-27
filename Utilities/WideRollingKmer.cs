@@ -4,7 +4,7 @@ using Tsumiki.Models.Foundation;
 namespace Tsumiki.Utilities
 {
     /// <summary>
-    /// 128 塩基を超える正準キーを 1 塩基ずつ更新する
+    /// 正準キーを 1 塩基ずつ更新する (長さによらず、窓ごとにキーを詰め直さない)
     /// </summary>
     internal sealed class WideRollingKmer
     {
@@ -31,7 +31,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_長さ">窓の長さ</param>
         public WideRollingKmer(int p_長さ)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(p_長さ, 128);
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(p_長さ, 0);
             this._長さ = p_長さ;
             var l_語数 = (p_長さ + 31) >> 5;
             this._順 = new ulong[l_語数];

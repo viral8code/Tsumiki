@@ -16,6 +16,11 @@ namespace Tsumiki.Cores.Preprocessing
         #region 定数
 
         /// <summary>
+        /// 位置ごとの作業域をスタックに置くリード長の上限
+        /// </summary>
+        private const int C_スタックに置く長さ = 1_024;
+
+        /// <summary>
         /// 1 バッチあたりのリード数
         /// </summary>
         internal const int C_訂正バッチサイズ = 20_000;
@@ -348,6 +353,9 @@ namespace Tsumiki.Cores.Preprocessing
             var l_信頼状況 = l_作業域.A_信頼状況.AsSpan(0, l_窓数);
 
             var l_未信頼累積 = l_作業域.A_未信頼累積.AsSpan(0, l_窓数 + 1);
+            var l_上限 = p_塩基列.Length <= C_スタックに置く長さ ? stackalloc int[p_塩基列.Length] : new int[p_塩基列.Length];
+            var l_順番 = p_塩基列.Length <= C_スタックに置く長さ ? stackalloc int[p_塩基列.Length] : new int[p_塩基列.Length];
+            var l_件数 = p_k長 < C_スタックに置く長さ ? stackalloc int[p_k長 + 2] : new int[p_k長 + 2];
             var l_訂正数 = 0;
 
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
@@ -365,24 +373,26 @@ namespace Tsumiki.Cores.Preprocessing
                     break;
                 }
 
+                var l_候補数 = Get_上限の大きい順(p_塩基列, p_k長, l_窓数, l_未信頼累積, l_上限, l_件数, l_順番);
                 var l_最良位置 = -1;
                 byte l_最良塩基 = 0;
                 var l_最良改善数 = 0;
 
-                for (var l_位置 = 0; l_位置 < p_塩基列.Length; l_位置++)
+                for (var i = 0; i < l_候補数; i++)
                 {
-                    if (p_塩基列[l_位置] == Consts.無効な塩基)
+                    var l_位置 = l_順番[i];
+                    if (l_上限[l_位置] < l_最良改善数)
+                    {
+                        break;
+                    }
+
+                    if (l_上限[l_位置] == l_最良改善数 && l_位置 > l_最良位置)
                     {
                         continue;
                     }
 
                     var l_窓開始 = Math.Max(0, l_位置 - p_k長 + 1);
                     var l_窓終了 = Math.Min(l_窓数 - 1, l_位置);
-                    if (l_未信頼累積[l_窓終了 + 1] - l_未信頼累積[l_窓開始] == 0)
-                    {
-                        continue;
-                    }
-
                     var l_現在の塩基 = p_塩基列[l_位置];
                     for (var l_候補 = Consts.塩基ID.A; l_候補 <= Consts.塩基ID.T; l_候補++)
                     {
@@ -391,8 +401,9 @@ namespace Tsumiki.Cores.Preprocessing
                             continue;
                         }
 
-                        var l_改善数 = Get_置換改善数_パック(l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_最良改善数);
-                        if (l_改善数 > l_最良改善数)
+                        var l_Is前の位置 = l_最良位置 >= 0 && l_位置 < l_最良位置;
+                        var l_改善数 = Get_置換改善数_パック(l_位置, l_候補, l_窓開始, l_窓終了, p_k長, p_kmerインデックス, l_パック, l_逆相補, l_無効数, l_信頼状況, l_未信頼累積, l_Is前の位置 ? l_最良改善数 - 1 : l_最良改善数);
+                        if (l_改善数 > l_最良改善数 || (l_Is前の位置 && l_改善数 == l_最良改善数))
                         {
                             l_最良改善数 = l_改善数;
                             l_最良位置 = l_位置;
@@ -411,6 +422,49 @@ namespace Tsumiki.Cores.Preprocessing
             }
 
             return new 訂正結果(p_塩基列, l_訂正数);
+        }
+
+        /// <summary>
+        /// 置き換えで直りうる窓の数の上限が大きい順 (同じなら位置の順) に、試す位置を並べる
+        /// </summary>
+        /// <param name="p_塩基列">リードの塩基 ID 列</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_窓数">窓の数</param>
+        /// <param name="p_未信頼累積">未信頼の窓の数の累積</param>
+        /// <param name="p_上限">位置ごとの上限を書き込む先</param>
+        /// <param name="p_件数">上限ごとの件数を数える作業域 (k+2 個)</param>
+        /// <param name="p_順番">並べた位置を書き込む先</param>
+        /// <returns>試す位置の数</returns>
+        private static int Get_上限の大きい順(byte[] p_塩基列, int p_k長, int p_窓数, ReadOnlySpan<int> p_未信頼累積, Span<int> p_上限, Span<int> p_件数, Span<int> p_順番)
+        {
+            p_件数.Clear();
+            for (var l_位置 = 0; l_位置 < p_塩基列.Length; l_位置++)
+            {
+                var l_窓開始 = Math.Max(0, l_位置 - p_k長 + 1);
+                var l_窓終了 = Math.Min(p_窓数 - 1, l_位置);
+                var l_上限 = p_塩基列[l_位置] == Consts.無効な塩基 ? 0 : p_未信頼累積[l_窓終了 + 1] - p_未信頼累積[l_窓開始];
+                p_上限[l_位置] = l_上限;
+                p_件数[l_上限]++;
+            }
+
+            var l_書く位置 = 0;
+            for (var l_上限 = p_k長; l_上限 >= 1; l_上限--)
+            {
+                var l_次 = l_書く位置 + p_件数[l_上限];
+                p_件数[l_上限] = l_書く位置;
+                l_書く位置 = l_次;
+            }
+
+            for (var l_位置 = 0; l_位置 < p_塩基列.Length; l_位置++)
+            {
+                var l_上限 = p_上限[l_位置];
+                if (l_上限 > 0)
+                {
+                    p_順番[p_件数[l_上限]++] = l_位置;
+                }
+            }
+
+            return l_書く位置;
         }
 
         /// <summary>

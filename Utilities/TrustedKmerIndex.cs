@@ -50,6 +50,11 @@ namespace Tsumiki.Utilities
         private Dictionary<KmerKey, ulong>? _信頼kmer_大;
 
         /// <summary>
+        /// 信頼できる k-mer に無いことを速く答えるふるい (k &lt;= 128、カットオフの後に作る)
+        /// </summary>
+        private ブルームフィルタ? _ふるい;
+
+        /// <summary>
         /// 信頼できる k-mer と出現回数 (k &lt;= 32)
         /// </summary>
         private Dictionary<ulong, ulong>? _信頼kmer_小;
@@ -262,11 +267,11 @@ namespace Tsumiki.Utilities
         public bool Haskmer(Span<byte> p_kmer)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.ContainsKey(Get_正規形_小(p_kmer))
+                ? this.Has信頼_小(Get_正規形_小(p_kmer))
                 : this._Is中経路使用
-                ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer))
+                ? this.Has信頼_中(Get_正規形_中(p_kmer))
                 : this._Is長経路使用
-                ? this._信頼kmer_長!.ContainsKey(Get_正規形_長(p_kmer))
+                ? this.Has信頼_長(Get_正規形_長(p_kmer))
                 : this._信頼kmer_大!.ContainsKey(KmerKey.Get_正規形(p_kmer));
         }
 
@@ -277,7 +282,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer_小(ulong p_正規形)
         {
-            return this._信頼kmer_小!.ContainsKey(p_正規形);
+            return this.Has信頼_小(p_正規形);
         }
 
         /// <summary>
@@ -287,7 +292,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer_中(UInt128 p_正規形)
         {
-            return this._信頼kmer_中!.ContainsKey(p_正規形);
+            return this.Has信頼_中(p_正規形);
         }
 
         /// <summary>
@@ -299,8 +304,8 @@ namespace Tsumiki.Utilities
         public bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.ContainsKey((ulong)p_下位)
-                : this._Is中経路使用 ? this._信頼kmer_中!.ContainsKey(p_下位) : this._信頼kmer_長!.ContainsKey((p_上位, p_下位));
+                ? this.Has信頼_小((ulong)p_下位)
+                : this._Is中経路使用 ? this.Has信頼_中(p_下位) : this.Has信頼_長((p_上位, p_下位));
         }
 
         /// <summary>
@@ -321,11 +326,11 @@ namespace Tsumiki.Utilities
         public ulong Get_カバレッジ(Span<byte> p_kmer)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL)
+                ? this.Get_信頼カバレッジ_小(Get_正規形_小(p_kmer))
                 : this._Is中経路使用
-                ? this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL)
+                ? this.Get_信頼カバレッジ_中(Get_正規形_中(p_kmer))
                 : this._Is長経路使用
-                ? this._信頼kmer_長!.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL)
+                ? this.Get_信頼カバレッジ_長(Get_正規形_長(p_kmer))
                 : this._信頼kmer_大!.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL);
         }
 
@@ -524,11 +529,11 @@ namespace Tsumiki.Utilities
         public bool Try追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.TryAdd(Get_正規形_小(p_kmer), p_カバレッジ)
+                ? this.Try追加_小(Get_正規形_小(p_kmer), p_カバレッジ)
                 : this._Is中経路使用
-                ? this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ)
+                ? this.Try追加_中(Get_正規形_中(p_kmer), p_カバレッジ)
                 : this._Is長経路使用
-                ? this._信頼kmer_長!.TryAdd(Get_正規形_長(p_kmer), p_カバレッジ)
+                ? this.Try追加_長(Get_正規形_長(p_kmer), p_カバレッジ)
                 : this._信頼kmer_大!.TryAdd(KmerKey.Get_正規形(p_kmer), p_カバレッジ);
         }
 
@@ -542,8 +547,8 @@ namespace Tsumiki.Utilities
         public bool Try追加_信頼kmer_正規形(UInt128 p_上位, UInt128 p_下位, ulong p_カバレッジ)
         {
             return this._Is小経路使用
-                ? this._信頼kmer_小!.TryAdd((ulong)p_下位, p_カバレッジ)
-                : this._Is中経路使用 ? this._信頼kmer_中!.TryAdd(p_下位, p_カバレッジ) : this._信頼kmer_長!.TryAdd((p_上位, p_下位), p_カバレッジ);
+                ? this.Try追加_小((ulong)p_下位, p_カバレッジ)
+                : this._Is中経路使用 ? this.Try追加_中(p_下位, p_カバレッジ) : this.Try追加_長((p_上位, p_下位), p_カバレッジ);
         }
 
         /// <summary>
@@ -710,6 +715,7 @@ namespace Tsumiki.Utilities
             Logger.V_出力(メッセージID.kmer種類数, (ulong)l_シャード別種類数.Sum());
             Logger.V_出力(メッセージID.採用kmer数, (ulong)l_採用数);
             this.A_出現回数ヒストグラム = Get_合算ヒストグラム(l_シャード別ヒストグラム);
+            this.V_作り直し_ふるい();
 
             foreach (var l_ファイル in l_ファイル群)
             {
@@ -884,6 +890,158 @@ namespace Tsumiki.Utilities
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 信頼できる k-mer 集合からふるいを作り直す (k &lt;= 128)
+        /// </summary>
+        private void V_作り直し_ふるい()
+        {
+            if (this._信頼kmer_小 is { } l_小)
+            {
+                this._ふるい = new ブルームフィルタ(l_小.Count);
+                foreach (var l_キー in l_小.Keys)
+                {
+                    this._ふるい.V_追加(ブルームフィルタ.Get_混合(l_キー));
+                }
+            }
+            else if (this._信頼kmer_中 is { } l_中)
+            {
+                this._ふるい = new ブルームフィルタ(l_中.Count);
+                foreach (var l_キー in l_中.Keys)
+                {
+                    this._ふるい.V_追加(ブルームフィルタ.Get_ハッシュ(l_キー));
+                }
+            }
+            else if (this._信頼kmer_長 is { } l_長)
+            {
+                this._ふるい = new ブルームフィルタ(l_長.Count);
+                foreach (var l_キー in l_長.Keys)
+                {
+                    this._ふるい.V_追加(Get_ふるいのハッシュ(l_キー));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 右詰めパック値の組のふるい用ハッシュ
+        /// </summary>
+        /// <param name="p_値">正規形の右詰めパック値</param>
+        /// <returns>ハッシュ</returns>
+        private static ulong Get_ふるいのハッシュ((UInt128 A_上位, UInt128 A_下位) p_値)
+        {
+            return ブルームフィルタ.Get_混合(ブルームフィルタ.Get_ハッシュ(p_値.A_下位) ^ (ブルームフィルタ.Get_ハッシュ(p_値.A_上位) * 0x9E37_79B9_7F4A_7C15UL));
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合に含まれるか (k &lt;= 32)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns></returns>
+        private bool Has信頼_小(ulong p_正規形)
+        {
+            return (this._ふるい is not { } l_ふるい || l_ふるい.Has候補(ブルームフィルタ.Get_混合(p_正規形))) && this._信頼kmer_小!.ContainsKey(p_正規形);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合に含まれるか (33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns></returns>
+        private bool Has信頼_中(UInt128 p_正規形)
+        {
+            return (this._ふるい is not { } l_ふるい || l_ふるい.Has候補(ブルームフィルタ.Get_ハッシュ(p_正規形))) && this._信頼kmer_中!.ContainsKey(p_正規形);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合に含まれるか (65 &lt;= k &lt;= 128)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns></returns>
+        private bool Has信頼_長((UInt128 A_上位, UInt128 A_下位) p_正規形)
+        {
+            return (this._ふるい is not { } l_ふるい || l_ふるい.Has候補(Get_ふるいのハッシュ(p_正規形))) && this._信頼kmer_長!.ContainsKey(p_正規形);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer の出現回数 (k &lt;= 32)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns>無ければ 0</returns>
+        private ulong Get_信頼カバレッジ_小(ulong p_正規形)
+        {
+            return this._ふるい is { } l_ふるい && !l_ふるい.Has候補(ブルームフィルタ.Get_混合(p_正規形)) ? 0UL : this._信頼kmer_小!.GetValueOrDefault(p_正規形, 0UL);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer の出現回数 (33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns>無ければ 0</returns>
+        private ulong Get_信頼カバレッジ_中(UInt128 p_正規形)
+        {
+            return this._ふるい is { } l_ふるい && !l_ふるい.Has候補(ブルームフィルタ.Get_ハッシュ(p_正規形)) ? 0UL : this._信頼kmer_中!.GetValueOrDefault(p_正規形, 0UL);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer の出現回数 (65 &lt;= k &lt;= 128)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <returns>無ければ 0</returns>
+        private ulong Get_信頼カバレッジ_長((UInt128 A_上位, UInt128 A_下位) p_正規形)
+        {
+            return this._ふるい is { } l_ふるい && !l_ふるい.Has候補(Get_ふるいのハッシュ(p_正規形)) ? 0UL : this._信頼kmer_長!.GetValueOrDefault(p_正規形, 0UL);
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合へ足し、ふるいにも入れる (k &lt;= 32)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <param name="p_カバレッジ">出現回数</param>
+        /// <returns>足したら true</returns>
+        private bool Try追加_小(ulong p_正規形, ulong p_カバレッジ)
+        {
+            var l_Is追加 = this._信頼kmer_小!.TryAdd(p_正規形, p_カバレッジ);
+            if (l_Is追加)
+            {
+                this._ふるい?.V_追加(ブルームフィルタ.Get_混合(p_正規形));
+            }
+
+            return l_Is追加;
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合へ足し、ふるいにも入れる (33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <param name="p_カバレッジ">出現回数</param>
+        /// <returns>足したら true</returns>
+        private bool Try追加_中(UInt128 p_正規形, ulong p_カバレッジ)
+        {
+            var l_Is追加 = this._信頼kmer_中!.TryAdd(p_正規形, p_カバレッジ);
+            if (l_Is追加)
+            {
+                this._ふるい?.V_追加(ブルームフィルタ.Get_ハッシュ(p_正規形));
+            }
+
+            return l_Is追加;
+        }
+
+        /// <summary>
+        /// 信頼できる k-mer 集合へ足し、ふるいにも入れる (65 &lt;= k &lt;= 128)
+        /// </summary>
+        /// <param name="p_正規形">正規形</param>
+        /// <param name="p_カバレッジ">出現回数</param>
+        /// <returns>足したら true</returns>
+        private bool Try追加_長((UInt128 A_上位, UInt128 A_下位) p_正規形, ulong p_カバレッジ)
+        {
+            var l_Is追加 = this._信頼kmer_長!.TryAdd(p_正規形, p_カバレッジ);
+            if (l_Is追加)
+            {
+                this._ふるい?.V_追加(Get_ふるいのハッシュ(p_正規形));
+            }
+
+            return l_Is追加;
+        }
 
         /// <summary>
         /// 曖昧塩基の候補をすべて展開して登録する
