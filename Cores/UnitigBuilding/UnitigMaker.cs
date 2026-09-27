@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using Tsumiki.Commons;
+using Tsumiki.Models.Foundation;
 using Tsumiki.Models.UnitigBuilding;
 using Tsumiki.Utilities;
 
@@ -24,9 +25,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         private readonly HashSet<UInt128> _訪問済み_パック = [];
 
         /// <summary>
-        /// 訪問済み 文字列
+        /// 訪問済み (k &gt; 64、向きそのまま)
         /// </summary>
-        private readonly HashSet<string> _訪問済み_文字列 = [];
+        private readonly HashSet<KmerKey> _訪問済み_大 = [];
 
         #endregion
 
@@ -63,7 +64,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_Isパック経路使用 = l_k長 <= 64;
 
             this._訪問済み_パック.Clear();
-            this._訪問済み_文字列.Clear();
+            this._訪問済み_大.Clear();
 
             List<byte> l_配列 = [.. p_開始kmer];
 
@@ -73,7 +74,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 var l_Is未訪問 = l_Isパック経路使用
                     ? this._訪問済み_パック.Add(TryGet_パック(l_現在のkmer))
-                    : this._訪問済み_文字列.Add(string.Join(string.Empty, l_現在のkmer.ToArray().Select(Util.V_変換_塩基文字)));
+                    : this._訪問済み_大.Add(new KmerKey(l_現在のkmer));
                 if (!l_Is未訪問)
                 {
                     l_配列.RemoveAt(l_配列.Count - 1);

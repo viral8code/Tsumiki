@@ -48,9 +48,19 @@
         public const double マルチkの最小kmerカバレッジ = 10D;
 
         /// <summary>
-        /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量の既定値の下限 (バイト)
         /// </summary>
-        public const long メモリ予算の既定値 = 768L * 1_024L * 1_024L;
+        public const long メモリ予算の下限 = 768L * 1_024L * 1_024L;
+
+        /// <summary>
+        /// k-mer カウント時にメモリ上へ保持するカウントの総量の既定値の上限 (バイト)
+        /// </summary>
+        public const long メモリ予算の上限 = 4L * 1_024L * 1_024L * 1_024L;
+
+        /// <summary>
+        /// k-mer カウント時のメモリ予算の既定値を、使えるメモリの何分の 1 にするか
+        /// </summary>
+        public const long メモリ予算の分母 = 8L;
 
         /// <summary>
         /// Phred オフセットの既定値

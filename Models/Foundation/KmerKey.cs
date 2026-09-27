@@ -130,6 +130,40 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// 塩基 ID 列から、逆相補と比べた正規形を直接作る (逆相補を組み立てずに向きを決める)
+        /// </summary>
+        /// <param name="p_kmer">塩基 ID (1=A,2=C,3=G,4=T) の列</param>
+        /// <returns>正規形</returns>
+        public static KmerKey Get_正規形(ReadOnlySpan<byte> p_kmer)
+        {
+            var l_長さ = p_kmer.Length;
+            for (var i = 0; i < l_長さ; i++)
+            {
+                var l_順 = p_kmer[i];
+                var l_逆 = (byte)(5 - p_kmer[l_長さ - 1 - i]);
+                if (l_順 == l_逆)
+                {
+                    continue;
+                }
+
+                if (l_順 < l_逆)
+                {
+                    return new KmerKey(p_kmer);
+                }
+
+                var l_逆相補 = l_長さ <= 256 ? stackalloc byte[l_長さ] : new byte[l_長さ];
+                for (var j = 0; j < l_長さ; j++)
+                {
+                    l_逆相補[j] = (byte)(5 - p_kmer[l_長さ - 1 - j]);
+                }
+
+                return new KmerKey(l_逆相補);
+            }
+
+            return new KmerKey(p_kmer);
+        }
+
+        /// <summary>
         /// 塩基 ID 列へデコードしてから逆相補を取り、再エンコードする
         /// </summary>
         /// <returns></returns>

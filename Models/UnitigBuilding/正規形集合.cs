@@ -57,7 +57,7 @@ namespace Tsumiki.Models.UnitigBuilding
                 return;
             }
 
-            _ = this._大!.Add(new KmerKey(p_kmer).Get_正規形());
+            _ = this._大!.Add(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -69,7 +69,7 @@ namespace Tsumiki.Models.UnitigBuilding
         {
             return this._小 is { } l_小
                 ? l_小.Contains(KmerPacking.TryGet_正規化パック(p_kmer))
-                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Tsumiki.Models.UnitigBuilding
                 ? KmerPacking.TryGet_正規化パック(p_左) == KmerPacking.TryGet_正規化パック(p_右)
                 : p_k長 <= TrustedKmerIndex.C_パック値のk上限
                 ? TrustedKmerIndex.Get_正規形_長(p_左) == TrustedKmerIndex.Get_正規形_長(p_右)
-                : new KmerKey(p_左).Get_正規形().Equals(new KmerKey(p_右).Get_正規形());
+                : KmerKey.Get_正規形(p_左).Equals(KmerKey.Get_正規形(p_右));
         }
 
         #endregion

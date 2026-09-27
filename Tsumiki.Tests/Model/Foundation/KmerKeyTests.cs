@@ -125,6 +125,39 @@ namespace Tsumiki.Tests.Model
             Assert.False(l_甲.Equals(l_乙));
         }
 
+        /// <summary>
+        /// 塩基 ID 列から直接作った正規形は、逆相補を組み立てて比べた正規形と同じ
+        /// </summary>
+        /// <param name="p_長さ">k-mer の長さ</param>
+        [Theory]
+        [InlineData(33)]
+        [InlineData(64)]
+        [InlineData(65)]
+        [InlineData(135)]
+        [InlineData(300)]
+        public void Get_正規形_逆相補を組み立てた正規形と同じ(int p_長さ)
+        {
+            var l_乱数 = new Random(p_長さ);
+            for (var l_回 = 0; l_回 < 200; l_回++)
+            {
+                var l_kmer = new byte[p_長さ];
+                for (var i = 0; i < p_長さ; i++)
+                {
+                    l_kmer[i] = (byte)l_乱数.Next(1, 5);
+                }
+
+                if (l_回 % 4 == 0)
+                {
+                    for (var i = 0; i < p_長さ / 2; i++)
+                    {
+                        l_kmer[p_長さ - 1 - i] = (byte)(5 - l_kmer[i]);
+                    }
+                }
+
+                Assert.Equal(new KmerKey(l_kmer).Get_正規形(), KmerKey.Get_正規形(l_kmer));
+            }
+        }
+
         #endregion
 
         #region 内部メソッド

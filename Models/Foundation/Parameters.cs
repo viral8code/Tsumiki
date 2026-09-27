@@ -329,7 +329,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量 (バイト)
         /// </summary>
-        public long A_メモリ予算バイト数 { get; private set; } = Consts.メモリ予算の既定値;
+        public long A_メモリ予算バイト数 { get; private set; } = Util.Get_既定のメモリ予算();
 
         /// <summary>
         /// メモリ量の指定

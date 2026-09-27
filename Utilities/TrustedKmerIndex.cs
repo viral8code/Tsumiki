@@ -267,7 +267,7 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_中!.ContainsKey(Get_正規形_中(p_kmer))
                 : this._Is長経路使用
                 ? this._信頼kmer_長!.ContainsKey(Get_正規形_長(p_kmer))
-                : this._信頼kmer_大!.ContainsKey(new KmerKey(p_kmer).Get_正規形());
+                : this._信頼kmer_大!.ContainsKey(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -326,7 +326,7 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_中!.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL)
                 : this._Is長経路使用
                 ? this._信頼kmer_長!.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL)
-                : this._信頼kmer_大!.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL);
+                : this._信頼kmer_大!.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL);
         }
 
         /// <summary>
@@ -342,7 +342,7 @@ namespace Tsumiki.Utilities
                 ? this._控えkmer_中?.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL) ?? 0UL
                 : this._Is長経路使用
                 ? this._控えkmer_長?.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL) ?? 0UL
-                : this._控えkmer_大?.GetValueOrDefault(new KmerKey(p_kmer).Get_正規形(), 0UL) ?? 0UL;
+                : this._控えkmer_大?.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL) ?? 0UL;
         }
 
         /// <summary>
@@ -512,7 +512,7 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer))
                 : this._Is中経路使用
                 ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer))
-                : this._Is長経路使用 ? this._信頼kmer_長!.Remove(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.Remove(new KmerKey(p_kmer).Get_正規形());
+                : this._Is長経路使用 ? this._信頼kmer_長!.Remove(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.Remove(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -529,7 +529,7 @@ namespace Tsumiki.Utilities
                 ? this._信頼kmer_中!.TryAdd(Get_正規形_中(p_kmer), p_カバレッジ)
                 : this._Is長経路使用
                 ? this._信頼kmer_長!.TryAdd(Get_正規形_長(p_kmer), p_カバレッジ)
-                : this._信頼kmer_大!.TryAdd(new KmerKey(p_kmer).Get_正規形(), p_カバレッジ);
+                : this._信頼kmer_大!.TryAdd(KmerKey.Get_正規形(p_kmer), p_カバレッジ);
         }
 
         /// <summary>

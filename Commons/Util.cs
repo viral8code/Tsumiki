@@ -124,6 +124,15 @@
         }
 
         /// <summary>
+        /// k-mer カウント時のメモリ予算の既定値 (使えるメモリの 1/8 を、下限と上限の間に収めたもの)
+        /// </summary>
+        /// <returns>メモリ予算 (バイト)</returns>
+        public static long Get_既定のメモリ予算()
+        {
+            return Math.Clamp(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / Consts.メモリ予算の分母, Consts.メモリ予算の下限, Consts.メモリ予算の上限);
+        }
+
+        /// <summary>
         /// scaffold のギャップを表す文字 (N か、未確認の繋ぎ目の印) か
         /// </summary>
         /// <param name="p_文字">調べる文字</param>

@@ -71,7 +71,7 @@ namespace Tsumiki.Utilities
                 ? l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer))
                 : this._中 is { } l_中
                 ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer))
-                : this._長 is { } l_長 ? l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Add(new KmerKey(p_kmer).Get_正規形());
+                : this._長 is { } l_長 ? l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Add(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -85,7 +85,7 @@ namespace Tsumiki.Utilities
                 ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer))
                 : this._中 is { } l_中
                 ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer))
-                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(new KmerKey(p_kmer).Get_正規形());
+                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
