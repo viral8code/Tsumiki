@@ -51,6 +51,8 @@ namespace Tsumiki.Cores.Preprocessing
                 l_束.V_吐き出し();
             }
 
+            p_kmerインデックス.V_数える_預かり_全部();
+
             Logger.V_出力(メッセージID.リード読込完了, l_総リード数, Path.GetFileName(p_ファイルパス));
         }
 

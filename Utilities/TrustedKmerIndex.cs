@@ -1,4 +1,6 @@
-﻿using Tsumiki.Commons;
+﻿using System.Buffers;
+using System.Collections.Concurrent;
+using Tsumiki.Commons;
 using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Utilities
@@ -9,6 +11,11 @@ namespace Tsumiki.Utilities
     internal class TrustedKmerIndex : IDisposable, IKmerLookup
     {
         #region 定数
+
+        /// <summary>
+        /// シャードに預かったままにしてよい束の数 (超えたら、預けたスレッドも待って数える)
+        /// </summary>
+        private const int C_預かりの上限 = 64;
 
         /// <summary>
         /// 1 窓で許す曖昧塩基の組み合わせ数
@@ -43,6 +50,11 @@ namespace Tsumiki.Utilities
         /// シャードロック
         /// </summary>
         private readonly Lock[]? _シャードロック;
+
+        /// <summary>
+        /// シャードごとに預かった、まだ数えていない正規形のパック値の束 (束は <see cref="ArrayPool{T}.Shared"/> から借りたもの)
+        /// </summary>
+        private readonly ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>[]? _預かり;
 
         /// <summary>
         /// 信頼できる k-mer と出現回数 (k &gt; 128)
@@ -156,10 +168,12 @@ namespace Tsumiki.Utilities
             var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             this._カウンタ群 = new CountingDB[l_シャード数];
             this._シャードロック = new Lock[l_シャード数];
+            this._預かり = new ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>[l_シャード数];
             for (var i = 0; i < l_シャード数; i++)
             {
                 this._カウンタ群[i] = new CountingDB(p_一時ディレクトリ, l_シャード数);
                 this._シャードロック[i] = new Lock();
+                this._預かり[i] = new ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>();
             }
         }
 
@@ -226,23 +240,32 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 同じシャードへ振り分けた正規形のパック値をまとめて数える (k &lt;= 128)
+        /// 同じシャードへ振り分けた正規形のパック値の束を預ける (k &lt;= 128)<br/>
+        /// シャードを他のスレッドが数えていれば待たずに戻り、そのスレッドがまとめて数える
         /// </summary>
-        /// <param name="p_シャード"></param>
-        /// <param name="p_値群"></param>
-        public void V_登録_値群(int p_シャード, ReadOnlySpan<(UInt128 A_上位, UInt128 A_下位)> p_値群)
+        /// <param name="p_シャード">シャード番号</param>
+        /// <param name="p_束"><see cref="ArrayPool{T}.Shared"/> から借りた束 (預けた後は触らない)</param>
+        /// <param name="p_件数">束のうち数える件数</param>
+        public void V_預ける_値群(int p_シャード, (UInt128 A_上位, UInt128 A_下位)[] p_束, int p_件数)
         {
-            if (this._カウンタ群 is not { } l_カウンタ群)
+            if (this._預かり is not { } l_預かり)
             {
+                ArrayPool<(UInt128 A_上位, UInt128 A_下位)>.Shared.Return(p_束);
                 return;
             }
 
-            lock (this._シャードロック![p_シャード])
+            l_預かり[p_シャード].Enqueue((p_束, p_件数));
+            this.V_数える_預かり(p_シャード, l_預かり[p_シャード].Count > C_預かりの上限);
+        }
+
+        /// <summary>
+        /// 預かった束をすべて数え終える (数え上げの最後に呼ぶ)
+        /// </summary>
+        public void V_数える_預かり_全部()
+        {
+            for (var s = 0; s < (this._預かり?.Length ?? 0); s++)
             {
-                foreach (var l_値 in p_値群)
-                {
-                    l_カウンタ群[p_シャード].V_登録_値(l_値);
-                }
+                this.V_数える_預かり(s, true);
             }
         }
 
@@ -890,6 +913,46 @@ namespace Tsumiki.Utilities
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// シャードに預かった束を数える
+        /// </summary>
+        /// <param name="p_シャード">シャード番号</param>
+        /// <param name="p_Is待つ">他のスレッドが数えているときに待つか (待たなければ、そのスレッドに任せて戻る)</param>
+        private void V_数える_預かり(int p_シャード, bool p_Is待つ)
+        {
+            var l_預かり = this._預かり![p_シャード];
+            var l_ロック = this._シャードロック![p_シャード];
+            var l_カウンタ = this._カウンタ群![p_シャード];
+            while (!l_預かり.IsEmpty)
+            {
+                if (p_Is待つ)
+                {
+                    l_ロック.Enter();
+                }
+                else if (!l_ロック.TryEnter())
+                {
+                    return;
+                }
+
+                try
+                {
+                    while (l_預かり.TryDequeue(out var l_項目))
+                    {
+                        foreach (var l_値 in l_項目.A_束.AsSpan(0, l_項目.A_件数))
+                        {
+                            l_カウンタ.V_登録_値(l_値);
+                        }
+
+                        ArrayPool<(UInt128 A_上位, UInt128 A_下位)>.Shared.Return(l_項目.A_束);
+                    }
+                }
+                finally
+                {
+                    l_ロック.Exit();
+                }
+            }
+        }
 
         /// <summary>
         /// 信頼できる k-mer 集合からふるいを作り直す (k &lt;= 128)

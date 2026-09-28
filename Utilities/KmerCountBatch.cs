@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.Utilities
+﻿using System.Buffers;
+
+namespace Tsumiki.Utilities
 {
     /// <summary>
     /// ワーカーごとに k-mer のパック値をシャード単位で溜め、まとめてカウンタへ渡す
@@ -46,7 +48,7 @@
             this._束 = new (UInt128 A_上位, UInt128 A_下位)[l_シャード数][];
             for (var i = 0; i < l_シャード数; i++)
             {
-                this._束[i] = new (UInt128 A_上位, UInt128 A_下位)[C_束の件数];
+                this._束[i] = ArrayPool<(UInt128 A_上位, UInt128 A_下位)>.Shared.Rent(C_束の件数);
             }
 
             this._件数 = new int[l_シャード数];
@@ -67,7 +69,8 @@
             this._束[l_シャード][this._件数[l_シャード]++] = (p_上位, p_下位);
             if (this._件数[l_シャード] == C_束の件数)
             {
-                this._索引.V_登録_値群(l_シャード, this._束[l_シャード]);
+                this._索引.V_預ける_値群(l_シャード, this._束[l_シャード], C_束の件数);
+                this._束[l_シャード] = ArrayPool<(UInt128 A_上位, UInt128 A_下位)>.Shared.Rent(C_束の件数);
                 this._件数[l_シャード] = 0;
             }
         }
@@ -81,7 +84,8 @@
             {
                 if (this._件数[i] > 0)
                 {
-                    this._索引.V_登録_値群(i, this._束[i].AsSpan(0, this._件数[i]));
+                    this._索引.V_預ける_値群(i, this._束[i], this._件数[i]);
+                    this._束[i] = ArrayPool<(UInt128 A_上位, UInt128 A_下位)>.Shared.Rent(C_束の件数);
                     this._件数[i] = 0;
                 }
             }

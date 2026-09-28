@@ -391,13 +391,13 @@ namespace Tsumiki.Cores.Preprocessing
             var l_窓 = new RollingKmer(p_k長);
             for (var i = 0; i < p_引き継ぎ.A_配列.Length; i++)
             {
-                if (!l_窓.Try追加(p_引き継ぎ.A_配列[i], out var l_キー) || p_kmerインデックス.Haskmer_正規形(l_キー.A_上位, l_キー.A_下位))
+                if (!l_窓.Try追加(p_引き継ぎ.A_配列[i], out var l_キー))
                 {
                     continue;
                 }
 
                 var l_カバレッジ = Get_換算カバレッジ(p_最小値列[i - p_k長 + 1], p_引き継ぎ.A_k長, p_k長, p_リード長);
-                if (l_カバレッジ > 0UL)
+                if (l_カバレッジ > 0UL && !p_kmerインデックス.Haskmer_正規形(l_キー.A_上位, l_キー.A_下位))
                 {
                     (l_未登録 ??= []).Add((l_キー.A_上位, l_キー.A_下位, l_カバレッジ));
                 }
