@@ -233,6 +233,40 @@ namespace Tsumiki.Cores.Mapping
         }
 
         /// <summary>
+        /// 候補の対角線でリードが参照と完全に一致し、帯の左側に同じ得点の一致が無ければ、帯つきの整列と同じ結果を直接返す
+        /// </summary>
+        /// <param name="p_リード">元のリード</param>
+        /// <param name="p_照合リード">候補の向きに直したリード</param>
+        /// <param name="p_参照">参照配列</param>
+        /// <param name="p_候補">候補</param>
+        /// <returns>整列と同じ配置、当てはまらなければ null (帯つきの整列で求める)</returns>
+        private static リード配置? Get_完全一致の配置(string p_リード, string p_照合リード, string p_参照, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
+        {
+            var l_長さ = p_照合リード.Length;
+            if (p_候補.A_対角線 < C_帯域幅 || p_候補.A_対角線 + l_長さ + C_帯域幅 > p_参照.Length
+                || !p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線, l_長さ)))
+            {
+                return null;
+            }
+
+            for (var l_ずれ = 1; l_ずれ <= C_帯域幅; l_ずれ++)
+            {
+                if (p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線 - l_ずれ, l_長さ)))
+                {
+                    return null;
+                }
+            }
+
+            var l_位置群 = new List<整列位置>(l_長さ);
+            for (var i = 1; i <= l_長さ; i++)
+            {
+                l_位置群.Add(new 整列位置(p_候補.A_Is逆鎖 ? p_リード.Length - i : i - 1, p_候補.A_対角線 + i - 1));
+            }
+
+            return new リード配置(p_候補.A_配列番号, p_候補.A_Is逆鎖, l_長さ * C_一致得点, 0, l_位置群);
+        }
+
+        /// <summary>
         /// 候補の近傍で半大域整列を行う
         /// </summary>
         /// <param name="p_リード"></param>
@@ -243,6 +277,11 @@ namespace Tsumiki.Cores.Mapping
         {
             var l_照合リード = p_照合リード;
             var l_参照 = this._参照配列群[p_候補.A_配列番号];
+            if (Get_完全一致の配置(p_リード, l_照合リード, l_参照, p_候補) is { } l_完全一致)
+            {
+                return l_完全一致;
+            }
+
             var l_開始 = Math.Max(0, p_候補.A_対角線 - C_帯域幅);
             var l_終了 = Math.Min(l_参照.Length, p_候補.A_対角線 + l_照合リード.Length + C_帯域幅);
             if (l_終了 - l_開始 < C_種長)
@@ -251,22 +290,25 @@ namespace Tsumiki.Cores.Mapping
             }
 
             var l_幅 = l_終了 - l_開始;
-            var l_要素数 = checked((l_照合リード.Length + 1) * (l_幅 + 1));
-            var l_得点領域 = ArrayPool<int>.Shared.Rent(checked(l_要素数 * 3));
+            var l_列数 = l_幅 + 1;
+            var l_要素数 = checked((l_照合リード.Length + 1) * l_列数);
+            var l_得点領域 = ArrayPool<int>.Shared.Rent(l_列数 * 6);
             var l_経路領域 = ArrayPool<byte>.Shared.Rent(l_要素数);
             try
             {
-                var l_得点 = l_得点領域.AsSpan(0, l_要素数);
-                var l_挿入得点 = l_得点領域.AsSpan(l_要素数, l_要素数);
-                var l_削除得点 = l_得点領域.AsSpan(l_要素数 * 2, l_要素数);
+                var l_前の得点 = l_得点領域.AsSpan(0, l_列数);
+                var l_前の挿入得点 = l_得点領域.AsSpan(l_列数, l_列数);
+                var l_前の削除得点 = l_得点領域.AsSpan(l_列数 * 2, l_列数);
+                var l_今の得点 = l_得点領域.AsSpan(l_列数 * 3, l_列数);
+                var l_今の挿入得点 = l_得点領域.AsSpan(l_列数 * 4, l_列数);
+                var l_今の削除得点 = l_得点領域.AsSpan(l_列数 * 5, l_列数);
                 var l_経路 = l_経路領域.AsSpan(0, l_要素数);
-                var l_列数 = l_幅 + 1;
                 var l_最小値 = int.MinValue / 4;
                 var l_行数 = l_照合リード.Length;
 
-                l_得点[..l_列数].Clear();
-                l_削除得点[..l_列数].Clear();
-                l_挿入得点[..l_列数].Fill(l_最小値);
+                l_前の得点.Clear();
+                l_前の削除得点.Clear();
+                l_前の挿入得点.Fill(l_最小値);
                 l_経路[..l_列数].Clear();
                 for (var i = 1; i <= l_行数; i++)
                 {
@@ -275,46 +317,51 @@ namespace Tsumiki.Cores.Mapping
                     var l_初期化右 = i == l_行数 ? l_幅 : Math.Min(l_幅, l_中心 + (C_帯域幅 * 2) + 1);
                     var l_行頭 = i * l_列数;
                     var l_初期化幅 = Math.Max(0, l_初期化右 - l_初期化左 + 1);
-                    l_得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
-                    l_挿入得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
-                    l_削除得点.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Fill(l_最小値);
                     l_経路.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Clear();
-
-                    l_得点[l_行頭] = C_ギャップ開始罰点 + (i - 1) * C_ギャップ延長罰点;
-                    l_挿入得点[l_行頭] = l_得点[l_行頭];
-                    l_削除得点[l_行頭] = l_最小値;
                     l_経路[l_行頭] = 1;
-                }
 
-                for (var i = 1; i <= l_照合リード.Length; i++)
-                {
-                    var l_中心 = i + C_帯域幅;
+                    l_今の得点.Fill(l_最小値);
+                    l_今の挿入得点.Fill(l_最小値);
+                    l_今の削除得点.Fill(l_最小値);
+                    l_今の得点[0] = C_ギャップ開始罰点 + (i - 1) * C_ギャップ延長罰点;
+                    l_今の挿入得点[0] = l_今の得点[0];
+
                     var l_左 = Math.Max(1, l_中心 - C_帯域幅 * 2);
                     var l_右 = Math.Min(l_幅, l_中心 + C_帯域幅 * 2);
+                    var l_リード塩基 = l_照合リード[i - 1];
                     for (var j = l_左; j <= l_右; j++)
                     {
-                        var l_添字 = i * (l_幅 + 1) + j;
-                        var l_左上添字 = (i - 1) * (l_幅 + 1) + j - 1;
-                        var l_上添字 = (i - 1) * (l_幅 + 1) + j;
-                        var l_左添字 = i * (l_幅 + 1) + j - 1;
-                        var l_対角 = l_得点[l_左上添字] + (l_照合リード[i - 1] == l_参照[l_開始 + j - 1] ? C_一致得点 : C_不一致罰点);
-                        l_挿入得点[l_添字] = Math.Max(l_得点[l_上添字] + C_ギャップ開始罰点, l_挿入得点[l_上添字] + C_ギャップ延長罰点);
-                        l_削除得点[l_添字] = Math.Max(l_得点[l_左添字] + C_ギャップ開始罰点, l_削除得点[l_左添字] + C_ギャップ延長罰点);
-                        l_得点[l_添字] = Math.Max(l_対角, Math.Max(l_挿入得点[l_添字], l_削除得点[l_添字]));
-                        l_経路[l_添字] = l_得点[l_添字] == l_対角 ? (byte)0 : l_得点[l_添字] == l_挿入得点[l_添字] ? (byte)1 : (byte)2;
+                        var l_対角 = l_前の得点[j - 1] + (l_リード塩基 == l_参照[l_開始 + j - 1] ? C_一致得点 : C_不一致罰点);
+                        var l_挿入 = Math.Max(l_前の得点[j] + C_ギャップ開始罰点, l_前の挿入得点[j] + C_ギャップ延長罰点);
+                        var l_削除 = Math.Max(l_今の得点[j - 1] + C_ギャップ開始罰点, l_今の削除得点[j - 1] + C_ギャップ延長罰点);
+                        var l_得点 = Math.Max(l_対角, Math.Max(l_挿入, l_削除));
+                        l_今の挿入得点[j] = l_挿入;
+                        l_今の削除得点[j] = l_削除;
+                        l_今の得点[j] = l_得点;
+                        l_経路[l_行頭 + j] = l_得点 == l_対角 ? (byte)0 : l_得点 == l_挿入 ? (byte)1 : (byte)2;
                     }
+
+                    var l_入れ替え = l_前の得点;
+                    l_前の得点 = l_今の得点;
+                    l_今の得点 = l_入れ替え;
+                    l_入れ替え = l_前の挿入得点;
+                    l_前の挿入得点 = l_今の挿入得点;
+                    l_今の挿入得点 = l_入れ替え;
+                    l_入れ替え = l_前の削除得点;
+                    l_前の削除得点 = l_今の削除得点;
+                    l_今の削除得点 = l_入れ替え;
                 }
 
                 var l_末尾 = 0;
                 for (var j = 1; j <= l_幅; j++)
                 {
-                    if (l_得点[l_照合リード.Length * (l_幅 + 1) + j] > l_得点[l_照合リード.Length * (l_幅 + 1) + l_末尾])
+                    if (l_前の得点[j] > l_前の得点[l_末尾])
                     {
                         l_末尾 = j;
                     }
                 }
 
-                var l_最終スコア = l_得点[l_照合リード.Length * (l_幅 + 1) + l_末尾];
+                var l_最終スコア = l_前の得点[l_末尾];
                 List<整列位置> l_位置群 = [];
                 for (var i = l_照合リード.Length; i > 0;)
                 {

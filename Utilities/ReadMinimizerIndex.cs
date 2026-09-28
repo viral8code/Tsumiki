@@ -12,6 +12,7 @@
         /// </summary>
         public const int C_種長 = 15;
 
+
         /// <summary>
         /// minimizer を選ぶ窓に並ぶ k-mer の数
         /// </summary>
@@ -31,6 +32,21 @@
         /// minimizer を並列に集めるときの 1 束の区間数
         /// </summary>
         private const int C_区間の束の大きさ = 4_096;
+
+        /// <summary>
+        /// 一度に詰める区間の数
+        /// </summary>
+        private const int C_詰める束の大きさ = 8_192;
+
+        /// <summary>
+        /// 詰める先の最初の語数 (足りなければ倍に広げる)
+        /// </summary>
+        private const int C_語の初期数 = 1 << 20;
+
+        /// <summary>
+        /// 並べるときに振り分ける種の上位ビットの数
+        /// </summary>
+        private const int C_振り分けのビット数 = 10;
 
         /// <summary>
         /// 種の値のマスク
@@ -114,36 +130,24 @@
         /// <returns>作った索引</returns>
         public static ReadMinimizerIndex V_構築(Func<IEnumerable<string>> p_配列列)
         {
-            long l_長さ = 0;
-            foreach (var l_配列 in p_配列列())
-            {
-                foreach (var (_, l_区間長) in Get_区間列(l_配列))
-                {
-                    l_長さ += l_区間長;
-                }
-            }
-
-            var l_語 = new ulong[(l_長さ / C_語あたりの文字数) + 2];
-            var l_末尾印 = new ulong[(l_長さ / 64) + 2];
+            var l_語 = new ulong[C_語の初期数];
+            var l_末尾印 = new ulong[C_語の初期数];
             List<(long A_開始, int A_長さ)> l_区間群 = [];
+            List<string> l_束 = new(C_詰める束の大きさ);
             long l_位置 = 0;
             foreach (var l_配列 in p_配列列())
             {
-                foreach (var (l_開始, l_区間長) in Get_区間列(l_配列))
+                l_束.Add(l_配列);
+                if (l_束.Count >= C_詰める束の大きさ)
                 {
-                    for (var i = 0; i < l_区間長; i++)
-                    {
-                        l_語[l_位置 / C_語あたりの文字数] |= (ulong)Get_2bit値(l_配列[l_開始 + i]) << (62 - (int)(2 * (l_位置 % C_語あたりの文字数)));
-                        l_位置++;
-                    }
-
-                    l_末尾印[(l_位置 - 1) / 64] |= 1UL << (int)((l_位置 - 1) % 64);
-                    if (l_区間長 >= C_最短の問い合わせ長)
-                    {
-                        l_区間群.Add((l_位置 - l_区間長, l_区間長));
-                    }
+                    l_位置 = V_詰める_束(ref l_語, ref l_末尾印, l_区間群, l_束, l_位置);
+                    l_束.Clear();
                 }
             }
+
+            var l_長さ = V_詰める_束(ref l_語, ref l_末尾印, l_区間群, l_束, l_位置);
+            Array.Resize(ref l_語, (int)((l_長さ / C_語あたりの文字数) + 2));
+            Array.Resize(ref l_末尾印, (int)((l_長さ / 64) + 2));
 
             var l_束数 = (l_区間群.Count + C_区間の束の大きさ - 1) / C_区間の束の大きさ;
             var l_束の先頭 = new long[l_束数 + 1];
@@ -166,11 +170,11 @@
             });
             if (l_位置32 is not null)
             {
-                Array.Sort(l_種, l_位置32);
+                V_並べる(ref l_種, ref l_位置32);
             }
             else
             {
-                Array.Sort(l_種, l_位置64);
+                V_並べる(ref l_種, ref l_位置64!);
             }
 
             return new ReadMinimizerIndex(l_語, l_末尾印, l_種, l_位置32, l_位置64, l_長さ);
@@ -269,6 +273,168 @@
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 束ねた配列を並列に 2 bit へ詰める (A・C・G・T が続く区間ごとに詰め、区間の境目で語を分け合うので、語へは OR で書く)
+        /// </summary>
+        /// <param name="p_語">詰める先 (足りなければ広げる)</param>
+        /// <param name="p_末尾印">区間の末尾の印 (足りなければ広げる)</param>
+        /// <param name="p_区間群">問い合わせに使える長さの区間を、位置の順に足す先</param>
+        /// <param name="p_束">配列</param>
+        /// <param name="p_位置">束の最初の配列を詰め始める位置</param>
+        /// <returns>束の最後の配列の直後の位置</returns>
+        private static long V_詰める_束(ref ulong[] p_語, ref ulong[] p_末尾印, List<(long A_開始, int A_長さ)> p_区間群, List<string> p_束, long p_位置)
+        {
+            var l_件数 = p_束.Count;
+            var l_開始位置 = new long[l_件数 + 1];
+            var l_長い区間の先頭 = new int[l_件数 + 1];
+            _ = Parallel.For(0, l_件数, i =>
+            {
+                var (l_塩基数, l_長い区間数) = Get_塩基数と長い区間数(p_束[i]);
+                l_開始位置[i + 1] = l_塩基数;
+                l_長い区間の先頭[i + 1] = l_長い区間数;
+            });
+            l_開始位置[0] = p_位置;
+            for (var i = 0; i < l_件数; i++)
+            {
+                l_開始位置[i + 1] += l_開始位置[i];
+                l_長い区間の先頭[i + 1] += l_長い区間の先頭[i];
+            }
+
+            var l_終端 = l_開始位置[l_件数];
+            var l_要る語数 = (l_終端 / C_語あたりの文字数) + 2;
+            if (p_語.LongLength < l_要る語数)
+            {
+                Array.Resize(ref p_語, (int)Math.Max(l_要る語数, Math.Min(Array.MaxLength, p_語.LongLength * 2)));
+            }
+
+            var l_要る印数 = (l_終端 / 64) + 2;
+            if (p_末尾印.LongLength < l_要る印数)
+            {
+                Array.Resize(ref p_末尾印, (int)Math.Max(l_要る印数, Math.Min(Array.MaxLength, p_末尾印.LongLength * 2)));
+            }
+
+            var l_語 = p_語;
+            var l_末尾印 = p_末尾印;
+            var l_長い区間 = new (long A_開始, int A_長さ)[l_長い区間の先頭[l_件数]];
+            _ = Parallel.For(0, l_件数, i =>
+            {
+                var l_配列 = p_束[i];
+                var l_今 = l_開始位置[i];
+                var l_書く = l_長い区間の先頭[i];
+                var l_区間長 = 0;
+                var l_語番号 = l_今 / C_語あたりの文字数;
+                var l_溜め = 0UL;
+                for (var j = 0; j <= l_配列.Length; j++)
+                {
+                    var l_値 = j < l_配列.Length ? Get_2bit値(l_配列[j]) : -1;
+                    if (l_値 < 0)
+                    {
+                        if (l_区間長 > 0)
+                        {
+                            var l_末尾 = l_今 - 1;
+                            _ = Interlocked.Or(ref l_末尾印[l_末尾 / 64], 1UL << (int)(l_末尾 % 64));
+                            if (l_区間長 >= C_最短の問い合わせ長)
+                            {
+                                l_長い区間[l_書く++] = (l_今 - l_区間長, l_区間長);
+                            }
+
+                            l_区間長 = 0;
+                        }
+
+                        continue;
+                    }
+
+                    if (l_今 / C_語あたりの文字数 != l_語番号)
+                    {
+                        _ = Interlocked.Or(ref l_語[l_語番号], l_溜め);
+                        l_溜め = 0UL;
+                        l_語番号 = l_今 / C_語あたりの文字数;
+                    }
+
+                    l_溜め |= (ulong)l_値 << (62 - (int)(2 * (l_今 % C_語あたりの文字数)));
+                    l_今++;
+                    l_区間長++;
+                }
+
+                if (l_溜め != 0UL)
+                {
+                    _ = Interlocked.Or(ref l_語[l_語番号], l_溜め);
+                }
+            });
+            p_区間群.AddRange(l_長い区間);
+            return l_終端;
+        }
+
+        /// <summary>
+        /// 配列の A・C・G・T の数と、問い合わせに使える長さの区間の数
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <returns>塩基数と長い区間の数</returns>
+        private static (long A_塩基数, int A_長い区間数) Get_塩基数と長い区間数(string p_配列)
+        {
+            var l_塩基数 = 0L;
+            var l_長い区間数 = 0;
+            var l_区間長 = 0;
+            foreach (var l_文字 in p_配列)
+            {
+                if (Get_2bit値(l_文字) >= 0)
+                {
+                    l_塩基数++;
+                    l_区間長++;
+                    continue;
+                }
+
+                l_長い区間数 += l_区間長 >= C_最短の問い合わせ長 ? 1 : 0;
+                l_区間長 = 0;
+            }
+
+            l_長い区間数 += l_区間長 >= C_最短の問い合わせ長 ? 1 : 0;
+            return (l_塩基数, l_長い区間数);
+        }
+
+        /// <summary>
+        /// 種の値の順に並べる (上位のビットで振り分けてから、振り分けた先ごとに並列に並べる)
+        /// </summary>
+        /// <typeparam name="T">位置の型</typeparam>
+        /// <param name="p_種">種の値</param>
+        /// <param name="p_位置">種と組になる位置</param>
+        private static void V_並べる<T>(ref uint[] p_種, ref T[] p_位置)
+        {
+            var l_振り分けのシフト = Math.Max(0, (2 * C_種長) - C_振り分けのビット数);
+            var l_先頭 = new long[(1 << C_振り分けのビット数) + 1];
+            foreach (var l_値 in p_種)
+            {
+                l_先頭[(l_値 >> l_振り分けのシフト) + 1]++;
+            }
+
+            for (var i = 0; i < l_先頭.Length - 1; i++)
+            {
+                l_先頭[i + 1] += l_先頭[i];
+            }
+
+            var l_種 = new uint[p_種.LongLength];
+            var l_位置 = new T[p_位置.LongLength];
+            var l_書く = (long[])l_先頭.Clone();
+            for (long i = 0; i < p_種.LongLength; i++)
+            {
+                var l_先 = l_書く[p_種[i] >> l_振り分けのシフト]++;
+                l_種[l_先] = p_種[i];
+                l_位置[l_先] = p_位置[i];
+            }
+
+            _ = Parallel.For(0, l_先頭.Length - 1, b =>
+            {
+                var l_長さ = (int)(l_先頭[b + 1] - l_先頭[b]);
+                if (l_長さ > 1)
+                {
+                    l_種.AsSpan((int)l_先頭[b], l_長さ).Sort(l_位置.AsSpan((int)l_先頭[b], l_長さ));
+                }
+            });
+
+            p_種 = l_種;
+            p_位置 = l_位置;
+        }
 
         /// <summary>
         /// 束に入る区間の minimizer を数える、または書き込む
@@ -452,29 +618,6 @@
             l_値 *= 0xC4CE_B9FE_1A85_EC53UL;
             l_値 ^= l_値 >> 33;
             return l_値;
-        }
-
-        /// <summary>
-        /// 配列のうち A・C・G・T が続く区間
-        /// </summary>
-        /// <param name="p_配列">配列</param>
-        /// <returns>区間の開始位置と長さ</returns>
-        private static IEnumerable<(int A_開始, int A_長さ)> Get_区間列(string p_配列)
-        {
-            var l_開始 = -1;
-            for (var i = 0; i <= p_配列.Length; i++)
-            {
-                var l_Is塩基 = i < p_配列.Length && Get_2bit値(p_配列[i]) >= 0;
-                if (l_Is塩基 && l_開始 < 0)
-                {
-                    l_開始 = i;
-                }
-                else if (!l_Is塩基 && l_開始 >= 0)
-                {
-                    yield return (l_開始, i - l_開始);
-                    l_開始 = -1;
-                }
-            }
         }
 
         /// <summary>
