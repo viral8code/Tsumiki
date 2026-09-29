@@ -23,6 +23,11 @@ namespace Tsumiki.Cores.Scaffolding
         #region 定数
 
         /// <summary>
+        /// 複数ライブラリのインサートサイズをログに並べるときの区切り
+        /// </summary>
+        private const string C_インサートサイズの区切り = " / ";
+
+        /// <summary>
         /// 同一 unitig 内標本を信頼してよい「unitig 長 / 推定フラグメント長」の下限比
         /// </summary>
         private const int C_偏りが無いとみなす長さ比 = 10;
@@ -124,7 +129,7 @@ namespace Tsumiki.Cores.Scaffolding
                 return;
             }
 
-            Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, this.A_有効インサートサイズ!.Value);
+            Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, string.Join(C_インサートサイズの区切り, l_インサートサイズ群.Where(x => x > 0)));
 
             this.V_読込_Contig();
 
@@ -171,8 +176,7 @@ namespace Tsumiki.Cores.Scaffolding
 
                 if (l_ライブラリ数 > 1)
                 {
-                    Logger.V_出力_そのまま(FormattableString.Invariant(
-                        $"[Info] ライブラリ {l_ライブラリ + 1}: インサートサイズ {l_インサートサイズ群[l_ライブラリ]:N0}、リード長 {l_この長さ:N0}、断片長標本 {l_標本.Count:N0} 件、ペア辺 {l_対称化群[l_ライブラリ].Count:N0} 本"));
+                    Logger.V_出力(メッセージID.Scaffoldingライブラリ別の概要, l_ライブラリ + 1, l_インサートサイズ群[l_ライブラリ], l_この長さ, l_標本.Count, l_対称化群[l_ライブラリ].Count);
                 }
             }
 

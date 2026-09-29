@@ -24,8 +24,9 @@
 ## 動作環境
 
 - Windows (x64)
+- Linux (x64)：Ubuntu 24.04 で動作を確認しています。Release で配っている実行ファイルは glibc 2.34 以上が必要です (Ubuntu 22.04・Debian 12・RHEL 9 以降)
 - ビルドには [.NET 10 SDK](https://dotnet.microsoft.com/download) が必要です
-- Linux / macOS は現時点で未検証です
+- Linux (arm64) / macOS は現時点で未検証です
 
 ## インストール
 

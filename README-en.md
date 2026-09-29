@@ -24,8 +24,9 @@ It builds a de Bruijn graph from trusted k-mers and uses multiple k values and r
 ## Requirements
 
 - Windows (x64)
+- Linux (x64): tested on Ubuntu 24.04. The executables on the Releases page require glibc 2.34 or later (Ubuntu 22.04, Debian 12, RHEL 9, or newer)
 - The [.NET 10 SDK](https://dotnet.microsoft.com/download) is required to build
-- Linux and macOS are not yet tested
+- Linux (arm64) and macOS are not yet tested
 
 ## Installation
 

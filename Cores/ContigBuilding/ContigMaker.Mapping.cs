@@ -587,7 +587,7 @@ namespace Tsumiki.Core
         }
 
         /// <summary>
-        /// 1 本のリードを k-mer 索引で走査し、隣接を数え、通った unitig の並びと代表 unitig を求める
+        /// 1 本のリードを k-mer 索引で走査し、隣接を数え、通った unitig の並びと代表 unitig を求める (曖昧塩基を含むリードは使わない)
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_ローカル隣接">このワーカーが集めた隣接、null なら数えない</param>
@@ -598,7 +598,7 @@ namespace Tsumiki.Core
             p_作業域.V_初期化();
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
 
-            if (p_リード.Length < l_k長)
+            if (p_リード.Length < l_k長 || p_リード.Any(Util.Is曖昧塩基))
             {
                 return 代表Unitigヒット.C_ヒットなし;
             }

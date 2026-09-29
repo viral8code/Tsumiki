@@ -386,6 +386,11 @@
         Scaffolding開始_インサートサイズ,
 
         /// <summary>
+        /// 複数ライブラリの scaffolding で、ライブラリごとのインサートサイズ・リード長・標本数・辺数を示す
+        /// </summary>
+        Scaffoldingライブラリ別の概要,
+
+        /// <summary>
         /// contig が無いため scaffolding を省略した
         /// </summary>
         Scaffolding省略_Contigなし,

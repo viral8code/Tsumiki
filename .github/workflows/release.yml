@@ -18,7 +18,8 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
-          - os: ubuntu-latest
+          # Linux の Native AOT はビルドした OS の glibc 以上を要求するので、OS を固定して要件 (glibc 2.34 以上) を変えない
+          - os: ubuntu-24.04
             rid: linux-x64
           - os: ubuntu-24.04-arm
             rid: linux-arm64
