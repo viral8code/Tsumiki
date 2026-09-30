@@ -284,6 +284,27 @@ namespace Tsumiki.Cores.Pipeline
         #region 内部メソッド
 
         /// <summary>
+        /// 配列の位置から始まるアンカー k-mer の、リードのカバレッジで見た期待コピー数を返す関数を作る
+        /// </summary>
+        /// <param name="p_アンカー"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_解析"></param>
+        /// <returns></returns>
+        private static Func<string, int, int> Get_期待コピー数(TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析)
+        {
+            return (p_配列, p_位置) =>
+            {
+                Span<byte> l_kmer = stackalloc byte[p_アンカーk長];
+                for (var i = 0; i < p_アンカーk長; i++)
+                {
+                    l_kmer[i] = Util.Get_塩基ID(p_配列[p_位置 + i]);
+                }
+
+                return KmerHistogram.Get_期待コピー数(p_アンカー.Get_カバレッジ(l_kmer), p_解析.A_単一コピー基準値, p_解析.A_単一コピー上限);
+            };
+        }
+
+        /// <summary>
         /// 骨格に他の k の配列を統合し、良くなっていれば統合結果を返す
         /// </summary>
         /// <param name="p_最良"></param>
@@ -300,7 +321,7 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_統合パス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + Consts.Scaffoldファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
-            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス))
+            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, Get_期待コピー数(p_アンカー, p_アンカーk長, p_解析)))
             {
                 return null;
             }

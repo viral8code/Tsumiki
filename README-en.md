@@ -123,6 +123,8 @@ For all three species, NA50 is larger than with either platform alone (at least 
 
 Finished reference genomes are available for R. sphaeroides and B. cereus ATCC 10987 (MiSeq); there the misassembly counts are 1 (HiSeq), 2 (MiSeq), and 3 respectively.
 
+**Misassembly counts also include structural differences between the sequenced strain and the reference.** For R. sphaeroides, the same junction joining positions around 36.5 kb and 64.5 kb of the reference is counted once in each of the HiSeq, MiSeq, and mixed assemblies. The 40 bases spanning this junction occur verbatim in 176 raw reads (HiSeq), while the reference contains nothing similar. This is most likely a genuine difference in the sequenced strain rather than an assembly error.
+
 **Depth does not drive accuracy.** Depth spans 89x to 332x, a 3.7-fold range, yet its correlation with NA50 is **-0.06**.
 
 ### Reproducing

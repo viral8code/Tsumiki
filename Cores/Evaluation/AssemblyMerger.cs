@@ -50,6 +50,21 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         private const double C_繋ぎ目に許す既知kmerの割合 = 0.05D;
 
+        /// <summary>
+        /// 骨格に既にある配列を含む繋ぎ目に許す、期待コピー数の中央値の上限
+        /// </summary>
+        private const int C_既知の繋ぎ目に許すコピー数 = 2;
+
+        /// <summary>
+        /// 同じ繋ぎ目とみなす、k ごとの繋ぎ長の差の上限
+        /// </summary>
+        private const int C_繋ぎ長の許容差 = 0;
+
+        /// <summary>
+        /// 畳まれた反復かを見る、骨格配列の末端の長さ
+        /// </summary>
+        private const int C_畳み込みを見る端の長さ = 500;
+
         #endregion
 
         #region 公開メソッド
@@ -61,9 +76,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_全候補"></param>
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_出力パス"></param>
+        /// <param name="p_期待コピー数">配列とその位置のアンカー k-mer から、リードのカバレッジで見た期待コピー数を返す。null なら骨格に既にある配列を含む繋ぎ目を使わない</param>
         /// <param name="p_必要な独立支持数"></param>
         /// <returns></returns>
-        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, int p_必要な独立支持数 = C_必要な独立支持数の既定値)
+        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, Func<string, int, int>? p_期待コピー数 = null, int p_必要な独立支持数 = C_必要な独立支持数の既定値)
         {
             var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
             if (l_骨格配列.Count == 0)
@@ -73,7 +89,10 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_索引 = Get_骨格索引(l_骨格配列, p_アンカーk長);
             var l_骨格kmer = Get_骨格kmer集合(l_骨格配列, p_アンカーk長);
+            var l_長い配列の出現数 = p_期待コピー数 is null ? null : Get_長い配列のkmer出現数(l_骨格配列, p_アンカーk長);
             var l_候補 = new List<橋渡し候補>();
+            HashSet<(int, int)> l_反復を挟む辺 = [];
+            var l_枠で棄却 = 0;
             foreach (var l_他 in p_全候補)
             {
                 if (l_他.A_k長 == p_骨格.A_k長)
@@ -81,10 +100,41 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                l_候補.AddRange(Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長).Where(x => !Has既知の配列(x.A_橋渡し配列, l_骨格kmer, p_アンカーk長)));
+                foreach (var l_橋渡し in Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長))
+                {
+                    if (!Has既知の配列(l_橋渡し.A_橋渡し配列, l_骨格kmer, p_アンカーk長))
+                    {
+                        l_候補.Add(l_橋渡し);
+                        continue;
+                    }
+
+                    if (p_期待コピー数 is null || l_長い配列の出現数 is null)
+                    {
+                        continue;
+                    }
+
+                    _ = l_反復を挟む辺.Add((l_橋渡し.A_始点, l_橋渡し.A_終点));
+                    _ = l_反復を挟む辺.Add((l_橋渡し.A_終点 ^ 1, l_橋渡し.A_始点 ^ 1));
+                    if (Has置ける枠(l_橋渡し.A_橋渡し配列, p_期待コピー数, l_長い配列の出現数, p_アンカーk長))
+                    {
+                        l_候補.Add(l_橋渡し);
+                    }
+                    else
+                    {
+                        l_枠で棄却++;
+                    }
+                }
             }
 
-            var l_確定 = Get_相互一意な橋渡し(l_候補, l_骨格配列.Count, p_必要な独立支持数);
+            Func<int, bool>? l_畳まれた端か = p_期待コピー数 is null || l_長い配列の出現数 is null
+                ? null
+                : x => Is畳まれた端(Get_出口側の端(l_骨格配列, x), p_期待コピー数, l_長い配列の出現数, p_アンカーk長);
+            var l_確定 = Get_相互一意な橋渡し(l_候補, l_骨格配列.Count, p_必要な独立支持数, l_反復を挟む辺, l_畳まれた端か, out var l_長さで棄却, out var l_端で棄却);
+            if (l_反復を挟む辺.Count > 0)
+            {
+                Logger.V_出力(メッセージID.反復を挟む繋ぎ目の審査, l_反復を挟む辺.Count >> 1, l_枠で棄却, l_長さで棄却, l_端で棄却);
+            }
+
             if (l_確定.Count == 0)
             {
                 Logger.V_出力(メッセージID.統合できる接合点なし);
@@ -214,6 +264,110 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             return l_既知 > p_アンカーk長 && l_既知 > l_件数 * C_繋ぎ目に許す既知kmerの割合;
+        }
+
+        /// <summary>
+        /// 端点に使える長さの骨格配列について、各 k-mer の正規形が何回現れるかを数える
+        /// </summary>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static Dictionary<UInt128, int> Get_長い配列のkmer出現数(List<string> p_骨格配列, int p_アンカーk長)
+        {
+            Dictionary<UInt128, int> l_出現数 = [];
+            foreach (var l_配列 in p_骨格配列.Where(x => x.Length >= C_端点に使う最小長))
+            {
+                for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
+                {
+                    if (KmerPacking.TryGet_正規化パック(l_配列, i, p_アンカーk長, out var l_鍵))
+                    {
+                        l_出現数[l_鍵] = l_出現数.GetValueOrDefault(l_鍵) + 1;
+                    }
+                }
+            }
+
+            return l_出現数;
+        }
+
+        /// <summary>
+        /// 骨格に既にある配列を含む繋ぎ目を、もう 1 か所に置けるだけのコピー数があるか
+        /// </summary>
+        /// <param name="p_橋渡し配列"></param>
+        /// <param name="p_期待コピー数"></param>
+        /// <param name="p_長い配列の出現数"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static bool Has置ける枠(string p_橋渡し配列, Func<string, int, int> p_期待コピー数, Dictionary<UInt128, int> p_長い配列の出現数, int p_アンカーk長)
+        {
+            List<double> l_期待 = [];
+            List<double> l_残り = [];
+            for (var i = 0; i + p_アンカーk長 <= p_橋渡し配列.Length; i++)
+            {
+                if (!KmerPacking.TryGet_正規化パック(p_橋渡し配列, i, p_アンカーk長, out var l_鍵))
+                {
+                    continue;
+                }
+
+                var l_コピー数 = p_期待コピー数(p_橋渡し配列, i);
+                l_期待.Add(l_コピー数);
+                l_残り.Add(l_コピー数 - p_長い配列の出現数.GetValueOrDefault(l_鍵));
+            }
+
+            return l_期待.Count == 0 || (StatsUtil.Get_中央値(l_期待) <= C_既知の繋ぎ目に許すコピー数 && StatsUtil.Get_中央値(l_残り) >= 1D);
+        }
+
+        /// <summary>
+        /// その頂点から出ていく側の、骨格配列の末端
+        /// </summary>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_頂点"></param>
+        /// <returns></returns>
+        private static string Get_出口側の端(List<string> p_骨格配列, int p_頂点)
+        {
+            var l_配列 = p_骨格配列[p_頂点 >> 1];
+            var l_長さ = Math.Min(C_畳み込みを見る端の長さ, l_配列.Length);
+            return (p_頂点 & 1) == 0 ? l_配列[^l_長さ..] : l_配列[..l_長さ];
+        }
+
+        /// <summary>
+        /// 骨格配列の末端が、ゲノム中のコピー数より少なくしか骨格に置かれていない反復か
+        /// </summary>
+        /// <param name="p_端"></param>
+        /// <param name="p_期待コピー数"></param>
+        /// <param name="p_長い配列の出現数"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static bool Is畳まれた端(string p_端, Func<string, int, int> p_期待コピー数, Dictionary<UInt128, int> p_長い配列の出現数, int p_アンカーk長)
+        {
+            List<double> l_期待 = [];
+            List<double> l_出現 = [];
+            for (var i = 0; i + p_アンカーk長 <= p_端.Length; i++)
+            {
+                if (KmerPacking.TryGet_正規化パック(p_端, i, p_アンカーk長, out var l_鍵))
+                {
+                    l_期待.Add(p_期待コピー数(p_端, i));
+                    l_出現.Add(p_長い配列の出現数.GetValueOrDefault(l_鍵));
+                }
+            }
+
+            return l_期待.Count > 0 && StatsUtil.Get_中央値(l_期待) > StatsUtil.Get_中央値(l_出現);
+        }
+
+        /// <summary>
+        /// 繋ぎ長を許容差でまとめ、最も多くの k が支持する長さと、その支持数、それ以外の長さの最大支持数を返す
+        /// </summary>
+        /// <param name="p_繋ぎ長一覧"></param>
+        /// <returns></returns>
+        private static (int A_長さ, int A_支持数, int A_他の支持数) Get_最多の繋ぎ長(List<(int A_長さ, int A_k長)> p_繋ぎ長一覧)
+        {
+            int Get_支持数(int p_長さ)
+            {
+                return p_繋ぎ長一覧.Where(x => Math.Abs(x.A_長さ - p_長さ) <= C_繋ぎ長の許容差).Select(x => x.A_k長).Distinct().Count();
+            }
+
+            var l_最多 = p_繋ぎ長一覧.Select(x => x.A_長さ).Distinct().OrderByDescending(Get_支持数).ThenBy(x => x).First();
+            var l_他の支持数 = p_繋ぎ長一覧.Select(x => x.A_長さ).Where(x => Math.Abs(x - l_最多) > C_繋ぎ長の許容差).Select(Get_支持数).DefaultIfEmpty(0).Max();
+            return (l_最多, Get_支持数(l_最多), l_他の支持数);
         }
 
         /// <summary>
@@ -480,26 +634,44 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_候補"></param>
         /// <param name="p_骨格の本数"></param>
         /// <param name="p_必要な独立支持数"></param>
+        /// <param name="p_反復を挟む辺">骨格に既にある配列を含む候補があった辺。繋ぎ長の一致と端の畳み込みも見る</param>
+        /// <param name="p_畳まれた端か">頂点から出ていく側の末端が畳まれた反復かを返す。null なら見ない</param>
+        /// <param name="p_長さで棄却">繋ぎ長が k の間で揃わず落とした辺の数</param>
+        /// <param name="p_端で棄却">端が畳まれた反復で落とした辺の数</param>
         /// <returns></returns>
-        private static Dictionary<int, 橋渡し候補> Get_相互一意な橋渡し(List<橋渡し候補> p_候補, int p_骨格の本数, int p_必要な独立支持数)
+        private static Dictionary<int, 橋渡し候補> Get_相互一意な橋渡し(List<橋渡し候補> p_候補, int p_骨格の本数, int p_必要な独立支持数, IReadOnlySet<(int, int)> p_反復を挟む辺, Func<int, bool>? p_畳まれた端か, out int p_長さで棄却, out int p_端で棄却)
         {
             Dictionary<(int, int), HashSet<int>> l_支持したk = [];
+            Dictionary<(int, int), List<(int A_長さ, int A_k長)>> l_繋ぎ長 = [];
             foreach (var l_候補 in p_候補)
             {
                 V_登録_k支持(l_支持したk, (l_候補.A_始点, l_候補.A_終点), l_候補.A_由来のk長);
                 V_登録_k支持(l_支持したk, (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1), l_候補.A_由来のk長);
+                V_登録_繋ぎ長(l_繋ぎ長, (l_候補.A_始点, l_候補.A_終点), l_候補);
+                V_登録_繋ぎ長(l_繋ぎ長, (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1), l_候補);
             }
+
+            Dictionary<(int, int), (int A_長さ, int A_支持数, int A_他の支持数)> l_最多の繋ぎ長 = p_反復を挟む辺.Where(l_繋ぎ長.ContainsKey).ToDictionary(x => x, x => Get_最多の繋ぎ長(l_繋ぎ長[x]));
 
             Dictionary<int, HashSet<int>> l_行き先 = [];
             Dictionary<(int, int), 橋渡し候補> l_代表 = [];
 
             foreach (var l_候補 in p_候補)
             {
+                if (l_最多の繋ぎ長.TryGetValue((l_候補.A_始点, l_候補.A_終点), out var l_最多) && Math.Abs(Get_繋ぎ長(l_候補) - l_最多.A_長さ) > C_繋ぎ長の許容差)
+                {
+                    V_登録_行き先(l_行き先, l_候補.A_始点, l_候補.A_終点);
+                    V_登録_行き先(l_行き先, l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1);
+                    continue;
+                }
+
                 V_登録(l_行き先, l_代表, l_候補);
 
                 V_登録(l_行き先, l_代表, new 橋渡し候補(l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1, Util.V_逆相補_曖昧塩基あり(l_候補.A_橋渡し配列), l_候補.A_由来のk長, l_候補.A_重なり長));
             }
 
+            p_長さで棄却 = 0;
+            p_端で棄却 = 0;
             Dictionary<int, 橋渡し候補> l_確定 = [];
             foreach (var (l_始点, l_集合) in l_行き先)
             {
@@ -526,10 +698,70 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                l_確定[l_始点] = l_代表[(l_始点, l_終点)];
+                var l_一度だけ数える = l_始点 <= (l_終点 ^ 1);
+                if (l_最多の繋ぎ長.TryGetValue((l_始点, l_終点), out var l_最多) && (l_最多.A_支持数 < p_必要な独立支持数 || l_最多.A_他の支持数 >= p_必要な独立支持数))
+                {
+                    p_長さで棄却 += l_一度だけ数える ? 1 : 0;
+                    continue;
+                }
+
+                if (p_畳まれた端か is not null && p_反復を挟む辺.Contains((l_始点, l_終点)) && (p_畳まれた端か(l_始点) || p_畳まれた端か(l_終点 ^ 1)))
+                {
+                    p_端で棄却 += l_一度だけ数える ? 1 : 0;
+                    continue;
+                }
+
+                if (l_代表.TryGetValue((l_始点, l_終点), out var l_代表の候補))
+                {
+                    l_確定[l_始点] = l_代表の候補;
+                }
             }
 
             return l_確定;
+        }
+
+        /// <summary>
+        /// 候補の繋ぎ長 (重なりなら負)
+        /// </summary>
+        /// <param name="p_候補"></param>
+        /// <returns></returns>
+        private static int Get_繋ぎ長(橋渡し候補 p_候補)
+        {
+            return p_候補.A_橋渡し配列.Length - p_候補.A_重なり長;
+        }
+
+        /// <summary>
+        /// 辺ごとに、候補の繋ぎ長と由来の k を書き留める
+        /// </summary>
+        /// <param name="p_繋ぎ長"></param>
+        /// <param name="p_辺"></param>
+        /// <param name="p_候補"></param>
+        private static void V_登録_繋ぎ長(Dictionary<(int, int), List<(int A_長さ, int A_k長)>> p_繋ぎ長, (int, int) p_辺, 橋渡し候補 p_候補)
+        {
+            if (!p_繋ぎ長.TryGetValue(p_辺, out var l_一覧))
+            {
+                l_一覧 = [];
+                p_繋ぎ長[p_辺] = l_一覧;
+            }
+
+            l_一覧.Add((Get_繋ぎ長(p_候補), p_候補.A_由来のk長));
+        }
+
+        /// <summary>
+        /// 頂点の行き先だけを書き留める
+        /// </summary>
+        /// <param name="p_行き先"></param>
+        /// <param name="p_始点"></param>
+        /// <param name="p_終点"></param>
+        private static void V_登録_行き先(Dictionary<int, HashSet<int>> p_行き先, int p_始点, int p_終点)
+        {
+            if (!p_行き先.TryGetValue(p_始点, out var l_集合))
+            {
+                l_集合 = [];
+                p_行き先[p_始点] = l_集合;
+            }
+
+            _ = l_集合.Add(p_終点);
         }
 
         /// <summary>

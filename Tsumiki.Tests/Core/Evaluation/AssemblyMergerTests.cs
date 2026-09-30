@@ -342,6 +342,106 @@ namespace Tsumiki.Tests.Core
             Assert.True(V_読み込み_配列群(l_出力).Sum(x => x.Length) >= l_骨格の総延長);
         }
 
+        /// <summary>
+        /// 2 コピーの反復のうち 1 コピーだけが骨格に置かれていれば、もう 1 か所の繋ぎ目に反復を置いて繋ぐこと
+        /// </summary>
+        /// <remarks>
+        /// コピー数が分からなければ、骨格に既にある配列を含む繋ぎ目は重複の持ち込みと区別できないので使わない
+        /// </remarks>
+        [Fact]
+        public void V_コピー数に余裕のある反復を挟む繋ぎ目は繋ぐ()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 721);
+            var l_反復 = V_生成_乱数配列(250, p_シード: 722);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 723);
+            var l_別の場所 = V_生成_乱数配列(3_000, p_シード: 724) + l_反復 + V_生成_乱数配列(3_000, p_シード: 725);
+            var l_真の配列 = l_左 + l_反復 + l_右;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_cn.fasta", 63, l_左, l_右, l_別の場所);
+            var l_他1 = this.V_書き込み_アセンブリ("other_cn_a.fasta", 31, l_真の配列);
+            var l_他2 = this.V_書き込み_アセンブリ("other_cn_b.fasta", 41, l_真の配列);
+            var l_期待コピー数 = Get_期待コピー数(l_反復, 2);
+
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, Path.Combine(this._作業ディレクトリ, "merged_cn_none.fasta")));
+
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged_cn.fasta");
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, l_出力, l_期待コピー数));
+            Assert.Contains(V_読み込み_配列群(l_出力), x => x == l_真の配列 || x == Util.V_逆相補(l_真の配列));
+        }
+
+        /// <summary>
+        /// 反復のコピーが骨格に既に期待コピー数だけ置かれていれば、それ以上は置かないこと
+        /// </summary>
+        [Fact]
+        public void V_コピー数を使い切った反復を挟む繋ぎ目は繋がない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 731);
+            var l_反復 = V_生成_乱数配列(250, p_シード: 732);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 733);
+            var l_別の場所1 = V_生成_乱数配列(3_000, p_シード: 734) + l_反復 + V_生成_乱数配列(3_000, p_シード: 735);
+            var l_別の場所2 = V_生成_乱数配列(3_000, p_シード: 736) + l_反復 + V_生成_乱数配列(3_000, p_シード: 737);
+            var l_真の配列 = l_左 + l_反復 + l_右;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_cnfull.fasta", 63, l_左, l_右, l_別の場所1, l_別の場所2);
+            var l_他1 = this.V_書き込み_アセンブリ("other_cnfull_a.fasta", 31, l_真の配列);
+            var l_他2 = this.V_書き込み_アセンブリ("other_cnfull_b.fasta", 41, l_真の配列);
+
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, Path.Combine(this._作業ディレクトリ, "merged_cnfull.fasta"), Get_期待コピー数(l_反復, 2)));
+        }
+
+        /// <summary>
+        /// 反復を挟む繋ぎ目で、k によって繋ぎ長が食い違うときは繋がないこと
+        /// </summary>
+        /// <remarks>
+        /// 別々の k が反復の別々のコピーを通って同じ 2 本を結んでいる形で、どちらの長さも正しいとは限らない
+        /// </remarks>
+        [Fact]
+        public void V_kの間で繋ぎ長が揃わない反復の繋ぎ目は繋がない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 741);
+            var l_反復 = V_生成_乱数配列(250, p_シード: 742);
+            var l_挿入 = V_生成_乱数配列(60, p_シード: 743);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 744);
+            var l_別の場所 = V_生成_乱数配列(3_000, p_シード: 745) + l_反復 + V_生成_乱数配列(3_000, p_シード: 746);
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_len.fasta", 63, l_左, l_右, l_別の場所);
+            var l_他1 = this.V_書き込み_アセンブリ("other_lenmix_a.fasta", 31, l_左 + l_反復 + l_右);
+            var l_他2 = this.V_書き込み_アセンブリ("other_lenmix_b.fasta", 41, l_左 + l_反復 + l_挿入 + l_右);
+
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, Path.Combine(this._作業ディレクトリ, "merged_lenmix.fasta"), Get_期待コピー数(l_反復, 2)));
+        }
+
+        /// <summary>
+        /// 骨格配列の末端がゲノム中では複数コピーあるのに骨格に 1 つしか無い (畳まれた反復) なら、そこからは繋がないこと
+        /// </summary>
+        /// <remarks>
+        /// 畳まれた反復の先はコピーごとに違い、別の k が通ったコピーが正しい行き先とは限らない
+        /// </remarks>
+        [Fact]
+        public void V_畳まれた反復で終わる骨格配列からは反復を挟んで繋がない()
+        {
+            var l_左の固有 = V_生成_乱数配列(4_000, p_シード: 751);
+            var l_畳まれた反復 = V_生成_乱数配列(800, p_シード: 752);
+            var l_反復 = V_生成_乱数配列(250, p_シード: 753);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 754);
+            var l_別の場所 = V_生成_乱数配列(3_000, p_シード: 755) + l_反復 + V_生成_乱数配列(3_000, p_シード: 756);
+            var l_真の配列 = l_左の固有 + l_畳まれた反復 + l_反復 + l_右;
+
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone_fold.fasta", 63, l_左の固有 + l_畳まれた反復, l_右, l_別の場所);
+            var l_他1 = this.V_書き込み_アセンブリ("other_fold_a.fasta", 31, l_真の配列);
+            var l_他2 = this.V_書き込み_アセンブリ("other_fold_b.fasta", 41, l_真の配列);
+            var l_反復のkmer = Get_kmer集合(l_反復);
+            var l_畳まれたkmer = Get_kmer集合(l_畳まれた反復);
+
+            int l_期待コピー数(string p_配列, int p_位置)
+            {
+                var l_kmer = p_配列.Substring(p_位置, アンカーk長);
+                return l_反復のkmer.Contains(l_kmer) || l_畳まれたkmer.Contains(l_kmer) ? 2 : 1;
+            }
+
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他1, l_他2], アンカーk長, Path.Combine(this._作業ディレクトリ, "merged_fold.fasta"), l_期待コピー数));
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -382,6 +482,37 @@ namespace Tsumiki.Tests.Core
                 }
             }
             return new アセンブリ実行結果(p_k長, l_パス, l_パス, null, 2UL, 20.0D);
+        }
+
+        /// <summary>
+        /// 配列の k-mer を両方の向きで集める
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <returns>k-mer の集合</returns>
+        private static HashSet<string> Get_kmer集合(string p_配列)
+        {
+            HashSet<string> l_集合 = [];
+            foreach (var l_向き in new[] { p_配列, Util.V_逆相補(p_配列) })
+            {
+                for (var i = 0; i + アンカーk長 <= l_向き.Length; i++)
+                {
+                    _ = l_集合.Add(l_向き.Substring(i, アンカーk長));
+                }
+            }
+
+            return l_集合;
+        }
+
+        /// <summary>
+        /// 反復の k-mer だけを指定のコピー数、それ以外を 1 コピーと答える期待コピー数
+        /// </summary>
+        /// <param name="p_反復">複数コピーの配列</param>
+        /// <param name="p_コピー数">反復のコピー数</param>
+        /// <returns>期待コピー数を返す関数</returns>
+        private static Func<string, int, int> Get_期待コピー数(string p_反復, int p_コピー数)
+        {
+            var l_反復のkmer = Get_kmer集合(p_反復);
+            return (p_配列, p_位置) => l_反復のkmer.Contains(p_配列.Substring(p_位置, アンカーk長)) ? p_コピー数 : 1;
         }
 
         /// <summary>
