@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.Utilities
+﻿using Tsumiki.Commons;
+
+namespace Tsumiki.Utilities
 {
     /// <summary>
     /// リードを minimizer で引けるようにした索引 (長い配列がリードかその逆相補に出てくるかを答える)
@@ -27,6 +29,11 @@
         /// 1 語に詰める文字数
         /// </summary>
         private const int C_語あたりの文字数 = 32;
+
+        /// <summary>
+        /// 2 bit の値の順の塩基
+        /// </summary>
+        private const string C_塩基の並び = "ACGT";
 
         /// <summary>
         /// minimizer を並列に集めるときの 1 束の区間数
@@ -198,6 +205,42 @@
         /// <returns>出てくる箇所の数 (上限で頭打ち)</returns>
         public int Get_出現数(ReadOnlySpan<char> p_配列, int p_上限)
         {
+            return this.Get_出現場所群(p_配列, p_上限).Count;
+        }
+
+        /// <summary>
+        /// 配列が出てくるリードごとに、配列の直前と直後の塩基を配列の向きで取り出す (リードの端で止まる)
+        /// </summary>
+        /// <param name="p_配列">錨にする配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
+        /// <param name="p_長さ">前後それぞれ取り出す長さの上限</param>
+        /// <param name="p_上限">取り出すリードの数の上限</param>
+        /// <returns>(直前の塩基列, 直後の塩基列)、無ければ空文字</returns>
+        public List<(string A_前, string A_続き)> Get_前後群(ReadOnlySpan<char> p_配列, int p_長さ, int p_上限)
+        {
+            List<(string A_前, string A_続き)> l_前後群 = [];
+            foreach (var (l_開始, l_Is逆鎖) in this.Get_出現場所群(p_配列, p_上限))
+            {
+                var l_終わり = l_開始 + p_配列.Length;
+                var l_右側 = this.Get_外側(l_終わり, 1, p_長さ);
+                var l_左側 = this.Get_外側(l_開始 - 1, -1, p_長さ);
+                l_前後群.Add(l_Is逆鎖 ? (Get_逆相補(l_右側, 0), Get_逆相補(l_左側, 1)) : (Get_逆相補(l_左側, 2), l_右側));
+            }
+
+            return l_前後群;
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 配列がリードかその逆相補に出てくる場所を、上限まで集める
+        /// </summary>
+        /// <param name="p_配列">調べる配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
+        /// <param name="p_上限">ここまで集めたら打ち切る</param>
+        /// <returns>(詰めた配列上の始まり, 逆相補で出てきたか)</returns>
+        private List<(long A_開始, bool A_Is逆鎖)> Get_出現場所群(ReadOnlySpan<char> p_配列, int p_上限)
+        {
             if (p_配列.Length < C_最短の問い合わせ長)
             {
                 throw new ArgumentException($"配列は {C_最短の問い合わせ長} 塩基以上が要る");
@@ -210,7 +253,7 @@
                 var l_値 = Get_種の値(p_配列.Slice(j, C_種長));
                 if (l_値 < 0)
                 {
-                    return 0;
+                    return [];
                 }
 
                 l_正準値[j] = (uint)l_値;
@@ -233,8 +276,9 @@
                 }
             }
 
-            HashSet<(long A_開始, bool A_Is逆鎖)>? l_見つけた場所 = null;
-            var l_下 = Get_下限(this._種, l_種);
+            List<(long A_開始, bool A_Is逆鎖)> l_見つけた場所 = [];
+            HashSet<(long, bool)> l_見つけた印 = [];
+            var l_下 =Get_下限(this._種, l_種);
             for (var l_項 = l_下; l_項 < this._種.LongLength && this._種[l_項] == l_種; l_項++)
             {
                 var l_場所 = this._位置32?[l_項] ?? this._位置64![l_項];
@@ -248,31 +292,73 @@
                     var l_逆鎖の開始 = l_場所 - (p_配列.Length - j - C_種長);
                     foreach (var (l_開始, l_Is逆鎖) in (ReadOnlySpan<(long, bool)>)[(l_場所 - j, false), (l_逆鎖の開始, true)])
                     {
-                        if (!this.Is一致(l_開始, p_配列, l_Is逆鎖))
+                        if (!this.Is一致(l_開始, p_配列, l_Is逆鎖) || !l_見つけた印.Add((l_開始, l_Is逆鎖)))
                         {
                             continue;
                         }
 
-                        if (p_上限 <= 1)
+                        l_見つけた場所.Add((l_開始, l_Is逆鎖));
+                        if (l_見つけた場所.Count >= p_上限)
                         {
-                            return 1;
-                        }
-
-                        l_見つけた場所 ??= [];
-                        if (l_見つけた場所.Add((l_開始, l_Is逆鎖)) && l_見つけた場所.Count >= p_上限)
-                        {
-                            return l_見つけた場所.Count;
+                            return l_見つけた場所;
                         }
                     }
                 }
             }
 
-            return l_見つけた場所?.Count ?? 0;
+            return l_見つけた場所;
         }
 
-        #endregion
+        /// <summary>
+        /// 位置から向きへ、区間 (リード) の端まで塩基を読む
+        /// </summary>
+        /// <param name="p_位置">読み始める位置</param>
+        /// <param name="p_向き">+1 なら右へ、-1 なら左へ</param>
+        /// <param name="p_長さ">読む長さの上限</param>
+        /// <returns>読んだ順の塩基列</returns>
+        private string Get_外側(long p_位置, int p_向き, int p_長さ)
+        {
+            var l_塩基 = new char[p_長さ];
+            var l_数 = 0;
+            for (var l_位置 = p_位置; l_数 < p_長さ && l_位置 >= 0 && l_位置 < this.A_塩基数 && !(p_向き > 0 ? this.Is区間の末尾(l_位置 - 1) : this.Is区間の末尾(l_位置)); l_位置 += p_向き)
+            {
+                l_塩基[l_数++] = C_塩基の並び[Get_文字(this._語, l_位置)];
+            }
 
-        #region 内部メソッド
+            return new string(l_塩基, 0, l_数);
+        }
+
+        /// <summary>
+        /// 読んだ塩基列を、錨の向きの並びに直す
+        /// </summary>
+        /// <param name="p_塩基列">読んだ順の塩基列</param>
+        /// <param name="p_直し方">0: 右へ読んだものを逆相補 (逆鎖の直前)、1: 左へ読んだものを相補 (逆鎖の直後)、2: 左へ読んだものを逆順 (順鎖の直前)</param>
+        /// <returns></returns>
+        private static string Get_逆相補(string p_塩基列, int p_直し方)
+        {
+            var l_結果 = new char[p_塩基列.Length];
+            for (var i = 0; i < p_塩基列.Length; i++)
+            {
+                l_結果[i] = p_直し方 switch
+                {
+                    0 => Util.Get_相補塩基(p_塩基列[p_塩基列.Length - 1 - i]),
+                    1 => Util.Get_相補塩基(p_塩基列[i]),
+                    _ => p_塩基列[p_塩基列.Length - 1 - i],
+                };
+            }
+
+            return new string(l_結果);
+        }
+
+        /// <summary>
+        /// 位置が区間 (リードの A・C・G・T の続き) の最後の文字か
+        /// </summary>
+        /// <param name="p_位置"></param>
+        /// <returns></returns>
+        private bool Is区間の末尾(long p_位置)
+        {
+            return (this._末尾印[p_位置 / 64] & (1UL << (int)(p_位置 % 64))) != 0;
+        }
 
         /// <summary>
         /// 束ねた配列を並列に 2 bit へ詰める (A・C・G・T が続く区間ごとに詰め、区間の境目で語を分け合うので、語へは OR で書く)

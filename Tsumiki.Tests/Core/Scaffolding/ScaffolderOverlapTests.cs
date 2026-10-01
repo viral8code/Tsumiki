@@ -70,7 +70,7 @@ namespace Tsumiki.Tests.Core
             var l_リード群 = Enumerable.Range(0, p_リード数).Select(i => l_繋いだ配列.Substring(150 + (p_真の重なり / 2) + i, 100)).Append(Get_乱配列(l_乱数, 100)).ToList();
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
 
-            Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100));
+            Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100, 0));
         }
 
         /// <summary>
@@ -93,7 +93,31 @@ namespace Tsumiki.Tests.Core
 
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
 
-            Assert.Null(Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100));
+            Assert.Null(Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100, 0));
+        }
+
+        /// <summary>
+        /// 重なりが反復で、繋いだ所の短い配列が別のコピーの境目にしか無いときは畳まず、両脇まで跨ぐリードがあれば畳む
+        /// </summary>
+        /// <param name="p_Is隣り合う">左右の片が本当に重なりで隣り合うか (でなければ間に別の配列と反復のコピーが挟まる)</param>
+        /// <param name="p_期待">期待する重なりの長さ</param>
+        [Theory]
+        [InlineData(true, 43)]
+        [InlineData(false, null)]
+        public void Get_リードで確かめた重なり長_別のコピーの境目でしか出てこない繋ぎ目は畳まない(bool p_Is隣り合う, int? p_期待)
+        {
+            var l_乱数 = new Random(11);
+            var l_反復 = Get_乱配列(l_乱数, 43);
+            var l_左の脇 = Get_乱配列(l_乱数, 16);
+            var l_右の脇 = Get_乱配列(l_乱数, 16);
+            var l_左 = Get_乱配列(l_乱数, 184) + l_左の脇 + l_反復;
+            var l_右 = l_反復 + l_右の脇 + Get_乱配列(l_乱数, 184);
+            var l_ゲノム1 = p_Is隣り合う ? l_左 + l_右[43..] : l_左 + Get_乱配列(l_乱数, 150) + l_右;
+            var l_ゲノム2 = Get_乱配列(l_乱数, 184) + l_左の脇 + l_反復 + l_右の脇 + Get_乱配列(l_乱数, 184);
+            var l_リード群 = new[] { l_ゲノム1, l_ゲノム2 }.SelectMany(x => Enumerable.Range(0, (x.Length - 150) / 5).Select(i => x.Substring(i * 5, 150))).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 150, 0));
         }
 
         #endregion

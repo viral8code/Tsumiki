@@ -17,6 +17,7 @@ It builds a de Bruijn graph from trusted k-mers and uses multiple k values and r
 - [Input](#input)
 - [Options](#options)
 - [Output](#output)
+- [Misjoin probabilities](#misjoin-probabilities)
 - [Re-running](#re-running)
 - [Tips](#tips)
 - [License](#license)
@@ -231,7 +232,7 @@ Stages that are off by default and other settings:
 
 | Option | Description | Default |
 |---|---|---|
-| `-rs` | Reuse preprocessed and corrected reads in an existing output directory | Off |
+| `-rs` | Resume from an existing output directory (reuses preprocessed and corrected reads and every finished k) | Off |
 | `-rt` | Delete intermediate files after a successful run (final results and log are kept) | Off |
 | `-inmem` | Keep intermediate reads and k-mer counting runs in memory instead of on disk. Greatly reduces disk reads and writes at the cost of more memory | Off |
 
@@ -261,22 +262,36 @@ Results are written to the directory given by `-t`.
 | `assembly.report.json` | Sequence statistics and verification results |
 | `assembly.ambiguous.tsv` | Locations that remained ambiguous |
 | `assembly.unsupported.tsv` | Intervals not supported by reads |
+| `assembly.junctions.tsv` | Probability that each junction joins the wrong partner (see "Misjoin probabilities" below) |
+| `assembly.safe.fasta` | `assembly.fasta` cut at junctions whose misjoin probability is 0.5 or higher |
 | `assembly.provenance.json` | Record of settings, input file hashes, and so on |
 | `Tsumiki.log` | Full execution log (saved regardless of `-log`) |
 
 Intermediate results for each k (e.g. `k31/`) and verification files are also created. Use `-rt` to remove them automatically.
 
+## Misjoin probabilities
+
+When paired-end reads are available, Tsumiki finally re-maps the original reads to `assembly.fasta` as pairs and, for every junction (a place where unique sequence on both sides is joined across a repeat, and every N gap), writes the probability that the junction joins the wrong partner to `assembly.junctions.tsv`.
+Positions are 0-based and `end` is exclusive. The probability is in the `misjoin_probability` column.
+
+The probability is computed from the repeat length, copy number, the numbers of reads and read pairs spanning the junction and their expected numbers, the number of reads whose mate does not pair properly, and the depth on both sides.
+Junctions are split into three classes -- spannable by pairs (`span`), not spannable by pairs (`nospan`, e.g. repeats longer than the insert), and N gaps (`gap`) -- and each class is calibrated on real data with complete references (66 assemblies from Tsumiki and other assemblers).
+The sum of the probabilities approximates the expected number of misjoins in the assembly and is also reported in the log. Use it to check the most likely misjoins first, or to see whether a region you care about in downstream analysis sits near one.
+
+Sequences cut at junctions whose misjoin probability is 0.5 or higher (a misjoin is more likely than not) are written to `assembly.safe.fasta`. The repeat is kept on both pieces; when cutting at an N gap, the Ns are dropped.
+Use it when you prefer fewer misjoins over longer contiguity.
+
 ## Re-running
 
 If the output directory already exists, Tsumiki stops to avoid mixing results.
-To re-run while reusing the previous preprocessing and error-correction results, run with the same input and options plus `-rs`.
+To resume an interrupted run, run with the same input and options plus `-rs`. The preprocessing and error-correction results and the assemblies of every finished k are reused, and the run continues from the k where it stopped.
 
 ```bash
 Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -t out -rs
 ```
 
-If the input files or settings have changed, the affected stages are redone automatically.
-Only preprocessing and error correction are reused; the assembly itself always runs from the beginning.
+If the input files, the settings, or the Tsumiki build have changed, the affected stages are redone automatically.
+Finished k values are reused in order; once any k has to be redone, every later k is redone as well, because each k builds on the result of the previous one.
 
 ## Tips
 

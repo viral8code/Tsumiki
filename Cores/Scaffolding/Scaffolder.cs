@@ -67,6 +67,71 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_繋ぎ目の余白の下限 = 4;
 
+        /// <summary>
+        /// 繋ぎ目をリードで埋めるとき、左の末尾・右の先頭から削ってみる長さの上限 (末尾の読み違いを落とす)
+        /// </summary>
+        private const int C_埋めるときに削る上限 = 20;
+
+        /// <summary>
+        /// リードの続きに右の片が現れたとみなす、右の先頭の長さ
+        /// </summary>
+        private const int C_右の錨長 = 25;
+
+        /// <summary>
+        /// 繋ぎ目を埋めるのに要る、同じ埋め方をするリードの数
+        /// </summary>
+        private const int C_埋めるのに要るリード数 = 3;
+
+        /// <summary>
+        /// 繋ぎ目を埋めるとき、首位の埋め方が次点の何倍以上要るか
+        /// </summary>
+        private const int C_首位の優勢比 = 3;
+
+        /// <summary>
+        /// 錨の続きを見るリードの数の上限
+        /// </summary>
+        private const int C_続きを見るリード数の上限 = 64;
+
+        /// <summary>
+        /// 繋ぎ目を埋めるときに見る、左右の片の長さ
+        /// </summary>
+        private const int C_埋めるときに見る長さ = 500;
+
+        /// <summary>
+        /// 縦に並んだ反復の単位とみなす、右の錨との不一致数の上限
+        /// </summary>
+        private const int C_似たとみなす不一致数 = 3;
+
+        /// <summary>
+        /// 錨より手前を左の片と比べる長さ
+        /// </summary>
+        private const int C_手前を比べる長さ = 20;
+
+        /// <summary>
+        /// 左の片の末尾がゲノムに 2 回あるかを確かめるのに使う、リードの錨より手前の長さ
+        /// </summary>
+        private const int C_場所を確かめる手前の長さ = 40;
+
+        /// <summary>
+        /// 繋ぎ目の近くで縦に並んだ反復を調べる配列をずらす間隔
+        /// </summary>
+        private const int C_縦の反復を調べる間隔 = 4;
+
+        /// <summary>
+        /// リードに出てくる数が一意な配列の何倍以上なら反復とみなすか
+        /// </summary>
+        private const double C_反復とみなす出現数の比 = 1.8;
+
+        /// <summary>
+        /// 一意な配列がリードに出てくる数を測るのに、配列から問い合わせを取る間隔
+        /// </summary>
+        private const int C_一意の出現数を測る間隔 = 1_000;
+
+        /// <summary>
+        /// 一意な配列がリードに出てくる数を測るときの数え上げの上限
+        /// </summary>
+        private const int C_一意の出現数の上限 = 1_000;
+
         #endregion
 
         #region 内部変数
@@ -363,8 +428,9 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
         /// <param name="p_k長">k 長</param>
         /// <param name="p_リード長">リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数)、分からなければ 0</param>
         /// <returns>確かめた重なりの長さ、無いか 2 つ以上なら null</returns>
-        public static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長)
+        public static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長, int p_一意の出現数)
         {
             var l_最長 = Math.Min(p_k長 - 2, Math.Min(p_出力.Length, p_次の配列.Length) - C_繋ぎ目の余白の下限);
             if (l_最長 < 0)
@@ -402,7 +468,284 @@ namespace Tsumiki.Cores.Scaffolding
                 l_見つけた長さ = l_長さ;
             }
 
-            return l_見つけた長さ;
+            if (l_見つけた長さ is not { } l_重なり長)
+            {
+                return null;
+            }
+
+            var l_左 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, C_埋めるときに見る長さ), Math.Min(p_出力.Length, C_埋めるときに見る長さ));
+            l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
+            var l_畳んだ配列 = string.Concat(l_左, p_次の配列.AsSpan(l_重なり長, Math.Min(p_次の配列.Length, C_埋めるときに見る長さ) - l_重なり長));
+            return Is両脇まで跨ぐリードが無い(p_リード索引, l_畳んだ配列, l_左.Length - l_重なり長, l_左.Length, p_リード長, p_一意の出現数) ? null : l_重なり長;
+        }
+
+        /// <summary>
+        /// 繋いだ配列の、繋ぎ目の区間 (左右の片が重なる所) とその両脇の 最短の問い合わせ長 ずつをそのまま含むリードが 繋ぎ目の支持数の下限 に満たないかを返す。
+        /// その長さがリード長を超えるときは、両脇と区間の両端 (どれも 最短の問い合わせ長) のどれかが反復 (Is反復の中) かを返す
+        /// (区間が反復だと、別のコピーの境目で繋いだ繋ぎ目の短い配列もリードに出てくるが、両脇まで含めた配列は出てこないため)
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_繋いだ配列">繋ぎ目の前後を繋いだ配列</param>
+        /// <param name="p_区間の始まり">繋ぎ目の区間の始まり</param>
+        /// <param name="p_区間の終わり">繋ぎ目の区間の終わり (含まない)</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns>繋ぐのに要る跨ぐリードが無ければ true</returns>
+        private static bool Is両脇まで跨ぐリードが無い(ReadMinimizerIndex p_リード索引, string p_繋いだ配列, int p_区間の始まり, int p_区間の終わり, int p_リード長, int p_一意の出現数)
+        {
+            const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
+            var l_左の始まり = p_区間の始まり - l_錨長;
+            var l_跨ぐ長さ = p_区間の終わり + l_錨長 - l_左の始まり;
+            if (l_左の始まり < 0 || p_区間の終わり + l_錨長 > p_繋いだ配列.Length)
+            {
+                return false;
+            }
+
+            return l_跨ぐ長さ <= p_リード長
+                ? p_リード索引.Get_出現数(p_繋いだ配列.AsSpan(l_左の始まり, l_跨ぐ長さ), C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限
+                : Is反復の中(p_リード索引, p_繋いだ配列, l_左の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり, p_一意の出現数)
+                    || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり - l_錨長, p_一意の出現数);
+        }
+
+        /// <summary>
+        /// 配列の p_位置 からの 最短の問い合わせ長 の配列が反復か (近くに似た配列があるか、リードに出てくる数が一意な配列の 反復とみなす出現数の比 倍以上か)
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_配列"></param>
+        /// <param name="p_位置"></param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns></returns>
+        private static bool Is反復の中(ReadMinimizerIndex p_リード索引, string p_配列, int p_位置, int p_一意の出現数)
+        {
+            if (Has似た配列(p_配列, p_配列.AsSpan(p_位置, C_右の錨長), p_位置))
+            {
+                return true;
+            }
+
+            if (p_一意の出現数 <= 0)
+            {
+                return false;
+            }
+
+            var l_下限 = (int)Math.Ceiling(p_一意の出現数 * C_反復とみなす出現数の比);
+            return p_リード索引.Get_出現数(p_配列.AsSpan(p_位置, ReadMinimizerIndex.C_最短の問い合わせ長), l_下限) >= l_下限;
+        }
+
+        /// <summary>
+        /// 配列群から 一意の出現数を測る間隔 おきに取った 最短の問い合わせ長 の配列 (N を含まないもの) がリードに出てくる数の中央値を返す
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_配列群"></param>
+        /// <returns>中央値、測れなければ 0</returns>
+        public static int Get_一意の出現数(ReadMinimizerIndex p_リード索引, IEnumerable<string> p_配列群)
+        {
+            List<int> l_数群 = [];
+            foreach (var l_配列 in p_配列群)
+            {
+                for (var l_位置 = 0; l_位置 + ReadMinimizerIndex.C_最短の問い合わせ長 <= l_配列.Length; l_位置 += C_一意の出現数を測る間隔)
+                {
+                    var l_断片 = l_配列.AsSpan(l_位置, ReadMinimizerIndex.C_最短の問い合わせ長);
+                    if (l_断片.IndexOfAnyExcept("ACGT") < 0)
+                    {
+                        l_数群.Add(p_リード索引.Get_出現数(l_断片, C_一意の出現数の上限));
+                    }
+                }
+            }
+
+            l_数群.Sort();
+            return l_数群.Count == 0 ? 0 : l_数群[l_数群.Count / 2];
+        }
+
+        /// <summary>
+        /// 繋ぎ目を、両側を跨ぐリードの続きで埋める。左の末尾を錨にして右へ読む向きで埋められなければ、右の先頭を錨にして左へ読む向きでも試す
+        /// (GC に富む所の読み違いは読む向きで出方が違い、片方の向きのリードは崩れていても逆の向きのリードは読めていることがある)
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_出力">ここまでの配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の片</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数)、分からなければ 0</param>
+        /// <returns>左の末尾から削る長さ・間に入れる配列・右の先頭から削る長さ、埋められなければ null</returns>
+        public static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_リードで埋めた繋ぎ目(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_リード長, int p_一意の出現数)
+        {
+            var l_左 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, C_埋めるときに見る長さ), Math.Min(p_出力.Length, C_埋めるときに見る長さ));
+            l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
+            var l_右 = p_次の配列[..Math.Min(p_次の配列.Length, C_埋めるときに見る長さ)];
+            if (Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数) is { } l_右へ)
+            {
+                return l_右へ;
+            }
+
+            return Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数) is { } l_左へ
+                ? (l_左へ.A_右から削る長さ, Util.V_逆相補_曖昧塩基あり(l_左へ.A_埋める配列), l_左へ.A_左から削る長さ)
+                : null;
+        }
+
+        /// <summary>
+        /// 左の末尾を少しずつ削って錨にし、錨を含むリードの続きに右の先頭 (これも少しずつ削る) が現れるまでの配列で繋ぎ目を埋める。
+        /// 錨より手前も左の片と (読み違いを除いて) 一致するリードだけを使う (錨がゲノムの別の場所にもあると、そこから来たリードが別の続きを持ち込むため)。
+        /// さらに、手前が 場所を確かめる手前の長さ まで左の片と一致するのに、採る埋め方とは揃って別の続きを持つリードが 埋めるのに要るリード数 以上あれば、左の片の末尾がゲノムに 2 回ある所なので埋めない。
+        /// 右の先頭が続きに 1 回だけ現れ、そこから先の続きも右の片とそのまま一致し、その一致が錨の先へ 繋ぎ目の余白 以上及ぶリードだけを数える
+        /// (隙間の中にある右の先頭と同じ配列で間を飛ばさないため。錨の直後で終わるリードは、錨と右の先頭が同じ配列なら証拠なしに一致してしまう)。
+        /// 同じ埋め方をするリードが 埋めるのに要るリード数 以上あり、次点の 首位の優勢比 倍以上のときだけ採る (末尾の読み違い・重なり・短い隙間をまとめて扱う)。
+        /// 埋めた所が縦に並んだ反復の中 (Is縦の反復の中) か、左右の片が重なる埋め方で両脇まで跨ぐリードが無い (Is両脇まで跨ぐリードが無い) ときは埋めない
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_左">左の片の末尾</param>
+        /// <param name="p_右">右の片の先頭</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns>左の末尾から削る長さ・間に入れる配列・右の先頭から削る長さ、埋められなければ null</returns>
+        private static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_片側から埋める方法(ReadMinimizerIndex p_リード索引, string p_左, string p_右, int p_リード長, int p_一意の出現数)
+        {
+            const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
+            for (var l_削る = 0; l_削る <= C_埋めるときに削る上限 && p_左.Length >= l_削る + l_錨長 + C_繋ぎ目の余白; l_削る++)
+            {
+                var l_錨 = p_左.Substring(p_左.Length - l_削る - l_錨長, l_錨長);
+                var l_手前 = p_左[..(p_左.Length - l_削る - l_錨長)];
+                var l_前後群 = p_リード索引.Get_前後群(l_錨, p_リード長, C_続きを見るリード数の上限).Where(x => Is手前が同じ場所(l_手前, x.A_前, C_手前を比べる長さ)).ToList();
+                if (l_前後群.Count < C_埋めるのに要るリード数)
+                {
+                    continue;
+                }
+
+                Dictionary<(int A_右から削る長さ, string A_埋める配列), int> l_票 = [];
+                var l_投票 = new (int A_右から削る長さ, string A_埋める配列)?[l_前後群.Count];
+                for (var l_番号 = 0; l_番号 < l_前後群.Count; l_番号++)
+                {
+                    var l_続き = l_前後群[l_番号].A_続き;
+                    var l_錨から = l_錨 + l_続き;
+                    for (var l_右を削る = 0; l_右を削る <= C_埋めるときに削る上限 && l_右を削る + C_右の錨長 <= p_右.Length; l_右を削る++)
+                    {
+                        var l_右の錨 = p_右.AsSpan(l_右を削る, C_右の錨長);
+                        var l_位置 = l_錨から.AsSpan().IndexOf(l_右の錨);
+                        if (l_位置 < 0)
+                        {
+                            continue;
+                        }
+
+                        var l_残り = Math.Min(l_錨から.Length - l_位置, p_右.Length - l_右を削る);
+                        if (l_位置 + l_残り >= l_錨長 + C_繋ぎ目の余白 && l_錨から.AsSpan(l_位置 + 1).IndexOf(l_右の錨) < 0 && l_錨から.AsSpan(l_位置, l_残り).SequenceEqual(p_右.AsSpan(l_右を削る, l_残り)))
+                        {
+                            var l_キー = (l_右を削る, l_錨から[..l_位置]);
+                            l_票[l_キー] = l_票.GetValueOrDefault(l_キー) + 1;
+                            l_投票[l_番号] = l_キー;
+                        }
+
+                        break;
+                    }
+                }
+
+                if (l_票.Count == 0)
+                {
+                    continue;
+                }
+
+                var l_並び = l_票.OrderByDescending(x => x.Value).ToList();
+                var l_次点 = l_並び.Count > 1 ? l_並び[1].Value : 0;
+                var (l_右を削る長さ, l_埋める配列) = l_並び[0].Key;
+                if (l_並び[0].Value < C_埋めるのに要るリード数 || l_並び[0].Value < C_首位の優勢比 * l_次点)
+                {
+                    return null;
+                }
+
+                var l_見えたはずの長さ = Math.Max(C_右の錨長, l_埋める配列.Length - l_錨長 + C_右の錨長);
+                var l_別の続きの最多 = Enumerable.Range(0, l_前後群.Count)
+                    .Where(x => l_投票[x] != l_並び[0].Key && l_前後群[x].A_続き.Length >= l_見えたはずの長さ && l_前後群[x].A_前.Length >= C_場所を確かめる手前の長さ && Is手前が同じ場所(l_手前, l_前後群[x].A_前, C_場所を確かめる手前の長さ))
+                    .GroupBy(x => l_前後群[x].A_続き[..C_右の錨長]).Select(x => x.Count()).DefaultIfEmpty(0).Max();
+                if (l_別の続きの最多 >= C_埋めるのに要るリード数)
+                {
+                    return null;
+                }
+
+                var l_繋いだ配列 = string.Concat(p_左.AsSpan(0, p_左.Length - l_削る - l_錨長), l_埋める配列, p_右.AsSpan(l_右を削る長さ));
+                var l_右の錨の位置 = p_左.Length - l_削る - l_錨長 + l_埋める配列.Length;
+                var l_左の終わり = p_左.Length - l_削る;
+                return Is縦の反復の中(l_繋いだ配列, p_左.Length - l_削る - l_錨長, l_右の錨の位置)
+                    || (l_右の錨の位置 < l_左の終わり && Is両脇まで跨ぐリードが無い(p_リード索引, l_繋いだ配列, l_右の錨の位置, l_左の終わり, p_リード長, p_一意の出現数))
+                    ? null
+                    : (l_削る + l_錨長, l_埋める配列, l_右を削る長さ);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// リードの錨の直前 (p_比べる長さ まで) が、左の片の錨の直前と 似たとみなす不一致数 以内で一致するか (読み違いは許し、錨のゲノムの別のコピーから来たリードを除く)
+        /// </summary>
+        /// <param name="p_左の手前">左の片の、錨より手前</param>
+        /// <param name="p_リードの手前">リードの、錨より手前</param>
+        /// <param name="p_比べる長さ"></param>
+        /// <returns></returns>
+        private static bool Is手前が同じ場所(string p_左の手前, string p_リードの手前, int p_比べる長さ)
+        {
+            var l_長さ = Math.Min(p_比べる長さ, Math.Min(p_左の手前.Length, p_リードの手前.Length));
+            var l_不一致 = 0;
+            for (var i = 1; i <= l_長さ && l_不一致 <= C_似たとみなす不一致数; i++)
+            {
+                if (p_左の手前[^i] != p_リードの手前[^i])
+                {
+                    l_不一致++;
+                }
+            }
+
+            return l_不一致 <= C_似たとみなす不一致数;
+        }
+
+        /// <summary>
+        /// 繋いだ配列の、錨の始まりから右の錨の先 (錨の長さ分) までの区間を 縦の反復を調べる間隔 ずつずらした 右の錨長 の配列のどれかに、似た配列が別の場所にあるか。
+        /// あれば縦に並んだ反復の中の繋ぎ目で、リードで跨げず単位の数を取り違えるので埋めない
+        /// </summary>
+        /// <param name="p_繋いだ配列"></param>
+        /// <param name="p_錨の位置">繋いだ配列での左の錨の始まり</param>
+        /// <param name="p_右の錨の位置">繋いだ配列での右の錨の始まり</param>
+        /// <returns></returns>
+        private static bool Is縦の反復の中(string p_繋いだ配列, int p_錨の位置, int p_右の錨の位置)
+        {
+            var l_終わり = Math.Min(p_繋いだ配列.Length - C_右の錨長, p_右の錨の位置 + ReadMinimizerIndex.C_最短の問い合わせ長);
+            for (var l_位置 = Math.Min(p_錨の位置, p_右の錨の位置); l_位置 <= l_終わり; l_位置 += C_縦の反復を調べる間隔)
+            {
+                if (Has似た配列(p_繋いだ配列, p_繋いだ配列.AsSpan(l_位置, C_右の錨長), l_位置))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 配列の中に、錨と 似たとみなす不一致数 以内で一致する箇所が (錨そのものの位置を除いて) あるか
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <param name="p_錨"></param>
+        /// <param name="p_除く位置">錨そのものの位置、無ければ -1</param>
+        /// <returns></returns>
+        private static bool Has似た配列(string p_配列, ReadOnlySpan<char> p_錨, int p_除く位置)
+        {
+            for (var i = 0; i + p_錨.Length <= p_配列.Length; i++)
+            {
+                if (i == p_除く位置)
+                {
+                    continue;
+                }
+
+                var l_不一致 = 0;
+                for (var j = 0; j < p_錨.Length && l_不一致 <= C_似たとみなす不一致数; j++)
+                {
+                    if (p_配列[i + j] != p_錨[j])
+                    {
+                        l_不一致++;
+                    }
+                }
+
+                if (l_不一致 <= C_似たとみなす不一致数)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

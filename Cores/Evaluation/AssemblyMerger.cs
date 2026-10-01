@@ -78,8 +78,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_出力パス"></param>
         /// <param name="p_期待コピー数">配列とその位置のアンカー k-mer から、リードのカバレッジで見た期待コピー数を返す。null なら骨格に既にある配列を含む繋ぎ目を使わない</param>
         /// <param name="p_必要な独立支持数"></param>
+        /// <param name="p_見送る始点">確定しても使わない橋渡しの始点の頂点 (逆向きの橋渡しも見送る)、無ければ null</param>
+        /// <param name="p_橋渡しの場所">統合した配列の中の橋渡しした配列の場所を足す先、要らなければ null</param>
         /// <returns></returns>
-        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, Func<string, int, int>? p_期待コピー数 = null, int p_必要な独立支持数 = C_必要な独立支持数の既定値)
+        public static bool Try統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, Func<string, int, int>? p_期待コピー数 = null, int p_必要な独立支持数 = C_必要な独立支持数の既定値, IReadOnlySet<int>? p_見送る始点 = null, List<(string A_配列名, int A_開始, int A_終了, int A_始点)>? p_橋渡しの場所 = null)
         {
             var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
             if (l_骨格配列.Count == 0)
@@ -135,13 +137,21 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.反復を挟む繋ぎ目の審査, l_反復を挟む辺.Count >> 1, l_枠で棄却, l_長さで棄却, l_端で棄却);
             }
 
+            foreach (var l_始点 in p_見送る始点 ?? new HashSet<int>())
+            {
+                if (l_確定.Remove(l_始点, out var l_見送る))
+                {
+                    _ = l_確定.Remove(l_見送る.A_終点 ^ 1);
+                }
+            }
+
             if (l_確定.Count == 0)
             {
                 Logger.V_出力(メッセージID.統合できる接合点なし);
                 return false;
             }
 
-            V_書き出し(p_出力パス, l_骨格名一覧, l_骨格配列, l_確定);
+            V_書き出し(p_出力パス, l_骨格名一覧, l_骨格配列, l_確定, p_橋渡しの場所);
             Logger.V_出力(メッセージID.統合した接合点数, l_確定.Count);
             return true;
         }
@@ -806,27 +816,26 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格名一覧"></param>
         /// <param name="p_骨格配列"></param>
         /// <param name="p_確定"></param>
-        private static void V_書き出し(string p_出力パス, List<string> p_骨格名一覧, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定)
+        /// <param name="p_橋渡しの場所">橋渡しした配列の場所 (配列名, 始まり, 終わり, 始点の頂点) を足す先、要らなければ null</param>
+        private static void V_書き出し(string p_出力パス, List<string> p_骨格名一覧, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定, List<(string A_配列名, int A_開始, int A_終了, int A_始点)>? p_橋渡しの場所)
         {
             var l_使用済み = new bool[p_骨格配列.Count];
             var l_ID = 1;
             using var l_書き込み = new FastaWriter(p_出力パス);
-
-            for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
+            List<(int A_開始, int A_終了, int A_始点)> l_場所 = [];
+            foreach (var l_Is先頭 in new[] { true, false })
             {
-                if (l_使用済み[l_番号] || Has来訪元(p_確定, l_番号))
+                for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
                 {
-                    continue;
-                }
+                    if (l_使用済み[l_番号] || (l_Is先頭 && Has来訪元(p_確定, l_番号)))
+                    {
+                        continue;
+                    }
 
-                l_書き込み.V_書き込み(Get_名前(p_骨格名一覧, l_番号, l_ID++), Get_連結配列(l_番号 << 1, p_骨格配列, p_確定, l_使用済み));
-            }
-
-            for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
-            {
-                if (!l_使用済み[l_番号])
-                {
-                    l_書き込み.V_書き込み(Get_名前(p_骨格名一覧, l_番号, l_ID++), Get_連結配列(l_番号 << 1, p_骨格配列, p_確定, l_使用済み));
+                    var l_名前 = Get_名前(p_骨格名一覧, l_番号, l_ID++);
+                    l_場所.Clear();
+                    l_書き込み.V_書き込み(l_名前, Get_連結配列(l_番号 << 1, p_骨格配列, p_確定, l_使用済み, l_場所));
+                    p_橋渡しの場所?.AddRange(l_場所.Select(x => (l_名前, x.A_開始, x.A_終了, x.A_始点)));
                 }
             }
         }
@@ -861,8 +870,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格配列">骨格の配列</param>
         /// <param name="p_確定">頂点ごとに確定した橋渡し</param>
         /// <param name="p_使用済み">既に使った配列</param>
+        /// <param name="p_橋渡しの場所">繋がった配列の中の、橋渡しした配列の場所 (始まり, 終わり, 始点の頂点) を足す先</param>
         /// <returns>繋がった配列</returns>
-        private static string Get_連結配列(int p_開始頂点, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定, bool[] p_使用済み)
+        private static string Get_連結配列(int p_開始頂点, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定, bool[] p_使用済み, List<(int A_開始, int A_終了, int A_始点)> p_橋渡しの場所)
         {
             var l_結果 = new StringBuilder();
             var l_頂点 = p_開始頂点;
@@ -886,6 +896,7 @@ namespace Tsumiki.Cores.Evaluation
                     break;
                 }
 
+                p_橋渡しの場所.Add((l_結果.Length, l_結果.Length + l_橋渡し.A_橋渡し配列.Length, l_頂点));
                 _ = l_結果.Append(l_橋渡し.A_橋渡し配列);
                 l_削る長さ = l_橋渡し.A_重なり長;
                 l_頂点 = l_橋渡し.A_終点;

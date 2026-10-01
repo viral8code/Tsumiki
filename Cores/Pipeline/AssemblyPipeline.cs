@@ -90,6 +90,13 @@ namespace Tsumiki.Cores.Pipeline
             var l_作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{p_k長}");
             _ = Directory.CreateDirectory(l_作業ディレクトリ);
             var l_断片パス = Path.Combine(p_一時ディレクトリ, C_合成リードファイル名);
+            if (p_合成リードの控え is not { Count: > 0 })
+            {
+                foreach (var l_パス in Get_断片パス群(l_断片パス, p_引数.A_ライブラリ数).Where(中間データ置き場.Is存在))
+                {
+                    中間データ置き場.V_削除(l_パス);
+                }
+            }
 
             AmbiguityRecorder.V_開始(p_k長);
 

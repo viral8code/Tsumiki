@@ -87,6 +87,30 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 橋渡しした配列の場所を返し、その始点を見送ると繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_橋渡しの場所を返し見送った橋渡しは繋がない()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 611);
+            var l_中間 = V_生成_乱数配列(400, p_シード: 612);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 613);
+            var l_骨格 = this.V_書き込み_アセンブリ("backbone.fasta", 63, l_左, l_右);
+            var l_他 = this.V_書き込み_アセンブリ("other.fasta", 31, l_左 + l_中間 + l_右);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, "merged.fasta");
+            List<(string A_配列名, int A_開始, int A_終了, int A_始点)> l_場所 = [];
+
+            Assert.True(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1, p_橋渡しの場所: l_場所));
+            var l_橋渡し = Assert.Single(l_場所);
+            var l_結果 = V_読み込み_配列群(l_出力)[0];
+            Assert.Equal(l_左 + l_中間 + l_右, l_結果);
+            Assert.InRange(l_橋渡し.A_開始, 0, l_左.Length);
+            Assert.InRange(l_橋渡し.A_終了, l_左.Length + l_中間.Length, l_結果.Length);
+
+            Assert.False(AssemblyMerger.Try統合(l_骨格, [l_骨格, l_他], アンカーk長, l_出力, p_必要な独立支持数: 1, p_見送る始点: new HashSet<int> { l_橋渡し.A_始点 }) && V_読み込み_配列群(l_出力).Count == 1);
+        }
+
+        /// <summary>
         /// 骨格側の片方が逆向きに出力されていても、向きを揃えて繋げること
         /// </summary>
         [Fact]

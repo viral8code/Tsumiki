@@ -57,6 +57,11 @@ namespace Tsumiki.Cores.Mapping
         /// </summary>
         private const int C_最小スコア = 30;
 
+        /// <summary>
+        /// ペアとして組むために、それぞれが単独の最良から譲ってよい得点 (不一致 2 つ分)
+        /// </summary>
+        private const int C_組むために譲れる得点 = 2 * (C_一致得点 - C_不一致罰点);
+
         #endregion
 
         #region 内部変数
@@ -97,18 +102,23 @@ namespace Tsumiki.Cores.Mapping
         /// <returns>配置結果</returns>
         public リード配置 Get_配置(string p_リード)
         {
+            return Get_最良の配置(this.Get_配置候補群(p_リード));
+        }
+
+        /// <summary>
+        /// 種の多い対角線から順に整列した、配置の候補
+        /// </summary>
+        /// <param name="p_リード"></param>
+        /// <returns>候補 (信頼度は 0)、種が当たらなければ空</returns>
+        public List<リード配置> Get_配置候補群(string p_リード)
+        {
+            List<リード配置> l_配置候補 = [];
             if (p_リード.Length < C_種長)
             {
-                return リード配置.C_配置なし;
+                return l_配置候補;
             }
 
             var l_候補数 = this.Get_候補数(p_リード);
-            if (l_候補数.Count == 0)
-            {
-                return リード配置.C_配置なし;
-            }
-
-            List<リード配置> l_配置候補 = [];
             string? l_逆相補リード = null;
             foreach (var l_候補 in l_候補数.OrderByDescending(x => x.Value).Take(C_種ヒット上限))
             {
@@ -116,7 +126,22 @@ namespace Tsumiki.Cores.Mapping
                 l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.Key));
             }
 
-            var l_最良 = l_配置候補.MaxBy(x => x.A_スコア);
+            return l_配置候補;
+        }
+
+        /// <summary>
+        /// 候補から最も得点の高い配置を選び、次に良い別の場所との得点差を信頼度にする
+        /// </summary>
+        /// <param name="p_配置候補"></param>
+        /// <returns>配置、得点が足りなければ配置なし</returns>
+        public static リード配置 Get_最良の配置(List<リード配置> p_配置候補)
+        {
+            if (p_配置候補.Count == 0)
+            {
+                return リード配置.C_配置なし;
+            }
+
+            var l_最良 = p_配置候補.MaxBy(x => x.A_スコア);
 
             if (l_最良.A_スコア < C_最小スコア)
             {
@@ -124,7 +149,7 @@ namespace Tsumiki.Cores.Mapping
             }
 
             var l_次善スコア = 0;
-            foreach (var l_配置 in l_配置候補)
+            foreach (var l_配置 in p_配置候補)
             {
                 if (Is異なる配置(l_最良, l_配置))
                 {
@@ -132,8 +157,95 @@ namespace Tsumiki.Cores.Mapping
                 }
             }
 
-            var l_信頼度 = Math.Clamp((l_最良.A_スコア - Math.Max(0, l_次善スコア)) * 3, 0, 60);
-            return l_最良 with { A_信頼度 = l_信頼度 };
+            return l_最良 with { A_信頼度 = Get_信頼度(l_最良.A_スコア, l_次善スコア) };
+        }
+
+        /// <summary>
+        /// ペアの 2 本の候補から、同じ配列に向かい合わせで p_断片長の上限 未満に収まり、どちらも単独の最良から 組むために譲れる得点 以内の組のうち、得点の合計が最も高いものを選ぶ。
+        /// 信頼度は、別の場所を含む次に良い組との得点差 (反復に入った片方も、相方の近くのコピーに置けば組として一意に決まる)
+        /// </summary>
+        /// <param name="p_候補1"></param>
+        /// <param name="p_候補2"></param>
+        /// <param name="p_断片長の上限"></param>
+        /// <returns>組んだ 2 本の配置、組めなければ null</returns>
+        public static (リード配置 A_配置1, リード配置 A_配置2)? Get_組んだ配置(List<リード配置> p_候補1, List<リード配置> p_候補2, int p_断片長の上限)
+        {
+            if (p_候補1.Count == 0 || p_候補2.Count == 0)
+            {
+                return null;
+            }
+
+            var l_下限1 = p_候補1.Max(x => x.A_スコア) - C_組むために譲れる得点;
+            var l_下限2 = p_候補2.Max(x => x.A_スコア) - C_組むために譲れる得点;
+            (リード配置 A_配置1, リード配置 A_配置2)? l_最良 = null;
+            var l_最良スコア = int.MinValue;
+            List<(リード配置 A_配置1, リード配置 A_配置2, int A_スコア)> l_組群 = [];
+            foreach (var l_1 in p_候補1)
+            {
+                foreach (var l_2 in p_候補2)
+                {
+                    if (l_1.A_スコア < Math.Max(C_最小スコア, l_下限1) || l_2.A_スコア < Math.Max(C_最小スコア, l_下限2) || !Is向かい合う組(l_1, l_2, p_断片長の上限))
+                    {
+                        continue;
+                    }
+
+                    var l_スコア = l_1.A_スコア + l_2.A_スコア;
+                    l_組群.Add((l_1, l_2, l_スコア));
+                    if (l_スコア > l_最良スコア)
+                    {
+                        l_最良スコア = l_スコア;
+                        l_最良 = (l_1, l_2);
+                    }
+                }
+            }
+
+            if (l_最良 is not { } l_決定)
+            {
+                return null;
+            }
+
+            var l_次善スコア = 0;
+            foreach (var (l_1, l_2, l_スコア) in l_組群)
+            {
+                if (Is異なる配置(l_決定.A_配置1, l_1) || Is異なる配置(l_決定.A_配置2, l_2))
+                {
+                    l_次善スコア = Math.Max(l_次善スコア, l_スコア);
+                }
+            }
+
+            var l_信頼度 = Get_信頼度(l_最良スコア, l_次善スコア);
+            return (l_決定.A_配置1 with { A_信頼度 = l_信頼度 }, l_決定.A_配置2 with { A_信頼度 = l_信頼度 });
+        }
+
+        /// <summary>
+        /// 2 本の配置が同じ配列で向かい合い、右を向く側の始まりから左を向く側の終わりまでが p_断片長の上限 未満か
+        /// </summary>
+        /// <param name="p_配置1"></param>
+        /// <param name="p_配置2"></param>
+        /// <param name="p_断片長の上限"></param>
+        /// <returns></returns>
+        private static bool Is向かい合う組(リード配置 p_配置1, リード配置 p_配置2, int p_断片長の上限)
+        {
+            if (p_配置1.A_配列番号 != p_配置2.A_配列番号 || p_配置1.A_Is逆鎖 == p_配置2.A_Is逆鎖 || p_配置1.A_整列位置群.Count == 0 || p_配置2.A_整列位置群.Count == 0)
+            {
+                return false;
+            }
+
+            var (l_右向き, l_左向き) = p_配置1.A_Is逆鎖 ? (p_配置2, p_配置1) : (p_配置1, p_配置2);
+            var l_始まり = l_右向き.A_整列位置群[0].A_参照位置;
+            var l_終わり = l_左向き.A_整列位置群[^1].A_参照位置 + 1;
+            return l_始まり <= l_終わり && l_終わり - l_始まり < p_断片長の上限;
+        }
+
+        /// <summary>
+        /// 最良と次善の得点差から信頼度 (0〜60) を出す
+        /// </summary>
+        /// <param name="p_最良スコア"></param>
+        /// <param name="p_次善スコア"></param>
+        /// <returns></returns>
+        private static int Get_信頼度(int p_最良スコア, int p_次善スコア)
+        {
+            return Math.Clamp((p_最良スコア - Math.Max(0, p_次善スコア)) * 3, 0, 60);
         }
 
         #endregion

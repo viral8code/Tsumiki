@@ -125,6 +125,36 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
+        /// 作業ディレクトリに残したその k の記録を読み戻す (再開でその k を実行し直さないとき)
+        /// </summary>
+        /// <param name="p_作業ディレクトリ"></param>
+        /// <param name="p_k長"></param>
+        public static void V_読込(string p_作業ディレクトリ, int p_k長)
+        {
+            var l_パス = Path.Combine(p_作業ディレクトリ, C_保存ファイル名);
+            List<曖昧箇所> l_一覧 = [];
+            if (File.Exists(l_パス))
+            {
+                foreach (var l_行 in File.ReadLines(l_パス))
+                {
+                    var l_列 = l_行.Split('\t');
+                    if (l_列.Length < 7)
+                    {
+                        continue;
+                    }
+
+                    l_一覧.Add(new 曖昧箇所(p_k長, (曖昧箇所の種別)int.Parse(l_列[0], CultureInfo.InvariantCulture), l_列[1], double.Parse(l_列[3], CultureInfo.InvariantCulture), double.Parse(l_列[4], CultureInfo.InvariantCulture), long.Parse(l_列[5], CultureInfo.InvariantCulture), double.Parse(l_列[6], CultureInfo.InvariantCulture), l_列[2]));
+                }
+            }
+
+            lock (_錠)
+            {
+                _k長ごとの記録[p_k長] = l_一覧;
+                _履歴.AddRange(l_一覧);
+            }
+        }
+
+        /// <summary>
         /// 再実行で上書きされた分も含む累積履歴を作業ディレクトリへ残す
         /// </summary>
         /// <param name="p_作業ディレクトリ"></param>

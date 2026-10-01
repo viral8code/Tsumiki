@@ -258,9 +258,42 @@ namespace Tsumiki.Cores.Output
             File.WriteAllText(p_出力パス, l_文.ToString());
         }
 
+        /// <summary>
+        /// 継ぎ目ごとの証拠と、繋ぐ相手を誤っている確率を TSV で書き出す (位置は 0 始まり・終わりを含まない)
+        /// </summary>
+        /// <param name="p_出力パス">書き出し先</param>
+        /// <param name="p_評価群">継ぎ目の評価</param>
+        public static void V_書き出し_継ぎ目(string p_出力パス, IReadOnlyList<継ぎ目の評価> p_評価群)
+        {
+            var l_文 = new StringBuilder();
+            _ = l_文.AppendLine(string.Join('\t', "sequence", "start", "end", "repeat_length", "gap", "copy_number", "spanning_reads", "spanning_pairs", "expected_pairs", "pair_ratio", "discordant_anchors", "discordant_fraction", "clipped", "left_depth_ratio", "right_depth_ratio", "class", "misjoin_probability"));
+            foreach (var (l_候補, l_組, l_確率) in p_評価群)
+            {
+                _ = l_文.AppendLine(string.Join('\t', l_候補.A_配列名, l_候補.A_開始, l_候補.A_終了, l_候補.A_反復長, l_候補.A_Isギャップ ? 1 : 0, Get_数値(l_候補.A_コピー数), l_候補.A_跨ぐ読み, l_候補.A_跨ぐ組, Get_数値(l_候補.A_期待の組), Get_数値(l_候補.A_組の比),
+                    l_候補.A_外れ錨, Get_数値(l_候補.A_外れ割合), Get_数値(l_候補.A_切れ端), Get_数値(l_候補.A_左の深さ比), Get_数値(l_候補.A_右の深さ比), Get_組コード(l_組), l_確率.ToString("0.######", CultureInfo.InvariantCulture)));
+            }
+
+            File.WriteAllText(p_出力パス, l_文.ToString());
+        }
+
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 継ぎ目の組を TSV に書く短い名前
+        /// </summary>
+        /// <param name="p_組"></param>
+        /// <returns></returns>
+        private static string Get_組コード(継ぎ目の組 p_組)
+        {
+            return p_組 switch
+            {
+                継ぎ目の組.ギャップ => "gap",
+                継ぎ目の組.組で跨げる => "span",
+                _ => "nospan",
+            };
+        }
 
         /// <summary>
         /// Markdown の 2 列の表に 1 行足す

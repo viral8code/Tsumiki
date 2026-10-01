@@ -90,6 +90,44 @@ namespace Tsumiki.Tests.Core.Mapping
             Assert.True(l_配置.A_整列位置群.Count == 0 || l_配置.A_整列位置群[0].A_参照位置 >= 440);
         }
 
+        /// <summary>
+        /// 断片長の上限より離れた 2 コピーの反復に入った片方も、相方の近くのコピーに置いてペアとして一意に決まることを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_組んだ配置_反復に入った相方を近くのコピーに置く()
+        {
+            var l_反復 = Get_乱数配列(150, 11);
+            var l_参照 = Get_乱数配列(1_000, 12) + l_反復 + Get_乱数配列(6_000, 13) + l_反復 + Get_乱数配列(1_000, 14);
+            var l_マッパー = new ReadMapper([l_参照]);
+            var l_リード1 = l_参照.Substring(800, 100);
+            var l_リード2 = Util.V_逆相補(l_参照.Substring(1_020, 100));
+
+            Assert.Equal(0, ReadMapper.Get_最良の配置(l_マッパー.Get_配置候補群(l_リード2)).A_信頼度);
+            var l_組 = ReadMapper.Get_組んだ配置(l_マッパー.Get_配置候補群(l_リード1), l_マッパー.Get_配置候補群(l_リード2), 5_000);
+
+            Assert.NotNull(l_組);
+            Assert.Equal(1_020, l_組.Value.A_配置2.A_整列位置群[0].A_参照位置);
+            Assert.True(l_組.Value.A_配置1.A_信頼度 >= 20);
+            Assert.True(l_組.Value.A_配置2.A_信頼度 >= 20);
+        }
+
+        /// <summary>
+        /// 相方が単独ではずっと良く当たる別の場所を持つなら、得点を大きく譲ってまでペアに組まないことを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_組んだ配置_相方の本来の場所より大きく劣る組は採らない()
+        {
+            var l_左 = Get_乱数配列(1_000, 21);
+            var l_右 = Get_乱数配列(1_000, 22);
+            var l_別の場所 = Get_乱数配列(1_000, 23);
+            var l_マッパー = new ReadMapper([l_左 + l_右, l_別の場所]);
+            var l_リード1 = l_左.Substring(700, 100);
+            var l_リード2 = Util.V_逆相補(l_右.Substring(0, 70) + l_別の場所.Substring(500, 80));
+
+            Assert.Contains(l_マッパー.Get_配置候補群(l_リード2), x => x.A_配列番号 == 0 && x.A_スコア >= 30);
+            Assert.Null(ReadMapper.Get_組んだ配置(l_マッパー.Get_配置候補群(l_リード1), l_マッパー.Get_配置候補群(l_リード2), 5_000));
+        }
+
         #endregion
 
         #region 内部メソッド

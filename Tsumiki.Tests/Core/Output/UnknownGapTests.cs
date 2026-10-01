@@ -1,5 +1,7 @@
 ﻿using Tsumiki.Commons;
+using System.Text;
 using Tsumiki.Cores.Pipeline;
+using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Core
@@ -70,12 +72,55 @@ namespace Tsumiki.Tests.Core
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
             var l_総数 = 0;
             var l_畳んだ数 = 0;
+            var l_埋めた数 = 0;
 
-            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 89, 100, ref l_総数, ref l_畳んだ数);
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 89, 100, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数);
 
             Assert.Equal(1, l_総数);
             Assert.Equal(p_Is畳む ? 1 : 0, l_畳んだ数);
             Assert.Equal(p_Is畳む ? l_繋いだ配列 : l_左 + Consts.未確認の繋ぎ目 + l_右, l_結果);
+        }
+
+        /// <summary>
+        /// 重なりの無い短い隙間は、両側を跨ぐリードの続きで埋める (リードの向きによらない)
+        /// </summary>
+        [Fact]
+        public void Get_確かめた繋ぎ目を畳んだ配列_跨ぐリードで隙間を埋める()
+        {
+            var l_乱数 = new Random(21);
+            string Get_乱配列(int p_長さ) => new([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_左 = Get_乱配列(200);
+            var l_隙間 = Get_乱配列(30);
+            var l_右 = Get_乱配列(200);
+            var l_本当 = l_左 + l_隙間 + l_右;
+            var l_リード群 = Enumerable.Range(0, 8).Select(i => l_本当.Substring(130 + (i * 3), 150)).Select((x, i) => i % 2 == 0 ? x : Util.V_逆相補(x)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+            var l_総数 = 0;
+            var l_畳んだ数 = 0;
+            var l_埋めた数 = 0;
+
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 63, 150, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数);
+
+            Assert.Equal((1, 0, 1), (l_総数, l_畳んだ数, l_埋めた数));
+            Assert.Equal(l_本当, l_結果);
+        }
+
+        /// <summary>
+        /// 縦に並んだ反復の単位で右の片が始まる繋ぎ目は、リードの続きに右の先頭が先に現れても埋めない (単位の数を取り違えるため)
+        /// </summary>
+        [Fact]
+        public void Get_リードで埋めた繋ぎ目_縦に並んだ反復の中は埋めない()
+        {
+            var l_乱数 = new Random(22);
+            string Get_乱配列(int p_長さ) => new([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_左 = Get_乱配列(200);
+            var l_単位 = Get_乱配列(60);
+            var l_右 = l_単位 + Get_乱配列(200);
+            var l_本当 = l_左 + l_単位 + l_右;
+            var l_リード群 = Enumerable.Range(0, 12).Select(i => l_本当.Substring(100 + (i * 5), 200)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            Assert.Null(Scaffolder.Get_リードで埋めた繋ぎ目(l_索引, new StringBuilder(l_左), l_右, 200, 0));
         }
 
         #endregion

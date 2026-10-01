@@ -10,7 +10,7 @@
         /// <summary>
         /// バージョン
         /// </summary>
-        public const string バージョン = "0.6.0";
+        public const string バージョン = "0.7.0";
 
         /// <summary>
         /// 保守的モードのペア結合閾値
@@ -136,6 +136,16 @@
         /// 曖昧箇所ファイル名
         /// </summary>
         public const string 曖昧箇所ファイル名 = "assembly.ambiguous.tsv";
+
+        /// <summary>
+        /// 継ぎ目ごとの誤り確率のファイル名
+        /// </summary>
+        public const string 継ぎ目ファイル名 = "assembly.junctions.tsv";
+
+        /// <summary>
+        /// 誤りの確率の高い継ぎ目で切った安全版のファイル名
+        /// </summary>
+        public const string 安全版ファイル名 = "assembly.safe.fasta";
 
         /// <summary>
         /// 実行中に出した内容を全量残すファイル

@@ -100,36 +100,40 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
+            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, l_対象[0].A_全件.Select(x => x.A_配列));
             for (var i = 0; i < l_対象.Count; i++)
             {
                 var l_総数 = 0;
                 var l_畳んだ数 = 0;
+                var l_埋めた数 = 0;
                 using (var l_書き込み = new FastaWriter(l_対象[i].A_パス))
                 {
                     foreach (var (l_ID, l_配列) in l_対象[i].A_全件)
                     {
-                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, ref l_総数, ref l_畳んだ数));
+                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, l_一意の出現数, ref l_総数, ref l_畳んだ数, ref l_埋めた数));
                     }
                 }
 
                 if (l_対象[i].A_パス == p_パス群[0])
                 {
-                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数);
+                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数, l_埋めた数);
                 }
             }
         }
 
         /// <summary>
-        /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む
+        /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む。畳めなければ、両側を跨ぐリードの続きで埋められるか試す
         /// </summary>
         /// <param name="p_配列">配列</param>
         /// <param name="p_索引">リードの索引</param>
         /// <param name="p_k長">採用した k 長</param>
         /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Scaffolder.Get_一意の出現数)、分からなければ 0</param>
         /// <param name="p_総数">未確認の繋ぎ目の数 (加算する)</param>
         /// <param name="p_畳んだ数">畳んだ数 (加算する)</param>
+        /// <param name="p_埋めた数">リードの続きで埋めた数 (加算する)</param>
         /// <returns>畳んだ後の配列</returns>
-        internal static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, ref int p_総数, ref int p_畳んだ数)
+        internal static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
             var i = 0;
@@ -149,10 +153,20 @@ namespace Tsumiki.Cores.Pipeline
                     l_次の終わり++;
                 }
 
-                if (Scaffolder.Get_リードで確かめた重なり長(p_索引, l_出力, p_配列[(i + 1)..l_次の終わり], p_k長, p_リード長) is { } l_重なり長)
+                var l_次の配列 = p_配列[(i + 1)..l_次の終わり];
+                if (Scaffolder.Get_リードで確かめた重なり長(p_索引, l_出力, l_次の配列, p_k長, p_リード長, p_一意の出現数) is { } l_重なり長)
                 {
                     p_畳んだ数++;
                     i += 1 + l_重なり長;
+                    continue;
+                }
+
+                if (Scaffolder.Get_リードで埋めた繋ぎ目(p_索引, l_出力, l_次の配列, p_リード長, p_一意の出現数) is { } l_埋め方)
+                {
+                    p_埋めた数++;
+                    l_出力.Length -= l_埋め方.A_左から削る長さ;
+                    _ = l_出力.Append(l_埋め方.A_埋める配列);
+                    i += 1 + l_埋め方.A_右から削る長さ;
                     continue;
                 }
 
@@ -324,6 +338,7 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
             V_書き出し_AGP(l_最終パス, l_長さ不明の番号, Path.ChangeExtension(l_最終パス, C_AGP拡張子));
+            V_評価_継ぎ目(p_原入力, p_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(p_原入力, l_最終パス);
             var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
 
@@ -513,6 +528,23 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_タイムスタンプ();
             return l_統計;
+        }
+
+        /// <summary>
+        /// 最終成果物の継ぎ目ごとに、繋ぐ相手を誤っている確率を出し、確率の高い継ぎ目で切った安全版も書き出す
+        /// </summary>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_一時ディレクトリ">成果物の出力先</param>
+        /// <param name="p_最終パス">評価する最終成果物パス</param>
+        private static void V_評価_継ぎ目(Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
+        {
+            Logger.V_出力_空行();
+            if (JunctionRiskEvaluator.Get_評価結果(p_最終パス, p_引数.A_ライブラリ群, Path.Combine(p_一時ディレクトリ, Consts.継ぎ目ファイル名)) is { } l_評価群)
+            {
+                JunctionRiskEvaluator.V_書き出し_切った配列(p_最終パス, l_評価群, Path.Combine(p_一時ディレクトリ, Consts.安全版ファイル名));
+            }
+
+            Logger.V_出力_タイムスタンプ();
         }
 
         /// <summary>

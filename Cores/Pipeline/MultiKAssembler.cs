@@ -21,6 +21,16 @@ namespace Tsumiki.Cores.Pipeline
         private const double C_マルチk上限のリード長比 = 0.9D;
 
         /// <summary>
+        /// 統合の橋渡しを見送る、掛かる継ぎ目の誤りの確率の下限 (統合で生まれる継ぎ目は骨格の継ぎ目より誤りが 20 倍ほど多く、0.1 以上では防げる誤りが失う正しい繋がりを上回る)
+        /// </summary>
+        private const double C_橋渡しを見送る確率 = 0.1D;
+
+        /// <summary>
+        /// 継ぎ目が橋渡しに掛かるとみなす、橋渡しの両端からの距離
+        /// </summary>
+        private const int C_橋渡しに掛かる余白 = 50;
+
+        /// <summary>
         /// 自動で試す k の下限
         /// </summary>
         private const int C_マルチkの下限 = 21;
@@ -60,12 +70,33 @@ namespace Tsumiki.Cores.Pipeline
 
             List<引き継ぎ配列> l_合成リードの控え = [];
 
+            var l_再開署名 = 中間データ置き場.A_Is有効 ? null : Get_再開署名(p_引数, l_k候補);
+            var l_Is再利用中 = p_引数.A_Is再開 && l_再開署名 is not null;
+            var l_Is合成リード保存済み = false;
+
             foreach (var l_k長 in l_k候補)
             {
                 if (Is薄すぎる(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
                 {
                     Logger.V_出力(メッセージID.kが薄すぎて省略, l_k長, l_予測, Consts.マルチkの最小kmerカバレッジ);
                     continue;
+                }
+
+                var l_k作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{l_k長}");
+                if (l_Is再利用中 && Try再利用(p_引数, l_k作業ディレクトリ, p_一時ディレクトリ, l_再開署名!, l_合成リードの控え, out var l_再利用結果, out var l_再利用引き継ぎ))
+                {
+                    Logger.V_出力(メッセージID.再開_kの結果を再利用, l_k長);
+                    l_Is合成リード保存済み |= l_合成リードの控え.Count > 0;
+                    l_実行結果一覧.Add(l_再利用結果!);
+                    l_直前 = l_再利用結果;
+                    l_引き継ぎ = l_再利用引き継ぎ;
+                    continue;
+                }
+
+                l_Is再利用中 = false;
+                if (l_再開署名 is not null && Directory.Exists(l_k作業ディレクトリ))
+                {
+                    MultiKCheckpoint.V_削除_k(l_k作業ディレクトリ);
                 }
 
                 Logger.V_出力_空行();
@@ -80,6 +111,18 @@ namespace Tsumiki.Cores.Pipeline
                 l_実行結果一覧.Add(l_結果);
                 l_直前 = l_結果;
                 l_引き継ぎ = [.. l_次への引き継ぎ];
+
+                if (l_再開署名 is not null)
+                {
+                    if (!l_Is合成リード保存済み && l_合成リードの控え.Count > 0)
+                    {
+                        MultiKCheckpoint.V_保存_合成リード(p_一時ディレクトリ, l_再開署名, l_合成リードの控え);
+                        l_Is合成リード保存済み = true;
+                    }
+
+                    var l_合成リード数 = l_合成リードの控え.Count > 0 && l_引き継ぎ.Count >= l_合成リードの控え.Count && ReferenceEquals(l_引き継ぎ[^l_合成リードの控え.Count], l_合成リードの控え[0]) ? l_合成リードの控え.Count : 0;
+                    MultiKCheckpoint.V_保存_k(l_k作業ディレクトリ, l_再開署名, l_結果, l_引き継ぎ[..^l_合成リード数], l_合成リード数);
+                }
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
@@ -130,7 +173,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.採用したk, l_最良.A_実行結果.A_k長);
 
             var l_採用 = (p_引数.A_Isマージ
-                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ)
+                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群)
                     : null)
                 ?? l_最良.A_実行結果 with { A_固定アンカー評価 = l_最良.A_評価 };
             return l_採用;
@@ -284,6 +327,66 @@ namespace Tsumiki.Cores.Pipeline
         #region 内部メソッド
 
         /// <summary>
+        /// k ごとの記録が前回と同じ入力・設定・k の候補一覧で作られたかを見分ける値を作る
+        /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_k候補">試す k の一覧</param>
+        /// <returns></returns>
+        private static string Get_再開署名(Parameters p_引数, List<int> p_k候補)
+        {
+            var l_設定 = p_引数.Get_複製();
+            if (!l_設定.A_Iskmerカットオフ明示指定)
+            {
+                l_設定.Set_推定kmerカットオフ(1UL);
+            }
+
+            return StageCheckpoint.Get_入力署名(l_設定) + "\n" + string.Join(",", p_k候補);
+        }
+
+        /// <summary>
+        /// 前回の実行で保存したその k の結果と引き継ぎを読み戻す
+        /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_k作業ディレクトリ"></param>
+        /// <param name="p_一時ディレクトリ"></param>
+        /// <param name="p_署名"></param>
+        /// <param name="p_合成リードの控え">まだ空なら保存した合成リードで埋める</param>
+        /// <param name="p_結果"></param>
+        /// <param name="p_引き継ぎ">次の k への引き継ぎ (合成リードを含む)</param>
+        /// <returns>読み戻せたら true</returns>
+        private static bool Try再利用(Parameters p_引数, string p_k作業ディレクトリ, string p_一時ディレクトリ, string p_署名, List<引き継ぎ配列> p_合成リードの控え, out アセンブリ実行結果? p_結果, out List<引き継ぎ配列> p_引き継ぎ)
+        {
+            p_引き継ぎ = [];
+            if (!MultiKCheckpoint.Try読込_k(p_k作業ディレクトリ, p_署名, out p_結果, out var l_引き継ぎ, out var l_合成リード数) || p_結果 is null)
+            {
+                return false;
+            }
+
+            if (l_合成リード数 > 0 && p_合成リードの控え.Count == 0)
+            {
+                if (!MultiKCheckpoint.Try読込_合成リード(p_一時ディレクトリ, p_署名, l_合成リード数, out var l_合成リード))
+                {
+                    p_結果 = null;
+                    return false;
+                }
+
+                p_合成リードの控え.AddRange(l_合成リード);
+            }
+
+            if (l_合成リード数 > 0 && p_合成リードの控え.Count != l_合成リード数)
+            {
+                p_結果 = null;
+                return false;
+            }
+
+            p_引き継ぎ = l_合成リード数 > 0 ? [.. l_引き継ぎ, .. p_合成リードの控え] : l_引き継ぎ;
+            p_引数.Set_推定k長(p_結果.A_k長);
+            p_引数.Set_推定kmerカットオフ(p_結果.A_kmerカットオフ);
+            AmbiguityRecorder.V_読込(p_k作業ディレクトリ, p_結果.A_k長);
+            return true;
+        }
+
+        /// <summary>
         /// 配列の位置から始まるアンカー k-mer の、リードのカバレッジで見た期待コピー数を返す関数を作る
         /// </summary>
         /// <param name="p_アンカー"></param>
@@ -305,6 +408,46 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 統合した配列の継ぎ目を元リードで評価し、誤りの確率が 橋渡しを見送る確率 以上の継ぎ目に掛かる橋渡しの始点の頂点を返す
+        /// </summary>
+        /// <param name="p_統合パス">統合した配列</param>
+        /// <param name="p_橋渡しの場所">統合した配列の中の橋渡しした配列の場所</param>
+        /// <param name="p_ライブラリ群">元リード</param>
+        /// <returns>見送る始点の頂点 (評価できなければ空)</returns>
+        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        {
+            HashSet<int> l_見送る = [];
+            if (p_橋渡しの場所.Count == 0 || JunctionRiskEvaluator.Get_評価(p_統合パス, p_ライブラリ群) is not { } l_評価群)
+            {
+                return l_見送る;
+            }
+
+            var l_場所 = p_橋渡しの場所.ToLookup(x => x.A_配列名.TrimStart('>'));
+            var l_掛かる数 = 0;
+            var l_最高 = 0D;
+            foreach (var l_評価 in l_評価群)
+            {
+                foreach (var l_橋渡し in l_場所[l_評価.A_候補.A_配列名])
+                {
+                    if (l_評価.A_候補.A_開始 >= l_橋渡し.A_終了 + C_橋渡しに掛かる余白 || l_評価.A_候補.A_終了 <= l_橋渡し.A_開始 - C_橋渡しに掛かる余白)
+                    {
+                        continue;
+                    }
+
+                    l_掛かる数++;
+                    l_最高 = Math.Max(l_最高, l_評価.A_誤りの確率);
+                    if (l_評価.A_誤りの確率 >= C_橋渡しを見送る確率)
+                    {
+                        _ = l_見送る.Add(l_橋渡し.A_始点);
+                    }
+                }
+            }
+
+            Logger.V_出力(メッセージID.橋渡しの継ぎ目を評価, p_橋渡しの場所.Count, l_評価群.Count, l_掛かる数, l_最高);
+            return l_見送る;
+        }
+
+        /// <summary>
         /// 骨格に他の k の配列を統合し、良くなっていれば統合結果を返す
         /// </summary>
         /// <param name="p_最良"></param>
@@ -313,17 +456,30 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_解析"></param>
         /// <param name="p_一時ディレクトリ"></param>
+        /// <param name="p_ライブラリ群">継ぎ目の誤り確率を見る元リード</param>
         /// <returns></returns>
-        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ)
+        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
         {
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.統合開始);
 
             var l_統合パス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + Consts.Scaffoldファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
-            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, Get_期待コピー数(p_アンカー, p_アンカーk長, p_解析)))
+            var l_期待コピー数 = Get_期待コピー数(p_アンカー, p_アンカーk長, p_解析);
+            List<(string A_配列名, int A_開始, int A_終了, int A_始点)> l_橋渡しの場所 = [];
+            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_橋渡しの場所: l_橋渡しの場所))
             {
                 return null;
+            }
+
+            var l_見送る始点 = Get_危ない橋渡し(l_統合パス, l_橋渡しの場所, p_ライブラリ群);
+            if (l_見送る始点.Count > 0)
+            {
+                Logger.V_出力(メッセージID.危ない橋渡しを見送る, l_見送る始点.Count, C_橋渡しを見送る確率);
+                if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_見送る始点: l_見送る始点))
+                {
+                    return null;
+                }
             }
 
             var l_統合contigパス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + AssemblyPipeline.C_Contigファイル名);

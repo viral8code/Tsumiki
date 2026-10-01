@@ -94,6 +94,20 @@ namespace Tsumiki.Tests.IO
             _ = Assert.Throws<InvalidDataException>(() => l_読み込み.Get_次のリード());
         }
 
+        /// <summary>
+        /// ペアの 2 ファイルを同じ順に組にして流し、片方が先に尽きたら残りを相方なしで流すことを検証する
+        /// </summary>
+        [Fact]
+        public void Get_ペア塩基列_同じ順に組にし余りは相方なしで流す()
+        {
+            var l_パス1 = this.Get_書き出し先("@a/1\nACGT\n+\nIIII\n@b/1\nCCCC\n+\nIIII\n@c/1\nGGGG\n+\nIIII\n");
+            var l_パス2 = this.Get_書き出し先("@a/2\nTTTT\n+\nIIII\n@b/2\nAAAA\n+\nIIII\n");
+
+            var l_組群 = FastqReader.Get_ペア塩基列(l_パス1, l_パス2).ToList();
+
+            Assert.Equal([("ACGT", "TTTT"), ("CCCC", "AAAA"), ("GGGG", string.Empty)], l_組群);
+        }
+
         #endregion
 
         #region 内部メソッド
