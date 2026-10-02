@@ -85,21 +85,21 @@ By default, all major stages (preprocessing, error correction, multi-k, local ga
 
 ## Benchmark
 
-Results for the eight HiSeq datasets and four MiSeq datasets of [GAGE-B](https://ccb.jhu.edu/gage_b/) (raw reads, no trimming), assembled with default settings. Evaluated with [QUAST](https://quast.sourceforge.net/) 5.3.0 (`--min-contig 500`) on 16 threads with `-mem 8G`.
+Results for the eight HiSeq datasets and four MiSeq datasets of [GAGE-B](https://ccb.jhu.edu/gage_b/) (raw reads, no trimming), assembled with default settings. Evaluated with [QUAST](https://quast.sourceforge.net/) 5.3.0 (`--min-contig 500`) on 16 threads with `-inmem`.
 
 | Dataset | Platform | GC% | Depth | Reference level | Contigs | Total length | N50 | NA50 | Misassemblies | Local misassemblies | Genome fraction |
 |---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| A. hydrophila SSU | HiSeq | 61.5 | 256x | Scaffold (2) | 42 | 4,847,044 | 272,482 | 272,482 | 1 | 5 | 98.43% |
-| B. cereus VD118 | HiSeq | 35.3 | 242x | Scaffold (10) | 213 | 5,633,310 | 68,926 | 68,612 | 9 | 8 | 98.41% |
-| B. fragilis HMW 615 | HiSeq | 43.5 | 266x | Scaffold (14) | 138 | 5,277,196 | 118,687 | 116,434 | 15 | 4 | 97.96% |
-| M. abscessus 6G-0125-R | HiSeq | 64.1 | 105x | Contig (5) | 60 | 5,127,217 | 165,383 | 165,383 | 0 | 0 | 99.68% |
-| R. sphaeroides 2.4.1 | HiSeq | 68.8 | 224x | **Complete** (7) | 132 | 4,590,818 | 135,294 | 135,294 | 1 | 1 | 98.67% |
-| S. aureus M0927 | HiSeq | 32.8 | 301x | Scaffold (12) | 62 | 2,829,794 | 122,540 | 122,540 | 2 | 1 | 98.36% |
-| V. cholerae CP1032(5) | HiSeq | 47.5 | 94x | Contig (17) | 94 | 3,920,581 | 150,608 | 150,608 | 3 | 1 | 98.43% |
-| X. axonopodis UA323 | HiSeq | 65.1 | 332x | Contig (151) | 141 | 4,906,379 | 115,160 | 61,310 | 58 | 2 | 99.84% |
-| B. cereus ATCC 10987 | MiSeq | 35.5 | 89x | **Complete** (2) | 68 | 5,321,200 | 184,999 | 182,286 | 4 | 2 | 97.80% |
+| A. hydrophila SSU | HiSeq | 61.5 | 256x | Scaffold (2) | 43 | 4,852,694 | 272,362 | 272,362 | 1 | 5 | 98.43% |
+| B. cereus VD118 | HiSeq | 35.3 | 242x | Scaffold (10) | 217 | 5,633,056 | 68,926 | 68,612 | 9 | 6 | 98.40% |
+| B. fragilis HMW 615 | HiSeq | 43.5 | 266x | Scaffold (14) | 140 | 5,283,188 | 118,687 | 112,978 | 15 | 4 | 97.94% |
+| M. abscessus 6G-0125-R | HiSeq | 64.1 | 105x | Contig (5) | 60 | 5,128,216 | 165,383 | 165,383 | 0 | 0 | 99.68% |
+| R. sphaeroides 2.4.1 | HiSeq | 68.8 | 224x | **Complete** (7) | 133 | 4,594,351 | 134,879 | 134,879 | 1 | 1 | 98.67% |
+| S. aureus M0927 | HiSeq | 32.8 | 301x | Scaffold (12) | 65 | 2,831,053 | 122,685 | 122,685 | 2 | 1 | 98.36% |
+| V. cholerae CP1032(5) | HiSeq | 47.5 | 94x | Contig (17) | 96 | 3,925,400 | 150,718 | 150,718 | 2 | 1 | 98.42% |
+| X. axonopodis UA323 | HiSeq | 65.1 | 332x | Contig (151) | 141 | 4,906,719 | 115,160 | 61,310 | 58 | 2 | 99.84% |
+| B. cereus ATCC 10987 | MiSeq | 35.5 | 89x | **Complete** (2) | 68 | 5,321,250 | 184,999 | 182,286 | 4 | 2 | 97.80% |
 | M. abscessus 6G-0125-R | MiSeq | 64.1 | 100x | Contig (5) | 95 | 5,140,051 | 104,862 | 104,862 | 1 | 0 | 99.83% |
-| R. sphaeroides 2.4.1 | MiSeq | 68.8 | 101x | **Complete** (7) | 99 | 4,550,461 | 113,335 | 113,335 | 2 | 1 | 98.50% |
+| R. sphaeroides 2.4.1 | MiSeq | 68.8 | 101x | **Complete** (7) | 99 | 4,551,253 | 113,335 | 113,335 | 2 | 1 | 98.50% |
 | V. cholerae CP1032(5) | MiSeq | 47.5 | 101x | Contig (17) | 124 | 3,937,901 | 106,307 | 106,307 | 6 | 1 | 98.79% |
 
 HiSeq reads are 100-101 bp and MiSeq reads are 250-251 bp. The B. cereus HiSeq and MiSeq datasets are different strains.
@@ -110,9 +110,9 @@ For the three species with HiSeq and MiSeq data from the same strain, both sets 
 
 | Dataset | Depth | Reference level | Contigs | Total length | N50 | NA50 | Misassemblies | Local misassemblies | Genome fraction |
 |---|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| M. abscessus 6G-0125-R | 205x | Contig (5) | 47 | 5,136,225 | 286,316 | 286,316 | 1 | 0 | 99.82% |
-| R. sphaeroides 2.4.1 | 325x | **Complete** (7) | 114 | 4,581,406 | 182,920 | 182,920 | 2 | 1 | 99.17% |
-| V. cholerae CP1032(5) | 195x | Contig (17) | 77 | 3,930,246 | 246,185 | 246,185 | 5 | 1 | 98.69% |
+| M. abscessus 6G-0125-R | 205x | Contig (5) | 48 | 5,136,263 | 278,366 | 278,366 | 1 | 0 | 99.82% |
+| R. sphaeroides 2.4.1 | 325x | **Complete** (7) | 115 | 4,581,971 | 182,920 | 182,920 | 2 | 1 | 99.17% |
+| V. cholerae CP1032(5) | 195x | Contig (17) | 78 | 3,929,544 | 246,185 | 246,185 | 5 | 1 | 98.67% |
 
 For all three species, NA50 is larger than with either platform alone (at least 1.5 times for M. abscessus and V. cholerae). The misassembly count falls between those of HiSeq alone and MiSeq alone.
 
@@ -126,18 +126,18 @@ Finished reference genomes are available for R. sphaeroides and B. cereus ATCC 1
 
 **Misassembly counts also include structural differences between the sequenced strain and the reference.** For R. sphaeroides, the same junction joining positions around 36.5 kb and 64.5 kb of the reference is counted once in each of the HiSeq, MiSeq, and mixed assemblies. The 40 bases spanning this junction occur verbatim in 176 raw reads (HiSeq), while the reference contains nothing similar. This is most likely a genuine difference in the sequenced strain rather than an assembly error.
 
-**Depth does not drive accuracy.** Depth spans 89x to 332x, a 3.7-fold range, yet its correlation with NA50 is **-0.16**.
+**Depth does not drive accuracy.** Depth spans 89x to 332x, a 3.7-fold range, yet its correlation with NA50 is **-0.17**.
 
 ### Reproducing
 
 ```bash
-Tsumiki.exe -1 <reads_1.fastq> -2 <reads_2.fastq> -mg -th 16 -mem 8G -t <output> -lang en
+Tsumiki.exe -1 <reads_1.fastq> -2 <reads_2.fastq> -mg -th 16 -inmem -t <output> -lang en
 ```
 
 To mix HiSeq and MiSeq, list the files comma-separated for `-1` and `-2`.
 
 ```bash
-Tsumiki.exe -1 <hiseq_1.fastq>,<miseq_1.fastq> -2 <hiseq_2.fastq>,<miseq_2.fastq> -mg -th 16 -mem 8G -t <output> -lang en
+Tsumiki.exe -1 <hiseq_1.fastq>,<miseq_1.fastq> -2 <hiseq_2.fastq>,<miseq_2.fastq> -mg -th 16 -inmem -t <output> -lang en
 ```
 
 ```bash
