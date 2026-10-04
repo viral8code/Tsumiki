@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Models.Correction;
 using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Models.Foundation
@@ -14,6 +15,16 @@ namespace Tsumiki.Models.Foundation
         /// インサートサイズ未指定表示
         /// </summary>
         private const string C_インサートサイズ未指定表示 = "unspecified";
+
+        /// <summary>
+        /// k-mer 計数のメモリ予算の見出し
+        /// </summary>
+        private const string C_メモリ予算の見出し = "counting memory budget";
+
+        /// <summary>
+        /// オンメモリのときの k-mer 計数のメモリ予算の見出し (吐き出した途中結果もメモリに残るので、1 回分のバッファの大きさにすぎない)
+        /// </summary>
+        private const string C_オンメモリのメモリ予算の見出し = "k-mer counting buffer per pass (runs stay in memory, not a total cap)";
 
         /// <summary>
         /// パス一覧の区切り
@@ -68,6 +79,11 @@ namespace Tsumiki.Models.Foundation
         /// -k に指定された k の一覧
         /// </summary>
         private List<int> _k長一覧 = [];
+
+        /// <summary>
+        /// エラー訂正の k 長
+        /// </summary>
+        private int _エラー訂正k長 = C_k長の既定値;
 
         /// <summary>
         /// k-mer カットオフ
@@ -236,6 +252,34 @@ namespace Tsumiki.Models.Foundation
         /// -k にカンマ区切りで指定された k の一覧 (昇順・重複なし)
         /// </summary>
         public IReadOnlyList<int> A_k長一覧 => this._k長一覧;
+
+        /// <summary>
+        /// -eck が明示的に指定されたかどうか
+        /// </summary>
+        public bool A_Isエラー訂正k長明示指定 { get; private set; }
+
+        /// <summary>
+        /// エラー訂正の k 長 (組み立ての k とは別に決める)
+        /// </summary>
+        public int A_エラー訂正k長
+        {
+            get => this._エラー訂正k長;
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentException("Please make the value of error correction kmer a positive integer");
+                }
+
+                this._エラー訂正k長 = value;
+                this.A_Isエラー訂正k長明示指定 = true;
+            }
+        }
+
+        /// <summary>
+        /// エラー訂正で数えたライブラリごとの誤りの無い区間 (組み立ての k の上限を見積もるのに使う)
+        /// </summary>
+        public List<無誤り区間の度数> A_無誤り区間の度数群 { get; private set; } = [];
 
         /// <summary>
         /// -kc が明示的に指定されたかどうか
@@ -451,6 +495,11 @@ namespace Tsumiki.Models.Foundation
         public bool A_Isオンメモリ { get; set; } = false;
 
         /// <summary>
+        /// 前処理とエラー訂正だけ済ませ、組み立てずに終えるか (あとで -rs で組み立てる)
+        /// </summary>
+        public bool A_Is準備のみ { get; set; } = false;
+
+        /// <summary>
         /// 一時ディレクトリ
         /// </summary>
         public string A_一時ディレクトリ { get; set; } = Consts.一時ディレクトリの既定値;
@@ -554,6 +603,7 @@ namespace Tsumiki.Models.Foundation
         {
             var l_複製 = (Parameters)this.MemberwiseClone();
             l_複製._k長一覧 = [.. this._k長一覧];
+            l_複製.A_無誤り区間の度数群 = [.. this.A_無誤り区間の度数群];
             l_複製._リード1のパス群 = [.. this._リード1のパス群];
             l_複製._Phredオフセット群 = [.. this._Phredオフセット群];
             l_複製._ライブラリのリード長 = [.. this._ライブラリのリード長];
@@ -627,6 +677,17 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// 推定結果からエラー訂正の k 長を設定する
+        /// </summary>
+        /// <param name="p_k長">推定して得られた k 長</param>
+        public void Set_推定エラー訂正k長(int p_k長)
+        {
+            var l_Is明示指定済み = this.A_Isエラー訂正k長明示指定;
+            this.A_エラー訂正k長 = p_k長;
+            this.A_Isエラー訂正k長明示指定 = l_Is明示指定済み;
+        }
+
+        /// <summary>
         /// 推定結果から k-mer カットオフを設定する
         /// </summary>
         /// <param name="p_カットオフ">推定して得られたカットオフ</param>
@@ -668,10 +729,11 @@ namespace Tsumiki.Models.Foundation
                 phred: {(this._Phredオフセット群.Count > 1 ? string.Join(", ", this._Phredオフセット群) : this.A_Phredオフセット.ToString())}
                 quality cutoff: {this.A_クオリティカットオフ}
                 3' quality trimming threshold: {this.A_品質トリム閾値}
-                counting memory budget: {this.A_メモリ予算}
+                {(this.A_Isオンメモリ ? C_オンメモリのメモリ予算の見出し : C_メモリ予算の見出し)}: {this.A_メモリ予算}
                 insert size: {this.A_インサートサイズ?.ToString() ?? C_インサートサイズ未指定表示}
                 allow ambiguous bases : {this.A_Is曖昧塩基許容}
                 error correction : {this.A_Isエラー訂正}
+                error correction kmer : {this.A_エラー訂正k長}
                 preprocess (adapter trim + pair correction) : {this.A_Is前処理}
                 multi-k : {this.A_Isマルチk}
                 carry sequence between k : {this.A_Is引き継ぎ}
@@ -687,6 +749,7 @@ namespace Tsumiki.Models.Foundation
                 verify circular closure with reads : {this.A_Is環状閉鎖検証}
                 resume from temp directory : {this.A_Is再開}
                 keep intermediate data in memory : {this.A_Isオンメモリ}
+                prepare reads only : {this.A_Is準備のみ}
                 temp directory : {this.A_一時ディレクトリ}
                 delete temp directory when finished : {this.A_Is一時ディレクトリ削除}
                 thread count : {this.A_スレッド数}

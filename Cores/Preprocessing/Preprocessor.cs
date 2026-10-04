@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Collections.Concurrent;
+using Tsumiki.Commons;
 using Tsumiki.IO;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Preprocessing;
@@ -36,7 +37,12 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 1 バッチあたりのペア数
         /// </summary>
-        private const int C_前処理バッチサイズ = 20_000;
+        internal const int C_前処理バッチサイズ = 20_000;
+
+        /// <summary>
+        /// 読み込みと書き出しで先に溜めておくバッチの数
+        /// </summary>
+        private const int C_先読みするバッチ数 = 2;
 
         #endregion
 
@@ -53,69 +59,144 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns>前処理の集計</returns>
         public static 前処理統計 V_前処理_リードファイル(string p_リード1のパス, string p_リード2のパス, string p_出力先1, string p_出力先2, int p_Phredオフセット)
         {
-            var l_Phredオフセット = p_Phredオフセット;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+            var l_トリム閾値 = ConfigurationManager.A_実行時引数.A_品質トリム閾値;
 
             var l_総ペア数 = 0;
             var l_アダプタ検出ペア数 = 0;
             var l_訂正塩基数 = 0;
             var l_総塩基数 = 0L;
             var l_トリム塩基数 = 0L;
-            var l_トリム閾値 = ConfigurationManager.A_実行時引数.A_品質トリム閾値;
 
-            using var l_読み込み1 = new FastqReader(p_リード1のパス);
-            using var l_読み込み2 = new FastqReader(p_リード2のパス);
-            using var l_書き込み1 = new FastqWriter(p_出力先1);
-            using var l_書き込み2 = new FastqWriter(p_出力先2);
+            using var l_中断 = new CancellationTokenSource();
+            using var l_読込済み = new BlockingCollection<前処理バッチ>(C_先読みするバッチ数);
+            using var l_処理済み = new BlockingCollection<前処理バッチ>(C_先読みするバッチ数);
 
-            var l_ID1群 = new string[C_前処理バッチサイズ];
-            var l_ID2群 = new string[C_前処理バッチサイズ];
-            var l_配列1群 = new string[C_前処理バッチサイズ];
-            var l_配列2群 = new string[C_前処理バッチサイズ];
-            var l_クオリティ1群 = new string[C_前処理バッチサイズ];
-            var l_クオリティ2群 = new string[C_前処理バッチサイズ];
-            var l_結果群 = new ペア前処理結果[C_前処理バッチサイズ];
+            var l_読み込み = Task.Run(() => V_読込_バッチ群(p_リード1のパス, p_リード2のパス, l_読込済み, l_中断));
+            var l_書き出し = Task.Run(() => V_書出_バッチ群(p_出力先1, p_出力先2, l_処理済み, l_中断));
 
-            while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+            try
             {
-                var l_件数 = 0;
-                while (l_件数 < C_前処理バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                foreach (var l_バッチ in l_読込済み.GetConsumingEnumerable(l_中断.Token))
                 {
-                    var l_リード1 = l_読み込み1.Get_次のリード_軽量();
-                    var l_リード2 = l_読み込み2.Get_次のリード_軽量();
-                    l_ID1群[l_件数] = l_リード1.A_ID;
-                    l_ID2群[l_件数] = l_リード2.A_ID;
-                    l_配列1群[l_件数] = l_リード1.A_生リード;
-                    l_配列2群[l_件数] = l_リード2.A_生リード;
-                    l_クオリティ1群[l_件数] = l_リード1.A_クオリティ;
-                    l_クオリティ2群[l_件数] = l_リード2.A_クオリティ;
-                    l_件数++;
-                }
-
-                l_総ペア数 += l_件数;
-
-                _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
-                {
-                    l_結果群[i] = Get_品質トリム済み(Get_前処理結果(l_配列1群[i], l_クオリティ1群[i], l_配列2群[i], l_クオリティ2群[i], l_Phredオフセット), l_Phredオフセット, l_トリム閾値);
-                });
-
-                for (var i = 0; i < l_件数; i++)
-                {
-                    var l_結果 = l_結果群[i];
-                    if (l_結果.A_Hasアダプタ検出)
+                    l_総ペア数 += l_バッチ.A_件数;
+                    _ = Parallel.For(0, l_バッチ.A_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                     {
-                        l_アダプタ検出ペア数++;
+                        l_バッチ.A_結果群[i] = Get_品質トリム済み(Get_前処理結果(l_バッチ.A_配列1群[i], l_バッチ.A_クオリティ1群[i], l_バッチ.A_配列2群[i], l_バッチ.A_クオリティ2群[i], p_Phredオフセット), p_Phredオフセット, l_トリム閾値);
+                    });
+
+                    for (var i = 0; i < l_バッチ.A_件数; i++)
+                    {
+                        var l_結果 = l_バッチ.A_結果群[i];
+                        if (l_結果.A_Hasアダプタ検出)
+                        {
+                            l_アダプタ検出ペア数++;
+                        }
+
+                        l_訂正塩基数 += l_結果.A_訂正塩基数;
+                        l_総塩基数 += l_バッチ.A_配列1群[i].Length + l_バッチ.A_配列2群[i].Length;
+                        l_トリム塩基数 += l_結果.A_品質トリム塩基数;
                     }
 
-                    l_訂正塩基数 += l_結果.A_訂正塩基数;
-                    l_総塩基数 += l_配列1群[i].Length + l_配列2群[i].Length;
-                    l_トリム塩基数 += l_結果.A_品質トリム塩基数;
-                    l_書き込み1.V_書き込み(l_ID1群[i], l_結果.A_配列1, l_結果.A_クオリティ1);
-                    l_書き込み2.V_書き込み(l_ID2群[i], l_結果.A_配列2, l_結果.A_クオリティ2);
+                    l_処理済み.Add(l_バッチ, l_中断.Token);
                 }
             }
+            catch (OperationCanceledException) when (l_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                l_中断.Cancel();
+                throw;
+            }
+            finally
+            {
+                l_処理済み.CompleteAdding();
+            }
+
+            l_読み込み.GetAwaiter().GetResult();
+            l_書き出し.GetAwaiter().GetResult();
 
             return new 前処理統計(l_総ペア数, l_アダプタ検出ペア数, l_訂正塩基数, l_総塩基数, l_トリム塩基数, l_トリム閾値);
+        }
+
+        /// <summary>
+        /// ペアをバッチに詰めて順に渡す (どちらかのファイルが尽きたところで止める)
+        /// </summary>
+        /// <param name="p_リード1のパス">リード 1 のパス</param>
+        /// <param name="p_リード2のパス">リード 2 のパス</param>
+        /// <param name="p_渡し先">読み込んだバッチの渡し先</param>
+        /// <param name="p_中断">どこかで失敗したときに止める合図</param>
+        private static void V_読込_バッチ群(string p_リード1のパス, string p_リード2のパス, BlockingCollection<前処理バッチ> p_渡し先, CancellationTokenSource p_中断)
+        {
+            try
+            {
+                using var l_読み込み1 = new FastqReader(p_リード1のパス);
+                using var l_読み込み2 = new FastqReader(p_リード2のパス);
+                while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                {
+                    var l_バッチ = new 前処理バッチ();
+                    while (l_バッチ.A_件数 < C_前処理バッチサイズ && l_読み込み1.Has続き() && l_読み込み2.Has続き())
+                    {
+                        var l_リード1 = l_読み込み1.Get_次のリード_軽量();
+                        var l_リード2 = l_読み込み2.Get_次のリード_軽量();
+                        l_バッチ.A_ID1群[l_バッチ.A_件数] = l_リード1.A_ID;
+                        l_バッチ.A_ID2群[l_バッチ.A_件数] = l_リード2.A_ID;
+                        l_バッチ.A_配列1群[l_バッチ.A_件数] = l_リード1.A_生リード;
+                        l_バッチ.A_配列2群[l_バッチ.A_件数] = l_リード2.A_生リード;
+                        l_バッチ.A_クオリティ1群[l_バッチ.A_件数] = l_リード1.A_クオリティ;
+                        l_バッチ.A_クオリティ2群[l_バッチ.A_件数] = l_リード2.A_クオリティ;
+                        l_バッチ.A_件数++;
+                    }
+
+                    p_渡し先.Add(l_バッチ, p_中断.Token);
+                }
+            }
+            catch (OperationCanceledException) when (p_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                p_中断.Cancel();
+                throw;
+            }
+            finally
+            {
+                p_渡し先.CompleteAdding();
+            }
+        }
+
+        /// <summary>
+        /// 前処理を終えたバッチを、受け取った順に書き出す
+        /// </summary>
+        /// <param name="p_出力先1">前処理したリード 1 の書き出し先</param>
+        /// <param name="p_出力先2">前処理したリード 2 の書き出し先</param>
+        /// <param name="p_受け取り元">前処理を終えたバッチ</param>
+        /// <param name="p_中断">どこかで失敗したときに止める合図</param>
+        private static void V_書出_バッチ群(string p_出力先1, string p_出力先2, BlockingCollection<前処理バッチ> p_受け取り元, CancellationTokenSource p_中断)
+        {
+            try
+            {
+                using var l_書き込み1 = new FastqWriter(p_出力先1);
+                using var l_書き込み2 = new FastqWriter(p_出力先2);
+                foreach (var l_バッチ in p_受け取り元.GetConsumingEnumerable(p_中断.Token))
+                {
+                    for (var i = 0; i < l_バッチ.A_件数; i++)
+                    {
+                        var l_結果 = l_バッチ.A_結果群[i];
+                        l_書き込み1.V_書き込み(l_バッチ.A_ID1群[i], l_結果.A_配列1, l_結果.A_クオリティ1);
+                        l_書き込み2.V_書き込み(l_バッチ.A_ID2群[i], l_結果.A_配列2, l_結果.A_クオリティ2);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (p_中断.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                p_中断.Cancel();
+                throw;
+            }
         }
 
         /// <summary>

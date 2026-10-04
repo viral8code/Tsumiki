@@ -45,37 +45,14 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
 
-            var l_信頼kmer数 = 0L;
-            var l_取りこぼし数 = 0L;
-            var l_出しすぎ種類数 = 0L;
-            var l_余分な延べ数 = 0L;
-
-            foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
-            {
-                l_信頼kmer数++;
-                var l_正規形 = KmerPacking.TryGet_正規化キー(l_kmer);
-
-                var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
-                if (l_出現数 == 0)
-                {
-                    l_取りこぼし数++;
-                    continue;
-                }
-
-                if (p_単一コピー基準値 <= 0D)
-                {
-                    continue;
-                }
-
-                var l_カバレッジ = p_kmerインデックス.Get_カバレッジ(l_kmer);
-                var l_期待コピー数 = Math.Max(1, (int)Math.Round(l_カバレッジ / p_単一コピー基準値));
-
-                if (l_出現数 > l_期待コピー数)
-                {
-                    l_出しすぎ種類数++;
-                    l_余分な延べ数 += l_出現数 - l_期待コピー数;
-                }
-            }
+            var (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数) = p_kmerインデックス.Get_信頼kmer一覧()
+                .AsParallel()
+                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
+                .Aggregate(
+                    () => (0L, 0L, 0L, 0L),
+                    (l_途中, l_kmer) => Get_突き合わせた集計(l_途中, l_kmer, l_観測, p_kmerインデックス, p_単一コピー基準値),
+                    (l_左, l_右) => (l_左.Item1 + l_右.Item1, l_左.Item2 + l_右.Item2, l_左.Item3 + l_右.Item3, l_左.Item4 + l_右.Item4),
+                    l_合計 => l_合計);
 
             return new 整合性検査結果(l_信頼kmer数, l_延べ数, l_観測.Count, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
@@ -95,6 +72,40 @@ namespace Tsumiki.Cores.Evaluation
 
             Logger.V_出力(メッセージID.検査_取りこぼし, p_ラベル, l_結果.A_信頼kmer数, l_結果.A_取りこぼし数, l_結果.A_取りこぼし率);
             Logger.V_出力(メッセージID.検査_出しすぎ, p_ラベル, l_結果.A_アセンブリ内の延べ数, l_結果.A_余分な延べ数, l_結果.A_出しすぎ率, l_結果.A_出しすぎkmer種類数);
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 信頼できる k-mer 1 つをアセンブリ内の出現数と突き合わせ、途中の集計 (信頼 k-mer 数・取りこぼし数・出しすぎ種類数・余分な延べ数) に足す
+        /// </summary>
+        /// <param name="p_途中">ここまでの集計</param>
+        /// <param name="p_kmer">信頼できる k-mer</param>
+        /// <param name="p_観測">アセンブリ内の正規化キーごとの出現数</param>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_単一コピー基準値">その k-mer が何回現れてよいかをカバレッジから見積もるための基準値</param>
+        /// <returns>足した後の集計</returns>
+        private static (long, long, long, long) Get_突き合わせた集計((long, long, long, long) p_途中, byte[] p_kmer, Dictionary<UInt128, int> p_観測, TrustedKmerIndex p_kmerインデックス, double p_単一コピー基準値)
+        {
+            var (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数) = p_途中;
+            l_信頼kmer数++;
+            var l_出現数 = p_観測.GetValueOrDefault(KmerPacking.TryGet_正規化キー(p_kmer));
+            if (l_出現数 == 0)
+            {
+                return (l_信頼kmer数, l_取りこぼし数 + 1, l_出しすぎ種類数, l_余分な延べ数);
+            }
+
+            if (p_単一コピー基準値 <= 0D)
+            {
+                return (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
+            }
+
+            var l_期待コピー数 = Math.Max(1, (int)Math.Round(p_kmerインデックス.Get_カバレッジ(p_kmer) / p_単一コピー基準値));
+            return l_出現数 > l_期待コピー数
+                ? (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数 + 1, l_余分な延べ数 + l_出現数 - l_期待コピー数)
+                : (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
 
         #endregion

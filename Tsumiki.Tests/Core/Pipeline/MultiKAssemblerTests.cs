@@ -1,6 +1,7 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Pipeline;
 using Tsumiki.Core;
+using Tsumiki.Models.Correction;
 using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Tests.Core
@@ -113,6 +114,27 @@ namespace Tsumiki.Tests.Core
             var l_候補 = MultiKAssembler.Get_k候補一覧(l_引数, p_リード長: 250);
 
             Assert.Equal([31, 63, 95], l_候補);
+        }
+
+        /// <summary>
+        /// エラー訂正で数えた区間があれば、予測カバレッジが下限を保てる最大の k を上限にして等比で刻むこと
+        /// </summary>
+        [Fact]
+        public void V_候補一覧_訂正後のカバレッジから上限を決める()
+        {
+            // 全窓が信頼できる 251 bp のリード、k=63 で 40x なら、k の予測は 40 × (252 - k) / 189 で、20x を保つ最大の奇数は 157
+            var l_度数 = new 無誤り区間の度数(63) { A_単一コピー平均 = 40D };
+            var l_信頼状況 = Enumerable.Repeat(true, 251 - 63 + 1).ToArray();
+            l_度数.V_追加(l_信頼状況, false);
+            l_度数.V_追加(l_信頼状況, true);
+            var l_引数 = Get_引数();
+            l_引数.A_無誤り区間の度数群.Add(l_度数);
+
+            var l_候補 = MultiKAssembler.Get_k候補一覧(l_引数, p_リード長: 251);
+
+            Assert.Equal(21, l_候補[0]);
+            Assert.Equal(157, l_候補[^1]);
+            Assert.Equal(Consts.マルチkで試す個数, l_候補.Count);
         }
 
         /// <summary>

@@ -40,6 +40,8 @@ namespace Tsumiki.Tests.IO
         [InlineData(new[] { "-mem", "4G", "-inmem" }, true, "-mem")]
         [InlineData(new[] { "-inmem", "-rs" }, true, "-rs")]
         [InlineData(new[] { "-inmem" }, false, "")]
+        [InlineData(new[] { "-inmem", "-prep" }, true, "-prep")]
+        [InlineData(new[] { "-prep", "-rs" }, false, "")]
         [InlineData(new[] { "-mem", "4G", "-rs" }, false, "")]
         [InlineData(new[] { "-i", "300" }, false, "")]
         public void 相反する組だけを止める(string[] p_追加, bool p_Is止める, string p_理由に含む)

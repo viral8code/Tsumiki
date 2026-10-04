@@ -235,6 +235,7 @@ Stages that are off by default and other settings:
 | `-rs` | Resume from an existing output directory (reuses preprocessed and corrected reads and every finished k) | Off |
 | `-rt` | Delete intermediate files after a successful run (final results and log are kept) | Off |
 | `-inmem` | Keep intermediate reads and k-mer counting runs in memory instead of on disk. Greatly reduces disk reads and writes at the cost of more memory | Off |
+| `-prep` | Only preprocess and error-correct the reads, then stop. A later run with the same `-t` and `-rs` assembles from those reads (saves time when running repeated evaluations or when a run may be interrupted) | Off |
 
 ### Options that cannot be combined
 
@@ -242,8 +243,9 @@ If any of these combinations is given, Tsumiki prints the reason and exits witho
 
 | Combination | Reason |
 |---|---|
-| `-inmem` and `-mem` | `-inmem` keeps k-mer counting runs in memory, whereas `-mem` assumes they spill to disk |
+| `-inmem` and `-mem` | With `-inmem` every k-mer counting run stays in memory, so `-mem` would only set the size of each counting pass and would not cap total memory |
 | `-inmem` and `-rs` | `-inmem` leaves no intermediate files on disk to resume from |
+| `-inmem` and `-prep` | `-prep` keeps the prepared reads on disk for a later `-rs` run, which `-inmem` would not do |
 | `-nmk` and `-k` with several values | A comma-separated `-k` means "try each value and keep the best" |
 | `-i` and two or more paired-end libraries | A single value would be applied to every library, breaking the assumptions for libraries with different insert sizes |
 

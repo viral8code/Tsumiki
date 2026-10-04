@@ -25,11 +25,51 @@ namespace Tsumiki.Utilities
         #region 公開メソッド
 
         /// <summary>
-        /// -k 未指定時に、リード長から k を決めて適用する
+        /// -k・-eck 未指定時に、リード長から組み立てとエラー訂正の k を決めて適用する
         /// </summary>
         /// <param name="p_引数"></param>
         /// <param name="p_リード長"></param>
         public static void V_解決_k長(Parameters p_引数, int? p_リード長)
+        {
+            V_解決_組み立てk長(p_引数, p_リード長);
+            if (!p_引数.A_Isエラー訂正k長明示指定)
+            {
+                p_引数.Set_推定エラー訂正k長(p_リード長 is { } l_リード長 && Get_推奨k長(l_リード長) is { } l_推奨値 ? l_推奨値 : p_引数.A_k長);
+            }
+        }
+
+        /// <summary>
+        /// リード長に対する推奨 k 長
+        /// </summary>
+        /// <param name="p_リード長"></param>
+        /// <returns></returns>
+        public static int? Get_推奨k長(int p_リード長)
+        {
+            if (p_リード長 < C_自動k長に必要な最小リード長)
+            {
+                return null;
+            }
+
+            var l_候補 = (int)(p_リード長 * C_自動k長のリード長比);
+            l_候補 = Math.Min(l_候補, Consts.自動k長の上限);
+            if (l_候補 % 2 == 0)
+            {
+                l_候補 -= 1;
+            }
+
+            return l_候補;
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// -k 未指定時に、リード長から組み立ての k を決めて適用する
+        /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_リード長"></param>
+        private static void V_解決_組み立てk長(Parameters p_引数, int? p_リード長)
         {
             if (p_リード長 is not { } l_リード長)
             {
@@ -60,28 +100,6 @@ namespace Tsumiki.Utilities
 
             p_引数.Set_推定k長(l_推奨値);
             Logger.V_出力(メッセージID.k自動選択, l_推奨値, l_リード長);
-        }
-
-        /// <summary>
-        /// リード長に対する推奨 k 長
-        /// </summary>
-        /// <param name="p_リード長"></param>
-        /// <returns></returns>
-        public static int? Get_推奨k長(int p_リード長)
-        {
-            if (p_リード長 < C_自動k長に必要な最小リード長)
-            {
-                return null;
-            }
-
-            var l_候補 = (int)(p_リード長 * C_自動k長のリード長比);
-            l_候補 = Math.Min(l_候補, Consts.自動k長の上限);
-            if (l_候補 % 2 == 0)
-            {
-                l_候補 -= 1;
-            }
-
-            return l_候補;
         }
 
         #endregion

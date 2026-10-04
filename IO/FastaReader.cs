@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Text;
+using Tsumiki.Commons;
 using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.IO
@@ -9,6 +10,15 @@ namespace Tsumiki.IO
     /// <param name="p_パス"></param>
     internal class FastaReader(string p_パス) : SequenceFileReaderBase(p_パス)
     {
+        #region 定数
+
+        /// <summary>
+        /// 見出し行の最初の文字
+        /// </summary>
+        private const char C_見出しの印 = '>';
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -30,7 +40,7 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 次の 1 配列を読み込んで返す
+        /// 次の 1 配列を読み込んで返す (配列が複数行に折り返されていれば、次の見出し行の手前までをつなぐ)
         /// </summary>
         /// <returns>読み込んだ配列</returns>
         public 配列エントリ Get_次の配列()
@@ -38,9 +48,19 @@ namespace Tsumiki.IO
             try
             {
                 var l_ID = this.Get_次の行();
-                var l_配列 = this.Get_次の行();
+                var l_配列 = this.Is見出しの前か終わり(C_見出しの印) ? string.Empty : this.Get_次の行();
+                if (this.Is見出しの前か終わり(C_見出しの印))
+                {
+                    return new 配列エントリ(l_ID, l_配列);
+                }
 
-                return new 配列エントリ(l_ID, l_配列);
+                var l_つないだ配列 = new StringBuilder(l_配列);
+                while (!this.Is見出しの前か終わり(C_見出しの印))
+                {
+                    _ = l_つないだ配列.Append(this.Get_次の行_生()?.Trim());
+                }
+
+                return new 配列エントリ(l_ID, l_つないだ配列.ToString());
             }
             catch (Exception l_例外)
             {

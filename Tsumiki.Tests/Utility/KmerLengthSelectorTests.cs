@@ -112,6 +112,49 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal(31, l_param.A_k長);
         }
 
+        /// <summary>
+        /// 組み立ての k を一覧で明示しても、エラー訂正の k はリード長から決める
+        /// </summary>
+        [Fact]
+        public void V_k長一覧を明示してもエラー訂正のk長はリード長から決める()
+        {
+            var l_param = new Parameters();
+            l_param.Set_k長一覧([21, 73, 169]);
+
+            KmerLengthSelector.V_解決_k長(l_param, 251);
+
+            Assert.Equal(169, l_param.A_k長);
+            Assert.Equal(63, l_param.A_エラー訂正k長);
+            Assert.False(l_param.A_Isエラー訂正k長明示指定);
+        }
+
+        /// <summary>
+        /// -eck の明示指定は推定値で上書きしない
+        /// </summary>
+        [Fact]
+        public void V_明示指定されたエラー訂正のk長はそのまま残す()
+        {
+            var l_param = new Parameters { A_エラー訂正k長 = 41 };
+
+            KmerLengthSelector.V_解決_k長(l_param, 251);
+
+            Assert.Equal(41, l_param.A_エラー訂正k長);
+            Assert.Equal(63, l_param.A_k長);
+        }
+
+        /// <summary>
+        /// リード長が不明なら、エラー訂正の k は組み立ての k に揃える
+        /// </summary>
+        [Fact]
+        public void V_リード長が不明ならエラー訂正のk長は組み立てのk長に揃える()
+        {
+            var l_param = new Parameters { A_k長 = 41 };
+
+            KmerLengthSelector.V_解決_k長(l_param, null);
+
+            Assert.Equal(41, l_param.A_エラー訂正k長);
+        }
+
         #endregion
 
     }

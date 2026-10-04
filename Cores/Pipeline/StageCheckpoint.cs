@@ -40,6 +40,7 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_設定 = p_引数.Get_複製();
             l_設定.A_Is再開 = false;
+            l_設定.A_Is準備のみ = false;
 
             var l_入力の識別 = string.Join(C_項目区切り, l_設定.A_ライブラリ群.Select(x =>
                 Get_保存済み記録(x.A_リード1) ?? (Get_ハッシュ(x.A_リード1) + C_項目区切り + Get_ハッシュ(x.A_リード2))));

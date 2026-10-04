@@ -240,7 +240,7 @@ namespace Tsumiki.Cores.Pipeline
                 return [p_引数.A_k長];
             }
 
-            var l_上限 = Get_奇数((int)(l_リード長 * C_マルチk上限のリード長比));
+            var l_上限 = Get_カバレッジで決めた上限(p_引数, Get_奇数((int)(l_リード長 * C_マルチk上限のリード長比)));
             var l_下限 = C_マルチkの下限;
             if (l_下限 >= l_上限)
             {
@@ -255,6 +255,38 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             return [.. l_候補];
+        }
+
+        /// <summary>
+        /// エラー訂正で数えた誤りの無い区間から、予測カバレッジが下限を保てる最大の k を返す
+        /// </summary>
+        /// <param name="p_引数">実行時引数</param>
+        /// <param name="p_上限">リード長から決めた上限</param>
+        /// <returns>決めた上限、見積もれなければ p_上限 のまま</returns>
+        private static int Get_カバレッジで決めた上限(Parameters p_引数, int p_上限)
+        {
+            var l_度数群 = p_引数.A_無誤り区間の度数群;
+            if (l_度数群.Count == 0)
+            {
+                return p_上限;
+            }
+
+            var l_最小k長 = l_度数群.Max(x => x.A_k長);
+            for (var l_k長 = p_上限; l_k長 >= l_最小k長; l_k長 -= 2)
+            {
+                var l_予測 = l_度数群.Sum(x => x.Get_予測カバレッジ(l_k長));
+                if (l_予測 >= Consts.マルチk上限の最小kmerカバレッジ)
+                {
+                    if (l_k長 < p_上限)
+                    {
+                        Logger.V_出力(メッセージID.k上限をカバレッジで決定, l_k長, l_予測, Consts.マルチk上限の最小kmerカバレッジ);
+                    }
+
+                    return l_k長;
+                }
+            }
+
+            return p_上限;
         }
 
         /// <summary>

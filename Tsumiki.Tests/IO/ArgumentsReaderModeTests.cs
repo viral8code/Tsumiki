@@ -119,6 +119,16 @@ namespace Tsumiki.Tests.IO
         }
 
         /// <summary>
+        /// -prep で前処理とエラー訂正だけ済ませる指定になり、既定では組み立てまで流す
+        /// </summary>
+        [Fact]
+        public void 準備のみは指定したときだけ有効()
+        {
+            Assert.False(ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス]).A_Is準備のみ);
+            Assert.True(ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-prep"]).A_Is準備のみ);
+        }
+
+        /// <summary>
         /// 一時ディレクトリを片付ける
         /// </summary>
         public void Dispose()
@@ -127,6 +137,19 @@ namespace Tsumiki.Tests.IO
             {
                 File.Delete(this._ダミーリードパス);
             }
+        }
+
+        /// <summary>
+        /// -eck は -k の一覧とは別にエラー訂正の k として読む
+        /// </summary>
+        [Fact]
+        public void V_eckはkと独立に読む()
+        {
+            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-k", "21,169", "-eck", "41"]);
+
+            Assert.Equal(169, l_引数.A_k長);
+            Assert.Equal(41, l_引数.A_エラー訂正k長);
+            Assert.True(l_引数.A_Isエラー訂正k長明示指定);
         }
 
         /// <summary>

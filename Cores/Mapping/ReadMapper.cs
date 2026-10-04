@@ -379,6 +379,29 @@ namespace Tsumiki.Cores.Mapping
         }
 
         /// <summary>
+        /// 帯 [p_左, p_右] のすぐ外側の 2 マスを p_値 で埋める (帯の内側はその行の計算で上書きされる)
+        /// </summary>
+        /// <param name="p_行">1 行分の得点</param>
+        /// <param name="p_左">帯の左端</param>
+        /// <param name="p_右">帯の右端</param>
+        /// <param name="p_幅">列の最大番号</param>
+        /// <param name="p_値">埋める値</param>
+        private static void V_埋める_帯の外(Span<int> p_行, int p_左, int p_右, int p_幅, int p_値)
+        {
+            if (p_左 > p_右)
+            {
+                p_行.Slice(Math.Min(p_左 - 1, p_幅), Math.Max(0, p_幅 - p_左 + 2)).Fill(p_値);
+                return;
+            }
+
+            p_行[p_左 - 1] = p_値;
+            if (p_右 < p_幅)
+            {
+                p_行[p_右 + 1] = p_値;
+            }
+        }
+
+        /// <summary>
         /// 候補の近傍で半大域整列を行う
         /// </summary>
         /// <param name="p_リード"></param>
@@ -432,25 +455,44 @@ namespace Tsumiki.Cores.Mapping
                     l_経路.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Clear();
                     l_経路[l_行頭] = 1;
 
-                    l_今の得点.Fill(l_最小値);
-                    l_今の挿入得点.Fill(l_最小値);
-                    l_今の削除得点.Fill(l_最小値);
+                    var l_左 = Math.Max(1, l_中心 - C_帯域幅 * 2);
+                    var l_右 = Math.Min(l_幅, l_中心 + C_帯域幅 * 2);
+                    if (i == l_行数)
+                    {
+                        l_今の得点.Fill(l_最小値);
+                        l_今の挿入得点.Fill(l_最小値);
+                        l_今の削除得点.Fill(l_最小値);
+                    }
+                    else
+                    {
+                        V_埋める_帯の外(l_今の得点, l_左, l_右, l_幅, l_最小値);
+                        V_埋める_帯の外(l_今の挿入得点, l_左, l_右, l_幅, l_最小値);
+                        V_埋める_帯の外(l_今の削除得点, l_左, l_右, l_幅, l_最小値);
+                    }
+
                     l_今の得点[0] = C_ギャップ開始罰点 + (i - 1) * C_ギャップ延長罰点;
                     l_今の挿入得点[0] = l_今の得点[0];
 
-                    var l_左 = Math.Max(1, l_中心 - C_帯域幅 * 2);
-                    var l_右 = Math.Min(l_幅, l_中心 + C_帯域幅 * 2);
                     var l_リード塩基 = l_照合リード[i - 1];
+                    var l_参照帯 = l_参照.AsSpan(l_開始, l_幅);
+                    var l_経路行 = l_経路.Slice(l_行頭, l_列数);
+                    var l_斜めの得点 = l_左 - 1 < l_列数 ? l_前の得点[l_左 - 1] : 0;
+                    var l_左の得点 = l_左 - 1 < l_列数 ? l_今の得点[l_左 - 1] : 0;
+                    var l_左の削除得点 = l_左 - 1 < l_列数 ? l_今の削除得点[l_左 - 1] : 0;
                     for (var j = l_左; j <= l_右; j++)
                     {
-                        var l_対角 = l_前の得点[j - 1] + (l_リード塩基 == l_参照[l_開始 + j - 1] ? C_一致得点 : C_不一致罰点);
-                        var l_挿入 = Math.Max(l_前の得点[j] + C_ギャップ開始罰点, l_前の挿入得点[j] + C_ギャップ延長罰点);
-                        var l_削除 = Math.Max(l_今の得点[j - 1] + C_ギャップ開始罰点, l_今の削除得点[j - 1] + C_ギャップ延長罰点);
+                        var l_上の得点 = l_前の得点[j];
+                        var l_対角 = l_斜めの得点 + (l_リード塩基 == l_参照帯[j - 1] ? C_一致得点 : C_不一致罰点);
+                        var l_挿入 = Math.Max(l_上の得点 + C_ギャップ開始罰点, l_前の挿入得点[j] + C_ギャップ延長罰点);
+                        var l_削除 = Math.Max(l_左の得点 + C_ギャップ開始罰点, l_左の削除得点 + C_ギャップ延長罰点);
                         var l_得点 = Math.Max(l_対角, Math.Max(l_挿入, l_削除));
                         l_今の挿入得点[j] = l_挿入;
                         l_今の削除得点[j] = l_削除;
                         l_今の得点[j] = l_得点;
-                        l_経路[l_行頭 + j] = l_得点 == l_対角 ? (byte)0 : l_得点 == l_挿入 ? (byte)1 : (byte)2;
+                        l_経路行[j] = l_得点 == l_対角 ? (byte)0 : l_得点 == l_挿入 ? (byte)1 : (byte)2;
+                        l_斜めの得点 = l_上の得点;
+                        l_左の得点 = l_得点;
+                        l_左の削除得点 = l_削除;
                     }
 
                     var l_入れ替え = l_前の得点;

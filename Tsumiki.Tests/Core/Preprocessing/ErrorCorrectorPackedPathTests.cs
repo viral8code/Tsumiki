@@ -91,6 +91,49 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 末尾に誤りが密集したリード (何度も置き換えが続き、控えた改善数を使い回す) でも、パック経路と逐次経路の訂正結果が一致することを検証する
+        /// </summary>
+        /// <param name="p_k長"></param>
+        [Theory]
+        [InlineData(21)]
+        [InlineData(31)]
+        [InlineData(63)]
+        public void V_誤りが密集したリードでもパック経路は逐次経路と同じ訂正を返す(int p_k長)
+        {
+            var l_乱数 = new Random(100 + p_k長);
+            const string l_塩基 = "ACGT";
+            var l_固有 = string.Concat(Enumerable.Range(0, 3_000).Select(_ => l_塩基[l_乱数.Next(4)]));
+            var l_写し = l_固有.Substring(1_000, 400).ToCharArray();
+            for (var i = 0; i < 12; i++)
+            {
+                l_写し[l_乱数.Next(l_写し.Length)] = l_塩基[l_乱数.Next(4)];
+            }
+
+            var l_真の配列 = l_固有 + new string(l_写し) + string.Concat(Enumerable.Range(0, 600).Select(_ => l_塩基[l_乱数.Next(4)]));
+
+            using var l_インデックス = this.Get_インデックス(l_真の配列, p_k長);
+
+            for (var l_回 = 0; l_回 < 60; l_回++)
+            {
+                var l_開始 = l_乱数.Next(l_真の配列.Length - 250);
+                var l_リード = l_真の配列.Substring(l_開始, 250).ToCharArray();
+                var l_誤り数 = 3 + l_乱数.Next(23);
+                for (var l_誤り = 0; l_誤り < l_誤り数; l_誤り++)
+                {
+                    var l_位置 = l_乱数.Next(2) == 0 ? l_リード.Length - 1 - l_乱数.Next(80) : l_乱数.Next(l_リード.Length);
+                    l_リード[l_位置] = l_塩基[l_乱数.Next(4)];
+                }
+
+                var l_塩基列 = Get_塩基列(new string(l_リード));
+                var l_パック = ErrorCorrector.Get_訂正結果(l_塩基列, l_インデックス, p_k長);
+                var l_逐次 = ErrorCorrector.Get_訂正結果_逐次([.. l_塩基列], l_インデックス, p_k長, p_最大反復数: 10);
+
+                Assert.Equal(l_逐次.A_訂正数, l_パック.A_訂正数);
+                Assert.Equal(l_逐次.A_塩基列, l_パック.A_塩基列);
+            }
+        }
+
         #endregion
 
         #region 内部メソッド

@@ -155,6 +155,12 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_原入力 = l_引数.Get_複製();
             ReadPreparationPipeline.V_実行(l_引数, l_一時ディレクトリ);
+            if (l_引数.A_Is準備のみ)
+            {
+                Logger.V_出力(メッセージID.準備のみ_完了, l_引数.A_一時ディレクトリ);
+                Logger.V_出力_タイムスタンプ();
+                return;
+            }
 
             var l_処理済み設定 = l_引数.Get_複製();
 

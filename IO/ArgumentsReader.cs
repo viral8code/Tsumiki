@@ -46,6 +46,10 @@ namespace Tsumiki.IO
                             l_引数.Set_k長一覧(p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;
 
+                        case Consts.引数キー.エラー訂正k長:
+                            l_引数.A_エラー訂正k長 = int.Parse(p_引数列[l_位置++]);
+                            break;
+
                         case Consts.引数キー.kmerカットオフ:
                             l_引数.A_kmerカットオフ = ulong.Parse(p_引数列[l_位置++]);
                             break;
@@ -179,6 +183,10 @@ namespace Tsumiki.IO
                             l_引数.A_Isオンメモリ = true;
                             break;
 
+                        case Consts.引数キー.準備のみ:
+                            l_引数.A_Is準備のみ = true;
+                            break;
+
                         case Consts.引数キー.ログ水準:
                             l_引数.A_ログ水準 = Get_ログ水準(p_引数列[l_位置++]);
                             break;
@@ -237,9 +245,11 @@ namespace Tsumiki.IO
         public static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
         {
             return p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算)
-                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps k-mer counting runs in memory instead of spilling them to disk under the {Consts.引数キー.メモリ予算} budget"
+                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps every k-mer counting run in memory, so the budget would only set the size of each counting pass and would not cap total memory"
                 : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開)
                 ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from"
+                : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.準備のみ)
+                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.準備のみ} cannot be used together: {Consts.引数キー.準備のみ} keeps the prepared reads on disk for a later {Consts.引数キー.再開} run, and {Consts.引数キー.オンメモリ} would discard them"
                 : p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1
                 ? $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best"
                 : p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1

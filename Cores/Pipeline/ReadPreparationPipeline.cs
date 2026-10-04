@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Preprocessing;
+using Tsumiki.Models.Correction;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Utilities;
 
@@ -22,6 +23,11 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const string C_訂正済みの幹 = "corrected";
 
+        /// <summary>
+        /// 訂正済みリードの横に置く、誤りの無い区間の度数のファイルの接尾辞
+        /// </summary>
+        private const string C_度数の接尾辞 = ".segments.tsv";
+
         #endregion
 
         #region 公開メソッド
@@ -33,9 +39,11 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ">処理済みリードの出力先</param>
         public static void V_実行(Parameters p_引数, string p_一時ディレクトリ)
         {
+            p_引数.A_無誤り区間の度数群.Clear();
             if (p_引数.A_Is再開 && p_引数.A_Isエラー訂正 && Get_再利用できる訂正済み(p_引数, p_一時ディレクトリ) is { } l_再利用)
             {
                 Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用[0].A_リード1);
+                l_再利用.ForEach(x => V_読込_度数(p_引数, x.A_リード1));
                 p_引数.Set_ライブラリ群(l_再利用);
                 V_削除_前処理済みリード(p_一時ディレクトリ);
                 return;
@@ -147,10 +155,20 @@ namespace Tsumiki.Cores.Pipeline
                 if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
+                    V_読込_度数(p_引数, l_出力1);
                 }
                 else
                 {
-                    ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    var l_度数 = ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    if (l_度数 is not null)
+                    {
+                        p_引数.A_無誤り区間の度数群.Add(l_度数);
+                        if (!中間データ置き場.A_Is有効)
+                        {
+                            l_度数.V_書き出し(l_出力1 + C_度数の接尾辞);
+                        }
+                    }
+
                     V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
 
@@ -162,6 +180,19 @@ namespace Tsumiki.Cores.Pipeline
             V_削除_前処理済みリード(p_一時ディレクトリ);
 
             Logger.V_出力_タイムスタンプ();
+        }
+
+        /// <summary>
+        /// 訂正済みリードの横に残した誤りの無い区間の度数を読み込む
+        /// </summary>
+        /// <param name="p_引数">作業用設定</param>
+        /// <param name="p_訂正済み1">訂正済みのリード 1 のパス</param>
+        private static void V_読込_度数(Parameters p_引数, string p_訂正済み1)
+        {
+            if (無誤り区間の度数.Get_読込(p_訂正済み1 + C_度数の接尾辞) is { } l_度数)
+            {
+                p_引数.A_無誤り区間の度数群.Add(l_度数);
+            }
         }
 
         /// <summary>

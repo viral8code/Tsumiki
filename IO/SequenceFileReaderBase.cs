@@ -69,7 +69,7 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 次の 1 行を読み込んで返す
+        /// 次の 1 行 (空行は読み飛ばす) を読み込んで返す。空行しか残っていなければ例外にする
         /// </summary>
         /// <returns>読み込んだ行</returns>
         protected virtual string Get_次の行()
@@ -77,10 +77,26 @@ namespace Tsumiki.IO
             var l_行 = this._読み込み.ReadLine();
             while (string.IsNullOrWhiteSpace(l_行))
             {
+                if (l_行 is null)
+                {
+                    throw new InvalidDataException($"{this.A_ファイルパス}: unexpected end of file");
+                }
+
                 l_行 = this._読み込み.ReadLine();
             }
 
             return l_行;
+        }
+
+        /// <summary>
+        /// 次の文字が見出し行の始まり (p_印) か、ファイルの終わりか
+        /// </summary>
+        /// <param name="p_印">見出し行の最初の文字</param>
+        /// <returns>見出し行の前か終わりなら true</returns>
+        protected bool Is見出しの前か終わり(char p_印)
+        {
+            var l_次 = this._読み込み.Peek();
+            return l_次 < 0 || l_次 == p_印;
         }
 
         /// <summary>

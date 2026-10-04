@@ -48,6 +48,11 @@
         public const double マルチkの最小kmerカバレッジ = 10D;
 
         /// <summary>
+        /// 自動で試す k の上限に求める、訂正済みリードの予測 k-mer カバレッジ
+        /// </summary>
+        public const double マルチk上限の最小kmerカバレッジ = 20D;
+
+        /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量の既定値の下限 (バイト)
         /// </summary>
         public const long メモリ予算の下限 = 768L * 1_024L * 1_024L;
@@ -209,6 +214,11 @@
             public const string k長 = "-k";
 
             /// <summary>
+            /// エラー訂正の k 長
+            /// </summary>
+            public const string エラー訂正k長 = "-eck";
+
+            /// <summary>
             /// kmer カットオフ
             /// </summary>
             public const string kmerカットオフ = "-kc";
@@ -367,6 +377,11 @@
             /// 中間データをメモリに置く
             /// </summary>
             public const string オンメモリ = "-inmem";
+
+            /// <summary>
+            /// 前処理とエラー訂正だけ済ませて終える
+            /// </summary>
+            public const string 準備のみ = "-prep";
 
             /// <summary>
             /// ログ水準
