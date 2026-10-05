@@ -13,6 +13,11 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// シャード数 (スレッド数から切り離し、k-mer の振り分けと列挙の順を実行環境によらず同じにする)
+        /// </summary>
+        public const int C_シャード数 = 16;
+
+        /// <summary>
         /// シャードに預かったままにしてよい束の数 (超えたら、預けたスレッドも待って数える)
         /// </summary>
         private const int C_預かりの上限 = 64;
@@ -165,7 +170,7 @@ namespace Tsumiki.Utilities
             this._Is中経路使用 = this._k長 is > 32 and <= 64;
             this._Is長経路使用 = this._k長 is > 64 and <= C_パック値のk上限;
             this._一時ディレクトリ = p_一時ディレクトリ;
-            var l_シャード数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
+            var l_シャード数 = C_シャード数;
             this._カウンタ群 = new CountingDB[l_シャード数];
             this._シャードロック = new Lock[l_シャード数];
             this._預かり = new ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>[l_シャード数];

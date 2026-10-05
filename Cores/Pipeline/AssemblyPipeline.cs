@@ -525,30 +525,22 @@ namespace Tsumiki.Cores.Pipeline
         private static Dictionary<int, string> Get_Unitig(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_Is上限到達)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
+            HashSet<string> l_正規形 = [.. l_walk結果.Select(Get_正規向き)];
 
             var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(p_kmerインデックス, l_walk結果, p_k長);
             if (l_閉路の開始kmer.Count > 0)
             {
                 Logger.V_出力(メッセージID.分岐のない閉路, l_閉路の開始kmer.Count);
-                l_walk結果 =
-                    [.. l_walk結果, .. UnitigMaker.Get_walk結果(p_kmerインデックス, l_閉路の開始kmer)];
+                l_正規形.UnionWith(UnitigMaker.Get_walk結果(p_kmerインデックス, l_閉路の開始kmer).Select(x => Get_正規回転(x, p_k長)));
             }
 
-            HashSet<string> l_既出 = [];
             Dictionary<int, string> l_unitig配列 = [];
             var l_ID = 1;
 
             using (var l_書き込み = new FastaWriter(p_出力パス))
             {
-                foreach (var l_配列 in l_walk結果)
+                foreach (var l_配列 in l_正規形.Order(StringComparer.Ordinal))
                 {
-                    if (l_既出.Contains(l_配列) || l_既出.Contains(Util.V_逆相補(l_配列)))
-                    {
-                        continue;
-                    }
-
-                    _ = l_既出.Add(l_配列);
-                    _ = l_既出.Add(Util.V_逆相補(l_配列));
                     l_unitig配列[l_ID] = l_配列;
                     l_書き込み.V_書き込み(l_ID++, l_配列);
 
@@ -561,6 +553,55 @@ namespace Tsumiki.Cores.Pipeline
 
             p_Is上限到達 = l_ID > C_Unitig数の上限;
             return l_unitig配列;
+        }
+
+        /// <summary>
+        /// 配列とその逆相補のうち、序数比較で小さいほうを返す (起点の並びに左右されない向きにそろえる)
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <returns>正規の向きの配列</returns>
+        internal static string Get_正規向き(string p_配列)
+        {
+            var l_逆相補 = Util.V_逆相補(p_配列);
+            return string.CompareOrdinal(p_配列, l_逆相補) <= 0 ? p_配列 : l_逆相補;
+        }
+
+        /// <summary>
+        /// 閉路の unitig を、両方の向きのうち序数比較で最小の k-mer から始まる回転にそろえる (起点の k-mer に左右されないようにする)
+        /// </summary>
+        /// <param name="p_配列">閉路を 1 周した配列 (末尾の k-1 塩基は先頭と同じ)</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>正規の回転と向きの配列</returns>
+        internal static string Get_正規回転(string p_配列, int p_k長)
+        {
+            var l_周長 = p_配列.Length - (p_k長 - 1);
+            if (l_周長 <= 0)
+            {
+                return Get_正規向き(p_配列);
+            }
+
+            string? l_最良 = null;
+            foreach (var l_向き in new[] { p_配列, Util.V_逆相補(p_配列) })
+            {
+                var l_本体 = l_向き[..l_周長];
+                var l_二周 = string.Concat(Enumerable.Repeat(l_本体, 2 + ((p_k長 + l_周長 - 1) / l_周長)));
+                var l_開始 = 0;
+                for (var i = 1; i < l_周長; i++)
+                {
+                    if (l_二周.AsSpan(i, p_k長).SequenceCompareTo(l_二周.AsSpan(l_開始, p_k長)) < 0)
+                    {
+                        l_開始 = i;
+                    }
+                }
+
+                var l_候補 = l_二周.Substring(l_開始, l_周長 + p_k長 - 1);
+                if (l_最良 is null || string.CompareOrdinal(l_候補, l_最良) < 0)
+                {
+                    l_最良 = l_候補;
+                }
+            }
+
+            return l_最良!;
         }
 
         #endregion
