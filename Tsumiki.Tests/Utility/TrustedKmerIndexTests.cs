@@ -315,6 +315,59 @@ namespace Tsumiki.Tests.Utility
             Assert.Contains(l_firstKmers, l_開始kmer => l_開始kmer.SequenceEqual(l_startKmer) || l_開始kmer.SequenceEqual(l_startRevComp));
         }
 
+        /// <summary>
+        /// 詰めた値で前後を辿る開始点の列挙が、k-mer ごとの判定と同じ k-mer を同じ順と向きで返すことを確かめる
+        /// </summary>
+        /// <param name="p_k長">k-mer 長 (小経路と中経路の端を含む)</param>
+        [Theory]
+        [InlineData(21)]
+        [InlineData(32)]
+        [InlineData(41)]
+        [InlineData(64)]
+        public void Get_開始kmer一覧_kmerごとの判定と一致する(int p_k長)
+        {
+            var l_乱数 = new Random(901);
+            var l_本体 = string.Concat(Enumerable.Range(0, 3_000).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            var l_変異 = l_本体[..1_500] + (l_本体[1_500] == 'A' ? 'C' : 'A') + l_本体[1_501..2_200];
+            var l_反復 = l_本体[2_400..2_700] + l_本体[100..900];
+            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 2 };
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            foreach (var l_配列 in new[] { l_本体, l_変異, l_反復 })
+            {
+                var l_バイト列 = V_変換_塩基ID列(l_配列);
+                for (var i = 0; i + p_k長 <= l_バイト列.Length; i++)
+                {
+                    l_インデックス.V_登録(l_バイト列.AsSpan(i, p_k長));
+                    l_インデックス.V_登録(l_バイト列.AsSpan(i, p_k長));
+                }
+            }
+
+            _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
+            List<byte[]> l_期待 = [];
+            foreach (var l_kmer in l_インデックス.Get_信頼kmer一覧())
+            {
+                if (l_インデックス.Is開始kmer(l_kmer))
+                {
+                    l_期待.Add(l_kmer);
+                }
+
+                var l_逆相補 = V_変換_塩基ID列(Util.V_逆相補(string.Concat(l_kmer.Select(x => "ACGT"[x - 1]))));
+                if (l_インデックス.Is開始kmer(l_逆相補))
+                {
+                    l_期待.Add(l_逆相補);
+                }
+            }
+
+            var l_結果 = l_インデックス.Get_開始kmer一覧();
+
+            Assert.NotEmpty(l_期待);
+            Assert.Equal(l_期待.Count, l_結果.Count);
+            for (var i = 0; i < l_期待.Count; i++)
+            {
+                Assert.Equal(l_期待[i], l_結果[i]);
+            }
+        }
+
         #endregion
 
         #region 内部メソッド

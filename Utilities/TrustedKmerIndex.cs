@@ -646,6 +646,16 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public List<byte[]> Get_開始kmer一覧()
         {
+            if (this._Is小経路使用)
+            {
+                return this.Get_開始kmer一覧_小();
+            }
+
+            if (this._Is中経路使用)
+            {
+                return this.Get_開始kmer一覧_中();
+            }
+
             return [.. this.Get_信頼kmer一覧()
                 .AsParallel()
                 .AsOrdered()
@@ -1440,6 +1450,160 @@ namespace Tsumiki.Utilities
             }
 
             return l_塩基列;
+        }
+
+        /// <summary>
+        /// 開始点になりうる k-mer を、詰めた値のまま前後を辿って求める (k &lt;= 32、Get_信頼kmer一覧 の順と向きで返す)
+        /// </summary>
+        /// <returns>開始点の k-mer</returns>
+        private List<byte[]> Get_開始kmer一覧_小()
+        {
+            var l_k長 = this._k長;
+            var l_キー群 = this._信頼kmer_小!.Keys.ToArray();
+            var l_判定 = new (bool A_順, bool A_逆)[l_キー群.Length];
+            _ = Parallel.For(0, l_キー群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
+            {
+                var l_順 = l_キー群[i];
+                var l_逆 = Get_逆相補_小(l_順, l_k長);
+                l_判定[i] = (this.Is開始kmer_小(l_順, l_逆), this.Is開始kmer_小(l_逆, l_順));
+            });
+
+            List<byte[]> l_結果 = [];
+            for (var i = 0; i < l_キー群.Length; i++)
+            {
+                if (l_判定[i].A_順)
+                {
+                    l_結果.Add(Get_復元_小(l_キー群[i], l_k長));
+                }
+
+                if (l_判定[i].A_逆)
+                {
+                    l_結果.Add(Get_復元_小(Get_逆相補_小(l_キー群[i], l_k長), l_k長));
+                }
+            }
+
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 開始点になりうる k-mer を、詰めた値のまま前後を辿って求める (33 &lt;= k &lt;= 64、Get_信頼kmer一覧 の順と向きで返す)
+        /// </summary>
+        /// <returns>開始点の k-mer</returns>
+        private List<byte[]> Get_開始kmer一覧_中()
+        {
+            var l_k長 = this._k長;
+            var l_キー群 = this._信頼kmer_中!.Keys.ToArray();
+            var l_判定 = new (bool A_順, bool A_逆)[l_キー群.Length];
+            _ = Parallel.For(0, l_キー群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
+            {
+                var l_順 = l_キー群[i];
+                var l_逆 = Get_逆相補_中(l_順, l_k長);
+                l_判定[i] = (this.Is開始kmer_中(l_順, l_逆), this.Is開始kmer_中(l_逆, l_順));
+            });
+
+            List<byte[]> l_結果 = [];
+            for (var i = 0; i < l_キー群.Length; i++)
+            {
+                if (l_判定[i].A_順)
+                {
+                    l_結果.Add(Get_復元_中(l_キー群[i], l_k長));
+                }
+
+                if (l_判定[i].A_逆)
+                {
+                    l_結果.Add(Get_復元_中(Get_逆相補_中(l_キー群[i], l_k長), l_k長));
+                }
+            }
+
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 詰めた値の k-mer が開始点か (Is開始kmer と同じ判定、k &lt;= 32)
+        /// </summary>
+        /// <param name="p_順">k-mer の詰めた値</param>
+        /// <param name="p_逆">その逆相補の詰めた値</param>
+        /// <returns>入次数が 1 でないか、唯一の予測元の出次数が 1 でなければ true</returns>
+        private bool Is開始kmer_小(ulong p_順, ulong p_逆)
+        {
+            var l_桁 = 2 * (this._k長 - 1);
+            var l_マスク = this._k長 == 32 ? ulong.MaxValue : (1UL << (2 * this._k長)) - 1UL;
+            var l_件数 = 0;
+            var l_予測元 = 0UL;
+            var l_予測元の逆 = 0UL;
+            for (var b = 0UL; b < 4UL; b++)
+            {
+                var l_前 = (b << l_桁) | (p_順 >> 2);
+                var l_前の逆 = ((p_逆 << 2) | (3UL - b)) & l_マスク;
+                if (this.Has信頼_小(Math.Min(l_前, l_前の逆)))
+                {
+                    l_件数++;
+                    l_予測元 = l_前;
+                    l_予測元の逆 = l_前の逆;
+                }
+            }
+
+            if (l_件数 != 1)
+            {
+                return true;
+            }
+
+            var l_出次数 = 0;
+            for (var c = 0UL; c < 4UL; c++)
+            {
+                var l_後 = ((l_予測元 << 2) | c) & l_マスク;
+                var l_後の逆 = (l_予測元の逆 >> 2) | ((3UL - c) << l_桁);
+                if (this.Has信頼_小(Math.Min(l_後, l_後の逆)))
+                {
+                    l_出次数++;
+                }
+            }
+
+            return l_出次数 != 1;
+        }
+
+        /// <summary>
+        /// 詰めた値の k-mer が開始点か (Is開始kmer と同じ判定、33 &lt;= k &lt;= 64)
+        /// </summary>
+        /// <param name="p_順">k-mer の詰めた値</param>
+        /// <param name="p_逆">その逆相補の詰めた値</param>
+        /// <returns>入次数が 1 でないか、唯一の予測元の出次数が 1 でなければ true</returns>
+        private bool Is開始kmer_中(UInt128 p_順, UInt128 p_逆)
+        {
+            var l_桁 = 2 * (this._k長 - 1);
+            var l_マスク = this._k長 == 64 ? UInt128.MaxValue : (UInt128.One << (2 * this._k長)) - UInt128.One;
+            var l_件数 = 0;
+            var l_予測元 = UInt128.Zero;
+            var l_予測元の逆 = UInt128.Zero;
+            for (var b = 0; b < 4; b++)
+            {
+                var l_前 = ((UInt128)b << l_桁) | (p_順 >> 2);
+                var l_前の逆 = ((p_逆 << 2) | (UInt128)(3 - b)) & l_マスク;
+                if (this.Has信頼_中(l_前 < l_前の逆 ? l_前 : l_前の逆))
+                {
+                    l_件数++;
+                    l_予測元 = l_前;
+                    l_予測元の逆 = l_前の逆;
+                }
+            }
+
+            if (l_件数 != 1)
+            {
+                return true;
+            }
+
+            var l_出次数 = 0;
+            for (var c = 0; c < 4; c++)
+            {
+                var l_後 = ((l_予測元 << 2) | (UInt128)c) & l_マスク;
+                var l_後の逆 = (l_予測元の逆 >> 2) | ((UInt128)(3 - c) << l_桁);
+                if (this.Has信頼_中(l_後 < l_後の逆 ? l_後 : l_後の逆))
+                {
+                    l_出次数++;
+                }
+            }
+
+            return l_出次数 != 1;
         }
 
         /// <summary>
