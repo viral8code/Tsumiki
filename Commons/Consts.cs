@@ -48,11 +48,6 @@
         public const double マルチkの最小kmerカバレッジ = 10D;
 
         /// <summary>
-        /// 自動で試す k の上限に求める、訂正済みリードの予測 k-mer カバレッジ
-        /// </summary>
-        public const double マルチk上限の最小kmerカバレッジ = 20D;
-
-        /// <summary>
         /// k-mer カウント時にメモリ上へ保持するカウントの総量の既定値の下限 (バイト)
         /// </summary>
         public const long メモリ予算の下限 = 768L * 1_024L * 1_024L;
@@ -126,6 +121,16 @@
         /// 環状に閉じた複製単位であることを示す、配列 ID 中の目印
         /// </summary>
         public const string 環状の目印 = "circular";
+
+        /// <summary>
+        /// 他の k から補った配列の ID の接頭辞 (後ろに由来の k と連番が付く)
+        /// </summary>
+        public const string 補完配列の接頭辞 = "rescued_k";
+
+        /// <summary>
+        /// 曖昧でない塩基の文字
+        /// </summary>
+        public const string 塩基文字 = "ACGT";
 
         /// <summary>
         /// 環状に閉じた経路を「複製単位が 1 周組み上がった」とみなす最小の長さ

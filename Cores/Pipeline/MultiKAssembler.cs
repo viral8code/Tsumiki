@@ -176,7 +176,7 @@ namespace Tsumiki.Cores.Pipeline
                     ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群)
                     : null)
                 ?? l_最良.A_実行結果 with { A_固定アンカー評価 = l_最良.A_評価 };
-            return l_採用;
+            return Get_補完結果(l_採用, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ) ?? l_採用;
         }
 
         /// <summary>
@@ -258,7 +258,7 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// エラー訂正で数えた誤りの無い区間から、予測カバレッジが下限を保てる最大の k を返す
+        /// エラー訂正で数えた誤りの無い区間から、予測カバレッジが試す価値のある下限を保てる最大の k を返す
         /// </summary>
         /// <param name="p_引数">実行時引数</param>
         /// <param name="p_上限">リード長から決めた上限</param>
@@ -275,11 +275,11 @@ namespace Tsumiki.Cores.Pipeline
             for (var l_k長 = p_上限; l_k長 >= l_最小k長; l_k長 -= 2)
             {
                 var l_予測 = l_度数群.Sum(x => x.Get_予測カバレッジ(l_k長));
-                if (l_予測 >= Consts.マルチk上限の最小kmerカバレッジ)
+                if (l_予測 >= Consts.マルチkの最小kmerカバレッジ)
                 {
                     if (l_k長 < p_上限)
                     {
-                        Logger.V_出力(メッセージID.k上限をカバレッジで決定, l_k長, l_予測, Consts.マルチk上限の最小kmerカバレッジ);
+                        Logger.V_出力(メッセージID.k上限をカバレッジで決定, l_k長, l_予測, Consts.マルチkの最小kmerカバレッジ);
                     }
 
                     return l_k長;
@@ -544,6 +544,59 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力(メッセージID.統合結果を採用);
             return l_統合結果;
+        }
+
+        /// <summary>
+        /// 採用したアセンブリに無い配列を他の k から補い、良くなっていれば補った結果を返す
+        /// </summary>
+        /// <param name="p_採用">統合まで済んだ採用結果</param>
+        /// <param name="p_候補">評価済みの全 k の候補</param>
+        /// <param name="p_アンカー">アンカー k-mer 集合</param>
+        /// <param name="p_アンカーk長">アンカー k 長</param>
+        /// <param name="p_解析">アンカーのスペクトル解析結果</param>
+        /// <param name="p_一時ディレクトリ">一時ディレクトリ</param>
+        /// <returns>補った結果、補う配列が無いか良くならなければ null</returns>
+        private static アセンブリ実行結果? Get_補完結果(アセンブリ実行結果 p_採用, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ)
+        {
+            if (p_採用.A_固定アンカー評価 is not { } l_補完前の評価)
+            {
+                return null;
+            }
+
+            var l_補完パス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_補完接頭辞 + Consts.Scaffoldファイル名);
+            var (l_本数, l_延長) = AssemblyComplementer.Get_補完(p_採用, [.. p_候補.Select(x => x.A_実行結果)], x => p_アンカー.Haskmer_正規形(UInt128.Zero, x), p_アンカーk長, l_補完パス);
+            if (l_本数 == 0)
+            {
+                return null;
+            }
+
+            Logger.V_出力_空行();
+            Logger.V_出力(メッセージID.補完した配列, l_本数, l_延長);
+
+            var l_補完contigパス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_補完接頭辞 + AssemblyPipeline.C_Contigファイル名);
+            V_書き出し_N分割(l_補完パス, l_補完contigパス);
+            var l_補完結果 = p_採用 with
+            {
+                A_contigパス = l_補完contigパス,
+                A_scaffoldパス = l_補完パス,
+            };
+
+            var l_補完後の評価 = AssemblyScorer.Get_評価(l_補完パス, p_アンカー, p_アンカーk長, p_解析.A_単一コピー基準値, p_解析.A_推定ゲノムサイズ, p_解析.A_単一コピー上限);
+            if (l_補完後の評価 is null)
+            {
+                return null;
+            }
+
+            Logger.V_出力(メッセージID.補完後の評価, l_補完後の評価);
+            var (l_実行結果, _) = AssemblySelector.Get_最良([(p_採用, l_補完前の評価), (l_補完結果, l_補完後の評価)])!.Value;
+            if (l_実行結果.A_最終パス != l_補完パス)
+            {
+                Logger.V_出力(メッセージID.補完が勝てず);
+                return null;
+            }
+
+            Logger.V_出力(メッセージID.補完結果を採用);
+            return l_補完結果 with { A_固定アンカー評価 = l_補完後の評価 };
         }
 
         /// <summary>

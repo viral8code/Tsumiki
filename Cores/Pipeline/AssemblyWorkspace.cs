@@ -23,6 +23,11 @@
         public const string C_統合接頭辞 = "merged_";
 
         /// <summary>
+        /// 他の k の配列で補った成果物の接頭辞
+        /// </summary>
+        public const string C_補完接頭辞 = "rescued_";
+
+        /// <summary>
         /// ポリッシュ済み配列のファイル名
         /// </summary>
         private const string C_ポリッシュ済みファイル名 = "polished.fasta";
@@ -36,6 +41,16 @@
         /// 統合した Contig のファイル名
         /// </summary>
         private const string C_統合Contigファイル名 = C_統合接頭辞 + AssemblyPipeline.C_Contigファイル名;
+
+        /// <summary>
+        /// 補った Scaffold のファイル名
+        /// </summary>
+        private const string C_補完Scaffoldファイル名 = C_補完接頭辞 + Tsumiki.Commons.Consts.Scaffoldファイル名;
+
+        /// <summary>
+        /// 補った Contig のファイル名
+        /// </summary>
+        private const string C_補完Contigファイル名 = C_補完接頭辞 + AssemblyPipeline.C_Contigファイル名;
 
         /// <summary>
         /// 中間ファイルを判定する正規表現
@@ -69,7 +84,7 @@
             foreach (var l_ファイル in Directory.EnumerateFiles(p_作業ディレクトリ))
             {
                 var l_名前 = Path.GetFileName(l_ファイル);
-                if (Get_成果物Regex_ファイル().IsMatch(l_名前) || l_名前 is C_ポリッシュ済みファイル名 or C_統合Scaffoldファイル名 or C_統合Contigファイル名)
+                if (Get_成果物Regex_ファイル().IsMatch(l_名前) || l_名前 is C_ポリッシュ済みファイル名 or C_統合Scaffoldファイル名 or C_統合Contigファイル名 or C_補完Scaffoldファイル名 or C_補完Contigファイル名)
                 {
                     File.Delete(l_ファイル);
                 }
