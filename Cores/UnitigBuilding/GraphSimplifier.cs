@@ -32,8 +32,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_tipカバレッジ比"></param>
         /// <param name="p_Is低カバレッジ端トリミング"></param>
+        /// <param name="p_最後のunitig群">変化が無くなった最後の反復で列挙した unitig を足す先 (返す開始点から walk したものと同じ)、要らなければ null</param>
         /// <returns></returns>
-        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = C_tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true)
+        public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = C_tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true, List<string>? p_最後のunitig群 = null)
         {
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(p_k長, l_リード長 / 2) : p_k長;
             var l_tip長閾値 = p_tip長閾値 ?? Math.Max(10 * l_基準長, p_リード長 ?? 0);
@@ -41,7 +42,8 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
             {
-                var l_unitig群 = Get_Unitig情報(p_kmerインデックス, Get_Unitig群(p_kmerインデックス, l_開始kmer), p_k長);
+                var l_unitig配列群 = Get_Unitig群(p_kmerインデックス, l_開始kmer);
+                var l_unitig群 = Get_Unitig情報(p_kmerインデックス, l_unitig配列群, p_k長);
                 var l_基準値 = Get_長さ加重中央カバレッジ(l_unitig群);
                 var l_信頼下限 = ConfigurationManager.A_スペクトルモデル?.A_信頼下限;
 
@@ -81,6 +83,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (l_除去tip数 == 0 && l_剥がしたkmer数 == 0)
                 {
+                    p_最後のunitig群?.AddRange(l_unitig配列群);
                     return l_開始kmer;
                 }
 

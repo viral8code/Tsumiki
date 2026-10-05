@@ -154,15 +154,16 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力(メッセージID.tip除去開始);
 
             List<byte[]> l_開始kmer;
+            List<string> l_整理後のunitig群 = [];
             using (new StageTimer($"graph-simplify k={p_k長}"))
             {
-                l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長, p_Is低カバレッジ端トリミング: p_引数.A_Is低カバレッジ端トリミング);
+                l_開始kmer = GraphSimplifier.V_除去_tip(l_kmerインデックス, p_k長, p_リード長, p_Is低カバレッジ端トリミング: p_引数.A_Is低カバレッジ端トリミング, p_最後のunitig群: l_整理後のunitig群);
             }
 
             Logger.V_出力_タイムスタンプ();
 
             Logger.V_出力(メッセージID.Unitig構築開始);
-            var l_unitig配列 = Get_Unitig(l_kmerインデックス, l_開始kmer, p_k長, l_unitigパス, out var l_上限に達したか);
+            var l_unitig配列 = Get_Unitig(l_kmerインデックス, l_開始kmer, l_整理後のunitig群, p_k長, l_unitigパス, out var l_上限に達したか);
 
             AssemblyStatsReporter.V_出力_統計("unitigs", l_unitigパス);
 
@@ -518,13 +519,14 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_開始kmer"></param>
+        /// <param name="p_walk済み">p_開始kmer から walk 済みの unitig (空なら walk し直す)</param>
         /// <param name="p_k長"></param>
         /// <param name="p_出力パス"></param>
         /// <param name="p_Is上限到達"></param>
         /// <returns></returns>
-        private static Dictionary<int, string> Get_Unitig(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, int p_k長, string p_出力パス, out bool p_Is上限到達)
+        private static Dictionary<int, string> Get_Unitig(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer, List<string> p_walk済み, int p_k長, string p_出力パス, out bool p_Is上限到達)
         {
-            var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
+            IReadOnlyList<string> l_walk結果 = p_walk済み.Count > 0 ? p_walk済み : UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
             HashSet<string> l_正規形 = [.. l_walk結果.Select(Get_正規向き)];
 
             var l_閉路の開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(p_kmerインデックス, l_walk結果, p_k長);
