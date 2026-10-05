@@ -253,6 +253,8 @@ namespace Tsumiki.Utilities
             var l_誤り混合比 = 0.5D;
             var l_コピー数減衰率 = 0.3D;
             var l_過分散 = C_過分散パラメータの初期値;
+            var l_走査上限 = p_出現回数.Length;
+            (p_出現回数, p_頻度) = Get_頻度のある区画(p_出現回数, p_頻度);
 
             var l_r誤り = new double[p_出現回数.Length];
             var l_rコピー = new double[C_コピー数の上限][];
@@ -267,7 +269,7 @@ namespace Tsumiki.Utilities
             for (l_反復数 = 1; l_反復数 <= C_最大反復数; l_反復数++)
             {
                 var l_コピー数別混合比 = Get_コピー数別混合比(l_コピー数減衰率);
-                var l_logガンマ = Get_logガンマテーブル(p_出現回数.Length, l_過分散);
+                var l_logガンマ = Get_logガンマテーブル(l_走査上限, p_出現回数, l_過分散);
                 l_対数尤度 = Get_Estep(p_出現回数, p_頻度, p_log階乗, l_誤り平均, l_誤り混合比, l_λ, l_コピー数別混合比, l_過分散, l_logガンマ, l_r誤り, l_rコピー);
 
                 if (double.IsNaN(l_対数尤度) || double.IsInfinity(l_対数尤度))
@@ -312,20 +314,43 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 出現回数 c = 1..上限 に対する log Γ (c + r) の表
+        /// 出現回数 c に対する log Γ (c + r) の表 (p_出現回数 に現れる c の欄だけを埋める)
         /// </summary>
         /// <param name="p_走査上限"></param>
+        /// <param name="p_出現回数">表を引く出現回数</param>
         /// <param name="p_過分散"></param>
         /// <returns></returns>
-        private static double[] Get_logガンマテーブル(int p_走査上限, double p_過分散)
+        private static double[] Get_logガンマテーブル(int p_走査上限, double[] p_出現回数, double p_過分散)
         {
             var l_表 = new double[p_走査上限 + 1];
-            for (var c = 0; c <= p_走査上限; c++)
+            foreach (var l_c in p_出現回数)
             {
-                l_表[c] = SpecialFunctions.Get_対数ガンマ(c + p_過分散);
+                l_表[(int)l_c] = SpecialFunctions.Get_対数ガンマ(l_c + p_過分散);
             }
 
             return l_表;
+        }
+
+        /// <summary>
+        /// 頻度が 0 でない区画だけを残す (頻度 0 の区画は尤度にもパラメータの更新にも 0 しか足さないので、残しても結果は変わらない)
+        /// </summary>
+        /// <param name="p_出現回数"></param>
+        /// <param name="p_頻度"></param>
+        /// <returns>頻度のある区画の出現回数と頻度</returns>
+        private static (double[] A_出現回数, double[] A_頻度) Get_頻度のある区画(double[] p_出現回数, double[] p_頻度)
+        {
+            List<double> l_出現回数 = [];
+            List<double> l_頻度 = [];
+            for (var i = 0; i < p_出現回数.Length; i++)
+            {
+                if (p_頻度[i] > 0D)
+                {
+                    l_出現回数.Add(p_出現回数[i]);
+                    l_頻度.Add(p_頻度[i]);
+                }
+            }
+
+            return ([.. l_出現回数], [.. l_頻度]);
         }
 
         /// <summary>
@@ -594,7 +619,7 @@ namespace Tsumiki.Utilities
             var l_結果 = new double[p_出現回数.Length];
             var l_項 = new double[1 + C_コピー数の上限];
             var (l_μ群, l_log混合比群) = Get_コピー数別の定数(p_λ, p_コピー数別混合比);
-            var l_logガンマ = Get_logガンマテーブル(p_出現回数.Length, p_過分散);
+            var l_logガンマ = Get_logガンマテーブル(p_出現回数.Length, p_出現回数, p_過分散);
             var l_logガンマ過分散 = SpecialFunctions.Get_対数ガンマ(p_過分散);
             for (var i = 0; i < p_出現回数.Length; i++)
             {
