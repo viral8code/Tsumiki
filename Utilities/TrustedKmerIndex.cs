@@ -283,6 +283,56 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 正準キーを、k &gt; 128 の経路で数えるパック済みバイト列にする
+        /// </summary>
+        /// <param name="p_正準キー">正規形の向きのキー</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>パック済みバイト列</returns>
+        public static byte[] Get_パック済み(KmerKey p_正準キー, int p_k長)
+        {
+            var l_語群 = p_正準キー.A_パック済みデータ;
+            var l_パック済み = new byte[(p_k長 + 3) / 4];
+            for (var i = 0; i < l_パック済み.Length; i++)
+            {
+                l_パック済み[i] = (byte)(l_語群[i >> 3] >> (56 - ((i & 7) << 3)));
+            }
+
+            return l_パック済み;
+        }
+
+        /// <summary>
+        /// パック済みバイト列を振り分けるシャード (k &gt; 128)
+        /// </summary>
+        /// <param name="p_パック済み"></param>
+        /// <param name="p_シャード数"></param>
+        /// <returns></returns>
+        public static int Get_シャード番号(byte[] p_パック済み, int p_シャード数)
+        {
+            return (int)(Get_ハッシュ(p_パック済み) % (uint)p_シャード数);
+        }
+
+        /// <summary>
+        /// 同じシャードへ振り分けたパック済みバイト列の束をまとめて数える (k &gt; 128)
+        /// </summary>
+        /// <param name="p_シャード">シャード番号</param>
+        /// <param name="p_束">数えるパック済みバイト列</param>
+        public void V_登録_パック済み群(int p_シャード, List<byte[]> p_束)
+        {
+            if (this._カウンタ群 is not { } l_カウンタ群)
+            {
+                return;
+            }
+
+            lock (this._シャードロック![p_シャード])
+            {
+                foreach (var l_パック済み in p_束)
+                {
+                    l_カウンタ群[p_シャード].V_登録_パック済み(l_パック済み);
+                }
+            }
+        }
+
+        /// <summary>
         /// kmer (順鎖・逆鎖いずれの向きでもよい) がカットオフを通過した信頼できる k-mer 集合に含まれるかどうかを厳密に判定する
         /// </summary>
         /// <param name="p_kmer"></param>

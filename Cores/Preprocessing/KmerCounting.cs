@@ -24,9 +24,9 @@ namespace Tsumiki.Cores.Preprocessing
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
 
-            var l_束群 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.C_パック値のk上限
-                ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray()
-                : null;
+            var l_Isパック値 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.C_パック値のk上限;
+            var l_束群 = l_Isパック値 ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray() : null;
+            var l_長い束群 = l_Isパック値 ? null : Enumerable.Range(0, l_スレッド数).Select(_ => new WideKmerCountBatch(p_kmerインデックス)).ToArray();
 
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_レコード列(p_ファイルパス), (l_レコード, l_ワーカー番号) =>
                 {
@@ -36,7 +36,7 @@ namespace Tsumiki.Cores.Preprocessing
                     }
                     else
                     {
-                        V_登録_1リード(Util.V_変換_塩基列(l_レコード.A_配列), l_レコード.A_クオリティ, p_kmerインデックス, p_Phredオフセット);
+                        V_登録_1リード_長いk(l_レコード.A_配列, l_レコード.A_クオリティ, l_長い束群![l_ワーカー番号], p_Phredオフセット);
                     }
 
                     var l_件数 = Interlocked.Increment(ref l_総リード数);
@@ -47,6 +47,11 @@ namespace Tsumiki.Cores.Preprocessing
                 });
 
             foreach (var l_束 in l_束群 ?? [])
+            {
+                l_束.V_吐き出し();
+            }
+
+            foreach (var l_束 in l_長い束群 ?? [])
             {
                 l_束.V_吐き出し();
             }
@@ -218,59 +223,28 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// 1 リード分の k-mer 抽出・品質フィルタリング・登録
+        /// 1 リード分の k-mer を、正準キーを転がしながら束へ溜める (k &gt; 128)
         /// </summary>
-        /// <param name="p_塩基列"></param>
+        /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
-        /// <param name="p_kmerインデックス"></param>
+        /// <param name="p_束"></param>
         /// <param name="p_Phredオフセット"></param>
-        private static void V_登録_1リード(byte[] p_塩基列, string p_クオリティ, TrustedKmerIndex p_kmerインデックス, int p_Phredオフセット)
+        private static void V_登録_1リード_長いk(string p_配列, string p_クオリティ, WideKmerCountBatch p_束, int p_Phredオフセット)
         {
-            var l_塩基列 = p_塩基列;
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            if (l_塩基列.Length < l_k長)
+            if (p_配列.Length < l_k長)
             {
                 return;
             }
 
-            var l_Phredオフセット = p_Phredオフセット;
-            var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
-
-            var l_低品質数 = 0;
-            var l_クオリティ = p_クオリティ.AsSpan();
-            var l_塩基 = l_塩基列.AsSpan();
-
-            for (var i = 0; i < l_k長; i++)
+            var l_品質下限 = p_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
+            var l_窓 = new WideRollingKmer(l_k長);
+            for (var i = 0; i < p_配列.Length; i++)
             {
-                if (l_塩基[i] == Consts.無効な塩基 ||
-                    l_クオリティ[i] - l_Phredオフセット - l_クオリティカットオフ < 0)
+                var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
+                if (l_窓.Try追加(l_塩基, out var l_キー))
                 {
-                    l_低品質数++;
-                }
-            }
-
-            if (l_低品質数 == 0)
-            {
-                p_kmerインデックス.V_登録(l_塩基[..l_k長]);
-            }
-
-            for (var i = l_k長; i < l_塩基列.Length; i++)
-            {
-                if (l_塩基[i - l_k長] == Consts.無効な塩基 ||
-                    l_クオリティ[i - l_k長] - l_Phredオフセット - l_クオリティカットオフ < 0)
-                {
-                    l_低品質数--;
-                }
-
-                if (l_塩基[i] == Consts.無効な塩基 ||
-                    l_クオリティ[i] - l_Phredオフセット - l_クオリティカットオフ < 0)
-                {
-                    l_低品質数++;
-                }
-
-                if (l_低品質数 == 0)
-                {
-                    p_kmerインデックス.V_登録(l_塩基.Slice(i - l_k長 + 1, l_k長));
+                    p_束.V_追加(TrustedKmerIndex.Get_パック済み(l_キー, l_k長));
                 }
             }
         }
