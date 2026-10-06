@@ -127,6 +127,37 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(53, l_選択!.Value.A_実行結果.A_k長);
         }
 
+        /// <summary>
+        /// NG50 の差が小さく、完全性がはっきり高い候補へ乗り換えることを確かめる
+        /// </summary>
+        /// <remarks>
+        /// C. jejuni (TestSet、k の上限 119) の実測値。NG50 だけで選ぶと k=41 になり、1 コピーの 3.6 kb を落としていた
+        /// </remarks>
+        [Fact]
+        public void Get_最良_NG50の差が小さく完全性がはっきり高ければ乗り換える()
+        {
+            var l_選択 = AssemblySelector.Get_最良([
+                Get_候補(21, 77_083L, 0.9666D, 0.9999D),
+                Get_候補(41, 112_758L, 0.9709D, 0.9998D),
+                Get_候補(59, 104_681L, 0.9746D, 0.9995D),
+                Get_候補(83, 104_705L, 0.9756D, 0.9992D),
+                Get_候補(119, 104_741L, 0.9762D, 0.9989D),
+            ]);
+
+            Assert.Equal(119, l_選択!.Value.A_実行結果.A_k長);
+        }
+
+        /// <summary>
+        /// NG50 が大きく劣る候補へは、完全性が高くても乗り換えないことを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_最良_NG50が大きく劣れば完全性が高くても乗り換えない()
+        {
+            var l_選択 = AssemblySelector.Get_最良([ Get_候補(63, 150_000L, 0.9700D, 0.9990D), Get_候補(127, 110_000L, 0.9740D, 0.9990D), ]);
+
+            Assert.Equal(63, l_選択!.Value.A_実行結果.A_k長);
+        }
+
         #endregion
 
         #region 内部メソッド

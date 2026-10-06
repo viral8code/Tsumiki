@@ -26,6 +26,16 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         public const double C_同点とみなす差 = 0.005D;
 
+        /// <summary>
+        /// 最良の NG50 に対して、この割合だけ短い NG50 までは乗り換えの候補にする (NG50 は継ぎ目 1 つで大きく動くため)
+        /// </summary>
+        public const double C_NG50で同点とみなす割合 = 0.2D;
+
+        /// <summary>
+        /// NG50 が最良の候補から乗り換えるのに要る、完全性の差 (揺らぎの範囲の差では乗り換えない)
+        /// </summary>
+        public const double C_乗り換えに要る完全性の差 = 0.0025D;
+
         #endregion
 
         #region 公開メソッド
@@ -63,15 +73,25 @@ namespace Tsumiki.Cores.Evaluation
             var l_完全性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_完全性));
             var l_正確性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_正確性));
 
-            return l_残った候補
-                .OrderByDescending(x => x.A_評価.A_環状本数)
-                .ThenByDescending(x => x.A_評価.A_環状化率)
-                .ThenBy(x => l_完全性の段[x.A_評価.A_完全性])
-                .ThenBy(x => l_正確性の段[x.A_評価.A_正確性])
-                .ThenByDescending(x => x.A_評価.A_NG50)
+            var l_最上段 = l_残った候補
+                .GroupBy(x => (-x.A_評価.A_環状本数, -x.A_評価.A_環状化率, l_完全性の段[x.A_評価.A_完全性], l_正確性の段[x.A_評価.A_正確性]))
+                .OrderBy(x => x.Key)
+                .First()
+                .ToList();
+            var l_NG50で最良 = l_最上段
+                .OrderByDescending(x => x.A_評価.A_NG50)
                 .ThenByDescending(x => x.A_評価.A_完全性)
                 .ThenByDescending(x => x.A_評価.A_正確性)
                 .First();
+            var l_NG50の下限 = l_NG50で最良.A_評価.A_NG50 * (1D - C_NG50で同点とみなす割合);
+
+            return l_最上段
+                .Where(x => x.A_評価.A_NG50 >= l_NG50の下限 && x.A_評価.A_完全性 >= l_NG50で最良.A_評価.A_完全性 + C_乗り換えに要る完全性の差)
+                .OrderByDescending(x => x.A_評価.A_完全性)
+                .ThenByDescending(x => x.A_評価.A_正確性)
+                .ThenByDescending(x => x.A_評価.A_NG50)
+                .ThenByDescending(x => x.A_実行結果.A_k長)
+                .FirstOrDefault(l_NG50で最良);
         }
 
         /// <summary>
