@@ -26,8 +26,15 @@ namespace Tsumiki.Cores.UnitigBuilding
                 V_記録_覆った範囲(l_覆済み, l_配列, p_k長);
             }
 
+            var l_未覆 = p_kmerインデックス.Get_信頼kmer一覧()
+                .AsParallel()
+                .AsOrdered()
+                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
+                .Where(x => !l_覆済み.Haskmer(x))
+                .ToList();
+
             List<byte[]> l_開始kmer = [];
-            foreach (var l_kmer in p_kmerインデックス.Get_信頼kmer一覧())
+            foreach (var l_kmer in l_未覆)
             {
                 if (l_覆済み.Haskmer(l_kmer))
                 {

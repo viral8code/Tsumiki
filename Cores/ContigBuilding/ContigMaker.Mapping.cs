@@ -109,36 +109,48 @@ namespace Tsumiki.Core
             this._経路集計 = [];
             this._引き継ぎ経路集計 = [];
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            using FastaReader l_読み込み = new(p_unitigファイルパス);
-            var l_ID = 1;
+            var l_配列群 = FastaReader.Get_全エントリ(p_unitigファイルパス).Select(x => x.A_配列).ToArray();
+            var l_逆相補群 = new string[l_配列群.Length];
+            var l_キー群 = new (KmerKey A_順鎖, KmerKey A_逆鎖)[l_配列群.Length][];
+            _ = Parallel.For(0, l_配列群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, n =>
+            {
+                var l_配列 = l_配列群[n];
+                l_逆相補群[n] = Util.V_逆相補(l_配列);
+                var l_キー = new (KmerKey, KmerKey)[Math.Max(0, l_配列.Length - l_k長 + 1)];
+                for (var i = 0; i < l_キー.Length; i++)
+                {
+                    var l_順鎖 = new KmerKey(l_配列.AsSpan(i, l_k長));
+                    l_キー[i] = (l_順鎖, l_順鎖.Get_逆相補());
+                }
+
+                l_キー群[n] = l_キー;
+            });
+
             var l_短すぎるunitig数 = 0;
             var l_曖昧数 = 0;
-            while (l_読み込み.Has続き())
+            for (var n = 0; n < l_配列群.Length; n++)
             {
-                var l_unitig = l_読み込み.Get_次の配列();
-                this._unitig長[l_ID] = l_unitig.A_配列.Length;
-                this._unitig配列.Add(l_unitig.A_配列);
-                this._unitig配列.Add(Util.V_逆相補(l_unitig.A_配列));
+                var l_ID = n + 1;
+                var l_配列 = l_配列群[n];
+                this._unitig長[l_ID] = l_配列.Length;
+                this._unitig配列.Add(l_配列);
+                this._unitig配列.Add(l_逆相補群[n]);
 
-                if (l_unitig.A_配列.Length < l_k長)
+                if (l_配列.Length < l_k長)
                 {
                     l_短すぎるunitig数++;
-                    l_ID++;
                     continue;
                 }
 
-                for (var i = l_k長; i <= l_unitig.A_配列.Length; i++)
+                var l_キー = l_キー群[n];
+                for (var l_開始位置 = 0; l_開始位置 < l_キー.Length; l_開始位置++)
                 {
-                    var l_開始位置 = i - l_k長;
-                    var l_キー = new KmerKey(l_unitig.A_配列.AsSpan(l_開始位置, l_k長));
-                    var l_逆鎖キー = l_キー.Get_逆相補();
-
-                    var l_逆鎖開始位置 = l_unitig.A_配列.Length - i;
-                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー, l_ID, l_開始位置);
-                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_逆鎖キー, -l_ID, l_逆鎖開始位置);
+                    var l_逆鎖開始位置 = l_配列.Length - l_k長 - l_開始位置;
+                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー[l_開始位置].A_順鎖, l_ID, l_開始位置);
+                    l_曖昧数 += V_登録_kmer(this._kmer辞書, l_キー[l_開始位置].A_逆鎖, -l_ID, l_逆鎖開始位置);
                 }
 
-                l_ID++;
+                l_キー群[n] = [];
             }
 
             if (l_短すぎるunitig数 > 0)

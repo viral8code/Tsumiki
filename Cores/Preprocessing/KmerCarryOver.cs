@@ -47,29 +47,31 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns></returns>
         public static List<引き継ぎ配列> Get_引き継ぎ配列(string p_FASTAパス, TrustedKmerIndex p_kmerインデックス, int p_k長, HashSet<string>? p_分岐の継ぎ目 = null, RepeatRMerVerifier? p_検証器 = null)
         {
-            List<引き継ぎ配列> l_結果 = [];
             var l_度数 = p_検証器 is null ? null : new 連続長の度数();
-            using var l_読み込み = new FastaReader(p_FASTAパス);
-
-            while (l_読み込み.Has続き())
+            var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス).Where(x => x.A_配列.Length >= Math.Max(C_引き継ぐ配列の最小長, p_k長)).ToArray();
+            var l_引き継ぎ群 = new 引き継ぎ配列[l_エントリ群.Length];
+            var l_度数の明細群 = new 連続長の度数?[l_エントリ群.Length];
+            _ = Parallel.For(0, l_エントリ群.Length, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
             {
-                var l_エントリ = l_読み込み.Get_次の配列();
-                var l_配列 = l_エントリ.A_配列;
-                if (l_配列.Length < Math.Max(C_引き継ぐ配列の最小長, p_k長))
-                {
-                    continue;
-                }
-
+                var (l_ID, l_配列) = l_エントリ群[i];
                 var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();
                 var l_カバレッジ = new int[l_配列.Length - p_k長 + 1];
-                for (var i = 0; i < l_カバレッジ.Length; i++)
+                for (var j = 0; j < l_カバレッジ.Length; j++)
                 {
-                    l_カバレッジ[i] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(i, p_k長)));
+                    l_カバレッジ[j] = (int)Math.Min(int.MaxValue, p_kmerインデックス.Get_カバレッジ(l_塩基列.AsSpan(j, p_k長)));
                 }
 
                 var l_継ぎ目位置 = Get_継ぎ目位置(l_配列, p_分岐の継ぎ目, p_k長);
-                l_結果.Add(new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数, l_エントリ.A_ID.TrimStart('>'), l_カバレッジ)));
+                l_度数の明細群[i] = l_度数 is null ? null : new 連続長の度数();
+                l_引き継ぎ群[i] = new 引き継ぎ配列(l_配列, l_カバレッジ, p_k長, A_Is確定経路: true, A_分岐の継ぎ目位置: l_継ぎ目位置, A_未観測の連続範囲: Get_未観測の連続範囲(l_配列, p_検証器, l_継ぎ目位置, p_k長, l_度数の明細群[i], l_ID.TrimStart('>'), l_カバレッジ));
+            });
+
+            foreach (var l_明細 in l_度数の明細群)
+            {
+                l_度数?.V_合算(l_明細!);
             }
+
+            List<引き継ぎ配列> l_結果 = [.. l_引き継ぎ群];
 
             if (l_度数 is not null)
             {

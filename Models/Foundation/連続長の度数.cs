@@ -60,6 +60,21 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// 別に数えた度数と明細を、この後ろへ足す
+        /// </summary>
+        /// <param name="p_他">足す度数</param>
+        public void V_合算(連続長の度数 p_他)
+        {
+            for (var i = 0; i < this._継ぎ目なし.Length; i++)
+            {
+                this._継ぎ目なし[i] += p_他._継ぎ目なし[i];
+                this._継ぎ目あり[i] += p_他._継ぎ目あり[i];
+            }
+
+            this._明細.AddRange(p_他._明細);
+        }
+
+        /// <summary>
         /// 連続ごとの位置を TSV に書き出す
         /// </summary>
         /// <param name="p_パス">書き出し先</param>
