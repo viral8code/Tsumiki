@@ -423,7 +423,7 @@ namespace Tsumiki.Cores.Pipeline
                     continue;
                 }
 
-                var l_合成リード = SuperReadJoiner.Get_合成リード(A_リード1, A_リード2, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, Get_断片パス(p_断片パス, i));
+                var l_合成リード = Get_裏付けを記した合成リード(SuperReadJoiner.Get_合成リード(A_リード1, A_リード2, p_kmerインデックス, p_k長, out var l_統計, l_断片長上限, l_断片長下限, Get_断片パス(p_断片パス, i)), p_原入力 ?? p_引数, p_リード長);
                 SuperReadJoiner.V_出力_統計(l_統計);
                 p_次への引き継ぎ.AddRange(l_合成リード);
                 p_合成リードの控え?.AddRange(l_合成リード);
@@ -433,12 +433,34 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 配列を、位置ごとのカバレッジ付きの引き継ぎ配列にする
+        /// 合成リードのうち、生リードで観測されていない r-mer が続く範囲を記す<br/>
+        /// 反復の中を橋渡しすると、k-mer はどれも信頼できても、並びとしては一度も読まれていない経路 (反復単位の数を取り違えたもの等) ができることがある<br/>
+        /// 記した範囲は、前段の contig と同じく次の k へ持ち越さない
         /// </summary>
-        /// <param name="p_配列"></param>
-        /// <param name="p_kmerインデックス"></param>
-        /// <param name="p_k長"></param>
+        /// <param name="p_合成リード"></param>
+        /// <param name="p_原入力">r-mer の裏付けを数える元のリードを持つ設定</param>
+        /// <param name="p_リード長">代表リード長、分からなければ確かめない</param>
         /// <returns></returns>
+        private static List<引き継ぎ配列> Get_裏付けを記した合成リード(List<引き継ぎ配列> p_合成リード, Parameters p_原入力, int? p_リード長)
+        {
+            if (p_合成リード.Count == 0 || (p_リード長 ?? 0) - KmerCarryOver.C_持ち越し検証のr長 + 1 < C_rMer検証に必要な窓数)
+            {
+                return p_合成リード;
+            }
+
+            var l_検証器 = RepeatRMerVerifier.V_構築(Get_全リードパス(p_原入力), KmerCarryOver.C_持ち越し検証のr長, p_問い合わせ配列: p_合成リード.Select(x => x.A_配列));
+            var l_結果 = new 引き継ぎ配列[p_合成リード.Count];
+            _ = Parallel.For(0, p_合成リード.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, i =>
+            {
+                var l_合成 = p_合成リード[i];
+                l_結果[i] = KmerCarryOver.Get_未観測の連続範囲(l_合成.A_配列, l_検証器) is { } l_範囲 ? l_合成 with { A_未観測の連続範囲 = l_範囲 } : l_合成;
+            });
+
+            var l_記した数 = l_結果.Count(x => x.A_未観測の連続範囲 is not null);
+            Logger.V_出力_そのまま(FormattableString.Invariant($"[SuperRead] {l_記した数:N0} of {l_結果.Length:N0} synthetic read(s) contain runs of r-mers unseen in the reads; those runs are not carried into longer k-mers"));
+            return [.. l_結果];
+        }
+
         /// <summary>
         /// FASTA の配列を順に返す
         /// </summary>
