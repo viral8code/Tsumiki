@@ -362,4 +362,8 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 # ローカルの資料・規約・補助スクリプト・評価データはリポジトリに含めない
-/local-data/
+local-data/
+
+# claude
+CLAUDE.md
+.claude/
