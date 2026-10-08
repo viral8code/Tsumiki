@@ -86,6 +86,11 @@ namespace Tsumiki.Utilities
         private static string? _共有索引の元;
 
         /// <summary>
+        /// 共有しているリードから窓の種数を変えて作った索引 (31 以上 41 未満の r-mer の問い合わせに使う)
+        /// </summary>
+        private static ReadMinimizerIndex? _共有小窓索引;
+
+        /// <summary>
         /// 共有索引を作るときの錠
         /// </summary>
         private static readonly Lock _共有索引の錠 = new();
@@ -156,9 +161,25 @@ namespace Tsumiki.Utilities
 
             if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.C_最短の問い合わせ長 && l_パス群.Count > 0)
             {
+                var l_共有索引 = Get_共有索引(l_パス群);
+                lock (_共有索引の錠)
+                {
+                    _共有小窓索引 = null;
+                }
+
                 return new RepeatRMerVerifier(p_r長)
                 {
-                    _索引 = Get_共有索引(l_パス群),
+                    _索引 = l_共有索引,
+                    _絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null,
+                    _絞り込みのk長 = p_k長,
+                };
+            }
+
+            if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.C_短い問い合わせの最短長 && l_パス群.Count > 0)
+            {
+                return new RepeatRMerVerifier(p_r長)
+                {
+                    _索引 = Get_共有小窓索引(l_パス群),
                     _絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null,
                     _絞り込みのk長 = p_k長,
                 };
@@ -322,6 +343,7 @@ namespace Tsumiki.Utilities
             {
                 _共有索引 = null;
                 _共有索引の元 = null;
+                _共有小窓索引 = null;
             }
         }
 
@@ -529,12 +551,32 @@ namespace Tsumiki.Utilities
                 if (_共有索引 is null || _共有索引の元 != l_元)
                 {
                     _共有索引 = null;
+                    _共有小窓索引 = null;
                     using var l_計測 = new StageTimer("read-index");
                     _共有索引 = ReadMinimizerIndex.V_構築(() => FastqReader.Get_生リード列([.. p_パス群]));
                     _共有索引の元 = l_元;
                 }
 
                 return _共有索引;
+            }
+        }
+
+        /// <summary>
+        /// 共有しているリードから窓の種数を変えた索引を、同じリードからはまだ作っていなければ作って返す
+        /// </summary>
+        /// <param name="p_パス群">生リードのパス</param>
+        /// <returns>窓の種数が短い問い合わせ用の索引</returns>
+        private static ReadMinimizerIndex Get_共有小窓索引(List<string> p_パス群)
+        {
+            lock (_共有索引の錠)
+            {
+                var l_大窓 = Get_共有索引(p_パス群);
+                if (_共有小窓索引 is null)
+                {
+                    _共有小窓索引 = l_大窓.Get_窓違い(ReadMinimizerIndex.C_短い問い合わせ用の窓の種数);
+                }
+
+                return _共有小窓索引;
             }
         }
 

@@ -44,6 +44,10 @@ namespace Tsumiki.Tests.Utility
         }
 
         [Theory]
+        [InlineData(31)]
+        [InlineData(35)]
+        [InlineData(39)]
+        [InlineData(40)]
         [InlineData(41)]
         [InlineData(47)]
         [InlineData(70)]

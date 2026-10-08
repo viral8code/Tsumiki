@@ -65,6 +65,123 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
+        /// 愚直な照合と比べるための、リード群・問い合わせ群・全文を作る
+        /// </summary>
+        /// <param name="p_種">乱数の種</param>
+        /// <param name="p_誤り率">リードに入れる誤りの率</param>
+        /// <param name="p_最短">問い合わせの最短長</param>
+        /// <returns>(リード群, 問い合わせ群, リードとその逆相補をつないだ全文)</returns>
+        private static (List<string> A_リード群, List<string> A_調べる, string A_全文) Get_照合データ(int p_種, double p_誤り率, int p_最短)
+        {
+            var l_乱数 = new Random(p_種);
+            var l_反復 = new string([.. Enumerable.Range(0, 60).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_ゲノム = string.Concat(Enumerable.Range(0, 20).Select(i => i % 7 == 3 ? l_反復 : new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])])));
+            var l_リード群 = new List<string>();
+            for (var i = 0; i < 400; i++)
+            {
+                var l_長さ = l_乱数.Next(20, 151);
+                var l_開始 = l_乱数.Next(0, l_ゲノム.Length - l_長さ);
+                var l_文字 = l_ゲノム.Substring(l_開始, l_長さ).ToCharArray();
+                for (var j = 0; j < l_文字.Length; j++)
+                {
+                    if (l_乱数.NextDouble() < p_誤り率)
+                    {
+                        l_文字[j] = l_乱数.Next(10) == 0 ? 'N' : "ACGT"[l_乱数.Next(4)];
+                    }
+                }
+                var l_リード = new string(l_文字);
+                l_リード群.Add(l_乱数.Next(2) == 0 ? l_リード : Get_逆相補(l_リード));
+            }
+
+            var l_全文 = string.Join("|", l_リード群.SelectMany(static x => new[] { x, Get_逆相補(x) }));
+
+            var l_調べる = new List<string>();
+            for (var i = 0; i < 3_000; i++)
+            {
+                var l_長さ = l_乱数.Next(p_最短, 90);
+                var l_元 = i % 3 == 0 ? l_ゲノム : l_リード群[l_乱数.Next(l_リード群.Count)];
+                if (l_元.Length < l_長さ)
+                {
+                    continue;
+                }
+                var l_配列 = l_元.Substring(l_乱数.Next(0, l_元.Length - l_長さ + 1), l_長さ);
+                if (!l_配列.Contains('N'))
+                {
+                    l_調べる.Add(i % 2 == 0 ? l_配列 : Get_逆相補(l_配列));
+                }
+            }
+
+            return (l_リード群, l_調べる, l_全文);
+        }
+
+        /// <summary>
+        /// 窓の種数 17 の索引 (直接作ったものと、既定の索引から窓違いで作ったもの) も、愚直な照合と一致する (31〜89 塩基の問い合わせ)
+        /// </summary>
+        [Theory]
+        [InlineData(1, 0.02)]
+        [InlineData(2, 0.0)]
+        [InlineData(3, 0.05)]
+        public void 窓17の索引も愚直な照合と一致する(int p_種, double p_誤り率)
+        {
+            var (l_リード群, l_調べる, l_全文) = Get_照合データ(p_種, p_誤り率, ReadMinimizerIndex.C_短い問い合わせの最短長);
+            var l_窓17 = ReadMinimizerIndex.V_構築(() => l_リード群, 17);
+            var l_既定から = ReadMinimizerIndex.V_構築(() => l_リード群).Get_窓違い(17);
+
+            foreach (var l_配列 in l_調べる)
+            {
+                var l_期待 = l_全文.Contains(l_配列, StringComparison.Ordinal);
+                Assert.True(l_期待 == l_窓17.Has出現(l_配列), l_配列);
+                Assert.True(l_期待 == l_既定から.Has出現(l_配列), l_配列);
+            }
+        }
+
+        /// <summary>
+        /// 窓違いで作った窓 17 の索引と、窓 17 で直接作った索引は、同じ問い合わせに同じ出現数を返す
+        /// </summary>
+        [Fact]
+        public void Get_窓違い17は窓17で直接作った索引と出現数が一致する()
+        {
+            var (l_リード群, l_調べる, _) = Get_照合データ(1, 0.02, ReadMinimizerIndex.C_短い問い合わせの最短長);
+            var l_窓17 = ReadMinimizerIndex.V_構築(() => l_リード群, 17);
+            var l_既定から = ReadMinimizerIndex.V_構築(() => l_リード群).Get_窓違い(17);
+
+            foreach (var l_配列 in l_調べる)
+            {
+                Assert.Equal(l_窓17.Get_出現数(l_配列, 100), l_既定から.Get_出現数(l_配列, 100));
+            }
+        }
+
+        /// <summary>
+        /// 窓 17 の索引は、最短の問い合わせ長 (31) に満たない 30 塩基の配列を拒む
+        /// </summary>
+        [Fact]
+        public void 窓17の索引は31塩基未満の配列を拒む()
+        {
+            var l_乱数 = new Random(4);
+            var l_リード = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => [l_リード], 17);
+
+            _ = Assert.Throws<ArgumentException>(() => l_索引.Get_出現数(l_リード.AsSpan(0, 30), 1));
+        }
+
+        /// <summary>
+        /// 既定の窓の索引は、最短の問い合わせ長 (41) に満たない 31〜40 塩基の配列を、今までどおり拒む
+        /// </summary>
+        /// <param name="p_長さ">問い合わせの長さ</param>
+        [Theory]
+        [InlineData(31)]
+        [InlineData(35)]
+        [InlineData(40)]
+        public void 既定の窓の索引は41塩基未満の配列を拒む(int p_長さ)
+        {
+            var l_乱数 = new Random(6);
+            var l_リード = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => [l_リード]);
+
+            _ = Assert.Throws<ArgumentException>(() => l_索引.Get_出現数(l_リード.AsSpan(0, p_長さ), 1));
+        }
+
+        /// <summary>
         /// 錨の直前と直後を、リードが逆相補で入っていても錨の向きで返す
         /// </summary>
         [Fact]

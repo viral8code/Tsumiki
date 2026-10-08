@@ -26,6 +26,16 @@ namespace Tsumiki.Utilities
         public const int C_最短の問い合わせ長 = C_種長 + C_窓の種数 - 1;
 
         /// <summary>
+        /// 短い問い合わせ用の索引の窓の種数 (既定より小さく、最短の問い合わせ長を短くする)
+        /// </summary>
+        public const int C_短い問い合わせ用の窓の種数 = 17;
+
+        /// <summary>
+        /// 短い問い合わせ用の索引に問い合わせられる配列の最短の長さ
+        /// </summary>
+        public const int C_短い問い合わせの最短長 = C_種長 + C_短い問い合わせ用の窓の種数 - 1;
+
+        /// <summary>
         /// 1 語に詰める文字数
         /// </summary>
         private const int C_語あたりの文字数 = 32;
@@ -89,6 +99,11 @@ namespace Tsumiki.Utilities
         /// </summary>
         private readonly long[]? _位置64;
 
+        /// <summary>
+        /// 問い合わせに使える長さの区間 (開始位置と長さ、位置の順、窓の種数によらず共通)
+        /// </summary>
+        private readonly (long A_開始, int A_長さ)[] _区間群;
+
         #endregion
 
         #region プロパティ
@@ -97,6 +112,16 @@ namespace Tsumiki.Utilities
         /// 索引に入れた塩基数
         /// </summary>
         public long A_塩基数 { get; }
+
+        /// <summary>
+        /// minimizer を選ぶ窓に並ぶ k-mer の数
+        /// </summary>
+        public int A_窓の種数 { get; }
+
+        /// <summary>
+        /// 問い合わせられる配列の最短の長さ (これより短いと、どの minimizer も丸ごと含むとは限らない)
+        /// </summary>
+        public int A_最短の問い合わせ長 => C_種長 + this.A_窓の種数 - 1;
 
         /// <summary>
         /// 索引が使うおおよそのバイト数
@@ -116,7 +141,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_位置32">minimizer の位置 (32 bit)</param>
         /// <param name="p_位置64">minimizer の位置 (64 bit)</param>
         /// <param name="p_塩基数">塩基数</param>
-        private ReadMinimizerIndex(ulong[] p_語, ulong[] p_末尾印, uint[] p_種, uint[]? p_位置32, long[]? p_位置64, long p_塩基数)
+        /// <param name="p_窓の種数">minimizer を選ぶ窓に並ぶ k-mer の数</param>
+        /// <param name="p_区間群">問い合わせに使える長さの区間</param>
+        private ReadMinimizerIndex(ulong[] p_語, ulong[] p_末尾印, uint[] p_種, uint[]? p_位置32, long[]? p_位置64, long p_塩基数, int p_窓の種数, (long A_開始, int A_長さ)[] p_区間群)
         {
             this._語 = p_語;
             this._末尾印 = p_末尾印;
@@ -124,6 +151,8 @@ namespace Tsumiki.Utilities
             this._位置32 = p_位置32;
             this._位置64 = p_位置64;
             this.A_塩基数 = p_塩基数;
+            this.A_窓の種数 = p_窓の種数;
+            this._区間群 = p_区間群;
         }
 
         #endregion
@@ -134,9 +163,11 @@ namespace Tsumiki.Utilities
         /// 配列群から索引を作る
         /// </summary>
         /// <param name="p_配列列">配列を先頭から返すもの (2 回呼ぶ)</param>
+        /// <param name="p_窓の種数">minimizer を選ぶ窓に並ぶ k-mer の数 (17 以上、既定は 27)</param>
         /// <returns>作った索引</returns>
-        public static ReadMinimizerIndex V_構築(Func<IEnumerable<string>> p_配列列)
+        public static ReadMinimizerIndex V_構築(Func<IEnumerable<string>> p_配列列, int p_窓の種数 = C_窓の種数)
         {
+            ArgumentOutOfRangeException.ThrowIfLessThan(p_窓の種数, C_短い問い合わせ用の窓の種数);
             var l_語 = new ulong[C_語の初期数];
             var l_末尾印 = new ulong[C_語の初期数];
             List<(long A_開始, int A_長さ)> l_区間群 = [];
@@ -156,35 +187,7 @@ namespace Tsumiki.Utilities
             Array.Resize(ref l_語, (int)((l_長さ / C_語あたりの文字数) + 2));
             Array.Resize(ref l_末尾印, (int)((l_長さ / 64) + 2));
 
-            var l_束数 = (l_区間群.Count + C_区間の束の大きさ - 1) / C_区間の束の大きさ;
-            var l_束の先頭 = new long[l_束数 + 1];
-            _ = Parallel.For(0, l_束数, l_束 =>
-            {
-                l_束の先頭[l_束 + 1] = V_集める_束(l_語, l_区間群, l_束, null, null, null, 0);
-            });
-            for (var i = 0; i < l_束数; i++)
-            {
-                l_束の先頭[i + 1] += l_束の先頭[i];
-            }
-
-            var l_種 = new uint[l_束の先頭[l_束数]];
-            var l_Is32bit = l_長さ <= uint.MaxValue;
-            var l_位置32 = l_Is32bit ? new uint[l_種.LongLength] : null;
-            var l_位置64 = l_Is32bit ? null : new long[l_種.LongLength];
-            _ = Parallel.For(0, l_束数, l_束 =>
-            {
-                _ = V_集める_束(l_語, l_区間群, l_束, l_種, l_位置32, l_位置64, l_束の先頭[l_束]);
-            });
-            if (l_位置32 is not null)
-            {
-                V_並べる(ref l_種, ref l_位置32);
-            }
-            else
-            {
-                V_並べる(ref l_種, ref l_位置64!);
-            }
-
-            return new ReadMinimizerIndex(l_語, l_末尾印, l_種, l_位置32, l_位置64, l_長さ);
+            return V_組み立てる(l_語, l_末尾印, l_区間群.ToArray(), l_長さ, p_窓の種数);
         }
 
         /// <summary>
@@ -229,9 +232,62 @@ namespace Tsumiki.Utilities
             return l_前後群;
         }
 
+        /// <summary>
+        /// 詰めたリードと区間群は共有したまま、窓の種数だけ変えた索引を作る (minimizer だけを集め直す)
+        /// </summary>
+        /// <param name="p_窓の種数">minimizer を選ぶ窓に並ぶ k-mer の数 (17 以上)</param>
+        /// <returns>窓の種数を変えた索引</returns>
+        public ReadMinimizerIndex Get_窓違い(int p_窓の種数)
+        {
+            ArgumentOutOfRangeException.ThrowIfLessThan(p_窓の種数, C_短い問い合わせ用の窓の種数);
+            return V_組み立てる(this._語, this._末尾印, this._区間群, this.A_塩基数, p_窓の種数);
+        }
+
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 詰めたリードと区間群から、指定の窓の種数で minimizer を集めて並べ、索引を組み立てる
+        /// </summary>
+        /// <param name="p_語">詰めたリード</param>
+        /// <param name="p_末尾印">区間の末尾の印</param>
+        /// <param name="p_区間群">問い合わせに使える長さの区間 (位置の順)</param>
+        /// <param name="p_塩基数">塩基数</param>
+        /// <param name="p_窓の種数">minimizer を選ぶ窓に並ぶ k-mer の数</param>
+        /// <returns>作った索引</returns>
+        private static ReadMinimizerIndex V_組み立てる(ulong[] p_語, ulong[] p_末尾印, (long A_開始, int A_長さ)[] p_区間群, long p_塩基数, int p_窓の種数)
+        {
+            var l_束数 = (p_区間群.Length + C_区間の束の大きさ - 1) / C_区間の束の大きさ;
+            var l_束の先頭 = new long[l_束数 + 1];
+            _ = Parallel.For(0, l_束数, l_束 =>
+            {
+                l_束の先頭[l_束 + 1] = V_集める_束(p_語, p_区間群, l_束, p_窓の種数, null, null, null, 0);
+            });
+            for (var i = 0; i < l_束数; i++)
+            {
+                l_束の先頭[i + 1] += l_束の先頭[i];
+            }
+
+            var l_種 = new uint[l_束の先頭[l_束数]];
+            var l_Is32bit = p_塩基数 <= uint.MaxValue;
+            var l_位置32 = l_Is32bit ? new uint[l_種.LongLength] : null;
+            var l_位置64 = l_Is32bit ? null : new long[l_種.LongLength];
+            _ = Parallel.For(0, l_束数, l_束 =>
+            {
+                _ = V_集める_束(p_語, p_区間群, l_束, p_窓の種数, l_種, l_位置32, l_位置64, l_束の先頭[l_束]);
+            });
+            if (l_位置32 is not null)
+            {
+                V_並べる(ref l_種, ref l_位置32);
+            }
+            else
+            {
+                V_並べる(ref l_種, ref l_位置64!);
+            }
+
+            return new ReadMinimizerIndex(p_語, p_末尾印, l_種, l_位置32, l_位置64, p_塩基数, p_窓の種数, p_区間群);
+        }
 
         /// <summary>
         /// 配列がリードかその逆相補に出てくる場所を、上限まで集める
@@ -241,14 +297,14 @@ namespace Tsumiki.Utilities
         /// <returns>(詰めた配列上の始まり, 逆相補で出てきたか)</returns>
         private List<(long A_開始, bool A_Is逆鎖)> Get_出現場所群(ReadOnlySpan<char> p_配列, int p_上限)
         {
-            if (p_配列.Length < C_最短の問い合わせ長)
+            if (p_配列.Length < this.A_最短の問い合わせ長)
             {
-                throw new ArgumentException($"配列は {C_最短の問い合わせ長} 塩基以上が要る");
+                throw new ArgumentException($"配列は {this.A_最短の問い合わせ長} 塩基以上が要る");
             }
 
-            Span<ulong> l_ハッシュ = stackalloc ulong[C_窓の種数];
-            Span<uint> l_正準値 = stackalloc uint[C_窓の種数];
-            for (var j = 0; j < C_窓の種数; j++)
+            Span<ulong> l_ハッシュ = stackalloc ulong[this.A_窓の種数];
+            Span<uint> l_正準値 = stackalloc uint[this.A_窓の種数];
+            for (var j = 0; j < this.A_窓の種数; j++)
             {
                 var l_値 = Get_種の値(p_配列.Slice(j, C_種長));
                 if (l_値 < 0)
@@ -261,13 +317,13 @@ namespace Tsumiki.Utilities
             }
 
             var l_最小 = ulong.MaxValue;
-            for (var j = 0; j < C_窓の種数; j++)
+            for (var j = 0; j < this.A_窓の種数; j++)
             {
                 l_最小 = Math.Min(l_最小, l_ハッシュ[j]);
             }
 
             var l_種 = uint.MaxValue;
-            for (var j = 0; j < C_窓の種数; j++)
+            for (var j = 0; j < this.A_窓の種数; j++)
             {
                 if (l_ハッシュ[j] == l_最小)
                 {
@@ -282,7 +338,7 @@ namespace Tsumiki.Utilities
             for (var l_項 = l_下; l_項 < this._種.LongLength && this._種[l_項] == l_種; l_項++)
             {
                 var l_場所 = this._位置32?[l_項] ?? this._位置64![l_項];
-                for (var j = 0; j < C_窓の種数; j++)
+                for (var j = 0; j < this.A_窓の種数; j++)
                 {
                     if (l_ハッシュ[j] != l_最小)
                     {
@@ -420,7 +476,7 @@ namespace Tsumiki.Utilities
                         {
                             var l_末尾 = l_今 - 1;
                             _ = Interlocked.Or(ref l_末尾印[l_末尾 / 64], 1UL << (int)(l_末尾 % 64));
-                            if (l_区間長 >= C_最短の問い合わせ長)
+                            if (l_区間長 >= C_短い問い合わせの最短長)
                             {
                                 l_長い区間[l_書く++] = (l_今 - l_区間長, l_区間長);
                             }
@@ -471,11 +527,11 @@ namespace Tsumiki.Utilities
                     continue;
                 }
 
-                l_長い区間数 += l_区間長 >= C_最短の問い合わせ長 ? 1 : 0;
+                l_長い区間数 += l_区間長 >= C_短い問い合わせの最短長 ? 1 : 0;
                 l_区間長 = 0;
             }
 
-            l_長い区間数 += l_区間長 >= C_最短の問い合わせ長 ? 1 : 0;
+            l_長い区間数 += l_区間長 >= C_短い問い合わせの最短長 ? 1 : 0;
             return (l_塩基数, l_長い区間数);
         }
 
@@ -528,18 +584,26 @@ namespace Tsumiki.Utilities
         /// <param name="p_語">詰めたリード</param>
         /// <param name="p_区間群">区間の開始位置と長さ</param>
         /// <param name="p_束">束の番号</param>
+        /// <param name="p_窓の種数">minimizer を選ぶ窓の種数</param>
         /// <param name="p_種">書き込み先 (null なら数えるだけ)</param>
         /// <param name="p_位置32">位置の書き込み先 (32 bit)</param>
         /// <param name="p_位置64">位置の書き込み先 (64 bit)</param>
         /// <param name="p_書き始め">書き込みを始める位置</param>
         /// <returns>minimizer の数</returns>
-        private static long V_集める_束(ulong[] p_語, List<(long A_開始, int A_長さ)> p_区間群, int p_束, uint[]? p_種, uint[]? p_位置32, long[]? p_位置64, long p_書き始め)
+        private static long V_集める_束(ulong[] p_語, (long A_開始, int A_長さ)[] p_区間群, int p_束, int p_窓の種数, uint[]? p_種, uint[]? p_位置32, long[]? p_位置64, long p_書き始め)
         {
             var l_書く = p_書き始め;
-            var l_終わり = Math.Min(p_区間群.Count, (p_束 + 1) * C_区間の束の大きさ);
+            var l_終わり = Math.Min(p_区間群.Length, (p_束 + 1) * C_区間の束の大きさ);
+            var l_最短 = C_種長 + p_窓の種数 - 1;
             for (var i = p_束 * C_区間の束の大きさ; i < l_終わり; i++)
             {
-                V_集める_minimizer(p_語, p_区間群[i].A_開始, p_区間群[i].A_長さ, (l_値, l_場所) =>
+                if (p_区間群[i].A_長さ < l_最短)
+                {
+                    // 窓が 1 つもできない区間は minimizer を持たない
+                    continue;
+                }
+
+                V_集める_minimizer(p_語, p_区間群[i].A_開始, p_区間群[i].A_長さ, p_窓の種数, (l_値, l_場所) =>
                 {
                     if (p_種 is not null)
                     {
@@ -567,8 +631,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_語">詰めたリード</param>
         /// <param name="p_開始">区間の開始位置</param>
         /// <param name="p_長さ">区間の長さ</param>
+        /// <param name="p_窓の種数">minimizer を選ぶ窓の種数</param>
         /// <param name="p_渡し先">minimizer の正準値と位置を受け取る処理</param>
-        private static void V_集める_minimizer(ulong[] p_語, long p_開始, int p_長さ, Action<uint, long> p_渡し先)
+        private static void V_集める_minimizer(ulong[] p_語, long p_開始, int p_長さ, int p_窓の種数, Action<uint, long> p_渡し先)
         {
             var l_種数 = p_長さ - C_種長 + 1;
             var l_正準値 = new uint[l_種数];
@@ -589,10 +654,10 @@ namespace Tsumiki.Utilities
             }
 
             var l_前 = -1;
-            for (var l_窓 = 0; l_窓 + C_窓の種数 <= l_種数; l_窓++)
+            for (var l_窓 = 0; l_窓 + p_窓の種数 <= l_種数; l_窓++)
             {
                 var l_最小位置 = l_窓;
-                for (var j = l_窓 + 1; j < l_窓 + C_窓の種数; j++)
+                for (var j = l_窓 + 1; j < l_窓 + p_窓の種数; j++)
                 {
                     if (l_ハッシュ[j] < l_ハッシュ[l_最小位置])
                     {
