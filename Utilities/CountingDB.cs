@@ -124,7 +124,7 @@ namespace Tsumiki.Utilities
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
             this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / Get_エントリあたりのバイト数(this._k長)));
             this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, C_初期容量の上限), this._等価比較器);
-            this._値バッファ = [];
+            this._値バッファ = new(UInt128組比較器.A_既定);
             this._値バッファ_小 = [];
             this._値バッファ_中 = [];
             this.V_用意_値バッファ();
@@ -312,7 +312,7 @@ namespace Tsumiki.Utilities
             var l_容量 = Math.Min(this._フラッシュ閾値, C_初期容量の上限);
             this._値バッファ_小 = this._k長 <= C_小さい値のk上限 ? new Dictionary<ulong, ulong>(l_容量) : [];
             this._値バッファ_中 = this._k長 is > C_小さい値のk上限 and <= C_中くらいの値のk上限 ? new Dictionary<UInt128, ulong>(l_容量) : [];
-            this._値バッファ = this._k長 > C_中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量) : [];
+            this._値バッファ = this._k長 > C_中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量, UInt128組比較器.A_既定) : [];
         }
 
         /// <summary>

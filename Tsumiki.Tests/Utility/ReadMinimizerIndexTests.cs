@@ -214,5 +214,60 @@ namespace Tsumiki.Tests.Utility
 
             Assert.Equal(p_期待, l_索引.Get_出現数(l_単位.AsSpan(5, ReadMinimizerIndex.C_最短の問い合わせ長), p_上限));
         }
+
+        /// <summary>
+        /// 全窓の判定は、窓ごとに「窓に N が無ければ Has出現、あれば false」と一致する (窓 27 と窓 17 の索引、窓長 31〜60 のうち索引の最短以上)
+        /// </summary>
+        /// <param name="p_窓の種数">索引の窓の種数</param>
+        [Theory]
+        [InlineData(27)]
+        [InlineData(17)]
+        public void V_判定_出現_全窓は窓ごとのHas出現と一致する(int p_窓の種数)
+        {
+            var (l_リード群, l_調べる, _) = Get_照合データ(7, 0.02, ReadMinimizerIndex.C_短い問い合わせの最短長);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群, p_窓の種数);
+            var l_乱数 = new Random(11);
+            for (var k = 0; k < 60; k++)
+            {
+                var l_長さ = l_乱数.Next(50, 401);
+                // 最短 31 塩基以上の問い合わせを 20 個つなげて、必要な長さを確保する
+                var l_連結 = string.Concat(Enumerable.Range(0, 20).Select(_ => l_調べる[l_乱数.Next(l_調べる.Count)]));
+                var l_文字 = l_連結.Substring(0, l_長さ).ToCharArray();
+                for (var j = 0; j < l_文字.Length; j++)
+                {
+                    if (l_乱数.Next(40) == 0)
+                    {
+                        l_文字[j] = 'N';
+                    }
+                }
+                var l_配列 = new string(l_文字);
+
+                for (var l_窓 = Math.Max(31, l_索引.A_最短の問い合わせ長); l_窓 <= 60 && l_窓 <= l_配列.Length; l_窓++)
+                {
+                    var l_結果 = new bool[l_配列.Length - l_窓 + 1];
+                    l_索引.V_判定_出現_全窓(l_配列.AsSpan(), l_窓, l_結果.AsSpan());
+                    for (var i = 0; i < l_結果.Length; i++)
+                    {
+                        var l_窓の配列 = l_配列.AsSpan(i, l_窓);
+                        var l_期待 = !l_窓の配列.Contains('N') && l_索引.Has出現(l_窓の配列);
+                        Assert.True(l_期待 == l_結果[i], $"窓 {l_窓} の開始 {i}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 全窓の判定は、窓長が索引の最短の問い合わせ長に満たない場合と、結果の長さが合わない場合に ArgumentException を投げる
+        /// </summary>
+        [Fact]
+        public void V_判定_出現_全窓は窓の短さと結果の長さの違いを拒む()
+        {
+            var l_乱数 = new Random(12);
+            var l_配列 = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => [l_配列], 17);
+
+            Assert.Throws<ArgumentException>(() => l_索引.V_判定_出現_全窓(l_配列.AsSpan(), 30, new bool[71]));
+            Assert.Throws<ArgumentException>(() => l_索引.V_判定_出現_全窓(l_配列.AsSpan(), 41, new bool[10]));
+        }
     }
 }

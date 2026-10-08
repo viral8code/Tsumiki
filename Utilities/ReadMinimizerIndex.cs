@@ -201,6 +201,80 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
+        /// 長さ p_窓長 の全ての窓について、Has出現 と同じ答えを一度に求める (配列全体の 15-mer を一度だけ計算する)
+        /// </summary>
+        /// <param name="p_配列">調べる配列 (A・C・G・T 以外を含みうる)</param>
+        /// <param name="p_窓長">窓の長さ (最短の問い合わせ長以上)</param>
+        /// <param name="p_結果">窓の開始位置ごとの答え (長さは 配列の長さ - 窓長 + 1)</param>
+        public void V_判定_出現_全窓(ReadOnlySpan<char> p_配列, int p_窓長, Span<bool> p_結果)
+        {
+            if (p_窓長 < this.A_最短の問い合わせ長)
+            {
+                throw new ArgumentException($"窓は {this.A_最短の問い合わせ長} 塩基以上が要る", nameof(p_窓長));
+            }
+
+            var l_窓数 = p_配列.Length - p_窓長 + 1;
+            if (p_結果.Length != l_窓数)
+            {
+                throw new ArgumentException("結果の長さは 配列の長さ - 窓長 + 1 でなければならない", nameof(p_結果));
+            }
+
+            if (l_窓数 <= 0)
+            {
+                return;
+            }
+
+            // 配列全体の 15-mer の正準値とハッシュを一度だけ転がして求める (A・C・G・T 以外を含む 15-mer の値は使われない)
+            var l_種数 = p_配列.Length - C_種長 + 1;
+            var l_正準値 = new uint[l_種数];
+            var l_ハッシュ = new ulong[l_種数];
+            ulong l_順 = 0;
+            ulong l_逆 = 0;
+            var l_連続 = 0;
+            for (var p = 0; p < p_配列.Length; p++)
+            {
+                var l_文字 = Get_2bit値(p_配列[p]);
+                if (l_文字 < 0)
+                {
+                    l_連続 = 0;
+                    l_順 = 0;
+                    l_逆 = 0;
+                    continue;
+                }
+
+                l_順 = ((l_順 << 2) | (uint)l_文字) & C_種のマスク;
+                l_逆 = (l_逆 >> 2) | ((ulong)(3 - l_文字) << (2 * (C_種長 - 1)));
+                l_連続 = Math.Min(l_連続 + 1, C_種長);
+                if (l_連続 == C_種長)
+                {
+                    var l_開始 = p - C_種長 + 1;
+                    var l_値 = (uint)Math.Min(l_順, l_逆);
+                    l_正準値[l_開始] = l_値;
+                    l_ハッシュ[l_開始] = Get_ハッシュ(l_値);
+                }
+            }
+
+            // 窓の中に A・C・G・T 以外があるかを、窓の始まりごとに次の不正な位置で確かめる
+            var l_次の不正 = 0;
+            for (var i = 0; i < l_窓数; i++)
+            {
+                l_次の不正 = Math.Max(l_次の不正, i);
+                while (l_次の不正 < p_配列.Length && Get_2bit値(p_配列[l_次の不正]) >= 0)
+                {
+                    l_次の不正++;
+                }
+
+                if (l_次の不正 < i + p_窓長)
+                {
+                    p_結果[i] = false;
+                    continue;
+                }
+
+                p_結果[i] = this.Get_出現場所群_種から(p_配列.Slice(i, p_窓長), l_ハッシュ.AsSpan(i, this.A_窓の種数), l_正準値.AsSpan(i, this.A_窓の種数), 1).Count > 0;
+            }
+        }
+
+        /// <summary>
         /// 配列がリードかその逆相補に出てくる箇所の数を、上限まで数える
         /// </summary>
         /// <param name="p_配列">調べる配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
@@ -316,18 +390,31 @@ namespace Tsumiki.Utilities
                 l_ハッシュ[j] = Get_ハッシュ((uint)l_値);
             }
 
+            return this.Get_出現場所群_種から(p_配列, l_ハッシュ, l_正準値, p_上限);
+        }
+
+        /// <summary>
+        /// 窓の先頭の種 (15-mer) の正準値とハッシュから、最小ハッシュの種を選んで配列がリードかその逆相補に出てくる場所を、上限まで集める
+        /// </summary>
+        /// <param name="p_配列">調べる配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
+        /// <param name="p_ハッシュ">窓の先頭の A_窓の種数 個の種のハッシュ</param>
+        /// <param name="p_正準値">窓の先頭の A_窓の種数 個の種の正準値</param>
+        /// <param name="p_上限">ここまで集めたら打ち切る</param>
+        /// <returns>(詰めた配列上の始まり, 逆相補で出てきたか)</returns>
+        private List<(long A_開始, bool A_Is逆鎖)> Get_出現場所群_種から(ReadOnlySpan<char> p_配列, ReadOnlySpan<ulong> p_ハッシュ, ReadOnlySpan<uint> p_正準値, int p_上限)
+        {
             var l_最小 = ulong.MaxValue;
             for (var j = 0; j < this.A_窓の種数; j++)
             {
-                l_最小 = Math.Min(l_最小, l_ハッシュ[j]);
+                l_最小 = Math.Min(l_最小, p_ハッシュ[j]);
             }
 
             var l_種 = uint.MaxValue;
             for (var j = 0; j < this.A_窓の種数; j++)
             {
-                if (l_ハッシュ[j] == l_最小)
+                if (p_ハッシュ[j] == l_最小)
                 {
-                    l_種 = l_正準値[j];
+                    l_種 = p_正準値[j];
                     break;
                 }
             }
@@ -340,7 +427,7 @@ namespace Tsumiki.Utilities
                 var l_場所 = this._位置32?[l_項] ?? this._位置64![l_項];
                 for (var j = 0; j < this.A_窓の種数; j++)
                 {
-                    if (l_ハッシュ[j] != l_最小)
+                    if (p_ハッシュ[j] != l_最小)
                     {
                         continue;
                     }

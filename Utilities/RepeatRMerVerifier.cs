@@ -126,7 +126,7 @@ namespace Tsumiki.Utilities
             }
             else if (p_r長 <= 128)
             {
-                this._長集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>())];
+                this._長集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>(UInt128組比較器.A_既定))];
             }
             else
             {
@@ -247,6 +247,7 @@ namespace Tsumiki.Utilities
 
             var l_直近の曖昧位置 = -1;
             var l_連続開始 = -1;
+            var l_出現 = this.Get_索引の出現(p_配列);
             for (var i = 0; i + this._r長 <= p_配列.Length; i++)
             {
                 var l_新規末尾 = i + this._r長 - 1;
@@ -265,7 +266,7 @@ namespace Tsumiki.Utilities
                     l_直近の曖昧位置 = l_新規末尾;
                 }
 
-                var l_Is未観測 = l_直近の曖昧位置 < i && !this.Has観測(p_配列.AsSpan(i, this._r長));
+                var l_Is未観測 = l_直近の曖昧位置 < i && !this.Has観測_事前(p_配列.AsSpan(i, this._r長), l_出現, i);
                 if (l_Is未観測)
                 {
                     if (l_連続開始 < 0)
@@ -419,6 +420,7 @@ namespace Tsumiki.Utilities
             var l_入口支持数 = 0;
             var l_出口支持数 = 0;
             var l_直近の曖昧位置 = -1;
+            var l_出現 = this.Get_索引の出現(l_テスト配列);
             for (var i = 0; i + this._r長 <= l_テスト配列.Length; i++)
             {
                 var l_窓終端 = i + this._r長;
@@ -445,7 +447,7 @@ namespace Tsumiki.Utilities
                     continue;
                 }
 
-                if (l_直近の曖昧位置 < i && this.Has観測(l_テスト配列.AsSpan(i, this._r長)))
+                if (l_直近の曖昧位置 < i && this.Has観測_事前(l_テスト配列.AsSpan(i, this._r長), l_出現, i))
                 {
                     l_支持数++;
                     l_入口支持数 += l_接合点1を跨ぐ ? 1 : 0;
@@ -507,6 +509,40 @@ namespace Tsumiki.Utilities
             return this._索引 is { } l_索引
                 ? this.Is両端が信頼済み(p_窓) && l_索引.Has出現(p_窓)
                 : this._大集合 is null ? this.Has観測(Get_正準値(p_窓)) : this.Has観測(new KmerKey(p_窓).Get_正規形());
+        }
+
+        /// <summary>
+        /// 配列の全ての窓について、索引で出てくるかを一度に判定する (索引が無いときは null)
+        /// </summary>
+        /// <param name="p_配列">調べる配列</param>
+        /// <returns>窓の開始位置ごとの判定、窓が無ければ空。索引が無ければ null</returns>
+        private bool[]? Get_索引の出現(string p_配列)
+        {
+            if (this._索引 is not { } l_索引)
+            {
+                return null;
+            }
+
+            if (p_配列.Length < this._r長)
+            {
+                return [];
+            }
+
+            var l_結果 = new bool[p_配列.Length - this._r長 + 1];
+            l_索引.V_判定_出現_全窓(p_配列, this._r長, l_結果);
+            return l_結果;
+        }
+
+        /// <summary>
+        /// 索引の判定が事前に求めてあれば、それを使って窓が観測済みかを返す (無ければ従来どおり)
+        /// </summary>
+        /// <param name="p_窓">調べる窓</param>
+        /// <param name="p_出現">Get_索引の出現 の結果、索引が無いときは null</param>
+        /// <param name="p_位置">窓の開始位置</param>
+        /// <returns>完全に一致する配列を見ていれば true</returns>
+        private bool Has観測_事前(ReadOnlySpan<char> p_窓, bool[]? p_出現, int p_位置)
+        {
+            return p_出現 is null ? this.Has観測(p_窓) : this.Is両端が信頼済み(p_窓) && p_出現[p_位置];
         }
 
         /// <summary>

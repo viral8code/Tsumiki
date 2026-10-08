@@ -119,11 +119,16 @@ namespace Tsumiki.Cores.Mapping
             }
 
             var l_候補数 = this.Get_候補数(p_リード);
+            // 種の数の多い順、同数なら最初に現れた順 (Dictionary の列挙順) に並べる
+            var l_候補順 = l_候補数
+                .Select((x, i) => (A_候補: x.Key, A_数: x.Value, A_順: i))
+                .ToArray();
+            Array.Sort(l_候補順, (x, y) => x.A_数 != y.A_数 ? y.A_数.CompareTo(x.A_数) : x.A_順.CompareTo(y.A_順));
             string? l_逆相補リード = null;
-            foreach (var l_候補 in l_候補数.OrderByDescending(x => x.Value).Take(C_種ヒット上限))
+            foreach (var l_候補 in l_候補順.Take(C_種ヒット上限))
             {
-                var l_照合リード = l_候補.Key.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
-                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.Key));
+                var l_照合リード = l_候補.A_候補.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.A_候補));
             }
 
             return l_配置候補;
@@ -297,9 +302,9 @@ namespace Tsumiki.Cores.Mapping
         /// </summary>
         /// <param name="p_リード"></param>
         /// <returns>候補とそれを支持する種の数</returns>
-        private Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
+        internal Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
         {
-            Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = [];
+            Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = new(配置候補比較器.A_既定);
             for (var i = 0; i + C_種長 <= p_リード.Length; i++)
             {
                 if (!KmerPacking.TryGet_パック(p_リード, i, C_種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))

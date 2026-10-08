@@ -770,11 +770,11 @@ namespace Tsumiki.Utilities
 
             this._信頼kmer_小 = this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_採用容量) : null;
             this._信頼kmer_中 = this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_採用容量) : null;
-            this._信頼kmer_長 = this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_採用容量) : null;
+            this._信頼kmer_長 = this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_採用容量, UInt128組比較器.A_既定) : null;
             this._信頼kmer_大 = l_Isパック値 ? null : new Dictionary<KmerKey, ulong>(l_採用容量);
             this._控えkmer_小 = l_Is控え使用 && this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_控え容量) : null;
             this._控えkmer_中 = l_Is控え使用 && this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_控え容量) : null;
-            this._控えkmer_長 = l_Is控え使用 && this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_控え容量) : null;
+            this._控えkmer_長 = l_Is控え使用 && this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_控え容量, UInt128組比較器.A_既定) : null;
             this._控えkmer_大 = l_Is控え使用 && !l_Isパック値 ? new Dictionary<KmerKey, ulong>(l_控え容量) : null;
 
             for (var s = 0; s < l_ファイル群.Count; s++)
