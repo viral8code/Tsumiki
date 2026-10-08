@@ -524,6 +524,43 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 入口が 2 本残る反復の頂点で出口側の枝だけを外したなら、頂点から続きへの結合は許すが、頂点へ入る結合は塞いだままにする
+        /// </summary>
+        /// <remarks>
+        /// 頂点へ入れないので、続きと繋いでも別コピーの入口と出口を通り抜ける contig にはならない
+        /// </remarks>
+        [Fact]
+        public void V_入口が2本残る反復の頂点は続きとだけ繋げる()
+        {
+            const int l_k長 = 8;
+            var l_反復 = V_生成_乱数配列(16, p_乱数種: 1311);
+            var l_入1 = V_生成_乱数配列(11, p_乱数種: 1312) + "A" + l_反復[..(l_k長 - 1)];
+            var l_入2 = V_生成_乱数配列(11, p_乱数種: 1313) + "C" + l_反復[..(l_k長 - 1)];
+            var l_出1 = l_反復[^(l_k長 - 1)..] + "G" + V_生成_乱数配列(11, p_乱数種: 1314);
+            var l_出2 = l_反復[^(l_k長 - 1)..] + "T" + "CCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_入1, l_入2, l_反復, l_出1, l_出2);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, 曖昧kmer番号);
+            var l_反復頂点 = ContigMaker.Get_頂点番号(3);
+            Assert.True(l_グラフ.A_出辺[l_反復頂点].Count == 2 && l_グラフ.Get_入次数(l_反復頂点) == 2);
+
+            // 出2 (11 bp) だけが枝になる上限にする
+            Assert.Equal(1, l_グラフ.V_除去_行き止まり枝(l_unitig一覧, p_枝長の上限: 12));
+
+            var l_続き = Assert.Single(l_グラフ.A_出辺[l_反復頂点]);
+            Assert.Equal(2, l_グラフ.Get_入次数(l_反復頂点));
+            Assert.True(l_グラフ.Is構造上一意な辺(l_反復頂点, l_続き));
+
+            // 頂点へ入る結合は、構造上も通過可能性の上でも張れない
+            Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
+            Assert.False(l_グラフ.Is通過可能(l_コピー数, l_反復頂点 ^ 1, l_unitig一覧));
+            foreach (var l_入口 in l_グラフ.A_出辺[l_反復頂点 ^ 1])
+            {
+                Assert.False(l_グラフ.Is構造上一意な辺(l_入口 ^ 1, l_反復頂点));
+            }
+        }
+
+        /// <summary>
         /// 上限より長い行き止まりの枝は外さない
         /// </summary>
         [Fact]

@@ -118,7 +118,7 @@ namespace Tsumiki.Core
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
 
-            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引);
+            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引, p_コピー数);
 
             var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
             var l_較正用リード長 = l_リード長群.Count > 1 && l_リード長群.All(x => x > 0) ? l_リード長群.Min() : p_リード長;
@@ -210,14 +210,15 @@ namespace Tsumiki.Core
         /// <param name="p_バブル敗者への引き継ぎ先"></param>
         /// <param name="p_経路索引"></param>
         /// <param name="p_引き継ぎ経路索引"></param>
-        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先, ReadPathIndex p_経路索引, ReadPathIndex? p_引き継ぎ経路索引)
+        /// <param name="p_コピー数">unitig ごとの推定コピー数、無ければ null</param>
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先, ReadPathIndex p_経路索引, ReadPathIndex? p_引き継ぎ経路索引, IReadOnlyDictionary<int, int>? p_コピー数)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
             var l_外した枝数 = 0;
             for (var l_ラウンド = 1; l_ラウンド <= C_ラウンド数上限; l_ラウンド++)
             {
-                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引);
+                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引, p_コピー数);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先);
                 var l_今回の枝数 = p_グラフ.V_除去_行き止まり枝(p_unitig配列, p_枝長の上限);
                 l_除去バブル数 += l_今回のバブル数;

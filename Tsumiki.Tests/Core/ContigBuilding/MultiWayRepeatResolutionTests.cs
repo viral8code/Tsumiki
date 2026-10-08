@@ -169,10 +169,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// ペアだけで全組が決着しても、通り抜けたリードの並びがその組と争っているなら反復を解かない
+        /// 通り抜けたリードの並びが組ごとの比では争っていても、並びとペアが同じ対応を指し、合算ではっきり寄るなら解く<br/>
+        /// 争う側の組をペアが支持していない (出口が 2 コピーある形ではない) ことが条件
         /// </summary>
         [Fact]
-        public void V_ペアで決着した組を並びが争っていれば解かない()
+        public void V_ペアで決着した組を並びが一部だけ争っていても合算で寄れば解く()
         {
             var (l_グラフ, l_unitig配列) = Get_放射状の反復(2, 2, 4201);
             var l_反復 = 頂点(1);
@@ -187,8 +188,8 @@ namespace Tsumiki.Tests.Core
             };
             var l_頂点数 = l_グラフ.A_出辺.Count;
 
-            Assert.Equal(0, l_グラフ.V_解決_短い反復(l_unitig配列, [], l_ペア連結, 500, 優勢閾値, 最小証拠数, p_経路索引: l_索引));
-            Assert.Equal(l_頂点数, l_グラフ.A_出辺.Count);
+            Assert.Equal(1, l_グラフ.V_解決_短い反復(l_unitig配列, [], l_ペア連結, 500, 優勢閾値, 最小証拠数, p_経路索引: l_索引));
+            Assert.True(l_グラフ.A_出辺.Count > l_頂点数);
         }
 
         /// <summary>
