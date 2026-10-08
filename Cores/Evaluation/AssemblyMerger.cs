@@ -93,8 +93,10 @@ namespace Tsumiki.Cores.Evaluation
             var l_骨格kmer = Get_骨格kmer集合(l_骨格配列, p_アンカーk長);
             var l_長い配列の出現数 = p_期待コピー数 is null ? null : Get_長い配列のkmer出現数(l_骨格配列, p_アンカーk長);
             var l_候補 = new List<橋渡し候補>();
+            var l_競合だけの候補 = new List<橋渡し候補>();
             HashSet<(int, int)> l_反復を挟む辺 = [];
             var l_枠で棄却 = 0;
+            var l_反復だけに錨を下ろした棄却 = 0;
             foreach (var l_他 in p_全候補)
             {
                 if (l_他.A_k長 == p_骨格.A_k長)
@@ -102,8 +104,14 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                foreach (var l_橋渡し in Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長))
+                foreach (var l_橋渡し in Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長, p_期待コピー数, () => l_反復だけに錨を下ろした棄却++))
                 {
+                    if (l_橋渡し.A_Is錨が反復だけ)
+                    {
+                        l_競合だけの候補.Add(l_橋渡し);
+                        continue;
+                    }
+
                     if (!Has既知の配列(l_橋渡し.A_橋渡し配列, l_骨格kmer, p_アンカーk長))
                     {
                         l_候補.Add(l_橋渡し);
@@ -128,10 +136,15 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
 
+            if (l_反復だけに錨を下ろした棄却 > 0)
+            {
+                Logger.V_出力(メッセージID.反復だけに錨を下ろした橋渡しの棄却, l_反復だけに錨を下ろした棄却);
+            }
+
             Func<int, bool>? l_畳まれた端か = p_期待コピー数 is null || l_長い配列の出現数 is null
                 ? null
                 : x => Is畳まれた端(Get_出口側の端(l_骨格配列, x), p_期待コピー数, l_長い配列の出現数, p_アンカーk長);
-            var l_確定 = Get_相互一意な橋渡し(l_候補, l_骨格配列.Count, p_必要な独立支持数, l_反復を挟む辺, l_畳まれた端か, out var l_長さで棄却, out var l_端で棄却);
+            var l_確定 = Get_相互一意な橋渡し(l_候補, l_競合だけの候補, l_骨格配列.Count, p_必要な独立支持数, l_反復を挟む辺, l_畳まれた端か, out var l_長さで棄却, out var l_端で棄却);
             if (l_反復を挟む辺.Count > 0)
             {
                 Logger.V_出力(メッセージID.反復を挟む繋ぎ目の審査, l_反復を挟む辺.Count >> 1, l_枠で棄却, l_長さで棄却, l_端で棄却);
@@ -434,8 +447,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_索引"></param>
         /// <param name="p_骨格配列"></param>
         /// <param name="p_アンカーk長"></param>
+        /// <param name="p_期待コピー数">アンカーの期待コピー数、null なら片側の錨が反復の中だけかを見ない</param>
+        /// <param name="p_棄却時">反復だけに錨を下ろした橋渡しを見つけるたびに呼ぶ (その候補は A_Is錨が反復だけ を true にして返す)、要らなければ null</param>
         /// <returns></returns>
-        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> p_索引, List<string> p_骨格配列, int p_アンカーk長)
+        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> p_索引, List<string> p_骨格配列, int p_アンカーk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null)
         {
             List<橋渡し候補> l_結果 = [];
             var (_, l_他の配列) = Get_配列一覧(p_他.A_最終パス);
@@ -454,7 +469,7 @@ namespace Tsumiki.Cores.Evaluation
                     l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Is順鎖(l_配列, i, p_アンカーk長) == l_骨格側.A_Is順鎖));
                 }
 
-                l_結果.AddRange(Get_連続2本跨ぎ(Get_塊として続く当たり(l_当たり), l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長));
+                l_結果.AddRange(Get_連続2本跨ぎ(Get_塊として続く当たり(l_当たり), l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長, p_期待コピー数, p_棄却時));
             }
 
             return l_結果;
@@ -508,8 +523,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_骨格配列"></param>
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_由来のk長"></param>
+        /// <param name="p_期待コピー数">アンカーの期待コピー数、null なら両側の錨を見ない</param>
+        /// <param name="p_棄却時">反復だけに錨を下ろした橋渡しを棄却するたびに呼ぶ、要らなければ null</param>
         /// <returns></returns>
-        private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
+        private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null)
         {
             for (var i = 1; i < p_当たり.Count; i++)
             {
@@ -553,20 +570,71 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
+                var l_重なり長 = -l_長さ;
+                if (l_長さ < 0 && (l_重なり長 >= l_前配列.Length || l_重なり長 >= l_後配列.Length))
+                {
+                    continue;
+                }
+
+                var l_反復だけに錨を下ろした = !Is両側に一意な錨(p_当たり, i, p_跨いだ配列, p_期待コピー数);
+                if (l_反復だけに錨を下ろした)
+                {
+                    p_棄却時?.Invoke();
+                }
+
                 if (l_長さ >= 0)
                 {
-                    yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長);
+                    yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長, 0, l_反復だけに錨を下ろした);
                     continue;
                 }
 
-                var l_重なり長 = -l_長さ;
-                if (l_重なり長 >= l_前配列.Length || l_重なり長 >= l_後配列.Length)
-                {
-                    continue;
-                }
-
-                yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長);
+                yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長, l_反復だけに錨を下ろした);
             }
+        }
+
+        /// <summary>
+        /// 骨格配列が切り替わる箇所 i の橋渡しについて、出口側と入口側の錨の塊のそれぞれに、推定コピー数が 1 以下の当たりがあるか
+        /// </summary>
+        /// <param name="p_当たり">跨いだ配列の位置順に並んだ当たり</param>
+        /// <param name="p_i">骨格配列が切り替わる箇所 (p_当たり[i - 1] が出口側、p_当たり[i] が入口側)</param>
+        /// <param name="p_跨いだ配列"></param>
+        /// <param name="p_期待コピー数">null なら判定せず true を返す</param>
+        /// <returns></returns>
+        private static bool Is両側に一意な錨(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, int p_i, string p_跨いだ配列, Func<string, int, int>? p_期待コピー数)
+        {
+            if (p_期待コピー数 is null)
+            {
+                return true;
+            }
+
+            var l_前 = p_当たり[p_i - 1];
+            var l_後 = p_当たり[p_i];
+
+            List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> l_出口側 = [];
+            for (var j = p_i - 1; j >= 0 && Is同じ塊(p_当たり[j], l_前); j--)
+            {
+                l_出口側.Add(p_当たり[j]);
+            }
+
+            List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> l_入口側 = [];
+            for (var j = p_i; j < p_当たり.Count && Is同じ塊(p_当たり[j], l_後); j++)
+            {
+                l_入口側.Add(p_当たり[j]);
+            }
+
+            return Has一意な錨(l_出口側, p_跨いだ配列, p_期待コピー数) && Has一意な錨(l_入口側, p_跨いだ配列, p_期待コピー数);
+        }
+
+        /// <summary>
+        /// 錨の塊に、推定コピー数が 1 以下の位置が 1 つでもあるか (反復の中だけに当たる塊を弾く)
+        /// </summary>
+        /// <param name="p_塊">同じ骨格配列の同じ対角線上に続く当たり</param>
+        /// <param name="p_跨いだ配列">当たりの位置を持つ配列</param>
+        /// <param name="p_期待コピー数">配列とその位置のアンカー k-mer の推定コピー数</param>
+        /// <returns>1 以下の位置が 1 つ以上あれば true、塊が空でも false</returns>
+        internal static bool Has一意な錨(IReadOnlyList<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_塊, string p_跨いだ配列, Func<string, int, int> p_期待コピー数)
+        {
+            return p_塊.Any(x => p_期待コピー数(p_跨いだ配列, x.A_自分の位置) <= 1);
         }
 
         /// <summary>
@@ -642,6 +710,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 相互一意な橋渡しだけを残す
         /// </summary>
         /// <param name="p_候補"></param>
+        /// <param name="p_競合だけの候補">片側の錨が反復だけに当たる橋渡し。行き先の集計にだけ使い、確定・支持・繋ぎ長には使わない</param>
         /// <param name="p_骨格の本数"></param>
         /// <param name="p_必要な独立支持数"></param>
         /// <param name="p_反復を挟む辺">骨格に既にある配列を含む候補があった辺。繋ぎ長の一致と端の畳み込みも見る</param>
@@ -649,7 +718,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_長さで棄却">繋ぎ長が k の間で揃わず落とした辺の数</param>
         /// <param name="p_端で棄却">端が畳まれた反復で落とした辺の数</param>
         /// <returns></returns>
-        private static Dictionary<int, 橋渡し候補> Get_相互一意な橋渡し(List<橋渡し候補> p_候補, int p_骨格の本数, int p_必要な独立支持数, IReadOnlySet<(int, int)> p_反復を挟む辺, Func<int, bool>? p_畳まれた端か, out int p_長さで棄却, out int p_端で棄却)
+        internal static Dictionary<int, 橋渡し候補> Get_相互一意な橋渡し(List<橋渡し候補> p_候補, IReadOnlyList<橋渡し候補> p_競合だけの候補, int p_骨格の本数, int p_必要な独立支持数, IReadOnlySet<(int, int)> p_反復を挟む辺, Func<int, bool>? p_畳まれた端か, out int p_長さで棄却, out int p_端で棄却)
         {
             Dictionary<(int, int), HashSet<int>> l_支持したk = [];
             Dictionary<(int, int), List<(int A_長さ, int A_k長)>> l_繋ぎ長 = [];
@@ -680,6 +749,12 @@ namespace Tsumiki.Cores.Evaluation
                 V_登録(l_行き先, l_代表, new 橋渡し候補(l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1, Util.V_逆相補_曖昧塩基あり(l_候補.A_橋渡し配列), l_候補.A_由来のk長, l_候補.A_重なり長));
             }
 
+            foreach (var l_競合 in p_競合だけの候補)
+            {
+                V_登録_行き先(l_行き先, l_競合.A_始点, l_競合.A_終点);
+                V_登録_行き先(l_行き先, l_競合.A_終点 ^ 1, l_競合.A_始点 ^ 1);
+            }
+
             p_長さで棄却 = 0;
             p_端で棄却 = 0;
             Dictionary<int, 橋渡し候補> l_確定 = [];
@@ -692,7 +767,7 @@ namespace Tsumiki.Cores.Evaluation
 
                 var l_終点 = l_集合.First();
 
-                if (l_支持したk[(l_始点, l_終点)].Count < p_必要な独立支持数)
+                if (!l_支持したk.TryGetValue((l_始点, l_終点), out var l_支持した) || l_支持した.Count < p_必要な独立支持数)
                 {
                     continue;
                 }
