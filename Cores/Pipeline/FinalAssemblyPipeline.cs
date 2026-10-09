@@ -122,6 +122,34 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 配列の端どうしを、跨ぐリード 2 本以上で繋ぐ。繋いだ数が 1 以上なら、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_リードパス群">生リードのパス</param>
+        private static void V_繋ぐ_リードで跨げる端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群)
+        {
+            if (RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
+            {
+                return;
+            }
+
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, l_配列群.Select(x => x.A_配列));
+            var l_繋いだ配列群 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, p_リード長, l_一意の出現数, out var l_候補数, out var l_繋いだ数);
+            if (l_繋いだ数 >= 1)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_繋いだ配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            Logger.V_出力(メッセージID.リードで端を繋いだ, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
+        }
+
+        /// <summary>
         /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む。畳めなければ、両側を跨ぐリードの続きで埋められるか試す
         /// </summary>
         /// <param name="p_配列">配列</param>
@@ -332,6 +360,10 @@ namespace Tsumiki.Cores.Pipeline
             V_除外_短い配列(l_最終パス, p_リード長);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
+            if (p_リード長 > 0)
+            {
+                V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
+            }
             RepeatRMerVerifier.V_解放_共有索引();
             var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス, p_Isログ出力: true);
             _ = V_置換_未確認の繋ぎ目(l_scaffoldパス, p_Isログ出力: false);

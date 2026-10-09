@@ -75,7 +75,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// リードの続きに右の片が現れたとみなす、右の先頭の長さ
         /// </summary>
-        private const int C_右の錨長 = 25;
+        internal const int C_右の錨長 = 25;
 
         /// <summary>
         /// 繋ぎ目を埋めるのに要る、同じ埋め方をするリードの数
@@ -565,18 +565,20 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_次の配列">繋ぐ向きに直した次の片</param>
         /// <param name="p_リード長">リード長</param>
         /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数)、分からなければ 0</param>
+        /// <param name="p_要るリード数">埋めるのに要る、同じ埋め方をするリードの数 (既定は C_埋めるのに要るリード数)</param>
+        /// <param name="p_削る上限">左の末尾・右の先頭から削ってみる長さの上限 (既定は C_埋めるときに削る上限)</param>
         /// <returns>左の末尾から削る長さ・間に入れる配列・右の先頭から削る長さ、埋められなければ null</returns>
-        public static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_リードで埋めた繋ぎ目(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_リード長, int p_一意の出現数)
+        public static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_リードで埋めた繋ぎ目(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_リード長, int p_一意の出現数, int p_要るリード数 = C_埋めるのに要るリード数, int p_削る上限 = C_埋めるときに削る上限)
         {
             var l_左 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, C_埋めるときに見る長さ), Math.Min(p_出力.Length, C_埋めるときに見る長さ));
             l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
             var l_右 = p_次の配列[..Math.Min(p_次の配列.Length, C_埋めるときに見る長さ)];
-            if (Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数) is { } l_右へ)
+            if (Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_右へ)
             {
                 return l_右へ;
             }
 
-            return Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数) is { } l_左へ
+            return Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_左へ
                 ? (l_左へ.A_右から削る長さ, Util.V_逆相補_曖昧塩基あり(l_左へ.A_埋める配列), l_左へ.A_左から削る長さ)
                 : null;
         }
@@ -595,16 +597,18 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_右">右の片の先頭</param>
         /// <param name="p_リード長">リード長</param>
         /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <param name="p_要るリード数">埋めるのに要る、同じ埋め方をするリードの数</param>
+        /// <param name="p_削る上限">左の末尾・右の先頭から削ってみる長さの上限</param>
         /// <returns>左の末尾から削る長さ・間に入れる配列・右の先頭から削る長さ、埋められなければ null</returns>
-        private static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_片側から埋める方法(ReadMinimizerIndex p_リード索引, string p_左, string p_右, int p_リード長, int p_一意の出現数)
+        private static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_片側から埋める方法(ReadMinimizerIndex p_リード索引, string p_左, string p_右, int p_リード長, int p_一意の出現数, int p_要るリード数, int p_削る上限)
         {
             const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
-            for (var l_削る = 0; l_削る <= C_埋めるときに削る上限 && p_左.Length >= l_削る + l_錨長 + C_繋ぎ目の余白; l_削る++)
+            for (var l_削る = 0; l_削る <= p_削る上限 &&p_左.Length >= l_削る + l_錨長 + C_繋ぎ目の余白; l_削る++)
             {
                 var l_錨 = p_左.Substring(p_左.Length - l_削る - l_錨長, l_錨長);
                 var l_手前 = p_左[..(p_左.Length - l_削る - l_錨長)];
                 var l_前後群 = p_リード索引.Get_前後群(l_錨, p_リード長, C_続きを見るリード数の上限).Where(x => Is手前が同じ場所(l_手前, x.A_前, C_手前を比べる長さ)).ToList();
-                if (l_前後群.Count < C_埋めるのに要るリード数)
+                if (l_前後群.Count < p_要るリード数)
                 {
                     continue;
                 }
@@ -615,7 +619,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     var l_続き = l_前後群[l_番号].A_続き;
                     var l_錨から = l_錨 + l_続き;
-                    for (var l_右を削る = 0; l_右を削る <= C_埋めるときに削る上限 && l_右を削る + C_右の錨長 <= p_右.Length; l_右を削る++)
+                    for (var l_右を削る = 0; l_右を削る <= p_削る上限 &&l_右を削る + C_右の錨長 <= p_右.Length; l_右を削る++)
                     {
                         var l_右の錨 = p_右.AsSpan(l_右を削る, C_右の錨長);
                         var l_位置 = l_錨から.AsSpan().IndexOf(l_右の錨);
@@ -644,7 +648,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_並び = l_票.OrderByDescending(x => x.Value).ToList();
                 var l_次点 = l_並び.Count > 1 ? l_並び[1].Value : 0;
                 var (l_右を削る長さ, l_埋める配列) = l_並び[0].Key;
-                if (l_並び[0].Value < C_埋めるのに要るリード数 || l_並び[0].Value < C_首位の優勢比 * l_次点)
+                if (l_並び[0].Value < p_要るリード数 || l_並び[0].Value < C_首位の優勢比 * l_次点)
                 {
                     return null;
                 }
@@ -653,7 +657,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_別の続きの最多 = Enumerable.Range(0, l_前後群.Count)
                     .Where(x => l_投票[x] != l_並び[0].Key && l_前後群[x].A_続き.Length >= l_見えたはずの長さ && l_前後群[x].A_前.Length >= C_場所を確かめる手前の長さ && Is手前が同じ場所(l_手前, l_前後群[x].A_前, C_場所を確かめる手前の長さ))
                     .GroupBy(x => l_前後群[x].A_続き[..C_右の錨長]).Select(x => x.Count()).DefaultIfEmpty(0).Max();
-                if (l_別の続きの最多 >= C_埋めるのに要るリード数)
+                if (l_別の続きの最多 >= p_要るリード数)
                 {
                     return null;
                 }
