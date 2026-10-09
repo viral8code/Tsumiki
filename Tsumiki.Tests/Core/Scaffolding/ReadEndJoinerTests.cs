@@ -175,6 +175,27 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_繋いだ1, l_繋いだ2);
         }
 
+        /// <summary>
+        /// 縦に 2 回並んだ反復 (600 塩基) の 1 コピー目で終わる配列と、2 コピー目の後から始まる配列は、端が反復なので繋がない (繋ぐと 2 コピー目を飛ばす)
+        /// </summary>
+        [Fact]
+        public void Get_繋いだ配列群_縦に並んだ反復を挟む端_繋がない()
+        {
+            var l_乱数 = new Random(20240602);
+            var l_反復 = Get_ランダムな塩基(l_乱数, 600);
+            var l_ゲノム = Get_ランダムな塩基(l_乱数, 2000) + l_反復 + l_反復 + Get_ランダムな塩基(l_乱数, 2000);
+            var l_配列群 = new List<(string A_ID, string A_配列)> { ("A", l_ゲノム[..2600]), ("B", l_ゲノム[3200..]) };
+            var l_リード群 = Get_リード群(l_ゲノム);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, l_配列群.Select(x => x.A_配列));
+
+            var l_結果 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, C_リード長, l_一意の出現数, out _, out var l_繋いだ数);
+
+            Assert.True(l_一意の出現数 > 0);
+            Assert.Equal(0, l_繋いだ数);
+            Assert.Equal(l_配列群, l_結果);
+        }
+
         #endregion
 
         #region 内部処理

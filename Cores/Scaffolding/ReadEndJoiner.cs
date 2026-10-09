@@ -39,6 +39,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_削る上限 = 100;
 
+        /// <summary>
+        /// 端が反復かを確かめる、末尾の錨の位置 (末尾から錨の終わりまでの距離)。ゲノムで 2 コピー以上ある配列の端どうしを繋ぐと、間のコピーを飛ばすため
+        /// </summary>
+        private static readonly int[] C_反復を見る位置群 = [0, 50, 100, 150];
+
         #endregion
 
         #region 公開メソッド
@@ -81,6 +86,11 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 l_候補数++;
+                if (Is端が反復(p_索引, l_頂点[v], p_一意の出現数) || Is端が反復(p_索引, l_頂点[w ^ 1], p_一意の出現数))
+                {
+                    continue;
+                }
+
                 if (Scaffolder.Get_リードで埋めた繋ぎ目(p_索引, new StringBuilder(l_頂点[v]), l_頂点[w], p_リード長, p_一意の出現数, C_要るリード数, C_削る上限) is not { } l_辺)
                 {
                     continue;
@@ -99,6 +109,32 @@ namespace Tsumiki.Cores.Scaffolding
         #endregion
 
         #region 内部処理
+
+        /// <summary>
+        /// 向き付き配列の右端の付近 (C_反復を見る位置群) の錨のどれかが反復の中 (Scaffolder.Is反復の中) か
+        /// </summary>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_配列">向き付き配列</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns>反復の中なら true</returns>
+        private static bool Is端が反復(ReadMinimizerIndex p_索引, string p_配列, int p_一意の出現数)
+        {
+            foreach (var l_距離 in C_反復を見る位置群)
+            {
+                var l_位置 = p_配列.Length - C_錨長 - l_距離;
+                if (l_位置 < 0 || p_配列.AsSpan(l_位置, C_錨長).IndexOfAnyExcept("ACGT") >= 0)
+                {
+                    continue;
+                }
+
+                if (Scaffolder.Is反復の中(p_索引, p_配列, l_位置, p_一意の出現数))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// 配列の 25-mer の A/C/G/T の塩基値 (A=0, C=1, G=2, T=3)、それ以外は -1

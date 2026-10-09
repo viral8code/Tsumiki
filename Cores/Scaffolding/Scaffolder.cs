@@ -515,7 +515,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_位置"></param>
         /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
         /// <returns></returns>
-        private static bool Is反復の中(ReadMinimizerIndex p_リード索引, string p_配列, int p_位置, int p_一意の出現数)
+        internal static bool Is反復の中(ReadMinimizerIndex p_リード索引, string p_配列, int p_位置, int p_一意の出現数)
         {
             if (Has似た配列(p_配列, p_配列.AsSpan(p_位置, C_右の錨長), p_位置))
             {
