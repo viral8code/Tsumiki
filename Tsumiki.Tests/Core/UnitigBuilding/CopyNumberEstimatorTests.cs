@@ -10,13 +10,27 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// カバレッジから unitig のコピー数を推定する処理の検証
     /// </summary>
-    /// <remarks>
-    /// ゲノム中に 1 回しか現れない領域のカバレッジを基準値とすると、n 回現れる反復配列にはリードが n 倍集まる<br/>
-    /// したがってカバレッジ比を丸めればコピー数になる<br/>
-    /// これが分かると、反復配列かどうかをグラフの形ではなく量的な根拠で判定でき、経路探索では「何回まで使ってよいか」の予算になる
-    /// </remarks>
     public class CopyNumberEstimatorTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki copynumber tests
+        /// </summary>
+        private const string C_項目_tsumiki_copynumber_tests = "tsumiki_copynumber_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -33,12 +47,8 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public CopyNumberEstimatorTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_copynumber_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_copynumber_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-
-            // これらのテストは長さ加重中央値のフォールバック経路を検証する
-            // 他のテスト (KmerCutoffSelectorTests 等) が残した混合モデルの
-            // 適合結果が ConfigurationManager 経由で漏れ込まないようにする
             ConfigurationManager.A_スペクトルモデル = null;
         }
 
@@ -64,24 +74,21 @@ namespace Tsumiki.Tests.Core
         public void V_単一コピーと2倍_4倍コピーの配列を分離できる()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
-
-            // 単一コピー相当を 2 本 (長さで基準値を支配させる)、
-            // 2 倍・ 4 倍のカバレッジで登録する配列を 1 本ずつ用意する
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             var l_先行単一配列 = V_生成_乱数配列(400, p_乱数種: 1);
             var l_後続単一配列 = V_生成_乱数配列(400, p_乱数種: 2);
             var l_二重配列 = V_生成_乱数配列(120, p_乱数種: 3);
             var l_四重配列 = V_生成_乱数配列(120, p_乱数種: 4);
-
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-
             V_登録_全kmer(l_インデックス, l_先行単一配列, 20, l_k長);
             V_登録_全kmer(l_インデックス, l_後続単一配列, 20, l_k長);
             V_登録_全kmer(l_インデックス, l_二重配列, 40, l_k長);
             V_登録_全kmer(l_インデックス, l_四重配列, 80, l_k長);
-
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Dictionary<int, string> l_unitig群 = new()
             {
                 [1] = l_先行単一配列,
@@ -90,13 +97,9 @@ namespace Tsumiki.Tests.Core
                 [4] = l_四重配列,
             };
             var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
-
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
-            // 基準値は長さ加重中央値なので、長い単一コピー配列の水準になるはず
             Assert.InRange(l_結果.A_単一コピー基準値, 15D, 25D);
-
             Assert.Equal(1, l_結果.A_コピー数[1]);
             Assert.Equal(1, l_結果.A_コピー数[2]);
             Assert.Equal(2, l_結果.A_コピー数[3]);
@@ -106,31 +109,29 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// カバレッジがわずかに高いだけの配列を反復と誤判定してはいけない
         /// </summary>
-        /// <remarks>
-        /// 実データのカバレッジは領域ごとにかなりばらつくため、1.5 倍未満は単一コピーとして扱う
-        /// </remarks>
         [Fact]
         public void V_わずかに高いカバレッジの配列を単一コピーとして扱う()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             var l_基準配列 = V_生成_乱数配列(400, p_乱数種: 5);
             var l_微増配列 = V_生成_乱数配列(120, p_乱数種: 6);
-
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-
             V_登録_全kmer(l_インデックス, l_基準配列, 20, l_k長);
-            V_登録_全kmer(l_インデックス, l_微増配列, 26, l_k長); // 1.3倍
-
+            V_登録_全kmer(l_インデックス, l_微増配列, 26, l_k長);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
-            Dictionary<int, string> l_unitig群 = new() { [1] = l_基準配列, [2] = l_微増配列 };
+            Dictionary<int, string> l_unitig群 = new()
+            {
+                [1] = l_基準配列,
+                [2] = l_微増配列
+            };
             var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
-
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.Equal(1, l_結果.A_コピー数[2]);
         }
 
@@ -141,21 +142,24 @@ namespace Tsumiki.Tests.Core
         public void V_kmer長より短いunitigはコピー数0でなく1になる()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             var l_通常配列 = V_生成_乱数配列(300, p_乱数種: 8);
             var l_短すぎる配列 = V_生成_乱数配列(10, p_乱数種: 9);
-
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
             V_登録_全kmer(l_インデックス, l_通常配列, 20, l_k長);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
-            Dictionary<int, string> l_unitig群 = new() { [1] = l_通常配列, [2] = l_短すぎる配列 };
+            Dictionary<int, string> l_unitig群 = new()
+            {
+                [1] = l_通常配列,
+                [2] = l_短すぎる配列
+            };
             var l_長さ一覧 = l_unitig群.ToDictionary(l_組 => l_組.Key, l_組 => l_組.Value.Length);
-
             var l_カバレッジ = CopyNumberEstimator.Get_カバレッジ(l_インデックス, l_unitig群, l_k長);
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.Equal(0D, l_カバレッジ[2]);
             Assert.Equal(1, l_結果.A_コピー数[2]);
         }
@@ -163,29 +167,22 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// プラスミドのように染色体とは異なるカバレッジ水準を持つ領域は、大域基準値との比だけで見ると多コピーの反復に見える
         /// </summary>
-        /// <remarks>
-        /// しかしその単一コピー領域同士は分岐の無い (排他的な) 鎖で繋がっているため、接続構造を使えば「大域とは水準が違うだけの単一コピー」だと分かる<br/>
-        /// unicycler の copy depth propagation が解決する問題そのもの
-        /// </remarks>
         [Fact]
         public void V_グラフを使うと高カバレッジのプラスミド骨格を単一コピーと認識できる()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             ConfigurationManager.A_スペクトルモデル = null;
-
-            // 染色体相当 (長さで大域基準値=60 を支配する)
             var l_染色体 = V_生成_乱数配列(400, p_乱数種: 10);
-
-            // プラスミド相当
-            // 1 本の配列を k-1 (=20) ずつ重ねて 3 本に切り出し、
-            // 分岐の無い鎖 plasmid1 -> plasmid2 -> plasmid3 を作る
             var l_プラスミド全配列 = V_生成_乱数配列(90, p_乱数種: 20);
             var l_プラスミド先頭 = l_プラスミド全配列[..40];
             var l_プラスミド中間 = l_プラスミド全配列[20..60];
             var l_プラスミド末尾 = l_プラスミド全配列[40..90];
-
-            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             using (var l_書き込み = new FastaWriter(l_FASTAパス))
             {
                 l_書き込み.V_書き込み(1, l_染色体);
@@ -196,11 +193,10 @@ namespace Tsumiki.Tests.Core
 
             var l_contig構築 = new ContigMaker(l_FASTAパス);
             var l_グラフ = l_contig構築.Get_グラフ();
-
             Dictionary<int, double> l_カバレッジ = new()
             {
                 [1] = 60.0D,
-                [2] = 300.0D, // 大域基準値 (60) との比は 5 倍 -> 単独では多コピー判定
+                [2] = 300.0D,
                 [3] = 300.0D,
                 [4] = 300.0D,
             };
@@ -211,17 +207,14 @@ namespace Tsumiki.Tests.Core
                 [3] = l_プラスミド中間.Length,
                 [4] = l_プラスミド末尾.Length,
             };
-
             var l_グラフなし = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
             Assert.Equal(5, l_グラフなし.A_コピー数[2]);
             Assert.Equal(5, l_グラフなし.A_コピー数[3]);
             Assert.Equal(5, l_グラフなし.A_コピー数[4]);
-
             var l_グラフあり = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧, l_グラフ);
             Assert.Equal(1, l_グラフあり.A_コピー数[2]);
             Assert.Equal(1, l_グラフあり.A_コピー数[3]);
             Assert.Equal(1, l_グラフあり.A_コピー数[4]);
-            // 染色体側は元々単一コピー判定であり、接続補正の対象にもならない
             Assert.Equal(1, l_グラフあり.A_コピー数[1]);
         }
 
@@ -232,13 +225,15 @@ namespace Tsumiki.Tests.Core
         public void V_グラフを使っても孤立した高カバレッジunitigは補正されない()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             ConfigurationManager.A_スペクトルモデル = null;
-
             var l_染色体 = V_生成_乱数配列(400, p_乱数種: 11);
-            var l_孤立反復 = V_生成_乱数配列(50, p_乱数種: 21); // 他のどれとも重ならない
-
-            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_孤立反復 = V_生成_乱数配列(50, p_乱数種: 21);
+            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             using (var l_書き込み = new FastaWriter(l_FASTAパス))
             {
                 l_書き込み.V_書き込み(1, l_染色体);
@@ -247,32 +242,36 @@ namespace Tsumiki.Tests.Core
 
             var l_contig構築 = new ContigMaker(l_FASTAパス);
             var l_グラフ = l_contig構築.Get_グラフ();
-
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 60.0D, [2] = 300.0D };
-            Dictionary<int, int> l_長さ一覧 = new() { [1] = l_染色体.Length, [2] = l_孤立反復.Length };
-
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 60.0D,
+                [2] = 300.0D
+            };
+            Dictionary<int, int> l_長さ一覧 = new()
+            {
+                [1] = l_染色体.Length,
+                [2] = l_孤立反復.Length
+            };
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧, l_グラフ);
-
             Assert.Equal(5, l_結果.A_コピー数[2]);
         }
 
         /// <summary>
         /// 小さなプラスミドが分岐無しの 1 本の unitig にきれいに閉じた、もっとも典型的なケース
         /// </summary>
-        /// <remarks>
-        /// 染色体側の成分とは一切繋がりが無い、十分な長さを持つ「島」なので、大域基準値との比が高くても単一コピーとみなしてよい (高コピープラスミド自身の水準で 1 コピー)
-        /// </remarks>
         [Fact]
         public void V_グラフを使うと孤立した長いunitigを単独の単一コピーレプリコンと認識できる()
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             ConfigurationManager.A_スペクトルモデル = null;
-
             var l_染色体 = V_生成_乱数配列(400, p_乱数種: 12);
-            var l_プラスミド = V_生成_乱数配列(600, p_乱数種: 22); // 染色体とは無関係、500 bp 超
-
-            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_プラスミド = V_生成_乱数配列(600, p_乱数種: 22);
+            var l_FASTAパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             using (var l_書き込み = new FastaWriter(l_FASTAパス))
             {
                 l_書き込み.V_書き込み(1, l_染色体);
@@ -281,12 +280,17 @@ namespace Tsumiki.Tests.Core
 
             var l_contig構築 = new ContigMaker(l_FASTAパス);
             var l_グラフ = l_contig構築.Get_グラフ();
-
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 60.0D, [2] = 300.0D };
-            Dictionary<int, int> l_長さ一覧 = new() { [1] = l_染色体.Length, [2] = l_プラスミド.Length };
-
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 60.0D,
+                [2] = 300.0D
+            };
+            Dictionary<int, int> l_長さ一覧 = new()
+            {
+                [1] = l_染色体.Length,
+                [2] = l_プラスミド.Length
+            };
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧, l_グラフ);
-
             Assert.Equal(1, l_結果.A_コピー数[2]);
         }
 
@@ -296,12 +300,18 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_分散診断_ばらつきが小さければ過分散と診断しない()
         {
-            // 全て比 1.5 未満に収まる (=単一コピー扱いの) 均質なカバレッジ集団
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 38D, [2] = 39D, [3] = 40D, [4] = 41D, [5] = 42D, [6] = 40D, [7] = 41D };
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 38D,
+                [2] = 39D,
+                [3] = 40D,
+                [4] = 41D,
+                [5] = 42D,
+                [6] = 40D,
+                [7] = 41D
+            };
             var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
-
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.All(l_結果.A_コピー数.Values, x => Assert.Equal(1, x));
             Assert.NotNull(l_結果.A_分散診断);
             Assert.False(l_結果.A_分散診断!.Value.A_Is過分散);
@@ -310,18 +320,21 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 単一コピー集団のカバレッジが分散指数の上限を大きく超えてばらついていれば、過分散と診断する
         /// </summary>
-        /// <remarks>
-        /// この診断だけでコピー数判定や枝刈りのロジックは変えない (研究的な参考値に留める)
-        /// </remarks>
         [Fact]
         public void V_分散診断_ばらつきが大きければ過分散と診断する()
         {
-            // 比はいずれも 1.5 未満に収めつつ (単一コピー扱いのまま)、値の広がりを大きくする
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 25D, [2] = 30D, [3] = 35D, [4] = 40D, [5] = 45D, [6] = 50D, [7] = 55D };
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 25D,
+                [2] = 30D,
+                [3] = 35D,
+                [4] = 40D,
+                [5] = 45D,
+                [6] = 50D,
+                [7] = 55D
+            };
             var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
-
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.All(l_結果.A_コピー数.Values, x => Assert.Equal(1, x));
             Assert.NotNull(l_結果.A_分散診断);
             Assert.True(l_結果.A_分散診断!.Value.A_Is過分散);
@@ -333,11 +346,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_分散診断_標本が少なすぎる場合はnullを返す()
         {
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 40D, [2] = 41D };
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 40D,
+                [2] = 41D
+            };
             var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
-
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.Null(l_結果.A_分散診断);
         }
 
@@ -347,22 +362,22 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_コピー数区間_分散診断が無ければnullを返す()
         {
-            Dictionary<int, double> l_カバレッジ = new() { [1] = 40D, [2] = 41D };
+            Dictionary<int, double> l_カバレッジ = new()
+            {
+                [1] = 40D,
+                [2] = 41D
+            };
             var l_長さ一覧 = l_カバレッジ.Keys.ToDictionary(x => x, _ => 600);
-
             var l_結果 = CopyNumberEstimator.Get_推定結果(l_カバレッジ, l_長さ一覧);
-
             Assert.Null(l_結果.A_コピー数区間);
         }
 
         /// <summary>
-        /// 分散診断が求められる場合、コピー数区間は必ず点推定を含み、
-        /// 過分散なほど区間が広くなることを確かめる
+        /// 分散診断が求められる場合、コピー数区間は必ず点推定を含み、 過分散なほど区間が広くなることを確かめる
         /// </summary>
         [Fact]
         public void V_コピー数区間_過分散なほど区間が広くなる()
         {
-            // 低分散の単一コピー集団 (id 1-7) + 4 コピー相当の対象 (id 8)
             Dictionary<int, double> l_低分散カバレッジ = new()
             {
                 [1] = 38D,
@@ -376,8 +391,6 @@ namespace Tsumiki.Tests.Core
             };
             var l_長さ一覧 = l_低分散カバレッジ.Keys.ToDictionary(x => x, _ => 600);
             var l_低分散結果 = CopyNumberEstimator.Get_推定結果(l_低分散カバレッジ, l_長さ一覧);
-
-            // 高分散の単一コピー集団 (同じ平均・かなり広い広がり) + 同じ対象
             Dictionary<int, double> l_高分散カバレッジ = new()
             {
                 [1] = 10D,
@@ -390,18 +403,12 @@ namespace Tsumiki.Tests.Core
                 [8] = 160D,
             };
             var l_高分散結果 = CopyNumberEstimator.Get_推定結果(l_高分散カバレッジ, l_長さ一覧);
-
             Assert.NotNull(l_低分散結果.A_コピー数区間);
             Assert.NotNull(l_高分散結果.A_コピー数区間);
-
             var l_低分散区間 = l_低分散結果.A_コピー数区間![8];
             var l_高分散区間 = l_高分散結果.A_コピー数区間![8];
-
-            // 区間は必ず点推定を含む
             Assert.InRange(l_低分散結果.A_コピー数[8], l_低分散区間.A_下限, l_低分散区間.A_上限);
             Assert.InRange(l_高分散結果.A_コピー数[8], l_高分散区間.A_下限, l_高分散区間.A_上限);
-
-            // 過分散な集団から求めた区間の方が広い (誤推定で真の経路を消さないための余裕が大きい)
             var l_低分散幅 = l_低分散区間.A_上限 - l_低分散区間.A_下限;
             var l_高分散幅 = l_高分散区間.A_上限 - l_高分散区間.A_下限;
             Assert.True(l_高分散幅 > l_低分散幅, $"高分散区間幅({l_高分散幅})が低分散区間幅({l_低分散幅})より広いはず");
@@ -420,7 +427,7 @@ namespace Tsumiki.Tests.Core
         private static string V_生成_乱数配列(int p_長さ, int p_乱数種)
         {
             var l_乱数生成器 = new Random(p_乱数種);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数生成器.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数生成器.Next(4)]));
         }
 
         /// <summary>
@@ -443,6 +450,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

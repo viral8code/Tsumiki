@@ -172,9 +172,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         private bool Haskmer(UInt128 p_順鎖, UInt128 p_逆鎖)
         {
             var l_正規形 = p_順鎖 < p_逆鎖 ? p_順鎖 : p_逆鎖;
-            return this._Is小経路
-                ? p_kmerインデックス.Haskmer_小((ulong)l_正規形)
-                : p_kmerインデックス.Haskmer_中(l_正規形);
+            return this._Is小経路 ? p_kmerインデックス.Haskmer_小((ulong)l_正規形) : p_kmerインデックス.Haskmer_中(l_正規形);
         }
 
         /// <summary>
@@ -236,9 +234,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         private bool Haskmer_長(長状態 p_状態)
         {
             var l_Is順鎖 = p_状態.A_順上 < p_状態.A_逆上 || (p_状態.A_順上 == p_状態.A_逆上 && p_状態.A_順下 <= p_状態.A_逆下);
-            return l_Is順鎖
-                ? p_kmerインデックス.Haskmer_正規形(p_状態.A_順上, p_状態.A_順下)
-                : p_kmerインデックス.Haskmer_正規形(p_状態.A_逆上, p_状態.A_逆下);
+            return l_Is順鎖 ? p_kmerインデックス.Haskmer_正規形(p_状態.A_順上, p_状態.A_順下) : p_kmerインデックス.Haskmer_正規形(p_状態.A_逆上, p_状態.A_逆下);
         }
 
         /// <summary>

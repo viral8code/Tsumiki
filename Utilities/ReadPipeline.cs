@@ -30,7 +30,6 @@ namespace Tsumiki.Utilities
         {
             using var l_キュー = new BlockingCollection<T[]>(Math.Max(2 * p_スレッド数, p_キュー容量 / C_束の要素数));
             using var l_中断 = new CancellationTokenSource();
-
             var l_ワーカー = new Task[p_スレッド数];
             for (var w = 0; w < p_スレッド数; w++)
             {
@@ -72,9 +71,7 @@ namespace Tsumiki.Utilities
             }
 
             l_キュー.CompleteAdding();
-
             Task.WaitAll(l_ワーカー);
-
             l_供給側の例外?.Throw();
         }
 

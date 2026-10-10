@@ -9,6 +9,25 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class CountingShardTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki shard tests
+        /// </summary>
+        private const string C_項目_tsumiki_shard_tests = "tsumiki_shard_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 塩基配列 ACGGTCATTGACCTAGGATCA
+        /// </summary>
+        private const string C_塩基配列_ACGGTCATTGACCTAGGATCA = "ACGGTCATTGACCTAGGATCA";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -25,7 +44,7 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         public CountingShardTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_shard_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_shard_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -55,21 +74,20 @@ namespace Tsumiki.Tests.Utility
         public void V_登録回数どおりに数えられる_シャード数によらず(int p_スレッド数)
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = p_スレッド数 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = p_スレッド数
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-
-            var l_配列 = "ACGGTCATTGACCTAGGATCA"; // 21 塩基
+            var l_配列 = C_塩基配列_ACGGTCATTGACCTAGGATCA;
             var l_kmer = l_配列.Select(Util.Get_塩基ID).ToArray();
-
-            // ちょうど 7 回登録する (奇数にして「2 倍になっていないか」を確実に見る)
             for (var i = 0; i < 7; i++)
             {
                 l_インデックス.V_登録(l_kmer.AsSpan());
             }
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Assert.Equal(7UL, l_インデックス.Get_カバレッジ(l_kmer));
         }
 
@@ -83,15 +101,15 @@ namespace Tsumiki.Tests.Utility
         public void V_多数の異なるkmerでも正確に数えられる(int p_スレッド数)
         {
             const int l_k長 = 21;
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = p_スレッド数 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = p_スレッド数
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-
             var l_乱数 = new Random(1_234);
-            var l_配列 = string.Concat(Enumerable.Range(0, 500).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            var l_配列 = string.Concat(Enumerable.Range(0, 500).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
             var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();
-
-            // 位置 i の k-mer を (i % 5) + 2 回登録する
             var l_期待値 = new Dictionary<int, ulong>();
             for (var i = 0; i + l_k長 <= l_塩基列.Length; i++)
             {
@@ -104,14 +122,12 @@ namespace Tsumiki.Tests.Utility
             }
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
-            foreach (var (l_位置, l_回数) in l_期待値)
+            foreach (var (l_位置, l_回数)in l_期待値)
             {
                 Assert.Equal(l_回数, l_インデックス.Get_カバレッジ(l_塩基列.AsSpan(l_位置, l_k長)));
             }
         }
 
         #endregion
-
     }
 }

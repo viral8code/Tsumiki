@@ -12,34 +12,124 @@ namespace Tsumiki.Tests.Utility
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki rmer tests
+        /// </summary>
+        private const string C_項目_tsumiki_rmer_tests = "tsumiki_rmer_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// 項目 A
+        /// </summary>
+        private const string C_項目_A = "A";
+
+        /// <summary>
+        /// 項目 G
+        /// </summary>
+        private const string C_項目_G = "G";
+
+        /// <summary>
+        /// ファイル名 cross fq
+        /// </summary>
+        private const string C_ファイル名_cross_fq = "cross.fq";
+
+        /// <summary>
+        /// ファイル名 internal only fq
+        /// </summary>
+        private const string C_ファイル名_internal_only_fq = "internal_only.fq";
+
+        /// <summary>
+        /// ファイル名 one side fq
+        /// </summary>
+        private const string C_ファイル名_one_side_fq = "one_side.fq";
+
+        /// <summary>
+        /// ファイル名 both sides fq
+        /// </summary>
+        private const string C_ファイル名_both_sides_fq = "both_sides.fq";
+
+        /// <summary>
+        /// ファイル名 rc fq
+        /// </summary>
+        private const string C_ファイル名_rc_fq = "rc.fq";
+
+        /// <summary>
+        /// ファイル名 does not exist fq
+        /// </summary>
+        private const string C_ファイル名_does_not_exist_fq = "does_not_exist.fq";
+
+        /// <summary>
+        /// ファイル名 long cross fq
+        /// </summary>
+        private const string C_ファイル名_long_cross_fq = "long_cross.fq";
+
+        /// <summary>
+        /// ファイル名 long apart fq
+        /// </summary>
+        private const string C_ファイル名_long_apart_fq = "long_apart.fq";
+
+        /// <summary>
+        /// ファイル名 wide cross fq
+        /// </summary>
+        private const string C_ファイル名_wide_cross_fq = "wide_cross.fq";
+
+        /// <summary>
+        /// ファイル名 wide apart fq
+        /// </summary>
+        private const string C_ファイル名_wide_apart_fq = "wide_apart.fq";
+
+        /// <summary>
+        /// ファイル名 wide ambiguous fq
+        /// </summary>
+        private const string C_ファイル名_wide_ambiguous_fq = "wide_ambiguous.fq";
+
+        /// <summary>
+        /// ファイル名 limited fq
+        /// </summary>
+        private const string C_ファイル名_limited_fq = "limited.fq";
+
+        /// <summary>
+        /// FASTQ 品質区切り
+        /// </summary>
+        private const string C_FASTQ品質区切り = "+";
+
+        /// <summary>
         /// この検証で使う r-mer 長
         /// </summary>
-        private const int r長 = 18;
+        private const int C_r長 = 18;
 
         /// <summary>
         /// アセンブリ側の k (=head/repeat/tail が共有する重なりの長さ+1)
         /// </summary>
-        private const int アセンブリk長 = 8;
+        private const int C_アセンブリk長 = 8;
 
         /// <summary>
         /// 反復の手前にある配列
         /// </summary>
-        private const string 反復前配列 = "ACAGTTCGCGAGCCCTCCGTC";
+        private const string C_反復前配列 = "ACAGTTCGCGAGCCCTCCGTC";
 
         /// <summary>
         /// 手前と先に挟まれた反復配列
         /// </summary>
-        private const string 反復配列 = "CTCCGTCAGCTTGTTTGGAGCAGA";
+        private const string C_反復配列 = "CTCCGTCAGCTTGTTTGGAGCAGA";
 
         /// <summary>
         /// 反復の先にある配列
         /// </summary>
-        private const string 反復後配列 = "GAGCAGAGTCGTTCTGCGAGG";
+        private const string C_反復後配列 = "GAGCAGAGTCGTTCTGCGAGG";
 
         /// <summary>
         /// 反復配列と接合しない無関係な配列
         /// </summary>
-        private const string 無関係な後続配列 = "TTTTTTTTTTTTTTTTTTTTT";
+        private const string C_無関係な後続配列 = "TTTTTTTTTTTTTTTTTTTTT";
 
         #endregion
 
@@ -59,12 +149,13 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         public RepeatRMerVerifierTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_rmer_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_rmer_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-            // Get_接合点の支持数 は head/tail から共有重なり (k-1 塩基) を除くのに
-            // 現在の実行時引数の k 長を参照するため、フィクスチャの重なり長
-            // (アセンブリ k 長-1=7) に合わせておく
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = アセンブリk長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_アセンブリk長,
+                A_スレッド数 = 1
+            };
         }
 
         #endregion
@@ -74,31 +165,22 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// リードで観測されていない r-mer が続く範囲だけを拾う
         /// </summary>
-        /// <remarks>
-        /// 低カバレッジでは未観測の窓が散発するので、連続した長さで反復由来の継ぎ目と区別する
-        /// </remarks>
         [Fact]
         public void V_収集_未観測の連続範囲_連続が下限に届いた範囲だけ拾う()
         {
-            var l_リード = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
-            var l_パス = Path.Combine(this._作業ディレクトリ, "reads.fq");
+            var l_リード = C_反復前配列 + C_反復配列[(C_アセンブリk長 - 1)..] + C_反復後配列[(C_アセンブリk長 - 1)..];
+            var l_パス = Path.Combine(this._作業ディレクトリ, C_ファイル名_reads_fq);
             File.WriteAllText(l_パス, $"@r1\n{l_リード}\n+\n{new string('I', l_リード.Length)}\n");
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-
-            // リードそのものは全窓が観測済み
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
             List<(int A_開始, int A_終了)> l_観測済み = [];
             l_検証器.V_収集_未観測の連続範囲(l_リード, p_連続の下限: 3, l_観測済み);
             Assert.Empty(l_観測済み);
-
-            // リードに無い配列は、連続が下限に届けば範囲になる
-            var l_未観測 = new string('G', r長 + 4);
+            var l_未観測 = new string('G', C_r長 + 4);
             List<(int A_開始, int A_終了)> l_届く = [];
             l_検証器.V_収集_未観測の連続範囲(l_未観測, p_連続の下限: 3, l_届く);
             var l_範囲 = Assert.Single(l_届く);
             Assert.Equal(0, l_範囲.A_開始);
-            Assert.Equal(l_未観測.Length - r長, l_範囲.A_終了);
-
-            // 同じ配列でも下限に届かなければ拾わない
+            Assert.Equal(l_未観測.Length - C_r長, l_範囲.A_終了);
             List<(int A_開始, int A_終了)> l_届かない = [];
             l_検証器.V_収集_未観測の連続範囲(l_未観測, p_連続の下限: 99, l_届かない);
             Assert.Empty(l_届かない);
@@ -116,7 +198,7 @@ namespace Tsumiki.Tests.Utility
         [InlineData(128)]
         public void V_厳密キー_全塩基を区別(int p_長さ)
         {
-            var l_配列 = "A" + new string('C', p_長さ - 2) + "G";
+            var l_配列 = C_項目_A + new string('C', p_長さ - 2) + C_項目_G;
             var l_キー = RepeatRMerVerifier.Get_正準値(l_配列);
             Assert.Equal(l_キー, RepeatRMerVerifier.Get_正準値(Util.V_逆相補(l_配列)));
             for (var i = 0; i < p_長さ; i++)
@@ -136,9 +218,8 @@ namespace Tsumiki.Tests.Utility
         [InlineData(160)]
         public void V_厳密キー_2語に収まらない長さはKmerKeyが担う(int p_長さ)
         {
-            var l_配列 = "A" + new string('C', p_長さ - 2) + "G";
+            var l_配列 = C_項目_A + new string('C', p_長さ - 2) + C_項目_G;
             _ = Assert.Throws<ArgumentOutOfRangeException>(() => RepeatRMerVerifier.Get_正準値(l_配列));
-
             var l_キー = new KmerKey(l_配列.AsSpan()).Get_正規形();
             Assert.Equal(l_キー, new KmerKey(Util.V_逆相補(l_配列).AsSpan()).Get_正規形());
             for (var i = 0; i < p_長さ; i++)
@@ -166,64 +247,44 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_両方の接合点を実際に跨ぐリードがあれば支持数は正になる()
         {
-            var l_経路 = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
-            var l_パス = this.V_書き込み_fastq("cross.fq", V_生成_スライドリード(l_経路, 25));
-
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-
-            var l_支持 = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 反復後配列);
-
+            var l_経路 = C_反復前配列 + C_反復配列[(C_アセンブリk長 - 1)..] + C_反復後配列[(C_アセンブリk長 - 1)..];
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_cross_fq, V_生成_スライドリード(l_経路, 25));
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
+            var l_支持 = l_検証器.Get_接合点の支持数(C_反復前配列, C_反復配列, C_反復後配列);
             Assert.True(l_支持 >= Consts.r_mer接合点支持の閾値の既定値, $"expected support ({l_支持}) to reach the default threshold when reads truly cross the junctions");
-            Assert.True(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.True(l_検証器.Has接合点支持(C_反復前配列, C_反復配列, C_反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
         /// どちらの接合点も跨がないリードだけでは、支持が既定の閾値に届かないこと
         /// </summary>
-        /// <remarks>
-        /// 各配列は単独でも実在する配列なので、接合点を跨がない限りその組み合わせが正しい証拠にはならない
-        /// </remarks>
         [Fact]
         public void V_どちらの接合点も跨がないリードだけでは支持が閾値に届かない()
         {
-            // 各配列を丸ごと読んだリードを与える
-            // r より短いリードだと r-mer が
-            // 1 つも作られず、何を数えても 0 になって検定にならない
-            List<string> l_リード群 = [反復前配列, 反復配列, 反復後配列];
-            var l_パス = this.V_書き込み_fastq("internal_only.fq", l_リード群);
-
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-
-            var l_支持 = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 反復後配列);
-
+            List<string> l_リード群 = [C_反復前配列, C_反復配列, C_反復後配列];
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_internal_only_fq, l_リード群);
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
+            var l_支持 = l_検証器.Get_接合点の支持数(C_反復前配列, C_反復配列, C_反復後配列);
             Assert.True(l_支持 < Consts.r_mer接合点支持の閾値の既定値, $"expected support ({l_支持}) to stay below the threshold when no read actually crosses a junction");
-            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            Assert.False(l_検証器.Has接合点支持(C_反復前配列, C_反復配列, C_反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
         /// Head-Repeat 接合点は本物のリードに跨がれているが、Repeat-Tail 側は無関係な配列 (OtherTail) であり跨ぐリードが無い場合でも支持は得られる (Head-Repeat 側の支持だけでカウントされるため)
         /// </summary>
-        /// <remarks>
-        /// この支持数は、両方の接合点が本物のリードに跨がれている場合の支持数を超えないはず
-        /// </remarks>
         [Fact]
         public void V_実際に跨いだ接合点だけが支持数に数えられる()
         {
-            var l_経路 = 反復前配列 + 反復配列[(アセンブリk長 - 1)..];
-            var l_パス = this.V_書き込み_fastq("one_side.fq", V_生成_スライドリード(l_経路, 25));
-
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-
-            var l_withOnlyHeadSideCrossable = l_検証器.Get_接合点の支持数(反復前配列, 反復配列, 無関係な後続配列);
-
+            var l_経路 = C_反復前配列 + C_反復配列[(C_アセンブリk長 - 1)..];
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_one_side_fq, V_生成_スライドリード(l_経路, 25));
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
+            var l_withOnlyHeadSideCrossable = l_検証器.Get_接合点の支持数(C_反復前配列, C_反復配列, C_無関係な後続配列);
             Assert.True(l_withOnlyHeadSideCrossable > 0);
-            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 無関係な後続配列, 1));
-
-            var l_bothWalk = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
-            var l_bothPath = this.V_書き込み_fastq("both_sides.fq", V_生成_スライドリード(l_bothWalk, 25));
-            var l_bothVerifier = RepeatRMerVerifier.V_構築([l_bothPath, string.Empty], r長);
-            var l_withBothCrossable = l_bothVerifier.Get_接合点の支持数(反復前配列, 反復配列, 反復後配列);
-
+            Assert.False(l_検証器.Has接合点支持(C_反復前配列, C_反復配列, C_無関係な後続配列, 1));
+            var l_bothWalk = C_反復前配列 + C_反復配列[(C_アセンブリk長 - 1)..] + C_反復後配列[(C_アセンブリk長 - 1)..];
+            var l_bothPath = this.V_書き込み_fastq(C_ファイル名_both_sides_fq, V_生成_スライドリード(l_bothWalk, 25));
+            var l_bothVerifier = RepeatRMerVerifier.V_構築([l_bothPath, string.Empty], C_r長);
+            var l_withBothCrossable = l_bothVerifier.Get_接合点の支持数(C_反復前配列, C_反復配列, C_反復後配列);
             Assert.True(l_withBothCrossable > l_withOnlyHeadSideCrossable);
         }
 
@@ -233,13 +294,11 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_逆相補のリードでも接合点の支持が得られる()
         {
-            var l_経路 = 反復前配列 + 反復配列[(アセンブリk長 - 1)..] + 反復後配列[(アセンブリk長 - 1)..];
+            var l_経路 = C_反復前配列 + C_反復配列[(C_アセンブリk長 - 1)..] + C_反復後配列[(C_アセンブリk長 - 1)..];
             var l_rc = Util.V_逆相補(l_経路);
-            var l_パス = this.V_書き込み_fastq("rc.fq", V_生成_スライドリード(l_rc, 25));
-
-            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-
-            Assert.True(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, Consts.r_mer接合点支持の閾値の既定値));
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_rc_fq, V_生成_スライドリード(l_rc, 25));
+            var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
+            Assert.True(l_検証器.Has接合点支持(C_反復前配列, C_反復配列, C_反復後配列, Consts.r_mer接合点支持の閾値の既定値));
         }
 
         /// <summary>
@@ -248,9 +307,8 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_存在しないパスや空のパスは無視して構築できる()
         {
-            var l_検証器 = RepeatRMerVerifier.V_構築([string.Empty, Path.Combine(this._作業ディレクトリ, "does_not_exist.fq")], r長);
-
-            Assert.False(l_検証器.Has接合点支持(反復前配列, 反復配列, 反復後配列, 1));
+            var l_検証器 = RepeatRMerVerifier.V_構築([string.Empty, Path.Combine(this._作業ディレクトリ, C_ファイル名_does_not_exist_fq)], C_r長);
+            Assert.False(l_検証器.Has接合点支持(C_反復前配列, C_反復配列, C_反復後配列, 1));
         }
 
         /// <summary>
@@ -266,24 +324,18 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// 2 bit パックが ulong に収まらない長さ (33 以上) でも、ふるいへ切り替えて同じ判定ができること
         /// </summary>
-        /// <remarks>
-        /// 跨いだリードがあれば支持が出て、無ければ出ない
-        /// </remarks>
         [Fact]
         public void V_rmer長が2bitパックに収まらなくても判定できる()
         {
             const int l_長いR = 40;
             var l_先頭 = V_生成_乱数配列(120, p_乱数種: 20_260_922);
-            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_923);
-            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_924);
-
-            var l_跨ぐ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
-            var l_跨ぐパス = this.V_書き込み_fastq("long_cross.fq", V_生成_スライドリード(l_跨ぐ, 100));
-            var l_跨がないパス = this.V_書き込み_fastq("long_apart.fq", V_生成_スライドリード(l_先頭, 100).Concat(V_生成_スライドリード(l_末尾, 100)));
-
+            var l_反復配列 = l_先頭[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_923);
+            var l_末尾 = l_反復配列[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_924);
+            var l_跨ぐ = l_先頭 + l_反復配列[(C_アセンブリk長 - 1)..] + l_末尾[(C_アセンブリk長 - 1)..];
+            var l_跨ぐパス = this.V_書き込み_fastq(C_ファイル名_long_cross_fq, V_生成_スライドリード(l_跨ぐ, 100));
+            var l_跨がないパス = this.V_書き込み_fastq(C_ファイル名_long_apart_fq, V_生成_スライドリード(l_先頭, 100).Concat(V_生成_スライドリード(l_末尾, 100)));
             var l_跨ぐ検証器 = RepeatRMerVerifier.V_構築([l_跨ぐパス, string.Empty], l_長いR);
             var l_跨がない検証器 = RepeatRMerVerifier.V_構築([l_跨がないパス, string.Empty], l_長いR);
-
             Assert.True(l_跨ぐ検証器.Has接合点支持(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
             Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_先頭, l_反復配列, l_末尾));
         }
@@ -296,16 +348,13 @@ namespace Tsumiki.Tests.Utility
         {
             const int l_長いR = 140;
             var l_先頭 = V_生成_乱数配列(300, p_乱数種: 20_260_925);
-            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_926);
-            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_927);
-
-            var l_跨ぐ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
-            var l_跨ぐパス = this.V_書き込み_fastq("wide_cross.fq", V_生成_スライドリード(l_跨ぐ, 400));
-            var l_跨がないパス = this.V_書き込み_fastq("wide_apart.fq", V_生成_スライドリード(l_先頭, 250).Concat(V_生成_スライドリード(l_末尾, 250)));
-
+            var l_反復配列 = l_先頭[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_926);
+            var l_末尾 = l_反復配列[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(300, p_乱数種: 20_260_927);
+            var l_跨ぐ = l_先頭 + l_反復配列[(C_アセンブリk長 - 1)..] + l_末尾[(C_アセンブリk長 - 1)..];
+            var l_跨ぐパス = this.V_書き込み_fastq(C_ファイル名_wide_cross_fq, V_生成_スライドリード(l_跨ぐ, 400));
+            var l_跨がないパス = this.V_書き込み_fastq(C_ファイル名_wide_apart_fq, V_生成_スライドリード(l_先頭, 250).Concat(V_生成_スライドリード(l_末尾, 250)));
             var l_跨ぐ検証器 = RepeatRMerVerifier.V_構築([l_跨ぐパス, string.Empty], l_長いR);
             var l_跨がない検証器 = RepeatRMerVerifier.V_構築([l_跨がないパス, string.Empty], l_長いR);
-
             Assert.True(l_跨ぐ検証器.Has接合点支持(l_先頭, l_反復配列, l_末尾, Consts.r_mer接合点支持の閾値の既定値));
             Assert.Equal(0, l_跨がない検証器.Get_接合点の支持数(l_先頭, l_反復配列, l_末尾));
         }
@@ -318,15 +367,11 @@ namespace Tsumiki.Tests.Utility
         {
             const int l_長いR = 140;
             var l_配列 = V_生成_乱数配列(400, p_乱数種: 20_260_928);
-            var l_曖昧入り = l_配列[..200] + "N" + l_配列[201..];
-            var l_パス = this.V_書き込み_fastq("wide_ambiguous.fq", [l_曖昧入り]);
-
+            var l_曖昧入り = l_配列[..200] + C_GUID書式 + l_配列[201..];
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_wide_ambiguous_fq, [l_曖昧入り]);
             var l_検証器 = RepeatRMerVerifier.V_構築([l_パス, string.Empty], l_長いR);
-
             List<(int A_開始, int A_終了)> l_範囲 = [];
             l_検証器.V_収集_未観測の連続範囲(l_配列, 1, l_範囲);
-
-            // 曖昧塩基の位置 200 を含む窓 (開始 61〜200) だけが未観測になる
             Assert.Equal([(61, 200)], l_範囲);
         }
 
@@ -337,23 +382,16 @@ namespace Tsumiki.Tests.Utility
         public void V_問い合わせ配列へ絞っても判定が変わらない()
         {
             var l_先頭 = V_生成_乱数配列(120, p_乱数種: 20_260_929);
-            var l_反復配列 = l_先頭[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_930);
-            var l_末尾 = l_反復配列[^(アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_931);
-
-            // 先頭と末尾は読まれているが、その間を跨ぐリードは無い
-            var l_パス = this.V_書き込み_fastq(
-                "limited.fq",
-                V_生成_スライドリード(l_先頭, 60).Concat(V_生成_スライドリード(l_末尾, 60)));
-            var l_問い合わせ = l_先頭 + l_反復配列[(アセンブリk長 - 1)..] + l_末尾[(アセンブリk長 - 1)..];
-
-            var l_絞らない = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長);
-            var l_絞る = RepeatRMerVerifier.V_構築([l_パス, string.Empty], r長, p_問い合わせ配列: [l_問い合わせ]);
-
+            var l_反復配列 = l_先頭[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_930);
+            var l_末尾 = l_反復配列[^(C_アセンブリk長 - 1)..] + V_生成_乱数配列(120, p_乱数種: 20_260_931);
+            var l_パス = this.V_書き込み_fastq(C_ファイル名_limited_fq, V_生成_スライドリード(l_先頭, 60).Concat(V_生成_スライドリード(l_末尾, 60)));
+            var l_問い合わせ = l_先頭 + l_反復配列[(C_アセンブリk長 - 1)..] + l_末尾[(C_アセンブリk長 - 1)..];
+            var l_絞らない = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長);
+            var l_絞る = RepeatRMerVerifier.V_構築([l_パス, string.Empty], C_r長, p_問い合わせ配列: [l_問い合わせ]);
             List<(int A_開始, int A_終了)> l_範囲1 = [];
             List<(int A_開始, int A_終了)> l_範囲2 = [];
             l_絞らない.V_収集_未観測の連続範囲(l_問い合わせ, 1, l_範囲1);
             l_絞る.V_収集_未観測の連続範囲(l_問い合わせ, 1, l_範囲2);
-
             Assert.NotEmpty(l_範囲1);
             Assert.Equal(l_範囲1, l_範囲2);
         }
@@ -377,10 +415,11 @@ namespace Tsumiki.Tests.Utility
             {
                 l_書き込み.WriteLine($"@r{l_位置}");
                 l_書き込み.WriteLine(l_配列);
-                l_書き込み.WriteLine("+");
+                l_書き込み.WriteLine(C_FASTQ品質区切り);
                 l_書き込み.WriteLine(new string('I', l_配列.Length));
                 l_位置++;
             }
+
             return l_パス;
         }
 
@@ -407,10 +446,9 @@ namespace Tsumiki.Tests.Utility
         private static string V_生成_乱数配列(int p_長さ, int p_乱数種)
         {
             var l_乱数 = new Random(p_乱数種);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
         }
 
         #endregion
-
     }
 }

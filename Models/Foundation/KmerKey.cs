@@ -22,12 +22,21 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 続く 32 塩基
         /// </summary>
-        private readonly ulong _第2語;
+        private readonly ulong _後半語;
 
         /// <summary>
         /// 64 塩基を超える場合のパック済みデータ
         /// </summary>
         private readonly ulong[]? _長いパック済みデータ;
+
+        #endregion
+
+        #region プロパティ
+
+        /// <summary>
+        /// パック済みデータ
+        /// </summary>
+        public ulong[] A_パック済みデータ => this._長いパック済みデータ ?? (this._長さ <= 32 ? [this._先頭語] : [this._先頭語, this._後半語]);
 
         #endregion
 
@@ -41,7 +50,7 @@ namespace Tsumiki.Models.Foundation
         {
             this._長さ = p_kmer.Length;
             this._先頭語 = 0UL;
-            this._第2語 = 0UL;
+            this._後半語 = 0UL;
             this._長いパック済みデータ = p_kmer.Length > 64 ? new ulong[(p_kmer.Length + 31) >> 5] : null;
             for (var i = 0; i < p_kmer.Length; i++)
             {
@@ -58,7 +67,7 @@ namespace Tsumiki.Models.Foundation
                 }
                 else
                 {
-                    this._第2語 |= l_値 << l_シフト量;
+                    this._後半語 |= l_値 << l_シフト量;
                 }
             }
         }
@@ -71,7 +80,7 @@ namespace Tsumiki.Models.Foundation
         {
             this._長さ = p_kmer.Length;
             this._先頭語 = 0UL;
-            this._第2語 = 0UL;
+            this._後半語 = 0UL;
             this._長いパック済みデータ = p_kmer.Length > 64 ? new ulong[(p_kmer.Length + 31) >> 5] : null;
             for (var i = 0; i < p_kmer.Length; i++)
             {
@@ -88,7 +97,7 @@ namespace Tsumiki.Models.Foundation
                 }
                 else
                 {
-                    this._第2語 |= l_値 << l_シフト量;
+                    this._後半語 |= l_値 << l_シフト量;
                 }
             }
         }
@@ -103,7 +112,7 @@ namespace Tsumiki.Models.Foundation
             this._長さ = p_長さ;
             this._長いパック済みデータ = p_長さ > 64 ? p_パック済みデータ : null;
             this._先頭語 = p_長さ > 64 ? 0UL : p_パック済みデータ[0];
-            this._第2語 = p_長さ is > 32 and <= 64 ? p_パック済みデータ[1] : 0UL;
+            this._後半語 = p_長さ is > 32 and <= 64 ? p_パック済みデータ[1] : 0UL;
         }
 
         #endregion
@@ -181,7 +190,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// パック済みデータを、塩基 ID (1=A,2=C,3=G,4=T) のバイト列へデコードする
         /// </summary>
-        /// <param name="p_長さ">元の k-mer 長 (コンストラクタに渡した長さ) </param>
+        /// <param name="p_長さ">元の k-mer 長 (コンストラクタに渡した長さ)</param>
         /// <returns></returns>
         public byte[] Get_塩基列(int p_長さ)
         {
@@ -256,15 +265,6 @@ namespace Tsumiki.Models.Foundation
 
         #endregion
 
-        #region テストメソッド
-
-        /// <summary>
-        /// パック済みデータ
-        /// </summary>
-        public ulong[] A_パック済みデータ => this._長いパック済みデータ ?? (this._長さ <= 32 ? [this._先頭語] : [this._先頭語, this._第2語]);
-
-        #endregion
-
         #region 内部メソッド
 
         /// <summary>
@@ -296,7 +296,7 @@ namespace Tsumiki.Models.Foundation
         /// <returns>パック済み語</returns>
         private ulong Get_語(int p_位置)
         {
-            return this._長いパック済みデータ is not null ? this._長いパック済みデータ[p_位置] : p_位置 == 0 ? this._先頭語 : this._第2語;
+            return this._長いパック済みデータ is not null ? this._長いパック済みデータ[p_位置] : p_位置 == 0 ? this._先頭語 : this._後半語;
         }
 
         /// <summary>

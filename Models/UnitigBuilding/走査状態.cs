@@ -20,10 +20,7 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <summary>
         /// 固定幅キーを転がす高速 walk
         /// </summary>
-        private readonly UnitigWalk? _高速walk =
-            UnitigWalk.Is対応k長(ConfigurationManager.A_実行時引数.A_k長)
-                ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長)
-                : null;
+        private readonly UnitigWalk? _高速walk = UnitigWalk.Is対応k長(ConfigurationManager.A_実行時引数.A_k長) ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長) : null;
 
         /// <summary>
         /// 固定幅キーを使えない k 長向けの参照実装
@@ -57,14 +54,13 @@ namespace Tsumiki.Models.UnitigBuilding
             }
 
             var l_塩基列 = this._k長 <= 64 ? l_高速walk.Get_塩基列(p_開始kmer, this._訪問済み) : l_高速walk.Get_塩基列_長(p_開始kmer, this._訪問済み_長);
-            return string.Create(l_塩基列.Count, l_塩基列,
-                static (l_文字, l_元) =>
+            return string.Create(l_塩基列.Count, l_塩基列, static (l_文字, l_元) =>
+            {
+                for (var i = 0; i < l_元.Count; i++)
                 {
-                    for (var i = 0; i < l_元.Count; i++)
-                    {
-                        l_文字[i] = Util.Get_塩基文字(l_元[i]);
-                    }
-                });
+                    l_文字[i] = Util.Get_塩基文字(l_元[i]);
+                }
+            });
         }
 
         #endregion

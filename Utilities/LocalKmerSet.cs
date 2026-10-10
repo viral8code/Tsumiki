@@ -67,11 +67,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         public void V_登録(ReadOnlySpan<byte> p_kmer)
         {
-            _ = this._小 is { } l_小
-                ? l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer))
-                : this._中 is { } l_中
-                ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer))
-                : this._長 is { } l_長 ? l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Add(KmerKey.Get_正規形(p_kmer));
+            _ = this._小 is { } l_小 ? l_小.Add(TrustedKmerIndex.Get_正規形_小(p_kmer)) : this._中 is { } l_中 ? l_中.Add(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._長 is { } l_長 ? l_長.Add(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Add(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -81,11 +77,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer(Span<byte> p_kmer)
         {
-            return this._小 is { } l_小
-                ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer))
-                : this._中 is { } l_中
-                ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer))
-                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
+            return this._小 is { } l_小 ? l_小.Contains(TrustedKmerIndex.Get_正規形_小(p_kmer)) : this._中 is { } l_中 ? l_中.Contains(TrustedKmerIndex.Get_正規形_中(p_kmer)) : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -96,9 +88,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位)
         {
-            return this._小 is { } l_小
-                ? l_小.Contains((ulong)p_下位)
-                : this._中 is { } l_中 ? l_中.Contains(p_下位) : this._長!.Contains((p_上位, p_下位));
+            return this._小 is { } l_小 ? l_小.Contains((ulong)p_下位) : this._中 is { } l_中 ? l_中.Contains(p_下位) : this._長!.Contains((p_上位, p_下位));
         }
 
         #endregion

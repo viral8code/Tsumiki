@@ -9,11 +9,37 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// scaffold の連結で k-1 の重なりを畳む条件
     /// </summary>
-    /// <remarks>
-    /// de Bruijn グラフ上で隣り合う contig は k-1 だけ重なるので、畳まずに N で繋ぐとその k-1 塩基が二重に出る
-    /// </remarks>
     public class ScaffolderOverlapTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 塩基配列 ACGGATCTGACCTTAGG
+        /// </summary>
+        private const string C_塩基配列_ACGGATCTGACCTTAGG = "ACGGATCTGACCTTAGG";
+
+        /// <summary>
+        /// 塩基配列 CCTTAGGTTACGACT
+        /// </summary>
+        private const string C_塩基配列_CCTTAGGTTACGACT = "CCTTAGGTTACGACT";
+
+        /// <summary>
+        /// 塩基配列 CCTTAGATTACGACT
+        /// </summary>
+        private const string C_塩基配列_CCTTAGATTACGACT = "CCTTAGATTACGACT";
+
+        /// <summary>
+        /// 塩基配列 CCTTAGG
+        /// </summary>
+        private const string C_塩基配列_CCTTAGG = "CCTTAGG";
+
+        /// <summary>
+        /// 塩基配列 CCTTAG
+        /// </summary>
+        private const string C_塩基配列_CCTTAG = "CCTTAG";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -22,10 +48,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_畳める重なり長_kマイナス1の重なりが一致すれば畳む()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-            var l_出力 = new StringBuilder("ACGGATCTGACCTTAGG");
-
-            Assert.Equal(7, Scaffolder.Get_畳める重なり長(l_出力, "CCTTAGGTTACGACT"));
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
+            var l_出力 = new StringBuilder(C_塩基配列_ACGGATCTGACCTTAGG);
+            Assert.Equal(7, Scaffolder.Get_畳める重なり長(l_出力, C_塩基配列_CCTTAGGTTACGACT));
         }
 
         /// <summary>
@@ -34,10 +63,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_畳める重なり長_重なりが一致しなければ畳まない()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-            var l_出力 = new StringBuilder("ACGGATCTGACCTTAGG");
-
-            Assert.Equal(0, Scaffolder.Get_畳める重なり長(l_出力, "CCTTAGATTACGACT"));
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
+            var l_出力 = new StringBuilder(C_塩基配列_ACGGATCTGACCTTAGG);
+            Assert.Equal(0, Scaffolder.Get_畳める重なり長(l_出力, C_塩基配列_CCTTAGATTACGACT));
         }
 
         /// <summary>
@@ -46,14 +78,20 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_畳める重なり長_kマイナス1より短い配列は畳まない()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-
-            Assert.Equal(0, Scaffolder.Get_畳める重なり長(new StringBuilder("CCTTAGG"), "CCTTAG"));
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
+            Assert.Equal(0, Scaffolder.Get_畳める重なり長(new StringBuilder(C_塩基配列_CCTTAGG), C_塩基配列_CCTTAG));
         }
 
         /// <summary>
         /// k-1 より短い重なりは、繋いだ配列がリードに 2 か所以上あれば畳む
         /// </summary>
+        /// <param name="p_真の重なり"></param>
+        /// <param name="p_リード数"></param>
+        /// <param name="p_期待"></param>
         [Theory]
         [InlineData(40, 3, 40)]
         [InlineData(5, 2, 5)]
@@ -69,7 +107,6 @@ namespace Tsumiki.Tests.Core
             var l_繋いだ配列 = l_左 + l_右[p_真の重なり..];
             var l_リード群 = Enumerable.Range(0, p_リード数).Select(i => l_繋いだ配列.Substring(150 + (p_真の重なり / 2) + i, 100)).Append(Get_乱配列(l_乱数, 100)).ToList();
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
-
             Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100, 0));
         }
 
@@ -84,7 +121,13 @@ namespace Tsumiki.Tests.Core
             var l_左 = Get_乱配列(l_乱数, 200) + l_単位 + l_単位;
             var l_右 = l_単位 + l_単位 + Get_乱配列(l_乱数, 200);
             List<string> l_リード群 = [];
-            foreach (var l_重なり in new[] { 40, 20 })
+            foreach (var l_重なり in new[]
+            {
+                40,
+                20
+            }
+
+            )
             {
                 var l_繋いだ配列 = l_左 + l_右[l_重なり..];
                 l_リード群.Add(l_繋いだ配列.Substring(170, 100));
@@ -92,7 +135,6 @@ namespace Tsumiki.Tests.Core
             }
 
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
-
             Assert.Null(Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 100, 0));
         }
 
@@ -114,9 +156,12 @@ namespace Tsumiki.Tests.Core
             var l_右 = l_反復 + l_右の脇 + Get_乱配列(l_乱数, 184);
             var l_ゲノム1 = p_Is隣り合う ? l_左 + l_右[43..] : l_左 + Get_乱配列(l_乱数, 150) + l_右;
             var l_ゲノム2 = Get_乱配列(l_乱数, 184) + l_左の脇 + l_反復 + l_右の脇 + Get_乱配列(l_乱数, 184);
-            var l_リード群 = new[] { l_ゲノム1, l_ゲノム2 }.SelectMany(x => Enumerable.Range(0, (x.Length - 150) / 5).Select(i => x.Substring(i * 5, 150))).ToList();
+            var l_リード群 = new[]
+            {
+                l_ゲノム1,
+                l_ゲノム2
+            }.SelectMany(x => Enumerable.Range(0, (x.Length - 150) / 5).Select(i => x.Substring(i * 5, 150))).ToList();
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
-
             Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 150, 0));
         }
 
@@ -132,10 +177,9 @@ namespace Tsumiki.Tests.Core
         /// <returns>A・C・G・T からなる配列</returns>
         private static string Get_乱配列(Random p_乱数, int p_長さ)
         {
-            return new string([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[p_乱数.Next(4)])]);
+            return new string([..Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[p_乱数.Next(4)])]);
         }
 
         #endregion
-
     }
 }

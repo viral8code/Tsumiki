@@ -11,6 +11,11 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
         /// 推奨カットオフの下限
         /// </summary>
         public const ulong C_推奨カットオフの下限 = 2UL;
@@ -75,9 +80,7 @@ namespace Tsumiki.Utilities
             }
 
             var l_ピーク = Get_ピーク(p_ヒストグラム, l_粗い谷 + 1UL, l_走査上限);
-
             var l_谷 = Get_谷(p_ヒストグラム, l_ピーク);
-
             var l_谷の頻度 = p_ヒストグラム.GetValueOrDefault(l_谷, 0L);
             var l_ピークの頻度 = p_ヒストグラム.GetValueOrDefault(l_ピーク, 0L);
             if (l_ピーク <= l_谷 || l_ピークの頻度 < l_谷の頻度 * C_山とみなす頻度比)
@@ -86,7 +89,6 @@ namespace Tsumiki.Utilities
             }
 
             var l_加算上限 = Math.Min(l_最大キー, l_ピーク * C_ゲノムサイズ推定に含める倍率の上限);
-
             var (l_単一コピー基準値, l_単一コピー上限) = Get_単一コピーの範囲(p_ヒストグラム, l_谷, l_加算上限, l_ピーク);
             var l_ゲノム由来の延べ数 = 0L;
             var l_延べ数の総和 = 0L;
@@ -100,7 +102,6 @@ namespace Tsumiki.Utilities
 
                 var l_延べ数 = (long)l_出現回数 * l_頻度;
                 l_延べ数の総和 += l_延べ数;
-
                 if (l_出現回数 >= l_谷)
                 {
                     l_ゲノム由来の延べ数 += l_延べ数;
@@ -137,7 +138,6 @@ namespace Tsumiki.Utilities
             }
 
             var l_許容種類数 = (long)(l_解析.A_推定ゲノムサイズ * C_許容するエラー混入比);
-
             var l_残る種類数 = p_ヒストグラム.Values.Sum();
             for (var l_出現回数 = 1UL; l_出現回数 < C_推奨カットオフの下限; l_出現回数++)
             {
@@ -166,7 +166,6 @@ namespace Tsumiki.Utilities
         public static void V_出力_スペクトル(IReadOnlyDictionary<ulong, long> p_ヒストグラム, int p_k長, int? p_リード長)
         {
             Logger.V_出力(メッセージID.kmerヒストグラム, Get_要約(p_ヒストグラム));
-
             if (Get_解析結果(p_ヒストグラム) is not { } l_解析)
             {
                 Logger.V_出力(メッセージID.スペクトルの谷が不明);
@@ -174,7 +173,6 @@ namespace Tsumiki.Utilities
             }
 
             Logger.V_出力(メッセージID.スペクトルの谷とピーク, l_解析.A_谷, l_解析.A_谷の頻度, l_解析.A_ピーク出現回数, l_解析.A_ピークの頻度);
-
             var l_カバレッジ表記 = $"{l_解析.A_ピーク出現回数}x (k-mer)";
             if (p_リード長 is { } l_リード長 && l_リード長 > p_k長)
             {
@@ -201,7 +199,7 @@ namespace Tsumiki.Utilities
                 l_項目.Add($"{l_出現回数}:{p_ヒストグラム.GetValueOrDefault(l_出現回数, 0L)}");
             }
 
-            return string.Join(", ", l_項目);
+            return string.Join(C_項目区切り, l_項目);
         }
 
         #endregion
@@ -218,10 +216,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static (double A_基準値, double A_上限) Get_単一コピーの範囲(IReadOnlyDictionary<ulong, long> p_ヒストグラム, ulong p_谷, ulong p_加算上限, ulong p_ピーク)
         {
-            var l_対象 = p_ヒストグラム
-                .Where(x => x.Key >= p_谷 && x.Key <= p_加算上限 && x.Value > 0L)
-                .OrderBy(x => x.Key)
-                .ToList();
+            var l_対象 = p_ヒストグラム.Where(x => x.Key >= p_谷 && x.Key <= p_加算上限 && x.Value > 0L).OrderBy(x => x.Key).ToList();
             var l_総数 = l_対象.Sum(x => x.Value);
             if (l_総数 <= 0L)
             {

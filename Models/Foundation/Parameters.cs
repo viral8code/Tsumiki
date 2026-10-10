@@ -12,6 +12,51 @@ namespace Tsumiki.Models.Foundation
         #region 定数
 
         /// <summary>
+        /// k 長の正数制約メッセージ
+        /// </summary>
+        private const string C_k長の正数制約メッセージ = "Please make the value of kmer a positive integer";
+
+        /// <summary>
+        /// 訂正 k 長の正数制約メッセージ
+        /// </summary>
+        private const string C_訂正k長の正数制約メッセージ = "Please make the value of error correction kmer a positive integer";
+
+        /// <summary>
+        /// kmer 閾値の正数制約メッセージ
+        /// </summary>
+        private const string C_kmer閾値の正数制約メッセージ = "Please make the value of kmer cut off a positive integer";
+
+        /// <summary>
+        /// 選択肢区切り
+        /// </summary>
+        private const string C_選択肢区切り = " or ";
+
+        /// <summary>
+        /// スレッド数の正数制約メッセージ
+        /// </summary>
+        private const string C_スレッド数の正数制約メッセージ = "Please make the value of thread count a positive integer";
+
+        /// <summary>
+        /// ペア結合閾値の範囲制約メッセージ
+        /// </summary>
+        private const string C_ペア結合閾値の範囲制約メッセージ = "Please make the value of pair unite threshold a ratio between 0 (exclusive) and 1";
+
+        /// <summary>
+        /// ペア支持数の正数制約メッセージ
+        /// </summary>
+        private const string C_ペア支持数の正数制約メッセージ = "Please make the value of pair count threshold a positive integer";
+
+        /// <summary>
+        /// k 長未指定メッセージ
+        /// </summary>
+        private const string C_k長未指定メッセージ = "Please set at least one kmer length";
+
+        /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
         /// インサートサイズ未指定表示
         /// </summary>
         private const string C_インサートサイズ未指定表示 = "unspecified";
@@ -34,7 +79,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 2 が無いライブラリの表示
         /// </summary>
-        private const string C_リード2未指定表示 = "-";
+        private const string C_逆リード未指定表示 = "-";
 
         /// <summary>
         /// k-mer カットオフの既定値
@@ -53,12 +98,12 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 1 のパス
         /// </summary>
-        private List<string> _リード1のパス群 = [];
+        private List<string> _順リードのパス群 = [];
 
         /// <summary>
         /// リード 2 のパス
         /// </summary>
-        private List<string> _リード2のパス群 = [];
+        private List<string> _逆リードのパス群 = [];
 
         /// <summary>
         /// シングルエンドのライブラリのパス
@@ -68,7 +113,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// 前処理などで差し替えたライブラリ、未差し替えなら null
         /// </summary>
-        private List<(string A_リード1, string A_リード2)>? _差し替えたライブラリ群;
+        private List<(string A_順リード, string A_逆リード)>? _差し替えたライブラリ群;
 
         /// <summary>
         /// k 長
@@ -127,9 +172,9 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 1 のパス (複数ライブラリならカンマ区切り)
         /// </summary>
-        public string A_リード1のパス
+        public string A_順リードのパス
         {
-            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => x.A_リード1));
+            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => x.A_順リード));
             set
             {
                 var l_群 = Get_パス群(value);
@@ -141,7 +186,7 @@ namespace Tsumiki.Models.Foundation
                     }
                 }
 
-                this._リード1のパス群 = l_群;
+                this._順リードのパス群 = l_群;
                 this._差し替えたライブラリ群 = null;
             }
         }
@@ -149,9 +194,9 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// リード 2 のパス (複数ライブラリならカンマ区切り)
         /// </summary>
-        public string A_リード2のパス
+        public string A_逆リードのパス
         {
-            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_リード2) ? C_リード2未指定表示 : x.A_リード2));
+            get => string.Join(C_パス一覧の区切り, this.A_ライブラリ群.Select(x => string.IsNullOrWhiteSpace(x.A_逆リード) ? C_逆リード未指定表示 : x.A_逆リード));
             set
             {
                 var l_群 = Get_パス群(value);
@@ -163,7 +208,7 @@ namespace Tsumiki.Models.Foundation
                     }
                 }
 
-                this._リード2のパス群 = l_群;
+                this._逆リードのパス群 = l_群;
                 this._差し替えたライブラリ群 = null;
             }
         }
@@ -193,37 +238,27 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// ライブラリごとのリードの組
         /// </summary>
-        public IReadOnlyList<(string A_リード1, string A_リード2)> A_ライブラリ群
-            => this._差し替えたライブラリ群 ?? this.Get_入力からのライブラリ群();
+        public IReadOnlyList<(string A_順リード, string A_逆リード)> A_ライブラリ群 => this._差し替えたライブラリ群 ?? this.Get_入力からのライブラリ群();
 
         /// <summary>
         /// ライブラリの数
         /// </summary>
-        public int A_ライブラリ数 => this._リード1のパス群.Count;
+        public int A_ライブラリ数 => this._順リードのパス群.Count;
 
         /// <summary>
         /// ペアを持つライブラリがあるか
         /// </summary>
-        public bool Hasペア => this.A_ライブラリ群.Any(x => !string.IsNullOrWhiteSpace(x.A_リード2));
+        public bool A_Hasペア => this.A_ライブラリ群.Any(x => !string.IsNullOrWhiteSpace(x.A_逆リード));
 
         /// <summary>
         /// リード 1 と 2 でライブラリの数が揃っているか
         /// </summary>
-        public bool Isライブラリ数が一致 => this._リード2のパス群.Count is 0 || this._リード2のパス群.Count == this._リード1のパス群.Count;
+        public bool Isライブラリ数が一致 => this._逆リードのパス群.Count is 0 || this._逆リードのパス群.Count == this._順リードのパス群.Count;
 
         /// <summary>
         /// ライブラリごとの代表リード長 (観測値)
         /// </summary>
         public IReadOnlyList<int> A_ライブラリのリード長 => this._ライブラリのリード長;
-
-        /// <summary>
-        /// ライブラリごとの代表リード長を置く
-        /// </summary>
-        /// <param name="p_長さ群">ライブラリ順のリード長</param>
-        public void Set_ライブラリのリード長(IEnumerable<int> p_長さ群)
-        {
-            this._ライブラリのリード長 = [.. p_長さ群];
-        }
 
         /// <summary>
         /// -k が明示的に指定されたかどうか
@@ -240,7 +275,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value <= 0)
                 {
-                    throw new ArgumentException("Please make the value of kmer a positive integer");
+                    throw new ArgumentException(C_k長の正数制約メッセージ);
                 }
 
                 this._k長 = value;
@@ -268,7 +303,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value <= 0)
                 {
-                    throw new ArgumentException("Please make the value of error correction kmer a positive integer");
+                    throw new ArgumentException(C_訂正k長の正数制約メッセージ);
                 }
 
                 this._エラー訂正k長 = value;
@@ -296,7 +331,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value <= 0UL)
                 {
-                    throw new ArgumentException("Please make the value of kmer cut off a positive integer");
+                    throw new ArgumentException(C_kmer閾値の正数制約メッセージ);
                 }
 
                 this._kmerカットオフ = value;
@@ -319,44 +354,12 @@ namespace Tsumiki.Models.Foundation
             {
                 if (!Consts.許容Phredオフセット.Contains(value))
                 {
-                    throw new ArgumentException($"Phred value is must {string.Join(" or ", Consts.許容Phredオフセット)}");
+                    throw new ArgumentException($"Phred value is must {string.Join(C_選択肢区切り, Consts.許容Phredオフセット)}");
                 }
 
                 this._Phredオフセット = value;
                 this._Phredオフセット群 = [];
                 this.A_IsPhred明示指定 = true;
-            }
-        }
-
-        /// <summary>
-        /// そのライブラリの Phred オフセット
-        /// </summary>
-        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
-        /// <returns></returns>
-        public int Get_Phredオフセット(int p_ライブラリ番号)
-        {
-            return this.A_IsPhred明示指定 || p_ライブラリ番号 >= this._Phredオフセット群.Count
-                ? this._Phredオフセット
-                : this._Phredオフセット群[p_ライブラリ番号];
-        }
-
-        /// <summary>
-        /// そのライブラリの Phred オフセットを推定値として置く
-        /// </summary>
-        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
-        /// <param name="p_オフセット">置くオフセット</param>
-        public void Set_推定Phredオフセット(int p_ライブラリ番号, int p_オフセット)
-        {
-            while (this._Phredオフセット群.Count <= p_ライブラリ番号)
-            {
-                this._Phredオフセット群.Add(this._Phredオフセット);
-            }
-
-            this._Phredオフセット群[p_ライブラリ番号] = p_オフセット;
-
-            if (p_ライブラリ番号 == 0)
-            {
-                this.Set_推定Phredオフセット(p_オフセット);
             }
         }
 
@@ -378,11 +381,7 @@ namespace Tsumiki.Models.Foundation
         /// <summary>
         /// メモリ量の指定
         /// </summary>
-        public string A_メモリ予算
-        {
-            get => Util.Get_表示用メモリサイズ(this.A_メモリ予算バイト数);
-            set => this.A_メモリ予算バイト数 = Util.V_変換_メモリサイズ(value);
-        }
+        public string A_メモリ予算 { get => Util.Get_表示用メモリサイズ(this.A_メモリ予算バイト数); set => this.A_メモリ予算バイト数 = Util.V_変換_メモリサイズ(value); }
 
         /// <summary>
         /// 期待インサートサイズ
@@ -519,7 +518,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value <= 0)
                 {
-                    throw new ArgumentException("Please make the value of thread count a positive integer");
+                    throw new ArgumentException(C_スレッド数の正数制約メッセージ);
                 }
 
                 this._スレッド数 = value;
@@ -536,7 +535,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value is <= 0M or > 1M)
                 {
-                    throw new ArgumentException("Please make the value of pair unite threshold a ratio between 0 (exclusive) and 1");
+                    throw new ArgumentException(C_ペア結合閾値の範囲制約メッセージ);
                 }
 
                 this._ペア結合閾値 = value;
@@ -553,7 +552,7 @@ namespace Tsumiki.Models.Foundation
             {
                 if (value <= 0UL)
                 {
-                    throw new ArgumentException("Please make the value of pair count threshold a positive integer");
+                    throw new ArgumentException(C_ペア支持数の正数制約メッセージ);
                 }
 
                 this._ペア支持数閾値 = value;
@@ -570,29 +569,50 @@ namespace Tsumiki.Models.Foundation
         #region 公開メソッド
 
         /// <summary>
-        /// 明示指定の状態を保って作業用設定を複製する
+        /// ライブラリごとの代表リード長を置く
         /// </summary>
-        /// <returns>元の設定と k 長一覧を共有しない複製</returns>
-        /// <summary>
-        /// 前処理などで作り直したパスへ差し替える
-        /// </summary>
-        /// <param name="p_群">ライブラリごとのリードの組</param>
-        public void Set_ライブラリ群(IEnumerable<(string A_リード1, string A_リード2)> p_群)
+        /// <param name="p_長さ群">ライブラリ順のリード長</param>
+        public void Set_ライブラリのリード長(IEnumerable<int> p_長さ群)
         {
-            this._差し替えたライブラリ群 = [.. p_群];
+            this._ライブラリのリード長 = [.. p_長さ群];
         }
 
         /// <summary>
-        /// 実行時引数からライブラリの一覧を組み立てる
+        /// そのライブラリの Phred オフセット
         /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
         /// <returns></returns>
-        private List<(string A_リード1, string A_リード2)> Get_入力からのライブラリ群()
+        public int Get_Phredオフセット(int p_ライブラリ番号)
         {
-            List<(string A_リード1, string A_リード2)> l_群 = this._リード2のパス群.Count > 0
-                ? [.. this._リード1のパス群.Select((x, i) => (x, i < this._リード2のパス群.Count ? this._リード2のパス群[i] : string.Empty))]
-                : [.. this._リード1のパス群.Select(x => (x, string.Empty))];
-            l_群.AddRange(this._シングルのパス群.Select(x => (x, string.Empty)));
-            return l_群;
+            return this.A_IsPhred明示指定 || p_ライブラリ番号 >= this._Phredオフセット群.Count ? this._Phredオフセット : this._Phredオフセット群[p_ライブラリ番号];
+        }
+
+        /// <summary>
+        /// そのライブラリの Phred オフセットを推定値として置く
+        /// </summary>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <param name="p_オフセット">置くオフセット</param>
+        public void Set_推定Phredオフセット(int p_ライブラリ番号, int p_オフセット)
+        {
+            while (this._Phredオフセット群.Count <= p_ライブラリ番号)
+            {
+                this._Phredオフセット群.Add(this._Phredオフセット);
+            }
+
+            this._Phredオフセット群[p_ライブラリ番号] = p_オフセット;
+            if (p_ライブラリ番号 == 0)
+            {
+                this.Set_推定Phredオフセット(p_オフセット);
+            }
+        }
+
+        /// <summary>
+        /// 明示指定の状態を保って作業用設定を複製する
+        /// </summary>
+        /// <param name="p_群">ライブラリごとのリードの組</param>
+        public void Set_ライブラリ群(IEnumerable<(string A_順リード, string A_逆リード)> p_群)
+        {
+            this._差し替えたライブラリ群 = [.. p_群];
         }
 
         /// <summary>
@@ -604,10 +624,10 @@ namespace Tsumiki.Models.Foundation
             var l_複製 = (Parameters)this.MemberwiseClone();
             l_複製._k長一覧 = [.. this._k長一覧];
             l_複製.A_無誤り区間の度数群 = [.. this.A_無誤り区間の度数群];
-            l_複製._リード1のパス群 = [.. this._リード1のパス群];
+            l_複製._順リードのパス群 = [.. this._順リードのパス群];
             l_複製._Phredオフセット群 = [.. this._Phredオフセット群];
             l_複製._ライブラリのリード長 = [.. this._ライブラリのリード長];
-            l_複製._リード2のパス群 = [.. this._リード2のパス群];
+            l_複製._逆リードのパス群 = [.. this._逆リードのパス群];
             l_複製._シングルのパス群 = [.. this._シングルのパス群];
             l_複製._差し替えたライブラリ群 = this._差し替えたライブラリ群 is null ? null : [.. this._差し替えたライブラリ群];
             l_複製.A_仕上げ設定 = new()
@@ -628,14 +648,14 @@ namespace Tsumiki.Models.Foundation
             var l_一覧 = p_k長一覧.Distinct().OrderBy(x => x).ToList();
             if (l_一覧.Count == 0)
             {
-                throw new ArgumentException("Please set at least one kmer length");
+                throw new ArgumentException(C_k長未指定メッセージ);
             }
 
             foreach (var l_k長 in l_一覧)
             {
                 if (l_k長 <= 0)
                 {
-                    throw new ArgumentException("Please make the value of kmer a positive integer");
+                    throw new ArgumentException(C_k長の正数制約メッセージ);
                 }
             }
 
@@ -724,9 +744,9 @@ namespace Tsumiki.Models.Foundation
                 ============= Parameters =============
 
                 {this.Get_ライブラリ表示()}
-                kmer: {(this.A_k長一覧.Count > 1 ? string.Join(", ", this.A_k長一覧) : this.A_k長.ToString())}
+                kmer: {(this.A_k長一覧.Count > 1 ? string.Join(C_項目区切り, this.A_k長一覧) : this.A_k長.ToString())}
                 kmer cutoff: {this.A_kmerカットオフ}
-                phred: {(this._Phredオフセット群.Count > 1 ? string.Join(", ", this._Phredオフセット群) : this.A_Phredオフセット.ToString())}
+                phred: {(this._Phredオフセット群.Count > 1 ? string.Join(C_項目区切り, this._Phredオフセット群) : this.A_Phredオフセット.ToString())}
                 quality cutoff: {this.A_クオリティカットオフ}
                 3' quality trimming threshold: {this.A_品質トリム閾値}
                 {(this.A_Isオンメモリ ? C_オンメモリのメモリ予算の見出し : C_メモリ予算の見出し)}: {this.A_メモリ予算}
@@ -768,6 +788,17 @@ namespace Tsumiki.Models.Foundation
         #region 内部メソッド
 
         /// <summary>
+        /// 実行時引数からライブラリの一覧を組み立てる
+        /// </summary>
+        /// <returns></returns>
+        private List<(string A_順リード, string A_逆リード)> Get_入力からのライブラリ群()
+        {
+            List<(string A_順リード, string A_逆リード)> l_群 = this._逆リードのパス群.Count > 0 ? [.. this._順リードのパス群.Select((x, i) => (x, i < this._逆リードのパス群.Count ? this._逆リードのパス群[i] : string.Empty))] : [.. this._順リードのパス群.Select(x => (x, string.Empty))];
+            l_群.AddRange(this._シングルのパス群.Select(x => (x, string.Empty)));
+            return l_群;
+        }
+
+        /// <summary>
         /// -log に書く綴り
         /// </summary>
         /// <param name="p_水準">綴りへ変換するログ水準</param>
@@ -804,9 +835,7 @@ namespace Tsumiki.Models.Foundation
         /// <returns></returns>
         private static List<string> Get_パス群(string? p_指定)
         {
-            return string.IsNullOrWhiteSpace(p_指定)
-                ? []
-                : [.. p_指定.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)];
+            return string.IsNullOrWhiteSpace(p_指定) ? [] : [.. p_指定.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)];
         }
 
         /// <summary>
@@ -818,15 +847,15 @@ namespace Tsumiki.Models.Foundation
             List<string> l_行群 = [];
             for (var i = 0; i < this.A_ライブラリ群.Count; i++)
             {
-                var (l_リード1, l_リード2) = this.A_ライブラリ群[i];
-                if (string.IsNullOrWhiteSpace(l_リード2))
+                var (l_順リード, l_逆リード) = this.A_ライブラリ群[i];
+                if (string.IsNullOrWhiteSpace(l_逆リード))
                 {
-                    l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_リード1}"));
+                    l_行群.Add(FormattableString.Invariant($"lib{i + 1} single: {l_順リード}"));
                     continue;
                 }
 
-                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_リード1}"));
-                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_リード2}"));
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read1: {l_順リード}"));
+                l_行群.Add(FormattableString.Invariant($"lib{i + 1} read2: {l_逆リード}"));
             }
 
             return string.Join(Environment.NewLine, l_行群);

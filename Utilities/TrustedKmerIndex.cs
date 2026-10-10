@@ -236,7 +236,7 @@ namespace Tsumiki.Utilities
                 return;
             }
 
-            var l_パック済み = TryGet_正規化パック(p_kmer);
+            var l_パック済み = Get_正規化パック(p_kmer);
             var l_シャード = (int)(Get_ハッシュ(l_パック済み) % (uint)l_カウンタ群.Length);
             lock (this._シャードロック![l_シャード])
             {
@@ -344,13 +344,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer(Span<byte> p_kmer)
         {
-            return this._Is小経路使用
-                ? this.Has信頼_小(Get_正規形_小(p_kmer))
-                : this._Is中経路使用
-                ? this.Has信頼_中(Get_正規形_中(p_kmer))
-                : this._Is長経路使用
-                ? this.Has信頼_長(Get_正規形_長(p_kmer))
-                : this._信頼kmer_大!.ContainsKey(KmerKey.Get_正規形(p_kmer));
+            return this._Is小経路使用 ? this.Has信頼_小(Get_正規形_小(p_kmer)) : this._Is中経路使用 ? this.Has信頼_中(Get_正規形_中(p_kmer)) : this._Is長経路使用 ? this.Has信頼_長(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.ContainsKey(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -381,9 +375,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位)
         {
-            return this._Is小経路使用
-                ? this.Has信頼_小((ulong)p_下位)
-                : this._Is中経路使用 ? this.Has信頼_中(p_下位) : this.Has信頼_長((p_上位, p_下位));
+            return this._Is小経路使用 ? this.Has信頼_小((ulong)p_下位) : this._Is中経路使用 ? this.Has信頼_中(p_下位) : this.Has信頼_長((p_上位, p_下位));
         }
 
         /// <summary>
@@ -403,13 +395,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public ulong Get_カバレッジ(Span<byte> p_kmer)
         {
-            return this._Is小経路使用
-                ? this.Get_信頼カバレッジ_小(Get_正規形_小(p_kmer))
-                : this._Is中経路使用
-                ? this.Get_信頼カバレッジ_中(Get_正規形_中(p_kmer))
-                : this._Is長経路使用
-                ? this.Get_信頼カバレッジ_長(Get_正規形_長(p_kmer))
-                : this._信頼kmer_大!.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL);
+            return this._Is小経路使用 ? this.Get_信頼カバレッジ_小(Get_正規形_小(p_kmer)) : this._Is中経路使用 ? this.Get_信頼カバレッジ_中(Get_正規形_中(p_kmer)) : this._Is長経路使用 ? this.Get_信頼カバレッジ_長(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL);
         }
 
         /// <summary>
@@ -419,13 +405,7 @@ namespace Tsumiki.Utilities
         /// <returns>控えに無ければ 0</returns>
         public ulong Get_控えカバレッジ(Span<byte> p_kmer)
         {
-            return this._Is小経路使用
-                ? this._控えkmer_小?.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL) ?? 0UL
-                : this._Is中経路使用
-                ? this._控えkmer_中?.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL) ?? 0UL
-                : this._Is長経路使用
-                ? this._控えkmer_長?.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL) ?? 0UL
-                : this._控えkmer_大?.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL) ?? 0UL;
+            return this._Is小経路使用 ? this._控えkmer_小?.GetValueOrDefault(Get_正規形_小(p_kmer), 0UL) ?? 0UL : this._Is中経路使用 ? this._控えkmer_中?.GetValueOrDefault(Get_正規形_中(p_kmer), 0UL) ?? 0UL : this._Is長経路使用 ? this._控えkmer_長?.GetValueOrDefault(Get_正規形_長(p_kmer), 0UL) ?? 0UL : this._控えkmer_大?.GetValueOrDefault(KmerKey.Get_正規形(p_kmer), 0UL) ?? 0UL;
         }
 
         /// <summary>
@@ -444,7 +424,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        public static ulong TryGet_パック_小(ReadOnlySpan<byte> p_kmer)
+        public static ulong Get_パック_小(ReadOnlySpan<byte> p_kmer)
         {
             var l_値 = 0UL;
             foreach (var l_塩基ID in p_kmer)
@@ -515,11 +495,11 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_小 の 128 bit 版 (k は 64 以下)
+        /// <see cref="Get_パック_小"/> の 128 bit 版 (k は 64 以下)
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        public static UInt128 TryGet_パック_中(ReadOnlySpan<byte> p_kmer)
+        public static UInt128 Get_パック_中(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
             foreach (var l_塩基ID in p_kmer)
@@ -531,11 +511,11 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_小 の 128 bit 2 語版 (k は 128 以下)
+        /// <see cref="Get_パック_小"/> の 128 bit 2 語版 (k は 128 以下)
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        public static (UInt128 A_上位, UInt128 A_下位) TryGet_パック_長(ReadOnlySpan<byte> p_kmer)
+        public static (UInt128 A_上位, UInt128 A_下位) Get_パック_長(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_上位 = 0;
             UInt128 l_下位 = 0;
@@ -591,11 +571,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         public void V_除去(ReadOnlySpan<byte> p_kmer)
         {
-            _ = this._Is小経路使用
-                ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer))
-                : this._Is中経路使用
-                ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer))
-                : this._Is長経路使用 ? this._信頼kmer_長!.Remove(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.Remove(KmerKey.Get_正規形(p_kmer));
+            _ = this._Is小経路使用 ? this._信頼kmer_小!.Remove(Get_正規形_小(p_kmer)) : this._Is中経路使用 ? this._信頼kmer_中!.Remove(Get_正規形_中(p_kmer)) : this._Is長経路使用 ? this._信頼kmer_長!.Remove(Get_正規形_長(p_kmer)) : this._信頼kmer_大!.Remove(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -604,15 +580,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_kmer"></param>
         /// <param name="p_カバレッジ"></param>
         /// <returns></returns>
-        public bool Try追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
+        public bool Is成功_追加_信頼kmer(ReadOnlySpan<byte> p_kmer, ulong p_カバレッジ)
         {
-            return this._Is小経路使用
-                ? this.Try追加_小(Get_正規形_小(p_kmer), p_カバレッジ)
-                : this._Is中経路使用
-                ? this.Try追加_中(Get_正規形_中(p_kmer), p_カバレッジ)
-                : this._Is長経路使用
-                ? this.Try追加_長(Get_正規形_長(p_kmer), p_カバレッジ)
-                : this._信頼kmer_大!.TryAdd(KmerKey.Get_正規形(p_kmer), p_カバレッジ);
+            return this._Is小経路使用 ? this.Is成功_追加_小(Get_正規形_小(p_kmer), p_カバレッジ) : this._Is中経路使用 ? this.Is成功_追加_中(Get_正規形_中(p_kmer), p_カバレッジ) : this._Is長経路使用 ? this.Is成功_追加_長(Get_正規形_長(p_kmer), p_カバレッジ) : this._信頼kmer_大!.TryAdd(KmerKey.Get_正規形(p_kmer), p_カバレッジ);
         }
 
         /// <summary>
@@ -622,11 +592,9 @@ namespace Tsumiki.Utilities
         /// <param name="p_下位"></param>
         /// <param name="p_カバレッジ">未登録の場合に設定する観測回数</param>
         /// <returns>未登録のキーを追加した場合は true</returns>
-        public bool Try追加_信頼kmer_正規形(UInt128 p_上位, UInt128 p_下位, ulong p_カバレッジ)
+        public bool Is成功_追加_信頼kmer_正規形(UInt128 p_上位, UInt128 p_下位, ulong p_カバレッジ)
         {
-            return this._Is小経路使用
-                ? this.Try追加_小((ulong)p_下位, p_カバレッジ)
-                : this._Is中経路使用 ? this.Try追加_中(p_下位, p_カバレッジ) : this.Try追加_長((p_上位, p_下位), p_カバレッジ);
+            return this._Is小経路使用 ? this.Is成功_追加_小((ulong)p_下位, p_カバレッジ) : this._Is中経路使用 ? this.Is成功_追加_中(p_下位, p_カバレッジ) : this.Is成功_追加_長((p_上位, p_下位), p_カバレッジ);
         }
 
         /// <summary>
@@ -635,7 +603,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_正規形">作業領域から切り離したキー</param>
         /// <param name="p_カバレッジ">未登録の場合に設定する観測回数</param>
         /// <returns>未登録のキーを追加した場合は true</returns>
-        public bool Try追加_信頼kmer_正規形(KmerKey p_正規形, ulong p_カバレッジ)
+        public bool Is成功_追加_信頼kmer_正規形(KmerKey p_正規形, ulong p_カバレッジ)
         {
             return this._信頼kmer_大!.TryAdd(p_正規形, p_カバレッジ);
         }
@@ -646,15 +614,9 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public List<byte[]> Get_開始kmer一覧()
         {
-            return this._Is小経路使用
-                ? this.Get_開始kmer一覧_小()
-                : this._Is中経路使用
-                ? this.Get_開始kmer一覧_中()
-                : [.. this.Get_信頼kmer一覧()
-                .AsParallel()
-                .AsOrdered()
-                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                .SelectMany(this.Get_開始kmer候補)];
+            return this._Is小経路使用 ? this.Get_開始kmer一覧_小() : this._Is中経路使用 ? this.Get_開始kmer一覧_中() : [
+                ..this.Get_信頼kmer一覧().AsParallel().AsOrdered().WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数)).SelectMany(this.Get_開始kmer候補)
+            ];
         }
 
         /// <summary>
@@ -679,7 +641,6 @@ namespace Tsumiki.Utilities
                 V_走査_エントリ(l_ファイル群[s], l_パック長, (_, l_出現回数) => V_加算_ヒストグラム(l_配列, l_大きい回数, l_出現回数));
                 l_シャード別[s] = (l_配列, l_大きい回数);
             });
-
             this._統合時のヒストグラム = Get_合算ヒストグラム(l_シャード別);
             return this._統合時のヒストグラム;
         }
@@ -709,14 +670,12 @@ namespace Tsumiki.Utilities
             var l_Is控え使用 = p_控え下限 > 0UL && p_控え下限 < p_カットオフ;
             var l_k長 = this._k長;
             var l_Isパック値 = l_k長 <= C_パック値のk上限;
-
             var l_シャード別ヒストグラム = new (long[] A_配列, Dictionary<ulong, long> A_大きい回数)[l_ファイル群.Count];
             var l_シャード別採用 = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)>[l_ファイル群.Count];
             var l_シャード別控え = new List<(UInt128 A_上位, UInt128 A_下位, ulong A_出現回数)>[l_ファイル群.Count];
             var l_シャード別採用_大 = new List<(KmerKey A_キー, ulong A_出現回数)>[l_ファイル群.Count];
             var l_シャード別控え_大 = new List<(KmerKey A_キー, ulong A_出現回数)>[l_ファイル群.Count];
             var l_シャード別種類数 = new long[l_ファイル群.Count];
-
             _ = Parallel.For(0, l_ファイル群.Count, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数) }, s =>
             {
                 var l_配列 = new long[C_配列で数える出現回数の上限];
@@ -726,7 +685,6 @@ namespace Tsumiki.Utilities
                 List<(KmerKey A_キー, ulong A_出現回数)> l_採用_大 = [];
                 List<(KmerKey A_キー, ulong A_出現回数)> l_控え_大 = [];
                 var l_種類数 = 0L;
-
                 V_走査_エントリ(l_ファイル群[s], l_パック長, (l_パック済み, l_出現回数) =>
                 {
                     l_種類数++;
@@ -748,7 +706,6 @@ namespace Tsumiki.Utilities
                         (l_Is採用 ? l_採用_大 : l_控え_大).Add((l_キー, l_出現回数));
                     }
                 });
-
                 l_シャード別ヒストグラム[s] = (l_配列, l_大きい回数);
                 l_シャード別採用[s] = l_採用;
                 l_シャード別控え[s] = l_控え;
@@ -756,21 +713,18 @@ namespace Tsumiki.Utilities
                 l_シャード別控え_大[s] = l_控え_大;
                 l_シャード別種類数[s] = l_種類数;
             });
-
             var l_採用数 = l_Isパック値 ? l_シャード別採用.Sum(x => (long)x.Count) : l_シャード別採用_大.Sum(x => (long)x.Count);
             var l_控え数 = l_Isパック値 ? l_シャード別控え.Sum(x => (long)x.Count) : l_シャード別控え_大.Sum(x => (long)x.Count);
             var l_採用容量 = (int)Math.Min(int.MaxValue / 2, Math.Max(1_024L, l_採用数));
             var l_控え容量 = (int)Math.Min(int.MaxValue / 2, l_控え数);
-
             this._信頼kmer_小 = this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_採用容量) : null;
             this._信頼kmer_中 = this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_採用容量) : null;
-            this._信頼kmer_長 = this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_採用容量, UInt128組比較器.A_既定) : null;
+            this._信頼kmer_長 = this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_採用容量, UInt128組比較器.C_既定) : null;
             this._信頼kmer_大 = l_Isパック値 ? null : new Dictionary<KmerKey, ulong>(l_採用容量);
             this._控えkmer_小 = l_Is控え使用 && this._Is小経路使用 ? new Dictionary<ulong, ulong>(l_控え容量) : null;
             this._控えkmer_中 = l_Is控え使用 && this._Is中経路使用 ? new Dictionary<UInt128, ulong>(l_控え容量) : null;
-            this._控えkmer_長 = l_Is控え使用 && this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_控え容量, UInt128組比較器.A_既定) : null;
+            this._控えkmer_長 = l_Is控え使用 && this._Is長経路使用 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_控え容量, UInt128組比較器.C_既定) : null;
             this._控えkmer_大 = l_Is控え使用 && !l_Isパック値 ? new Dictionary<KmerKey, ulong>(l_控え容量) : null;
-
             for (var s = 0; s < l_ファイル群.Count; s++)
             {
                 foreach (var (l_上位, l_下位, l_出現回数) in l_シャード別採用[s])
@@ -798,7 +752,6 @@ namespace Tsumiki.Utilities
             Logger.V_出力(メッセージID.採用kmer数, (ulong)l_採用数);
             this.A_出現回数ヒストグラム = Get_合算ヒストグラム(l_シャード別ヒストグラム);
             this.V_作り直し_ふるい();
-
             foreach (var l_ファイル in l_ファイル群)
             {
                 中間データ置き場.V_削除(l_ファイル);
@@ -879,7 +832,7 @@ namespace Tsumiki.Utilities
         /// <returns>正規形</returns>
         internal static ulong Get_正規形_小(ReadOnlySpan<byte> p_kmer)
         {
-            var l_パック済み = TryGet_パック_小(p_kmer);
+            var l_パック済み = Get_パック_小(p_kmer);
             var l_逆相補 = Get_逆相補_小(l_パック済み, p_kmer.Length);
             return Math.Min(l_パック済み, l_逆相補);
         }
@@ -891,7 +844,7 @@ namespace Tsumiki.Utilities
         /// <returns>正規形</returns>
         internal static UInt128 Get_正規形_中(ReadOnlySpan<byte> p_kmer)
         {
-            var l_パック済み = TryGet_パック_中(p_kmer);
+            var l_パック済み = Get_パック_中(p_kmer);
             var l_逆相補 = Get_逆相補_中(l_パック済み, p_kmer.Length);
             return l_パック済み < l_逆相補 ? l_パック済み : l_逆相補;
         }
@@ -924,13 +877,13 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer">塩基 ID 列</param>
         /// <returns>正規形の右詰めパック値、k &lt;= 64 なら上位は 0</returns>
-        internal static (UInt128 A_上位, UInt128 A_下位) Get_正規形_値(ReadOnlySpan<byte> p_kmer)
+        public static (UInt128 A_上位, UInt128 A_下位) Get_正規形_値(ReadOnlySpan<byte> p_kmer)
         {
             return p_kmer.Length <= 64 ? ((UInt128)0, Get_正規形_中(p_kmer)) : Get_正規形_長(p_kmer);
         }
 
         /// <summary>
-        /// TryGet_パック_小 でパックした値の逆相補を、ヒープ確保なしで直接計算する
+        /// <see cref="Get_パック_小"/> でパックした値の逆相補を、ヒープ確保なしで直接計算する
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
@@ -1120,7 +1073,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_正規形">正規形</param>
         /// <param name="p_カバレッジ">出現回数</param>
         /// <returns>足したら true</returns>
-        private bool Try追加_小(ulong p_正規形, ulong p_カバレッジ)
+        private bool Is成功_追加_小(ulong p_正規形, ulong p_カバレッジ)
         {
             var l_Is追加 = this._信頼kmer_小!.TryAdd(p_正規形, p_カバレッジ);
             if (l_Is追加)
@@ -1137,7 +1090,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_正規形">正規形</param>
         /// <param name="p_カバレッジ">出現回数</param>
         /// <returns>足したら true</returns>
-        private bool Try追加_中(UInt128 p_正規形, ulong p_カバレッジ)
+        private bool Is成功_追加_中(UInt128 p_正規形, ulong p_カバレッジ)
         {
             var l_Is追加 = this._信頼kmer_中!.TryAdd(p_正規形, p_カバレッジ);
             if (l_Is追加)
@@ -1154,7 +1107,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_正規形">正規形</param>
         /// <param name="p_カバレッジ">出現回数</param>
         /// <returns>足したら true</returns>
-        private bool Try追加_長((UInt128 A_上位, UInt128 A_下位) p_正規形, ulong p_カバレッジ)
+        private bool Is成功_追加_長((UInt128 A_上位, UInt128 A_下位) p_正規形, ulong p_カバレッジ)
         {
             var l_Is追加 = this._信頼kmer_長!.TryAdd(p_正規形, p_カバレッジ);
             if (l_Is追加)
@@ -1317,7 +1270,7 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        private static byte[] TryGet_正規化パック(ReadOnlySpan<byte> p_kmer)
+        private static byte[] Get_正規化パック(ReadOnlySpan<byte> p_kmer)
         {
             var l_Is順鎖使用 = Is順鎖正規形(p_kmer);
             var l_パック済み = new byte[(p_kmer.Length + 3) / 4];
@@ -1391,7 +1344,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_小 の逆変換
+        /// <see cref="Get_パック_小"/> の逆変換
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
@@ -1409,7 +1362,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_中 の逆変換
+        /// <see cref="Get_パック_中"/> の逆変換
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
@@ -1427,7 +1380,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// TryGet_パック_長 の逆変換
+        /// <see cref="Get_パック_長"/> の逆変換
         /// </summary>
         /// <param name="p_パック済み"></param>
         /// <param name="p_長さ"></param>
@@ -1461,7 +1414,6 @@ namespace Tsumiki.Utilities
                 var l_逆 = Get_逆相補_小(l_順, l_k長);
                 l_判定[i] = (this.Is開始kmer_小(l_順, l_逆), this.Is開始kmer_小(l_逆, l_順));
             });
-
             List<byte[]> l_結果 = [];
             for (var i = 0; i < l_キー群.Length; i++)
             {
@@ -1494,7 +1446,6 @@ namespace Tsumiki.Utilities
                 var l_逆 = Get_逆相補_中(l_順, l_k長);
                 l_判定[i] = (this.Is開始kmer_中(l_順, l_逆), this.Is開始kmer_中(l_逆, l_順));
             });
-
             List<byte[]> l_結果 = [];
             for (var i = 0; i < l_キー群.Length; i++)
             {
@@ -1513,7 +1464,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 詰めた値の k-mer が開始点か (Is開始kmer と同じ判定、k &lt;= 32)
+        /// 詰めた値の k-mer が開始点か (Is 開始 kmer と同じ判定、k &lt;= 32)
         /// </summary>
         /// <param name="p_順">k-mer の詰めた値</param>
         /// <param name="p_逆">その逆相補の詰めた値</param>
@@ -1557,7 +1508,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 詰めた値の k-mer が開始点か (Is開始kmer と同じ判定、33 &lt;= k &lt;= 64)
+        /// 詰めた値の k-mer が開始点か (Is 開始 kmer と同じ判定、33 &lt;= k &lt;= 64)
         /// </summary>
         /// <param name="p_順">k-mer の詰めた値</param>
         /// <param name="p_逆">その逆相補の詰めた値</param>

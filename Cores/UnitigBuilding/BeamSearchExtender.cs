@@ -48,25 +48,14 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_インサートサイズ"></param>
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
-        /// <param name="p_較正器">
-        /// 支持を生カウントではなく期待本数との比で測るための較正器<br/>
-        /// 渡さない (あるいは使えない) 場合は生カウントのままスコアリングする
-        /// </param>
-        /// <param name="p_コピー数区間">
-        /// 観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/>
-        /// 反復を何度まで通ってよいかの予算には、点推定ではなくこの上限を使う (誤推定で真の経路を消さないため)<br/>
-        /// 渡さない場合は従来どおり点推定 (p_コピー数) を予算にする
-        /// </param>
-        /// <param name="p_経路索引">
-        /// 渡すと、contig の末尾から分岐元を通り抜けたリードの並びでも最初の 1 歩を決める<br/>
-        /// ペアの先読みと別の 1 歩を示した分岐は繋がない
-        /// </param>
+        /// <param name="p_較正器">支持を生カウントではなく期待本数との比で測るための較正器<br/> 渡さない (あるいは使えない) 場合は生カウントのままスコアリングする</param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/> 反復を何度まで通ってよいかの予算には、点推定ではなくこの上限を使う (誤推定で真の経路を消さないため)<br/> 渡さない場合は従来どおり点推定 (p_コピー数) を予算にする</param>
+        /// <param name="p_経路索引">渡すと、contig の末尾から分岐元を通り抜けたリードの並びでも最初の 1 歩を決める<br/> ペアの先読みと別の 1 歩を示した分岐は繋がない</param>
         /// <returns>新たに確定した結合の数</returns>
         public static int V_延長_先読み(UnitigGraph p_グラフ, List<string> p_unitig配列, int[] p_結合, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_インサートサイズ, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null, ReadPathIndex? p_経路索引 = null)
         {
             var l_先読み塩基数 = Math.Max(p_インサートサイズ, 1) * C_先読み倍率;
             var l_確定数 = 0;
-
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
                 if (p_結合[v] != -1)
@@ -125,7 +114,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_較正器"></param>
         /// <param name="p_前進距離">分岐点から候補直前までの固有配列長</param>
         /// <returns></returns>
-        internal static (long A_生, double A_正規化) Get_スコア(List<(int A_頂点, int A_距離)> p_足場, int p_候補, List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器, int p_前進距離)
+        public static (long A_生, double A_正規化) Get_スコア(List<(int A_頂点, int A_距離)> p_足場, int p_候補, List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, 証拠較正器? p_較正器, int p_前進距離)
         {
             var l_生スコア = 0L;
             var l_正規化スコア = 0D;
@@ -134,9 +123,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 var l_件数 = p_ペア連結.GetValueOrDefault((l_足場頂点, p_候補));
                 l_生スコア += (long)l_件数;
-                l_正規化スコア += p_較正器 is { A_Is使用可能: true } l_較正器
-                    ? l_較正器.Get_正規化済み支持(l_件数, p_unitig配列[l_足場頂点].Length, l_候補長, p_ギャップ長: l_足場距離 + p_前進距離 - Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1))
-                    : l_件数;
+                l_正規化スコア += p_較正器 is { A_Is使用可能: true } l_較正器 ? l_較正器.Get_正規化済み支持(l_件数, p_unitig配列[l_足場頂点].Length, l_候補長, p_ギャップ長: l_足場距離 + p_前進距離 - Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1)) : l_件数;
             }
 
             return (l_生スコア, l_正規化スコア);
@@ -242,7 +229,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 l_通過済み.Add(l_直前);
-
                 if (p_コピー数.GetValueOrDefault(l_直前 >> 1, 1) <= 1)
                 {
                     l_足場.Add((l_直前, l_累積長));
@@ -268,7 +254,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_優勢閾値"></param>
         /// <param name="p_最小証拠数"></param>
         /// <param name="p_較正器"></param>
-        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)、渡さない場合は点推定を予算にする</param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c) 、渡さない場合は点推定を予算にする</param>
         /// <returns>最初の 1 歩として最も支持される頂点、決めきれない場合は null</returns>
         private static int? Get_最良1歩(UnitigGraph p_グラフ, List<string> p_unitig配列, int p_分岐元, List<(int A_頂点, int A_距離)> p_足場, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, IReadOnlyDictionary<int, int> p_コピー数, int p_先読み塩基数, decimal p_優勢閾値, ulong p_最小証拠数, 証拠較正器? p_較正器, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
@@ -335,7 +321,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 l_ビーム = l_次のビーム;
-
                 foreach (var l_状態 in l_ビーム)
                 {
                     V_更新_各歩最良(l_1歩ごとの最良, l_状態);
@@ -343,7 +328,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             var l_打ち切りにより終了 = l_ステップ >= C_経路あたりの最大ステップ数 && l_ビーム.Count > 0;
-
             var l_順位 = l_1歩ごとの最良.OrderByDescending(x => x.Value.A_正規化).ToList();
             var l_首位 = l_順位[0];
             var l_次点 = l_順位.Count > 1 ? l_順位[1].Value.A_正規化 : 0D;

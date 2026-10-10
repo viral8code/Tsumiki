@@ -11,6 +11,16 @@ namespace Tsumiki.Models.Foundation
         #region 定数
 
         /// <summary>
+        /// 項目 name start end windows junction cov in cov flank
+        /// </summary>
+        private const string C_項目_name_start_end_windows_junction_cov_in_cov_flank = "name\tstart\tend\twindows\tjunction\tcov_in\tcov_flank";
+
+        /// <summary>
+        /// 項目 なし
+        /// </summary>
+        private const string C_項目_なし = "なし";
+
+        /// <summary>
         /// 1 窓ずつ数え、それより長い連続を幅のある区間にまとめる上限
         /// </summary>
         private const int C_個別に数える上限 = 20;
@@ -81,7 +91,7 @@ namespace Tsumiki.Models.Foundation
         public void V_書き出し(string p_パス)
         {
             using var l_書き込み = new StreamWriter(p_パス);
-            l_書き込み.WriteLine("name\tstart\tend\twindows\tjunction\tcov_in\tcov_flank");
+            l_書き込み.WriteLine(C_項目_name_start_end_windows_junction_cov_in_cov_flank);
             foreach (var (l_名前, l_開始, l_終了, l_Is継ぎ目, l_内側, l_外側) in this._明細)
             {
                 l_書き込み.WriteLine(FormattableString.Invariant($"{l_名前}\t{l_開始}\t{l_終了}\t{l_終了 - l_開始 + 1}\t{(l_Is継ぎ目 ? 1 : 0)}\t{l_内側}\t{l_外側}"));
@@ -135,7 +145,7 @@ namespace Tsumiki.Models.Foundation
             var l_文 = new StringBuilder();
             for (var i = 0; i < p_表.Length; i++)
             {
-                if (p_表[i] == 0)
+                if (p_表[i] == 0L)
                 {
                     continue;
                 }
@@ -149,15 +159,13 @@ namespace Tsumiki.Models.Foundation
                 {
                     var j = i - C_個別に数える上限;
                     var l_下端 = (j == 0 ? C_個別に数える上限 : C_まとめる区間の上端[j - 1]) + 1;
-                    l_ラベル = C_まとめる区間の上端[j] == int.MaxValue
-                        ? FormattableString.Invariant($"{l_下端}+")
-                        : FormattableString.Invariant($"{l_下端}-{C_まとめる区間の上端[j]}");
+                    l_ラベル = C_まとめる区間の上端[j] == int.MaxValue ? FormattableString.Invariant($"{l_下端}+") : FormattableString.Invariant($"{l_下端}-{C_まとめる区間の上端[j]}");
                 }
 
                 _ = l_文.Append(FormattableString.Invariant($"{l_ラベル}:{p_表[i]} "));
             }
 
-            return l_文.Length == 0 ? "なし" : l_文.ToString().TrimEnd();
+            return l_文.Length == 0 ? C_項目_なし : l_文.ToString().TrimEnd();
         }
 
         #endregion

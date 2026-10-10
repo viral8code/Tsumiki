@@ -13,6 +13,16 @@ namespace Tsumiki.Cores.UnitigBuilding
         #region 定数
 
         /// <summary>
+        /// 項目 overdispersed for a Pois ss reliable here
+        /// </summary>
+        private const string C_項目_overdispersed_for_a_Pois_ss_reliable_here = " (overdispersed for a Poisson assumption; ratio-based copy number may be less reliable here)";
+
+        /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
         /// これを下回るカバレッジ比の unitig は、コピー数を推定できるだけの根拠が無いとみなして 1 として扱う (0 コピーにはしない)
         /// </summary>
         private const double C_多コピーとみなす比の下限 = 1.5D;
@@ -52,7 +62,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         #region 公開メソッド
 
         /// <summary>
-        /// unitig ID (1 始まり) -> その unitig を構成する k-mer の平均カバレッジ、を計算する
+        /// unitig ID (1 始まり) -&gt; その unitig を構成する k-mer の平均カバレッジ、を計算する
         /// </summary>
         /// <param name="p_kmerインデックス"></param>
         /// <param name="p_unitig配列"></param>
@@ -70,7 +80,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 var l_塩基列 = Util.V_変換_塩基列(l_配列);
-
                 var l_合計 = 0UL;
                 var l_件数 = 0;
                 for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
@@ -100,9 +109,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_モデルを使える = l_モデル基準値 is { } l_値 && l_値 > 0D;
             var l_実際の出所 = l_希望する出所 == コピー数基準の出所.Spectrum && l_モデルを使える ? コピー数基準の出所.Spectrum : コピー数基準の出所.Weighted;
             var l_基準値 = l_実際の出所 == コピー数基準の出所.Spectrum ? l_モデル基準値!.Value : Get_長さ加重中央値(p_カバレッジ, p_unitig長);
-
             var l_コピー数 = Get_比によるコピー数(p_カバレッジ, l_基準値, C_多コピーとみなす比の下限);
-
             if (l_基準値 > 0D && Get_分散診断(p_カバレッジ, p_unitig長, l_コピー数) is { A_Is過分散: true } l_初回診断)
             {
                 var l_引き上げた下限 = Math.Max(C_多コピーとみなす比の下限, 1D + (C_過分散時の片側z値 * Math.Sqrt(l_初回診断.A_分散指数 / l_基準値)));
@@ -132,19 +139,13 @@ namespace Tsumiki.Cores.UnitigBuilding
             Logger.V_出力_そのまま($"[Copy number] baseline_source={p_推定結果.A_基準の出所}");
             if (p_推定結果.A_分散診断 is { } l_診断)
             {
-                var l_注記 = l_診断.A_Is過分散 ? " (overdispersed for a Poisson assumption; ratio-based copy number may be less reliable here)" : string.Empty;
+                var l_注記 = l_診断.A_Is過分散 ? C_項目_overdispersed_for_a_Pois_ss_reliable_here : string.Empty;
                 Logger.V_出力_そのまま(FormattableString.Invariant($"[Copy number] single-copy coverage dispersion: mean={l_診断.A_平均:F2}, variance={l_診断.A_分散:F2}, index={l_診断.A_分散指数:F2}{l_注記}"));
             }
 
-            var l_コピー数別 = p_推定結果.A_コピー数
-                .GroupBy(x => x.Value)
-                .OrderBy(x => x.Key)
-                .Select(x => (A_コピー数: x.Key, A_本数: x.Count(), A_塩基数: x.Sum(y => (long)p_unitig長.GetValueOrDefault(y.Key, 0))))
-                .ToList();
-
-            var l_要約 = string.Join(", ", l_コピー数別.Select(x => $"x{x.A_コピー数}: {x.A_本数} unitig(s)/{x.A_塩基数:N0}bp"));
+            var l_コピー数別 = p_推定結果.A_コピー数.GroupBy(x => x.Value).OrderBy(x => x.Key).Select(x => (A_コピー数: x.Key, A_本数: x.Count(), A_塩基数: x.Sum(y => (long)p_unitig長.GetValueOrDefault(y.Key, 0)))).ToList();
+            var l_要約 = string.Join(C_項目区切り, l_コピー数別.Select(x => $"x{x.A_コピー数}: {x.A_本数} unitig(s)/{x.A_塩基数:N0}bp"));
             Logger.V_出力(メッセージID.コピー数の要約, l_要約);
-
             var l_反復塩基数 = l_コピー数別.Where(x => x.A_コピー数 >= 2).Sum(x => x.A_塩基数);
             var l_総塩基数 = l_コピー数別.Sum(x => x.A_塩基数);
             if (l_総塩基数 > 0L)
@@ -186,15 +187,8 @@ namespace Tsumiki.Cores.UnitigBuilding
         private static void V_修正_孤立複製単位コピー数(UnitigGraph p_グラフ, IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
         {
             var l_成分ID = Get_連結成分(p_グラフ, p_コピー数.Keys);
-
-            HashSet<int> l_確定済み成分 = [.. p_コピー数
-                .Where(x => x.Value <= 1)
-                .Select(x => l_成分ID[x.Key])];
-
-            var l_未確定の島一覧 = p_コピー数.Keys
-                .GroupBy(l_ID => l_成分ID[l_ID])
-                .Where(g => !l_確定済み成分.Contains(g.Key));
-
+            HashSet<int> l_確定済み成分 = [.. p_コピー数.Where(x => x.Value <= 1).Select(x => l_成分ID[x.Key])];
+            var l_未確定の島一覧 = p_コピー数.Keys.GroupBy(l_ID => l_成分ID[l_ID]).Where(g => !l_確定済み成分.Contains(g.Key));
             foreach (var l_島 in l_未確定の島一覧)
             {
                 var l_島の合計長 = l_島.Sum(l_ID => (long)p_unitig長.GetValueOrDefault(l_ID, 0));
@@ -203,10 +197,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_島内カバレッジ = l_島
-                    .Select(l_ID => p_カバレッジ.GetValueOrDefault(l_ID, 0D))
-                    .Where(x => x > 0D)
-                    .ToList();
+                var l_島内カバレッジ = l_島.Select(l_ID => p_カバレッジ.GetValueOrDefault(l_ID, 0D)).Where(x => x > 0D).ToList();
                 if (l_島内カバレッジ.Count == 0)
                 {
                     continue;
@@ -245,7 +236,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             Dictionary<int, int> l_成分ID = [];
             var l_次の成分ID = 0;
-
             foreach (var l_開始ID in p_unitigID一覧)
             {
                 if (l_成分ID.ContainsKey(l_開始ID))
@@ -256,7 +246,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_現在の成分ID = l_次の成分ID++;
                 Queue<int> l_キュー = new([l_開始ID]);
                 l_成分ID[l_開始ID] = l_現在の成分ID;
-
                 while (l_キュー.Count > 0)
                 {
                     var l_ID = l_キュー.Dequeue();
@@ -303,10 +292,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                var l_成分内カバレッジ = l_成分
-                    .Select(x => p_カバレッジ.GetValueOrDefault(x, 0D))
-                    .Where(x => x > 0D)
-                    .ToList();
+                var l_成分内カバレッジ = l_成分.Select(x => p_カバレッジ.GetValueOrDefault(x, 0D)).Where(x => x > 0D).ToList();
                 if (l_成分内カバレッジ.Count < 2)
                 {
                     continue;
@@ -335,11 +321,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             var l_開始1 = 2 * p_unitigID;
             var l_開始2 = l_開始1 ^ 1;
-
             HashSet<int> l_訪問済み頂点 = [l_開始1, l_開始2];
             HashSet<int> l_結果 = [p_unitigID];
             Queue<int> l_キュー = new([l_開始1, l_開始2]);
-
             while (l_キュー.Count > 0)
             {
                 var l_現在 = l_キュー.Dequeue();
@@ -375,9 +359,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns></returns>
         private static double Get_長さ加重中央値(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長)
         {
-            var l_組 = p_カバレッジ
-                .Where(x => p_unitig長.ContainsKey(x.Key) && x.Value > 0D)
-                .Select(x => ((long)p_unitig長[x.Key], x.Value));
+            var l_組 = p_カバレッジ.Where(x => p_unitig長.ContainsKey(x.Key) && x.Value > 0D).Select(x => ((long)p_unitig長[x.Key], x.Value));
             return StatsUtil.Get_長さ加重中央値(l_組);
         }
 
@@ -412,7 +394,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 var l_上限カバレッジ = l_カバレッジ値 + (C_区間のz値 * l_標準偏差);
                 var l_下限 = Math.Clamp((int)Math.Floor(l_下限カバレッジ / p_基準値), 1, C_コピー数の上限);
                 var l_上限 = Math.Clamp((int)Math.Ceiling(l_上限カバレッジ / p_基準値), 1, C_コピー数の上限);
-
                 l_結果[l_ID] = new コピー数区間(Math.Min(l_下限, l_点推定), Math.Max(l_上限, l_点推定));
             }
 
@@ -428,12 +409,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns>診断結果、求められない場合は null</returns>
         private static カバレッジ分散診断? Get_分散診断(IReadOnlyDictionary<int, double> p_カバレッジ, IReadOnlyDictionary<int, int> p_unitig長, Dictionary<int, int> p_コピー数)
         {
-            var l_単一コピー集団 = p_コピー数
-                .Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= C_孤立複製単位とみなす最小合計長)
-                .Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D))
-                .Where(x => x > 0D)
-                .ToList();
-
+            var l_単一コピー集団 = p_コピー数.Where(x => x.Value == 1 && p_unitig長.GetValueOrDefault(x.Key, 0) >= C_孤立複製単位とみなす最小合計長).Select(x => p_カバレッジ.GetValueOrDefault(x.Key, 0D)).Where(x => x > 0D).ToList();
             if (l_単一コピー集団.Count < C_分散診断に使う最小標本数)
             {
                 return null;

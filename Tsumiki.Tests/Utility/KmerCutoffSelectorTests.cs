@@ -12,24 +12,55 @@ namespace Tsumiki.Tests.Utility
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki cutoffsel tests
+        /// </summary>
+        private const string C_項目_tsumiki_cutoffsel_tests = "tsumiki_cutoffsel_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k長 = 21;
+        private const int C_k長 = 21;
 
         /// <summary>
         /// 谷の位置
         /// </summary>
-        private const ulong 谷の位置 = 8UL;
+        private const ulong C_谷の位置 = 8UL;
 
         /// <summary>
         /// このスペクトルに対して選ばれるべきカットオフ
         /// </summary>
-        /// <remarks>
-        /// 谷 (8) ではない<br/>
-        /// V_解決_kmer カットオフ はまず 2 成分混合モデル (KmerSpectrumMixtureModel) の適合を試み、この形のスペクトルなら適合に成功して谷検出 (KmerHistogram) より低い 6 を返す (事後誤り確率が有意水準を下回る最小の出現回数) <br/>
-        /// どちらの経路でも「谷までは上げない」という結論は変わらない
-        /// </remarks>
-        private const ulong 選ばれるべきカットオフ = 6UL;
+        private const ulong C_選ばれるべきカットオフ = 6UL;
+
+        /// <summary>
+        /// (出現回数, その回数を持たせる k-mer の種類数)
+        /// </summary>
+        private static readonly (ulong A_出現回数, int A_種類数)[] C_スペクトルの形 = [
+            (1UL, 2_000),
+            (2UL, 700),
+            (3UL, 300),
+            (4UL, 150),
+            (5UL, 90),
+            (6UL, 70),
+            (7UL, 60),
+            (8UL, 58),
+            (9UL, 70),
+            (10UL, 120),
+            (11UL, 220),
+            (12UL, 400),
+            (13UL, 600),
+            (14UL, 800),
+            (15UL, 900),
+            (16UL, 800),
+            (17UL, 600),
+            (18UL, 400),
+            (19UL, 220),
+            (20UL, 120),
+        ];
 
         #endregion
 
@@ -40,19 +71,6 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         private readonly string _作業ディレクトリ;
 
-        /// <summary>
-        /// (出現回数, その回数を持たせる k-mer の種類数)
-        /// </summary>
-        /// <remarks>
-        /// 出現回数 8 を底とする谷と、15 を頂点とする単一コピーの山を持つ、連続した二峰性スペクトルになるように組んである
-        /// </remarks>
-        private static readonly (ulong A_出現回数, int A_種類数)[] スペクトルの形 = [
-            (1UL, 2_000), (2UL, 700), (3UL, 300), (4UL, 150), (5UL, 90),
-            (6UL, 70), (7UL, 60), (8UL, 58), (9UL, 70), (10UL, 120),
-            (11UL, 220), (12UL, 400), (13UL, 600), (14UL, 800), (15UL, 900),
-            (16UL, 800), (17UL, 600), (18UL, 400), (19UL, 220), (20UL, 120),
-        ];
-
         #endregion
 
         #region コンストラクタ
@@ -62,7 +80,7 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         public KmerCutoffSelectorTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_cutoffsel_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_cutoffsel_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -90,15 +108,9 @@ namespace Tsumiki.Tests.Utility
             using var l_インデックス = this.V_構築_索引();
             var l_param = new Parameters();
             Assert.False(l_param.A_Iskmerカットオフ明示指定);
-
             KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_インデックス);
-
-            Assert.Equal(選ばれるべきカットオフ, l_param.A_kmerカットオフ);
-            // 谷より上へは決して行かないこと
-            // 谷で切ると本物の k-mer の左裾まで
-            // 削れてグラフが切れる (実データで N50 が半分以下になった)
-            Assert.True(l_param.A_kmerカットオフ < 谷の位置);
-            // 自動適用は「明示指定された」扱いにしない
+            Assert.Equal(C_選ばれるべきカットオフ, l_param.A_kmerカットオフ);
+            Assert.True(l_param.A_kmerカットオフ < C_谷の位置);
             Assert.False(l_param.A_Iskmerカットオフ明示指定);
         }
 
@@ -109,10 +121,11 @@ namespace Tsumiki.Tests.Utility
         public void V_明示指定されたカットオフはそのまま残す()
         {
             using var l_インデックス = this.V_構築_索引();
-            var l_param = new Parameters { A_kmerカットオフ = 2UL };
-
+            var l_param = new Parameters
+            {
+                A_kmerカットオフ = 2UL
+            };
             KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_インデックス);
-
             Assert.Equal(2UL, l_param.A_kmerカットオフ);
         }
 
@@ -124,14 +137,9 @@ namespace Tsumiki.Tests.Utility
         {
             using var l_インデックス = this.V_構築_索引();
             var l_param = new Parameters();
-
             KmerCutoffSelector.V_解決_kmerカットオフ(l_param, l_インデックス);
             _ = l_インデックス.V_カットオフ(l_param.A_kmerカットオフ);
-
-            var l_残るはずの種類数 = スペクトルの形
-                .Where(x => x.A_出現回数 >= l_param.A_kmerカットオフ)
-                .Sum(x => x.A_種類数);
-
+            var l_残るはずの種類数 = C_スペクトルの形.Where(x => x.A_出現回数 >= l_param.A_kmerカットオフ).Sum(x => x.A_種類数);
             Assert.Equal(l_残るはずの種類数, l_インデックス.Get_信頼kmer一覧().Count());
         }
 
@@ -141,9 +149,6 @@ namespace Tsumiki.Tests.Utility
         /// <param name="p_モデルのカットオフ"></param>
         /// <param name="p_谷"></param>
         /// <param name="p_期待"></param>
-        /// <remarks>
-        /// 42 と 10 は GC 69% の R. sphaeroides HiSeq の k=21、14 と 13 は S. aureus HiSeq の k=21、9 と 7 は B. cereus HiSeq の k=67 で実際に出た組
-        /// </remarks>
         [Theory]
         [InlineData(10UL, 42UL, 42UL)]
         [InlineData(13UL, 14UL, 13UL)]
@@ -172,35 +177,33 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// 上のスペクトルの形どおりに k-mer を登録したインデックスを作る
         /// </summary>
-        /// <remarks>
-        /// 乱数配列から取った連続する k-mer は k=21 なら実質すべて相異なる
-        /// </remarks>
         /// <returns></returns>
         private TrustedKmerIndex V_構築_索引()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 4
+            };
             var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-
-            var l_種類数の合計 = スペクトルの形.Sum(x => x.A_種類数);
+            var l_種類数の合計 = C_スペクトルの形.Sum(x => x.A_種類数);
             var l_乱数生成器 = new Random(20_260_904);
-            var l_bases = string.Concat(Enumerable.Range(0, l_種類数の合計 + k長 - 1).Select(_ => "ACGT"[l_乱数生成器.Next(4)]))
-                .Select(Util.Get_塩基ID).ToArray();
-
+            var l_bases = string.Concat(Enumerable.Range(0, l_種類数の合計 + C_k長 - 1).Select(_ => Consts.塩基文字[l_乱数生成器.Next(4)])).Select(Util.Get_塩基ID).ToArray();
             var l_位置 = 0;
-            foreach (var (l_出現回数, l_種類数) in スペクトルの形)
+            foreach (var (l_出現回数, l_種類数)in C_スペクトルの形)
             {
                 for (var i = 0; i < l_種類数; i++, l_位置++)
                 {
                     for (var t = 0UL; t < l_出現回数; t++)
                     {
-                        l_インデックス.V_登録(l_bases.AsSpan(l_位置, k長));
+                        l_インデックス.V_登録(l_bases.AsSpan(l_位置, C_k長));
                     }
                 }
             }
+
             return l_インデックス;
         }
 
         #endregion
-
     }
 }

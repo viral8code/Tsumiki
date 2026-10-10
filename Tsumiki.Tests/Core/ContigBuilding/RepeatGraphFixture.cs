@@ -15,7 +15,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 曖昧 k-mer の番兵
         /// </summary>
-        private const int 曖昧kmer番号 = int.MinValue;
+        private const int C_曖昧kmer番号 = int.MinValue;
 
         #endregion
 
@@ -30,7 +30,7 @@ namespace Tsumiki.Tests.Core
         public static string Get_乱数配列(int p_長さ, int p_乱数種)
         {
             var l_乱数生成器 = new Random(p_乱数種);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数生成器.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数生成器.Next(4)]));
         }
 
         /// <summary>
@@ -41,10 +41,13 @@ namespace Tsumiki.Tests.Core
         /// <returns></returns>
         public static (UnitigGraph A_グラフ, List<string> A_unitig配列) Get_グラフ(int p_k長, params string[] p_unitig群)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 1
+            };
             List<string> l_unitig配列 = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
-
             var l_ID = 1;
             foreach (var l_配列 in p_unitig群)
             {
@@ -56,9 +59,11 @@ namespace Tsumiki.Tests.Core
                     V_登録(l_kmer辞書, l_キー, l_ID, i - p_k長);
                     V_登録(l_kmer辞書, l_キー.Get_逆相補(), -l_ID, l_配列.Length - i);
                 }
+
                 l_ID++;
             }
-            return (UnitigGraph.Get_グラフ(l_unitig配列, l_kmer辞書, p_k長, 曖昧kmer番号), l_unitig配列);
+
+            return (UnitigGraph.Get_グラフ(l_unitig配列, l_kmer辞書, p_k長, C_曖昧kmer番号), l_unitig配列);
         }
 
         /// <summary>
@@ -87,12 +92,14 @@ namespace Tsumiki.Tests.Core
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存))
             {
-                if (l_既存.A_unitigID is not 曖昧kmer番号 && l_既存.A_unitigID != p_ID)
+                if (l_既存.A_unitigID is not C_曖昧kmer番号 && l_既存.A_unitigID != p_ID)
                 {
-                    p_辞書[p_キー] = (曖昧kmer番号, 0);
+                    p_辞書[p_キー] = (C_曖昧kmer番号, 0);
                 }
+
                 return;
             }
+
             p_辞書[p_キー] = (p_ID, p_位置);
         }
 

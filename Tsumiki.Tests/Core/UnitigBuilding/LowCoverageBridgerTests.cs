@@ -13,39 +13,64 @@ namespace Tsumiki.Tests.Core
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki bridger tests
+        /// </summary>
+        private const string C_項目_tsumiki_bridger_tests = "tsumiki_bridger_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 塩基配列 CGTCGA
+        /// </summary>
+        private const string C_塩基配列_CGTCGA = "CGTCGA";
+
+        /// <summary>
+        /// 項目 G
+        /// </summary>
+        private const string C_項目_G = "G";
+
+        /// <summary>
+        /// 塩基配列 TGTTTGCA
+        /// </summary>
+        private const string C_塩基配列_TGTTTGCA = "TGTTTGCA";
+
+        /// <summary>
         /// k 長
         /// </summary>
-        private const int k長 = 8;
+        private const int C_k長 = 8;
 
         /// <summary>
         /// k=8 で内部に重複する k-mer を持たない配列
         /// </summary>
-        private const string 主配列 = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
+        private const string C_主配列 = "GCTAAAGACAATTACATAACATACGGATCCTTAGGCAATTGACCTGAAT";
 
         /// <summary>
         /// カバレッジが落ち込む k-mer の開始位置の範囲 (両端を含む)
         /// </summary>
-        private const int 谷の先頭 = 14;
+        private const int C_谷の先頭 = 14;
 
         /// <summary>
         /// カバレッジが落ち込む k-mer の開始位置の範囲の終端 (含む)
         /// </summary>
-        private const int 谷の末尾 = 22;
+        private const int C_谷の末尾 = 22;
 
         /// <summary>
         /// 主経路の深さ
         /// </summary>
-        private const int 主経路の深さ = 20;
+        private const int C_主経路の深さ = 20;
 
         /// <summary>
         /// 谷の深さ
         /// </summary>
-        private const int 谷の深さ = 4;
+        private const int C_谷の深さ = 4;
 
         /// <summary>
         /// カットオフ
         /// </summary>
-        private const ulong カットオフ = 10UL;
+        private const ulong C_カットオフ = 10UL;
 
         #endregion
 
@@ -65,9 +90,13 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public LowCoverageBridgerTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_bridger_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_bridger_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
         }
 
         #endregion
@@ -92,18 +121,16 @@ namespace Tsumiki.Tests.Core
         public void V_カバレッジの谷で途切れた配列は架橋される()
         {
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
-            V_登録_谷つき(l_索引, 主配列);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
-            Assert.False(l_索引.Haskmer(Get_kmer(主配列, 谷の先頭)));
-
-            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
-
-            Assert.Equal(谷の末尾 - 谷の先頭 + 1, l_追加数);
-            for (var i = 0; i + k長 <= 主配列.Length; i++)
+            V_登録_谷つき(l_索引, C_主配列);
+            l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
+            Assert.False(l_索引.Haskmer(Get_kmer(C_主配列, C_谷の先頭)));
+            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, C_k長, null);
+            Assert.Equal(C_谷の末尾 - C_谷の先頭 + 1, l_追加数);
+            for (var i = 0; i + C_k長 <= C_主配列.Length; i++)
             {
-                Assert.True(l_索引.Haskmer(Get_kmer(主配列, i)), $"位置 {i} の k-mer が集合に無い");
+                Assert.True(l_索引.Haskmer(Get_kmer(C_主配列, i)), $"位置 {i} の k-mer が集合に無い");
             }
-            // 控えは呼び出し元が手放すため、架橋の直後はまだ残っている
+
             Assert.True(l_索引.A_控えkmer数 > 0);
             l_索引.V_解放_控え();
             Assert.Equal(0, l_索引.A_控えkmer数);
@@ -116,12 +143,10 @@ namespace Tsumiki.Tests.Core
         public void V_合流しない低カバレッジの続きは足さない()
         {
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
-            V_登録_全kmer(l_索引, 主配列, 主経路の深さ);
-            V_登録_全kmer(l_索引, 主配列[^(k長 - 1)..] + "CGTCGA", 谷の深さ);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
-
-            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
-
+            V_登録_全kmer(l_索引, C_主配列, C_主経路の深さ);
+            V_登録_全kmer(l_索引, C_主配列[^(C_k長 - 1)..] + C_塩基配列_CGTCGA, C_谷の深さ);
+            l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
+            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, C_k長, null);
             Assert.Equal(0, l_追加数);
         }
 
@@ -132,43 +157,32 @@ namespace Tsumiki.Tests.Core
         public void V_続きが一本に決まらない谷は架橋しない()
         {
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
-            V_登録_谷つき(l_索引, 主配列);
-
-            // 谷の中の 1 塩基だけ違う対立配列を同じ深さで足し、谷の両端から見て分岐にする
-            var l_対立配列 = 主配列[..21] + "G" + 主配列[22..];
-            for (var i = 谷の先頭; i <= 21; i++)
+            V_登録_谷つき(l_索引, C_主配列);
+            var l_対立配列 = C_主配列[..21] + C_項目_G + C_主配列[22..];
+            for (var i = C_谷の先頭; i <= 21; i++)
             {
-                V_登録(l_索引, Get_kmer(l_対立配列, i), 谷の深さ);
+                V_登録(l_索引, Get_kmer(l_対立配列, i), C_谷の深さ);
             }
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
 
-            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
-
+            l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
+            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, C_k長, null);
             Assert.Equal(0, l_追加数);
         }
 
         /// <summary>
         /// 合流先の信頼できる k-mer に既に別の入口があるなら架橋しない
         /// </summary>
-        /// <remarks>
-        /// 薄いカバレッジで途切れた箇所なら合流先も行き止まりになる<br/>
-        /// 別の入口があるのは、行き止まりから既存の配列へ新しく入る分岐で、短い反復を挟んだ近道にもなりうる
-        /// </remarks>
         [Fact]
         public void V_合流先に別の入口があれば架橋しない()
         {
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
-            V_登録_谷つき(l_索引, 主配列);
-
-            // 谷を抜けた最初の k-mer (位置 23) へ、谷とは別の塩基から入る信頼できる枝を足す
-            var l_合流先 = 主配列.Substring(谷の末尾 + 1, k長);
-            var l_枝 = "TGTTTGCA" + "G" + l_合流先[..^1];
-            Assert.NotEqual(主配列[谷の末尾], l_枝[^k長]);
-            V_登録_全kmer(l_索引, l_枝, 主経路の深さ);
-            l_索引.V_適用_カットオフ(カットオフ, LowCoverageBridger.C_控えの最小出現回数);
-
-            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, k長, null);
-
+            V_登録_谷つき(l_索引, C_主配列);
+            var l_合流先 = C_主配列.Substring(C_谷の末尾 + 1, C_k長);
+            var l_枝 = C_塩基配列_TGTTTGCA + C_項目_G + l_合流先[..^1];
+            Assert.NotEqual(C_主配列[C_谷の末尾], l_枝[^C_k長]);
+            V_登録_全kmer(l_索引, l_枝, C_主経路の深さ);
+            l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
+            var l_追加数 = LowCoverageBridger.Get_架橋kmer数(l_索引, C_k長, null);
             Assert.Equal(0, l_追加数);
         }
 
@@ -183,9 +197,9 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_配列"></param>
         private static void V_登録_谷つき(TrustedKmerIndex p_索引, string p_配列)
         {
-            for (var i = 0; i + k長 <= p_配列.Length; i++)
+            for (var i = 0; i + C_k長 <= p_配列.Length; i++)
             {
-                V_登録(p_索引, Get_kmer(p_配列, i), i is >= 谷の先頭 and <= 谷の末尾 ? 谷の深さ : 主経路の深さ);
+                V_登録(p_索引, Get_kmer(p_配列, i), i is >= C_谷の先頭 and <= C_谷の末尾 ? C_谷の深さ : C_主経路の深さ);
             }
         }
 
@@ -197,7 +211,7 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_深さ"></param>
         private static void V_登録_全kmer(TrustedKmerIndex p_索引, string p_配列, int p_深さ)
         {
-            for (var i = 0; i + k長 <= p_配列.Length; i++)
+            for (var i = 0; i + C_k長 <= p_配列.Length; i++)
             {
                 V_登録(p_索引, Get_kmer(p_配列, i), p_深さ);
             }
@@ -225,7 +239,7 @@ namespace Tsumiki.Tests.Core
         /// <returns></returns>
         private static byte[] Get_kmer(string p_配列, int p_位置)
         {
-            return [.. p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID)];
+            return[..p_配列.Substring(p_位置, C_k長).Select(Util.Get_塩基ID)];
         }
 
         #endregion

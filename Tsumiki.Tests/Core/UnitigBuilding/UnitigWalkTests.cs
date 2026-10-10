@@ -9,12 +9,22 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// パック値を転がす walk と参照実装の一致を検証する
     /// </summary>
-    /// <remarks>
-    /// 転がし更新は unitig 構築の時間のほとんどを占めていた O (k) の詰め直しを省くためのもので、結果は 1 塩基たりとも変わってはいけない<br/>
-    /// 2 つの実装が並存する以上、等価性の確認は必須になる
-    /// </remarks>
     public class UnitigWalkTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki walk tests
+        /// </summary>
+        private const string C_項目_tsumiki_walk_tests = "tsumiki_walk_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -31,7 +41,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public UnitigWalkTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_walk_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_walk_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -67,9 +77,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// k=32 と k=33 は内部表現 (ulong と UInt128) の境界
         /// </summary>
-        /// <remarks>
-        /// 転がしのマスクとシフトがここで壊れやすい
-        /// </remarks>
         /// <param name="p_kmer長"></param>
         [Theory]
         [InlineData(31)]
@@ -90,16 +97,12 @@ namespace Tsumiki.Tests.Core
             var l_共通 = V_生成_乱数配列(1_000, p_乱数種: 811);
             var l_枝1 = V_生成_乱数配列(800, p_乱数種: 812);
             var l_枝2 = V_生成_乱数配列(800, p_乱数種: 813);
-
             this.V_両実装が一致する(31, l_共通 + l_枝1, l_共通 + l_枝2);
         }
 
         /// <summary>
         /// 反復配列を含む場合
         /// </summary>
-        /// <remarks>
-        /// 合流点の入次数判定が両実装で一致すること
-        /// </remarks>
         [Fact]
         public void V_反復配列を含む場合に転がし実装と従来実装が一致する()
         {
@@ -107,31 +110,23 @@ namespace Tsumiki.Tests.Core
             var l_反復配列 = V_生成_乱数配列(300, p_乱数種: 822);
             var l_中間配列 = V_生成_乱数配列(800, p_乱数種: 823);
             var l_末尾配列 = V_生成_乱数配列(800, p_乱数種: 824);
-
             this.V_両実装が一致する(31, l_先頭配列 + l_反復配列 + l_中間配列 + l_反復配列 + l_末尾配列);
         }
 
         /// <summary>
         /// 環状配列
         /// </summary>
-        /// <remarks>
-        /// 循環検出の打ち切り位置が両実装で一致すること<br/>
-        /// 完全な環には開始 k-mer が存在しない (どの k-mer も入次数 1 で、その予測元の出次数も 1) ため、任意の k-mer から walk して比べる
-        /// </remarks>
         [Fact]
         public void V_環状配列で転がし実装と従来実装が一致する()
         {
             const int l_k長 = 31;
             var l_環 = V_生成_乱数配列(1_500, p_乱数種: 831);
             var l_配列 = l_環 + l_環[..(l_k長 - 1)];
-
             using var l_索引 = this.V_構築_索引(l_k長, l_配列);
             Assert.Empty(l_索引.Get_開始kmer一覧());
-
             var l_開始 = l_配列[..l_k長].Select(Util.Get_塩基ID).ToArray();
             var l_期待 = new UnitigMaker(l_索引).Get_Unitig(l_開始).A_配列;
             var l_実際 = string.Concat(new UnitigWalk(l_索引, l_k長).Get_塩基列(l_開始, []).Select(Util.Get_塩基文字));
-
             Assert.Equal(l_期待, l_実際);
         }
 
@@ -168,7 +163,7 @@ namespace Tsumiki.Tests.Core
         private static string V_生成_乱数配列(int p_長さ, int p_乱数種)
         {
             var l_乱数生成器 = new Random(p_乱数種);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数生成器.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数生成器.Next(4)]));
         }
 
         /// <summary>
@@ -179,8 +174,12 @@ namespace Tsumiki.Tests.Core
         /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex V_構築_索引(int p_kmer長, params string[] p_配列群)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
-            var l_作業 = Path.Combine(this._作業ディレクトリ, Guid.NewGuid().ToString("N"));
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_kmer長,
+                A_スレッド数 = 1
+            };
+            var l_作業 = Path.Combine(this._作業ディレクトリ, Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(l_作業);
             var l_インデックス = new TrustedKmerIndex(l_作業);
             foreach (var l_配列 in p_配列群)
@@ -194,6 +193,7 @@ namespace Tsumiki.Tests.Core
                     }
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
@@ -208,11 +208,9 @@ namespace Tsumiki.Tests.Core
             using var l_索引 = this.V_構築_索引(p_k長, p_配列);
             var l_開始kmer = l_索引.Get_開始kmer一覧();
             Assert.NotEmpty(l_開始kmer);
-
             var l_従来 = new UnitigMaker(l_索引);
             var l_転がし = new UnitigWalk(l_索引, p_k長);
             HashSet<UInt128> l_訪問済み = [];
-
             foreach (var l_開始 in l_開始kmer)
             {
                 var l_期待 = l_従来.Get_Unitig(l_開始).A_配列;
@@ -222,6 +220,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

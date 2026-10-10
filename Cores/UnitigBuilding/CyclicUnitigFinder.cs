@@ -26,13 +26,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 V_記録_覆った範囲(l_覆済み, l_配列, p_k長);
             }
 
-            var l_未覆 = p_kmerインデックス.Get_信頼kmer一覧()
-                .AsParallel()
-                .AsOrdered()
-                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                .Where(x => !l_覆済み.Haskmer(x))
-                .ToList();
-
+            var l_未覆 = p_kmerインデックス.Get_信頼kmer一覧().AsParallel().AsOrdered().WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数)).Where(x => !l_覆済み.Haskmer(x)).ToList();
             List<byte[]> l_開始kmer = [];
             foreach (var l_kmer in l_未覆)
             {
@@ -41,7 +35,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                     continue;
                 }
 
-                if (Try走査_閉路(p_kmerインデックス, l_kmer, p_k長, l_覆済み))
+                if (Is成功_走査_閉路(p_kmerインデックス, l_kmer, p_k長, l_覆済み))
                 {
                     l_開始kmer.Add(l_kmer);
                 }
@@ -83,7 +77,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             UInt128 l_順鎖 = 0;
             UInt128 l_逆鎖 = 0;
             var l_直近の曖昧位置 = -1;
-
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基ID = Util.Get_塩基ID(p_配列[i]);
@@ -112,15 +105,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_k長"></param>
         /// <param name="p_覆済み"></param>
         /// <returns>閉路であれば true</returns>
-        private static bool Try走査_閉路(TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
+        private static bool Is成功_走査_閉路(TrustedKmerIndex p_kmerインデックス, byte[] p_開始kmer, int p_k長, 正規形集合 p_覆済み)
         {
             var l_現在 = (byte[])p_開始kmer.Clone();
             var l_次 = new byte[p_k長];
-
             while (true)
             {
                 p_覆済み.V_追加(l_現在);
-
                 l_現在.AsSpan(1).CopyTo(l_次);
                 var l_候補数 = 0;
                 byte l_次の塩基 = 0;

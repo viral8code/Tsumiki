@@ -12,9 +12,64 @@ namespace Tsumiki.Tests.Core
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki varlen tests
+        /// </summary>
+        private const string C_項目_tsumiki_varlen_tests = "tsumiki_varlen_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
+
+        /// <summary>
+        /// ファイル名 short 1 fq
+        /// </summary>
+        private const string C_ファイル名_short_1_fq = "short.1.fq";
+
+        /// <summary>
+        /// ファイル名 short 2 fq
+        /// </summary>
+        private const string C_ファイル名_short_2_fq = "short.2.fq";
+
+        /// <summary>
+        /// ファイル名 unitigs single fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_single_fasta = "unitigs_single.fasta";
+
+        /// <summary>
+        /// ファイル名 short single fq
+        /// </summary>
+        private const string C_ファイル名_short_single_fq = "short_single.fq";
+
+        /// <summary>
+        /// ファイル名 unitigs allshort fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_allshort_fasta = "unitigs_allshort.fasta";
+
+        /// <summary>
+        /// ファイル名 allshort 1 fq
+        /// </summary>
+        private const string C_ファイル名_allshort_1_fq = "allshort.1.fq";
+
+        /// <summary>
+        /// ファイル名 allshort 2 fq
+        /// </summary>
+        private const string C_ファイル名_allshort_2_fq = "allshort.2.fq";
+
+        /// <summary>
+        /// FASTQ 品質区切り
+        /// </summary>
+        private const string C_FASTQ品質区切り = "+";
+
+        /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k長 = 31;
+        private const int C_k長 = 31;
 
         #endregion
 
@@ -34,7 +89,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public VariableLengthReadTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_varlen_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_varlen_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -56,20 +111,27 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// k より短いリードと十分長いリードが混ざったペアエンド入力
         /// </summary>
-        /// <remarks>
-        /// 短いリードは黙って読み飛ばされ、長いリード由来の隣接だけが残ること
-        /// </remarks>
         [Fact]
         public void V_k未満のペアリードは失敗せずに読み飛ばされる()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 4
+            };
             var l_unitig配列 = V_生成_ランダム配列(600, p_シード: 987);
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
-
-            // 19 bp (最短の実例と同じ長さ) から 200 bp まで、k をまたぐ長さを混ぜる
-            var l_長さ一覧 = new[] { 19, 30, k長 - 1, k長, k長 + 1, 120, 200 };
+            var l_長さ一覧 = new[]
+            {
+                19,
+                30,
+                C_k長 - 1,
+                C_k長,
+                C_k長 + 1,
+                120,
+                200
+            };
             var l_先行リード群 = new List<(string, string)>();
             var l_後続リード群 = new List<(string, string)>();
             for (var i = 0; i < l_長さ一覧.Length; i++)
@@ -79,19 +141,10 @@ namespace Tsumiki.Tests.Core
                 l_後続リード群.Add(($"pair{i}/2", Util.V_逆相補(l_unitig配列[^l_長さ..])));
             }
 
-            var l_先行パス = this.V_書き出し_FASTQ("short.1.fq", l_先行リード群);
-            var l_後続パス = this.V_書き出し_FASTQ("short.2.fq", l_後続リード群);
-
+            var l_先行パス = this.V_書き出し_FASTQ(C_ファイル名_short_1_fq, l_先行リード群);
+            var l_後続パス = this.V_書き出し_FASTQ(C_ファイル名_short_2_fq, l_後続リード群);
             var l_contig構築 = new ContigMaker(l_unitigパス);
-
-            // 例外を投げずに完走すること
-            // 対策前はここで
-            // IndexOutOfRangeException がワーカー内で起き、
-            // そのままハングしていた
             l_contig構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
-
-            // k 以上のリードからは標本が取れていること
-            // (短いリードのせいで全部落ちてしまっていないことの確認)
             Assert.NotEmpty(l_contig構築.A_インサートサイズ標本);
         }
 
@@ -101,21 +154,22 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_k未満の単一リードは失敗せずに読み飛ばされる()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 4
+            };
             var l_unitig配列 = V_生成_ランダム配列(400, p_シード: 654);
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs_single.fasta");
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_single_fasta);
             File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
-
             var l_リード群 = new List<(string, string)>();
             for (var i = 0; i < 50; i++)
             {
-                // 半分を k 未満にする
                 var l_長さ = i % 2 == 0 ? 19 : 150;
                 l_リード群.Add(($"read{i}", l_unitig配列[..l_長さ]));
             }
-            var l_パス = this.V_書き出し_FASTQ("short_single.fq", l_リード群);
 
+            var l_パス = this.V_書き出し_FASTQ(C_ファイル名_short_single_fq, l_リード群);
             var l_contig構築 = new ContigMaker(l_unitigパス);
             l_contig構築.V_マッピング_リード(l_パス);
         }
@@ -126,21 +180,20 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_すべてのリードがk未満のときは例外にならず標本が空になる()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 4 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 4
+            };
             var l_unitig配列 = V_生成_ランダム配列(400, p_シード: 321);
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs_allshort.fasta");
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_allshort_fasta);
             File.WriteAllText(l_unitigパス, $">1\n{l_unitig配列}\n");
-
             var l_先行リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/1", l_unitig配列[..19]));
             var l_後続リード群 = Enumerable.Range(0, 40).Select(i => ($"pair{i}/2", l_unitig配列[..20]));
-
-            var l_先行パス = this.V_書き出し_FASTQ("allshort.1.fq", l_先行リード群);
-            var l_後続パス = this.V_書き出し_FASTQ("allshort.2.fq", l_後続リード群);
-
+            var l_先行パス = this.V_書き出し_FASTQ(C_ファイル名_allshort_1_fq, l_先行リード群);
+            var l_後続パス = this.V_書き出し_FASTQ(C_ファイル名_allshort_2_fq, l_後続リード群);
             var l_contig構築 = new ContigMaker(l_unitigパス);
             l_contig構築.V_マッピング_ペアリード(l_先行パス, l_後続パス);
-
             Assert.Empty(l_contig構築.A_インサートサイズ標本);
         }
 
@@ -157,7 +210,7 @@ namespace Tsumiki.Tests.Core
         private static string V_生成_ランダム配列(int p_長さ, int p_シード)
         {
             var l_乱数 = new Random(p_シード);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
         }
 
         /// <summary>
@@ -170,17 +223,17 @@ namespace Tsumiki.Tests.Core
         {
             var l_パス = Path.Combine(this._作業ディレクトリ, p_ファイル名);
             using var l_書き込み = new StreamWriter(l_パス);
-            foreach (var (l_ID, l_配列) in p_リード列)
+            foreach (var (l_ID, l_配列)in p_リード列)
             {
                 l_書き込み.WriteLine($"@{l_ID}");
                 l_書き込み.WriteLine(l_配列);
-                l_書き込み.WriteLine("+");
-                l_書き込み.WriteLine(new string('I', l_配列.Length)); // Q40 相当
+                l_書き込み.WriteLine(C_FASTQ品質区切り);
+                l_書き込み.WriteLine(new string('I', l_配列.Length));
             }
+
             return l_パス;
         }
 
         #endregion
-
     }
 }

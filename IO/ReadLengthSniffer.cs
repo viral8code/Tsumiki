@@ -52,7 +52,7 @@ namespace Tsumiki.IO
             while (l_読み込み.Has続き())
             {
                 var l_長さ = l_読み込み.Get_次のリード_軽量().A_生リード!.Length;
-                l_分布[l_長さ] = l_分布.GetValueOrDefault(l_長さ) + 1;
+                l_分布[l_長さ] = l_分布.GetValueOrDefault(l_長さ) + 1L;
             }
 
             return l_分布;
@@ -94,20 +94,20 @@ namespace Tsumiki.IO
         /// <summary>
         /// 両ファイルの代表リード長のうち短いほう
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_順リードのパス"></param>
+        /// <param name="p_逆リードのパス"></param>
         /// <param name="p_標本上限"></param>
         /// <returns></returns>
-        public static int? Get_代表リード長(string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
+        public static int? Get_代表リード長(string p_順リードのパス, string? p_逆リードのパス, int p_標本上限 = 20_000)
         {
-            var l_リード長1 = Get_代表リード長(p_リード1のパス, p_標本上限);
-            if (string.IsNullOrWhiteSpace(p_リード2のパス))
+            var l_リード長1 = Get_代表リード長(p_順リードのパス, p_標本上限);
+            if (string.IsNullOrWhiteSpace(p_逆リードのパス))
             {
                 return l_リード長1;
             }
 
-            var l_リード長2 = Get_代表リード長(p_リード2のパス, p_標本上限);
-            return l_リード長1 is not { } l_長さ1 ? l_リード長2 : l_リード長2 is not { } l_長さ2 ? l_リード長1 : Math.Min(l_長さ1, l_長さ2);
+            var l_リード長2 = Get_代表リード長(p_逆リードのパス, p_標本上限);
+            return l_リード長1 is not { } l_基準長 ? l_リード長2 : l_リード長2 is not { } l_比較長 ? l_リード長1 : Math.Min(l_基準長, l_比較長);
         }
 
         /// <summary>
@@ -116,12 +116,12 @@ namespace Tsumiki.IO
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_分布">数え上げた分布の書き留め先</param>
         /// <returns></returns>
-        public static int? Get_梯子上限のリード長(IEnumerable<(string A_リード1, string A_リード2)> p_ライブラリ群, out Dictionary<int, long> p_分布)
+        public static int? Get_梯子上限のリード長(IEnumerable<(string A_順リード, string A_逆リード)> p_ライブラリ群, out Dictionary<int, long> p_分布)
         {
             p_分布 = [];
-            foreach (var (A_リード1, A_リード2) in p_ライブラリ群)
+            foreach (var (l_順リード, l_逆リード) in p_ライブラリ群)
             {
-                foreach (var l_パス in new[] { A_リード1, A_リード2 })
+                foreach (var l_パス in new[] { l_順リード, l_逆リード, })
                 {
                     foreach (var (l_長さ, l_本数) in Get_リード長分布(l_パス))
                     {

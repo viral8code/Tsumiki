@@ -10,12 +10,52 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// scaffold のギャップ (N の連続) を、de Bruijn グラフ上で両端を繋ぐ経路を探して実配列に置き換える処理の検証
     /// </summary>
-    /// <remarks>
-    /// contig が途切れるのは配列が存在しないからではなく、分岐でどちらへ進むか決められなかったからであることが多い<br/>
-    /// その場合ギャップを埋める配列は k-mer 集合の中に実在しており、両端から辿れば復元できる
-    /// </remarks>
     public class GapFillerTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki gapfiller tests
+        /// </summary>
+        private const string C_項目_tsumiki_gapfiller_tests = "tsumiki_gapfiller_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 scaffolds off fasta
+        /// </summary>
+        private const string C_ファイル名_scaffolds_off_fasta = "scaffolds_off.fasta";
+
+        /// <summary>
+        /// ファイル名 scaffolds ambiguous fasta
+        /// </summary>
+        private const string C_ファイル名_scaffolds_ambiguous_fasta = "scaffolds_ambiguous.fasta";
+
+        /// <summary>
+        /// ファイル名 scaffolds weak fasta
+        /// </summary>
+        private const string C_ファイル名_scaffolds_weak_fasta = "scaffolds_weak.fasta";
+
+        /// <summary>
+        /// ファイル名 scaffolds unreachable fasta
+        /// </summary>
+        private const string C_ファイル名_scaffolds_unreachable_fasta = "scaffolds_unreachable.fasta";
+
+        /// <summary>
+        /// ファイル名 scaffolds nogap fasta
+        /// </summary>
+        private const string C_ファイル名_scaffolds_nogap_fasta = "scaffolds_nogap.fasta";
+
+        /// <summary>
+        /// 項目 SCAFFOLD1
+        /// </summary>
+        private const string C_項目_SCAFFOLD1 = "SCAFFOLD1";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -32,7 +72,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public GapFillerTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_gapfiller_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_gapfiller_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -58,25 +98,16 @@ namespace Tsumiki.Tests.Core
         public void V_唯一経路の場合は真の配列に復元される()
         {
             const int l_k長 = 21;
-            // 200 bp の非反復的な配列
-            // k=21 なので偶然の重複はまず起きない
             var l_正解配列 = V_生成_ランダム配列(200, p_シード: 20_260_903);
-
             using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
-
-            // 真ん中 40 bp を N に置き換えた scaffold を作る
             const int l_ギャップ開始 = 80;
             const int l_ギャップ長 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
-            var l_パス = this.V_書き込み_scaffold("scaffolds.fasta", l_ギャップ入り配列);
-
+            var l_パス = this.V_書き込み_scaffold(Consts.Scaffoldファイル名, l_ギャップ入り配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(1, l_統計.A_総ギャップ数);
             Assert.Equal(1, l_統計.A_埋めたギャップ数);
             Assert.Equal(l_ギャップ長, l_統計.A_埋めた塩基数);
-
-            // 埋めた結果は元の配列そのものに戻っていなければならない
             Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
 
@@ -88,19 +119,12 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 21;
             var l_正解配列 = V_生成_ランダム配列(200, p_シード: 7);
-
             using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
-
-            // 実際の欠損は 40 bp だが、推定を誤って 30 個の N になっている状況
-            // ギャップ長推定はインサートサイズ推定のばらつきを引き継ぐため、
-            // ぴったりの長さしか探さないと現実にはまず埋まらない
             const int l_ギャップ開始 = 80;
             const int l_実際の欠損 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', 30) + l_正解配列[(l_ギャップ開始 + l_実際の欠損)..];
-            var l_パス = this.V_書き込み_scaffold("scaffolds_off.fasta", l_ギャップ入り配列);
-
+            var l_パス = this.V_書き込み_scaffold(C_ファイル名_scaffolds_off_fasta, l_ギャップ入り配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(1, l_統計.A_埋めたギャップ数);
             Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
@@ -108,67 +132,54 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// ギャップを埋める経路が複数ある場合、どれが正しいか決められない
         /// </summary>
-        /// <remarks>
-        /// 誤った配列で埋めるより N のまま残すほうが下流の解析にとって安全
-        /// </remarks>
         [Fact]
         public void V_経路が複数ある場合はNのまま残す()
         {
             const int l_k長 = 21;
             var l_前半 = V_生成_ランダム配列(80, p_シード: 11);
             var l_後半 = V_生成_ランダム配列(80, p_シード: 12);
-            // 同じ長さで中身だけ違う 2 通りの中間配列を、どちらも k-mer 集合に入れる
             var l_中間A = V_生成_ランダム配列(40, p_シード: 13);
             var l_中間B = V_生成_ランダム配列(40, p_シード: 14);
-
             using var l_索引 = this.V_構築_索引(l_k長, l_前半 + l_中間A + l_後半, l_前半 + l_中間B + l_後半);
-
             var l_ギャップ入り配列 = l_前半 + new string('N', 40) + l_後半;
-            var l_パス = this.V_書き込み_scaffold("scaffolds_ambiguous.fasta", l_ギャップ入り配列);
-
+            var l_パス = this.V_書き込み_scaffold(C_ファイル名_scaffolds_ambiguous_fasta, l_ギャップ入り配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(1, l_統計.A_総ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
             Assert.Equal(1, l_統計.A_一意に定まらなかった数);
-            // N はそのまま残っていること
             Assert.Contains('N', V_読み込み_単一配列(l_パス));
         }
 
         /// <summary>
-        /// 経路が一意に見つかっても、経路上の k-mer カバレッジが薄い (1本のリード相当) 場合は採用しない
+        /// 経路が一意に見つかっても、経路上の k-mer カバレッジが薄い (1 本のリード相当) 場合は採用しない
         /// </summary>
-        /// <remarks>
-        /// LocalAssembler の Has経路支持 と同じ安全策を、グローバルな TrustedKmerIndex のカバレッジで代替したもの<br/>
-        /// アンカー由来の k-mer だけで一意に繋がって見えても、中間配列そのものの裏付けが薄ければ採用してはいけない
-        /// </remarks>
         [Fact]
         public void V_経路は一意でもカバレッジが薄いときは採用しない()
         {
             const int l_k長 = 21;
             var l_正解配列 = V_生成_ランダム配列(200, p_シード: 55);
-
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = l_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = l_k長,
+                A_スレッド数 = 1
+            };
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
             var l_バイト列 = l_正解配列.Select(Util.Get_塩基ID).ToArray();
             for (var i = 0; i + l_k長 <= l_バイト列.Length; i++)
             {
-                // 中間部分 (ギャップになる 80-120) だけカバレッジ 1、両端は十分なカバレッジにする
                 var l_登録回数 = i is >= 80 - l_k長 + 1 and < 120 ? 1 : 3;
                 for (var l_繰り返し = 0; l_繰り返し < l_登録回数; l_繰り返し++)
                 {
                     l_索引.V_登録(l_バイト列.AsSpan(i, l_k長));
                 }
             }
-            _ = l_索引.V_カットオフ(p_カットオフ: 1UL);
 
+            _ = l_索引.V_カットオフ(p_カットオフ: 1UL);
             const int l_ギャップ開始 = 80;
             const int l_ギャップ長 = 40;
             var l_ギャップ入り配列 = l_正解配列[..l_ギャップ開始] + new string('N', l_ギャップ長) + l_正解配列[(l_ギャップ開始 + l_ギャップ長)..];
-            var l_パス = this.V_書き込み_scaffold("scaffolds_weak.fasta", l_ギャップ入り配列);
-
+            var l_パス = this.V_書き込み_scaffold(C_ファイル名_scaffolds_weak_fasta, l_ギャップ入り配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(1, l_統計.A_総ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
             Assert.Contains('N', V_読み込み_単一配列(l_パス));
@@ -183,15 +194,10 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_左 = V_生成_ランダム配列(80, p_シード: 21);
             var l_右 = V_生成_ランダム配列(80, p_シード: 22);
-
-            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない
             using var l_索引 = this.V_構築_索引(l_k長, l_左, l_右);
-
             var l_ギャップ入り配列 = l_左 + new string('N', 40) + l_右;
-            var l_パス = this.V_書き込み_scaffold("scaffolds_unreachable.fasta", l_ギャップ入り配列);
-
+            var l_パス = this.V_書き込み_scaffold(C_ファイル名_scaffolds_unreachable_fasta, l_ギャップ入り配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(1, l_統計.A_総ギャップ数);
             Assert.Equal(0, l_統計.A_埋めたギャップ数);
             Assert.Equal(1, l_統計.A_到達できなかった数);
@@ -207,10 +213,8 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_正解配列 = V_生成_ランダム配列(150, p_シード: 31);
             using var l_索引 = this.V_構築_索引(l_k長, l_正解配列);
-
-            var l_パス = this.V_書き込み_scaffold("scaffolds_nogap.fasta", l_正解配列);
+            var l_パス = this.V_書き込み_scaffold(C_ファイル名_scaffolds_nogap_fasta, l_正解配列);
             var l_統計 = GapFiller.V_充填_ギャップ(l_パス, l_索引, l_k長);
-
             Assert.Equal(0, l_統計.A_総ギャップ数);
             Assert.Equal(l_正解配列, V_読み込み_単一配列(l_パス));
         }
@@ -228,7 +232,7 @@ namespace Tsumiki.Tests.Core
         private static string V_生成_ランダム配列(int p_長さ, int p_シード)
         {
             var l_乱数 = new Random(p_シード);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
         }
 
         /// <summary>
@@ -239,7 +243,11 @@ namespace Tsumiki.Tests.Core
         /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex V_構築_索引(int p_kmer長, params string[] p_配列群)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_kmer長,
+                A_スレッド数 = 1
+            };
             var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
             foreach (var l_配列 in p_配列群)
             {
@@ -252,6 +260,7 @@ namespace Tsumiki.Tests.Core
                     }
                 }
             }
+
             _ = l_索引.V_カットオフ(p_カットオフ: 2UL);
             return l_索引;
         }
@@ -267,8 +276,9 @@ namespace Tsumiki.Tests.Core
             var l_パス = Path.Combine(this._作業ディレクトリ, p_名前);
             using (var l_ライター = new FastaWriter(l_パス))
             {
-                l_ライター.V_書き込み("SCAFFOLD1", p_配列);
+                l_ライター.V_書き込み(C_項目_SCAFFOLD1, p_配列);
             }
+
             return l_パス;
         }
 
@@ -285,6 +295,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

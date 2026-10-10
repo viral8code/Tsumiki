@@ -106,9 +106,7 @@ namespace Tsumiki.Utilities
         /// <returns>置き場にあればその中身、無ければファイル</returns>
         public static Stream Get_読込ストリーム(string p_パス)
         {
-            return _置き場.TryGetValue(Get_キー(p_パス), out var l_項目)
-                ? new 計数ストリーム(new DeflateStream(new 塊読込ストリーム(l_項目.A_塊群), CompressionMode.Decompress), l_項目.A_元の長さ)
-                : new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, C_ファイルのバッファ, FileOptions.SequentialScan);
+            return _置き場.TryGetValue(Get_キー(p_パス), out var l_項目) ? new 計数ストリーム(new DeflateStream(new 塊読込ストリーム(l_項目.A_塊群), CompressionMode.Decompress), l_項目.A_元の長さ) : new FileStream(p_パス, FileMode.Open, FileAccess.Read, FileShare.Read, C_ファイルのバッファ, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -146,9 +144,7 @@ namespace Tsumiki.Utilities
         {
             var l_場所 = Get_キー(p_ディレクトリ);
             var l_置き場 = _置き場.Keys.Where(x => string.Equals(Path.GetDirectoryName(x), l_場所, C_名前の比較) && Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞));
-            var l_ディスク = Directory.Exists(p_ディレクトリ)
-                ? Directory.EnumerateFiles(p_ディレクトリ).Where(x => Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞))
-                : [];
+            var l_ディスク = Directory.Exists(p_ディレクトリ) ? Directory.EnumerateFiles(p_ディレクトリ).Where(x => Is名前が一致(Path.GetFileName(x), p_接頭辞, p_接尾辞)) : [];
             return [.. l_置き場, .. l_ディスク];
         }
 
@@ -192,6 +188,5 @@ namespace Tsumiki.Utilities
         }
 
         #endregion
-
     }
 }

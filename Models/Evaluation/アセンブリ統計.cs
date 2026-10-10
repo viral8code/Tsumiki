@@ -20,9 +20,7 @@
         /// <returns></returns>
         public override string ToString()
         {
-            return $"count={this.A_配列数}, total_length={this.A_総延長}, " +
-                   $"N50={this.A_N50}, L50={this.A_L50}, max={this.A_最大長}, min={this.A_最小長}, " +
-                   $"GC%={this.A_GC率:0.00}";
+            return $"count={this.A_配列数}, total_length={this.A_総延長}, " + $"N50={this.A_N50}, L50={this.A_L50}, max={this.A_最大長}, min={this.A_最小長}, " + $"GC%={this.A_GC率:0.00}";
         }
 
         #endregion

@@ -1,7 +1,7 @@
 ﻿namespace Tsumiki.Models.Preprocessing
 {
     /// <summary>
-    /// ペアの重なり解析 (R1 と RC (R2)) が見つけた最良の位置合わせ
+    /// ペアの重なり解析 (R1 と RC (R2) ) が見つけた最良の位置合わせ
     /// </summary>
     /// <param name="A_offset"></param>
     /// <param name="A_重なり長"></param>

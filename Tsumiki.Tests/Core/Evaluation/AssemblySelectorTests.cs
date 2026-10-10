@@ -7,11 +7,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 複数のアセンブリ候補から 1 つを選ぶ規則の検証
     /// </summary>
-    /// <remarks>
-    /// 単一のスコアに畳む方式を採らなかった経緯がそのままここの主題になる<br/>
-    /// 「NG50 × 完全性 × 正確性」で選ぶ実装を試したところ、反復配列を飛ばして中間を落としたキメラ (完全性 0.675、NG50 16,300) が、正直に途切れた答え (完全性 0.933、NG50 8,300) より高い点になった<br/>
-    /// 連続性の利得が完全性の損失を上回るためで、指数を調整して隠すのではなく「まず完全性で足切りしてから連続性を見る」という順序にした
-    /// </remarks>
     public class AssemblySelectorTests
     {
         #region 公開メソッド
@@ -32,9 +27,7 @@ namespace Tsumiki.Tests.Core
         public void V_候補が1つならそれを返す()
         {
             var l_候補 = Get_候補(31, 50_000L, 0.97D);
-
             var l_選択 = AssemblySelector.Get_最良([l_候補]);
-
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -42,14 +35,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 完全性が同程度なら、連続性が高いほうを採る
         /// </summary>
-        /// <remarks>
-        /// Axy の実データ (どの k でも配列は落ちず、k=63 が最も繋がる) がこの形
-        /// </remarks>
         [Fact]
         public void V_完全性が同程度なら最も連続性が高い候補を選ぶ()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 63_058L, 0.980D), Get_候補(45, 151_085L, 0.981D), Get_候補(63, 175_674L, 0.979D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 63_058L, 0.980D), Get_候補(45, 151_085L, 0.981D), Get_候補(63, 175_674L, 0.979D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
@@ -57,14 +46,15 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// R. sphaeroides の実測値そのもの
         /// </summary>
-        /// <remarks>
-        /// 完全性の差 (97.1% と 93.2%) は許容差に収まるため両方が残り、連続性で k=31 が選ばれる
-        /// </remarks>
         [Fact]
         public void V_実測値のばらつきでも既知の最良kを選ぶ()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 53_893L, 0.9708D), Get_候補(45, 36_387L, 0.9684D), Get_候補(55, 19_347L, 0.9528D), Get_候補(63, 15_750L, 0.9316D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([
+                Get_候補(31, 53_893L, 0.9708D),
+                Get_候補(45, 36_387L, 0.9684D),
+                Get_候補(55, 19_347L, 0.9528D),
+                Get_候補(63, 15_750L, 0.9316D),
+            ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -72,15 +62,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// これが二段階にした理由
         /// </summary>
-        /// <remarks>
-        /// 連続性では圧倒的に上でも、完全性が許容差を超えて落ちている候補は採らない<br/>
-        /// 掛け算で選んでいたらこちらが選ばれていた
-        /// </remarks>
         [Fact]
         public void V_連続性が高くても完全性が許容差を超えて落ちる候補は選ばれない()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 8_300L, 0.933D), Get_候補(63, 16_300L, 0.675D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 8_300L, 0.933D), Get_候補(63, 16_300L, 0.675D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -91,8 +76,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_連続性が高くても重複した候補は選ばれない()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 50_000L, 0.97D, p_正確性: 0.99D), Get_候補(63, 90_000L, 0.97D, p_正確性: 0.60D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 50_000L, 0.97D, p_正確性: 0.99D), Get_候補(63, 90_000L, 0.97D, p_正確性: 0.60D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -100,16 +84,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 完全性には 2 つの段階がある
         /// </summary>
-        /// <remarks>
-        /// 足切り (許容差) を通っても、同点とみなす幅を超えて劣っていれば、連続性を見るより前に負ける<br/>
-        /// 足切りだけを唯一の関門にすると、「足切りぎりぎりまで配列を落として連続性を買う」取引が常に通ってしまう<br/>
-        /// 7 Mbp 級では 1 ポイントが 70 kbp に相当し、それは連続性と引き換えにしてよい量ではない
-        /// </remarks>
         [Fact]
         public void V_完全性の差が同点とみなす幅を超えていれば連続性より先に負ける()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 - 0.001D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 - 0.001D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -117,14 +95,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 差が同点とみなす幅に収まっていれば、完全性では決めずに連続性で決める
         /// </summary>
-        /// <remarks>
-        /// 推定の揺らぎの範囲でしかない差に順位を決めさせないための境界
-        /// </remarks>
         [Fact]
         public void V_完全性の差が同点とみなす幅に収まれば連続性で決める()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 + 0.001D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_同点とみなす差 + 0.001D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
@@ -135,8 +109,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_完全性の差が許容差をわずかに超えると候補が選ばれない()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_完全性の許容差 - 0.001D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 10_000L, 0.99D), Get_候補(63, 90_000L, 0.99D - AssemblySelector.C_完全性の許容差 - 0.001D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -144,19 +117,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 提案 H: 完全性・正確性が同程度でも、より多くの複製単位を環状に閉じられた候補を、NG50 より優先して選ぶこと
         /// </summary>
-        /// <remarks>
-        /// 「4.5 Mb が 1 本に閉じプラスミドを取りこぼした」候補より「染色体は 2 本に割れたがプラスミドも含め 2 本閉じた」候補を選ぶ、という目標関数そのものの検証
-        /// </remarks>
         [Fact]
         public void V_より多くの複製単位を環状に閉じた候補はNG50より優先される()
         {
-            var l_選択 = AssemblySelector.Get_最良([
-                // NG50 は高いが、環状に閉じた複製単位は無い
-                Get_候補(63, 200_000L, 0.97D, p_環状本数: 0, p_環状化率: 0.0D),
-                // NG50 は低いが、2 本 (染色体+プラスミド) が環状に閉じている
-                Get_候補(31, 50_000L, 0.97D, p_環状本数: 2, p_環状化率: 0.98D),
-            ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(63, 200_000L, 0.97D, p_環状本数: 0, p_環状化率: 0.0D), Get_候補(31, 50_000L, 0.97D, p_環状本数: 2, p_環状化率: 0.98D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(31, l_選択.Value.A_実行結果.A_k長);
         }
@@ -167,8 +131,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_環状本数が同じなら環状化率が高い候補を選ぶ()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 200_000L, 0.97D, p_環状本数: 1, p_環状化率: 0.30D), Get_候補(63, 50_000L, 0.97D, p_環状本数: 1, p_環状化率: 0.95D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 200_000L, 0.97D, p_環状本数: 1, p_環状化率: 0.30D), Get_候補(63, 50_000L, 0.97D, p_環状本数: 1, p_環状化率: 0.95D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
@@ -179,8 +142,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_どの候補も環状でなければNG50で決める()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(31, 50_000L, 0.97D), Get_候補(63, 90_000L, 0.97D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(31, 50_000L, 0.97D), Get_候補(63, 90_000L, 0.97D), ]);
             Assert.NotNull(l_選択);
             Assert.Equal(63, l_選択.Value.A_実行結果.A_k長);
         }
@@ -201,7 +163,6 @@ namespace Tsumiki.Tests.Core
         /// <returns>実行結果と評価の組</returns>
         private static (アセンブリ実行結果, アセンブリ評価) Get_候補(int p_k長, long p_NG50, double p_完全性, double p_正確性 = 1.0D, int p_環状本数 = 0, double p_環状化率 = 0D)
         {
-            // 期待延べ数を固定し、そこから逆算して欠損・過剰を決める
             const long l_期待延べ数 = 1_000_000L;
             var l_実行結果 = new アセンブリ実行結果(p_k長, $"k{p_k長}_unitigs.fasta", $"k{p_k長}_contigs.fasta", $"k{p_k長}_scaffolds.fasta", 2UL, 20.0D);
             var l_評価 = new アセンブリ評価(A_期待延べ数: l_期待延べ数, A_欠損延べ数: (long)(l_期待延べ数 * (1D - p_完全性)), A_過剰延べ数: (long)(l_期待延べ数 * (1D - p_正確性)), A_総延長: 5_000_000L, A_本数: 100, A_NG50: p_NG50, A_環状本数: p_環状本数, A_環状化率: p_環状化率);
@@ -209,6 +170,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

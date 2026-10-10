@@ -55,7 +55,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 塩基 ID 列を詰める
         /// </summary>
-        /// <param name="p_塩基列">塩基 ID 列 (A = 1 .. T = 4) </param>
+        /// <param name="p_塩基列">塩基 ID 列 (A = 1 .. T = 4)</param>
         /// <returns>詰めた結果、曖昧塩基を含む場合は null</returns>
         public static PackedBases? Get_作る(ReadOnlySpan<byte> p_塩基列)
         {
@@ -86,9 +86,7 @@ namespace Tsumiki.Utilities
             var l_語番号 = p_位置 / Consts.ワードあたりの塩基数;
             var l_ずらし = 2 * (p_位置 % Consts.ワードあたりの塩基数);
             var l_先頭 = this._語[l_語番号];
-            return l_ずらし == 0
-                ? l_先頭
-                : (l_先頭 << l_ずらし) | (this._語[l_語番号 + 1] >> (64 - l_ずらし));
+            return l_ずらし == 0 ? l_先頭 : (l_先頭 << l_ずらし) | (this._語[l_語番号 + 1] >> (64 - l_ずらし));
         }
 
         /// <summary>
@@ -101,9 +99,7 @@ namespace Tsumiki.Utilities
         public static int Get_不一致数(ulong p_窓1, ulong p_窓2, int p_塩基数)
         {
             var l_差 = p_窓1 ^ p_窓2;
-
             var l_レーン = (l_差 | (l_差 >> 1)) & C_下位ビット;
-
             if (p_塩基数 < Consts.ワードあたりの塩基数)
             {
                 l_レーン &= ulong.MaxValue << (64 - (p_塩基数 << 1));

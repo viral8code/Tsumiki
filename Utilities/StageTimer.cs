@@ -6,7 +6,9 @@ using Tsumiki.Models.Reporting;
 
 namespace Tsumiki.Utilities
 {
-    /// <summary>工程の経過時間とプロセス全体の資源使用量を記録する</summary>
+    /// <summary>
+    /// 工程の経過時間とプロセス全体の資源使用量を記録する
+    /// </summary>
     internal sealed class StageTimer : IDisposable
     {
         #region 定数
@@ -101,9 +103,7 @@ namespace Tsumiki.Utilities
             var l_ワーキングセットMB = this._プロセス.WorkingSet64 / 1048576D;
             var l_ピークワーキングセットMB = this._プロセス.PeakWorkingSet64 / 1048576D;
             var l_世代2回収回数 = GC.CollectionCount(2) - this._回収数;
-            var l_入出力 = this._入出力 is { } l_開始 && Get_入出力量() is { } l_終了
-                ? FormattableString.Invariant($", io_read_mb={(l_終了.A_読込 - l_開始.A_読込) / 1048576D:F1}, io_write_mb={(l_終了.A_書込 - l_開始.A_書込) / 1048576D:F1}")
-                : string.Empty;
+            var l_入出力 = this._入出力 is { } l_開始 && Get_入出力量() is { } l_終了 ? FormattableString.Invariant($", io_read_mb={(l_終了.A_読込 - l_開始.A_読込) / 1048576D:F1}, io_write_mb={(l_終了.A_書込 - l_開始.A_書込) / 1048576D:F1}") : string.Empty;
             Logger.V_出力_そのまま(FormattableString.Invariant($"[Perf] {this._工程}: elapsed_s={l_経過秒:F3}, cpu_s={l_CPU秒:F3}, allocated_mb={l_確保MB:F1}, working_set_mb={l_ワーキングセットMB:F1}, peak_working_set_mb={l_ピークワーキングセットMB:F1}, gen2_gc={l_世代2回収回数}{l_入出力}"));
             PhaseTimingRecorder.V_記録(new フェーズ計測(this._工程, l_経過秒, l_CPU秒, l_確保MB, l_ワーキングセットMB, l_ピークワーキングセットMB, l_世代2回収回数));
             this._プロセス.Dispose();

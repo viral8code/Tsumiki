@@ -1,4 +1,5 @@
-﻿using Tsumiki.Models.Foundation;
+﻿using Tsumiki.Commons;
+using Tsumiki.Models.Foundation;
 using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Utility
@@ -21,15 +22,15 @@ namespace Tsumiki.Tests.Utility
         [InlineData(64)]
         [InlineData(65)]
         [InlineData(135)]
-        public void Try追加_窓ごとに詰めたキーと同じ(int p_k長)
+        public void Get_追加_窓ごとに詰めたキーと同じ(int p_k長)
         {
             var l_乱数 = new Random(p_k長);
-            var l_配列 = new string([.. Enumerable.Range(0, 600).Select(i => i % 97 == 50 ? 'N' : "ACGT"[l_乱数.Next(4)])]);
+            var l_配列 = new string([..Enumerable.Range(0, 600).Select(i => i % 97 == 50 ? 'N' : Consts.塩基文字[l_乱数.Next(4)])]);
             var l_窓 = new 順鎖Kmer転がし(p_k長);
             List<(int A_終端, KmerKey A_キー)> l_転がし = [];
             for (var i = 0; i < l_配列.Length; i++)
             {
-                if (l_窓.Try追加(l_配列[i], out var l_キー))
+                if (l_窓.Is成功_追加(l_配列[i], out var l_キー))
                 {
                     l_転がし.Add((i + 1, l_キー.Get_複製()));
                 }

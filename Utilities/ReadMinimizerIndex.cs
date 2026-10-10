@@ -10,10 +10,14 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// 項目 結果の長さは 配列の長さ   窓長   1 でなければならない
+        /// </summary>
+        private const string C_項目_結果の長さは_配列の長さ___窓長___1_でなければならない = "結果の長さは 配列の長さ - 窓長 + 1 でなければならない";
+
+        /// <summary>
         /// minimizer にする k-mer の長さ
         /// </summary>
         public const int C_種長 = 15;
-
 
         /// <summary>
         /// minimizer を選ぶ窓に並ぶ k-mer の数
@@ -68,7 +72,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 種の値のマスク
         /// </summary>
-        private const ulong C_種のマスク = (1UL << (2 * C_種長)) - 1;
+        private const ulong C_種のマスク = (1UL << (2 * C_種長)) - 1UL;
 
         #endregion
 
@@ -126,7 +130,7 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 索引が使うおおよそのバイト数
         /// </summary>
-        public long A_使用量 => (8L * (this._語.LongLength + this._末尾印.LongLength + (this._位置64?.LongLength ?? 0))) + (4L * (this._種.LongLength + (this._位置32?.LongLength ?? 0)));
+        public long A_使用量 => (8L * (this._語.LongLength + this._末尾印.LongLength + (this._位置64?.LongLength ?? 0L))) + (4L * (this._種.LongLength + (this._位置32?.LongLength ?? 0L)));
 
         #endregion
 
@@ -172,7 +176,7 @@ namespace Tsumiki.Utilities
             var l_末尾印 = new ulong[C_語の初期数];
             List<(long A_開始, int A_長さ)> l_区間群 = [];
             List<string> l_束 = new(C_詰める束の大きさ);
-            long l_位置 = 0;
+            var l_位置 = 0L;
             foreach (var l_配列 in p_配列列())
             {
                 l_束.Add(l_配列);
@@ -184,9 +188,8 @@ namespace Tsumiki.Utilities
             }
 
             var l_長さ = V_詰める_束(ref l_語, ref l_末尾印, l_区間群, l_束, l_位置);
-            Array.Resize(ref l_語, (int)((l_長さ / C_語あたりの文字数) + 2));
-            Array.Resize(ref l_末尾印, (int)((l_長さ / 64) + 2));
-
+            Array.Resize(ref l_語, (int)((l_長さ / C_語あたりの文字数) + 2L));
+            Array.Resize(ref l_末尾印, (int)((l_長さ / 64L) + 2L));
             return V_組み立てる(l_語, l_末尾印, l_区間群.ToArray(), l_長さ, p_窓の種数);
         }
 
@@ -201,7 +204,7 @@ namespace Tsumiki.Utilities
         }
 
         /// <summary>
-        /// 長さ p_窓長 の全ての窓について、Has出現 と同じ答えを一度に求める (配列全体の 15-mer を一度だけ計算する)
+        /// 長さ p_窓長 の全ての窓について、Has 出現 と同じ答えを一度に求める (配列全体の 15-mer を一度だけ計算する)
         /// </summary>
         /// <param name="p_配列">調べる配列 (A・C・G・T 以外を含みうる)</param>
         /// <param name="p_窓長">窓の長さ (最短の問い合わせ長以上)</param>
@@ -216,7 +219,7 @@ namespace Tsumiki.Utilities
             var l_窓数 = p_配列.Length - p_窓長 + 1;
             if (p_結果.Length != l_窓数)
             {
-                throw new ArgumentException("結果の長さは 配列の長さ - 窓長 + 1 でなければならない", nameof(p_結果));
+                throw new ArgumentException(C_項目_結果の長さは_配列の長さ___窓長___1_でなければならない, nameof(p_結果));
             }
 
             if (l_窓数 <= 0)
@@ -224,12 +227,11 @@ namespace Tsumiki.Utilities
                 return;
             }
 
-            // 配列全体の 15-mer の正準値とハッシュを一度だけ転がして求める (A・C・G・T 以外を含む 15-mer の値は使われない)
             var l_種数 = p_配列.Length - C_種長 + 1;
             var l_正準値 = new uint[l_種数];
             var l_ハッシュ = new ulong[l_種数];
-            ulong l_順 = 0;
-            ulong l_逆 = 0;
+            var l_順 = 0UL;
+            var l_逆 = 0UL;
             var l_連続 = 0;
             for (var p = 0; p < p_配列.Length; p++)
             {
@@ -237,8 +239,8 @@ namespace Tsumiki.Utilities
                 if (l_文字 < 0)
                 {
                     l_連続 = 0;
-                    l_順 = 0;
-                    l_逆 = 0;
+                    l_順 = 0UL;
+                    l_逆 = 0UL;
                     continue;
                 }
 
@@ -254,7 +256,6 @@ namespace Tsumiki.Utilities
                 }
             }
 
-            // 窓の中に A・C・G・T 以外があるかを、窓の始まりごとに次の不正な位置で確かめる
             var l_次の不正 = 0;
             for (var i = 0; i < l_窓数; i++)
             {
@@ -291,7 +292,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_配列">錨にする配列 (最短の問い合わせ長以上、A・C・G・T だけ)</param>
         /// <param name="p_長さ">前後それぞれ取り出す長さの上限</param>
         /// <param name="p_上限">取り出すリードの数の上限</param>
-        /// <returns>(直前の塩基列, 直後の塩基列)、無ければ空文字</returns>
+        /// <returns>(直前の塩基列, 直後の塩基列) 、無ければ空文字</returns>
         public List<(string A_前, string A_続き)> Get_前後群(ReadOnlySpan<char> p_配列, int p_長さ, int p_上限)
         {
             List<(string A_前, string A_続き)> l_前後群 = [];
@@ -299,7 +300,7 @@ namespace Tsumiki.Utilities
             {
                 var l_終わり = l_開始 + p_配列.Length;
                 var l_右側 = this.Get_外側(l_終わり, 1, p_長さ);
-                var l_左側 = this.Get_外側(l_開始 - 1, -1, p_長さ);
+                var l_左側 = this.Get_外側(l_開始 - 1L, -1, p_長さ);
                 l_前後群.Add(l_Is逆鎖 ? (Get_逆相補(l_右側, 0), Get_逆相補(l_左側, 1)) : (Get_逆相補(l_左側, 2), l_右側));
             }
 
@@ -336,7 +337,7 @@ namespace Tsumiki.Utilities
             var l_束の先頭 = new long[l_束数 + 1];
             _ = Parallel.For(0, l_束数, l_束 =>
             {
-                l_束の先頭[l_束 + 1] = V_集める_束(p_語, p_区間群, l_束, p_窓の種数, null, null, null, 0);
+                l_束の先頭[l_束 + 1] = V_集める_束(p_語, p_区間群, l_束, p_窓の種数, null, null, null, 0L);
             });
             for (var i = 0; i < l_束数; i++)
             {
@@ -381,7 +382,7 @@ namespace Tsumiki.Utilities
             for (var j = 0; j < this.A_窓の種数; j++)
             {
                 var l_値 = Get_種の値(p_配列.Slice(j, C_種長));
-                if (l_値 < 0)
+                if (l_値 < 0L)
                 {
                     return [];
                 }
@@ -463,7 +464,7 @@ namespace Tsumiki.Utilities
         {
             var l_塩基 = new char[p_長さ];
             var l_数 = 0;
-            for (var l_位置 = p_位置; l_数 < p_長さ && l_位置 >= 0 && l_位置 < this.A_塩基数 && !(p_向き > 0 ? this.Is区間の末尾(l_位置 - 1) : this.Is区間の末尾(l_位置)); l_位置 += p_向き)
+            for (var l_位置 = p_位置; l_数 < p_長さ && l_位置 >= 0L && l_位置 < this.A_塩基数 && !(p_向き > 0 ? this.Is区間の末尾(l_位置 - 1L) : this.Is区間の末尾(l_位置)); l_位置 += p_向き)
             {
                 l_塩基[l_数++] = C_塩基の並び[Get_文字(this._語, l_位置)];
             }
@@ -475,7 +476,7 @@ namespace Tsumiki.Utilities
         /// 読んだ塩基列を、錨の向きの並びに直す
         /// </summary>
         /// <param name="p_塩基列">読んだ順の塩基列</param>
-        /// <param name="p_直し方">0: 右へ読んだものを逆相補 (逆鎖の直前)、1: 左へ読んだものを相補 (逆鎖の直後)、2: 左へ読んだものを逆順 (順鎖の直前)</param>
+        /// <param name="p_直し方">0: 右へ読んだものを逆相補 (逆鎖の直前) 、1: 左へ読んだものを相補 (逆鎖の直後) 、2: 左へ読んだものを逆順 (順鎖の直前)</param>
         /// <returns></returns>
         private static string Get_逆相補(string p_塩基列, int p_直し方)
         {
@@ -500,7 +501,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private bool Is区間の末尾(long p_位置)
         {
-            return (this._末尾印[p_位置 / 64] & (1UL << (int)(p_位置 % 64))) != 0;
+            return (this._末尾印[p_位置 / 64L] & (1UL << (int)(p_位置 % 64L))) != 0UL;
         }
 
         /// <summary>
@@ -531,16 +532,16 @@ namespace Tsumiki.Utilities
             }
 
             var l_終端 = l_開始位置[l_件数];
-            var l_要る語数 = (l_終端 / C_語あたりの文字数) + 2;
+            var l_要る語数 = (l_終端 / C_語あたりの文字数) + 2L;
             if (p_語.LongLength < l_要る語数)
             {
-                Array.Resize(ref p_語, (int)Math.Max(l_要る語数, Math.Min(Array.MaxLength, p_語.LongLength * 2)));
+                Array.Resize(ref p_語, (int)Math.Max(l_要る語数, Math.Min(Array.MaxLength, p_語.LongLength * 2L)));
             }
 
-            var l_要る印数 = (l_終端 / 64) + 2;
+            var l_要る印数 = (l_終端 / 64L) + 2L;
             if (p_末尾印.LongLength < l_要る印数)
             {
-                Array.Resize(ref p_末尾印, (int)Math.Max(l_要る印数, Math.Min(Array.MaxLength, p_末尾印.LongLength * 2)));
+                Array.Resize(ref p_末尾印, (int)Math.Max(l_要る印数, Math.Min(Array.MaxLength, p_末尾印.LongLength * 2L)));
             }
 
             var l_語 = p_語;
@@ -561,8 +562,8 @@ namespace Tsumiki.Utilities
                     {
                         if (l_区間長 > 0)
                         {
-                            var l_末尾 = l_今 - 1;
-                            _ = Interlocked.Or(ref l_末尾印[l_末尾 / 64], 1UL << (int)(l_末尾 % 64));
+                            var l_末尾 = l_今 - 1L;
+                            _ = Interlocked.Or(ref l_末尾印[l_末尾 / 64L], 1UL << (int)(l_末尾 % 64L));
                             if (l_区間長 >= C_短い問い合わせの最短長)
                             {
                                 l_長い区間[l_書く++] = (l_今 - l_区間長, l_区間長);
@@ -581,7 +582,7 @@ namespace Tsumiki.Utilities
                         l_語番号 = l_今 / C_語あたりの文字数;
                     }
 
-                    l_溜め |= (ulong)l_値 << (62 - (int)(2 * (l_今 % C_語あたりの文字数)));
+                    l_溜め |= (ulong)l_値 << (62 - (int)(2L * (l_今 % C_語あたりの文字数)));
                     l_今++;
                     l_区間長++;
                 }
@@ -625,7 +626,6 @@ namespace Tsumiki.Utilities
         /// <summary>
         /// 種の値の順に並べる (上位のビットで振り分けてから、振り分けた先ごとに並列に並べる)
         /// </summary>
-        /// <typeparam name="T">位置の型</typeparam>
         /// <param name="p_種">種の値</param>
         /// <param name="p_位置">種と組になる位置</param>
         private static void V_並べる<T>(ref uint[] p_種, ref T[] p_位置)
@@ -645,7 +645,7 @@ namespace Tsumiki.Utilities
             var l_種 = new uint[p_種.LongLength];
             var l_位置 = new T[p_位置.LongLength];
             var l_書く = (long[])l_先頭.Clone();
-            for (long i = 0; i < p_種.LongLength; i++)
+            for (var i = 0L; i < p_種.LongLength; i++)
             {
                 var l_先 = l_書く[p_種[i] >> l_振り分けのシフト]++;
                 l_種[l_先] = p_種[i];
@@ -660,7 +660,6 @@ namespace Tsumiki.Utilities
                     l_種.AsSpan((int)l_先頭[b], l_長さ).Sort(l_位置.AsSpan((int)l_先頭[b], l_長さ));
                 }
             });
-
             p_種 = l_種;
             p_位置 = l_位置;
         }
@@ -686,7 +685,6 @@ namespace Tsumiki.Utilities
             {
                 if (p_区間群[i].A_長さ < l_最短)
                 {
-                    // 窓が 1 つもできない区間は minimizer を持たない
                     continue;
                 }
 
@@ -725,8 +723,8 @@ namespace Tsumiki.Utilities
             var l_種数 = p_長さ - C_種長 + 1;
             var l_正準値 = new uint[l_種数];
             var l_ハッシュ = new ulong[l_種数];
-            ulong l_順 = 0;
-            ulong l_逆 = 0;
+            var l_順 = 0UL;
+            var l_逆 = 0UL;
             for (var i = 0; i < p_長さ; i++)
             {
                 var l_文字 = Get_文字(p_語, p_開始 + i);
@@ -769,7 +767,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private bool Is一致(long p_開始, ReadOnlySpan<char> p_配列, bool p_Is逆相補)
         {
-            if (p_開始 < 0 || p_開始 + p_配列.Length > this.A_塩基数)
+            if (p_開始 < 0L || p_開始 + p_配列.Length > this.A_塩基数)
             {
                 return false;
             }
@@ -783,7 +781,7 @@ namespace Tsumiki.Utilities
                     return false;
                 }
 
-                if (i < p_配列.Length - 1 && (this._末尾印[l_位置 / 64] & (1UL << (int)(l_位置 % 64))) != 0)
+                if (i < p_配列.Length - 1 && (this._末尾印[l_位置 / 64L] & (1UL << (int)(l_位置 % 64L))) != 0UL)
                 {
                     return false;
                 }
@@ -800,14 +798,14 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static long Get_下限(uint[] p_並び, uint p_値)
         {
-            long l_下 = 0;
+            var l_下 = 0L;
             var l_上 = p_並び.LongLength;
             while (l_下 < l_上)
             {
-                var l_中 = (l_下 + l_上) / 2;
+                var l_中 = (l_下 + l_上) / 2L;
                 if (p_並び[l_中] < p_値)
                 {
-                    l_下 = l_中 + 1;
+                    l_下 = l_中 + 1L;
                 }
                 else
                 {
@@ -825,8 +823,8 @@ namespace Tsumiki.Utilities
         /// <returns>正準値、A・C・G・T 以外を含めば -1</returns>
         private static long Get_種の値(ReadOnlySpan<char> p_種)
         {
-            ulong l_順 = 0;
-            ulong l_逆 = 0;
+            var l_順 = 0UL;
+            var l_逆 = 0UL;
             for (var i = 0; i < p_種.Length; i++)
             {
                 var l_文字 = Get_2bit値(p_種[i]);
@@ -866,7 +864,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         private static int Get_文字(ulong[] p_配列, long p_位置)
         {
-            return (int)((p_配列[p_位置 / C_語あたりの文字数] >> (62 - (int)(2 * (p_位置 % C_語あたりの文字数)))) & 3);
+            return (int)((p_配列[p_位置 / C_語あたりの文字数] >> (62 - (int)(2L * (p_位置 % C_語あたりの文字数)))) & 3UL);
         }
 
         /// <summary>

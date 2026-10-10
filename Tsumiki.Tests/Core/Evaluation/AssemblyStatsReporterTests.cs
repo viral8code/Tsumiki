@@ -8,6 +8,30 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class AssemblyStatsReporterTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 塩基配列 ACGTACGTAC
+        /// </summary>
+        private const string C_塩基配列_ACGTACGTAC = "ACGTACGTAC";
+
+        /// <summary>
+        /// 塩基配列 ggccaattNN
+        /// </summary>
+        private const string C_塩基配列_ggccaattNN = "ggccaattNN";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 書式 seq1 ACGTACGTAC  seq2 ACGT
+        /// </summary>
+        private const string C_書式_seq1_ACGTACGTAC__seq2_ACGT = ">seq1\nACGTACGTAC\n>seq2\nACGT\n";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -17,7 +41,6 @@ namespace Tsumiki.Tests.Core
         public void V_入力が空ならすべて0を返す()
         {
             var l_統計 = AssemblyStatsReporter.Get_統計([]);
-
             Assert.Equal(0, l_統計.A_配列数);
             Assert.Equal(0L, l_統計.A_総延長);
             Assert.Equal(0, l_統計.A_N50);
@@ -31,8 +54,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_配列が1本ならN50はその長さと等しい()
         {
-            var l_統計 = AssemblyStatsReporter.Get_統計(["ACGTACGTAC"]);
-
+            var l_統計 = AssemblyStatsReporter.Get_統計([C_塩基配列_ACGTACGTAC]);
             Assert.Equal(1, l_統計.A_配列数);
             Assert.Equal(10L, l_統計.A_総延長);
             Assert.Equal(10, l_統計.A_N50);
@@ -47,10 +69,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_既知の例でN50とL50を求める()
         {
-            // 長さ: 100, 90, 80, 70, 60, 50, 40, 30, 20, 10 (合計 550)
-            // 半分 (275) に達するのは 100+90+80+70=340 の時点 (4 本目) なので N50=70, L50=4
-            List<string> l_配列群 =
-            [
+            List<string> l_配列群 = [
                 new string('A', 100),
                 new string('A', 90),
                 new string('A', 80),
@@ -62,9 +81,7 @@ namespace Tsumiki.Tests.Core
                 new string('A', 20),
                 new string('A', 10),
             ];
-
             var l_統計 = AssemblyStatsReporter.Get_統計(l_配列群);
-
             Assert.Equal(10, l_統計.A_配列数);
             Assert.Equal(550L, l_統計.A_総延長);
             Assert.Equal(70, l_統計.A_N50);
@@ -79,9 +96,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_GC率はNの連続を無視し大文字小文字を区別しない()
         {
-            // G/C: 4, A/T: 4, N: 2 -> GC% は N を除いた 8 塩基中 4 塩基 = 50%
-            var l_統計 = AssemblyStatsReporter.Get_統計(["ggccaattNN"]);
-
+            var l_統計 = AssemblyStatsReporter.Get_統計([C_塩基配列_ggccaattNN]);
             Assert.Equal(50.0D, l_統計.A_GC率, precision: 6);
         }
 
@@ -91,8 +106,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_N分割統計は分割後に最小長を適用する()
         {
-            var l_統計 = AssemblyStatsReporter.Get_N分割統計([new string('A', 600) + "N" + new string('C', 400), new string('G', 300) + "N" + new string('T', 300)], 500);
-
+            var l_統計 = AssemblyStatsReporter.Get_N分割統計([new string('A', 600) + C_GUID書式 + new string('C', 400), new string('G', 300) + C_GUID書式 + new string('T', 300)], 500);
             Assert.Equal(1, l_統計.A_配列数);
             Assert.Equal(600L, l_統計.A_総延長);
             Assert.Equal(600, l_統計.A_最小長);
@@ -108,10 +122,8 @@ namespace Tsumiki.Tests.Core
             var l_パス = Path.GetTempFileName();
             try
             {
-                File.WriteAllText(l_パス, ">seq1\nACGTACGTAC\n>seq2\nACGT\n");
-
+                File.WriteAllText(l_パス, C_書式_seq1_ACGTACGTAC__seq2_ACGT);
                 var l_統計 = AssemblyStatsReporter.Get_統計_FASTA(l_パス);
-
                 Assert.Equal(2, l_統計.A_配列数);
                 Assert.Equal(14L, l_統計.A_総延長);
             }
@@ -122,6 +134,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

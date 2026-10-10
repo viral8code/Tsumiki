@@ -5,21 +5,33 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// k-mer スペクトルの 2 成分混合モデル (誤り=幾何分布、真の k-mer=単一コピー平均の整数倍に山を持つ負の二項混合) の EM 推定を、理論分布そのものから作ったヒストグラムで固定する
     /// </summary>
-    /// <remarks>
-    /// 理論分布を使うことで、サンプリング由来のノイズを排して「モデルが正しいパラメータへ収束するか」だけを検証できる
-    /// </remarks>
     public class KmerSpectrumMixtureModelTests
     {
+        #region 公開メソッド
+
+        /// <summary>
+        /// 事後誤り確率が観測域で再上昇したら信頼下限を unknown にする
+        /// </summary>
         [Fact]
         public void V_事後誤り確率が観測域で再上昇したら信頼下限をunknownにする()
         {
-            var l_事後 = new[] { 0.9D, 0.4D, 0.2D, 0.7D };
-            var l_頻度 = new[] { 100D, 80D, 10D, 1D };
-
+            var l_事後 = new[]
+            {
+                0.9D,
+                0.4D,
+                0.2D,
+                0.7D
+            };
+            var l_頻度 = new[]
+            {
+                100D,
+                80D,
+                10D,
+                1D
+            };
             Assert.Equal(ulong.MaxValue, KmerSpectrumMixtureModel.Get_単調な信頼下限(l_事後, l_頻度, 2UL));
             Assert.Equal(2UL, KmerSpectrumMixtureModel.Get_単調な信頼下限(l_事後, new[] { 100D, 80D, 10D, 0D }, 2UL));
         }
-        #region 公開メソッド
 
         /// <summary>
         /// 空のヒストグラムでは null を返す
@@ -36,9 +48,12 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_走査範囲が狭すぎる場合はnullを返す()
         {
-            // コピー数上限 (10) の 2 倍に満たない走査範囲では、単一コピーの山と
-            // その倍数の山を区別する材料が無い
-            Dictionary<ulong, long> l_ヒストグラム = new() { [1UL] = 100L, [2UL] = 50L, [5UL] = 200L };
+            Dictionary<ulong, long> l_ヒストグラム = new()
+            {
+                [1UL] = 100L,
+                [2UL] = 50L,
+                [5UL] = 200L
+            };
             Assert.Null(KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム));
         }
 
@@ -52,14 +67,10 @@ namespace Tsumiki.Tests.Utility
             const double l_真の誤り平均 = 3.0D;
             const double l_真の誤り混合比 = 0.35D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
-
             var l_ヒストグラム = Get_理論ヒストグラム(l_真のλ, l_真の誤り混合比, l_真の誤り平均, l_コピー数別混合比, p_上限: 300, p_総数: 1_000_000L);
-
             var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
-
             Assert.NotNull(l_結果);
             Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ - 2D, l_真のλ + 2D);
-            // カットオフは誤り成分側、信頼下限はカットオフ以上、どちらも単一コピー峰 (30) 未満のはず
             Assert.InRange((double)l_結果.A_カットオフ, 1D, l_真のλ);
             Assert.True(l_結果.A_信頼下限 >= l_結果.A_カットオフ);
         }
@@ -74,11 +85,8 @@ namespace Tsumiki.Tests.Utility
             const double l_真の誤り平均 = 2.0D;
             const double l_真の誤り混合比 = 0.5D;
             var l_コピー数別混合比 = Get_コピー数別混合比_単一コピー優勢();
-
             var l_ヒストグラム = Get_理論ヒストグラム(l_真のλ, l_真の誤り混合比, l_真の誤り平均, l_コピー数別混合比, p_上限: 150, p_総数: 500_000L);
-
             var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
-
             Assert.NotNull(l_結果);
             Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ - 2D, l_真のλ + 2D);
         }
@@ -89,13 +97,10 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_過分散のある分布から単一コピー平均を復元できる()
         {
-            // 単一コピーがポアソン分布よりずっと幅広い場合、ポアソン混合は山を「コピー数 3」と読んで λ を 1/3 に見積もる
             const double l_真のλ = 120.0D;
             const double l_真の過分散 = 8.0D;
             var l_ヒストグラム = Get_理論ヒストグラム_負の二項(l_真のλ, l_真の過分散, p_誤り混合比: 0.4D, p_誤り平均: 2.0D, Get_コピー数別混合比_単一コピー優勢(), p_上限: 900, p_総数: 5_000_000L);
-
             var l_結果 = KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム);
-
             Assert.NotNull(l_結果);
             Assert.InRange(l_結果!.A_単一コピー平均, l_真のλ * 0.8D, l_真のλ * 1.25D);
         }
@@ -114,8 +119,7 @@ namespace Tsumiki.Tests.Utility
         private static double Get_負の二項確率(double p_出現回数, double p_μ, double p_過分散)
         {
             var l_和 = p_過分散 + p_μ;
-            var l_log確率 = SpecialFunctions.Get_対数ガンマ(p_出現回数 + p_過分散) - SpecialFunctions.Get_対数ガンマ(p_過分散) - SpecialFunctions.Get_対数ガンマ(p_出現回数 + 1D)
-                + (p_過分散 * Math.Log(p_過分散 / l_和)) + (p_出現回数 * Math.Log(p_μ / l_和));
+            var l_log確率 = SpecialFunctions.Get_対数ガンマ(p_出現回数 + p_過分散) - SpecialFunctions.Get_対数ガンマ(p_過分散) - SpecialFunctions.Get_対数ガンマ(p_出現回数 + 1D) + (p_過分散 * Math.Log(p_過分散 / l_和)) + (p_出現回数 * Math.Log(p_μ / l_和));
             return Math.Exp(l_log確率);
         }
 
@@ -140,8 +144,10 @@ namespace Tsumiki.Tests.Utility
                 {
                     l_確率 += (1D - p_誤り混合比) * p_コピー数別混合比[k - 1] * Get_負の二項確率(c, k * p_λ, p_過分散);
                 }
+
                 l_ヒストグラム[c] = (long)Math.Round(l_確率 * p_総数);
             }
+
             return l_ヒストグラム;
         }
 
@@ -170,15 +176,13 @@ namespace Tsumiki.Tests.Utility
             {
                 l_log階乗 += Math.Log(i);
             }
+
             return Math.Exp(-p_μ + p_出現回数 * Math.Log(p_μ) - l_log階乗);
         }
 
         /// <summary>
         /// 指定したパラメータ通りの理論混合分布から、その通りのヒストグラムを作る (サンプリングはしない
         /// </summary>
-        /// <remarks>
-        /// EM が真のパラメータへ収束するかだけを見るため)
-        /// </remarks>
         /// <param name="p_λ"></param>
         /// <param name="p_誤り混合比"></param>
         /// <param name="p_誤り平均"></param>
@@ -196,8 +200,10 @@ namespace Tsumiki.Tests.Utility
                 {
                     l_確率 += (1D - p_誤り混合比) * p_コピー数別混合比[k - 1] * Get_ポアソン確率(c, k * p_λ);
                 }
+
                 l_ヒストグラム[c] = (long)Math.Round(l_確率 * p_総数);
             }
+
             return l_ヒストグラム;
         }
 
@@ -207,7 +213,6 @@ namespace Tsumiki.Tests.Utility
         /// <returns>コピー数ごとの混合比</returns>
         private static double[] Get_コピー数別混合比_単一コピー優勢()
         {
-            // モデル (π_k ∝ r^ (k-1)) と同じ形の生成分布
             const double l_反復配列 = 0.15D;
             var l_比 = new double[10];
             var l_合計 = 0.0D;
@@ -216,14 +221,15 @@ namespace Tsumiki.Tests.Utility
                 l_比[k] = Math.Pow(l_反復配列, k);
                 l_合計 += l_比[k];
             }
+
             for (var k = 0; k < 10; k++)
             {
                 l_比[k] /= l_合計;
             }
+
             return l_比;
         }
 
         #endregion
-
     }
 }

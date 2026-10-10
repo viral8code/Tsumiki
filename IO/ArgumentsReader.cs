@@ -9,6 +9,20 @@ namespace Tsumiki.IO
     /// </summary>
     internal class ArgumentsReader
     {
+        #region 定数
+
+        /// <summary>
+        /// リードパス未指定メッセージ
+        /// </summary>
+        private const string C_リードパス未指定メッセージ = "Please set read path";
+
+        /// <summary>
+        /// ペアライブラリ数不一致メッセージ
+        /// </summary>
+        private const string C_ペアライブラリ数不一致メッセージ = "-1 and -2 must list the same number of comma-separated libraries";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -31,37 +45,29 @@ namespace Tsumiki.IO
                     switch (l_キー)
                     {
                         case Consts.引数キー.リード1のパス:
-                            l_引数.A_リード1のパス = p_引数列[l_位置++];
+                            l_引数.A_順リードのパス = p_引数列[l_位置++];
                             break;
-
                         case Consts.引数キー.リード2のパス:
-                            l_引数.A_リード2のパス = p_引数列[l_位置++];
+                            l_引数.A_逆リードのパス = p_引数列[l_位置++];
                             break;
-
                         case Consts.引数キー.シングルのパス:
                             l_引数.A_シングルのパス = p_引数列[l_位置++];
                             break;
-
                         case Consts.引数キー.k長:
                             l_引数.Set_k長一覧(p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;
-
                         case Consts.引数キー.エラー訂正k長:
                             l_引数.A_エラー訂正k長 = int.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.kmerカットオフ:
                             l_引数.A_kmerカットオフ = ulong.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.Phredオフセット:
                             l_引数.A_Phredオフセット = int.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.クオリティカットオフ:
                             l_引数.A_クオリティカットオフ = int.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.品質トリム閾値:
                             l_引数.A_品質トリム閾値 = int.Parse(p_引数列[l_位置++]);
                             if (l_引数.A_品質トリム閾値 < 0)
@@ -70,127 +76,96 @@ namespace Tsumiki.IO
                             }
 
                             break;
-
                         case Consts.引数キー.メモリ予算:
                             l_引数.A_メモリ予算 = p_引数列[l_位置++];
                             break;
-
                         case Consts.引数キー.インサートサイズ:
                             l_引数.A_インサートサイズ = int.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.一時ディレクトリ削除:
                             l_引数.A_Is一時ディレクトリ削除 = true;
                             break;
-
                         case Consts.引数キー.一時ディレクトリ:
                             l_引数.A_一時ディレクトリ = p_引数列[l_位置++];
                             break;
-
                         case Consts.引数キー.スレッド数:
                             l_引数.A_スレッド数 = int.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.ペア結合閾値:
                             l_引数.A_ペア結合閾値 = decimal.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.ペア支持数閾値:
                             l_引数.A_ペア支持数閾値 = ulong.Parse(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.ヘルプ:
                             l_引数.A_Isヘルプモード = true;
                             break;
-
                         case Consts.引数キー.バージョン:
                             l_引数.A_Isバージョンモード = true;
                             break;
-
                         case Consts.引数キー.曖昧塩基を許容:
                             l_引数.A_Is曖昧塩基許容 = true;
                             break;
-
                         case Consts.引数キー.エラー訂正なし:
                             l_引数.A_Isエラー訂正 = false;
                             break;
-
                         case Consts.引数キー.前処理なし:
                             l_引数.A_Is前処理 = false;
                             break;
-
                         case Consts.引数キー.マルチkなし:
                             l_引数.A_Isマルチk = false;
                             break;
-
                         case Consts.引数キー.マージ:
                             l_引数.A_Isマージ = true;
                             break;
-
                         case Consts.引数キー.引き継ぎなし:
                             l_引数.A_Is引き継ぎ = false;
                             break;
-
                         case Consts.引数キー.SuperReadなし:
                             l_引数.A_IsSuperRead作成 = false;
                             break;
-
                         case Consts.引数キー.反復r_mer検証なし:
                             l_引数.A_Is反復rMer検証 = false;
                             break;
-
                         case Consts.引数キー.局所アセンブリなし:
                             l_引数.A_Is局所アセンブリ = false;
                             break;
-
                         case Consts.引数キー.言語:
                             l_引数.A_言語 = Get_言語(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.積極性モード:
                             V_適用_積極性モード(l_引数, p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.GFA出力なし:
                             l_引数.A_IsGFA出力 = false;
                             break;
-
                         case Consts.引数キー.ポリッシュなし:
                             l_引数.A_Isポリッシュ = false;
                             break;
-
                         case Consts.引数キー.環状閉鎖検証なし:
                             l_引数.A_Is環状閉鎖検証 = false;
                             break;
-
                         case Consts.引数キー.救済kmerなし:
                             l_引数.A_Is救済kmer使用 = false;
                             break;
-
                         case Consts.引数キー.コピー数基準:
                             l_引数.A_コピー数基準の出所 = Get_コピー数基準の出所(p_引数列[l_位置++]);
                             break;
-
                         case Consts.引数キー.低カバレッジ端トリミングなし:
                             l_引数.A_Is低カバレッジ端トリミング = false;
                             break;
-
                         case Consts.引数キー.再開:
                             l_引数.A_Is再開 = true;
                             break;
-
                         case Consts.引数キー.オンメモリ:
                             l_引数.A_Isオンメモリ = true;
                             break;
-
                         case Consts.引数キー.準備のみ:
                             l_引数.A_Is準備のみ = true;
                             break;
-
                         case Consts.引数キー.ログ水準:
                             l_引数.A_ログ水準 = Get_ログ水準(p_引数列[l_位置++]);
                             break;
-
                         default:
                             throw new ArgumentException($"Unknown argument: {l_キー}");
                     }
@@ -207,21 +182,21 @@ namespace Tsumiki.IO
                 return l_引数;
             }
 
-            if (string.IsNullOrWhiteSpace(l_引数.A_リード1のパス) && !string.IsNullOrWhiteSpace(l_引数.A_リード2のパス))
+            if (string.IsNullOrWhiteSpace(l_引数.A_順リードのパス) && !string.IsNullOrWhiteSpace(l_引数.A_逆リードのパス))
             {
-                l_引数.A_リード1のパス = l_引数.A_リード2のパス;
-                l_引数.A_リード2のパス = string.Empty;
+                l_引数.A_順リードのパス = l_引数.A_逆リードのパス;
+                l_引数.A_逆リードのパス = string.Empty;
             }
 
             if (l_引数.A_ライブラリ数 == 0)
             {
-                Logger.V_出力_エラー(Logger.Get_メソッド名(), new ArgumentException("Please set read path"));
-                throw new ArgumentException("Please set read path");
+                Logger.V_出力_エラー(Logger.Get_メソッド名(), new ArgumentException(C_リードパス未指定メッセージ));
+                throw new ArgumentException(C_リードパス未指定メッセージ);
             }
 
             if (!l_引数.Isライブラリ数が一致)
             {
-                var l_例外 = new ArgumentException("-1 and -2 must list the same number of comma-separated libraries");
+                var l_例外 = new ArgumentException(C_ペアライブラリ数不一致メッセージ);
                 Logger.V_出力_エラー(Logger.Get_メソッド名(), l_例外);
                 throw l_例外;
             }
@@ -244,17 +219,7 @@ namespace Tsumiki.IO
         /// <returns>見つかれば理由、無ければ null</returns>
         public static string? Get_相反する指定(IReadOnlySet<string> p_指定済み, Parameters p_引数)
         {
-            return p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算)
-                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps every k-mer counting run in memory, so the budget would only set the size of each counting pass and would not cap total memory"
-                : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開)
-                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from"
-                : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.準備のみ)
-                ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.準備のみ} cannot be used together: {Consts.引数キー.準備のみ} keeps the prepared reads on disk for a later {Consts.引数キー.再開} run, and {Consts.引数キー.オンメモリ} would discard them"
-                : p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1
-                ? $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best"
-                : p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_リード2)) > 1
-                ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately"
-                : null;
+            return p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.メモリ予算) ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.メモリ予算} cannot be used together: {Consts.引数キー.オンメモリ} keeps every k-mer counting run in memory, so the budget would only set the size of each counting pass and would not cap total memory" : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.再開) ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.再開} cannot be used together: {Consts.引数キー.オンメモリ} leaves no intermediate files to resume from" : p_指定済み.Contains(Consts.引数キー.オンメモリ) && p_指定済み.Contains(Consts.引数キー.準備のみ) ? $"{Consts.引数キー.オンメモリ} and {Consts.引数キー.準備のみ} cannot be used together: {Consts.引数キー.準備のみ} keeps the prepared reads on disk for a later {Consts.引数キー.再開} run, and {Consts.引数キー.オンメモリ} would discard them" : p_指定済み.Contains(Consts.引数キー.マルチkなし) && p_引数.A_k長一覧.Count > 1 ? $"{Consts.引数キー.マルチkなし} cannot be used with more than one value for {Consts.引数キー.k長}: a comma-separated {Consts.引数キー.k長} asks to try each value and keep the best" : p_指定済み.Contains(Consts.引数キー.インサートサイズ) && p_引数.A_ライブラリ群.Count(x => !string.IsNullOrWhiteSpace(x.A_逆リード)) > 1 ? $"{Consts.引数キー.インサートサイズ} cannot be used with more than one paired library: a single insert size would be applied to every library; omit it to estimate each library separately" : null;
         }
 
         #endregion
@@ -321,17 +286,14 @@ namespace Tsumiki.IO
                     p_引数.A_ペア結合閾値 = Consts.保守的モードのペア結合閾値;
                     p_引数.A_ペア支持数閾値 = Consts.保守的モードのペア支持数閾値;
                     break;
-
                 case Consts.積極性モード名.標準:
                     p_引数.A_ペア結合閾値 = Consts.ペア結合閾値の既定値;
                     p_引数.A_ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
                     break;
-
                 case Consts.積極性モード名.積極的:
                     p_引数.A_ペア結合閾値 = Consts.積極的モードのペア結合閾値;
                     p_引数.A_ペア支持数閾値 = Consts.積極的モードのペア支持数閾値;
                     break;
-
                 default:
                     throw new ArgumentException($"Unknown mode \"{p_モード名}\": expected one of {Consts.積極性モード名.保守的}, {Consts.積極性モード名.標準}, {Consts.積極性モード名.積極的}");
             }

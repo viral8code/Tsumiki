@@ -17,32 +17,32 @@ namespace Tsumiki.Models.Preprocessing
         /// <summary>
         /// リード 1 の ID
         /// </summary>
-        public string[] A_ID1群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_順リードID群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// リード 2 の ID
         /// </summary>
-        public string[] A_ID2群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_逆リードID群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// リード 1 の配列
         /// </summary>
-        public string[] A_配列1群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_順リード配列群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// リード 2 の配列
         /// </summary>
-        public string[] A_配列2群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_逆リード配列群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// リード 1 のクオリティ
         /// </summary>
-        public string[] A_クオリティ1群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_順リード品質群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// リード 2 のクオリティ
         /// </summary>
-        public string[] A_クオリティ2群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
+        public string[] A_逆リード品質群 { get; } = new string[Preprocessor.C_前処理バッチサイズ];
 
         /// <summary>
         /// 前処理の結果

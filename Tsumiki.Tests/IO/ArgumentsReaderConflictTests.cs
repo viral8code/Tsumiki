@@ -1,4 +1,5 @@
-﻿using Tsumiki.IO;
+﻿using Tsumiki.Commons;
+using Tsumiki.IO;
 
 namespace Tsumiki.Tests.IO
 {
@@ -7,6 +8,15 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class ArgumentsReaderConflictTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 300
+        /// </summary>
+        private const string C_項目_300 = "300";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -44,10 +54,9 @@ namespace Tsumiki.Tests.IO
         [InlineData(new[] { "-prep", "-rs" }, false, "")]
         [InlineData(new[] { "-mem", "4G", "-rs" }, false, "")]
         [InlineData(new[] { "-i", "300" }, false, "")]
-        public void 相反する組だけを止める(string[] p_追加, bool p_Is止める, string p_理由に含む)
+        public void V_相反する組だけを止める(string[] p_追加, bool p_Is止める, string p_理由に含む)
         {
-            string[] l_引数 = ["-1", this._ダミーリードパス[0], "-2", this._ダミーリードパス[1], .. p_追加];
-
+            string[] l_引数 = [Consts.引数キー.リード1のパス, this._ダミーリードパス[0], Consts.引数キー.リード2のパス, this._ダミーリードパス[1], ..p_追加];
             if (!p_Is止める)
             {
                 _ = ArgumentsReader.Get_実行時引数(l_引数);
@@ -55,27 +64,30 @@ namespace Tsumiki.Tests.IO
             }
 
             var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(l_引数));
-            Assert.Contains("-inmem", l_例外.Message, StringComparison.Ordinal);
+            Assert.Contains(Consts.引数キー.オンメモリ, l_例外.Message, StringComparison.Ordinal);
             Assert.Contains(p_理由に含む, l_例外.Message, StringComparison.Ordinal);
         }
 
         /// <summary>
         /// インサートサイズの指定は、ペアのライブラリが 2 つ以上あると止める
         /// </summary>
-        /// <remarks>
-        /// 1 つの値を全ライブラリに当てると、インサートの違うライブラリの距離の前提が黙って壊れる
-        /// </remarks>
         [Fact]
-        public void インサートサイズの指定は複数のペアライブラリと併用できない()
+        public void V_インサートサイズの指定は複数のペアライブラリと併用できない()
         {
-            var l_リード1 = $"{this._ダミーリードパス[0]},{this._ダミーリードパス[2]}";
-            var l_リード2 = $"{this._ダミーリードパス[1]},{this._ダミーリードパス[3]}";
-
-            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", l_リード1, "-2", l_リード2, "-i", "300"]));
-            Assert.Contains("-i", l_例外.Message, StringComparison.Ordinal);
-
-            // ペアが 1 つとシングルエンドなら、インサートの前提は 1 つなので通す
-            _ = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス[0], "-2", this._ダミーリードパス[1], "-s", this._ダミーリードパス[2], "-i", "300"]);
+            var l_順リード = $"{this._ダミーリードパス[0]},{this._ダミーリードパス[2]}";
+            var l_逆リード = $"{this._ダミーリードパス[1]},{this._ダミーリードパス[3]}";
+            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, l_順リード, Consts.引数キー.リード2のパス, l_逆リード, Consts.引数キー.インサートサイズ, C_項目_300]));
+            Assert.Contains(Consts.引数キー.インサートサイズ, l_例外.Message, StringComparison.Ordinal);
+            _ = ArgumentsReader.Get_実行時引数([
+                Consts.引数キー.リード1のパス,
+                this._ダミーリードパス[0],
+                Consts.引数キー.リード2のパス,
+                this._ダミーリードパス[1],
+                Consts.引数キー.シングルのパス,
+                this._ダミーリードパス[2],
+                Consts.引数キー.インサートサイズ,
+                C_項目_300
+            ]);
         }
 
         #endregion

@@ -9,18 +9,34 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 分岐を 1 つも持たない閉路の回収を固定する
     /// </summary>
-    /// <remarks>
-    /// unitig の開始点は「入次数が 1 でない、または唯一の予測元が分岐している」k-mer として選ぶため、全頂点が入次数 1 ・出次数 1 の閉路は開始点を 1 つも持たない<br/>
-    /// そのままだと、きれいな環状染色体や小さなプラスミドが出力から丸ごと消える
-    /// </remarks>
     public class CyclicUnitigFinderTests : IDisposable
     {
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki cycle
+        /// </summary>
+        private const string C_項目_tsumiki_cycle = "tsumiki_cycle_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 項目 環の 1 周になっていない
+        /// </summary>
+        private const string C_項目_環の1周になっていない = "環の1周になっていない";
+
+        /// <summary>
+        /// 項目 拾ったのが環ではない
+        /// </summary>
+        private const string C_項目_拾ったのが環ではない = "拾ったのが環ではない";
+
+        /// <summary>
         /// k 長
         /// </summary>
-        private const int k長 = 21;
+        private const int C_k長 = 21;
 
         #endregion
 
@@ -40,7 +56,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public CyclicUnitigFinderTests()
         {
-            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_cycle_" + Guid.NewGuid().ToString("N"));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_cycle + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
@@ -57,6 +73,7 @@ namespace Tsumiki.Tests.Core
             {
                 Directory.Delete(this._一時ディレクトリ, recursive: true);
             }
+
             GC.SuppressFinalize(this);
         }
 
@@ -68,8 +85,6 @@ namespace Tsumiki.Tests.Core
         {
             var l_環状 = Get_乱数配列(300, 31);
             using var l_インデックス = this.Get_インデックス(l_環状, null);
-
-            // この前提が崩れたら、以降のテストは意味を失う
             Assert.Empty(l_インデックス.Get_開始kmer一覧());
         }
 
@@ -81,16 +96,11 @@ namespace Tsumiki.Tests.Core
         {
             var l_環状 = Get_乱数配列(300, 31);
             using var l_インデックス = this.Get_インデックス(l_環状, null);
-
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧()), k長);
-
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧()), C_k長);
             _ = Assert.Single(l_開始kmer);
-
             var l_配列 = Assert.Single(UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer));
-
-            // 環を 1 周し、次の k-mer で出発点に戻る手前まで伸びる
-            Assert.Equal(l_環状.Length + k長 - 1, l_配列.Length);
-            Assert.True(Is環1周(l_配列, l_環状), "環の1周になっていない");
+            Assert.Equal(l_環状.Length + C_k長 - 1, l_配列.Length);
+            Assert.True(Is環1周(l_配列, l_環状), C_項目_環の1周になっていない);
         }
 
         /// <summary>
@@ -101,11 +111,9 @@ namespace Tsumiki.Tests.Core
         {
             var l_線状 = Get_乱数配列(300, 32);
             using var l_インデックス = this.Get_インデックス(null, l_線状);
-
             var l_通常の走査 = UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧());
             Assert.NotEmpty(l_通常の走査);
-
-            Assert.Empty(CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, k長));
+            Assert.Empty(CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, C_k長));
         }
 
         /// <summary>
@@ -117,14 +125,11 @@ namespace Tsumiki.Tests.Core
             var l_環状 = Get_乱数配列(300, 33);
             var l_線状 = Get_乱数配列(300, 34);
             using var l_インデックス = this.Get_インデックス(l_環状, l_線状);
-
             var l_通常の走査 = UnitigMaker.Get_walk結果(l_インデックス, l_インデックス.Get_開始kmer一覧());
-
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, k長);
-
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, l_通常の走査, C_k長);
             _ = Assert.Single(l_開始kmer);
             var l_配列 = Assert.Single(UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer));
-            Assert.True(Is環1周(l_配列, l_環状), "拾ったのが環ではない");
+            Assert.True(Is環1周(l_配列, l_環状), C_項目_拾ったのが環ではない);
         }
 
         /// <summary>
@@ -135,25 +140,32 @@ namespace Tsumiki.Tests.Core
         {
             var l_環状1 = Get_乱数配列(300, 35);
             var l_環状2 = Get_乱数配列(250, 36);
-
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
-            foreach (var l_環状 in new[] { l_環状1, l_環状2 })
+            foreach (var l_環状 in new[]
+            {
+                l_環状1,
+                l_環状2
+            }
+
+            )
             {
                 var l_二周 = (l_環状 + l_環状).Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i < l_環状.Length; i++)
                 {
-                    V_登録(l_インデックス, l_二周.AsSpan(i, k長));
+                    V_登録(l_インデックス, l_二周.AsSpan(i, C_k長));
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
-            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, [], k長);
-
+            var l_開始kmer = CyclicUnitigFinder.Get_閉路開始kmer(l_インデックス, [], C_k長);
             Assert.Equal(2, l_開始kmer.Count);
-            var l_長さ = UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer)
-                .Select(x => x.Length).OrderBy(x => x).ToList();
-            Assert.Equal([l_環状2.Length + k長 - 1, l_環状1.Length + k長 - 1], l_長さ);
+            var l_長さ = UnitigMaker.Get_walk結果(l_インデックス, l_開始kmer).Select(x => x.Length).OrderBy(x => x).ToList();
+            Assert.Equal([l_環状2.Length + C_k長 - 1, l_環状1.Length + C_k長 - 1], l_長さ);
         }
 
         #endregion
@@ -169,38 +181,39 @@ namespace Tsumiki.Tests.Core
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
         }
 
         /// <summary>
         /// 環状配列と線状配列から k-mer インデックスを作る
         /// </summary>
-        /// <remarks>
-        /// 環状側は末尾から先頭へ回り込む窓まで登録し、閉路そのものにする
-        /// </remarks>
         /// <param name="p_環状配列"></param>
         /// <param name="p_線状配列"></param>
         /// <returns></returns>
         private TrustedKmerIndex Get_インデックス(string? p_環状配列, string? p_線状配列)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
             var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
-
             if (p_環状配列 is { } l_環状)
             {
                 var l_二周 = (l_環状 + l_環状).Select(Util.Get_塩基ID).ToArray();
                 for (var i = 0; i < l_環状.Length; i++)
                 {
-                    V_登録(l_インデックス, l_二周.AsSpan(i, k長));
+                    V_登録(l_インデックス, l_二周.AsSpan(i, C_k長));
                 }
             }
+
             if (p_線状配列 is { } l_線状)
             {
                 var l_塩基列 = l_線状.Select(Util.Get_塩基ID).ToArray();
-                for (var i = 0; i + k長 <= l_塩基列.Length; i++)
+                for (var i = 0; i + C_k長 <= l_塩基列.Length; i++)
                 {
-                    V_登録(l_インデックス, l_塩基列.AsSpan(i, k長));
+                    V_登録(l_インデックス, l_塩基列.AsSpan(i, C_k長));
                 }
             }
 
@@ -230,11 +243,9 @@ namespace Tsumiki.Tests.Core
         private static bool Is環1周(string p_配列, string p_環状配列)
         {
             var l_二周 = p_環状配列 + p_環状配列;
-            return l_二周.Contains(p_配列, StringComparison.Ordinal)
-                || l_二周.Contains(Util.V_逆相補(p_配列), StringComparison.Ordinal);
+            return l_二周.Contains(p_配列, StringComparison.Ordinal) || l_二周.Contains(Util.V_逆相補(p_配列), StringComparison.Ordinal);
         }
 
         #endregion
-
     }
 }

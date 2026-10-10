@@ -15,8 +15,7 @@
         /// <summary>
         /// Lanczos 近似の係数 (g = 7、n = 9)
         /// </summary>
-        private static readonly double[] C_Lanczos係数 =
-        [
+        private static readonly double[] C_Lanczos係数 = [
             0.99999999999980993D,
             676.5203681218851D,
             -1259.1392167224028D,
@@ -66,8 +65,7 @@
             }
 
             var l_逆2乗 = 1D / (l_x * l_x);
-            return l_補正 + Math.Log(l_x) - (0.5D / l_x)
-                + (l_逆2乗 * (-(1D / 12D) + (l_逆2乗 * ((1D / 120D) + (l_逆2乗 * (-(1D / 252D) + (l_逆2乗 / 240D)))))));
+            return l_補正 + Math.Log(l_x) - (0.5D / l_x) + (l_逆2乗 * (-(1D / 12D) + (l_逆2乗 * ((1D / 120D) + (l_逆2乗 * (-(1D / 252D) + (l_逆2乗 / 240D)))))));
         }
 
         /// <summary>
@@ -86,8 +84,7 @@
             }
 
             var l_逆2乗 = 1D / (l_x * l_x);
-            return l_補正 + (1D / l_x) + (0.5D * l_逆2乗)
-                + (l_逆2乗 / l_x * ((1D / 6D) - (l_逆2乗 * ((1D / 30D) - (l_逆2乗 * ((1D / 42D) - (l_逆2乗 / 30D)))))));
+            return l_補正 + (1D / l_x) + (0.5D * l_逆2乗) + (l_逆2乗 / l_x * ((1D / 6D) - (l_逆2乗 * ((1D / 30D) - (l_逆2乗 * ((1D / 42D) - (l_逆2乗 / 30D)))))));
         }
 
         #endregion

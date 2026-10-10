@@ -48,6 +48,5 @@ namespace Tsumiki.Tests.Common
         }
 
         #endregion
-
     }
 }

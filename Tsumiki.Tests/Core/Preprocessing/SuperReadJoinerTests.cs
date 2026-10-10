@@ -9,11 +9,22 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// ペアエンドの 2 本を、間の未読区間ごと 1 本の合成リード (SuperRead) へ統合する処理の検証
     /// </summary>
-    /// <remarks>
-    /// read1 の末尾 k-mer から RC (read2) の先頭 k-mer まで、信頼できる k-mer 集合の中で経路がちょうど 1 本に定まったときだけ統合する
-    /// </remarks>
     public class SuperReadJoinerTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki superread tests
+        /// </summary>
+        private const string C_項目_tsumiki_superread_tests = "tsumiki_superread_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -30,7 +41,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public SuperReadJoinerTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_superread_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_superread_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -57,23 +68,16 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(200, p_シード: 20_260_907);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_先行リード = l_正解[..80];
-            var l_後続リード = Util.V_逆相補(l_正解[120..200]); // RC (read2) == truth[120..200]
-
+            var l_後続リード = Util.V_逆相補(l_正解[120..200]);
             var l_結果 = SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長);
-
             Assert.Equal(l_正解, l_結果);
         }
 
         /// <summary>
         /// 橋渡しする経路が複数ある場合、どれが正しいか決められない
         /// </summary>
-        /// <remarks>
-        /// 誤った配列で繋ぐより、統合を諦めて元のペアのまま残すほうが安全
-        /// </remarks>
         [Fact]
         public void Get_合成配列_橋渡しの経路が複数あるときは推測せずnullを返す()
         {
@@ -82,14 +86,10 @@ namespace Tsumiki.Tests.Core
             var l_接尾配列 = V_生成_ランダム配列(80, p_シード: 12);
             var l_主中間配列 = V_生成_ランダム配列(40, p_シード: 13);
             var l_代替中間配列 = V_生成_ランダム配列(40, p_シード: 14);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_接頭配列 + l_主中間配列 + l_接尾配列, l_接頭配列 + l_代替中間配列 + l_接尾配列);
-
             var l_先行リード = l_接頭配列;
             var l_後続リード = Util.V_逆相補(l_接尾配列);
-
             var l_結果 = SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長);
-
             Assert.Null(l_結果);
         }
 
@@ -102,15 +102,10 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_左側 = V_生成_ランダム配列(80, p_シード: 21);
             var l_右側 = V_生成_ランダム配列(80, p_シード: 22);
-
-            // 左右それぞれの k-mer は入れるが、両者を繋ぐ配列は入れない
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_左側, l_右側);
-
             var l_先行リード = l_左側;
             var l_後続リード = Util.V_逆相補(l_右側);
-
             var l_結果 = SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長);
-
             Assert.Null(l_結果);
         }
 
@@ -123,9 +118,7 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(100, p_シード: 30);
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_結果 = SuperReadJoiner.Get_合成配列(l_正解[..10], Util.V_逆相補(l_正解[50..]), l_インデックス, l_k長);
-
             Assert.Null(l_結果);
         }
 
@@ -138,57 +131,40 @@ namespace Tsumiki.Tests.Core
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(160, p_シード: 40);
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_先行リード = l_正解[..80];
             var l_後続リード = Util.V_逆相補(l_正解[80..]);
-
             var l_結果 = SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長);
-
             Assert.Equal(l_正解, l_結果);
         }
 
-    
         /// <summary>
         /// 断片がリード長の 2 倍を下回るライブラリでは read1 と RC (read2) が重なる
         /// </summary>
-        /// <remarks>
-        /// 橋渡しに必要な長さが負になり経路探索では解けないが、重なりそのものが断片を決めるので統合できる
-        /// </remarks>
         [Fact]
         public void Get_合成配列_ペアが重なるときは重なりから真のフラグメントを復元する()
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(225, p_シード: 20_260_909);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_先行リード = l_正解[..150];
-            var l_後続リード = Util.V_逆相補(l_正解[75..225]); // RC (read2) == truth[75..225]
-
+            var l_後続リード = Util.V_逆相補(l_正解[75..225]);
             var l_結果 = SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長);
-
             Assert.Equal(l_正解, l_結果);
         }
 
         /// <summary>
         /// 重なりに許容範囲内の不一致が残っていると、繋いだ配列の継ぎ目にはどのリードにも無い k-mer が生まれる
         /// </summary>
-        /// <remarks>
-        /// そこで弾く
-        /// </remarks>
         [Fact]
         public void Get_合成配列_継ぎ目に未観測のkmerができる重なりは棄却する()
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(225, p_シード: 20_260_910);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_文字 = l_正解[..150].ToCharArray();
             l_文字[145] = l_文字[145] == 'A' ? 'C' : 'A';
             var l_先行リード = new string(l_文字);
             var l_後続リード = Util.V_逆相補(l_正解[75..225]);
-
             Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
@@ -200,12 +176,9 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(120, p_シード: 20_260_911);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_先行リード = l_正解;
             var l_後続リード = Util.V_逆相補(l_正解);
-
             Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
@@ -217,23 +190,15 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 121;
             var l_正解 = V_生成_ランダム配列(280, p_シード: 20_260_912);
-
-            // 重なりは 10 bp で、ペア結合の最小重なり長に届かない
-            // 重なるペアは橋渡しに必要な長さが負になるので、経路探索の側も走らない
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[140..280]);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             Assert.Null(SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
         /// <summary>
         /// 反復配列の中では、周期のぶんだけずれた位置も同じくらい良く合う
         /// </summary>
-        /// <remarks>
-        /// どれか一つに決められないので、重なりでは繋がない
-        /// </remarks>
         [Fact]
         public void Get_合成配列_複数のオフセットで同程度に合う重なりは統合しない()
         {
@@ -242,15 +207,10 @@ namespace Tsumiki.Tests.Core
             var l_左 = V_生成_ランダム配列(40, p_シード: 20_260_919);
             var l_右 = V_生成_ランダム配列(30, p_シード: 20_260_920);
             var l_正解 = l_左 + string.Concat(Enumerable.Repeat(l_単位, 5)) + l_右;
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[70..220]);
-
-            var (_, l_重なりで結合したか, l_曖昧で捨てた数) =
-                SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null);
-
+            var (_, l_重なりで結合したか, l_曖昧で捨てた数) = SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null);
             Assert.False(l_重なりで結合したか);
             Assert.Equal(1, l_曖昧で捨てた数);
         }
@@ -258,21 +218,14 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 最小重なり長ちょうどに近い短い重なりでも統合する
         /// </summary>
-        /// <remarks>
-        /// 断片長がリード長の 2 倍に近いライブラリでは重なりが十数塩基しかない
-        /// </remarks>
         [Fact]
         public void Get_合成配列_短い重なりでも統合する()
         {
             const int l_k長 = 121;
             var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_921);
-
-            // 重なりは 40 bp
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[110..260]);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
@@ -284,15 +237,10 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_930);
-
-            // 重なりは 40 bp
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[110..260]);
-
-            // 別の場所に、read1 の末尾 k-mer から RC (read2) の先頭 k-mer へ続く配列を置く
             var l_回り込み = l_先行リード[^l_k長..] + V_生成_ランダム配列(30, p_シード: 20_260_931) + l_正解[110..(110 + l_k長)];
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解, l_回り込み);
-
             Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列(l_先行リード, l_後続リード, l_インデックス, l_k長));
         }
 
@@ -304,13 +252,9 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 21;
             var l_正解 = V_生成_ランダム配列(260, p_シード: 20_260_940);
-
-            // 本当の断片長は 260
             var l_先行リード = l_正解[..150];
             var l_後続リード = Util.V_逆相補(l_正解[110..260]);
-
             using var l_インデックス = this.V_構築_インデックス(l_k長, l_正解);
-
             Assert.Equal(l_正解, SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null, 240, 280).A_配列);
             Assert.NotEqual(l_正解, SuperReadJoiner.Get_合成配列_内訳つき(l_先行リード, l_後続リード, l_インデックス, l_k長, null, 100, 200).A_配列);
         }
@@ -328,7 +272,7 @@ namespace Tsumiki.Tests.Core
         private static string V_生成_ランダム配列(int p_長さ, int p_シード)
         {
             var l_乱数 = new Random(p_シード);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
         }
 
         /// <summary>
@@ -339,7 +283,11 @@ namespace Tsumiki.Tests.Core
         /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex V_構築_インデックス(int p_k長, params string[] p_配列群)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 1
+            };
             var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
             foreach (var l_配列 in p_配列群)
             {
@@ -352,11 +300,11 @@ namespace Tsumiki.Tests.Core
                     }
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
 
         #endregion
-
     }
 }

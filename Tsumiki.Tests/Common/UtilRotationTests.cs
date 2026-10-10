@@ -7,6 +7,35 @@ namespace Tsumiki.Tests.Common
     /// </summary>
     public class UtilRotationTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 AABB
+        /// </summary>
+        private const string C_項目_AABB = "AABB";
+
+        /// <summary>
+        /// 項目 BAAB
+        /// </summary>
+        private const string C_項目_BAAB = "BAAB";
+
+        /// <summary>
+        /// 塩基配列 ACGTTGCAACGTAGGCTTAA
+        /// </summary>
+        private const string C_塩基配列_ACGTTGCAACGTAGGCTTAA = "ACGTTGCAACGTAGGCTTAA";
+
+        /// <summary>
+        /// 塩基配列 AAAAAA
+        /// </summary>
+        private const string C_塩基配列_AAAAAA = "AAAAAA";
+
+        /// <summary>
+        /// 塩基配列 TGGCAAGTCACTCTCGACCGA
+        /// </summary>
+        private const string C_塩基配列_TGGCAAGTCACTCTCGACCGA = "TGGCAAGTCACTCTCGACCGA";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -27,7 +56,7 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_辞書式最小の回転を求める()
         {
-            Assert.Equal("AABB", Util.Get_最小回転("BAAB"));
+            Assert.Equal(C_項目_AABB, Util.Get_最小回転(C_項目_BAAB));
         }
 
         /// <summary>
@@ -42,9 +71,8 @@ namespace Tsumiki.Tests.Common
         [InlineData(19)]
         public void V_どの回転から始めても結果は同じ(int p_回転量)
         {
-            const string l_元 = "ACGTTGCAACGTAGGCTTAA";
+            const string l_元 = C_塩基配列_ACGTTGCAACGTAGGCTTAA;
             var l_回転後 = l_元[p_回転量..] + l_元[..p_回転量];
-
             Assert.Equal(Util.Get_最小回転(l_元), Util.Get_最小回転(l_回転後));
         }
 
@@ -54,7 +82,7 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_反復配列も扱える()
         {
-            const string l_反復配列 = "AAAAAA";
+            const string l_反復配列 = C_塩基配列_AAAAAA;
             Assert.Equal(l_反復配列, Util.Get_最小回転(l_反復配列));
         }
 
@@ -64,14 +92,12 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_結果は入力の有効な回転になっている()
         {
-            const string l_元 = "TGGCAAGTCACTCTCGACCGA";
+            const string l_元 = C_塩基配列_TGGCAAGTCACTCTCGACCGA;
             var l_結果 = Util.Get_最小回転(l_元);
-
             Assert.Equal(l_元.Length, l_結果.Length);
             Assert.Contains(l_結果, l_元 + l_元);
         }
 
         #endregion
-
     }
 }

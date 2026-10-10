@@ -12,6 +12,11 @@ namespace Tsumiki.IO
         #region 定数
 
         /// <summary>
+        /// 項目 塩基列の控えが途中で切れている
+        /// </summary>
+        private const string C_項目_塩基列の控えが途中で切れている = "塩基列の控えが途中で切れている";
+
+        /// <summary>
         /// 控えの拡張子
         /// </summary>
         private const string C_控えの拡張子 = ".bases";
@@ -220,7 +225,7 @@ namespace Tsumiki.IO
             while (Get_可変長整数(l_読み込み) is { } l_頭)
             {
                 var l_長さ = (int)(l_頭 >> 1);
-                var l_Isそのまま = (l_頭 & C_そのままの目印) != 0;
+                var l_Isそのまま = (l_頭 & C_そのままの目印) != 0UL;
                 var l_バイト数 = l_Isそのまま ? l_長さ : (l_長さ + C_バイトあたりの塩基数 - 1) / C_バイトあたりの塩基数;
                 if (l_バッファ.Length < l_バイト数)
                 {
@@ -328,9 +333,9 @@ namespace Tsumiki.IO
         /// <param name="p_値">値</param>
         private static void V_書込_可変長整数(Stream p_書き込み, ulong p_値)
         {
-            while (p_値 >= 0x80)
+            while (p_値 >= 0x80UL)
             {
-                p_書き込み.WriteByte((byte)(p_値 | 0x80));
+                p_書き込み.WriteByte((byte)(p_値 | 0x80UL));
                 p_値 >>= 7;
             }
 
@@ -350,7 +355,7 @@ namespace Tsumiki.IO
                 var l_バイト = p_読み込み.ReadByte();
                 if (l_バイト < 0)
                 {
-                    return l_ずらし == 0 ? null : throw new InvalidDataException("塩基列の控えが途中で切れている");
+                    return l_ずらし == 0 ? null : throw new InvalidDataException(C_項目_塩基列の控えが途中で切れている);
                 }
 
                 l_値 |= (ulong)(l_バイト & 0x7F) << l_ずらし;

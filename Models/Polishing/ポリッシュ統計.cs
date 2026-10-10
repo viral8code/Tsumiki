@@ -18,9 +18,7 @@
         /// <summary>
         /// 深度が期待から大きく落ち込んだ位置の割合
         /// </summary>
-        public double A_深度不足率 => this.A_評価できた位置数 == 0L
-            ? 0D
-            : (double)this.A_深度不足の位置数 / this.A_評価できた位置数;
+        public double A_深度不足率 => this.A_評価できた位置数 == 0L ? 0D : (double)this.A_深度不足の位置数 / this.A_評価できた位置数;
 
         #endregion
     }

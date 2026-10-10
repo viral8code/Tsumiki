@@ -1,16 +1,17 @@
 ﻿namespace Tsumiki.Utilities
 {
     /// <summary>
-    /// 128 塩基までの k-mer の値 (上位と下位の組) を比べる比較器。既定のハッシュより速いハッシュを使う
+    /// 128 塩基までの k-mer の値 (上位と下位の組) を比べる比較器<br/>
+    /// 既定のハッシュより速いハッシュを使う
     /// </summary>
     internal sealed class UInt128組比較器 : IEqualityComparer<(UInt128 A_上位, UInt128 A_下位)>
     {
-        #region 公開フィールド
+        #region 定数
 
         /// <summary>
         /// 既定の比較器
         /// </summary>
-        public static readonly UInt128組比較器 A_既定 = new();
+        public static readonly UInt128組比較器 C_既定 = new();
 
         #endregion
 
@@ -34,10 +35,7 @@
         /// <returns>ハッシュ値</returns>
         public int GetHashCode((UInt128 A_上位, UInt128 A_下位) p_値)
         {
-            var l_値 = (ulong)p_値.A_下位
-                ^ ((ulong)(p_値.A_下位 >> 64) * 0x9E37_79B9_7F4A_7C15UL)
-                ^ ((ulong)p_値.A_上位 * 0xC2B2_AE3D_27D4_EB4FUL)
-                ^ ((ulong)(p_値.A_上位 >> 64) * 0x1656_67B1_9E37_79F9UL);
+            var l_値 = (ulong)p_値.A_下位 ^ ((ulong)(p_値.A_下位 >> 64) * 0x9E37_79B9_7F4A_7C15UL) ^ ((ulong)p_値.A_上位 * 0xC2B2_AE3D_27D4_EB4FUL) ^ ((ulong)(p_値.A_上位 >> 64) * 0x1656_67B1_9E37_79F9UL);
             l_値 *= 0xBF58_476D_1CE4_E5B9UL;
             l_値 ^= l_値 >> 31;
             return (int)l_値 ^ (int)(l_値 >> 32);
@@ -51,12 +49,12 @@
     /// </summary>
     internal sealed class 配置候補比較器 : IEqualityComparer<(int A_配列番号, bool A_Is逆鎖, int A_対角線)>
     {
-        #region 公開フィールド
+        #region 定数
 
         /// <summary>
         /// 既定の比較器
         /// </summary>
-        public static readonly 配置候補比較器 A_既定 = new();
+        public static readonly 配置候補比較器 C_既定 = new();
 
         #endregion
 

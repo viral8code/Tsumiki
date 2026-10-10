@@ -16,6 +16,11 @@ namespace Tsumiki.Tests.Common
         #region 定数
 
         /// <summary>
+        /// 項目 63
+        /// </summary>
+        private const string C_項目_63 = "63";
+
+        /// <summary>
         /// 文言の差し込み位置を取り出す正規表現
         /// </summary>
         private const string C_差し込み位置パターン = @"(?<!\{)\{(\d+)[^}]*\}";
@@ -30,11 +35,9 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_全てのIDに全ての言語の文言がある()
         {
-            var l_欠け = (from l_言語 in Enum.GetValues<言語>()
-                          from l_ID in Get_全ID()
-                          where !MessageCatalog.Has訳(l_言語, l_ID)
-                          select $"{l_言語}/{l_ID}").ToList();
-
+            var l_欠け = (
+                from l_言語 in Enum.GetValues<言語>()from l_ID in Get_全ID()
+                where !MessageCatalog.Has訳(l_言語, l_ID)select $"{l_言語}/{l_ID}").ToList();
             Assert.Empty(l_欠け);
         }
 
@@ -64,9 +67,9 @@ namespace Tsumiki.Tests.Common
             {
                 Messages.A_言語 = l_言語;
                 var l_文言 = Messages.Get_文言(メッセージID.採用したk, 63);
-
-                Assert.Contains("63", l_文言);
+                Assert.Contains(C_項目_63, l_文言);
             }
+
             Messages.A_言語 = 言語.日本語;
         }
 
@@ -90,13 +93,9 @@ namespace Tsumiki.Tests.Common
         /// <returns></returns>
         private static List<int> Get_差し込み位置(string p_書式)
         {
-            return [.. Regex.Matches(p_書式, C_差し込み位置パターン)
-                .Select(x => int.Parse(x.Groups[1].Value))
-                .Distinct()
-                .Order()];
+            return[..Regex.Matches(p_書式, C_差し込み位置パターン).Select(x => int.Parse(x.Groups[1].Value)).Distinct().Order()];
         }
 
         #endregion
-
     }
 }

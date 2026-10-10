@@ -8,6 +8,15 @@ namespace Tsumiki.Tests.Common
     /// </summary>
     public class MemorySizeParsingTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 2G
+        /// </summary>
+        private const string C_項目_2G = "2G";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -65,7 +74,10 @@ namespace Tsumiki.Tests.Common
         [Fact]
         public void V_メモリ予算に接尾辞付き指定を受け付ける()
         {
-            var l_パラメータ = new Parameters { A_メモリ予算 = "2G" };
+            var l_パラメータ = new Parameters
+            {
+                A_メモリ予算 = C_項目_2G
+            };
             Assert.Equal(2L * 1_024L * 1_024L * 1_024L, l_パラメータ.A_メモリ予算バイト数);
         }
 
@@ -84,6 +96,5 @@ namespace Tsumiki.Tests.Common
         }
 
         #endregion
-
     }
 }

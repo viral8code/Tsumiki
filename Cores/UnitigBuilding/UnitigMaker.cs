@@ -43,13 +43,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             var l_結果 = new string[p_開始kmer.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
             _ = Parallel.For(0, p_開始kmer.Count, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, () => new 走査状態(p_kmerインデックス), (i, _, l_状態) =>
-                {
-                    l_結果[i] = l_状態.Get_配列(p_開始kmer[i]);
-                    return l_状態;
-                }, _ => { });
-
+            {
+                l_結果[i] = l_状態.Get_配列(p_開始kmer[i]);
+                return l_状態;
+            }, _ =>
+            {
+            });
             return l_結果;
         }
 
@@ -62,19 +62,13 @@ namespace Tsumiki.Cores.UnitigBuilding
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_Isパック経路使用 = l_k長 <= 64;
-
             this._訪問済み_パック.Clear();
             this._訪問済み_大.Clear();
-
             List<byte> l_配列 = [.. p_開始kmer];
-
             while (true)
             {
                 var l_現在のkmer = CollectionsMarshal.AsSpan(l_配列)[(l_配列.Count - l_k長)..];
-
-                var l_Is未訪問 = l_Isパック経路使用
-                    ? this._訪問済み_パック.Add(TryGet_パック(l_現在のkmer))
-                    : this._訪問済み_大.Add(new KmerKey(l_現在のkmer));
+                var l_Is未訪問 = l_Isパック経路使用 ? this._訪問済み_パック.Add(Get_パック(l_現在のkmer)) : this._訪問済み_大.Add(new KmerKey(l_現在のkmer));
                 if (!l_Is未訪問)
                 {
                     l_配列.RemoveAt(l_配列.Count - 1);
@@ -125,7 +119,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_kmer"></param>
         /// <returns></returns>
-        private static UInt128 TryGet_パック(ReadOnlySpan<byte> p_kmer)
+        private static UInt128 Get_パック(ReadOnlySpan<byte> p_kmer)
         {
             UInt128 l_値 = 0;
             foreach (var l_塩基ID in p_kmer)

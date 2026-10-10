@@ -6,9 +6,6 @@ namespace Tsumiki.Tests.Utility
     /// <summary>
     /// 塩基列を 2 bit/塩基 で詰め、語単位で突き合わせる部品の検証
     /// </summary>
-    /// <remarks>
-    /// 重なりの探索がこれに置き換わるので、1 塩基ずつ比べた場合と完全に同じ数を返すことが要件になる
-    /// </remarks>
     public class PackedBasesTests
     {
         #region 公開メソッド
@@ -16,9 +13,6 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// 開始位置・長さのあらゆる組み合わせで、1 塩基ずつ数えた結果と一致すること
         /// </summary>
-        /// <remarks>
-        /// 語の境界をまたぐ位置 (32 の倍数の前後) を必ず含むように総当たりする
-        /// </remarks>
         [Fact]
         public void V_あらゆる開始位置と長さで語単位の不一致数が素朴な数え方と一致する()
         {
@@ -27,15 +21,11 @@ namespace Tsumiki.Tests.Utility
             {
                 var l_列1 = V_生成_乱数塩基列(150, l_乱数);
                 var l_列2 = V_生成_乱数塩基列(150, l_乱数);
-
-                // 一部を一致させて、不一致 0 や少数の場合も通す
                 Array.Copy(l_列1, 20, l_列2, 20, 60);
-
                 var l_詰め1 = PackedBases.Get_作る(l_列1);
                 var l_詰め2 = PackedBases.Get_作る(l_列2);
                 Assert.NotNull(l_詰め1);
                 Assert.NotNull(l_詰め2);
-
                 for (var l_開始1 = 0; l_開始1 < 70; l_開始1++)
                 {
                     for (var l_開始2 = 0; l_開始2 < 70; l_開始2 += 7)
@@ -57,7 +47,6 @@ namespace Tsumiki.Tests.Utility
         public void V_曖昧な塩基を含む列は作れない()
         {
             byte[] l_列 = [Consts.塩基ID.A, Consts.無効な塩基, Consts.塩基ID.T];
-
             Assert.Null(PackedBases.Get_作る(l_列));
         }
 
@@ -68,11 +57,7 @@ namespace Tsumiki.Tests.Utility
         public void V_末尾を超えた範囲は0として読める()
         {
             var l_詰め = PackedBases.Get_作る([Consts.塩基ID.T, Consts.塩基ID.T]);
-
             Assert.NotNull(l_詰め);
-
-            // 3 塩基目以降は空き
-            // 先頭 2 塩基だけを見れば不一致は無い
             Assert.Equal(0, PackedBases.Get_不一致数(l_詰め!.Get_窓(0), l_詰め.Get_窓(0), 2));
         }
 
@@ -93,6 +78,7 @@ namespace Tsumiki.Tests.Utility
             {
                 l_列[i] = (byte)(p_乱数.Next(4) + 1);
             }
+
             return l_列;
         }
 
@@ -115,6 +101,7 @@ namespace Tsumiki.Tests.Utility
                     l_数++;
                 }
             }
+
             return l_数;
         }
 
@@ -135,10 +122,10 @@ namespace Tsumiki.Tests.Utility
                 var l_今回 = Math.Min(Consts.ワードあたりの塩基数, p_長さ - i);
                 l_数 += PackedBases.Get_不一致数(p_詰め1.Get_窓(p_開始1 + i), p_詰め2.Get_窓(p_開始2 + i), l_今回);
             }
+
             return l_数;
         }
 
         #endregion
-
     }
 }

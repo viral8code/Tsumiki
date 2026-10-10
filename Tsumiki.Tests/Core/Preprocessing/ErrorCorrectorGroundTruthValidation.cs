@@ -9,20 +9,53 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 合成データに対してエラー訂正を実際に走らせ、その効き目を測る
     /// </summary>
-    /// <remarks>
-    /// tools/simulate_reads.py が出力した、正解の errors.tsv 付きの合成データを使う<br/>
-    /// 注入したエラーのうち何割を正しく真の塩基へ戻せたか (recall) と、逆に正しかった塩基を誤って書き換えてしまった割合 (誤訂正率) を測る
-    /// </remarks>
-    /// <remarks>
-    /// 合成データが存在しない場合はスキップする (通常の CI/dotnet test の対象外、手動で tools/simulate_reads.pyを実行した後に手動で実行する想定)
-    /// </remarks>
     public class ErrorCorrectorGroundTruthValidation
     {
         #region 定数
 
-        // Bash tool 経由 (Git Bash/MSYS) で python tools/simulate_reads.py --out-dir /tmp/tsumiki_synth
-        // を実行した場合の実際の出力先 (MSYS が/tmp をこの Windows パスへ解決する)
-        // .NET のファイル API は MSYS のパス変換を経由しないため、Windows 形式で直接指定する
+        /// <summary>
+        /// ファイル名 reference fasta
+        /// </summary>
+        private const string C_ファイル名_reference_fasta = "reference.fasta";
+
+        /// <summary>
+        /// ファイル名 reads 1 fq
+        /// </summary>
+        private const string C_ファイル名_reads_1_fq = "reads.1.fq";
+
+        /// <summary>
+        /// ファイル名 reads 2 fq
+        /// </summary>
+        private const string C_ファイル名_reads_2_fq = "reads.2.fq";
+
+        /// <summary>
+        /// ファイル名 errors tsv
+        /// </summary>
+        private const string C_ファイル名_errors_tsv = "errors.tsv";
+
+        /// <summary>
+        /// 項目 tsumiki ec validation
+        /// </summary>
+        private const string C_項目_tsumiki_ec_validation = "tsumiki_ec_validation_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 corrected 1 fq
+        /// </summary>
+        private const string C_ファイル名_corrected_1_fq = "corrected.1.fq";
+
+        /// <summary>
+        /// ファイル名 corrected 2 fq
+        /// </summary>
+        private const string C_ファイル名_corrected_2_fq = "corrected.2.fq";
+
+        #endregion
+
+        #region 内部変数
 
         /// <summary>
         /// 合成データを置くディレクトリ
@@ -39,27 +72,28 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_正解データに対して訂正精度を測定する()
         {
-            var l_参照パス = Path.Combine(_合成データディレクトリ, "reference.fasta");
-            var l_リード1パス = Path.Combine(_合成データディレクトリ, "reads.1.fq");
-            var l_リード2パス = Path.Combine(_合成データディレクトリ, "reads.2.fq");
-            var l_エラーパス = Path.Combine(_合成データディレクトリ, "errors.tsv");
-            if (!File.Exists(l_参照パス) || !File.Exists(l_リード1パス) || !File.Exists(l_エラーパス))
+            var l_参照パス = Path.Combine(_合成データディレクトリ, C_ファイル名_reference_fasta);
+            var l_順リードパス = Path.Combine(_合成データディレクトリ, C_ファイル名_reads_1_fq);
+            var l_逆リードパス = Path.Combine(_合成データディレクトリ, C_ファイル名_reads_2_fq);
+            var l_エラーパス = Path.Combine(_合成データディレクトリ, C_ファイル名_errors_tsv);
+            if (!File.Exists(l_参照パス) || !File.Exists(l_順リードパス) || !File.Exists(l_エラーパス))
             {
-                return; // 合成データ未生成、tools/simulate_reads.py --out-dir /tmp/tsumiki_synth で生成してから実行する
+                return;
             }
 
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 31, A_kmerカットオフ = 2UL, A_スレッド数 = 8 };
-
-            var l_出力ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_ec_validation_" + Guid.NewGuid().ToString("N"));
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 31,
+                A_kmerカットオフ = 2UL,
+                A_スレッド数 = 8
+            };
+            var l_出力ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_ec_validation + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(l_出力ディレクトリ);
-            var l_訂正済み1 = Path.Combine(l_出力ディレクトリ, "corrected.1.fq");
-            var l_訂正済み2 = Path.Combine(l_出力ディレクトリ, "corrected.2.fq");
-
+            var l_訂正済み1 = Path.Combine(l_出力ディレクトリ, C_ファイル名_corrected_1_fq);
+            var l_訂正済み2 = Path.Combine(l_出力ディレクトリ, C_ファイル名_corrected_2_fq);
             try
             {
-                ErrorCorrector.V_訂正_リードファイル(l_リード1パス, l_リード2パス, l_出力ディレクトリ, l_訂正済み1, l_訂正済み2, ConfigurationManager.A_実行時引数.A_Phredオフセット);
-
-                // read_id -> mate -> position -> true_base (注入されたエラーの正解)
+                ErrorCorrector.V_訂正_リードファイル(l_順リードパス, l_逆リードパス, l_出力ディレクトリ, l_訂正済み1, l_訂正済み2, ConfigurationManager.A_実行時引数.A_Phredオフセット);
                 var l_正解エラー = new Dictionary<(string A_リードID, int A_ペア番号, int A_位置), char>();
                 foreach (var l_行 in File.ReadLines(l_エラーパス).Skip(1))
                 {
@@ -71,32 +105,26 @@ namespace Tsumiki.Tests.Core
                     l_正解エラー[(l_リードID, l_ペア番号, l_位置)] = l_正解塩基;
                 }
 
-                var l_元のリード = V_読み込み_リードID別(l_リード1パス, 1);
-                foreach (var l_組 in V_読み込み_リードID別(l_リード2パス, 2))
+                var l_元のリード = V_読み込み_リードID別(l_順リードパス, 1);
+                foreach (var l_組 in V_読み込み_リードID別(l_逆リードパス, 2))
                 {
                     l_元のリード[l_組.Key] = l_組.Value;
                 }
 
                 var l_訂正数 = 0;
                 var l_未訂正数 = 0;
-                var l_誤訂正数 = 0; // 元々正しかった塩基を誤って書き換えてしまった数
+                var l_誤訂正数 = 0;
                 var l_変更位置総数 = 0;
-
                 V_検証_ファイル(l_訂正済み1, 1, l_元のリード, l_正解エラー, ref l_訂正数, ref l_未訂正数, ref l_誤訂正数, ref l_変更位置総数);
                 V_検証_ファイル(l_訂正済み2, 2, l_元のリード, l_正解エラー, ref l_訂正数, ref l_未訂正数, ref l_誤訂正数, ref l_変更位置総数);
-
                 var l_注入エラー総数 = l_正解エラー.Count;
                 var l_recall = l_注入エラー総数 == 0 ? 0.0D : (double)l_訂正数 / l_注入エラー総数;
                 var l_誤訂正率 = l_変更位置総数 == 0 ? 0.0D : (double)l_誤訂正数 / l_変更位置総数;
-
                 Console.WriteLine($"Injected errors: {l_注入エラー総数}");
                 Console.WriteLine($"Fixed back to true base (recall): {l_訂正数} ({l_recall:P2})");
                 Console.WriteLine($"Still wrong (not fixed, or fixed to a different wrong base): {l_未訂正数}");
                 Console.WriteLine($"Total positions changed by corrector: {l_変更位置総数}");
                 Console.WriteLine($"Of those, changed a previously-CORRECT base to something wrong (false corrections): {l_誤訂正数} ({l_誤訂正率:P2})");
-
-                // 大まかな健全性チェック: recall は意味のある水準まで達し、
-                // 誤訂正率は低く抑えられているべき
                 Assert.True(l_recall > 0.5D, $"Expected recall > 50%, got {l_recall:P2}");
                 Assert.True(l_誤訂正率 < 0.05D, $"Expected false-correction rate < 5%, got {l_誤訂正率:P2}");
             }
@@ -129,6 +157,7 @@ namespace Tsumiki.Tests.Core
                 var l_ID = l_生ID.TrimStart('@').Split('/')[0];
                 l_結果[(l_ID, p_ペア番号)] = l_配列;
             }
+
             return l_結果;
         }
 
@@ -159,7 +188,6 @@ namespace Tsumiki.Tests.Core
                 {
                     var l_エラーだったか = p_正解エラー.TryGetValue((l_リードID, p_ペア番号, l_位置), out var l_正解塩基);
                     var l_変更されたか = l_訂正済み配列[l_位置] != l_元の配列[l_位置];
-
                     if (l_変更されたか)
                     {
                         p_変更位置総数++;
@@ -178,7 +206,6 @@ namespace Tsumiki.Tests.Core
                     }
                     else if (l_変更されたか)
                     {
-                        // 元々エラーではなかった (=正しかった) 位置を書き換えてしまった
                         p_誤訂正数++;
                     }
                 }
@@ -186,7 +213,6 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 
     /// <summary>
@@ -220,8 +246,8 @@ namespace Tsumiki.Tests.Core
         {
             var l_ID = this._読み込み.ReadLine()!;
             var l_配列 = this._読み込み.ReadLine()!;
-            _ = this._読み込み.ReadLine(); // '+'
-            _ = this._読み込み.ReadLine(); // quality
+            _ = this._読み込み.ReadLine();
+            _ = this._読み込み.ReadLine();
             return (l_ID, l_配列);
         }
 
@@ -231,7 +257,5 @@ namespace Tsumiki.Tests.Core
         public void Dispose() => this._読み込み.Dispose();
 
         #endregion
-
     }
-
 }

@@ -9,17 +9,39 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 出した配列の各位置がリードに裏付けられているかの検査
     /// </summary>
-    /// <remarks>
-    /// 誤って繋いだ接合は両側それぞれが正しい配列なので局所の量では見えず、繋ぎ目を跨ぐ r-mer の不在だけがそれを示す
-    /// </remarks>
     public class ReadSupportCheckerTests : IDisposable
     {
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki support tests
+        /// </summary>
+        private const string C_項目_tsumiki_support_tests = "tsumiki_support_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 項目 SEQ1
+        /// </summary>
+        private const string C_項目_SEQ1 = "SEQ1";
+
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// ファイル名 asm fasta
+        /// </summary>
+        private const string C_ファイル名_asm_fasta = "asm.fasta";
+
+        /// <summary>
         /// この検証で使う r-mer 長
         /// </summary>
-        private const int r長 = 31;
+        private const int C_r長 = 31;
 
         #endregion
 
@@ -39,9 +61,12 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public ReadSupportCheckerTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_support_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_support_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-            ConfigurationManager.A_実行時引数 = new Parameters { A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_スレッド数 = 1
+            };
         }
 
         #endregion
@@ -57,6 +82,7 @@ namespace Tsumiki.Tests.Core
             {
                 Directory.Delete(this._作業ディレクトリ, recursive: true);
             }
+
             GC.SuppressFinalize(this);
         }
 
@@ -67,11 +93,9 @@ namespace Tsumiki.Tests.Core
         public void Get_検査結果_リードどおりの配列なら支持のない位置は出ない()
         {
             var l_真値 = Get_乱数配列(2_000, p_種: 20_260_913);
-            var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
-            var l_リード = this.Get_リード("reads.fq", l_真値);
-
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
-
+            var l_FASTA = this.Get_FASTA((C_項目_SEQ1, l_真値));
+            var l_リード = this.Get_リード(C_ファイル名_reads_fq, l_真値);
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], C_r長);
             Assert.NotNull(l_結果);
             Assert.Equal(0L, l_結果!.Value.A_支持のない位置数);
             Assert.Empty(l_結果.Value.A_区間);
@@ -85,23 +109,15 @@ namespace Tsumiki.Tests.Core
         {
             var l_左 = Get_乱数配列(1_000, p_種: 20_260_914);
             var l_右 = Get_乱数配列(1_000, p_種: 20_260_915);
-
-            // リードは左右それぞれからしか出ない
-            // 繋いだ接合を読んだリードは無い
-            var l_リード = this.Get_リード("reads.fq", l_左, l_右);
-            var l_FASTA = this.Get_FASTA(("SEQ1", l_左 + l_右));
-
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
-
+            var l_リード = this.Get_リード(C_ファイル名_reads_fq, l_左, l_右);
+            var l_FASTA = this.Get_FASTA((C_項目_SEQ1, l_左 + l_右));
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], C_r長);
             Assert.NotNull(l_結果);
             var l_区間 = Assert.Single(l_結果!.Value.A_区間);
-            Assert.Equal("SEQ1", l_区間.A_配列ID);
-
-            // 接合を跨ぐ r-mer は R-1 個
-            // 覆う塩基は接合の両側 R-1 塩基ぶん
-            Assert.Equal(r長 - 1, l_結果.Value.A_支持のない位置数);
-            Assert.Equal(l_左.Length - r長 + 2, l_区間.A_開始);
-            Assert.Equal(l_左.Length + r長 - 1, l_区間.A_終了);
+            Assert.Equal(C_項目_SEQ1, l_区間.A_配列ID);
+            Assert.Equal(C_r長 - 1, l_結果.Value.A_支持のない位置数);
+            Assert.Equal(l_左.Length - C_r長 + 2, l_区間.A_開始);
+            Assert.Equal(l_左.Length + C_r長 - 1, l_区間.A_終了);
         }
 
         /// <summary>
@@ -111,11 +127,9 @@ namespace Tsumiki.Tests.Core
         public void Get_検査結果_ギャップのNは支持を問わない()
         {
             var l_真値 = Get_乱数配列(2_000, p_種: 20_260_916);
-            var l_リード = this.Get_リード("reads.fq", l_真値);
-            var l_FASTA = this.Get_FASTA(("SEQ1", l_真値[..1_000] + new string('N', 50) + l_真値[1_000..]));
-
-            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], r長);
-
+            var l_リード = this.Get_リード(C_ファイル名_reads_fq, l_真値);
+            var l_FASTA = this.Get_FASTA((C_項目_SEQ1, l_真値[..1_000] + new string('N', 50) + l_真値[1_000..]));
+            var l_結果 = ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], C_r長);
             Assert.NotNull(l_結果);
             Assert.Equal(0L, l_結果!.Value.A_支持のない位置数);
             Assert.Empty(l_結果.Value.A_区間);
@@ -128,9 +142,8 @@ namespace Tsumiki.Tests.Core
         public void Get_検査結果_rが長すぎる場合は調べない()
         {
             var l_真値 = Get_乱数配列(500, p_種: 20_260_917);
-            var l_FASTA = this.Get_FASTA(("SEQ1", l_真値));
-            var l_リード = this.Get_リード("reads.fq", l_真値);
-
+            var l_FASTA = this.Get_FASTA((C_項目_SEQ1, l_真値));
+            var l_リード = this.Get_リード(C_ファイル名_reads_fq, l_真値);
             Assert.Null(ReadSupportChecker.Get_検査結果(l_FASTA, [(l_リード, string.Empty)], p_r長: 65));
         }
 
@@ -147,7 +160,7 @@ namespace Tsumiki.Tests.Core
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
         }
 
         /// <summary>
@@ -168,6 +181,7 @@ namespace Tsumiki.Tests.Core
                     l_書き込み.V_書き込み($"@r{l_ID++}", l_配列.Substring(i, 100), new string('I', 100));
                 }
             }
+
             return l_パス;
         }
 
@@ -178,16 +192,16 @@ namespace Tsumiki.Tests.Core
         /// <returns>書き出したパス</returns>
         private string Get_FASTA(params (string A_ID, string A_配列)[] p_全件)
         {
-            var l_パス = Path.Combine(this._作業ディレクトリ, "asm.fasta");
+            var l_パス = Path.Combine(this._作業ディレクトリ, C_ファイル名_asm_fasta);
             using var l_書き込み = new FastaWriter(l_パス);
-            foreach (var (l_ID, l_配列) in p_全件)
+            foreach (var (l_ID, l_配列)in p_全件)
             {
                 l_書き込み.V_書き込み(l_ID, l_配列);
             }
+
             return l_パス;
         }
 
         #endregion
-
     }
 }

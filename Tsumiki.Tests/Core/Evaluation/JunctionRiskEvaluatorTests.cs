@@ -13,6 +13,46 @@ namespace Tsumiki.Tests.Core.Evaluation
         #region 定数
 
         /// <summary>
+        /// 塩基配列 NNNNN
+        /// </summary>
+        private const string C_塩基配列_NNNNN = "NNNNN";
+
+        /// <summary>
+        /// 項目 s
+        /// </summary>
+        private const string C_項目_s = "s";
+
+        /// <summary>
+        /// 項目 S1 circular
+        /// </summary>
+        private const string C_項目_S1_circular = "S1_circular";
+
+        /// <summary>
+        /// 項目 S1 1
+        /// </summary>
+        private const string C_項目_S1_1 = "S1_1";
+
+        /// <summary>
+        /// 項目 S1 2
+        /// </summary>
+        private const string C_項目_S1_2 = "S1_2";
+
+        /// <summary>
+        /// 項目 S2 1
+        /// </summary>
+        private const string C_項目_S2_1 = "S2_1";
+
+        /// <summary>
+        /// 項目 S2 2
+        /// </summary>
+        private const string C_項目_S2_2 = "S2_2";
+
+        /// <summary>
+        /// 項目 S2
+        /// </summary>
+        private const string C_項目_S2 = "S2";
+
+        /// <summary>
         /// 手で作る断片の長さ
         /// </summary>
         private const int C_断片長 = 800;
@@ -45,10 +85,8 @@ namespace Tsumiki.Tests.Core.Evaluation
         public void Get_反復の印_2回現れる区間とNに印を付ける()
         {
             var l_反復 = Get_乱数配列(100, 1);
-            var l_配列 = Get_乱数配列(300, 2) + l_反復 + Get_乱数配列(300, 3) + l_反復 + "NNNNN" + Get_乱数配列(300, 4);
-
+            var l_配列 = Get_乱数配列(300, 2) + l_反復 + Get_乱数配列(300, 3) + l_反復 + C_塩基配列_NNNNN + Get_乱数配列(300, 4);
             var l_印 = JunctionRiskEvaluator.Get_反復の印([l_配列])[0];
-
             Assert.All(Enumerable.Range(300, 100), p => Assert.True(l_印[p]));
             Assert.All(Enumerable.Range(700, 100), p => Assert.True(l_印[p]));
             Assert.All(Enumerable.Range(800, 5), p => Assert.True(l_印[p]));
@@ -64,13 +102,9 @@ namespace Tsumiki.Tests.Core.Evaluation
         {
             var l_反復 = Get_乱数配列(200, 11);
             var l_配列 = Get_乱数配列(1_000, 12) + l_反復 + Get_乱数配列(2_000, 13) + l_反復 + Get_乱数配列(1_000, 14);
-            var l_断片 = Enumerable.Range(0, 10).Select(_ => (700, 700 + C_断片長))
-                .Concat(Enumerable.Range(0, 200).Select(i => (1_300 + (i * 5), 1_300 + (i * 5) + C_断片長)))
-                .Order().ToArray();
+            var l_断片 = Enumerable.Range(0, 10).Select(_ => (700, 700 + C_断片長)).Concat(Enumerable.Range(0, 200).Select(i => (1_300 + (i * 5), 1_300 + (i * 5) + C_断片長))).Order().ToArray();
             var l_外れ錨 = Enumerable.Range(0, 7).Select(i => (3_000 + (i * 20), 1)).ToArray();
-
-            var l_候補群 = JunctionRiskEvaluator.Get_候補群(Get_証拠(l_配列, l_断片, l_外れ錨), ["s"]);
-
+            var l_候補群 = JunctionRiskEvaluator.Get_候補群(Get_証拠(l_配列, l_断片, l_外れ錨), [C_項目_s]);
             Assert.Equal(2, l_候補群.Count);
             var l_跨がれた = l_候補群.Single(x => x.A_開始 < 1_500);
             var l_外れた = l_候補群.Single(x => x.A_開始 > 1_500);
@@ -92,12 +126,14 @@ namespace Tsumiki.Tests.Core.Evaluation
         [Fact]
         public void Get_評価_跨ぐ組が無く外れ錨が多いほど確率が高い()
         {
-            var l_支えあり = new 継ぎ目候補("s", 1_000, 1_200, false, 1D, 0, 20, 20D, 0, 0D, 1D, 1D);
-            var l_支えなし = l_支えあり with { A_跨ぐ組 = 0, A_外れ錨 = 40 };
-
+            var l_支えあり = new 継ぎ目候補(C_項目_s, 1_000, 1_200, false, 1D, 0, 20, 20D, 0, 0D, 1D, 1D);
+            var l_支えなし = l_支えあり with
+            {
+                A_跨ぐ組 = 0,
+                A_外れ錨 = 40
+            };
             var l_低い = JunctionRiskModel.Get_評価(l_支えあり);
             var l_高い = JunctionRiskModel.Get_評価(l_支えなし);
-
             Assert.Equal(継ぎ目の組.組で跨げる, l_低い.A_組);
             Assert.True(l_低い.A_誤りの確率 < 0.01D);
             Assert.True(l_高い.A_誤りの確率 > 0.5D);
@@ -109,8 +145,7 @@ namespace Tsumiki.Tests.Core.Evaluation
         [Fact]
         public void Get_組_ギャップと期待の組で分ける()
         {
-            var l_候補 = new 継ぎ目候補("s", 1_000, 1_200, false, 1D, 0, 0, 5D, 0, 0D, 1D, 1D);
-
+            var l_候補 = new 継ぎ目候補(C_項目_s, 1_000, 1_200, false, 1D, 0, 0, 5D, 0, 0D, 1D, 1D);
             Assert.Equal(継ぎ目の組.組で跨げる, JunctionRiskModel.Get_組(l_候補));
             Assert.Equal(継ぎ目の組.組で跨げない, JunctionRiskModel.Get_組(l_候補 with { A_期待の組 = 0.5D }));
             Assert.Equal(継ぎ目の組.ギャップ, JunctionRiskModel.Get_組(l_候補 with { A_Isギャップ = true }));
@@ -125,10 +160,8 @@ namespace Tsumiki.Tests.Core.Evaluation
             var l_左 = Get_乱数配列(300, 31);
             var l_反復 = Get_乱数配列(100, 32);
             var l_右 = Get_乱数配列(300, 33);
-
-            var l_片群 = JunctionRiskEvaluator.Get_切った配列群("S1_circular", l_左 + l_反復 + l_右, [(300, 400)]);
-
-            Assert.Equal([("S1_1", l_左 + l_反復), ("S1_2", l_反復 + l_右)], l_片群);
+            var l_片群 = JunctionRiskEvaluator.Get_切った配列群(C_項目_S1_circular, l_左 + l_反復 + l_右, [(300, 400)]);
+            Assert.Equal([(C_項目_S1_1, l_左 + l_反復), (C_項目_S1_2, l_反復 + l_右)], l_片群);
         }
 
         /// <summary>
@@ -140,9 +173,8 @@ namespace Tsumiki.Tests.Core.Evaluation
             var l_左 = Get_乱数配列(300, 41);
             var l_右 = Get_乱数配列(300, 42);
             var l_配列 = l_左 + new string('N', 100) + l_右;
-
-            Assert.Equal([("S2_1", l_左), ("S2_2", l_右)], JunctionRiskEvaluator.Get_切った配列群("S2", l_配列, [(270, 430)]));
-            Assert.Equal([("S2", l_配列)], JunctionRiskEvaluator.Get_切った配列群("S2", l_配列, []));
+            Assert.Equal([(C_項目_S2_1, l_左), (C_項目_S2_2, l_右)], JunctionRiskEvaluator.Get_切った配列群(C_項目_S2, l_配列, [(270, 430)]));
+            Assert.Equal([(C_項目_S2, l_配列)], JunctionRiskEvaluator.Get_切った配列群(C_項目_S2, l_配列, []));
         }
 
         #endregion
@@ -181,7 +213,7 @@ namespace Tsumiki.Tests.Core.Evaluation
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
         }
 

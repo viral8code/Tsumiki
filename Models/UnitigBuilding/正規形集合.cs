@@ -47,7 +47,7 @@ namespace Tsumiki.Models.UnitigBuilding
         {
             if (this._小 is { } l_小)
             {
-                _ = l_小.Add(KmerPacking.TryGet_正規化パック(p_kmer));
+                _ = l_小.Add(KmerPacking.Get_正規化パック(p_kmer));
                 return;
             }
 
@@ -67,9 +67,7 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <returns>訪問済みなら true</returns>
         public bool Haskmer(ReadOnlySpan<byte> p_kmer)
         {
-            return this._小 is { } l_小
-                ? l_小.Contains(KmerPacking.TryGet_正規化パック(p_kmer))
-                : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
+            return this._小 is { } l_小 ? l_小.Contains(KmerPacking.Get_正規化パック(p_kmer)) : this._長 is { } l_長 ? l_長.Contains(TrustedKmerIndex.Get_正規形_長(p_kmer)) : this._大!.Contains(KmerKey.Get_正規形(p_kmer));
         }
 
         /// <summary>
@@ -81,11 +79,7 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <returns>同じ座位を指すなら true</returns>
         public static bool Is同一座位(ReadOnlySpan<byte> p_左, ReadOnlySpan<byte> p_右, int p_k長)
         {
-            return p_k長 <= 64
-                ? KmerPacking.TryGet_正規化パック(p_左) == KmerPacking.TryGet_正規化パック(p_右)
-                : p_k長 <= TrustedKmerIndex.C_パック値のk上限
-                ? TrustedKmerIndex.Get_正規形_長(p_左) == TrustedKmerIndex.Get_正規形_長(p_右)
-                : KmerKey.Get_正規形(p_左).Equals(KmerKey.Get_正規形(p_右));
+            return p_k長 <= 64 ? KmerPacking.Get_正規化パック(p_左) == KmerPacking.Get_正規化パック(p_右) : p_k長 <= TrustedKmerIndex.C_パック値のk上限 ? TrustedKmerIndex.Get_正規形_長(p_左) == TrustedKmerIndex.Get_正規形_長(p_右) : KmerKey.Get_正規形(p_左).Equals(KmerKey.Get_正規形(p_右));
         }
 
         #endregion

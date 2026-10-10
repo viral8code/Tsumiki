@@ -12,6 +12,16 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// r 長の正数制約メッセージ
+        /// </summary>
+        private const string C_r長の正数制約メッセージ = "r-mer length must be positive";
+
+        /// <summary>
+        /// 項目 read index
+        /// </summary>
+        private const string C_項目_read_index = "read-index";
+
+        /// <summary>
         /// 集合を分割する数のビット数
         /// </summary>
         private const int C_分割のビット数 = 6;
@@ -126,7 +136,7 @@ namespace Tsumiki.Utilities
             }
             else if (p_r長 <= 128)
             {
-                this._長集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>(UInt128組比較器.A_既定))];
+                this._長集合 = [.. Enumerable.Range(0, C_分割数).Select(_ => new HashSet<(UInt128 A_上位, UInt128 A_下位)>(UInt128組比較器.C_既定))];
             }
             else
             {
@@ -152,13 +162,10 @@ namespace Tsumiki.Utilities
             using var l_計測 = new StageTimer($"repeat-index r={p_r長}");
             if (p_r長 <= 0)
             {
-                throw new ArgumentException("r-mer length must be positive");
+                throw new ArgumentException(C_r長の正数制約メッセージ);
             }
 
-            var l_パス群 = p_リードパス一覧
-                .Where(中間データ置き場.Is存在)
-                .ToList();
-
+            var l_パス群 = p_リードパス一覧.Where(中間データ置き場.Is存在).ToList();
             if (A_Is索引使用 && p_r長 >= ReadMinimizerIndex.C_最短の問い合わせ長 && l_パス群.Count > 0)
             {
                 var l_共有索引 = Get_共有索引(l_パス群);
@@ -199,7 +206,6 @@ namespace Tsumiki.Utilities
 
             var l_絞り込み = p_k長 > 0 && p_k長 < p_r長 ? p_kmerインデックス : null;
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
             _ = Parallel.ForEach(l_パス群, l_パス =>
             {
                 var l_束群 = Enumerable.Range(0, l_スレッド数).Select(_ => new 登録束(l_検証器)).ToArray();
@@ -228,8 +234,8 @@ namespace Tsumiki.Utilities
         /// <returns>閾値に届いていれば true</returns>
         public bool Has接合点支持(string p_head配列, string p_repeat配列, string p_tail配列, int p_閾値)
         {
-            var (A_全体, A_入口, A_出口) = this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列);
-            return A_入口 > 0 && A_出口 > 0 && A_全体 >= p_閾値;
+            var (l_全体, l_入口, l_出口) = this.Get_接合点別支持数(p_head配列, p_repeat配列, p_tail配列);
+            return l_入口 > 0 && l_出口 > 0 && l_全体 >= p_閾値;
         }
 
         /// <summary>
@@ -300,7 +306,6 @@ namespace Tsumiki.Utilities
         public static (UInt128 A_上位, UInt128 A_下位) Get_正準値(ReadOnlySpan<char> p_配列)
         {
             ArgumentOutOfRangeException.ThrowIfGreaterThan(p_配列.Length, 128);
-
             var l_Is逆鎖 = false;
             for (var i = 0; i < p_配列.Length; i++)
             {
@@ -407,15 +412,12 @@ namespace Tsumiki.Utilities
             var l_重なり長 = Math.Max(0, ConfigurationManager.A_実行時引数.A_k長 - 1);
             var l_head固有 = p_head配列.Length > l_重なり長 ? p_head配列[..^l_重なり長] : string.Empty;
             var l_tail固有 = p_tail配列.Length > l_重なり長 ? p_tail配列[l_重なり長..] : string.Empty;
-
             var l_margin長 = this._r長 - 1;
             var l_head側 = l_head固有.Length <= l_margin長 ? l_head固有 : l_head固有[^l_margin長..];
             var l_tail側 = l_tail固有.Length <= l_margin長 ? l_tail固有 : l_tail固有[..l_margin長];
-
             var l_テスト配列 = l_head側 + p_repeat配列 + l_tail側;
             var l_接合点1 = l_head側.Length;
             var l_接合点2 = l_head側.Length + p_repeat配列.Length;
-
             var l_支持数 = 0;
             var l_入口支持数 = 0;
             var l_出口支持数 = 0;
@@ -506,16 +508,14 @@ namespace Tsumiki.Utilities
         /// <returns>完全に一致する配列を見ていれば true</returns>
         private bool Has観測(ReadOnlySpan<char> p_窓)
         {
-            return this._索引 is { } l_索引
-                ? this.Is両端が信頼済み(p_窓) && l_索引.Has出現(p_窓)
-                : this._大集合 is null ? this.Has観測(Get_正準値(p_窓)) : this.Has観測(new KmerKey(p_窓).Get_正規形());
+            return this._索引 is { } l_索引 ? this.Is両端が信頼済み(p_窓) && l_索引.Has出現(p_窓) : this._大集合 is null ? this.Has観測(Get_正準値(p_窓)) : this.Has観測(new KmerKey(p_窓).Get_正規形());
         }
 
         /// <summary>
         /// 配列の全ての窓について、索引で出てくるかを一度に判定する (索引が無いときは null)
         /// </summary>
         /// <param name="p_配列">調べる配列</param>
-        /// <returns>窓の開始位置ごとの判定、窓が無ければ空。索引が無ければ null</returns>
+        /// <returns>窓の開始位置ごとの判定、窓が無ければ空<br/>索引が無ければ null</returns>
         private bool[]? Get_索引の出現(string p_配列)
         {
             if (this._索引 is not { } l_索引)
@@ -558,7 +558,13 @@ namespace Tsumiki.Utilities
             }
 
             Span<byte> l_塩基 = stackalloc byte[this._絞り込みのk長];
-            foreach (var l_開始 in new[] { 0, p_窓.Length - this._絞り込みのk長 })
+            foreach (var l_開始 in new[]
+            {
+                0,
+                p_窓.Length - this._絞り込みのk長
+            }
+
+            )
             {
                 for (var i = 0; i < l_塩基.Length; i++)
                 {
@@ -588,7 +594,7 @@ namespace Tsumiki.Utilities
                 {
                     _共有索引 = null;
                     _共有小窓索引 = null;
-                    using var l_計測 = new StageTimer("read-index");
+                    using var l_計測 = new StageTimer(C_項目_read_index);
                     _共有索引 = ReadMinimizerIndex.V_構築(() => FastqReader.Get_生リード列([.. p_パス群]));
                     _共有索引の元 = l_元;
                 }
@@ -608,7 +614,6 @@ namespace Tsumiki.Utilities
             {
                 var l_大窓 = Get_共有索引(p_パス群);
                 _共有小窓索引 ??= l_大窓.Get_窓違い(ReadMinimizerIndex.C_短い問い合わせ用の窓の種数);
-
                 return _共有小窓索引;
             }
         }
@@ -654,9 +659,7 @@ namespace Tsumiki.Utilities
                 var l_窓 = new RollingKmer(p_r長);
                 for (var i = 0; i < p_リード.Length; i++)
                 {
-                    if (l_窓.Try追加(p_リード[i], out var l_キー)
-                        && Is登録対象(l_k窓の信頼, p_絞り込み, i - p_r長 + 1, p_r長, p_k長)
-                        && (this._候補集合?.Has観測(l_キー) ?? true))
+                    if (l_窓.Is成功_追加(p_リード[i], out var l_キー) && Is登録対象(l_k窓の信頼, p_絞り込み, i - p_r長 + 1, p_r長, p_k長) && (this._候補集合?.Has観測(l_キー) ?? true))
                     {
                         if (p_束 is null)
                         {
@@ -675,9 +678,7 @@ namespace Tsumiki.Utilities
             var l_広い窓 = new WideRollingKmer(p_r長);
             for (var i = 0; i < p_リード.Length; i++)
             {
-                if (l_広い窓.Try追加(p_リード[i], out var l_キー)
-                    && Is登録対象(l_k窓の信頼, p_絞り込み, i - p_r長 + 1, p_r長, p_k長)
-                    && (this._候補集合?.Has観測(l_キー) ?? true))
+                if (l_広い窓.Is成功_追加(p_リード[i], out var l_キー) && Is登録対象(l_k窓の信頼, p_絞り込み, i - p_r長 + 1, p_r長, p_k長) && (this._候補集合?.Has観測(l_キー) ?? true))
                 {
                     this.V_登録(l_キー);
                 }
@@ -698,7 +699,7 @@ namespace Tsumiki.Utilities
                 var l_k窓 = new RollingKmer(p_k長);
                 for (var i = 0; i < p_リード.Length; i++)
                 {
-                    if (l_k窓.Try追加(p_リード[i], out var l_kキー))
+                    if (l_k窓.Is成功_追加(p_リード[i], out var l_kキー))
                     {
                         p_信頼[i - p_k長 + 1] = p_絞り込み.Haskmer_正規形(l_kキー.A_上位, l_kキー.A_下位);
                     }
@@ -710,7 +711,7 @@ namespace Tsumiki.Utilities
             var l_広いk窓 = new WideRollingKmer(p_k長);
             for (var i = 0; i < p_リード.Length; i++)
             {
-                if (l_広いk窓.Try追加(p_リード[i], out var l_kキー))
+                if (l_広いk窓.Is成功_追加(p_リード[i], out var l_kキー))
                 {
                     p_信頼[i - p_k長 + 1] = p_絞り込み.Haskmer_正規形(l_kキー);
                 }
@@ -732,6 +733,5 @@ namespace Tsumiki.Utilities
         }
 
         #endregion
-
     }
 }

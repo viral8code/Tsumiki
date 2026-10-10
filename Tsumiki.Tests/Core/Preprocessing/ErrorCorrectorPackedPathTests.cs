@@ -9,11 +9,22 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// パック経路 (k &lt;= 64) と逐次経路が、同じリードに対して同じ訂正を返すことの確認
     /// </summary>
-    /// <remarks>
-    /// パック経路は窓の評価を 2 bit 演算に置き換えた最適化なので、結果が 1 文字でも違えば最適化が壊れている
-    /// </remarks>
     public class ErrorCorrectorPackedPathTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki ec packed
+        /// </summary>
+        private const string C_項目_tsumiki_ec_packed = "tsumiki_ec_packed_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -30,7 +41,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public ErrorCorrectorPackedPathTests()
         {
-            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_ec_packed_" + Guid.NewGuid().ToString("N"));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_ec_packed + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
@@ -47,6 +58,7 @@ namespace Tsumiki.Tests.Core
             {
                 Directory.Delete(this._一時ディレクトリ, recursive: true);
             }
+
             GC.SuppressFinalize(this);
         }
 
@@ -62,21 +74,18 @@ namespace Tsumiki.Tests.Core
         public void V_パック経路は逐次経路と同じ訂正を返す(int p_k長)
         {
             var l_乱数 = new Random(p_k長);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             var l_真の配列 = string.Concat(Enumerable.Range(0, 4_000).Select(_ => l_塩基[l_乱数.Next(4)]));
-
             using var l_インデックス = this.Get_インデックス(l_真の配列, p_k長);
-
             for (var l_回 = 0; l_回 < 200; l_回++)
             {
                 var l_開始 = l_乱数.Next(l_真の配列.Length - 150);
                 var l_リード = l_真の配列.Substring(l_開始, 150).ToCharArray();
-
-                // 置換エラーと曖昧塩基を混ぜる
                 for (var l_誤り = 0; l_誤り < l_乱数.Next(4); l_誤り++)
                 {
                     l_リード[l_乱数.Next(l_リード.Length)] = l_塩基[l_乱数.Next(4)];
                 }
+
                 if (l_回 % 10 == 0)
                 {
                     l_リード[l_乱数.Next(l_リード.Length)] = 'N';
@@ -84,8 +93,7 @@ namespace Tsumiki.Tests.Core
 
                 var l_塩基列 = Get_塩基列(new string(l_リード));
                 var l_パック = ErrorCorrector.Get_訂正結果(l_塩基列, l_インデックス, p_k長);
-                var l_逐次 = ErrorCorrector.Get_訂正結果_逐次([.. l_塩基列], l_インデックス, p_k長, p_最大反復数: 10);
-
+                var l_逐次 = ErrorCorrector.Get_訂正結果_逐次([..l_塩基列], l_インデックス, p_k長, p_最大反復数: 10);
                 Assert.Equal(l_逐次.A_訂正数, l_パック.A_訂正数);
                 Assert.Equal(l_逐次.A_塩基列, l_パック.A_塩基列);
             }
@@ -102,7 +110,7 @@ namespace Tsumiki.Tests.Core
         public void V_誤りが密集したリードでもパック経路は逐次経路と同じ訂正を返す(int p_k長)
         {
             var l_乱数 = new Random(100 + p_k長);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             var l_固有 = string.Concat(Enumerable.Range(0, 3_000).Select(_ => l_塩基[l_乱数.Next(4)]));
             var l_写し = l_固有.Substring(1_000, 400).ToCharArray();
             for (var i = 0; i < 12; i++)
@@ -111,9 +119,7 @@ namespace Tsumiki.Tests.Core
             }
 
             var l_真の配列 = l_固有 + new string(l_写し) + string.Concat(Enumerable.Range(0, 600).Select(_ => l_塩基[l_乱数.Next(4)]));
-
             using var l_インデックス = this.Get_インデックス(l_真の配列, p_k長);
-
             for (var l_回 = 0; l_回 < 60; l_回++)
             {
                 var l_開始 = l_乱数.Next(l_真の配列.Length - 250);
@@ -127,8 +133,7 @@ namespace Tsumiki.Tests.Core
 
                 var l_塩基列 = Get_塩基列(new string(l_リード));
                 var l_パック = ErrorCorrector.Get_訂正結果(l_塩基列, l_インデックス, p_k長);
-                var l_逐次 = ErrorCorrector.Get_訂正結果_逐次([.. l_塩基列], l_インデックス, p_k長, p_最大反復数: 10);
-
+                var l_逐次 = ErrorCorrector.Get_訂正結果_逐次([..l_塩基列], l_インデックス, p_k長, p_最大反復数: 10);
                 Assert.Equal(l_逐次.A_訂正数, l_パック.A_訂正数);
                 Assert.Equal(l_逐次.A_塩基列, l_パック.A_塩基列);
             }
@@ -145,7 +150,7 @@ namespace Tsumiki.Tests.Core
         /// <returns>塩基 ID 列</returns>
         private static byte[] Get_塩基列(string p_配列)
         {
-            return [.. p_配列.Select(Util.Get_塩基ID)];
+            return[..p_配列.Select(Util.Get_塩基ID)];
         }
 
         /// <summary>
@@ -156,7 +161,11 @@ namespace Tsumiki.Tests.Core
         /// <returns>信頼できる k-mer 集合</returns>
         private TrustedKmerIndex Get_インデックス(string p_真の配列, int p_k長)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 1
+            };
             var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
             var l_塩基列 = Get_塩基列(p_真の配列);
             for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
@@ -166,11 +175,11 @@ namespace Tsumiki.Tests.Core
                     l_インデックス.V_登録(l_塩基列.AsSpan(i, p_k長));
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
 
         #endregion
-
     }
 }

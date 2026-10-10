@@ -36,7 +36,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_塩基">送る塩基の文字</param>
         /// <param name="p_キー">k 塩基そろったときのキー (k が 64 を超えると作業領域を参照するので、次に送るまでに使い終える)</param>
         /// <returns>k 塩基そろったら true</returns>
-        public bool Try追加(char p_塩基, out KmerKey p_キー)
+        public bool Is成功_追加(char p_塩基, out KmerKey p_キー)
         {
             p_キー = default;
             var l_ID = Util.Get_塩基ID(p_塩基);
@@ -54,7 +54,6 @@ namespace Tsumiki.Utilities
             }
 
             this._語[l_末尾] = (this._語[l_末尾] << 2) | ((ulong)(l_ID - 1) << this._末尾のシフト量);
-
             this._有効数 = Math.Min(p_長さ, this._有効数 + 1);
             if (this._有効数 < p_長さ)
             {

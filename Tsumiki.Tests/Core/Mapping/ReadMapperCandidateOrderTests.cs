@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using Tsumiki.Commons;
+﻿using Tsumiki.Commons;
 using Tsumiki.Cores.Mapping;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Mapping;
@@ -46,11 +45,9 @@ namespace Tsumiki.Tests.Core.Mapping
         public void Get_配置候補群_候補の並びは参照実装と同じになる(int p_種)
         {
             var l_乱数 = new Random(p_種);
-            // 100 塩基の反復を 20 回入れる (1 本のリードが 16 を超える候補を持つように)
             var l_反復 = Get_ランダム配列(l_乱数, 100);
             var l_参照 = string.Concat(Enumerable.Range(0, 20).SelectMany(_ => new[] { Get_ランダム配列(l_乱数, 150), l_反復 }));
             var l_マッパー = new ReadMapper([l_参照]);
-
             var l_候補超え = 0;
             for (var i = 0; i < 300; i++)
             {
@@ -62,7 +59,6 @@ namespace Tsumiki.Tests.Core.Mapping
 
                 var l_実際 = l_マッパー.Get_配置候補群(l_リード);
                 var l_期待 = Get_参照候補群(l_マッパー, l_リード);
-
                 Assert.Equal(l_期待.Count, l_実際.Count);
                 for (var j = 0; j < l_期待.Count; j++)
                 {
@@ -73,13 +69,12 @@ namespace Tsumiki.Tests.Core.Mapping
                 }
             }
 
-            // 上限で切る経路が実際に通ることを確かめる
             Assert.True(l_候補超え > 0);
         }
 
         #endregion
 
-        #region 非公開メソッド
+        #region 内部メソッド
 
         /// <summary>
         /// 参照実装: OrderByDescending と Take で候補を選び、非公開の整列で配置にする
@@ -91,14 +86,11 @@ namespace Tsumiki.Tests.Core.Mapping
         {
             var l_順 = p_マッパー.Get_候補数(p_リード).OrderByDescending(x => x.Value).Take(C_参照実装の候補上限).Select(x => x.Key).ToList();
             var l_逆相補 = Util.V_逆相補_曖昧塩基あり(p_リード);
-            var l_整列 = typeof(ReadMapper).GetMethod("Get_整列", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?? throw new InvalidOperationException("Get_整列 が見つからない");
-
             var l_結果 = new List<リード配置>();
             foreach (var l_候補 in l_順)
             {
                 var l_照合 = l_候補.A_Is逆鎖 ? l_逆相補 : p_リード;
-                l_結果.Add((リード配置)l_整列.Invoke(p_マッパー, new object[] { p_リード, l_照合, l_候補 })!);
+                l_結果.Add(p_マッパー.Get_整列(p_リード, l_照合, l_候補));
             }
 
             return l_結果;
@@ -112,7 +104,7 @@ namespace Tsumiki.Tests.Core.Mapping
         /// <returns>配列</returns>
         private static string Get_ランダム配列(Random p_乱数, int p_長さ)
         {
-            return new string([.. Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[p_乱数.Next(4)])]);
+            return new string([..Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[p_乱数.Next(4)])]);
         }
 
         /// <summary>
@@ -130,17 +122,17 @@ namespace Tsumiki.Tests.Core.Mapping
             foreach (var l_文字 in l_元)
             {
                 var l_確率 = p_乱数.NextDouble();
-                if (l_確率 < 0.03)
+                if (l_確率 < 0.03D)
                 {
-                    l_組.Add("ACGT"[p_乱数.Next(4)]);
+                    l_組.Add(Consts.塩基文字[p_乱数.Next(4)]);
                 }
-                else if (l_確率 < 0.04)
+                else if (l_確率 < 0.04D)
                 {
                     continue;
                 }
-                else if (l_確率 < 0.05)
+                else if (l_確率 < 0.05D)
                 {
-                    l_組.Add("ACGT"[p_乱数.Next(4)]);
+                    l_組.Add(Consts.塩基文字[p_乱数.Next(4)]);
                     l_組.Add(l_文字);
                 }
                 else
@@ -149,7 +141,7 @@ namespace Tsumiki.Tests.Core.Mapping
                 }
             }
 
-            var l_リード = new string([.. l_組]);
+            var l_リード = new string([..l_組]);
             return p_乱数.Next(2) == 0 ? l_リード : Util.V_逆相補_曖昧塩基あり(l_リード);
         }
 

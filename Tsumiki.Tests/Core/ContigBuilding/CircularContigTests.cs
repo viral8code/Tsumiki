@@ -8,56 +8,69 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 環状に閉じた複製単位 (細菌の染色体・プラスミドはいずれも環状) を組み上げられた場合に、それを検出して名前で示し、かつ円周の長さが正しくなることを検証する
     /// </summary>
-    /// <remarks>
-    /// 環状経路では末尾 unitig が「始点 unitig と重なる k-1 塩基」を自分の末尾に持っている<br/>
-    /// 線状の連結では次の unitig 側から重なりを取り除くが、環状では「次」が既に出力済みの始点なので取り除く相手がおらず、そのままだと円周が k-1 塩基ぶん長く出てしまう
-    /// </remarks>
     public class CircularContigTests : IDisposable
     {
         #region 定数
 
-        // 複製単位として数えてもらえる長さ (Consts.環状として数える最小長) を
-        // 超える環にする
-        // これを下回る閉路はホモポリマー等の産物とみなされ、
-        // 環状の目印が付かない
+        /// <summary>
+        /// 項目 tsumiki circular tests
+        /// </summary>
+        private const string C_項目_tsumiki_circular_tests = "tsumiki_circular_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
+
+        /// <summary>
+        /// ファイル名 contigs fasta
+        /// </summary>
+        private const string C_ファイル名_contigs_fasta = "contigs.fasta";
+
+        /// <summary>
+        /// ファイル名 unitigs linear fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_linear_fasta = "unitigs_linear.fasta";
+
+        /// <summary>
+        /// ファイル名 contigs linear fasta
+        /// </summary>
+        private const string C_ファイル名_contigs_linear_fasta = "contigs_linear.fasta";
 
         /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k = 21;
+        private const int C_k = 21;
 
         /// <summary>
         /// 円周
         /// </summary>
-        private const int 円周 = 1_200;
-
-        // k=21 なら 1200 塩基の乱数列に重複する正規化 k-mer は事実上現れない
+        private const int C_円周 = 1_200;
 
         /// <summary>
         /// 環状の複製単位そのもの
         /// </summary>
-        private static readonly string Circle = Get_乱数配列(円周, p_種: 20_250_908);
-
-        // 隣り合う unitig が k-1 塩基ずつ重なり、末尾 unitig の末尾 k-1 塩基が
-        // 先頭 unitig の先頭 k-1 塩基と一致する (= 環が閉じる) ように切り分ける
+        private static readonly string C_Circle = Get_乱数配列(C_円周, p_種: 20_250_908);
 
         /// <summary>
         /// 環を 3 分割したうちの 1 本目
         /// </summary>
-        private static readonly string 入口unitig = Circle[..(400 + k - 1)];
+        private static readonly string C_入口unitig = C_Circle[..(400 + C_k - 1)];
 
         /// <summary>
         /// 環を 3 分割したうちの 2 本目
         /// </summary>
-        private static readonly string 代替入口unitig = Circle[400..(800 + k - 1)];
+        private static readonly string C_代替入口unitig = C_Circle[400..(800 + C_k - 1)];
 
         /// <summary>
         /// 環を 3 分割したうちの 3 本目、先頭へ戻る重なりを含む
         /// </summary>
-        /// <summary>
-        /// 環を 3 分割したうちの 3 本目、先頭へ戻る重なりを含む
-        /// </summary>
-        private static readonly string 出口unitig = Circle[800..] + Circle[..(k - 1)];
+        private static readonly string C_出口unitig = C_Circle[800..] + C_Circle[..(C_k - 1)];
 
         #endregion
 
@@ -82,7 +95,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public CircularContigTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_circular_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_circular_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
             this._元のカレントディレクトリ = Environment.CurrentDirectory;
         }
@@ -109,18 +122,16 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_閉じた環は環状と判定され円周ちょうどの長さになる()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
-
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(l_unitigパス, $">1\n{入口unitig}\n>2\n{代替入口unitig}\n>3\n{出口unitig}\n");
-
-            var l_contigパス = Path.Combine(this._作業ディレクトリ, "contigs.fasta");
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k,
+                A_スレッド数 = 1
+            };
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
+            File.WriteAllText(l_unitigパス, $">1\n{C_入口unitig}\n>2\n{C_代替入口unitig}\n>3\n{C_出口unitig}\n");
+            var l_contigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs_fasta);
             var l_contig構築 = new ContigMaker(l_unitigパス);
-
-            // リードを与えなくても、環状の 3 本は各頂点の出次数がちょうど 1 なので
-            // 相互一意性を満たし、そのまま 1 周に結合されるはず
             l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
-
             List<(string A_ID, string A_配列)> l_contig群 = [];
             using (var l_読み込み = new FastaReader(l_contigパス))
             {
@@ -132,15 +143,10 @@ namespace Tsumiki.Tests.Core
             }
 
             var l_contig = Assert.Single(l_contig群);
-            Assert.Contains("circular", l_contig.A_ID);
-
-            // 重なりを二重に数えず、円周ちょうどの長さになっていること
-            Assert.Equal(円周, l_contig.A_配列.Length);
-
-            // 配列としても、環状配列のいずれかの回転 (またはその逆相補) に
-            // 一致していなければならない
-            var l_二重配列 = Circle + Circle;
-            var l_二重逆相補配列 = Util.V_逆相補(Circle) + Util.V_逆相補(Circle);
+            Assert.Contains(Consts.環状の目印, l_contig.A_ID);
+            Assert.Equal(C_円周, l_contig.A_配列.Length);
+            var l_二重配列 = C_Circle + C_Circle;
+            var l_二重逆相補配列 = Util.V_逆相補(C_Circle) + Util.V_逆相補(C_Circle);
             Assert.True(l_二重配列.Contains(l_contig.A_配列) || l_二重逆相補配列.Contains(l_contig.A_配列), $"assembled circle did not match any rotation of the true circle: {l_contig.A_配列}");
         }
 
@@ -150,16 +156,16 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_環を閉じない経路は環状と判定されない()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k, A_スレッド数 = 1 };
-
-            // 環を閉じる最後の unitig を外し、A -> B の線状経路だけにする
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs_linear.fasta");
-            File.WriteAllText(l_unitigパス, $">1\n{入口unitig}\n>2\n{代替入口unitig}\n");
-
-            var l_contigパス = Path.Combine(this._作業ディレクトリ, "contigs_linear.fasta");
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k,
+                A_スレッド数 = 1
+            };
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_linear_fasta);
+            File.WriteAllText(l_unitigパス, $">1\n{C_入口unitig}\n>2\n{C_代替入口unitig}\n");
+            var l_contigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs_linear_fasta);
             var l_contig構築 = new ContigMaker(l_unitigパス);
             l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL);
-
             List<(string A_ID, string A_配列)> l_contig群 = [];
             using (var l_読み込み = new FastaReader(l_contigパス))
             {
@@ -171,9 +177,8 @@ namespace Tsumiki.Tests.Core
             }
 
             var l_contig = Assert.Single(l_contig群);
-            Assert.DoesNotContain("circular", l_contig.A_ID);
-            // A (38 bp) + B の重なりを除いた分 (38 - 7 = 31 bp) = 69 bp
-            Assert.Equal(入口unitig.Length + 代替入口unitig.Length - (k - 1), l_contig.A_配列.Length);
+            Assert.DoesNotContain(Consts.環状の目印, l_contig.A_ID);
+            Assert.Equal(C_入口unitig.Length + C_代替入口unitig.Length - (C_k - 1), l_contig.A_配列.Length);
         }
 
         #endregion
@@ -189,11 +194,10 @@ namespace Tsumiki.Tests.Core
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
         }
 
         #endregion
-
     }
 }

@@ -52,28 +52,14 @@ namespace Tsumiki.Cores.UnitigBuilding
 
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_歩数上限 = C_歩数上限のリード長倍率 * Math.Max(p_リード長 ?? 0, p_k長);
-
-            var l_行き止まり = p_kmerインデックス.Get_信頼kmer一覧()
-                .AsParallel()
-                .AsOrdered()
-                .WithDegreeOfParallelism(l_スレッド数)
-                .SelectMany(x => Get_行き止まりの向き(p_kmerインデックス, x))
-                .ToList();
-
-            var l_経路群 = l_行き止まり
-                .AsParallel()
-                .AsOrdered()
-                .WithDegreeOfParallelism(l_スレッド数)
-                .Select(x => Get_架橋経路(p_kmerインデックス, x, p_k長, l_歩数上限))
-                .Where(x => x is not null)
-                .ToList();
-
+            var l_行き止まり = p_kmerインデックス.Get_信頼kmer一覧().AsParallel().AsOrdered().WithDegreeOfParallelism(l_スレッド数).SelectMany(x => Get_行き止まりの向き(p_kmerインデックス, x)).ToList();
+            var l_経路群 = l_行き止まり.AsParallel().AsOrdered().WithDegreeOfParallelism(l_スレッド数).Select(x => Get_架橋経路(p_kmerインデックス, x, p_k長, l_歩数上限)).Where(x => x is not null).ToList();
             var l_追加数 = 0;
             foreach (var l_経路 in l_経路群)
             {
                 foreach (var (l_kmer, l_出現回数) in l_経路!)
                 {
-                    if (p_kmerインデックス.Try追加_信頼kmer(l_kmer, l_出現回数))
+                    if (p_kmerインデックス.Is成功_追加_信頼kmer(l_kmer, l_出現回数))
                     {
                         l_追加数++;
                     }
@@ -99,7 +85,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_候補 = new byte[p_k長];
             List<(byte[] A_kmer, ulong A_出現回数)> l_経路 = [];
             HashSet<UInt128> l_通過済み = [];
-
             for (var l_歩数 = 0; l_歩数 < p_歩数上限; l_歩数++)
             {
                 l_現在.AsSpan(1).CopyTo(l_候補);
@@ -148,7 +133,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 l_候補[^1] = l_最多の塩基;
-                if (!l_通過済み.Add(KmerPacking.TryGet_正規化キー(l_候補)))
+                if (!l_通過済み.Add(KmerPacking.Get_正規化キー(l_候補)))
                 {
                     return null;
                 }

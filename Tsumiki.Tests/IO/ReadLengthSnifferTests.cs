@@ -7,6 +7,55 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class ReadLengthSnifferTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki readlength tests
+        /// </summary>
+        private const string C_項目_tsumiki_readlength_tests = "tsumiki_readlength_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 uniform fq
+        /// </summary>
+        private const string C_ファイル名_uniform_fq = "uniform.fq";
+
+        /// <summary>
+        /// ファイル名 trimmed fq
+        /// </summary>
+        private const string C_ファイル名_trimmed_fq = "trimmed.fq";
+
+        /// <summary>
+        /// ファイル名 limited fq
+        /// </summary>
+        private const string C_ファイル名_limited_fq = "limited.fq";
+
+        /// <summary>
+        /// ファイル名 empty fq
+        /// </summary>
+        private const string C_ファイル名_empty_fq = "empty.fq";
+
+        /// <summary>
+        /// ファイル名 pair 1 fq
+        /// </summary>
+        private const string C_ファイル名_pair_1_fq = "pair.1.fq";
+
+        /// <summary>
+        /// ファイル名 pair 2 fq
+        /// </summary>
+        private const string C_ファイル名_pair_2_fq = "pair.2.fq";
+
+        /// <summary>
+        /// ファイル名 single fq
+        /// </summary>
+        private const string C_ファイル名_single_fq = "single.fq";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -23,7 +72,7 @@ namespace Tsumiki.Tests.IO
         /// </summary>
         public ReadLengthSnifferTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_readlength_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_readlength_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -48,8 +97,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_すべて同じ長さのリードではその長さを返す()
         {
-            var l_パス = this.V_書き出し_FASTQ("uniform.fq", 150, 150, 150, 150);
-
+            var l_パス = this.V_書き出し_FASTQ(C_ファイル名_uniform_fq, 150, 150, 150, 150);
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(l_パス));
         }
 
@@ -59,8 +107,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_トリミング済みデータでは平均や最大ではなく中央値を返す()
         {
-            var l_パス = this.V_書き出し_FASTQ("trimmed.fq", 35, 40, 148, 150, 150, 150, 151);
-
+            var l_パス = this.V_書き出し_FASTQ(C_ファイル名_trimmed_fq, 35, 40, 148, 150, 150, 150, 151);
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(l_パス));
         }
 
@@ -70,9 +117,12 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_標本上限に達したら打ち切る()
         {
-            var l_長さ一覧 = new[] { 200, 200 }.Concat(Enumerable.Repeat(50, 100)).ToArray();
-            var l_パス = this.V_書き出し_FASTQ("limited.fq", l_長さ一覧);
-
+            var l_長さ一覧 = new[]
+            {
+                200,
+                200
+            }.Concat(Enumerable.Repeat(50, 100)).ToArray();
+            var l_パス = this.V_書き出し_FASTQ(C_ファイル名_limited_fq, l_長さ一覧);
             Assert.Equal(200, ReadLengthSniffer.Get_代表リード長(l_パス, p_標本上限: 2));
         }
 
@@ -82,9 +132,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_空ファイルではnullを返す()
         {
-            var l_パス = Path.Combine(this._作業ディレクトリ, "empty.fq");
+            var l_パス = Path.Combine(this._作業ディレクトリ, C_ファイル名_empty_fq);
             File.WriteAllText(l_パス, string.Empty);
-
             Assert.Null(ReadLengthSniffer.Get_代表リード長(l_パス));
         }
 
@@ -94,9 +143,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_ペアで長さが違う場合は短いほうを返す()
         {
-            var l_先行パス = this.V_書き出し_FASTQ("pair.1.fq", 150, 150, 150);
-            var l_後続パス = this.V_書き出し_FASTQ("pair.2.fq", 100, 100, 100);
-
+            var l_先行パス = this.V_書き出し_FASTQ(C_ファイル名_pair_1_fq, 150, 150, 150);
+            var l_後続パス = this.V_書き出し_FASTQ(C_ファイル名_pair_2_fq, 100, 100, 100);
             Assert.Equal(100, ReadLengthSniffer.Get_代表リード長(l_先行パス, l_後続パス));
         }
 
@@ -106,8 +154,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_シングルエンドでは無い方のファイルを無視する()
         {
-            var l_先行パス = this.V_書き出し_FASTQ("single.fq", 150, 150, 150);
-
+            var l_先行パス = this.V_書き出し_FASTQ(C_ファイル名_single_fq, 150, 150, 150);
             Assert.Equal(150, ReadLengthSniffer.Get_代表リード長(l_先行パス, null));
         }
 
@@ -133,10 +180,10 @@ namespace Tsumiki.Tests.IO
                 l_書き込み.WriteLine('+');
                 l_書き込み.WriteLine(new string('I', l_長さ));
             }
+
             return l_パス;
         }
 
         #endregion
-
     }
 }

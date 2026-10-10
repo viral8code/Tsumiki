@@ -10,6 +10,45 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class ArgumentsReaderModeTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 31 63
+        /// </summary>
+        private const string C_項目_31_63 = "31,63";
+
+        /// <summary>
+        /// 項目 31
+        /// </summary>
+        private const string C_項目_31 = "31";
+
+        /// <summary>
+        /// 項目 21 169
+        /// </summary>
+        private const string C_項目_21_169 = "21,169";
+
+        /// <summary>
+        /// 項目 41
+        /// </summary>
+        private const string C_項目_41 = "41";
+
+        /// <summary>
+        /// ファイル名 0 5
+        /// </summary>
+        private const string C_ファイル名_0_5 = "0.5";
+
+        /// <summary>
+        /// 項目 copy number baseline requested   Weighted
+        /// </summary>
+        private const string C_項目_copy_number_baseline_requested___Weighted = "copy-number baseline requested : Weighted";
+
+        /// <summary>
+        /// 項目 trim low coverage graph ends   False
+        /// </summary>
+        private const string C_項目_trim_low_coverage_graph_ends___False = "trim low-coverage graph ends : False";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -39,7 +78,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_入力だけで標準プロファイルを使用する()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス]);
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス]);
             Assert.True(l_引数.A_Is前処理);
             Assert.True(l_引数.A_Isエラー訂正);
             Assert.True(l_引数.A_Isマルチk);
@@ -74,17 +113,23 @@ namespace Tsumiki.Tests.IO
         [InlineData("-nmy", nameof(Parameters.A_Is救済kmer使用))]
         [InlineData("-nc", nameof(Parameters.A_Is引き継ぎ))]
         [InlineData("-nt", nameof(Parameters.A_Is低カバレッジ端トリミング))]
-        public void 既定で有効な処理を1つずつ切れる(string p_キー, string p_項目)
+        public void V_既定で有効な処理を1つずつ切れる(string p_キー, string p_項目)
         {
-            string[] l_全項目 =
-            [
-                nameof(Parameters.A_Is前処理), nameof(Parameters.A_Isエラー訂正), nameof(Parameters.A_Isマルチk), nameof(Parameters.A_IsSuperRead作成),
-                nameof(Parameters.A_Is反復rMer検証), nameof(Parameters.A_Is局所アセンブリ), nameof(Parameters.A_IsGFA出力), nameof(Parameters.A_Isポリッシュ),
-                nameof(Parameters.A_Is環状閉鎖検証), nameof(Parameters.A_Is救済kmer使用), nameof(Parameters.A_Is引き継ぎ), nameof(Parameters.A_Is低カバレッジ端トリミング),
+            string[] l_全項目 = [
+                nameof(Parameters.A_Is前処理),
+                nameof(Parameters.A_Isエラー訂正),
+                nameof(Parameters.A_Isマルチk),
+                nameof(Parameters.A_IsSuperRead作成),
+                nameof(Parameters.A_Is反復rMer検証),
+                nameof(Parameters.A_Is局所アセンブリ),
+                nameof(Parameters.A_IsGFA出力),
+                nameof(Parameters.A_Isポリッシュ),
+                nameof(Parameters.A_Is環状閉鎖検証),
+                nameof(Parameters.A_Is救済kmer使用),
+                nameof(Parameters.A_Is引き継ぎ),
+                nameof(Parameters.A_Is低カバレッジ端トリミング),
             ];
-
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, p_キー]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, p_キー]);
             foreach (var l_項目 in l_全項目)
             {
                 var l_値 = (bool)typeof(Parameters).GetProperty(l_項目)!.GetValue(l_引数)!;
@@ -100,21 +145,20 @@ namespace Tsumiki.Tests.IO
         [InlineData("-profile legacy")]
         [InlineData("-po")]
         [InlineData("-mk")]
-        public void 廃止したフラグは受け付けない(string p_引数)
+        public void V_廃止したフラグは受け付けない(string p_引数)
         {
-            Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, .. p_引数.Split(' ')]));
+            Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, ..p_引数.Split(' ')]));
         }
 
         /// <summary>
         /// 複数の -k は試して選ぶ指定なので、マルチ k を切る指定とは併用できない
         /// </summary>
         [Fact]
-        public void 複数のkとマルチkなしは併用できない()
+        public void V_複数のkとマルチkなしは併用できない()
         {
-            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-nmk", "-k", "31,63"]));
-            Assert.Contains("-nmk", l_例外.Message, StringComparison.Ordinal);
-
-            var l_単一k = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-nmk", "-k", "31"]);
+            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.マルチkなし, Consts.引数キー.k長, C_項目_31_63]));
+            Assert.Contains(Consts.引数キー.マルチkなし, l_例外.Message, StringComparison.Ordinal);
+            var l_単一k = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.マルチkなし, Consts.引数キー.k長, C_項目_31]);
             Assert.False(l_単一k.A_Isマルチk);
         }
 
@@ -122,10 +166,10 @@ namespace Tsumiki.Tests.IO
         /// -prep で前処理とエラー訂正だけ済ませる指定になり、既定では組み立てまで流す
         /// </summary>
         [Fact]
-        public void 準備のみは指定したときだけ有効()
+        public void V_準備のみは指定したときだけ有効()
         {
-            Assert.False(ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス]).A_Is準備のみ);
-            Assert.True(ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-prep"]).A_Is準備のみ);
+            Assert.False(ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス]).A_Is準備のみ);
+            Assert.True(ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.準備のみ]).A_Is準備のみ);
         }
 
         /// <summary>
@@ -145,8 +189,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_eckはkと独立に読む()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-k", "21,169", "-eck", "41"]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.k長, C_項目_21_169, Consts.引数キー.エラー訂正k長, C_項目_41]);
             Assert.Equal(169, l_引数.A_k長);
             Assert.Equal(41, l_引数.A_エラー訂正k長);
             Assert.True(l_引数.A_Isエラー訂正k長明示指定);
@@ -158,8 +201,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_modeに保守的を指定すると両方の閾値が上がる()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.保守的]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.積極性モード, Consts.積極性モード名.保守的]);
             Assert.Equal(Consts.保守的モードのペア結合閾値, l_引数.A_ペア結合閾値);
             Assert.Equal(Consts.保守的モードのペア支持数閾値, l_引数.A_ペア支持数閾値);
         }
@@ -170,8 +212,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_modeに積極的を指定すると両方の閾値が下がる()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.積極的]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.積極性モード, Consts.積極性モード名.積極的]);
             Assert.Equal(Consts.積極的モードのペア結合閾値, l_引数.A_ペア結合閾値);
             Assert.Equal(Consts.積極的モードのペア支持数閾値, l_引数.A_ペア支持数閾値);
         }
@@ -182,8 +223,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_modeに標準を指定すると素の既定値と一致する()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.標準]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.積極性モード, Consts.積極性モード名.標準]);
             Assert.Equal(Consts.ペア結合閾値の既定値, l_引数.A_ペア結合閾値);
             Assert.Equal(Consts.ペア支持数閾値の既定値, l_引数.A_ペア支持数閾値);
         }
@@ -194,28 +234,27 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_modeの後ろに書いた個別指定が優先される()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-mode", Consts.積極性モード名.保守的, "-pu", "0.5"]);
-
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.積極性モード, Consts.積極性モード名.保守的, Consts.引数キー.ペア結合閾値, C_ファイル名_0_5]);
             Assert.Equal(0.5M, l_引数.A_ペア結合閾値);
-            // -pc は指定していないので保守的モードの値のまま
             Assert.Equal(Consts.保守的モードのペア支持数閾値, l_引数.A_ペア支持数閾値);
         }
 
+        /// <summary>
+        /// cnb と nt は解析され複製と設定表示に残る
+        /// </summary>
         [Fact]
         public void V_cnbとntは解析され複製と設定表示に残る()
         {
-            var l_引数 = ArgumentsReader.Get_実行時引数(["-1", this._ダミーリードパス, "-cnb", "weighted", "-nt"]);
+            var l_引数 = ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, Consts.引数キー.コピー数基準, Consts.コピー数基準の出所.重みづけ, Consts.引数キー.低カバレッジ端トリミングなし]);
             var l_複製 = l_引数.Get_複製();
-
             Assert.Equal(コピー数基準の出所.Weighted, l_複製.A_コピー数基準の出所);
             Assert.False(l_複製.A_Is低カバレッジ端トリミング);
-            Assert.Contains("copy-number baseline requested : Weighted", l_複製.ToString());
-            Assert.Contains("trim low-coverage graph ends : False", l_複製.ToString());
-            Assert.Contains("-cnb", HelpText.Get_ヘルプ());
-            Assert.Contains("-nt", HelpText.Get_ヘルプ());
+            Assert.Contains(C_項目_copy_number_baseline_requested___Weighted, l_複製.ToString());
+            Assert.Contains(C_項目_trim_low_coverage_graph_ends___False, l_複製.ToString());
+            Assert.Contains(Consts.引数キー.コピー数基準, HelpText.Get_ヘルプ());
+            Assert.Contains(Consts.引数キー.低カバレッジ端トリミングなし, HelpText.Get_ヘルプ());
         }
 
         #endregion
-
     }
 }

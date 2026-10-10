@@ -11,12 +11,25 @@ namespace Tsumiki.Tests.Core
     {
         #region 定数
 
-        // k=8 で内部に k-mer 重複のないことを確認済みの 100 bp 配列
+        /// <summary>
+        /// 項目 tsumiki contigmaker tests
+        /// </summary>
+        private const string C_項目_tsumiki_contigmaker_tests = "tsumiki_contigmaker_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
 
         /// <summary>
         /// 検証に使う唯一の unitig
         /// </summary>
-        private const string unitig配列 = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
+        private const string C_unitig配列 = "TTTCCTCATGCAATTCAAAACCATGTCCGTAATGTAGGCGAAATAGTAAACCATTTTACGGAGGATACCAAATTCCTCCTTATTCAGGACCTAACCTGAG";
 
         #endregion
 
@@ -36,7 +49,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public ContigMakerFindDominantUnitigTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_contigmaker_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_contigmaker_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -62,17 +75,11 @@ namespace Tsumiki.Tests.Core
         public void V_代表unitig_順鎖一致はunitig内座標の終端位置を返す()
         {
             var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
-
-            // read = unitig の [40,70) 部分 (30 bp)
-            // read 自身の長さ (30) ではなく、
-            // unitig 内での終端位置 (70) が返るはず
-            var l_read = unitig配列.Substring(40, 30);
-
+            var l_read = C_unitig配列.Substring(40, 30);
             var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
-
-            Assert.Equal(1, l_ヒット.A_unitigID); // 正の値 = 順鎖でのヒット
+            Assert.Equal(1, l_ヒット.A_unitigID);
             Assert.Equal(70, l_ヒット.A_最終一致終端位置);
-            Assert.Equal(unitig配列.Length, l_ヒット.A_unitig長);
+            Assert.Equal(C_unitig配列.Length, l_ヒット.A_unitig長);
         }
 
         /// <summary>
@@ -82,15 +89,9 @@ namespace Tsumiki.Tests.Core
         public void V_代表unitig_逆相補一致は逆向きunitig座標の終端位置を返す()
         {
             var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
-
-            // 元の [40,70) を逆相補した read
-            // unitig 全体を逆相補した向きで見ると、
-            // 元の区間 [40,70) は [100-70, 100-40) = [30,60) に写る
-            var l_read = Util.V_逆相補(unitig配列.Substring(40, 30));
-
+            var l_read = Util.V_逆相補(C_unitig配列.Substring(40, 30));
             var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
-
-            Assert.Equal(-1, l_ヒット.A_unitigID); // 負の値 = 逆鎖でのヒット
+            Assert.Equal(-1, l_ヒット.A_unitigID);
             Assert.Equal(60, l_ヒット.A_最終一致終端位置);
         }
 
@@ -101,13 +102,10 @@ namespace Tsumiki.Tests.Core
         public void V_代表unitig_unitig末尾での一致は終端位置がunitig全長になる()
         {
             var l_contig構築 = this.Get_contig構築_単一unitig(p_k長: 8);
-
-            var l_read = unitig配列[^20..]; // unitig の末尾 20 bp
-
+            var l_read = C_unitig配列[^20..];
             var l_ヒット = l_contig構築.Get_代表Unitig(l_read);
-
             Assert.Equal(1, l_ヒット.A_unitigID);
-            Assert.Equal(unitig配列.Length, l_ヒット.A_最終一致終端位置);
+            Assert.Equal(C_unitig配列.Length, l_ヒット.A_最終一致終端位置);
             Assert.Equal(0, l_ヒット.A_末尾までの残り長);
         }
 
@@ -122,13 +120,16 @@ namespace Tsumiki.Tests.Core
         /// <returns>組み立てた contig 構築</returns>
         private ContigMaker Get_contig構築_単一unitig(int p_k長)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
-            File.WriteAllText(l_unitigパス, $">1\n{unitig配列}\n");
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 1
+            };
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
+            File.WriteAllText(l_unitigパス, $">1\n{C_unitig配列}\n");
             return new ContigMaker(l_unitigパス);
         }
 
         #endregion
-
     }
 }

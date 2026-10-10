@@ -12,20 +12,13 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// 山 (最頻値) が平均より大きく下に来ても、ゲノムサイズを水増ししない
         /// </summary>
-        /// <remarks>
-        /// GC の偏りが強いライブラリでは単一コピーのカバレッジが対数正規分布のように広がる
-        /// </remarks>
         [Fact]
         public void V_裾の長いスペクトルでもゲノムサイズを水増ししない()
         {
             const long l_真のゲノムサイズ = 5_000_000L;
             var l_ヒストグラム = V_構築_対数正規スペクトル(p_中央値: 120D, p_σ: 0.45D, p_ゲノムサイズ: l_真のゲノムサイズ, p_エラー係数: 10_000_000L);
-
             var l_解析 = KmerHistogram.Get_解析結果(l_ヒストグラム);
-
             Assert.NotNull(l_解析);
-
-            // 延べ数を山の位置で割る推定がこの形では大きく外れることを前提として確かめておく
             Assert.True(l_解析.A_ゲノム由来の延べ数 / (double)l_解析.A_ピーク出現回数 > 1.3D * l_真のゲノムサイズ);
             Assert.InRange(l_解析.A_推定ゲノムサイズ, (long)(0.85D * l_真のゲノムサイズ), (long)(1.25D * l_真のゲノムサイズ));
             Assert.InRange(l_解析.A_単一コピー基準値, 100D, 130D);
@@ -67,6 +60,7 @@ namespace Tsumiki.Tests.Utility
                 var l_ゲノム = (long)(p_ゲノムサイズ * Math.Exp(-Math.Pow(Math.Log(c) - l_μ, 2D) / (2D * p_σ * p_σ)) / (c * p_σ * Math.Sqrt(2D * Math.PI)));
                 l_ヒストグラム[l_出現回数] = l_エラー + l_ゲノム;
             }
+
             return l_ヒストグラム;
         }
 

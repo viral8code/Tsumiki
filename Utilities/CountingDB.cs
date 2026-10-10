@@ -12,6 +12,11 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
         /// 辞書が倍々に伸びるために、容量が件数に対して膨らみうる倍率
         /// </summary>
         private const int C_容量の膨らみ = 2;
@@ -21,7 +26,9 @@ namespace Tsumiki.Utilities
         /// </summary>
         private const int C_IOバッファサイズ = 1 << 20;
 
-        /// <summary>実際の種類数が分かる前に確保する辞書容量の上限</summary>
+        /// <summary>
+        /// 実際の種類数が分かる前に確保する辞書容量の上限
+        /// </summary>
         private const int C_初期容量の上限 = 16_384;
 
         /// <summary>
@@ -114,7 +121,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_シャード数"></param>
         public CountingDB(string p_一時ディレクトリ, int p_シャード数 = 1)
         {
-            this._ファイル接頭辞 = Guid.NewGuid().ToString("N");
+            this._ファイル接頭辞 = Guid.NewGuid().ToString(C_GUID書式);
             this._比較器 = new();
             this._等価比較器 = new();
             this._一時ディレクトリ = p_一時ディレクトリ;
@@ -124,7 +131,7 @@ namespace Tsumiki.Utilities
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);
             this._フラッシュ閾値 = (int)Math.Max(1_024L, Math.Min(int.MaxValue, l_シャードあたりの予算 / Get_エントリあたりのバイト数(this._k長)));
             this._バッファ = new Dictionary<byte[], ulong>(Math.Min(this._フラッシュ閾値, C_初期容量の上限), this._等価比較器);
-            this._値バッファ = new(UInt128組比較器.A_既定);
+            this._値バッファ = new(UInt128組比較器.C_既定);
             this._値バッファ_小 = [];
             this._値バッファ_中 = [];
             this.V_用意_値バッファ();
@@ -211,9 +218,7 @@ namespace Tsumiki.Utilities
         public string Get_統合ファイル()
         {
             this.V_フラッシュ();
-
             var l_対象ファイル = new List<string>(this._フラッシュ済みファイル);
-
             if (l_対象ファイル.Count == 0)
             {
                 return Get_空ファイル(this._一時ディレクトリ, this._ファイル接頭辞);
@@ -250,7 +255,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_値"></param>
         /// <param name="p_k長"></param>
         /// <param name="p_出力">パック長ぶんの書き込み先</param>
-        internal static void V_変換_パック済みバイト列((UInt128 A_上位, UInt128 A_下位) p_値, int p_k長, Span<byte> p_出力)
+        public static void V_変換_パック済みバイト列((UInt128 A_上位, UInt128 A_下位) p_値, int p_k長, Span<byte> p_出力)
         {
             var l_余りビット = (8 * p_出力.Length) - (2 * p_k長);
             var (l_上位, l_下位) = p_値;
@@ -282,15 +287,12 @@ namespace Tsumiki.Utilities
             if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
             {
                 const int l_容量に比例する分 = (32 + 8 + 4 + 4) + 4;
-
                 const int l_一時配列 = 32 + 8;
                 return (l_容量に比例する分 * C_容量の膨らみ) + l_一時配列;
             }
 
             const int l_辞書の分 = (8 + 8 + 4 + 4) + 4;
-
             var l_鍵の実体 = 24 + (((((p_k長 + 3) / 4) + 7) / 8) * 8);
-
             const int l_一時配列_大 = 16;
             return (l_辞書の分 * C_容量の膨らみ) + l_鍵の実体 + l_一時配列_大;
         }
@@ -312,7 +314,7 @@ namespace Tsumiki.Utilities
             var l_容量 = Math.Min(this._フラッシュ閾値, C_初期容量の上限);
             this._値バッファ_小 = this._k長 <= C_小さい値のk上限 ? new Dictionary<ulong, ulong>(l_容量) : [];
             this._値バッファ_中 = this._k長 is > C_小さい値のk上限 and <= C_中くらいの値のk上限 ? new Dictionary<UInt128, ulong>(l_容量) : [];
-            this._値バッファ = this._k長 > C_中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量, UInt128組比較器.A_既定) : [];
+            this._値バッファ = this._k長 > C_中くらいの値のk上限 ? new Dictionary<(UInt128 A_上位, UInt128 A_下位), ulong>(l_容量, UInt128組比較器.C_既定) : [];
         }
 
         /// <summary>
@@ -320,7 +322,8 @@ namespace Tsumiki.Utilities
         /// </summary>
         /// <param name="p_バッファ">書き出す値と出現回数</param>
         /// <param name="p_変換">値を右詰めのパック値に直す</param>
-        private void V_書出_値バッファ<T>(Dictionary<T, ulong> p_バッファ, Func<T, (UInt128 A_上位, UInt128 A_下位)> p_変換) where T : notnull
+        private void V_書出_値バッファ<T>(Dictionary<T, ulong> p_バッファ, Func<T, (UInt128 A_上位, UInt128 A_下位)> p_変換)
+            where T : notnull
         {
             var l_ファイル名 = this.Get_次のファイル名();
             var l_キー = new T[p_バッファ.Count];
@@ -333,7 +336,6 @@ namespace Tsumiki.Utilities
             }
 
             Array.Sort(l_キー, l_回数);
-
             var l_バイト列 = new byte[this._パック長];
             using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
             {
@@ -355,9 +357,7 @@ namespace Tsumiki.Utilities
         /// <returns>書き込み用のストリーム</returns>
         private static Stream Get_書き込みストリーム(string p_ファイル名)
         {
-            return 中間データ置き場.A_Is有効
-                ? 中間データ置き場.Get_書込ストリーム(p_ファイル名)
-                : new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, C_IOバッファサイズ, FileOptions.SequentialScan);
+            return 中間データ置き場.A_Is有効 ? 中間データ置き場.Get_書込ストリーム(p_ファイル名) : new FileStream(p_ファイル名, FileMode.Create, FileAccess.Write, FileShare.None, C_IOバッファサイズ, FileOptions.SequentialScan);
         }
 
         /// <summary>
@@ -380,7 +380,6 @@ namespace Tsumiki.Utilities
                 var l_ファイル名 = this.Get_次のファイル名();
                 var l_エントリ = this._バッファ.ToArray();
                 Array.Sort(l_エントリ, (x, y) => this._比較器.Compare(x.Key, y.Key));
-
                 using (var l_書き込み = new BinaryWriter(Get_書き込みストリーム(l_ファイル名)))
                 {
                     foreach (var l_項目 in l_エントリ)
@@ -459,7 +458,13 @@ namespace Tsumiki.Utilities
                     }
                 }
 
-                foreach (var l_残り in new[] { l_読み込み1, l_読み込み2 })
+                foreach (var l_残り in new[]
+                {
+                    l_読み込み1,
+                    l_読み込み2
+                }
+
+                )
                 {
                     while (l_残り.Has項目)
                     {
@@ -504,6 +509,5 @@ namespace Tsumiki.Utilities
         }
 
         #endregion
-
     }
 }

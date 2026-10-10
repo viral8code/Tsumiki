@@ -3,7 +3,6 @@
     /// <summary>
     /// リードが通った unitig の並びを辞書のキーにするための値
     /// </summary>
-    /// <param name="p_頂点列">符号付き unitig ID の並び</param>
     internal readonly struct 経路キー(int[] p_頂点列) : IEquatable<経路キー>
     {
         #region 内部変数

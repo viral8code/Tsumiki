@@ -1,4 +1,5 @@
-﻿using Tsumiki.Utilities;
+﻿using Tsumiki.Commons;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Utility
 {
@@ -7,21 +8,31 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class ReadMinimizerIndexTests
     {
-        private static string Get_逆相補(string p_配列)
-        {
-            return new string([.. p_配列.Reverse().Select(static x => x switch { 'A' => 'T', 'C' => 'G', 'G' => 'C', 'T' => 'A', _ => 'N' })]);
-        }
+        #region 定数
 
+        /// <summary>
+        /// 表区切り
+        /// </summary>
+        private const string C_表区切り = "|";
+
+        #endregion
+
+        #region 公開メソッド
+
+        /// <summary>
+        /// 愚直な照合と一致する
+        /// </summary>
+        /// <param name="p_種"></param>
+        /// <param name="p_誤り率"></param>
         [Theory]
-        [InlineData(1, 0.02)]
-        [InlineData(2, 0.0)]
-        [InlineData(3, 0.05)]
-        public void 愚直な照合と一致する(int p_種, double p_誤り率)
+        [InlineData(1, 0.02D)]
+        [InlineData(2, 0.0D)]
+        [InlineData(3, 0.05D)]
+        public void V_愚直な照合と一致する(int p_種, double p_誤り率)
         {
             var l_乱数 = new Random(p_種);
-            // 反復を含むゲノム (同じ 60 塩基を 3 回入れる)
-            var l_反復 = new string([.. Enumerable.Range(0, 60).Select(_ => "ACGT"[l_乱数.Next(4)])]);
-            var l_ゲノム = string.Concat(Enumerable.Range(0, 20).Select(i => i % 7 == 3 ? l_反復 : new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])])));
+            var l_反復 = new string([..Enumerable.Range(0, 60).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
+            var l_ゲノム = string.Concat(Enumerable.Range(0, 20).Select(i => i % 7 == 3 ? l_反復 : new string([..Enumerable.Range(0, 100).Select(_ => Consts.塩基文字[l_乱数.Next(4)])])));
             var l_リード群 = new List<string>();
             for (var i = 0; i < 400; i++)
             {
@@ -32,16 +43,16 @@ namespace Tsumiki.Tests.Utility
                 {
                     if (l_乱数.NextDouble() < p_誤り率)
                     {
-                        l_文字[j] = l_乱数.Next(10) == 0 ? 'N' : "ACGT"[l_乱数.Next(4)];
+                        l_文字[j] = l_乱数.Next(10) == 0 ? 'N' : Consts.塩基文字[l_乱数.Next(4)];
                     }
                 }
+
                 var l_リード = new string(l_文字);
                 l_リード群.Add(l_乱数.Next(2) == 0 ? l_リード : Get_逆相補(l_リード));
             }
 
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
-            var l_全文 = string.Join("|", l_リード群.SelectMany(static x => new[] { x, Get_逆相補(x) }));
-
+            var l_全文 = string.Join(C_表区切り, l_リード群.SelectMany(static x => new[] { x, Get_逆相補(x) }));
             var l_調べる = new List<string>();
             for (var i = 0; i < 3_000; i++)
             {
@@ -51,6 +62,7 @@ namespace Tsumiki.Tests.Utility
                 {
                     continue;
                 }
+
                 var l_配列 = l_元.Substring(l_乱数.Next(0, l_元.Length - l_長さ + 1), l_長さ);
                 if (!l_配列.Contains('N'))
                 {
@@ -65,68 +77,19 @@ namespace Tsumiki.Tests.Utility
         }
 
         /// <summary>
-        /// 愚直な照合と比べるための、リード群・問い合わせ群・全文を作る
-        /// </summary>
-        /// <param name="p_種">乱数の種</param>
-        /// <param name="p_誤り率">リードに入れる誤りの率</param>
-        /// <param name="p_最短">問い合わせの最短長</param>
-        /// <returns>(リード群, 問い合わせ群, リードとその逆相補をつないだ全文)</returns>
-        private static (List<string> A_リード群, List<string> A_調べる, string A_全文) Get_照合データ(int p_種, double p_誤り率, int p_最短)
-        {
-            var l_乱数 = new Random(p_種);
-            var l_反復 = new string([.. Enumerable.Range(0, 60).Select(_ => "ACGT"[l_乱数.Next(4)])]);
-            var l_ゲノム = string.Concat(Enumerable.Range(0, 20).Select(i => i % 7 == 3 ? l_反復 : new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])])));
-            var l_リード群 = new List<string>();
-            for (var i = 0; i < 400; i++)
-            {
-                var l_長さ = l_乱数.Next(20, 151);
-                var l_開始 = l_乱数.Next(0, l_ゲノム.Length - l_長さ);
-                var l_文字 = l_ゲノム.Substring(l_開始, l_長さ).ToCharArray();
-                for (var j = 0; j < l_文字.Length; j++)
-                {
-                    if (l_乱数.NextDouble() < p_誤り率)
-                    {
-                        l_文字[j] = l_乱数.Next(10) == 0 ? 'N' : "ACGT"[l_乱数.Next(4)];
-                    }
-                }
-                var l_リード = new string(l_文字);
-                l_リード群.Add(l_乱数.Next(2) == 0 ? l_リード : Get_逆相補(l_リード));
-            }
-
-            var l_全文 = string.Join("|", l_リード群.SelectMany(static x => new[] { x, Get_逆相補(x) }));
-
-            var l_調べる = new List<string>();
-            for (var i = 0; i < 3_000; i++)
-            {
-                var l_長さ = l_乱数.Next(p_最短, 90);
-                var l_元 = i % 3 == 0 ? l_ゲノム : l_リード群[l_乱数.Next(l_リード群.Count)];
-                if (l_元.Length < l_長さ)
-                {
-                    continue;
-                }
-                var l_配列 = l_元.Substring(l_乱数.Next(0, l_元.Length - l_長さ + 1), l_長さ);
-                if (!l_配列.Contains('N'))
-                {
-                    l_調べる.Add(i % 2 == 0 ? l_配列 : Get_逆相補(l_配列));
-                }
-            }
-
-            return (l_リード群, l_調べる, l_全文);
-        }
-
-        /// <summary>
         /// 窓の種数 17 の索引 (直接作ったものと、既定の索引から窓違いで作ったもの) も、愚直な照合と一致する (31〜89 塩基の問い合わせ)
         /// </summary>
+        /// <param name="p_種"></param>
+        /// <param name="p_誤り率"></param>
         [Theory]
-        [InlineData(1, 0.02)]
-        [InlineData(2, 0.0)]
-        [InlineData(3, 0.05)]
-        public void 窓17の索引も愚直な照合と一致する(int p_種, double p_誤り率)
+        [InlineData(1, 0.02D)]
+        [InlineData(2, 0.0D)]
+        [InlineData(3, 0.05D)]
+        public void V_窓17の索引も愚直な照合と一致する(int p_種, double p_誤り率)
         {
             var (l_リード群, l_調べる, l_全文) = Get_照合データ(p_種, p_誤り率, ReadMinimizerIndex.C_短い問い合わせの最短長);
             var l_窓17 = ReadMinimizerIndex.V_構築(() => l_リード群, 17);
             var l_既定から = ReadMinimizerIndex.V_構築(() => l_リード群).Get_窓違い(17);
-
             foreach (var l_配列 in l_調べる)
             {
                 var l_期待 = l_全文.Contains(l_配列, StringComparison.Ordinal);
@@ -141,10 +104,9 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void Get_窓違い17は窓17で直接作った索引と出現数が一致する()
         {
-            var (l_リード群, l_調べる, _) = Get_照合データ(1, 0.02, ReadMinimizerIndex.C_短い問い合わせの最短長);
+            var (l_リード群, l_調べる, _) = Get_照合データ(1, 0.02D, ReadMinimizerIndex.C_短い問い合わせの最短長);
             var l_窓17 = ReadMinimizerIndex.V_構築(() => l_リード群, 17);
             var l_既定から = ReadMinimizerIndex.V_構築(() => l_リード群).Get_窓違い(17);
-
             foreach (var l_配列 in l_調べる)
             {
                 Assert.Equal(l_窓17.Get_出現数(l_配列, 100), l_既定から.Get_出現数(l_配列, 100));
@@ -155,12 +117,11 @@ namespace Tsumiki.Tests.Utility
         /// 窓 17 の索引は、最短の問い合わせ長 (31) に満たない 30 塩基の配列を拒む
         /// </summary>
         [Fact]
-        public void 窓17の索引は31塩基未満の配列を拒む()
+        public void V_窓17の索引は31塩基未満の配列を拒む()
         {
             var l_乱数 = new Random(4);
-            var l_リード = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_リード = new string([..Enumerable.Range(0, 100).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_索引 = ReadMinimizerIndex.V_構築(() => [l_リード], 17);
-
             _ = Assert.Throws<ArgumentException>(() => l_索引.Get_出現数(l_リード.AsSpan(0, 30), 1));
         }
 
@@ -172,12 +133,11 @@ namespace Tsumiki.Tests.Utility
         [InlineData(31)]
         [InlineData(35)]
         [InlineData(40)]
-        public void 既定の窓の索引は41塩基未満の配列を拒む(int p_長さ)
+        public void V_既定の窓の索引は41塩基未満の配列を拒む(int p_長さ)
         {
             var l_乱数 = new Random(6);
-            var l_リード = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_リード = new string([..Enumerable.Range(0, 100).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_索引 = ReadMinimizerIndex.V_構築(() => [l_リード]);
-
             _ = Assert.Throws<ArgumentException>(() => l_索引.Get_出現数(l_リード.AsSpan(0, p_長さ), 1));
         }
 
@@ -188,13 +148,11 @@ namespace Tsumiki.Tests.Utility
         public void Get_前後群_錨の向きで前後を返す()
         {
             var l_乱数 = new Random(5);
-            var l_ゲノム = new string([.. Enumerable.Range(0, 300).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_ゲノム = new string([..Enumerable.Range(0, 300).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_索引 = ReadMinimizerIndex.V_構築(() => [l_ゲノム.Substring(50, 150), Get_逆相補(l_ゲノム.Substring(80, 150))]);
             var l_錨 = l_ゲノム.Substring(120, ReadMinimizerIndex.C_最短の問い合わせ長);
             var l_錨の終わり = 120 + ReadMinimizerIndex.C_最短の問い合わせ長;
-
             var l_前後群 = l_索引.Get_前後群(l_錨, 200, 10).OrderBy(x => x.A_前.Length).ToList();
-
             Assert.Equal([(l_ゲノム[80..120], l_ゲノム[l_錨の終わり..230]), (l_ゲノム[50..120], l_ゲノム[l_錨の終わり..200])], l_前後群);
         }
 
@@ -209,14 +167,13 @@ namespace Tsumiki.Tests.Utility
         public void Get_出現数_多く出てくる配列も上限まで重ねずに数える(int p_上限, int p_期待)
         {
             var l_乱数 = new Random(9);
-            var l_単位 = new string([.. Enumerable.Range(0, 60).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_単位 = new string([..Enumerable.Range(0, 60).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_索引 = ReadMinimizerIndex.V_構築(() => Enumerable.Repeat(l_単位, 20_000));
-
             Assert.Equal(p_期待, l_索引.Get_出現数(l_単位.AsSpan(5, ReadMinimizerIndex.C_最短の問い合わせ長), p_上限));
         }
 
         /// <summary>
-        /// 全窓の判定は、窓ごとに「窓に N が無ければ Has出現、あれば false」と一致する (窓 27 と窓 17 の索引、窓長 31〜60 のうち索引の最短以上)
+        /// 全窓の判定は、窓ごとに「窓に N が無ければ Has 出現、あれば false」と一致する (窓 27 と窓 17 の索引、窓長 31〜60 のうち索引の最短以上)
         /// </summary>
         /// <param name="p_窓の種数">索引の窓の種数</param>
         [Theory]
@@ -224,13 +181,12 @@ namespace Tsumiki.Tests.Utility
         [InlineData(17)]
         public void V_判定_出現_全窓は窓ごとのHas出現と一致する(int p_窓の種数)
         {
-            var (l_リード群, l_調べる, _) = Get_照合データ(7, 0.02, ReadMinimizerIndex.C_短い問い合わせの最短長);
+            var (l_リード群, l_調べる, _) = Get_照合データ(7, 0.02D, ReadMinimizerIndex.C_短い問い合わせの最短長);
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群, p_窓の種数);
             var l_乱数 = new Random(11);
             for (var k = 0; k < 60; k++)
             {
                 var l_長さ = l_乱数.Next(50, 401);
-                // 最短 31 塩基以上の問い合わせを 20 個つなげて、必要な長さを確保する
                 var l_連結 = string.Concat(Enumerable.Range(0, 20).Select(_ => l_調べる[l_乱数.Next(l_調べる.Count)]));
                 var l_文字 = l_連結.Substring(0, l_長さ).ToCharArray();
                 for (var j = 0; j < l_文字.Length; j++)
@@ -240,8 +196,8 @@ namespace Tsumiki.Tests.Utility
                         l_文字[j] = 'N';
                     }
                 }
-                var l_配列 = new string(l_文字);
 
+                var l_配列 = new string(l_文字);
                 for (var l_窓 = Math.Max(31, l_索引.A_最短の問い合わせ長); l_窓 <= 60 && l_窓 <= l_配列.Length; l_窓++)
                 {
                     var l_結果 = new bool[l_配列.Length - l_窓 + 1];
@@ -263,11 +219,84 @@ namespace Tsumiki.Tests.Utility
         public void V_判定_出現_全窓は窓の短さと結果の長さの違いを拒む()
         {
             var l_乱数 = new Random(12);
-            var l_配列 = new string([.. Enumerable.Range(0, 100).Select(_ => "ACGT"[l_乱数.Next(4)])]);
+            var l_配列 = new string([..Enumerable.Range(0, 100).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_索引 = ReadMinimizerIndex.V_構築(() => [l_配列], 17);
-
             Assert.Throws<ArgumentException>(() => l_索引.V_判定_出現_全窓(l_配列.AsSpan(), 30, new bool[71]));
             Assert.Throws<ArgumentException>(() => l_索引.V_判定_出現_全窓(l_配列.AsSpan(), 41, new bool[10]));
         }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 逆相補
+        /// </summary>
+        /// <param name="p_配列"></param>
+        /// <returns></returns>
+        private static string Get_逆相補(string p_配列)
+        {
+            return new string([..p_配列.Reverse().Select(static x => x switch
+            {
+                'A' => 'T',
+                'C' => 'G',
+                'G' => 'C',
+                'T' => 'A',
+                _ => 'N'
+            })]);
+        }
+
+        /// <summary>
+        /// 愚直な照合と比べるための、リード群・問い合わせ群・全文を作る
+        /// </summary>
+        /// <param name="p_種">乱数の種</param>
+        /// <param name="p_誤り率">リードに入れる誤りの率</param>
+        /// <param name="p_最短">問い合わせの最短長</param>
+        /// <returns>(リード群, 問い合わせ群, リードとその逆相補をつないだ全文)</returns>
+        private static (List<string> A_リード群, List<string> A_調べる, string A_全文) Get_照合データ(int p_種, double p_誤り率, int p_最短)
+        {
+            var l_乱数 = new Random(p_種);
+            var l_反復 = new string([..Enumerable.Range(0, 60).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
+            var l_ゲノム = string.Concat(Enumerable.Range(0, 20).Select(i => i % 7 == 3 ? l_反復 : new string([..Enumerable.Range(0, 100).Select(_ => Consts.塩基文字[l_乱数.Next(4)])])));
+            var l_リード群 = new List<string>();
+            for (var i = 0; i < 400; i++)
+            {
+                var l_長さ = l_乱数.Next(20, 151);
+                var l_開始 = l_乱数.Next(0, l_ゲノム.Length - l_長さ);
+                var l_文字 = l_ゲノム.Substring(l_開始, l_長さ).ToCharArray();
+                for (var j = 0; j < l_文字.Length; j++)
+                {
+                    if (l_乱数.NextDouble() < p_誤り率)
+                    {
+                        l_文字[j] = l_乱数.Next(10) == 0 ? 'N' : Consts.塩基文字[l_乱数.Next(4)];
+                    }
+                }
+
+                var l_リード = new string(l_文字);
+                l_リード群.Add(l_乱数.Next(2) == 0 ? l_リード : Get_逆相補(l_リード));
+            }
+
+            var l_全文 = string.Join(C_表区切り, l_リード群.SelectMany(static x => new[] { x, Get_逆相補(x) }));
+            var l_調べる = new List<string>();
+            for (var i = 0; i < 3_000; i++)
+            {
+                var l_長さ = l_乱数.Next(p_最短, 90);
+                var l_元 = i % 3 == 0 ? l_ゲノム : l_リード群[l_乱数.Next(l_リード群.Count)];
+                if (l_元.Length < l_長さ)
+                {
+                    continue;
+                }
+
+                var l_配列 = l_元.Substring(l_乱数.Next(0, l_元.Length - l_長さ + 1), l_長さ);
+                if (!l_配列.Contains('N'))
+                {
+                    l_調べる.Add(i % 2 == 0 ? l_配列 : Get_逆相補(l_配列));
+                }
+            }
+
+            return (l_リード群, l_調べる, l_全文);
+        }
+
+        #endregion
     }
 }

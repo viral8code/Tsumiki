@@ -50,9 +50,7 @@ namespace Tsumiki.IO
         {
             this.A_ファイルパス = p_パス;
             var l_入力ストリーム = 中間データ置き場.Get_読込ストリーム(p_パス);
-            this._読み込み = Path.GetExtension(p_パス)?.ToLower() == C_圧縮ファイル拡張子
-                ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: C_バッファサイズ)
-                : new StreamReader(l_入力ストリーム, bufferSize: C_バッファサイズ);
+            this._読み込み = Path.GetExtension(p_パス)?.ToLower() == C_圧縮ファイル拡張子 ? new StreamReader(new GZipStream(l_入力ストリーム, CompressionMode.Decompress), bufferSize: C_バッファサイズ) : new StreamReader(l_入力ストリーム, bufferSize: C_バッファサイズ);
         }
 
         #endregion
@@ -69,7 +67,8 @@ namespace Tsumiki.IO
         }
 
         /// <summary>
-        /// 次の 1 行 (空行は読み飛ばす) を読み込んで返す。空行しか残っていなければ例外にする
+        /// 次の 1 行 (空行は読み飛ばす) を読み込んで返す<br/>
+        /// 空行しか残っていなければ例外にする
         /// </summary>
         /// <returns>読み込んだ行</returns>
         protected virtual string Get_次の行()

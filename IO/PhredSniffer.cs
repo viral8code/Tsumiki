@@ -11,6 +11,11 @@ namespace Tsumiki.IO
         #region 定数
 
         /// <summary>
+        /// 空白
+        /// </summary>
+        private const string C_空白 = " ";
+
+        /// <summary>
         /// 現実的な Q 上限
         /// </summary>
         private const int C_現実的なQ上限 = 45;
@@ -31,7 +36,6 @@ namespace Tsumiki.IO
             var l_最大ASCII = int.MinValue;
             var l_リード数 = 0;
             var l_文字数 = 0;
-
             foreach (var l_クオリティ in p_クオリティ行)
             {
                 if (l_リード数 >= p_標本上限)
@@ -55,9 +59,7 @@ namespace Tsumiki.IO
                 }
             }
 
-            return l_文字数 == 0
-                ? new Phred標本(0, 0, l_リード数, 0)
-                : new Phred標本(l_最小ASCII, l_最大ASCII, l_リード数, l_文字数);
+            return l_文字数 == 0 ? new Phred標本(0, 0, l_リード数, 0) : new Phred標本(l_最小ASCII, l_最大ASCII, l_リード数, l_文字数);
         }
 
         /// <summary>
@@ -76,7 +78,6 @@ namespace Tsumiki.IO
             var l_最小Q = p_標本.A_最小ASCII - p_有効オフセット;
             var l_最大Q = p_標本.A_最大ASCII - p_有効オフセット;
             var l_別のオフセット = p_有効オフセット == 33 ? 64 : 33;
-
             List<string> l_指摘 = [];
             if (l_最小Q < 0 || l_最大Q > C_現実的なQ上限)
             {
@@ -88,7 +89,7 @@ namespace Tsumiki.IO
                 l_指摘.Add($"quality is completely uniform (every sampled base is ASCII {p_標本.A_最小ASCII}) across {p_標本.A_標本リード数} sampled read(s) -- this is unusual for real sequencer output and may indicate a placeholder/binned quality scheme rather than a genuine Phred offset mismatch.");
             }
 
-            return l_指摘.Count == 0 ? null : string.Join(" ", l_指摘);
+            return l_指摘.Count == 0 ? null : string.Join(C_空白, l_指摘);
         }
 
         /// <summary>
@@ -112,18 +113,17 @@ namespace Tsumiki.IO
         /// クオリティ文字から Phred オフセットを推定し、実行時引数へ反映する
         /// </summary>
         /// <param name="p_引数">実行時引数</param>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス、単一リードなら null</param>
-        /// <param name="p_標本上限">見る行数の上限</param>
         /// <param name="p_ライブラリ番号"></param>
-        public static void V_解決_Phredオフセット(Parameters p_引数, int p_ライブラリ番号, string p_リード1のパス, string? p_リード2のパス, int p_標本上限 = 20_000)
+        /// <param name="p_順リードのパス">リード 1 のパス</param>
+        /// <param name="p_逆リードのパス">リード 2 のパス、単一リードなら null</param>
+        /// <param name="p_標本上限">見る行数の上限</param>
+        public static void V_解決_Phredオフセット(Parameters p_引数, int p_ライブラリ番号, string p_順リードのパス, string? p_逆リードのパス, int p_標本上限 = 20_000)
         {
-            var l_標本1 = Get_標本(Get_クオリティ行(p_リード1のパス, p_標本上限), p_標本上限);
+            var l_標本1 = Get_標本(Get_クオリティ行(p_順リードのパス, p_標本上限), p_標本上限);
             var l_推定 = Get_推定オフセット(l_標本1);
-
-            if (!string.IsNullOrWhiteSpace(p_リード2のパス))
+            if (!string.IsNullOrWhiteSpace(p_逆リードのパス))
             {
-                var l_標本2 = Get_標本(Get_クオリティ行(p_リード2のパス, p_標本上限), p_標本上限);
+                var l_標本2 = Get_標本(Get_クオリティ行(p_逆リードのパス, p_標本上限), p_標本上限);
                 var l_推定2 = Get_推定オフセット(l_標本2);
                 if (l_推定 != l_推定2)
                 {
@@ -146,10 +146,10 @@ namespace Tsumiki.IO
             }
 
             var l_有効 = p_引数.Get_Phredオフセット(p_ライブラリ番号);
-            V_警告_疑わしいオフセット(p_リード1のパス, l_有効, p_標本上限);
-            if (!string.IsNullOrWhiteSpace(p_リード2のパス))
+            V_警告_疑わしいオフセット(p_順リードのパス, l_有効, p_標本上限);
+            if (!string.IsNullOrWhiteSpace(p_逆リードのパス))
             {
-                V_警告_疑わしいオフセット(p_リード2のパス!, l_有効, p_標本上限);
+                V_警告_疑わしいオフセット(p_逆リードのパス!, l_有効, p_標本上限);
             }
         }
 

@@ -11,6 +11,30 @@ namespace Tsumiki.Tests.Core
     /// </summary>
     public class ErrorCorrectorTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki error corrector tests
+        /// </summary>
+        private const string C_項目_tsumiki_error_corrector_tests = "tsumiki_error_corrector_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 塩基配列 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+        /// </summary>
+        private const string C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+
+        /// <summary>
+        /// 塩基配列 ACGTACGTACGTACGTACGTACGT ACGTACGTACGTACGT
+        /// </summary>
+        private const string C_塩基配列_ACGTACGTACGTACGTACGTACGT_ACGTACGTACGTACGT = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -27,7 +51,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public ErrorCorrectorTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_error_corrector_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_error_corrector_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -52,16 +76,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_単一の置換エラーを真の配列へ訂正する()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 49 bp
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
             var l_変異配列 = l_正解配列.ToCharArray();
-            l_変異配列[20] = l_変異配列[20] == 'A' ? 'C' : 'A'; // 真の配列と異なる塩基に置換
+            l_変異配列[20] = l_変異配列[20] == 'A' ? 'C' : 'A';
             var l_変異塩基列 = Get_塩基列(new string(l_変異配列));
-
             var l_結果 = ErrorCorrector.Get_訂正結果(l_変異塩基列, l_インデックス, l_k長);
-
             Assert.Equal(l_正解配列, Get_配列(l_結果.A_塩基列));
             Assert.Equal(1, l_結果.A_訂正数);
         }
@@ -72,12 +93,10 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_エラーが無ければ変更せず訂正数もゼロになる()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
             var l_結果 = ErrorCorrector.Get_訂正結果(Get_塩基列(l_正解配列), l_インデックス, l_k長);
-
             Assert.Equal(l_正解配列, Get_配列(l_結果.A_塩基列));
             Assert.Equal(0, l_結果.A_訂正数);
         }
@@ -88,17 +107,14 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_十分離れた2箇所のエラーを両方とも訂正する()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"; // 70 bp
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGT_ACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
             var l_変異配列 = l_正解配列.ToCharArray();
             l_変異配列[10] = l_変異配列[10] == 'A' ? 'G' : 'A';
             l_変異配列[55] = l_変異配列[55] == 'A' ? 'G' : 'A';
             var l_変異塩基列 = Get_塩基列(new string(l_変異配列));
-
             var l_結果 = ErrorCorrector.Get_訂正結果(l_変異塩基列, l_インデックス, l_k長);
-
             Assert.Equal(l_正解配列, Get_配列(l_結果.A_塩基列));
             Assert.Equal(2, l_結果.A_訂正数);
         }
@@ -109,14 +125,12 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_k長より短いリードはそのまま返す()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
-            var l_短いリード = Get_塩基列("ACGT");
+            var l_短いリード = Get_塩基列(Consts.塩基文字);
             var l_結果 = ErrorCorrector.Get_訂正結果(l_短いリード, l_インデックス, l_k長);
-
-            Assert.Equal("ACGT", Get_配列(l_結果.A_塩基列));
+            Assert.Equal(Consts.塩基文字, Get_配列(l_結果.A_塩基列));
             Assert.Equal(0, l_結果.A_訂正数);
         }
 
@@ -126,16 +140,13 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_無効な塩基の位置は書き換えない()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
             var l_曖昧塩基付き配列 = l_正解配列.ToCharArray();
             l_曖昧塩基付き配列[20] = 'N';
             var l_曖昧塩基付きバイト列 = Get_塩基列(new string(l_曖昧塩基付き配列));
-
             var l_結果 = ErrorCorrector.Get_訂正結果(l_曖昧塩基付きバイト列, l_インデックス, l_k長);
-
             Assert.Equal(Consts.無効な塩基, l_結果.A_塩基列[20]);
         }
 
@@ -145,17 +156,14 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_入力配列を変更しない()
         {
-            const string l_正解配列 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT";
+            const string l_正解配列 = C_塩基配列_ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT;
             const int l_k長 = 15;
             using var l_インデックス = this.V_構築_信頼できるインデックス(l_正解配列, l_k長);
-
             var l_変異配列 = l_正解配列.ToCharArray();
             l_変異配列[20] = l_変異配列[20] == 'A' ? 'C' : 'A';
             var l_変異塩基列 = Get_塩基列(new string(l_変異配列));
             var l_元配列 = (byte[])l_変異塩基列.Clone();
-
             _ = ErrorCorrector.Get_訂正結果(l_変異塩基列, l_インデックス, l_k長);
-
             Assert.Equal(l_元配列, l_変異塩基列);
         }
 
@@ -170,7 +178,15 @@ namespace Tsumiki.Tests.Core
         /// <returns>塩基 ID 列</returns>
         private static byte[] Get_塩基列(string p_配列)
         {
-            return [.. p_配列.Select(c => c switch { 'A' => Consts.塩基ID.A, 'C' => Consts.塩基ID.C, 'G' => Consts.塩基ID.G, 'T' => Consts.塩基ID.T, 'N' => Consts.無効な塩基, _ => throw new InvalidOperationException(), })];
+            return[..p_配列.Select(c => c switch
+            {
+                'A' => Consts.塩基ID.A,
+                'C' => Consts.塩基ID.C,
+                'G' => Consts.塩基ID.G,
+                'T' => Consts.塩基ID.T,
+                'N' => Consts.無効な塩基,
+                _ => throw new InvalidOperationException(),
+            })];
         }
 
         /// <summary>
@@ -192,22 +208,25 @@ namespace Tsumiki.Tests.Core
         /// <returns>構築した信頼できる k-mer インデックス</returns>
         private TrustedKmerIndex V_構築_信頼できるインデックス(string p_真の配列, int p_k長, int p_スレッド数 = 1)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = p_スレッド数 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = p_スレッド数
+            };
             var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
             var l_塩基列 = Get_塩基列(p_真の配列);
             for (var i = 0; i + p_k長 <= l_塩基列.Length; i++)
             {
-                // カットオフ (2) を超えるよう複数回登録する
                 for (var l_回 = 0; l_回 < 3; l_回++)
                 {
                     l_インデックス.V_登録(l_塩基列.AsSpan(i, p_k長));
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
 
         #endregion
-
     }
 }

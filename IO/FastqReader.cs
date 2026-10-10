@@ -35,13 +35,13 @@ namespace Tsumiki.IO
         /// <summary>
         /// ペアの 2 ファイルを同時に読み進め、塩基列の組を順に流す
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_順リードのパス"></param>
+        /// <param name="p_逆リードのパス"></param>
         /// <returns>(リード 1, リード 2) の組、片方のファイルが先に尽きた残りは相方を空文字にして流す</returns>
-        public static IEnumerable<(string A_リード1, string A_リード2)> Get_ペア塩基列(string p_リード1のパス, string p_リード2のパス)
+        public static IEnumerable<(string A_順リード, string A_逆リード)> Get_ペア塩基列(string p_順リードのパス, string p_逆リードのパス)
         {
-            using var l_列1 = 塩基列控え.Get_塩基列(p_リード1のパス).GetEnumerator();
-            using var l_列2 = 塩基列控え.Get_塩基列(p_リード2のパス).GetEnumerator();
+            using var l_列1 = 塩基列控え.Get_塩基列(p_順リードのパス).GetEnumerator();
+            using var l_列2 = 塩基列控え.Get_塩基列(p_逆リードのパス).GetEnumerator();
             var l_Has1 = l_列1.MoveNext();
             var l_Has2 = l_列2.MoveNext();
             while (l_Has1 || l_Has2)

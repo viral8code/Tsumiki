@@ -33,7 +33,7 @@
         public required int A_進んだ長さ { get; init; }
 
         /// <summary>
-        /// unitig ID -> この経路で何回通ったか
+        /// unitig ID -&gt; この経路で何回通ったか
         /// </summary>
         public required Dictionary<int, int> A_使用回数 { get; init; }
 

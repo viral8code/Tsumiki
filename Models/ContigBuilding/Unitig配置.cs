@@ -3,11 +3,6 @@
     /// <summary>
     /// V_結合_contig が unitig を結合して contig を作る際、各 unitig が最終的にどの contig の中に、どの向きで、どこに位置したかを表す
     /// </summary>
-    /// <param name="p_contigID"></param>
-    /// <param name="p_IsContig逆相補"></param>
-    /// <param name="p_walk順の位置"></param>
-    /// <param name="p_walk順の総数"></param>
-    /// <param name="p_Iswalk中逆鎖"></param>
     internal readonly struct Unitig配置(int p_contigID, bool p_IsContig逆相補, int p_walk順の位置, int p_walk順の総数, bool p_Iswalk中逆鎖)
     {
         #region 内部変数

@@ -5,8 +5,6 @@
     /// </summary>
     internal interface IKmerLookup
     {
-        #region 公開メソッド
-
         /// <summary>
         /// kmer (順鎖・逆鎖いずれの向きでもよい) が集合に含まれるかどうかを判定する
         /// </summary>
@@ -21,7 +19,5 @@
         /// <param name="p_下位"></param>
         /// <returns></returns>
         bool Haskmer_正規形(UInt128 p_上位, UInt128 p_下位);
-
-        #endregion
     }
 }

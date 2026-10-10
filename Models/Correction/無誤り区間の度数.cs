@@ -11,6 +11,11 @@ namespace Tsumiki.Models.Correction
         #region 定数
 
         /// <summary>
+        /// 項目 R
+        /// </summary>
+        private const string C_項目_R = "R";
+
+        /// <summary>
         /// 数える区間の長さの上限 (超えたものはここに入れる)
         /// </summary>
         private const int C_最大長 = 4_095;
@@ -95,10 +100,10 @@ namespace Tsumiki.Models.Correction
         public void V_書き出し(string p_パス)
         {
             using var l_書き込み = new StreamWriter(p_パス);
-            l_書き込み.WriteLine(string.Join(C_列区切り, this.A_k長.ToString(CultureInfo.InvariantCulture), this.A_単一コピー平均.ToString("R", CultureInfo.InvariantCulture)));
+            l_書き込み.WriteLine(string.Join(C_列区切り, this.A_k長.ToString(CultureInfo.InvariantCulture), this.A_単一コピー平均.ToString(C_項目_R, CultureInfo.InvariantCulture)));
             for (var l_長さ = 0; l_長さ <= C_最大長; l_長さ++)
             {
-                if (this._訂正前[l_長さ] > 0 || this._訂正後[l_長さ] > 0)
+                if (this._訂正前[l_長さ] > 0L || this._訂正後[l_長さ] > 0L)
                 {
                     l_書き込み.WriteLine(string.Join(C_列区切り, l_長さ, this._訂正前[l_長さ], this._訂正後[l_長さ]));
                 }
@@ -123,7 +128,6 @@ namespace Tsumiki.Models.Correction
             {
                 A_単一コピー平均 = double.Parse(l_見出し[1], CultureInfo.InvariantCulture),
             };
-
             foreach (var l_行 in l_行群.Skip(1))
             {
                 var l_列 = l_行.Split(C_列区切り);

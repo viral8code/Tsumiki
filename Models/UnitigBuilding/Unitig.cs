@@ -32,8 +32,7 @@ namespace Tsumiki.Models.UnitigBuilding
         public override string ToString()
         {
             var l_文字列 = new StringBuilder();
-            _ = l_文字列.AppendLine($"ID: {this.A_ID}")
-                .AppendLine($"Seq: {this.A_配列}");
+            _ = l_文字列.AppendLine($"ID: {this.A_ID}").AppendLine($"Seq: {this.A_配列}");
             return l_文字列.ToString();
         }
 

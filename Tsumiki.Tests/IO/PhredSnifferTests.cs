@@ -7,6 +7,65 @@ namespace Tsumiki.Tests.IO
     /// </summary>
     public class PhredSnifferTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 hhhh
+        /// </summary>
+        private const string C_項目_hhhh = "hhhh";
+
+        /// <summary>
+        /// 項目 IIhh
+        /// </summary>
+        private const string C_項目_IIhh = "IIhh";
+
+        /// <summary>
+        /// 項目
+        /// </summary>
+        private const string C_項目 = "!!!!";
+
+        /// <summary>
+        /// 項目 hhhhhh
+        /// </summary>
+        private const string C_項目_hhhhhh = "hhhhhh";
+
+        /// <summary>
+        /// 項目 hhIh
+        /// </summary>
+        private const string C_項目_hhIh = "hhIh";
+
+        /// <summary>
+        /// 見出し             0123456789       ABCDEFGHIJ
+        /// </summary>
+        private const string C_見出し_____________0123456789_______ABCDEFGHIJ = "#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ";
+
+        /// <summary>
+        /// 項目 Phred64
+        /// </summary>
+        private const string C_項目_Phred64 = "Phred64";
+
+        /// <summary>
+        /// 項目 uniform
+        /// </summary>
+        private const string C_項目_uniform = "uniform";
+
+        /// <summary>
+        /// 項目 Phred33
+        /// </summary>
+        private const string C_項目_Phred33 = "Phred33";
+
+        /// <summary>
+        /// 項目 IIII
+        /// </summary>
+        private const string C_項目_IIII = "!!!!IIII";
+
+        /// <summary>
+        /// 項目 BCDEF
+        /// </summary>
+        private const string C_項目_BCDEF = "BCDEF";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -15,8 +74,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_全行を通じた最小最大ASCIIを求める()
         {
-            var l_標本 = PhredSniffer.Get_標本(["hhhh", "IIhh", "!!!!"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_hhhh, C_項目_IIhh, C_項目]);
             Assert.Equal('!', (char)l_標本.A_最小ASCII);
             Assert.Equal('h', (char)l_標本.A_最大ASCII);
             Assert.Equal(3, l_標本.A_標本リード数);
@@ -29,10 +87,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_指定した上限リード数で打ち切る()
         {
-            var l_行一覧 = Enumerable.Repeat("hhhh", 100);
-
+            var l_行一覧 = Enumerable.Repeat(C_項目_hhhh, 100);
             var l_標本 = PhredSniffer.Get_標本(l_行一覧, p_標本上限: 5);
-
             Assert.Equal(5, l_標本.A_標本リード数);
         }
 
@@ -42,8 +98,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_すべての文字が同一なら真になる()
         {
-            var l_標本 = PhredSniffer.Get_標本(["hhhh", "hhhhhh"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_hhhh, C_項目_hhhhhh]);
             Assert.True(l_標本.A_Is一様);
         }
 
@@ -53,8 +108,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_クオリティがばらつけば偽になる()
         {
-            var l_標本 = PhredSniffer.Get_標本(["hhIh", "hhhh"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_hhIh, C_項目_hhhh]);
             Assert.False(l_標本.A_Is一様);
         }
 
@@ -64,10 +118,8 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_現実的なPhred33データでは警告が出ない()
         {
-            var l_標本 = PhredSniffer.Get_標本(["#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJ"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_見出し_____________0123456789_______ABCDEFGHIJ]);
             var l_警告 = PhredSniffer.Get_警告文(l_標本, p_有効オフセット: 33);
-
             Assert.Null(l_警告);
         }
 
@@ -77,12 +129,10 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_Phred33でASCIIが非現実的に高いときはPhred64を促す()
         {
-            var l_標本 = PhredSniffer.Get_標本(["hhhh"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_hhhh]);
             var l_警告 = PhredSniffer.Get_警告文(l_標本, p_有効オフセット: 33);
-
             Assert.NotNull(l_警告);
-            Assert.Contains("Phred64", l_警告);
+            Assert.Contains(C_項目_Phred64, l_警告);
         }
 
         /// <summary>
@@ -91,13 +141,11 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_Phred64なら妥当なQになるが一様性はなお警告する()
         {
-            var l_標本 = PhredSniffer.Get_標本(["hhhh", "hhhh", "hhhh"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_hhhh, C_項目_hhhh, C_項目_hhhh]);
             var l_警告 = PhredSniffer.Get_警告文(l_標本, p_有効オフセット: 64);
-
             Assert.NotNull(l_警告);
-            Assert.Contains("uniform", l_警告);
-            Assert.DoesNotContain("Phred33", l_警告);
+            Assert.Contains(C_項目_uniform, l_警告);
+            Assert.DoesNotContain(C_項目_Phred33, l_警告);
         }
 
         /// <summary>
@@ -106,12 +154,10 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_負のQになる場合は一様性に関わらず警告する()
         {
-            var l_標本 = PhredSniffer.Get_標本(["!!!!"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目]);
             var l_警告 = PhredSniffer.Get_警告文(l_標本, p_有効オフセット: 64);
-
             Assert.NotNull(l_警告);
-            Assert.Contains("Phred33", l_警告);
+            Assert.Contains(C_項目_Phred33, l_警告);
         }
 
         /// <summary>
@@ -121,7 +167,6 @@ namespace Tsumiki.Tests.IO
         public void V_空の標本では警告文がnullになる()
         {
             var l_標本 = PhredSniffer.Get_標本([]);
-
             Assert.Null(PhredSniffer.Get_警告文(l_標本, 33));
         }
 
@@ -132,7 +177,6 @@ namespace Tsumiki.Tests.IO
         public void V_実データのPhred64範囲ではPhred64と推定する()
         {
             var l_標本 = PhredSniffer.Get_標本([new string((char)64, 4) + new string((char)104, 4)]);
-
             Assert.Equal(64, PhredSniffer.Get_推定オフセット(l_標本));
         }
 
@@ -142,8 +186,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_典型的なPhred33範囲ではPhred33と推定する()
         {
-            var l_標本 = PhredSniffer.Get_標本(["!!!!IIII"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_IIII]);
             Assert.Equal(33, PhredSniffer.Get_推定オフセット(l_標本));
         }
 
@@ -153,8 +196,7 @@ namespace Tsumiki.Tests.IO
         [Fact]
         public void V_曖昧な範囲ではnullを返す()
         {
-            var l_標本 = PhredSniffer.Get_標本(["BCDEF"]);
-
+            var l_標本 = PhredSniffer.Get_標本([C_項目_BCDEF]);
             Assert.Null(PhredSniffer.Get_推定オフセット(l_標本));
         }
 
@@ -168,6 +210,5 @@ namespace Tsumiki.Tests.IO
         }
 
         #endregion
-
     }
 }

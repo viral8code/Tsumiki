@@ -42,9 +42,7 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = C_既定状態数上限)
         {
-            return p_k長 <= TrustedKmerIndex.C_パック値のk上限
-                ? Get_経路_パック値(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限)
-                : Get_経路_参照(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限);
+            return p_k長 <= TrustedKmerIndex.C_パック値のk上限 ? Get_経路_パック値(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限) : Get_経路_参照(p_左のkmer, p_目標kmer, p_最小長, p_最大長, p_kmerインデックス, p_k長, p_状態数上限);
         }
 
         /// <summary>
@@ -58,27 +56,34 @@ namespace Tsumiki.Utilities
         /// <param name="p_k長"></param>
         /// <param name="p_状態数上限"></param>
         /// <returns></returns>
-        internal static (string? A_経路, ギャップ充填判定 A_判定) Get_経路_参照(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = C_既定状態数上限)
+        public static (string? A_経路, ギャップ充填判定 A_判定) Get_経路_参照(byte[] p_左のkmer, byte[] p_目標kmer, int p_最小長, int p_最大長, IKmerLookup p_kmerインデックス, int p_k長, int p_状態数上限 = C_既定状態数上限)
         {
-            var l_節点 = new List<(int A_親, byte A_塩基)>(1_024) { (-1, 0) };
-            var l_kmer群 = new List<byte[]>(1_024) { p_左のkmer };
-            var l_深さ群 = new List<int>(1_024) { 0 };
-
+            var l_節点 = new List<(int A_親, byte A_塩基)>(1_024)
+            {
+                (-1, 0)
+            };
+            var l_kmer群 = new List<byte[]>(1_024)
+            {
+                p_左のkmer
+            };
+            var l_深さ群 = new List<int>(1_024)
+            {
+                0
+            };
             var l_到達済み = new Dictionary<(string, int), int>(1_024);
-            var l_多重到達 = new List<bool>(1_024) { false };
-
+            var l_多重到達 = new List<bool>(1_024)
+            {
+                false
+            };
             var l_見つかった経路 = new List<string>();
             var l_キュー = new Queue<int>();
             l_キュー.Enqueue(0);
-
             var l_作業バッファ = new byte[p_k長];
-
             while (l_キュー.Count > 0)
             {
                 var l_現在 = l_キュー.Dequeue();
                 var l_現在のkmer = l_kmer群[l_現在];
                 var l_継ぎ足した数 = l_深さ群[l_現在];
-
                 var l_埋める長さ = l_継ぎ足した数 - p_k長;
                 if (l_埋める長さ > p_最大長)
                 {
@@ -115,7 +120,6 @@ namespace Tsumiki.Utilities
                 {
                     Array.Copy(l_現在のkmer, 1, l_作業バッファ, 0, p_k長 - 1);
                     l_作業バッファ[p_k長 - 1] = l_塩基;
-
                     if (!p_kmerインデックス.Haskmer(l_作業バッファ))
                     {
                         continue;
@@ -138,9 +142,7 @@ namespace Tsumiki.Utilities
                 }
             }
 
-            return l_見つかった経路.Count == 1
-                ? (l_見つかった経路[0], ギャップ充填判定.充填済み)
-                : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
+            return l_見つかった経路.Count == 1 ? (l_見つかった経路[0], ギャップ充填判定.充填済み) : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
         }
 
         #endregion
@@ -163,11 +165,9 @@ namespace Tsumiki.Utilities
             var l_下位マスク = p_k長 >= 64 ? UInt128.MaxValue : ((UInt128)1 << (2 * p_k長)) - 1;
             var l_上位マスク = p_k長 <= 64 ? 0 : p_k長 >= 128 ? UInt128.MaxValue : ((UInt128)1 << ((2 * p_k長) - 128)) - 1;
             var l_先頭シフト = 2 * (p_k長 - 1);
-
-            var (A_上位, A_下位) = TrustedKmerIndex.TryGet_パック_長(p_目標kmer);
-            var l_左順 = TrustedKmerIndex.TryGet_パック_長(p_左のkmer);
+            var (l_上位, l_下位) = TrustedKmerIndex.Get_パック_長(p_目標kmer);
+            var (A_上位, A_下位) = TrustedKmerIndex.Get_パック_長(p_左のkmer);
             var l_左逆 = Get_逆相補パック(p_左のkmer);
-
             var l_作業域 = Get_作業域();
             var l_節点 = l_作業域.A_節点;
             var l_状態群 = l_作業域.A_状態群;
@@ -176,26 +176,23 @@ namespace Tsumiki.Utilities
             var l_多重到達 = l_作業域.A_多重到達;
             var l_キュー = l_作業域.A_キュー;
             l_節点.Add((-1, 0));
-            l_状態群.Add((l_左順.A_上位, l_左順.A_下位, l_左逆.A_上位, l_左逆.A_下位));
+            l_状態群.Add((A_上位, A_下位, l_左逆.A_上位, l_左逆.A_下位));
             l_深さ群.Add(0);
             l_多重到達.Add(false);
             l_キュー.Enqueue(0);
-
             var l_見つかった経路 = new List<string>();
-
             while (l_キュー.Count > 0)
             {
                 var l_現在 = l_キュー.Dequeue();
                 var (l_順上, l_順下, l_逆上, l_逆下) = l_状態群[l_現在];
                 var l_継ぎ足した数 = l_深さ群[l_現在];
-
                 var l_埋める長さ = l_継ぎ足した数 - p_k長;
                 if (l_埋める長さ > p_最大長)
                 {
                     continue;
                 }
 
-                if (l_埋める長さ >= p_最小長 && l_順上 == A_上位 && l_順下 == A_下位)
+                if (l_埋める長さ >= p_最小長 && l_順上 == l_上位 && l_順下 == l_下位)
                 {
                     if (Has多重到達(l_節点, l_多重到達, l_現在))
                     {
@@ -225,7 +222,6 @@ namespace Tsumiki.Utilities
                 var l_ずらし順下 = (l_順下 << 2) & l_下位マスク;
                 var l_ずらし逆下 = (l_逆下 >> 2) | (l_逆上 << 126);
                 var l_ずらし逆上 = l_逆上 >> 2;
-
                 for (var l_塩基 = Consts.塩基ID.A; l_塩基 <= Consts.塩基ID.T; l_塩基++)
                 {
                     var l_コドン = (UInt128)(l_塩基 - 1);
@@ -264,9 +260,7 @@ namespace Tsumiki.Utilities
                 }
             }
 
-            return l_見つかった経路.Count == 1
-                ? (l_見つかった経路[0], ギャップ充填判定.充填済み)
-                : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
+            return l_見つかった経路.Count == 1 ? (l_見つかった経路[0], ギャップ充填判定.充填済み) : (null, l_見つかった経路.Count > 1 ? ギャップ充填判定.一意でない : ギャップ充填判定.到達不能);
         }
 
         /// <summary>

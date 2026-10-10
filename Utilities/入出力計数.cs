@@ -8,7 +8,7 @@ namespace Tsumiki.Utilities
     [StructLayout(LayoutKind.Sequential)]
     internal struct 入出力計数
     {
-        #region 公開変数
+        #region 内部変数
 
         /// <summary>
         /// 読み込み操作の回数

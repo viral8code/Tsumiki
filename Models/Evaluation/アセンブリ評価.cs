@@ -35,10 +35,7 @@
         /// <returns></returns>
         public override string ToString()
         {
-            return $"circular={this.A_環状本数} ({this.A_環状化率 * 100D:F1}% of genome), " +
-                $"NG50={this.A_NG50:N0}, completeness={this.A_完全性 * 100D:F2}%, " +
-                $"accuracy={this.A_正確性 * 100D:F2}% " +
-                $"({this.A_本数} seq(s), {this.A_総延長:N0} bp)";
+            return $"circular={this.A_環状本数} ({this.A_環状化率 * 100D:F1}% of genome), " + $"NG50={this.A_NG50:N0}, completeness={this.A_完全性 * 100D:F2}%, " + $"accuracy={this.A_正確性 * 100D:F2}% " + $"({this.A_本数} seq(s), {this.A_総延長:N0} bp)";
         }
 
         #endregion

@@ -32,30 +32,21 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_低カバレッジ比"></param>
         /// <param name="p_tipカバレッジ比"></param>
         /// <param name="p_Is低カバレッジ端トリミング"></param>
-        /// <param name="p_最後のunitig群">変化が無くなった最後の反復で列挙した unitig を足す先 (返す開始点から walk したものと同じ)、要らなければ null</param>
+        /// <param name="p_最後のunitig群">変化が無くなった最後の反復で列挙した unitig を足す先 (返す開始点から walk したものと同じ) 、要らなければ null</param>
         /// <returns></returns>
         public static List<byte[]> V_除去_tip(TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_リード長 = null, int? p_tip長閾値 = null, int p_最大反復数 = 30, double p_低カバレッジ比 = 0.2D, double p_tipカバレッジ比 = C_tipとみなすカバレッジ比, bool p_Is低カバレッジ端トリミング = true, List<string>? p_最後のunitig群 = null)
         {
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(p_k長, l_リード長 / 2) : p_k長;
             var l_tip長閾値 = p_tip長閾値 ?? Math.Max(10 * l_基準長, p_リード長 ?? 0);
             var l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
-
             for (var l_反復 = 1; l_反復 <= p_最大反復数; l_反復++)
             {
                 var l_unitig配列群 = Get_Unitig群(p_kmerインデックス, l_開始kmer);
                 var l_unitig群 = Get_Unitig情報(p_kmerインデックス, l_unitig配列群, p_k長);
                 var l_基準値 = Get_長さ加重中央カバレッジ(l_unitig群);
                 var l_信頼下限 = ConfigurationManager.A_スペクトルモデル?.A_信頼下限;
-
-                var l_判定群 = l_unitig群
-                    .AsParallel()
-                    .AsOrdered()
-                    .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                    .Select(x => Get_判定(p_kmerインデックス, x.A_塩基列, x.A_平均カバレッジ, p_k長, l_tip長閾値, l_基準値, l_信頼下限, p_低カバレッジ比, p_tipカバレッジ比, p_Is低カバレッジ端トリミング))
-                    .OfType<整理判定>()
-                    .ToArray();
+                var l_判定群 = l_unitig群.AsParallel().AsOrdered().WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数)).Select(x => Get_判定(p_kmerインデックス, x.A_塩基列, x.A_平均カバレッジ, p_k長, l_tip長閾値, l_基準値, l_信頼下限, p_低カバレッジ比, p_tipカバレッジ比, p_Is低カバレッジ端トリミング)).OfType<整理判定>().ToArray();
                 var l_見送り = Get_見送る判定(p_kmerインデックス, l_判定群, p_k長);
-
                 var l_除去tip数 = 0;
                 var l_剥がしたkmer数 = 0;
                 var l_トリミングしたunitig数 = 0;
@@ -80,7 +71,6 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 Logger.V_出力(メッセージID.グラフ単純化の反復, l_反復, l_unitig群.Length, l_tip長閾値, l_基準値, l_除去tip数, l_剥がしたkmer数, l_トリミングしたunitig数);
-
                 if (l_除去tip数 == 0 && l_剥がしたkmer数 == 0)
                 {
                     p_最後のunitig群?.AddRange(l_unitig配列群);
@@ -106,7 +96,6 @@ namespace Tsumiki.Cores.UnitigBuilding
         private static List<string> Get_Unitig群(TrustedKmerIndex p_kmerインデックス, List<byte[]> p_開始kmer)
         {
             var l_walk結果 = UnitigMaker.Get_walk結果(p_kmerインデックス, p_開始kmer);
-
             List<string> l_unitig群 = [];
             HashSet<string> l_既出 = [];
             foreach (var l_配列 in l_walk結果)
@@ -199,7 +188,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             var l_先頭次数 = p_kmerインデックス.Get_入次数(p_塩基列.AsSpan(0, p_k長));
             var l_末尾次数 = p_kmerインデックス.Get_出次数(p_塩基列.AsSpan(p_塩基列.Length - p_k長, p_k長));
             var l_kmer数 = p_塩基列.Length - p_k長 + 1;
-
             if (p_塩基列.Length < p_tip長閾値 && (l_先頭次数 == 0 || l_末尾次数 == 0))
             {
                 var l_Is無条件信頼 = p_信頼下限 is { } l_下限 && p_平均カバレッジ >= l_下限;
@@ -216,9 +204,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             }
 
             var (l_先頭から, l_末尾から) = Get_低カバレッジ端の数(p_kmerインデックス, p_塩基列, p_k長, p_低カバレッジ比, l_先頭次数, l_末尾次数);
-            return l_先頭から + l_末尾から == 0
-                ? null
-                : new 整理判定(p_塩基列, p_平均カバレッジ, false, l_先頭から, l_末尾から, Get_合流側kmer群(p_塩基列, p_k長, l_先頭から > 0 && l_先頭次数 > 0, l_末尾から > 0 && l_末尾次数 > 0));
+            return l_先頭から + l_末尾から == 0 ? null : new 整理判定(p_塩基列, p_平均カバレッジ, false, l_先頭から, l_末尾から, Get_合流側kmer群(p_塩基列, p_k長, l_先頭から > 0 && l_先頭次数 > 0, l_末尾から > 0 && l_末尾次数 > 0));
         }
 
         /// <summary>
@@ -259,9 +245,9 @@ namespace Tsumiki.Cores.UnitigBuilding
             for (var i = 0; i < p_判定群.Length; i++)
             {
                 var l_判定 = p_判定群[i];
-                foreach (var (A_開始, A_長さ) in Get_削る位置(l_判定, p_k長))
+                foreach (var (l_開始, l_長さ) in Get_削る位置(l_判定, p_k長))
                 {
-                    _ = l_除くkmer.Add(Get_正規キー(l_判定.A_塩基列.AsSpan(A_開始, A_長さ)));
+                    _ = l_除くkmer.Add(Get_正規キー(l_判定.A_塩基列.AsSpan(l_開始, l_長さ)));
                 }
 
                 foreach (var l_端 in l_判定.A_合流側kmer群)
@@ -292,11 +278,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (l_Is全枝消失)
                 {
-                    _ = l_見送り.Add(l_番号群
-                        .OrderByDescending(x => p_判定群[x].A_平均カバレッジ)
-                        .ThenByDescending(x => p_判定群[x].A_塩基列.Length)
-                        .ThenBy(x => Get_正規キー(p_判定群[x].A_塩基列), StringComparer.Ordinal)
-                        .First());
+                    _ = l_見送り.Add(l_番号群.OrderByDescending(x => p_判定群[x].A_平均カバレッジ).ThenByDescending(x => p_判定群[x].A_塩基列.Length).ThenBy(x => Get_正規キー(p_判定群[x].A_塩基列), StringComparer.Ordinal).First());
                 }
             }
 
@@ -369,7 +351,6 @@ namespace Tsumiki.Cores.UnitigBuilding
             double? l_自身の中央値 = null;
             var l_先頭閾値 = p_低カバレッジ比 * (p_先頭次数 == 0 ? l_自身の中央値 ??= Get_中央カバレッジ(p_kmerインデックス, p_塩基列, p_k長) : Get_対抗カバレッジ(p_kmerインデックス, Get_逆相補(p_塩基列.AsSpan(0, p_k長))));
             var l_末尾閾値 = p_低カバレッジ比 * (p_末尾次数 == 0 ? l_自身の中央値 ?? Get_中央カバレッジ(p_kmerインデックス, p_塩基列, p_k長) : Get_対抗カバレッジ(p_kmerインデックス, p_塩基列.AsSpan(p_塩基列.Length - p_k長, p_k長).ToArray()));
-
             var l_先頭から = 0;
             while (l_先頭から < l_kmer数 && p_kmerインデックス.Get_カバレッジ(p_塩基列.AsSpan(l_先頭から, p_k長)) < l_先頭閾値)
             {
@@ -432,15 +413,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns></returns>
         private static (byte[] A_塩基列, double A_平均カバレッジ)[] Get_Unitig情報(TrustedKmerIndex p_kmerインデックス, List<string> p_unitig群, int p_k長)
         {
-            return [.. p_unitig群
-                .AsParallel()
-                .AsOrdered()
-                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                .Select(x =>
-                {
-                    var l_塩基列 = Util.V_変換_塩基列(x);
-                    return (l_塩基列, Get_平均カバレッジ(p_kmerインデックス, l_塩基列, p_k長));
-                })];
+            return [..p_unitig群.AsParallel().AsOrdered().WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数)).Select(x =>
+            {
+                var l_塩基列 = Util.V_変換_塩基列(x);
+                return (l_塩基列, Get_平均カバレッジ(p_kmerインデックス, l_塩基列, p_k長));
+            })];
         }
 
         /// <summary>

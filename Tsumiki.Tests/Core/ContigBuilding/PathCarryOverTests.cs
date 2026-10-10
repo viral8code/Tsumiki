@@ -8,34 +8,69 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 前段 k で確定した経路を、この k の分岐選択へ投影する仕組み (P2) の検証
     /// </summary>
-    /// <remarks>
-    /// 決定的な受入基準:<br/>
-    /// (1) 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、経路引き継ぎだけが正しい分岐対応を選べること<br/>
-    /// (2) この k 自身の read/pair 支持が経路引き継ぎと矛盾する場合は、必ず実測の支持が勝つこと (引き継ぎが誤接続を持ち込まない)
-    /// </remarks>
     public class PathCarryOverTests : IDisposable
     {
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki pathcarryover tests
+        /// </summary>
+        private const string C_項目_tsumiki_pathcarryover_tests = "tsumiki_pathcarryover_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 contigs fasta
+        /// </summary>
+        private const string C_ファイル名_contigs_fasta = "contigs.fasta";
+
+        /// <summary>
+        /// 塩基配列 GGGTTAG
+        /// </summary>
+        private const string C_塩基配列_GGGTTAG = "GGGTTAG";
+
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// 塩基配列 CATCGAA
+        /// </summary>
+        private const string C_塩基配列_CATCGAA = "CATCGAA";
+
+        /// <summary>
+        /// ファイル名 contigs2 fasta
+        /// </summary>
+        private const string C_ファイル名_contigs2_fasta = "contigs2.fasta";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
+
+        /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k長 = 8;
+        private const int C_k長 = 8;
 
         /// <summary>
         /// 分岐元の入口配列 (末尾 7 塩基が分岐先双方の先頭と重なる)
         /// </summary>
-        private const string 入口unitig = "TTTTTTTAAACCCG";
+        private const string C_入口unitig = "TTTTTTTAAACCCG";
 
         /// <summary>
         /// 分岐先 1 (入口の末尾 7 塩基を共有する)
         /// </summary>
-        private const string 分岐先1unitig = "AAACCCGGGGTTAG";
+        private const string C_分岐先1unitig = "AAACCCGGGGTTAG";
 
         /// <summary>
         /// 分岐先 2 (入口の末尾 7 塩基を共有する、分岐先 1 とは中身が異なる)
         /// </summary>
-        private const string 分岐先2unitig = "AAACCCGCATCGAA";
+        private const string C_分岐先2unitig = "AAACCCGCATCGAA";
 
         #endregion
 
@@ -55,9 +90,13 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public PathCarryOverTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_pathcarryover_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_pathcarryover_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
         }
 
         #endregion
@@ -76,67 +115,51 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// この k 自身の read/pair 支持が無く分岐を決められない場合でも、前段 k から引き継いだ経路が
-        /// 正しい分岐対応 (入口 → 分岐先1) だけを選ばせることを確かめる
+        /// この k 自身の read/pair 支持が無く分岐を決められない場合でも、前段 k から引き継いだ経路が 正しい分岐対応 (入口 → 分岐先 1) だけを選ばせることを確かめる
         /// </summary>
         [Fact]
         public void V_このkの支持だけでは決められない分岐を経路引き継ぎが解決する()
         {
             var l_unitigパス = this.V_書き込み_unitigFASTA();
-            var l_contigパス = Path.Combine(this._作業ディレクトリ, "contigs.fasta");
+            var l_contigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs_fasta);
             var l_contig構築 = new ContigMaker(l_unitigパス);
-
-            // この k 自身の read/pair マッピングは一切行わない (real 支持ゼロ)
-            // 前段 k で確定した経路 (入口+分岐先1 の全体配列) だけを引き継ぐ
-            var l_引き継ぎ経路 = new[] { 入口unitig + "GGGTTAG" };
-
+            var l_引き継ぎ経路 = new[]
+            {
+                C_入口unitig + C_塩基配列_GGGTTAG
+            };
             l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 1UL, p_引き継ぎ経路群: l_引き継ぎ経路);
-
             var l_contig群 = FastaReader.Get_全エントリ(l_contigパス).Select(x => x.A_配列).ToList();
-
-            // 入口 + 分岐先1 が 1 本に結合され、分岐先2 は単独で残るはず (2 本になる)
-            // 出力の鎖の向き (順鎖/逆鎖どちらを正準として選ぶか) は walk の実装詳細なので、
-            // 内容の部分一致ではなく長さで結合の有無を確かめる
-            var l_重なり長 = k長 - 1;
-            var l_結合後の長さ = 入口unitig.Length + 分岐先1unitig.Length - l_重なり長;
+            var l_重なり長 = C_k長 - 1;
+            var l_結合後の長さ = C_入口unitig.Length + C_分岐先1unitig.Length - l_重なり長;
             Assert.Equal(2, l_contig群.Count);
             Assert.Contains(l_contig群, x => x.Length == l_結合後の長さ);
-            Assert.Contains(l_contig群, x => x.Length == 分岐先2unitig.Length);
+            Assert.Contains(l_contig群, x => x.Length == C_分岐先2unitig.Length);
         }
 
         /// <summary>
         /// この k 自身の read 支持が経路引き継ぎと矛盾する場合、実測の支持が必ず勝つことを確かめる
         /// </summary>
-        /// <remarks>
-        /// 低k由来の誤接続を高kが矛盾により棄却する、という P2 のもう一つの受入基準
-        /// </remarks>
         [Fact]
         public void V_実測支持と矛盾する経路引き継ぎは採用されない()
         {
             var l_unitigパス = this.V_書き込み_unitigFASTA();
-            var l_contigパス = Path.Combine(this._作業ディレクトリ, "contigs.fasta");
-            var l_リードパス = Path.Combine(this._作業ディレクトリ, "reads.fq");
-
-            // この k で実際に観測された (と仮定する) read は、入口 -> 分岐先2 を繰り返し裏付ける
-            this.V_書き込み_FASTQ(l_リードパス, 入口unitig + "CATCGAA", p_本数: 5);
-
+            var l_contigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs_fasta);
+            var l_リードパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_reads_fq);
+            this.V_書き込み_FASTQ(l_リードパス, C_入口unitig + C_塩基配列_CATCGAA, p_本数: 5);
             var l_contig構築 = new ContigMaker(l_unitigパス);
             l_contig構築.V_マッピング_リード(l_リードパス);
-
-            // 経路引き継ぎは (誤って) 分岐先1 を示している、という矛盾した状況
-            var l_引き継ぎ経路 = new[] { 入口unitig + "GGGTTAG" };
-
-            var l_contigパス2 = Path.Combine(this._作業ディレクトリ, "contigs2.fasta");
+            var l_引き継ぎ経路 = new[]
+            {
+                C_入口unitig + C_塩基配列_GGGTTAG
+            };
+            var l_contigパス2 = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs2_fasta);
             l_contig構築.V_結合_Contig(l_contigパス2, p_優勢閾値: 0.8M, p_最小証拠数: 1UL, p_引き継ぎ経路群: l_引き継ぎ経路);
-
             var l_contig群 = FastaReader.Get_全エントリ(l_contigパス2).Select(x => x.A_配列).ToList();
-
-            // 矛盾する引き継ぎを無視し、実測支持どおり 入口+分岐先2 が結合され、分岐先1 が単独で残る
-            var l_重なり長 = k長 - 1;
-            var l_結合後の長さ = 入口unitig.Length + 分岐先2unitig.Length - l_重なり長;
+            var l_重なり長 = C_k長 - 1;
+            var l_結合後の長さ = C_入口unitig.Length + C_分岐先2unitig.Length - l_重なり長;
             Assert.Equal(2, l_contig群.Count);
             Assert.Contains(l_contig群, x => x.Length == l_結合後の長さ);
-            Assert.Contains(l_contig群, x => x.Length == 分岐先1unitig.Length);
+            Assert.Contains(l_contig群, x => x.Length == C_分岐先1unitig.Length);
         }
 
         #endregion
@@ -144,16 +167,16 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// 入口・分岐先1・分岐先2 の 3 本からなる unitig FASTA を書き出す
+        /// 入口・分岐先 1・分岐先 2 の 3 本からなる unitig FASTA を書き出す
         /// </summary>
         /// <returns>書き出したパス</returns>
         private string V_書き込み_unitigFASTA()
         {
-            var l_パス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_パス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             using var l_書き込み = new FastaWriter(l_パス);
-            l_書き込み.V_書き込み(1, 入口unitig);
-            l_書き込み.V_書き込み(2, 分岐先1unitig);
-            l_書き込み.V_書き込み(3, 分岐先2unitig);
+            l_書き込み.V_書き込み(1, C_入口unitig);
+            l_書き込み.V_書き込み(2, C_分岐先1unitig);
+            l_書き込み.V_書き込み(3, C_分岐先2unitig);
             return l_パス;
         }
 

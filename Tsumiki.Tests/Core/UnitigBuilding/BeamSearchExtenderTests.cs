@@ -9,50 +9,54 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 先読み (ビームサーチ) による分岐解決の検証
     /// </summary>
-    /// <remarks>
-    /// 相互一意性の判定は「その 1 歩だけ」を見るため、分岐の直後だけを見ると五分五分に見えるが、2〜3 本先まで進めると片方だけがペアエンドの証拠と整合する、という状況を取りこぼす<br/>
-    /// ここでは A → (B or C)、B → D、C → E という形で、A の直後には証拠が無く D の位置に初めて証拠が現れる構成を作り、先読みによって A → B が選ばれることを確認する
-    /// </remarks>
     public class BeamSearchExtenderTests
     {
         #region 定数
 
         /// <summary>
+        /// 項目 lookahead should have re ast one junction
+        /// </summary>
+        private const string C_項目_lookahead_should_have_re_ast_one_junction = "lookahead should have resolved at least one junction";
+
+        /// <summary>
+        /// 項目 区間の上限により B が候補に含まれ 証拠に基づいて選ばれるはず
+        /// </summary>
+        private const string C_項目_区間の上限により_B_が候補に含まれ_証拠に基づいて選ばれるはず = "区間の上限により B が候補に含まれ、証拠に基づいて選ばれるはず";
+
+        /// <summary>
         /// 曖昧塩基を含む窓を表す番号
         /// </summary>
-        private const int 曖昧kmer番号 = int.MinValue;
+        private const int C_曖昧kmer番号 = int.MinValue;
 
         /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k長 = 8;
-
-        // k=8 で 5 本すべてを通じて重複する正規化 k-mer が無いことを確認済みの構成
+        private const int C_k長 = 8;
 
         /// <summary>
         /// 分岐元
         /// </summary>
-        private const string unitigA = "TGGCAAGTCACTCTCGACCGA";
+        private const string C_unitigA = "TGGCAAGTCACTCTCGACCGA";
 
         /// <summary>
         /// 分岐先の片方
         /// </summary>
-        private const string unitigB = "CGACCGAACGGCGCCGGATC";
+        private const string C_unitigB = "CGACCGAACGGCGCCGGATC";
 
         /// <summary>
         /// 分岐先のもう片方
         /// </summary>
-        private const string unitigC = "CGACCGACTGTAATTCTACC";
+        private const string C_unitigC = "CGACCGACTGTAATTCTACC";
 
         /// <summary>
         /// B の先へ続く配列
         /// </summary>
-        private const string unitigD = "CCGGATCAAAGCCACGGCTAG";
+        private const string C_unitigD = "CCGGATCAAAGCCACGGCTAG";
 
         /// <summary>
         /// C の先へ続く配列
         /// </summary>
-        private const string unitigE = "TTCTACCAAAGGCTAGTATGA";
+        private const string C_unitigE = "TTCTACCAAAGGCTAGTATGA";
 
         #endregion
 
@@ -68,29 +72,29 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_中間配列 = ContigMaker.Get_頂点番号(2);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            // 前提: A は B と C の両方へ伸びられる (1 歩だけでは決められない)
             Assert.Equal(2, l_グラフ.A_出辺[l_先頭配列].Count);
-
-            // 証拠は A の直後 (B/C) ではなく、その次の D に現れる
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 30UL
+            };
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
-            Assert.True(l_committed > 0, "lookahead should have resolved at least one junction");
+            Assert.True(l_committed > 0, C_項目_lookahead_should_have_re_ast_one_junction);
             Assert.Equal(l_中間配列, l_merge[l_先頭配列]);
-            // 逆鎖側も対称に設定されていること
             Assert.Equal(l_先頭配列 ^ 1, l_merge[l_中間配列 ^ 1]);
         }
 
         /// <summary>
         /// どちらの枝にも同程度の証拠がある場合は、僅差で選ばずに繋がない
         /// </summary>
-        /// <remarks>
-        /// ビームサーチの利点は「広く探して有力な仮説が一致する部分にだけコミットする」ことにあり、五分五分の分岐で 1 本を選ぶことではない
-        /// </remarks>
         [Fact]
         public void V_両方の枝に同程度の証拠がある場合は繋がない()
         {
@@ -98,13 +102,21 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
             var l_e = ContigMaker.Get_頂点番号(5);
-
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 20UL, [(l_先頭配列, l_e)] = 19UL };
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 20UL,
+                [(l_先頭配列, l_e)] = 19UL
+            };
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
 
@@ -116,13 +128,17 @@ namespace Tsumiki.Tests.Core
         {
             var (l_unitig一覧, l_グラフ) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
-
             Dictionary<(int, int), ulong> l_ペア連結 = [];
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
 
@@ -135,13 +151,20 @@ namespace Tsumiki.Tests.Core
             var (l_unitig一覧, l_グラフ) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 2UL };
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 2UL
+            };
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 10UL);
-
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
 
@@ -154,27 +177,27 @@ namespace Tsumiki.Tests.Core
             var (l_unitig一覧, l_グラフ) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            // A 自身が 2 コピーの反復
-            // 足場に使える単一コピーの unitig が無い
-            Dictionary<int, int> l_copyNumber = new() { [1] = 2, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-            // 片側にだけ強い (しかし信用してはいけない) 証拠を置く
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
-
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 2,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 30UL
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
             Assert.Equal(0, l_committed);
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
 
         /// <summary>
-        /// 点推定ではコピー数 0 (=候補から除外) の行き先でも、コピー数区間の上限が正なら候補に含め、
-        /// 実際に強い証拠があれば選べることを確かめる
+        /// 点推定ではコピー数 0 (=候補から除外) の行き先でも、コピー数区間の上限が正なら候補に含め、 実際に強い証拠があれば選べることを確かめる
         /// </summary>
-        /// <remarks>
-        /// P1c: 点推定の誤りで真の経路を消さないよう、先読み探索の通行予算には区間の上限を使う
-        /// </remarks>
         [Fact]
         public void V_点推定がゼロでも区間の上限が正なら候補に含める()
         {
@@ -182,17 +205,25 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_中間配列 = ContigMaker.Get_頂点番号(2);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            // B (id=2) の点推定は 0 (何らかの理由で過小に見積もられた状況を想定)
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 0, [3] = 1, [4] = 1, [5] = 1 };
-            // 区間は上限 1 まで許容する
-            Dictionary<int, コピー数区間> l_区間 = new() { [2] = new コピー数区間(0, 1) };
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
-
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 0,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
+            Dictionary<int, コピー数区間> l_区間 = new()
+            {
+                [2] = new コピー数区間(0, 1)
+            };
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 30UL
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_コピー数区間: l_区間);
-
-            Assert.True(l_committed > 0, "区間の上限により B が候補に含まれ、証拠に基づいて選ばれるはず");
+            Assert.True(l_committed > 0, C_項目_区間の上限により_B_が候補に含まれ_証拠に基づいて選ばれるはず);
             Assert.Equal(l_中間配列, l_merge[l_先頭配列]);
         }
 
@@ -205,14 +236,20 @@ namespace Tsumiki.Tests.Core
             var (l_unitig一覧, l_グラフ) = V_構築();
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 0, [3] = 1, [4] = 1, [5] = 1 };
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
-
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 0,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 30UL
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
             var l_committed = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
-            // B が候補から除外され、証拠のある経路を選べない
             Assert.Equal(0, l_committed);
         }
 
@@ -226,16 +263,21 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_中間配列 = ContigMaker.Get_頂点番号(2);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
-            Dictionary<(int, int), ulong> l_ペア連結 = new() { [(l_先頭配列, l_終端配列)] = 30UL };
-            Dictionary<int, int> l_copyNumber = new() { [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1 };
-
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(l_先頭配列, l_終端配列)] = 30UL
+            };
+            Dictionary<int, int> l_copyNumber = new()
+            {
+                [1] = 1,
+                [2] = 1,
+                [3] = 1,
+                [4] = 1,
+                [5] = 1
+            };
             var l_merge = V_構築_未結合表(l_グラフ);
-            // B には既に (別の経路からの) 結合が入っていることにする
             l_merge[l_中間配列 ^ 1] = ContigMaker.Get_頂点番号(5) ^ 1;
-
             _ = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig一覧, l_merge, l_ペア連結, l_copyNumber, p_インサートサイズ: 400, p_優勢閾値: 0.8M, p_最小証拠数: 5UL);
-
             Assert.Equal(-1, l_merge[l_先頭配列]);
         }
 
@@ -249,7 +291,6 @@ namespace Tsumiki.Tests.Core
             var l_先頭配列 = ContigMaker.Get_頂点番号(1);
             var l_中間配列 = ContigMaker.Get_頂点番号(2);
             var l_終端配列 = ContigMaker.Get_頂点番号(4);
-
             Assert.True(l_グラフ.Is構造上一意な辺(l_中間配列, l_終端配列));
             Assert.False(l_グラフ.Is構造上一意な辺(l_先頭配列, l_中間配列));
         }
@@ -259,30 +300,44 @@ namespace Tsumiki.Tests.Core
         #region 内部メソッド
 
         /// <summary>
-        /// A → (B or C)、B → D、C → E という形の分岐構造を持つグラフを作る
+        /// A → (B or C) 、B → D、C → E という形の分岐構造を持つグラフを作る
         /// </summary>
         /// <returns>unitig 一覧とグラフ</returns>
         private static (List<string> A_unitig一覧, UnitigGraph A_グラフ) V_構築()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
             List<string> l_unitig一覧 = [string.Empty, string.Empty];
             Dictionary<KmerKey, (int A_unitigID, int A_位置)> l_kmer辞書 = [];
-
             var l_ID = 1;
-            foreach (var l_配列 in new[] { unitigA, unitigB, unitigC, unitigD, unitigE })
+            foreach (var l_配列 in new[]
+            {
+                C_unitigA,
+                C_unitigB,
+                C_unitigC,
+                C_unitigD,
+                C_unitigE
+            }
+
+            )
             {
                 l_unitig一覧.Add(l_配列);
                 l_unitig一覧.Add(Util.V_逆相補(l_配列));
-                for (var i = k長; i <= l_配列.Length; i++)
+                for (var i = C_k長; i <= l_配列.Length; i++)
                 {
-                    var l_開始位置 = i - k長;
-                    var l_キー = new KmerKey(l_配列.AsSpan(l_開始位置, k長));
+                    var l_開始位置 = i - C_k長;
+                    var l_キー = new KmerKey(l_配列.AsSpan(l_開始位置, C_k長));
                     V_登録_kmer(l_kmer辞書, l_キー, l_ID, l_開始位置);
                     V_登録_kmer(l_kmer辞書, l_キー.Get_逆相補(), -l_ID, l_配列.Length - i);
                 }
+
                 l_ID++;
             }
-            return (l_unitig一覧, UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, k長, 曖昧kmer番号));
+
+            return (l_unitig一覧, UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, C_k長, C_曖昧kmer番号));
         }
 
         /// <summary>
@@ -296,13 +351,15 @@ namespace Tsumiki.Tests.Core
         {
             if (p_辞書.TryGetValue(p_キー, out var l_既存値))
             {
-                if (l_既存値.Item1 is 曖昧kmer番号 || l_既存値.Item1 == p_ID)
+                if (l_既存値.Item1 is C_曖昧kmer番号 || l_既存値.Item1 == p_ID)
                 {
                     return;
                 }
-                p_辞書[p_キー] = (曖昧kmer番号, 0);
+
+                p_辞書[p_キー] = (C_曖昧kmer番号, 0);
                 return;
             }
+
             p_辞書[p_キー] = (p_ID, p_位置);
         }
 
@@ -319,6 +376,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

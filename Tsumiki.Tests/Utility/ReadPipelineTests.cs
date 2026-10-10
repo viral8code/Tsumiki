@@ -7,6 +7,25 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class ReadPipelineTests
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 worker failed
+        /// </summary>
+        private const string C_項目_worker_failed = "worker failed";
+
+        /// <summary>
+        /// 項目 one worker failed
+        /// </summary>
+        private const string C_項目_one_worker_failed = "one worker failed";
+
+        /// <summary>
+        /// 項目 broken input
+        /// </summary>
+        private const string C_項目_broken_input = "broken input";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -17,9 +36,7 @@ namespace Tsumiki.Tests.Utility
         {
             var l_入力 = Enumerable.Range(0, 5_000).ToList();
             var l_結果 = new System.Collections.Concurrent.ConcurrentBag<int>();
-
             ReadPipeline.V_実行(4, 32, l_入力, (l_項目, _) => l_結果.Add(l_項目));
-
             Assert.Equal(l_入力.Count, l_結果.Count);
             Assert.Equal(l_入力, l_結果.OrderBy(x => x).ToList());
         }
@@ -32,55 +49,42 @@ namespace Tsumiki.Tests.Utility
         {
             const int l_スレッド数 = 4;
             var l_観測した番号 = new System.Collections.Concurrent.ConcurrentBag<int>();
-
             ReadPipeline.V_実行(l_スレッド数, 16, Enumerable.Range(0, 500), (_, l_番号) => l_観測した番号.Add(l_番号));
-
             Assert.All(l_観測した番号, l_番号 => Assert.InRange(l_番号, 0, l_スレッド数 - 1));
         }
 
         /// <summary>
         /// ワーカーが例外を投げたら、供給が残っていても呼び出し元へ伝わること
         /// </summary>
-        /// <remarks>
-        /// 入力数はキュー容量よりずっと多くしてあり、対策が無ければプロデューサーが満杯のキューで待ち続けてこのテストはタイムアウトする
-        /// </remarks>
         [Fact]
         public void V_ワーカーが例外を投げると呼び出し元に伝わる()
         {
-            var l_例外 = Assert.Throws<AggregateException>(() =>
-                ReadPipeline.V_実行(4, 8, Enumerable.Range(0, 100_000), (l_項目, _) =>
+            var l_例外 = Assert.Throws<AggregateException>(() => ReadPipeline.V_実行(4, 8, Enumerable.Range(0, 100_000), (l_項目, _) =>
+            {
+                if (l_項目 >= 0)
                 {
-                    if (l_項目 >= 0)
-                    {
-                        throw new InvalidOperationException("worker failed");
-                    }
-                }));
-
+                    throw new InvalidOperationException(C_項目_worker_failed);
+                }
+            }));
             _ = Assert.IsType<InvalidOperationException>(l_例外.InnerExceptions[0]);
-            Assert.Equal("worker failed", l_例外.InnerExceptions[0].Message);
+            Assert.Equal(C_項目_worker_failed, l_例外.InnerExceptions[0].Message);
         }
 
         /// <summary>
         /// 一部のワーカーだけが落ちた場合も、放置せずに伝えること
         /// </summary>
-        /// <remarks>
-        /// 残ったワーカーが処理を続けられてしまうと、結果が中途半端なまま「成功」として先へ進んでしまう
-        /// </remarks>
         [Fact]
         public void V_一部のワーカーだけが例外を投げても伝わる()
         {
             var l_処理数 = 0;
-
-            var l_例外 = Assert.Throws<AggregateException>(() =>
-                ReadPipeline.V_実行(4, 8, Enumerable.Range(0, 100_000), (l_項目, _) =>
+            var l_例外 = Assert.Throws<AggregateException>(() => ReadPipeline.V_実行(4, 8, Enumerable.Range(0, 100_000), (l_項目, _) =>
+            {
+                if (Interlocked.Increment(ref l_処理数) == 50)
                 {
-                    if (Interlocked.Increment(ref l_処理数) == 50)
-                    {
-                        throw new InvalidOperationException("one worker failed");
-                    }
-                }));
-
-            Assert.Contains(l_例外.InnerExceptions, x => x.Message == "one worker failed");
+                    throw new InvalidOperationException(C_項目_one_worker_failed);
+                }
+            }));
+            Assert.Contains(l_例外.InnerExceptions, x => x.Message == C_項目_one_worker_failed);
         }
 
         /// <summary>
@@ -89,10 +93,10 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_供給側が例外を投げても伝わる()
         {
-            var l_例外 = Assert.Throws<FormatException>(() =>
-                ReadPipeline.V_実行(4, 8, Get_途中で壊れる入力(), (_, _) => { }));
-
-            Assert.Equal("broken input", l_例外.Message);
+            var l_例外 = Assert.Throws<FormatException>(() => ReadPipeline.V_実行(4, 8, Get_途中で壊れる入力(), (_, _) =>
+            {
+            }));
+            Assert.Equal(C_項目_broken_input, l_例外.Message);
         }
 
         #endregion
@@ -109,10 +113,10 @@ namespace Tsumiki.Tests.Utility
             {
                 yield return i;
             }
-            throw new FormatException("broken input");
+
+            throw new FormatException(C_項目_broken_input);
         }
 
         #endregion
-
     }
 }

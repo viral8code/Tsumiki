@@ -7,11 +7,6 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// 完全性と正確性が k に対して逆向きに動く場面での選択を固定する
     /// </summary>
-    /// <remarks>
-    /// k を上げるとグラフが解けて完全性が上がり、反復を正しく複製したぶん「出しすぎ」が増えて正確性が下がる<br/>
-    /// この 2 つを生の値で順に見ると、先に見たほうの端の k が機械的に選ばれるだけで比較にならない<br/>
-    /// 揺らぎの範囲を同点として扱い、実質的な差があるときだけ効くようにする
-    /// </remarks>
     public class AssemblySelectorTradeOffTests
     {
         #region 公開メソッド
@@ -23,10 +18,6 @@ namespace Tsumiki.Tests.Core
         public void Get_最良_揺らぎの範囲の差では連続性で決める()
         {
             var l_選択 = AssemblySelector.Get_最良(Get_実データの候補());
-
-            // 完全性・正確性の差はいずれも同点幅に収まるので NG50 が決める
-            // 正確性を生の値で先に見ていた頃は、3 指標のうち 2 つで最下位の
-            // k=21 が 0.18 ポイントの差だけで選ばれていた
             Assert.NotNull(l_選択);
             Assert.Equal(93, l_選択!.Value.A_実行結果.A_k長);
         }
@@ -37,9 +28,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_最良_正確性に実質的な差があればそちらを優先する()
         {
-            // 連続性で勝る候補が、正確性で同点幅をはっきり超えて劣る場合
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(93, 277_063L, 0.9881D, 0.9700D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(93, 277_063L, 0.9881D, 0.9700D), ]);
             Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
         }
 
@@ -49,9 +38,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_最良_完全性で足切りされた候補は連続性に関わらず選ばれない()
         {
-            // 反復を飛ばして繋いだ結果、連続性は跳ね上がるが配列を大きく落とした候補
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(93, 900_000L, 0.9500D, 0.9994D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(93, 900_000L, 0.9500D, 0.9994D), ]);
             Assert.Equal(21, l_選択!.Value.A_実行結果.A_k長);
         }
 
@@ -61,9 +48,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_最良_統合で正確性が大きく落ちた候補は退ける()
         {
-            // 実データで観測された統合の失敗 (99.94% -> 86.97%)
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(21, 44_916L, 0.9851D, 0.8697D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(21, 38_261L, 0.9843D, 0.9994D), Get_候補(21, 44_916L, 0.9851D, 0.8697D), ]);
             Assert.Equal(38_261L, l_選択!.Value.A_評価.A_NG50);
         }
 
@@ -74,7 +59,6 @@ namespace Tsumiki.Tests.Core
         public void Get_段表_同点幅に収まる差は同じ段になる()
         {
             var l_段 = AssemblySelector.Get_段表([0.9994D, 0.9976D, 0.9970D]);
-
             Assert.Equal(0, l_段[0.9994D]);
             Assert.Equal(0, l_段[0.9976D]);
             Assert.Equal(0, l_段[0.9970D]);
@@ -87,7 +71,6 @@ namespace Tsumiki.Tests.Core
         public void Get_段表_同点幅を超える差で段が下がる()
         {
             var l_段 = AssemblySelector.Get_段表([0.9994D, 0.9900D]);
-
             Assert.Equal(0, l_段[0.9994D]);
             Assert.True(l_段[0.9900D] > 0);
         }
@@ -95,15 +78,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 隣との差で切るので、最良値からの距離が同点幅を超えていても間が詰まっていれば同じ段になることを確かめる
         /// </summary>
-        /// <remarks>
-        /// 実データで観測された誤り (V. cholerae の k=53 が NG50 を見る前に落ちた) の再現<br/>
-        /// 96.50 / 96.12 / 95.82 は隣との差がどれも 0.5 ポイント未満なので、同点として扱われなければならない
-        /// </remarks>
         [Fact]
         public void Get_段表_隣が詰まっていれば最良から離れていても同じ段になる()
         {
             var l_段 = AssemblySelector.Get_段表([0.9650D, 0.9612D, 0.9582D]);
-
             Assert.Equal(0, l_段[0.9650D]);
             Assert.Equal(0, l_段[0.9612D]);
             Assert.Equal(0, l_段[0.9582D]);
@@ -112,9 +90,6 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 完全性が同点の範囲なら、連続性で選ばれることを確かめる
         /// </summary>
-        /// <remarks>
-        /// V. cholerae で k=87 (NG50 55,706) が k=53 (NG50 134,913) に勝ってしまった実例
-        /// </remarks>
         [Fact]
         public void Get_最良_完全性が同点なら連続性で選ぶ()
         {
@@ -123,16 +98,12 @@ namespace Tsumiki.Tests.Core
                 Get_候補(87, 55_706L, 0.9612D, 0.9978D),
                 Get_候補(139, 55_618L, 0.9650D, 0.9958D),
             ]);
-
             Assert.Equal(53, l_選択!.Value.A_実行結果.A_k長);
         }
 
         /// <summary>
         /// NG50 の差が小さく、完全性がはっきり高い候補へ乗り換えることを確かめる
         /// </summary>
-        /// <remarks>
-        /// C. jejuni (TestSet、k の上限 119) の実測値。NG50 だけで選ぶと k=41 になり、1 コピーの 3.6 kb を落としていた
-        /// </remarks>
         [Fact]
         public void Get_最良_NG50の差が小さく完全性がはっきり高ければ乗り換える()
         {
@@ -143,7 +114,6 @@ namespace Tsumiki.Tests.Core
                 Get_候補(83, 104_705L, 0.9756D, 0.9992D),
                 Get_候補(119, 104_741L, 0.9762D, 0.9989D),
             ]);
-
             Assert.Equal(119, l_選択!.Value.A_実行結果.A_k長);
         }
 
@@ -153,8 +123,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Get_最良_NG50が大きく劣れば完全性が高くても乗り換えない()
         {
-            var l_選択 = AssemblySelector.Get_最良([ Get_候補(63, 150_000L, 0.9700D, 0.9990D), Get_候補(127, 110_000L, 0.9740D, 0.9990D), ]);
-
+            var l_選択 = AssemblySelector.Get_最良([Get_候補(63, 150_000L, 0.9700D, 0.9990D), Get_候補(127, 110_000L, 0.9740D, 0.9990D), ]);
             Assert.Equal(63, l_選択!.Value.A_実行結果.A_k長);
         }
 
@@ -181,14 +150,10 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 完全性と正確性が逆方向へ動く 6 候補
         /// </summary>
-        /// <remarks>
-        /// 完全性は単調増加、正確性は単調減少し、NG50 は k=93 で最大になる
-        /// </remarks>
         /// <returns></returns>
         private static List<(アセンブリ実行結果, アセンブリ評価)> Get_実データの候補()
         {
-            return
-            [
+            return[
                 Get_候補(21, 38_261L, 0.9843D, 0.9994D),
                 Get_候補(29, 108_311L, 0.9859D, 0.9990D),
                 Get_候補(43, 173_868L, 0.9868D, 0.9987D),
@@ -199,6 +164,5 @@ namespace Tsumiki.Tests.Core
         }
 
         #endregion
-
     }
 }

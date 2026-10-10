@@ -9,17 +9,34 @@ namespace Tsumiki.Tests.Core
     /// <summary>
     /// カットオフで落ちた k-mer の救済を固定する
     /// </summary>
-    /// <remarks>
-    /// 救うべきもの (信頼できる k-mer に挟まれた低頻度) と、救ってはいけないもの (端に生えているだけの低頻度) の線引きが要点
-    /// </remarks>
     public class MercyKmerRescuerTests : IDisposable
     {
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki mercy
+        /// </summary>
+        private const string C_項目_tsumiki_mercy = "tsumiki_mercy_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// FASTQ 品質区切り
+        /// </summary>
+        private const string C_FASTQ品質区切り = "+";
+
+        /// <summary>
         /// k 長
         /// </summary>
-        private const int k長 = 21;
+        private const int C_k長 = 21;
 
         #endregion
 
@@ -39,7 +56,7 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public MercyKmerRescuerTests()
         {
-            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_mercy_" + Guid.NewGuid().ToString("N"));
+            this._一時ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_mercy + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._一時ディレクトリ);
         }
 
@@ -56,6 +73,7 @@ namespace Tsumiki.Tests.Core
             {
                 Directory.Delete(this._一時ディレクトリ, recursive: true);
             }
+
             GC.SuppressFinalize(this);
         }
 
@@ -68,18 +86,18 @@ namespace Tsumiki.Tests.Core
             var l_配列 = Get_乱数配列(300, 21);
             const int l_穴の開始 = 100;
             const int l_穴の長さ = 3;
-
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, l_穴の開始, l_穴の長さ);
             Assert.False(Haskmer(l_インデックス, l_配列, l_穴の開始));
-
-            // 穴を跨いで両側の信頼できる窓まで届くリードを 2 本与える
             var l_リード = l_配列.Substring(l_穴の開始 - 30, 100);
-            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
-            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
+            var l_FASTQ = this.V_書き出し_FASTQ(C_ファイル名_reads_fq, [l_リード, l_リード]);
+            var l_引数 = new Parameters
+            {
+                A_順リードのパス = l_FASTQ,
+                A_スレッド数 = 2,
+                A_k長 = C_k長
+            };
             ConfigurationManager.A_実行時引数 = l_引数;
-
-            var l_救済数 = MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長);
-
+            var l_救済数 = MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, C_k長);
             Assert.Equal(l_穴の長さ, l_救済数);
             for (var i = 0; i < l_穴の長さ; i++)
             {
@@ -90,32 +108,31 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// 穴の左の信頼できる k-mer に既に別の続きがあるなら、穴を救済しないことを検証する
         /// </summary>
-        /// <remarks>
-        /// 救済した連が既存の配列に新しい分岐を作ると、短い反復を挟んで別の場所へ抜ける近道にもなりうる
-        /// </remarks>
         [Fact]
         public void Get_救済数_左の信頼kmerに別の続きがあれば救わない()
         {
             var l_配列 = Get_乱数配列(300, 25);
             const int l_穴の開始 = 100;
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, l_穴の開始, 3);
-
-            // 穴の直前の k-mer から、穴とは別の塩基で続く信頼できる枝を足す
-            var l_穴の最後の塩基 = l_配列[l_穴の開始 + k長 - 1];
-            var l_別の塩基 = "ACGT".First(x => x != l_穴の最後の塩基);
-            var l_枝 = l_配列.Substring(l_穴の開始, k長 - 1) + l_別の塩基 + Get_乱数配列(30, 26);
+            var l_穴の最後の塩基 = l_配列[l_穴の開始 + C_k長 - 1];
+            var l_別の塩基 = Consts.塩基文字.First(x => x != l_穴の最後の塩基);
+            var l_枝 = l_配列.Substring(l_穴の開始, C_k長 - 1) + l_別の塩基 + Get_乱数配列(30, 26);
             var l_枝の塩基列 = l_枝.Select(Util.Get_塩基ID).ToArray();
-            for (var i = 0; i + k長 <= l_枝の塩基列.Length; i++)
+            for (var i = 0; i + C_k長 <= l_枝の塩基列.Length; i++)
             {
-                _ = l_インデックス.Try追加_信頼kmer(l_枝の塩基列.AsSpan(i, k長), 5UL);
+                _ = l_インデックス.Is成功_追加_信頼kmer(l_枝の塩基列.AsSpan(i, C_k長), 5UL);
             }
 
             var l_リード = l_配列.Substring(l_穴の開始 - 30, 100);
-            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
-            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
+            var l_FASTQ = this.V_書き出し_FASTQ(C_ファイル名_reads_fq, [l_リード, l_リード]);
+            var l_引数 = new Parameters
+            {
+                A_順リードのパス = l_FASTQ,
+                A_スレッド数 = 2,
+                A_k長 = C_k長
+            };
             ConfigurationManager.A_実行時引数 = l_引数;
-
-            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
+            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, C_k長));
             Assert.False(Haskmer(l_インデックス, l_配列, l_穴の開始));
         }
 
@@ -127,12 +144,15 @@ namespace Tsumiki.Tests.Core
         {
             var l_配列 = Get_乱数配列(300, 22);
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 100, 3);
-
-            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_配列.Substring(70, 100)]);
-            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
+            var l_FASTQ = this.V_書き出し_FASTQ(C_ファイル名_reads_fq, [l_配列.Substring(70, 100)]);
+            var l_引数 = new Parameters
+            {
+                A_順リードのパス = l_FASTQ,
+                A_スレッド数 = 2,
+                A_k長 = C_k長
+            };
             ConfigurationManager.A_実行時引数 = l_引数;
-
-            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
+            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, C_k長));
         }
 
         /// <summary>
@@ -143,14 +163,16 @@ namespace Tsumiki.Tests.Core
         {
             var l_配列 = Get_乱数配列(300, 23);
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 100, 3);
-
-            // 穴の左側だけを含み、右側の信頼できる窓まで届かないリード
-            var l_リード = l_配列.Substring(80, k長 + 22);
-            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_リード, l_リード]);
-            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 2, A_k長 = k長 };
+            var l_リード = l_配列.Substring(80, C_k長 + 22);
+            var l_FASTQ = this.V_書き出し_FASTQ(C_ファイル名_reads_fq, [l_リード, l_リード]);
+            var l_引数 = new Parameters
+            {
+                A_順リードのパス = l_FASTQ,
+                A_スレッド数 = 2,
+                A_k長 = C_k長
+            };
             ConfigurationManager.A_実行時引数 = l_引数;
-
-            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, k長));
+            Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, C_k長));
         }
 
         /// <summary>
@@ -161,11 +183,14 @@ namespace Tsumiki.Tests.Core
         {
             var l_配列 = Get_乱数配列(300, 24);
             using var l_インデックス = this.Get_穴のあるインデックス(l_配列, 100, 3);
-
-            var l_FASTQ = this.V_書き出し_FASTQ("reads.fq", [l_配列]);
-            var l_引数 = new Parameters { A_リード1のパス = l_FASTQ, A_スレッド数 = 1, A_k長 = k長 };
+            var l_FASTQ = this.V_書き出し_FASTQ(C_ファイル名_reads_fq, [l_配列]);
+            var l_引数 = new Parameters
+            {
+                A_順リードのパス = l_FASTQ,
+                A_スレッド数 = 1,
+                A_k長 = C_k長
+            };
             ConfigurationManager.A_実行時引数 = l_引数;
-
             Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, p_k長: 65));
         }
 
@@ -182,7 +207,7 @@ namespace Tsumiki.Tests.Core
         private static string Get_乱数配列(int p_長さ, int p_種)
         {
             var l_乱数 = new Random(p_種);
-            const string l_塩基 = "ACGT";
+            const string l_塩基 = Consts.塩基文字;
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
         }
 
@@ -201,35 +226,38 @@ namespace Tsumiki.Tests.Core
             {
                 l_書き込み.WriteLine($"@read{l_番号++}");
                 l_書き込み.WriteLine(l_リード);
-                l_書き込み.WriteLine("+");
+                l_書き込み.WriteLine(C_FASTQ品質区切り);
                 l_書き込み.WriteLine(new string('I', l_リード.Length));
             }
+
             return l_パス;
         }
 
         /// <summary>
         /// 指定した窓だけ観測回数を 1 にし、残りを 5 にした k-mer インデックスを作る
         /// </summary>
-        /// <remarks>
-        /// カットオフ 2 で、その窓だけが落ちた状態になる
-        /// </remarks>
         /// <param name="p_配列"></param>
         /// <param name="p_穴の開始"></param>
         /// <param name="p_穴の長さ"></param>
         /// <returns></returns>
         private TrustedKmerIndex Get_穴のあるインデックス(string p_配列, int p_穴の開始, int p_穴の長さ)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
             var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
-            for (var i = 0; i + k長 <= l_塩基列.Length; i++)
+            for (var i = 0; i + C_k長 <= l_塩基列.Length; i++)
             {
                 var l_穴か = i >= p_穴の開始 && i < p_穴の開始 + p_穴の長さ;
                 for (var l_回 = 0; l_回 < (l_穴か ? 1 : 5); l_回++)
                 {
-                    l_インデックス.V_登録(l_塩基列.AsSpan(i, k長));
+                    l_インデックス.V_登録(l_塩基列.AsSpan(i, C_k長));
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
@@ -243,11 +271,10 @@ namespace Tsumiki.Tests.Core
         /// <returns>集合にあれば true</returns>
         private static bool Haskmer(TrustedKmerIndex p_インデックス, string p_配列, int p_位置)
         {
-            var l_kmer = p_配列.Substring(p_位置, k長).Select(Util.Get_塩基ID).ToArray();
+            var l_kmer = p_配列.Substring(p_位置, C_k長).Select(Util.Get_塩基ID).ToArray();
             return p_インデックス.Haskmer(l_kmer);
         }
 
         #endregion
-
     }
 }

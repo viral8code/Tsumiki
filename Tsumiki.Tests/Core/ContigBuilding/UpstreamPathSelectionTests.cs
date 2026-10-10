@@ -13,9 +13,44 @@ namespace Tsumiki.Tests.Core
         #region 定数
 
         /// <summary>
+        /// 項目 tsumiki upstream path tests
+        /// </summary>
+        private const string C_項目_tsumiki_upstream_path_tests = "tsumiki_upstream_path_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 項目 G
+        /// </summary>
+        private const string C_項目_G = "G";
+
+        /// <summary>
+        /// 項目 T
+        /// </summary>
+        private const string C_項目_T = "T";
+
+        /// <summary>
+        /// ファイル名 unitigs fasta
+        /// </summary>
+        private const string C_ファイル名_unitigs_fasta = "unitigs.fasta";
+
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// ファイル名 contigs fasta
+        /// </summary>
+        private const string C_ファイル名_contigs_fasta = "contigs.fasta";
+
+        /// <summary>
         /// この検証で使う k 長
         /// </summary>
-        private const int k長 = 8;
+        private const int C_k長 = 8;
 
         #endregion
 
@@ -55,15 +90,17 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         public UpstreamPathSelectionTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_upstream_path_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_upstream_path_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = k長, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = C_k長,
+                A_スレッド数 = 1
+            };
             this._V = RepeatGraphFixture.Get_乱数配列(16, 4001);
-            // 断片長の標本が無いとき起点に要る長さは k の 4 倍なので、それを超える長さにする
-            this._U = RepeatGraphFixture.Get_乱数配列(30, 4002) + this._V[..(k長 - 1)];
-            this._W1 = this._V[^(k長 - 1)..] + "G" + RepeatGraphFixture.Get_乱数配列(11, 4003);
-            this._W2 = this._V[^(k長 - 1)..] + "T" + RepeatGraphFixture.Get_乱数配列(11, 4004);
+            this._U = RepeatGraphFixture.Get_乱数配列(30, 4002) + this._V[..(C_k長 - 1)];
+            this._W1 = this._V[^(C_k長 - 1)..] + C_項目_G + RepeatGraphFixture.Get_乱数配列(11, 4003);
+            this._W2 = this._V[^(C_k長 - 1)..] + C_項目_T + RepeatGraphFixture.Get_乱数配列(11, 4004);
         }
 
         #endregion
@@ -87,9 +124,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_手前の単一コピーから通り抜けたリードで多コピー推定の分岐を決める()
         {
-            var l_UVW1 = this._U + this._V[(k長 - 1)..] + this._W1[(k長 - 1)..];
-            var l_contig群 = this.Get_contig群([.. Get_窓群(l_UVW1, 30, this._U.Length - k長, this._U.Length + 16 - (2 * (k長 - 1)) + k長), .. this.Get_VW2の窓群()]);
-
+            var l_UVW1 = this._U + this._V[(C_k長 - 1)..] + this._W1[(C_k長 - 1)..];
+            var l_contig群 = this.Get_contig群([..Get_窓群(l_UVW1, 30, this._U.Length - C_k長, this._U.Length + 16 - (2 * (C_k長 - 1)) + C_k長), ..this.Get_VW2の窓群()]);
             Assert.Equal(2, l_contig群.Count);
             Assert.Contains(l_contig群, x => x.Length == l_UVW1.Length);
             Assert.Contains(l_contig群, x => x.Length == this._W2.Length);
@@ -101,9 +137,8 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_手前の単一コピーに届かないリードでは多コピー推定の分岐を決めない()
         {
-            var l_VW1 = this._V + this._W1[(k長 - 1)..];
-            var l_contig群 = this.Get_contig群([.. Get_窓群(l_VW1, 20, 0, 17), .. this.Get_VW2の窓群()]);
-
+            var l_VW1 = this._V + this._W1[(C_k長 - 1)..];
+            var l_contig群 = this.Get_contig群([..Get_窓群(l_VW1, 20, 0, 17), ..this.Get_VW2の窓群()]);
             Assert.Equal(3, l_contig群.Count);
         }
 
@@ -117,7 +152,7 @@ namespace Tsumiki.Tests.Core
         /// <returns></returns>
         private List<string> Get_VW2の窓群()
         {
-            return Get_窓群(this._V + this._W2[(k長 - 1)..], 20, 0, 17);
+            return Get_窓群(this._V + this._W2[(C_k長 - 1)..], 20, 0, 17);
         }
 
         /// <summary>
@@ -138,6 +173,7 @@ namespace Tsumiki.Tests.Core
                     l_窓群.Add(p_配列.Substring(s, p_長さ));
                 }
             }
+
             return l_窓群;
         }
 
@@ -148,7 +184,7 @@ namespace Tsumiki.Tests.Core
         /// <returns></returns>
         private List<string> Get_contig群(IReadOnlyList<string> p_リード群)
         {
-            var l_unitigパス = Path.Combine(this._作業ディレクトリ, "unitigs.fasta");
+            var l_unitigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_unitigs_fasta);
             using (var l_書き込み = new FastaWriter(l_unitigパス))
             {
                 l_書き込み.V_書き込み(1, this._U);
@@ -157,7 +193,7 @@ namespace Tsumiki.Tests.Core
                 l_書き込み.V_書き込み(4, this._W2);
             }
 
-            var l_リードパス = Path.Combine(this._作業ディレクトリ, "reads.fq");
+            var l_リードパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_reads_fq);
             using (var l_書き込み = new StreamWriter(l_リードパス))
             {
                 for (var i = 0; i < p_リード群.Count; i++)
@@ -170,12 +206,17 @@ namespace Tsumiki.Tests.Core
             var l_グラフ = l_contig構築.Get_グラフ();
             Assert.Equal(1, l_グラフ.Get_入次数(ContigMaker.Get_頂点番号(2)));
             Assert.Equal(2, l_グラフ.A_出辺[ContigMaker.Get_頂点番号(2)].Count);
-
             l_contig構築.V_マッピング_リード(l_リードパス);
-            var l_contigパス = Path.Combine(this._作業ディレクトリ, "contigs.fasta");
-            Dictionary<int, int> l_コピー数 = new() { [1] = 1, [2] = 2, [3] = 1, [4] = 1 };
+            var l_contigパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_contigs_fasta);
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 1,
+                [2] = 2,
+                [3] = 1,
+                [4] = 1
+            };
             l_contig構築.V_結合_Contig(l_contigパス, p_優勢閾値: 0.8M, p_最小証拠数: 5UL, p_コピー数: l_コピー数);
-            return [.. FastaReader.Get_全エントリ(l_contigパス).Select(x => x.A_配列)];
+            return[..FastaReader.Get_全エントリ(l_contigパス).Select(x => x.A_配列)];
         }
 
         #endregion

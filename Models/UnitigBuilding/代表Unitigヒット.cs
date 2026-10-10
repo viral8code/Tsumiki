@@ -3,9 +3,6 @@
     /// <summary>
     /// ContigMaker でリード 1 本を unitig の索引で走査し、代表として選んだ unitig
     /// </summary>
-    /// <param name="p_unitigID"></param>
-    /// <param name="p_最終一致終端位置"></param>
-    /// <param name="p_unitig長"></param>
     internal readonly struct 代表Unitigヒット(int p_unitigID, int p_最終一致終端位置, int p_unitig長)
     {
         #region 定数

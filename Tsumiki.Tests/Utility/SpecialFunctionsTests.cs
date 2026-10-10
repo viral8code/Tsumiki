@@ -53,11 +53,18 @@ namespace Tsumiki.Tests.Utility
         public void V_ディガンマとトリガンマが対数ガンマの微分と整合する()
         {
             const double l_刻み = 1e-5D;
-            foreach (var l_点 in new[] { 0.7D, 2.3D, 9.5D, 120D })
+            foreach (var l_点 in new[]
+            {
+                0.7D,
+                2.3D,
+                9.5D,
+                120D
+            }
+
+            )
             {
                 var l_数値微分 = (SpecialFunctions.Get_対数ガンマ(l_点 + l_刻み) - SpecialFunctions.Get_対数ガンマ(l_点 - l_刻み)) / (2D * l_刻み);
                 Assert.Equal(l_数値微分, SpecialFunctions.Get_ディガンマ(l_点), 5);
-
                 var l_二階 = (SpecialFunctions.Get_ディガンマ(l_点 + l_刻み) - SpecialFunctions.Get_ディガンマ(l_点 - l_刻み)) / (2D * l_刻み);
                 Assert.Equal(l_二階, SpecialFunctions.Get_トリガンマ(l_点), 5);
             }

@@ -8,13 +8,31 @@ using Xunit.Abstractions;
 
 namespace Tsumiki.Tests.Utility
 {
-    /// <summary>差分更新の正確性と合成データでの処理費用を検証する</summary>
+    /// <summary>
+    /// 差分更新の正確性と合成データでの処理費用を検証する
+    /// </summary>
     /// <param name="p_出力">テストログ</param>
     public class RollingKmerTests(ITestOutputHelper p_出力)
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 NRYACGT
+        /// </summary>
+        private const string C_項目_NRYACGT = "NRYACGT";
+
+        /// <summary>
+        /// 塩基配列 NN
+        /// </summary>
+        private const string C_塩基配列_NN = "NN";
+
+        #endregion
+
         #region 公開メソッド
 
-        /// <summary>境界長と曖昧塩基を含む全窓を従来の厳密キーと比較する</summary>
+        /// <summary>
+        /// 境界長と曖昧塩基を含む全窓を従来の厳密キーと比較する
+        /// </summary>
         /// <param name="p_長さ">窓の長さ</param>
         [Theory]
         [InlineData(1)]
@@ -31,11 +49,11 @@ namespace Tsumiki.Tests.Utility
         [InlineData(128)]
         public void V_全窓を従来キーと比較(int p_長さ)
         {
-            var l_配列 = Get_合成配列(900) + "NRYACGT" + Get_合成配列(900);
+            var l_配列 = Get_合成配列(900) + C_項目_NRYACGT + Get_合成配列(900);
             var l_窓 = new RollingKmer(p_長さ);
             for (var i = 0; i < l_配列.Length; i++)
             {
-                var l_有効 = l_窓.Try追加(l_配列[i], out var l_キー);
+                var l_有効 = l_窓.Is成功_追加(l_配列[i], out var l_キー);
                 var l_期待 = i >= p_長さ - 1 && !l_配列.Substring(i - p_長さ + 1, p_長さ).Any(Util.Is曖昧塩基);
                 Assert.Equal(l_期待, l_有効);
                 if (l_期待)
@@ -45,7 +63,9 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
-        /// <summary>128 塩基を超える窓を、境界長と曖昧塩基を含めて従来の正規形キーと比較する</summary>
+        /// <summary>
+        /// 128 塩基を超える窓を、境界長と曖昧塩基を含めて従来の正規形キーと比較する
+        /// </summary>
         /// <param name="p_長さ">窓の長さ</param>
         [Theory]
         [InlineData(21)]
@@ -64,11 +84,11 @@ namespace Tsumiki.Tests.Utility
         [InlineData(250)]
         public void V_長い窓を従来キーと比較(int p_長さ)
         {
-            var l_配列 = Get_合成配列(900) + "NRYACGT" + Get_合成配列(900) + Util.V_逆相補(Get_合成配列(400));
+            var l_配列 = Get_合成配列(900) + C_項目_NRYACGT + Get_合成配列(900) + Util.V_逆相補(Get_合成配列(400));
             var l_窓 = new WideRollingKmer(p_長さ);
             for (var i = 0; i < l_配列.Length; i++)
             {
-                var l_有効 = l_窓.Try追加(l_配列[i], out var l_キー);
+                var l_有効 = l_窓.Is成功_追加(l_配列[i], out var l_キー);
                 var l_期待 = i >= p_長さ - 1 && !l_配列.Substring(i - p_長さ + 1, p_長さ).Any(Util.Is曖昧塩基);
                 Assert.Equal(l_期待, l_有効);
                 if (l_期待)
@@ -78,7 +98,9 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
-        /// <summary>切り離したキーは窓を進めても変わらない</summary>
+        /// <summary>
+        /// 切り離したキーは窓を進めても変わらない
+        /// </summary>
         [Fact]
         public void V_複製したキーは窓の更新に引きずられない()
         {
@@ -87,15 +109,18 @@ namespace Tsumiki.Tests.Utility
             KmerKey? l_保存 = null;
             for (var i = 0; i < l_配列.Length; i++)
             {
-                if (l_窓.Try追加(l_配列[i], out var l_キー) && l_保存 is null)
+                if (l_窓.Is成功_追加(l_配列[i], out var l_キー) && l_保存 is null)
                 {
                     l_保存 = l_キー.Get_複製();
                 }
             }
+
             Assert.Equal(new KmerKey(l_配列.AsSpan(0, 139)).Get_正規形(), l_保存);
         }
 
-        /// <summary>128 塩基を超える窓で、窓ごとにキーを作る従来の方法と差分更新の時間と確保量を記録する</summary>
+        /// <summary>
+        /// 128 塩基を超える窓で、窓ごとにキーを作る従来の方法と差分更新の時間と確保量を記録する
+        /// </summary>
         [Fact]
         public void V_長い窓の速度を記録()
         {
@@ -109,6 +134,7 @@ namespace Tsumiki.Tests.Utility
             {
                 l_従来数 += l_集合.Contains(new KmerKey(l_配列.AsSpan(i, l_長さ)).Get_正規形()) ? 1 : 0;
             }
+
             var l_従来時間 = l_時計.Elapsed.TotalMilliseconds;
             var l_従来確保 = GC.GetAllocatedBytesForCurrentThread() - l_確保前;
             l_確保前 = GC.GetAllocatedBytesForCurrentThread();
@@ -117,35 +143,51 @@ namespace Tsumiki.Tests.Utility
             var l_窓 = new WideRollingKmer(l_長さ);
             foreach (var l_塩基 in l_配列)
             {
-                if (l_窓.Try追加(l_塩基, out var l_キー))
+                if (l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
                     l_更新数 += l_集合.Contains(l_キー) ? 1 : 0;
                 }
             }
+
             var l_更新時間 = l_時計.Elapsed.TotalMilliseconds;
             var l_更新確保 = GC.GetAllocatedBytesForCurrentThread() - l_確保前;
             Assert.Equal(l_従来数, l_更新数);
             p_出力.WriteLine($"k={l_長さ}: baseline={l_従来時間:F1} ms/{l_従来確保} B, rolling={l_更新時間:F1} ms/{l_更新確保} B, ratio={l_従来時間 / l_更新時間:F2}");
         }
 
-        /// <summary>種の絞り込みが逆相補の完全一致を落とさない</summary>
+        /// <summary>
+        /// 種の絞り込みが逆相補の完全一致を落とさない
+        /// </summary>
         [Fact]
         public void V_種は両鎖で一致する()
         {
             var l_配列 = Get_合成配列(135);
             HashSet<ulong> l_種 = [(ulong)RepeatRMerVerifier.Get_正準値(l_配列.AsSpan(0, 31)).A_下位];
-            Assert.True(LocalAssembler.Has種一致("NN" + l_配列, l_種, 31));
-            Assert.True(LocalAssembler.Has種一致(Util.V_逆相補(l_配列) + "NN", l_種, 31));
+            Assert.True(LocalAssembler.Has種一致(C_塩基配列_NN + l_配列, l_種, 31));
+            Assert.True(LocalAssembler.Has種一致(Util.V_逆相補(l_配列) + C_塩基配列_NN, l_種, 31));
             Assert.False(LocalAssembler.Has種一致(new string('N', 150), l_種, 31));
         }
 
-        /// <summary>最小値の差分計算が端や空の窓でも単純走査と一致する</summary>
+        /// <summary>
+        /// 最小値の差分計算が端や空の窓でも単純走査と一致する
+        /// </summary>
         [Fact]
         public void V_最小値列を単純走査と比較()
         {
             var l_乱数 = new Random(812);
             var l_値 = Enumerable.Range(0, 300).Select(_ => l_乱数.Next(-1, 101)).ToArray();
-            foreach (var l_幅 in new[] { -1, 0, 1, 9, 43, 115, 400 })
+            foreach (var l_幅 in new[]
+            {
+                -1,
+                0,
+                1,
+                9,
+                43,
+                115,
+                400
+            }
+
+            )
             {
                 var l_結果 = new int[320];
                 KmerCarryOver.V_計算_最小値列(l_値, l_幅, l_結果, new int[l_値.Length]);
@@ -157,7 +199,9 @@ namespace Tsumiki.Tests.Utility
             }
         }
 
-        /// <summary>合成配列の全窓で従来実装と差分更新の時間を記録する</summary>
+        /// <summary>
+        /// 合成配列の全窓で従来実装と差分更新の時間を記録する
+        /// </summary>
         /// <param name="p_長さ">窓の長さ</param>
         [Theory]
         [InlineData(31)]
@@ -172,23 +216,27 @@ namespace Tsumiki.Tests.Utility
             {
                 l_従来合計 ^= RepeatRMerVerifier.Get_正準値(l_配列.AsSpan(i, p_長さ)).A_下位;
             }
+
             var l_従来時間 = l_時計.Elapsed.TotalMilliseconds;
             l_時計.Restart();
             UInt128 l_更新合計 = 0;
             var l_窓 = new RollingKmer(p_長さ);
             foreach (var l_塩基 in l_配列)
             {
-                if (l_窓.Try追加(l_塩基, out var l_キー))
+                if (l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
                     l_更新合計 ^= l_キー.A_下位;
                 }
             }
+
             var l_更新時間 = l_時計.Elapsed.TotalMilliseconds;
             Assert.Equal(l_従来合計, l_更新合計);
             p_出力.WriteLine($"r={p_長さ}: baseline={l_従来時間:F1} ms, rolling={l_更新時間:F1} ms, ratio={l_従来時間 / l_更新時間:F2}");
         }
 
-        /// <summary>無関係な長いリードを種で除外した場合の時間と確保量を記録する</summary>
+        /// <summary>
+        /// 無関係な長いリードを種で除外した場合の時間と確保量を記録する
+        /// </summary>
         [Fact]
         public void V_局所候補の絞り込み速度を記録()
         {
@@ -203,6 +251,7 @@ namespace Tsumiki.Tests.Utility
             {
                 l_従来一致 |= l_索引.Contains(new KmerKey(l_配列.AsSpan(i, l_k長)).Get_正規形());
             }
+
             var l_従来時間 = l_時計.Elapsed.TotalMilliseconds;
             var l_従来確保 = GC.GetAllocatedBytesForCurrentThread() - l_確保前;
             HashSet<ulong> l_種 = [0UL];
@@ -220,13 +269,15 @@ namespace Tsumiki.Tests.Utility
 
         #region 内部メソッド
 
-        /// <summary>機密データを使わない再現可能な塩基列を作る</summary>
+        /// <summary>
+        /// 機密データを使わない再現可能な塩基列を作る
+        /// </summary>
         /// <param name="p_長さ">配列長</param>
         /// <returns>合成配列</returns>
         private static string Get_合成配列(int p_長さ)
         {
             var l_乱数 = new Random(912);
-            return new string(Enumerable.Range(0, p_長さ).Select(_ => "ACGT"[l_乱数.Next(4)]).ToArray());
+            return new string(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]).ToArray());
         }
 
         #endregion

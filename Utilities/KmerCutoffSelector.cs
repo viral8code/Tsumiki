@@ -11,6 +11,11 @@ namespace Tsumiki.Utilities
         #region 定数
 
         /// <summary>
+        /// 項目 unknown  non monotonic posterior
+        /// </summary>
+        private const string C_項目_unknown__non_monotonic_posterior = "unknown (non-monotonic posterior)";
+
+        /// <summary>
         /// 混合モデルのカットオフに対して、スペクトルの谷がこの倍率を超えたら谷を採る
         /// </summary>
         private const ulong C_谷を採る倍率 = 2UL;
@@ -25,7 +30,7 @@ namespace Tsumiki.Utilities
         /// <param name="p_モデルのカットオフ"></param>
         /// <param name="p_谷">スペクトルの谷、求められなければ null</param>
         /// <returns>採用するカットオフ</returns>
-        internal static ulong Get_谷で補正したカットオフ(ulong p_モデルのカットオフ, ulong? p_谷)
+        public static ulong Get_谷で補正したカットオフ(ulong p_モデルのカットオフ, ulong? p_谷)
         {
             return p_谷 is { } l_谷 && l_谷 > p_モデルのカットオフ * C_谷を採る倍率 ? l_谷 : p_モデルのカットオフ;
         }
@@ -38,14 +43,12 @@ namespace Tsumiki.Utilities
         public static void V_解決_kmerカットオフ(Parameters p_引数, TrustedKmerIndex p_kmerインデックス)
         {
             ConfigurationManager.A_スペクトルモデル = null;
-
             if (p_引数.A_Iskmerカットオフ明示指定)
             {
                 return;
             }
 
             var l_ヒストグラム = p_kmerインデックス.Get_出現回数ヒストグラム();
-
             if (KmerSpectrumMixtureModel.Get_解析結果(l_ヒストグラム) is { } l_混合モデル)
             {
                 ConfigurationManager.A_スペクトルモデル = l_混合モデル;
@@ -56,7 +59,7 @@ namespace Tsumiki.Utilities
                     p_引数.Set_推定kmerカットオフ(l_カットオフ);
                 }
 
-                var l_信頼下限 = l_混合モデル.A_信頼下限 == ulong.MaxValue ? "unknown (non-monotonic posterior)" : l_混合モデル.A_信頼下限.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var l_信頼下限 = l_混合モデル.A_信頼下限 == ulong.MaxValue ? C_項目_unknown__non_monotonic_posterior : l_混合モデル.A_信頼下限.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 Logger.V_出力(メッセージID.kmerカットオフ_混合モデル, l_混合モデル.A_カットオフ, l_混合モデル.A_単一コピー平均, l_信頼下限, l_混合モデル.A_過分散, l_混合モデル.A_反復回数);
                 if (l_カットオフ != l_混合モデル.A_カットオフ)
                 {

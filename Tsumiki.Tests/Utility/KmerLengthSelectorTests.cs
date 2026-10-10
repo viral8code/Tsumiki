@@ -17,11 +17,11 @@ namespace Tsumiki.Tests.Utility
         /// <param name="p_リード長"></param>
         /// <param name="p_期待値"></param>
         [Theory]
-        [InlineData(150, 63)] // 現在の標準、0.6 倍は上限を超えるので頭打ち
-        [InlineData(250, 63)] // MiSeq、同じく頭打ち
-        [InlineData(100, 59)] // 0.6 倍 = 60、偶数なので 1 つ落とす
+        [InlineData(150, 63)]
+        [InlineData(250, 63)]
+        [InlineData(100, 59)]
         [InlineData(75, 45)]
-        [InlineData(50, 29)]  // 0.6 倍 = 30、偶数なので 1 つ落とす
+        [InlineData(50, 29)]
         [InlineData(32, 19)]
         public void V_推奨k長はリード長に比例し上限で頭打ちになる(int p_リード長, int p_期待値)
         {
@@ -31,9 +31,6 @@ namespace Tsumiki.Tests.Utility
         /// <summary>
         /// k が偶数だと k-mer 自身がその逆相補と一致しうる (回文) ため、正規形が縮退して隣接判定が壊れる
         /// </summary>
-        /// <remarks>
-        /// どのリード長でも奇数を返すこと
-        /// </remarks>
         [Fact]
         public void V_推奨k長は常に奇数でリード長より短い()
         {
@@ -64,11 +61,8 @@ namespace Tsumiki.Tests.Utility
         {
             var l_param = new Parameters();
             Assert.False(l_param.A_Isk長明示指定);
-
             KmerLengthSelector.V_解決_k長(l_param, 150);
-
             Assert.Equal(63, l_param.A_k長);
-            // 自動適用は「明示指定された」扱いにしない
             Assert.False(l_param.A_Isk長明示指定);
         }
 
@@ -78,11 +72,12 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_明示指定されたk長はそのまま残す()
         {
-            var l_param = new Parameters { A_k長 = 31 };
+            var l_param = new Parameters
+            {
+                A_k長 = 31
+            };
             Assert.True(l_param.A_Isk長明示指定);
-
             KmerLengthSelector.V_解決_k長(l_param, 150);
-
             Assert.Equal(31, l_param.A_k長);
         }
 
@@ -93,9 +88,7 @@ namespace Tsumiki.Tests.Utility
         public void V_リード長が不明なら既定値を維持する()
         {
             var l_param = new Parameters();
-
             KmerLengthSelector.V_解決_k長(l_param, null);
-
             Assert.Equal(31, l_param.A_k長);
         }
 
@@ -106,9 +99,7 @@ namespace Tsumiki.Tests.Utility
         public void V_リードが短すぎてk長を選べない場合は既定値を維持する()
         {
             var l_param = new Parameters();
-
             KmerLengthSelector.V_解決_k長(l_param, 31);
-
             Assert.Equal(31, l_param.A_k長);
         }
 
@@ -120,9 +111,7 @@ namespace Tsumiki.Tests.Utility
         {
             var l_param = new Parameters();
             l_param.Set_k長一覧([21, 73, 169]);
-
             KmerLengthSelector.V_解決_k長(l_param, 251);
-
             Assert.Equal(169, l_param.A_k長);
             Assert.Equal(63, l_param.A_エラー訂正k長);
             Assert.False(l_param.A_Isエラー訂正k長明示指定);
@@ -134,10 +123,11 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_明示指定されたエラー訂正のk長はそのまま残す()
         {
-            var l_param = new Parameters { A_エラー訂正k長 = 41 };
-
+            var l_param = new Parameters
+            {
+                A_エラー訂正k長 = 41
+            };
             KmerLengthSelector.V_解決_k長(l_param, 251);
-
             Assert.Equal(41, l_param.A_エラー訂正k長);
             Assert.Equal(63, l_param.A_k長);
         }
@@ -148,14 +138,14 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_リード長が不明ならエラー訂正のk長は組み立てのk長に揃える()
         {
-            var l_param = new Parameters { A_k長 = 41 };
-
+            var l_param = new Parameters
+            {
+                A_k長 = 41
+            };
             KmerLengthSelector.V_解決_k長(l_param, null);
-
             Assert.Equal(41, l_param.A_エラー訂正k長);
         }
 
         #endregion
-
     }
 }

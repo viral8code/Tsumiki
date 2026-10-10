@@ -9,6 +9,60 @@ namespace Tsumiki.Tests.Utility
     /// </summary>
     public class TrustedKmerIndexTests : IDisposable
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 tsumiki trusted kmer tests
+        /// </summary>
+        private const string C_項目_tsumiki_trusted_kmer_tests = "tsumiki_trusted_kmer_tests_";
+
+        /// <summary>
+        /// GUID 書式
+        /// </summary>
+        private const string C_GUID書式 = "N";
+
+        /// <summary>
+        /// 塩基配列 ACGTACGT
+        /// </summary>
+        private const string C_塩基配列_ACGTACGT = "ACGTACGT";
+
+        /// <summary>
+        /// 塩基配列 TTTTTTTT
+        /// </summary>
+        private const string C_塩基配列_TTTTTTTT = "TTTTTTTT";
+
+        /// <summary>
+        /// 塩基配列 GGGGCCCC
+        /// </summary>
+        private const string C_塩基配列_GGGGCCCC = "GGGGCCCC";
+
+        /// <summary>
+        /// 塩基配列 AAAAAAAA
+        /// </summary>
+        private const string C_塩基配列_AAAAAAAA = "AAAAAAAA";
+
+        /// <summary>
+        /// 塩基配列 TTTTGGGG
+        /// </summary>
+        private const string C_塩基配列_TTTTGGGG = "TTTTGGGG";
+
+        /// <summary>
+        /// 塩基配列 ACGGTCATTGAC
+        /// </summary>
+        private const string C_塩基配列_ACGGTCATTGAC = "ACGGTCATTGAC";
+
+        /// <summary>
+        /// 塩基配列 ACGGTCATTGACCTA
+        /// </summary>
+        private const string C_塩基配列_ACGGTCATTGACCTA = "ACGGTCATTGACCTA";
+
+        /// <summary>
+        /// 塩基配列 GCTAAAGACAATTACATAACATAC
+        /// </summary>
+        private const string C_塩基配列_GCTAAAGACAATTACATAACATAC = "GCTAAAGACAATTACATAACATAC";
+
+        #endregion
+
         #region 内部変数
 
         /// <summary>
@@ -25,7 +79,7 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         public TrustedKmerIndexTests()
         {
-            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), "tsumiki_trusted_kmer_tests_" + Guid.NewGuid().ToString("N"));
+            this._作業ディレクトリ = Path.Combine(Path.GetTempPath(), C_項目_tsumiki_trusted_kmer_tests + Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(this._作業ディレクトリ);
         }
 
@@ -39,11 +93,15 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_曖昧展開_上限超過を除外()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
             using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
             var l_候補 = Enumerable.Range(0, 8).Select(_ => new byte[] { 1, 2, 3, 4 }).ToArray();
             l_索引.V_登録_曖昧塩基あり(l_候補, 0);
-            l_索引.V_登録(V_変換_塩基ID列("ACGTACGT"));
+            l_索引.V_登録(V_変換_塩基ID列(C_塩基配列_ACGTACGT));
             _ = l_索引.V_カットオフ(1UL);
             Assert.Single(l_索引.Get_信頼kmer一覧());
         }
@@ -65,23 +123,23 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_挿入したkmerはどちらの向きでも含まれ未挿入のkmerは含まれない()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            var l_inserted = V_変換_塩基ID列("ACGTACGT");
-            var l_revComp = V_変換_塩基ID列(Util.V_逆相補("ACGTACGT"));
-            var l_neverInserted = V_変換_塩基ID列("TTTTTTTT");
-
-            // カットオフ (2) を超えるよう複数回登録する
+            var l_inserted = V_変換_塩基ID列(C_塩基配列_ACGTACGT);
+            var l_revComp = V_変換_塩基ID列(Util.V_逆相補(C_塩基配列_ACGTACGT));
+            var l_neverInserted = V_変換_塩基ID列(C_塩基配列_TTTTTTTT);
             for (var i = 0; i < 5; i++)
             {
                 l_インデックス.V_登録(l_inserted.AsSpan());
             }
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Assert.True(l_インデックス.Haskmer(l_inserted));
-            Assert.True(l_インデックス.Haskmer(l_revComp)); // 正規化されるため逆鎖側からの問い合わせでもヒットする
+            Assert.True(l_インデックス.Haskmer(l_revComp));
             Assert.False(l_インデックス.Haskmer(l_neverInserted));
         }
 
@@ -91,15 +149,15 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_カットオフ未満のkmerは除外される()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            var l_belowThreshold = V_変換_塩基ID列("GGGGCCCC");
-
-            l_インデックス.V_登録(l_belowThreshold.AsSpan()); // 1 回だけ = カットオフ 2 未満
-
+            var l_belowThreshold = V_変換_塩基ID列(C_塩基配列_GGGGCCCC);
+            l_インデックス.V_登録(l_belowThreshold.AsSpan());
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Assert.False(l_インデックス.Haskmer(l_belowThreshold));
         }
 
@@ -109,28 +167,27 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_カバレッジは順鎖と逆鎖のカウントを合算する()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            var l_forward = V_変換_塩基ID列("ACGTACGT");
-            var l_revComp = V_変換_塩基ID列(Util.V_逆相補("ACGTACGT"));
-
-            // 順鎖を 3 回、逆鎖を 2 回登録する
-            // カウント段階では別キー扱いだが、
-            // カットオフ後の正規化されたエントリでは合算されているはず
+            var l_forward = V_変換_塩基ID列(C_塩基配列_ACGTACGT);
+            var l_revComp = V_変換_塩基ID列(Util.V_逆相補(C_塩基配列_ACGTACGT));
             for (var i = 0; i < 3; i++)
             {
                 l_インデックス.V_登録(l_forward.AsSpan());
             }
+
             for (var i = 0; i < 2; i++)
             {
                 l_インデックス.V_登録(l_revComp.AsSpan());
             }
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_forward));
-            Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_revComp)); // 正規化されるため同じ値
+            Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_revComp));
         }
 
         /// <summary>
@@ -139,85 +196,70 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_存在しないkmerのカバレッジは0を返す()
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = 8, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 8,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            l_インデックス.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan());
-            l_インデックス.V_登録(V_変換_塩基ID列("AAAAAAAA").AsSpan());
-
+            l_インデックス.V_登録(V_変換_塩基ID列(C_塩基配列_AAAAAAAA).AsSpan());
+            l_インデックス.V_登録(V_変換_塩基ID列(C_塩基配列_AAAAAAAA).AsSpan());
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
-            Assert.Equal(0UL, l_インデックス.Get_カバレッジ(V_変換_塩基ID列("TTTTGGGG")));
+            Assert.Equal(0UL, l_インデックス.Get_カバレッジ(V_変換_塩基ID列(C_塩基配列_TTTTGGGG)));
         }
 
         /// <summary>
         /// 長い k での正規化とカバレッジ合算が正しく行われること
         /// </summary>
-        /// <remarks>
-        /// k が 32 を超え 64 以下のときの UInt128 経路と、64 を超えたときの KmerKey へのフォールバック経路をそれぞれ確かめる<br/>
-        /// 正規化とは、順鎖と逆鎖のどちらから問い合わせても同じ結果になることをいう
-        /// </remarks>
-        /// <remarks>
-        /// 150 bp リードでは k=31 のままだと 31 bp 以上の反復配列がすべて潰れ contig N50 が伸びないため、k=63 前後で正しく動くことは品質上重要
-        /// </remarks>
         /// <param name="p_k長"></param>
         [Theory]
-        [InlineData(33)] // UInt128 経路の下限
-        [InlineData(63)] // 150 bp リードでの実用値
-        [InlineData(64)] // UInt128 経路の上限 (ちょうど 128 bit を使い切る)
-        [InlineData(65)] // KmerKey フォールバック経路
+        [InlineData(33)]
+        [InlineData(63)]
+        [InlineData(64)]
+        [InlineData(65)]
         public void V_kmer長が32を超えても含有判定とカバレッジが正しく動く(int p_k長)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 1 };
-
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 1
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            // 逆相補と自己一致しないよう、非周期的な塩基列を決定的に生成する
-            var l_配列 = string.Concat(Enumerable.Range(0, p_k長).Select(i => "ACGGTCATTGAC"[(i * 7) % 12]));
+            var l_配列 = string.Concat(Enumerable.Range(0, p_k長).Select(i => C_塩基配列_ACGGTCATTGAC[(i * 7) % 12]));
             var l_inserted = V_変換_塩基ID列(l_配列);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(l_配列));
             var l_neverInserted = V_変換_塩基ID列(new string('T', p_k長));
-
             for (var i = 0; i < 3; i++)
             {
                 l_インデックス.V_登録(l_inserted.AsSpan());
             }
+
             for (var i = 0; i < 2; i++)
             {
                 l_インデックス.V_登録(l_revComp.AsSpan());
             }
 
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
-
             Assert.True(l_インデックス.Haskmer(l_inserted));
             Assert.True(l_インデックス.Haskmer(l_revComp));
             Assert.False(l_インデックス.Haskmer(l_neverInserted));
-
-            // 順鎖 3 回 + 逆鎖 2 回 が同一の正規化キーへ合算されているはず
             Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_inserted));
             Assert.Equal(5UL, l_インデックス.Get_カバレッジ(l_revComp));
         }
 
         /// <summary>
-        /// k=63 の直鎖配列で、EnumerateTrustedKmers が UInt128 経路でも正しく塩基列へ復元でき (UnpackMid)、隣接判定 (CountOutEdges) が成立することを確認する
+        /// k=63 の直鎖配列で、EnumerateTrustedKmers が UInt128 経路でも正しく塩基列へ復元でき (UnpackMid) 、隣接判定 (CountOutEdges) が成立することを確認する
         /// </summary>
-        /// <remarks>
-        /// パック/アンパックの往復が壊れていると unitig 構築が丸ごと機能しなくなるため、経路ごとに固定しておく
-        /// </remarks>
         [Fact]
         public void V_UInt128経路でも列挙と次数判定が正しく往復する()
         {
             const int l_k長 = 63;
-            // 70 塩基の非周期的な配列 (k=63 の k-mer が 8 個取れる)
-            var l_配列 = string.Concat(Enumerable.Range(0, 70).Select(i => "ACGGTCATTGACCTA"[(i * 11) % 15]));
-
+            var l_配列 = string.Concat(Enumerable.Range(0, 70).Select(i => C_塩基配列_ACGGTCATTGACCTA[(i * 11) % 15]));
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
-
             var l_kmers = l_インデックス.Get_信頼kmer一覧().ToList();
             Assert.NotEmpty(l_kmers);
             Assert.All(l_kmers, l_kmer => Assert.Equal(l_k長, l_kmer.Length));
-            // 復元した k-mer は必ず集合に含まれていなければならない
             Assert.All(l_kmers, l_kmer => Assert.True(l_インデックス.Haskmer(l_kmer)));
-
             var l_バイト列 = V_変換_塩基ID列(l_配列);
             Assert.Equal(1, l_インデックス.Get_出次数(l_バイト列.AsSpan(0, l_k長)));
             Assert.Equal(0, l_インデックス.Get_出次数(l_バイト列.AsSpan(l_バイト列.Length - l_k長, l_k長)));
@@ -230,15 +272,11 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_直鎖配列の内部では出次数1で末尾では0になる()
         {
-            const string l_配列 = "GCTAAAGACAATTACATAACATAC"; // 24 bp、非周期的 (内部に k=8 の重複なし)
+            const string l_配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC;
             const int l_k長 = 8;
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
             var l_バイト列 = V_変換_塩基ID列(l_配列);
-
-            // 途中の k-mer: ちょうど 1 通りだけ後続がある
             Assert.Equal(1, l_インデックス.Get_出次数(l_バイト列.AsSpan(0, l_k長)));
-
-            // 配列の末尾 k-mer: これ以上後続がない (out-degree 0)
             Assert.Equal(0, l_インデックス.Get_出次数(l_バイト列.AsSpan(l_バイト列.Length - l_k長, l_k長)));
         }
 
@@ -248,11 +286,10 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_配列の先頭では入次数が0になる()
         {
-            const string l_配列 = "GCTAAAGACAATTACATAACATAC";
+            const string l_配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC;
             const int l_k長 = 8;
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
             var l_バイト列 = V_変換_塩基ID列(l_配列);
-
             Assert.Equal(0, l_インデックス.Get_入次数(l_バイト列.AsSpan(0, l_k長)));
         }
 
@@ -262,16 +299,13 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_除去は両方の向きを取り除く()
         {
-            const string l_配列 = "GCTAAAGACAATTACATAACATAC";
+            const string l_配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC;
             const int l_k長 = 8;
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
             var l_kmer = V_変換_塩基ID列(l_配列[..l_k長]);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(l_配列[..l_k長]));
-
             Assert.True(l_インデックス.Haskmer(l_kmer));
-
             l_インデックス.V_除去(l_kmer);
-
             Assert.False(l_インデックス.Haskmer(l_kmer));
             Assert.False(l_インデックス.Haskmer(l_revComp));
         }
@@ -282,13 +316,9 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_信頼kmer一覧は期待した件数を返す()
         {
-            const string l_配列 = "GCTAAAGACAATTACATAACATAC"; // 24 bp、非周期的 (内部に k=8 の重複なし)
+            const string l_配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC;
             const int l_k長 = 8;
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
-
-            // 24 bp ・ k=8 の非周期的な直鎖配列は 24-8+1=17 個のユニーク k-mer 位置を持ち、
-            // 内部に重複 (自己一致・逆相補との一致) がないよう検証済みの配列なので、
-            // 正規化後もちょうど 17 件になるはず
             var l_count = l_インデックス.Get_信頼kmer一覧().Count();
             Assert.Equal(17, l_count);
         }
@@ -299,17 +329,11 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_直鎖配列の唯一の開始点を見つける()
         {
-            // "ACGT"の繰り返しだと逆相補と自己一致してしまい分岐点が
-            // 複雑になるため、非周期的な配列を使う
-            const string l_配列 = "GCTAAAGACAATTACATAACATAC"; // 非周期的
+            const string l_配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC;
             const int l_k長 = 8;
             using var l_インデックス = this.V_構築_直鎖索引(l_配列, l_k長);
             var l_バイト列 = V_変換_塩基ID列(l_配列);
-
             var l_firstKmers = l_インデックス.Get_開始kmer一覧();
-
-            // 開始 k-mer として、配列の先頭 (またはその正規化された逆鎖) が
-            // 含まれているはず
             var l_startKmer = l_バイト列.AsSpan(0, l_k長).ToArray();
             var l_startRevComp = V_変換_塩基ID列(Util.V_逆相補(l_配列[..l_k長]));
             Assert.Contains(l_firstKmers, l_開始kmer => l_開始kmer.SequenceEqual(l_startKmer) || l_開始kmer.SequenceEqual(l_startRevComp));
@@ -327,12 +351,23 @@ namespace Tsumiki.Tests.Utility
         public void Get_開始kmer一覧_kmerごとの判定と一致する(int p_k長)
         {
             var l_乱数 = new Random(901);
-            var l_本体 = string.Concat(Enumerable.Range(0, 3_000).Select(_ => "ACGT"[l_乱数.Next(4)]));
+            var l_本体 = string.Concat(Enumerable.Range(0, 3_000).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
             var l_変異 = l_本体[..1_500] + (l_本体[1_500] == 'A' ? 'C' : 'A') + l_本体[1_501..2_200];
             var l_反復 = l_本体[2_400..2_700] + l_本体[100..900];
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_k長, A_スレッド数 = 2 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_k長,
+                A_スレッド数 = 2
+            };
             using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
-            foreach (var l_配列 in new[] { l_本体, l_変異, l_反復 })
+            foreach (var l_配列 in new[]
+            {
+                l_本体,
+                l_変異,
+                l_反復
+            }
+
+            )
             {
                 var l_バイト列 = V_変換_塩基ID列(l_配列);
                 for (var i = 0; i + p_k長 <= l_バイト列.Length; i++)
@@ -351,7 +386,7 @@ namespace Tsumiki.Tests.Utility
                     l_期待.Add(l_kmer);
                 }
 
-                var l_逆相補 = V_変換_塩基ID列(Util.V_逆相補(string.Concat(l_kmer.Select(x => "ACGT"[x - 1]))));
+                var l_逆相補 = V_変換_塩基ID列(Util.V_逆相補(string.Concat(l_kmer.Select(x => Consts.塩基文字[x - 1]))));
                 if (l_インデックス.Is開始kmer(l_逆相補))
                 {
                     l_期待.Add(l_逆相補);
@@ -359,7 +394,6 @@ namespace Tsumiki.Tests.Utility
             }
 
             var l_結果 = l_インデックス.Get_開始kmer一覧();
-
             Assert.NotEmpty(l_期待);
             Assert.Equal(l_期待.Count, l_結果.Count);
             for (var i = 0; i < l_期待.Count; i++)
@@ -379,21 +413,29 @@ namespace Tsumiki.Tests.Utility
         /// <returns>塩基 ID 列</returns>
         private static byte[] V_変換_塩基ID列(string p_kmer)
         {
-            return [.. p_kmer.Select(c => c switch { 'A' => Consts.塩基ID.A, 'C' => Consts.塩基ID.C, 'G' => Consts.塩基ID.G, 'T' => Consts.塩基ID.T, _ => throw new InvalidOperationException(), })];
+            return[..p_kmer.Select(c => c switch
+            {
+                'A' => Consts.塩基ID.A,
+                'C' => Consts.塩基ID.C,
+                'G' => Consts.塩基ID.G,
+                'T' => Consts.塩基ID.T,
+                _ => throw new InvalidOperationException(),
+            })];
         }
 
         /// <summary>
         /// 長さ len の直鎖配列 (分岐なし) の全 k-mer をカットオフ以上登録する
         /// </summary>
-        /// <remarks>
-        /// GraphSimplifier のテストとも共通で使える小さなヘルパー
-        /// </remarks>
         /// <param name="p_配列">元の配列</param>
         /// <param name="p_kmer長">k-mer 長</param>
         /// <returns>構築した索引</returns>
         private TrustedKmerIndex V_構築_直鎖索引(string p_配列, int p_kmer長)
         {
-            ConfigurationManager.A_実行時引数 = new Parameters { A_k長 = p_kmer長, A_スレッド数 = 1 };
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = p_kmer長,
+                A_スレッド数 = 1
+            };
             var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
             var l_バイト列 = V_変換_塩基ID列(p_配列);
             for (var i = 0; i + p_kmer長 <= l_バイト列.Length; i++)
@@ -403,11 +445,11 @@ namespace Tsumiki.Tests.Utility
                     l_インデックス.V_登録(l_バイト列.AsSpan(i, p_kmer長));
                 }
             }
+
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             return l_インデックス;
         }
 
         #endregion
-
     }
 }

@@ -9,26 +9,48 @@ namespace Tsumiki.Utilities
     {
         #region 内部変数
 
-        /// <summary>窓の長さ</summary>
+        /// <summary>
+        /// 窓の長さ
+        /// </summary>
         private readonly int _長さ;
-        /// <summary>上位語の有効ビット</summary>
+
+        /// <summary>
+        /// 上位語の有効ビット
+        /// </summary>
         private readonly UInt128 _マスク;
-        /// <summary>順鎖の上位語</summary>
+
+        /// <summary>
+        /// 順鎖の上位語
+        /// </summary>
         private UInt128 _順上;
-        /// <summary>順鎖の下位語</summary>
+
+        /// <summary>
+        /// 順鎖の下位語
+        /// </summary>
         private UInt128 _順下;
-        /// <summary>逆鎖の上位語</summary>
+
+        /// <summary>
+        /// 逆鎖の上位語
+        /// </summary>
         private UInt128 _逆上;
-        /// <summary>逆鎖の下位語</summary>
+
+        /// <summary>
+        /// 逆鎖の下位語
+        /// </summary>
         private UInt128 _逆下;
-        /// <summary>連続する有効塩基数</summary>
+
+        /// <summary>
+        /// 連続する有効塩基数
+        /// </summary>
         private int _有効数;
 
         #endregion
 
         #region コンストラクタ
 
-        /// <summary>空の窓を作る</summary>
+        /// <summary>
+        /// 空の窓を作る
+        /// </summary>
         /// <param name="p_長さ">窓の長さ</param>
         public RollingKmer(int p_長さ)
         {
@@ -43,11 +65,13 @@ namespace Tsumiki.Utilities
 
         #region 公開メソッド
 
-        /// <summary>末尾へ塩基を足し、完成した窓の正準キーを返す</summary>
+        /// <summary>
+        /// 末尾へ塩基を足し、完成した窓の正準キーを返す
+        /// </summary>
         /// <param name="p_塩基">追加する塩基</param>
         /// <param name="p_キー">正準キー</param>
         /// <returns>有効塩基だけで窓が埋まれば true</returns>
-        public bool Try追加(char p_塩基, out (UInt128 A_上位, UInt128 A_下位) p_キー)
+        public bool Is成功_追加(char p_塩基, out (UInt128 A_上位, UInt128 A_下位) p_キー)
         {
             p_キー = default;
             var l_ID = Util.Get_塩基ID(p_塩基);
@@ -78,8 +102,7 @@ namespace Tsumiki.Utilities
                 return false;
             }
 
-            p_キー = this._順上 < this._逆上 || (this._順上 == this._逆上 && this._順下 <= this._逆下)
-                ? (this._順上, this._順下) : (this._逆上, this._逆下);
+            p_キー = this._順上 < this._逆上 || (this._順上 == this._逆上 && this._順下 <= this._逆下) ? (this._順上, this._順下) : (this._逆上, this._逆下);
             return true;
         }
 
