@@ -14,6 +14,16 @@ namespace Tsumiki.Cores.Pipeline
         #region 定数
 
         /// <summary>
+        /// ファイル名 fq
+        /// </summary>
+        private const string C_ファイル名_fq = ".fq";
+
+        /// <summary>
+        /// 項目 preprocess
+        /// </summary>
+        private const string C_項目_preprocess = "preprocess";
+
+        /// <summary>
         /// 前処理済みリードのファイル名の幹
         /// </summary>
         private const string C_前処理済みの幹 = "preprocessed";
@@ -42,8 +52,8 @@ namespace Tsumiki.Cores.Pipeline
             p_引数.A_無誤り区間の度数群.Clear();
             if (p_引数.A_Is再開 && p_引数.A_Isエラー訂正 && Get_再利用できる訂正済み(p_引数, p_一時ディレクトリ) is { } l_再利用)
             {
-                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用[0].A_リード1);
-                l_再利用.ForEach(x => V_読込_度数(p_引数, x.A_リード1));
+                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_再利用[0].A_順リード);
+                l_再利用.ForEach(x => V_読込_度数(p_引数, x.A_順リード));
                 p_引数.Set_ライブラリ群(l_再利用);
                 V_削除_前処理済みリード(p_一時ディレクトリ);
                 return;
@@ -66,7 +76,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
         public static void V_削除_前処理済みリード(string p_一時ディレクトリ)
         {
-            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, C_前処理済みの幹, ".fq"))
+            foreach (var l_パス in 中間データ置き場.Get_一覧(p_一時ディレクトリ, C_前処理済みの幹, C_ファイル名_fq))
             {
                 中間データ置き場.V_削除(l_パス);
                 Logger.V_出力(メッセージID.中間リードを削除, l_パス);
@@ -84,39 +94,36 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ">出力先</param>
         private static void V_前処理(Parameters p_引数, string p_一時ディレクトリ)
         {
-            if (!p_引数.Hasペア)
+            if (!p_引数.A_Hasペア)
             {
                 Logger.V_出力(メッセージID.前処理省略_ペアなし);
                 return;
             }
 
             Logger.V_出力(メッセージID.前処理開始);
-            using var l_計測 = new StageTimer("preprocess");
+            using var l_計測 = new StageTimer(C_項目_preprocess);
             var l_ペアなしを飛ばした = false;
-
             var l_署名 = Get_署名(p_引数);
-            List<(string A_リード1, string A_リード2)> l_出力群 = [];
+            List<(string A_順リード, string A_逆リード)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
-                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
-
-                if (string.IsNullOrWhiteSpace(A_リード2))
+                var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
+                if (string.IsNullOrWhiteSpace(l_逆リード))
                 {
-                    l_出力群.Add((A_リード1, string.Empty));
+                    l_出力群.Add((l_順リード, string.Empty));
                     l_ペアなしを飛ばした = true;
                     continue;
                 }
 
                 var l_出力1 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 1);
                 var l_出力2 = Get_中間パス(p_一時ディレクトリ, C_前処理済みの幹, i, 2);
-
                 if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
                 }
                 else
                 {
-                    var l_前処理統計 = Preprocessor.V_前処理_リードファイル(A_リード1, A_リード2, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    var l_前処理統計 = Preprocessor.V_前処理_リードファイル(l_順リード, l_逆リード, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
                     Preprocessor.V_出力_前処理統計(l_前処理統計);
                     V_保存_記録(l_署名, l_出力1, l_出力2);
                 }
@@ -130,7 +137,6 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             p_引数.Set_ライブラリ群(l_出力群);
-
             Logger.V_出力_タイムスタンプ();
         }
 
@@ -142,16 +148,14 @@ namespace Tsumiki.Cores.Pipeline
         private static void V_訂正(Parameters p_引数, string p_一時ディレクトリ)
         {
             Logger.V_出力(メッセージID.エラー訂正開始);
-
             var l_署名 = Get_署名(p_引数);
-            List<(string A_リード1, string A_リード2)> l_出力群 = [];
+            List<(string A_順リード, string A_逆リード)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
-                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
-                var l_Hasリード2 = !string.IsNullOrWhiteSpace(A_リード2);
+                var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
+                var l_Has逆リード = !string.IsNullOrWhiteSpace(l_逆リード);
                 var l_出力1 = Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 1);
-                var l_出力2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
-
+                var l_出力2 = l_Has逆リード ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
                 if (p_引数.A_Is再開 && StageCheckpoint.Is再利用可能(l_署名!, l_出力1, l_出力2))
                 {
                     Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力1);
@@ -159,7 +163,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
                 else
                 {
-                    var l_度数 = ErrorCorrector.V_訂正_リードファイル(A_リード1, l_Hasリード2 ? A_リード2 : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
+                    var l_度数 = ErrorCorrector.V_訂正_リードファイル(l_順リード, l_Has逆リード ? l_逆リード : null, p_一時ディレクトリ, l_出力1, l_出力2, p_引数.Get_Phredオフセット(i));
                     if (l_度数 is not null)
                     {
                         p_引数.A_無誤り区間の度数群.Add(l_度数);
@@ -176,9 +180,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             p_引数.Set_ライブラリ群(l_出力群);
-
             V_削除_前処理済みリード(p_一時ディレクトリ);
-
             Logger.V_出力_タイムスタンプ();
         }
 
@@ -239,18 +241,18 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_引数">作業用設定</param>
         /// <param name="p_一時ディレクトリ">処理済みリードの置き場</param>
         /// <returns>そのまま使える訂正済みリード、1 つでも欠けていれば null</returns>
-        private static List<(string A_リード1, string A_リード2)>? Get_再利用できる訂正済み(Parameters p_引数, string p_一時ディレクトリ)
+        private static List<(string A_順リード, string A_逆リード)>? Get_再利用できる訂正済み(Parameters p_引数, string p_一時ディレクトリ)
         {
             var l_訂正前設定 = p_引数.Get_複製();
-            if (p_引数.A_Is前処理 && p_引数.Hasペア)
+            if (p_引数.A_Is前処理 && p_引数.A_Hasペア)
             {
-                List<(string A_リード1, string A_リード2)> l_前処理済み群 = [];
+                List<(string A_順リード, string A_逆リード)> l_前処理済み群 = [];
                 for (var i = 0; i < p_引数.A_ライブラリ数; i++)
                 {
-                    var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
-                    if (string.IsNullOrWhiteSpace(A_リード2))
+                    var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
+                    if (string.IsNullOrWhiteSpace(l_逆リード))
                     {
-                        l_前処理済み群.Add((A_リード1, string.Empty));
+                        l_前処理済み群.Add((l_順リード, string.Empty));
                         continue;
                     }
 
@@ -268,12 +270,12 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             var l_署名 = StageCheckpoint.Get_入力署名(l_訂正前設定);
-            List<(string A_リード1, string A_リード2)> l_訂正済み群 = [];
+            List<(string A_順リード, string A_逆リード)> l_訂正済み群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
-                var l_Hasリード2 = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_リード2);
+                var l_Has逆リード = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_逆リード);
                 var l_訂正済み1 = Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 1);
-                var l_訂正済み2 = l_Hasリード2 ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
+                var l_訂正済み2 = l_Has逆リード ? Get_中間パス(p_一時ディレクトリ, C_訂正済みの幹, i, 2) : null;
                 if (!StageCheckpoint.Is再利用可能(l_署名, l_訂正済み1, l_訂正済み2))
                 {
                     return null;

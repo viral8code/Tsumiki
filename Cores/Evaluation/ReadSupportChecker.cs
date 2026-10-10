@@ -29,7 +29,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_r長">支持を問う r-mer の長さ、2 bit パックの上限を超えられない</param>
         /// <returns>検査結果、調べられなかった場合は null</returns>
-        public static 支持検査結果? Get_検査結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_r長)
+        public static 支持検査結果? Get_検査結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, int p_r長)
         {
             if (p_r長 is < 1 or > 64 || !File.Exists(p_FASTAパス))
             {
@@ -45,7 +45,6 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_観測状態 = new byte[l_表.Count];
             V_記録_支持(l_表, l_観測状態, p_ライブラリ群, p_r長);
-
             return Get_集計(l_全件, l_位置ごとの番号, l_観測状態, p_r長);
         }
 
@@ -77,7 +76,6 @@ namespace Tsumiki.Cores.Evaluation
         {
             Dictionary<UInt128, int> l_表 = [];
             Dictionary<string, int[]> l_位置ごと = [];
-
             foreach (var (l_ID, l_配列) in p_全件)
             {
                 var l_数 = l_配列.Length - p_r長 + 1;
@@ -90,7 +88,7 @@ namespace Tsumiki.Cores.Evaluation
                 var l_番号列 = new int[l_数];
                 for (var i = 0; i < l_数; i++)
                 {
-                    if (!KmerPacking.TryGet_正規化キー(l_配列, i, p_r長, out var l_正規形))
+                    if (!KmerPacking.Is成功_正規化キー(l_配列, i, p_r長, out var l_正規形))
                     {
                         l_番号列[i] = -1;
                         continue;
@@ -118,13 +116,12 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_観測状態">通し番号ごとの観測状態</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_r長">支持を問う r-mer の長さ</param>
-        private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, int p_r長)
+        private static void V_記録_支持(Dictionary<UInt128, int> p_表, byte[] p_観測状態, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, int p_r長)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_バッチ = new string[C_照合バッチサイズ];
             var l_件数 = 0;
-
-            foreach (var l_リード in FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]))
+            foreach (var l_リード in FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]))
             {
                 l_バッチ[l_件数++] = l_リード;
                 if (l_件数 == C_照合バッチサイズ)
@@ -157,8 +154,7 @@ namespace Tsumiki.Cores.Evaluation
                 var l_窓 = new RollingKmer(p_r長);
                 foreach (var l_塩基 in l_リード)
                 {
-                    if (l_窓.Try追加(l_塩基, out var l_正規形)
-                        && p_表.TryGetValue(l_正規形.A_下位, out var l_番号))
+                    if (l_窓.Is成功_追加(l_塩基, out var l_正規形) && p_表.TryGetValue(l_正規形.A_下位, out var l_番号))
                     {
                         p_観測状態[l_番号] = 1;
                     }
@@ -179,7 +175,6 @@ namespace Tsumiki.Cores.Evaluation
             var l_調べた = 0L;
             var l_支持なし = 0L;
             List<支持のない区間> l_区間 = [];
-
             foreach (var (l_ID, _) in p_全件)
             {
                 var l_番号列 = p_位置ごとの番号[l_ID];

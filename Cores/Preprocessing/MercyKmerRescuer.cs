@@ -38,10 +38,8 @@ namespace Tsumiki.Cores.Preprocessing
         {
             using var l_計測 = new StageTimer($"mercy k={p_k長}");
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
-
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
-
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
             var l_追加数 = 0;
             foreach (var (_, l_候補中身) in l_候補.OrderBy(x => x.Key))
             {
@@ -50,7 +48,7 @@ namespace Tsumiki.Cores.Preprocessing
                     continue;
                 }
 
-                if (p_kmerインデックス.Try追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
+                if (p_kmerインデックス.Is成功_追加_信頼kmer(l_候補中身.A_kmer, (ulong)l_候補中身.A_観測数))
                 {
                     l_追加数++;
                 }
@@ -92,7 +90,6 @@ namespace Tsumiki.Cores.Preprocessing
 
             var l_塩基列 = Util.V_変換_塩基列(p_リード);
             var l_窓数 = l_塩基列.Length - p_k長 + 1;
-
             var l_有効 = new bool[l_窓数];
             var l_信頼 = new bool[l_窓数];
             if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
@@ -123,7 +120,7 @@ namespace Tsumiki.Cores.Preprocessing
                     for (var j = i; j < l_終わり; j++)
                     {
                         var l_窓 = l_塩基列.AsSpan(j, p_k長);
-                        var l_キー = KmerPacking.TryGet_正規化キー(l_窓);
+                        var l_キー = KmerPacking.Get_正規化キー(l_窓);
                         var l_控え = l_窓.ToArray();
                         _ = p_候補.AddOrUpdate(l_キー, _ => (1, l_控え), (_, l_既存) => (l_既存.A_観測数 + 1, l_既存.A_kmer));
                     }
@@ -146,7 +143,7 @@ namespace Tsumiki.Cores.Preprocessing
             var l_窓 = new RollingKmer(p_k長);
             for (var i = 0; i < p_リード.Length; i++)
             {
-                if (!l_窓.Try追加(p_リード[i], out var l_キー))
+                if (!l_窓.Is成功_追加(p_リード[i], out var l_キー))
                 {
                     continue;
                 }

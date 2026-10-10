@@ -122,16 +122,13 @@ namespace Tsumiki.Cores.Mapping
             }
 
             var l_候補数 = this.Get_候補数(p_リード);
-            // 種の数の多い順、同数なら最初に現れた順 (Dictionary の列挙順) に並べる
-            var l_候補順 = l_候補数
-                .Select((x, i) => (A_候補: x.Key, A_数: x.Value, A_順: i))
-                .ToArray();
+            var l_候補順 = l_候補数.Select((x, i) => (A_候補: x.Key, A_数: x.Value, A_順: i)).ToArray();
             Array.Sort(l_候補順, (x, y) => x.A_数 != y.A_数 ? y.A_数.CompareTo(x.A_数) : x.A_順.CompareTo(y.A_順));
             string? l_逆相補リード = null;
-            foreach (var (A_候補, A_数, A_順) in l_候補順.Take(C_種ヒット上限))
+            foreach (var (l_候補, l_数, l_順) in l_候補順.Take(C_種ヒット上限))
             {
-                var l_照合リード = A_候補.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
-                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, A_候補));
+                var l_照合リード = l_候補.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補));
             }
 
             return l_配置候補;
@@ -150,7 +147,6 @@ namespace Tsumiki.Cores.Mapping
             }
 
             var l_最良 = p_配置候補.MaxBy(x => x.A_スコア);
-
             if (l_最良.A_スコア < C_最小スコア)
             {
                 return リード配置.C_配置なし;
@@ -165,11 +161,14 @@ namespace Tsumiki.Cores.Mapping
                 }
             }
 
-            return l_最良 with { A_信頼度 = Get_信頼度(l_最良.A_スコア, l_次善スコア) };
+            return l_最良 with
+            {
+                A_信頼度 = Get_信頼度(l_最良.A_スコア, l_次善スコア)
+            };
         }
 
         /// <summary>
-        /// ペアの 2 本の候補から、同じ配列に向かい合わせで p_断片長の上限 未満に収まり、どちらも単独の最良から 組むために譲れる得点 以内の組のうち、得点の合計が最も高いものを選ぶ。
+        /// ペアの 2 本の候補から、同じ配列に向かい合わせで p_断片長の上限 未満に収まり、どちらも単独の最良から 組むために譲れる得点 以内の組のうち、得点の合計が最も高いものを選ぶ<br/>
         /// 信頼度は、別の場所を含む次に良い組との得点差 (反復に入った片方も、相方の近くのコピーに置けば組として一意に決まる)
         /// </summary>
         /// <param name="p_候補1"></param>
@@ -226,91 +225,16 @@ namespace Tsumiki.Cores.Mapping
         }
 
         /// <summary>
-        /// 2 本の配置が同じ配列で向かい合い、右を向く側の始まりから左を向く側の終わりまでが p_断片長の上限 未満か
-        /// </summary>
-        /// <param name="p_配置1"></param>
-        /// <param name="p_配置2"></param>
-        /// <param name="p_断片長の上限"></param>
-        /// <returns></returns>
-        private static bool Is向かい合う組(リード配置 p_配置1, リード配置 p_配置2, int p_断片長の上限)
-        {
-            if (p_配置1.A_配列番号 != p_配置2.A_配列番号 || p_配置1.A_Is逆鎖 == p_配置2.A_Is逆鎖 || p_配置1.A_整列位置群.Count == 0 || p_配置2.A_整列位置群.Count == 0)
-            {
-                return false;
-            }
-
-            var (l_右向き, l_左向き) = p_配置1.A_Is逆鎖 ? (p_配置2, p_配置1) : (p_配置1, p_配置2);
-            var l_始まり = l_右向き.A_整列位置群[0].A_参照位置;
-            var l_終わり = l_左向き.A_整列位置群[^1].A_参照位置 + 1;
-            return l_始まり <= l_終わり && l_終わり - l_始まり < p_断片長の上限;
-        }
-
-        /// <summary>
-        /// 最良と次善の得点差から信頼度 (0〜60) を出す
-        /// </summary>
-        /// <param name="p_最良スコア"></param>
-        /// <param name="p_次善スコア"></param>
-        /// <returns></returns>
-        private static int Get_信頼度(int p_最良スコア, int p_次善スコア)
-        {
-            return Math.Clamp((p_最良スコア - Math.Max(0, p_次善スコア)) * 3, 0, 60);
-        }
-
-        #endregion
-
-        #region 内部メソッド
-
-        /// <summary>
-        /// 種索引を構築する
-        /// </summary>
-        private void V_構築_種索引()
-        {
-            for (var i = 0; i < this._参照配列群.Count; i++)
-            {
-                var l_配列 = this._参照配列群[i];
-                for (var j = 0; j + C_種長 <= l_配列.Length; j += C_種間隔)
-                {
-                    if (!KmerPacking.TryGet_パック(l_配列, j, C_種長, out var l_順鎖))
-                    {
-                        continue;
-                    }
-
-                    this.V_登録_種(l_順鎖, new 種ヒット(i, j, false));
-                    this.V_登録_種(KmerPacking.Get_逆相補(l_順鎖, C_種長), new 種ヒット(i, j, true));
-                }
-            }
-        }
-
-        /// <summary>
-        /// 種を索引へ登録する
-        /// </summary>
-        /// <param name="p_種"></param>
-        /// <param name="p_ヒット"></param>
-        private void V_登録_種(UInt128 p_種, 種ヒット p_ヒット)
-        {
-            if (!this._種索引.TryGetValue(p_種, out var l_ヒット群))
-            {
-                l_ヒット群 = [];
-                this._種索引[p_種] = l_ヒット群;
-            }
-
-            if (l_ヒット群.Count < C_種ヒット上限)
-            {
-                l_ヒット群.Add(p_ヒット);
-            }
-        }
-
-        /// <summary>
         /// 種の対角線ごとに候補を数える
         /// </summary>
         /// <param name="p_リード"></param>
         /// <returns>候補とそれを支持する種の数</returns>
-        internal Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
+        public Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> Get_候補数(string p_リード)
         {
-            Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = new(配置候補比較器.A_既定);
+            Dictionary<(int A_配列番号, bool A_Is逆鎖, int A_対角線), int> l_候補数 = new(配置候補比較器.C_既定);
             for (var i = 0; i + C_種長 <= p_リード.Length; i++)
             {
-                if (!KmerPacking.TryGet_パック(p_リード, i, C_種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
+                if (!KmerPacking.Is成功_パック(p_リード, i, C_種長, out var l_種) || !this._種索引.TryGetValue(l_種, out var l_ヒット群))
                 {
                     continue;
                 }
@@ -327,96 +251,13 @@ namespace Tsumiki.Cores.Mapping
         }
 
         /// <summary>
-        /// 2 つの配置が別の場所にあるかを返す
-        /// </summary>
-        /// <param name="p_基準"></param>
-        /// <param name="p_比較対象"></param>
-        /// <returns>別の配置なら true</returns>
-        private static bool Is異なる配置(リード配置 p_基準, リード配置 p_比較対象)
-        {
-            if (p_基準.A_配列番号 != p_比較対象.A_配列番号 || p_基準.A_Is逆鎖 != p_比較対象.A_Is逆鎖)
-            {
-                return true;
-            }
-
-            if (p_基準.A_整列位置群.Count == 0 || p_比較対象.A_整列位置群.Count == 0)
-            {
-                return true;
-            }
-
-            var l_基準の開始 = p_基準.A_整列位置群.Min(x => x.A_参照位置);
-            var l_基準の終了 = p_基準.A_整列位置群.Max(x => x.A_参照位置);
-            var l_比較対象の開始 = p_比較対象.A_整列位置群.Min(x => x.A_参照位置);
-            var l_比較対象の終了 = p_比較対象.A_整列位置群.Max(x => x.A_参照位置);
-            var l_重なり = Math.Min(l_基準の終了, l_比較対象の終了) - Math.Max(l_基準の開始, l_比較対象の開始) + 1;
-            return l_重なり * 2 < Math.Min(p_基準.A_整列位置群.Count, p_比較対象.A_整列位置群.Count);
-        }
-
-        /// <summary>
-        /// 候補の対角線でリードが参照と完全に一致し、帯の左側に同じ得点の一致が無ければ、帯つきの整列と同じ結果を直接返す
-        /// </summary>
-        /// <param name="p_リード">元のリード</param>
-        /// <param name="p_照合リード">候補の向きに直したリード</param>
-        /// <param name="p_参照">参照配列</param>
-        /// <param name="p_候補">候補</param>
-        /// <returns>整列と同じ配置、当てはまらなければ null (帯つきの整列で求める)</returns>
-        private static リード配置? Get_完全一致の配置(string p_リード, string p_照合リード, string p_参照, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
-        {
-            var l_長さ = p_照合リード.Length;
-            if (p_候補.A_対角線 < C_帯域幅 || p_候補.A_対角線 + l_長さ + C_帯域幅 > p_参照.Length
-                || !p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線, l_長さ)))
-            {
-                return null;
-            }
-
-            for (var l_ずれ = 1; l_ずれ <= C_帯域幅; l_ずれ++)
-            {
-                if (p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線 - l_ずれ, l_長さ)))
-                {
-                    return null;
-                }
-            }
-
-            var l_位置群 = new List<整列位置>(l_長さ);
-            for (var i = 1; i <= l_長さ; i++)
-            {
-                l_位置群.Add(new 整列位置(p_候補.A_Is逆鎖 ? p_リード.Length - i : i - 1, p_候補.A_対角線 + i - 1));
-            }
-
-            return new リード配置(p_候補.A_配列番号, p_候補.A_Is逆鎖, l_長さ * C_一致得点, 0, l_位置群);
-        }
-
-        /// <summary>
-        /// 帯 [p_左, p_右] のすぐ外側の 2 マスを p_値 で埋める (帯の内側はその行の計算で上書きされる)
-        /// </summary>
-        /// <param name="p_行">1 行分の得点</param>
-        /// <param name="p_左">帯の左端</param>
-        /// <param name="p_右">帯の右端</param>
-        /// <param name="p_幅">列の最大番号</param>
-        /// <param name="p_値">埋める値</param>
-        private static void V_埋める_帯の外(Span<int> p_行, int p_左, int p_右, int p_幅, int p_値)
-        {
-            if (p_左 > p_右)
-            {
-                p_行.Slice(Math.Min(p_左 - 1, p_幅), Math.Max(0, p_幅 - p_左 + 2)).Fill(p_値);
-                return;
-            }
-
-            p_行[p_左 - 1] = p_値;
-            if (p_右 < p_幅)
-            {
-                p_行[p_右 + 1] = p_値;
-            }
-        }
-
-        /// <summary>
         /// 候補の近傍で半大域整列を行う
         /// </summary>
         /// <param name="p_リード"></param>
         /// <param name="p_照合リード">候補の向きに合わせたリード</param>
         /// <param name="p_候補"></param>
         /// <returns>整列した配置</returns>
-        private リード配置 Get_整列(string p_リード, string p_照合リード, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
+        public リード配置 Get_整列(string p_リード, string p_照合リード, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
         {
             var l_照合リード = p_照合リード;
             var l_参照 = this._参照配列群[p_候補.A_配列番号];
@@ -448,8 +289,7 @@ namespace Tsumiki.Cores.Mapping
                 var l_経路 = l_経路領域.AsSpan(0, l_要素数);
                 var l_最小値 = int.MinValue / 4;
                 var l_行数 = l_照合リード.Length;
-                ref readonly var r_照合リード = ref MemoryMarshal.GetReference(l_照合リード.AsSpan());
-
+                ref readonly var l_r_照合リード = ref MemoryMarshal.GetReference(l_照合リード.AsSpan());
                 l_前の得点.Clear();
                 l_前の削除得点.Clear();
                 l_前の挿入得点.Fill(l_最小値);
@@ -463,7 +303,6 @@ namespace Tsumiki.Cores.Mapping
                     var l_初期化幅 = Math.Max(0, l_初期化右 - l_初期化左 + 1);
                     l_経路.Slice(l_行頭 + Math.Min(l_初期化左, l_幅), l_初期化幅).Clear();
                     l_経路[l_行頭] = 1;
-
                     var l_左 = Math.Max(1, l_中心 - C_帯域幅 * 2);
                     var l_右 = Math.Min(l_幅, l_中心 + C_帯域幅 * 2);
                     if (i == l_行数)
@@ -481,38 +320,34 @@ namespace Tsumiki.Cores.Mapping
 
                     l_今の得点[0] = C_ギャップ開始罰点 + (i - 1) * C_ギャップ延長罰点;
                     l_今の挿入得点[0] = l_今の得点[0];
-
                     Debug.Assert(i - 1 < l_照合リード.Length);
-                    var l_リード塩基 = Unsafe.Add(ref Unsafe.AsRef(in r_照合リード), i - 1);
+                    var l_リード塩基 = Unsafe.Add(ref Unsafe.AsRef(in l_r_照合リード), i - 1);
                     var l_参照帯 = l_参照.AsSpan(l_開始, l_幅);
                     var l_経路行 = l_経路.Slice(l_行頭, l_列数);
                     var l_斜めの得点 = l_左 - 1 < l_列数 ? l_前の得点[l_左 - 1] : 0;
                     var l_左の得点 = l_左 - 1 < l_列数 ? l_今の得点[l_左 - 1] : 0;
                     var l_左の削除得点 = l_左 - 1 < l_列数 ? l_今の削除得点[l_左 - 1] : 0;
-
-                    // 内側のループが触る添字は [l_左, l_右] (l_左 >= 1、l_右 <= l_幅 = 列数 - 1)、参照帯は j - 1 で、どれも各領域の長さに収まる
                     Debug.Assert(l_左 > l_右 || (l_左 >= 1 && l_右 < l_列数));
                     Debug.Assert(l_左 > l_右 || (l_右 - 1 >= 0 && l_右 - 1 < l_参照帯.Length));
-                    Debug.Assert(l_前の得点.Length == l_列数 && l_前の挿入得点.Length == l_列数 && l_今の得点.Length == l_列数
-                        && l_今の挿入得点.Length == l_列数 && l_今の削除得点.Length == l_列数 && l_経路行.Length == l_列数);
-                    ref var r_前の得点 = ref MemoryMarshal.GetReference(l_前の得点);
-                    ref var r_前の挿入得点 = ref MemoryMarshal.GetReference(l_前の挿入得点);
-                    ref var r_今の得点 = ref MemoryMarshal.GetReference(l_今の得点);
-                    ref var r_今の挿入得点 = ref MemoryMarshal.GetReference(l_今の挿入得点);
-                    ref var r_今の削除得点 = ref MemoryMarshal.GetReference(l_今の削除得点);
-                    ref readonly var r_参照帯 = ref MemoryMarshal.GetReference(l_参照帯);
-                    ref var r_経路行 = ref MemoryMarshal.GetReference(l_経路行);
+                    Debug.Assert(l_前の得点.Length == l_列数 && l_前の挿入得点.Length == l_列数 && l_今の得点.Length == l_列数 && l_今の挿入得点.Length == l_列数 && l_今の削除得点.Length == l_列数 && l_経路行.Length == l_列数);
+                    ref var l_r_前の得点 = ref MemoryMarshal.GetReference(l_前の得点);
+                    ref var l_r_前の挿入得点 = ref MemoryMarshal.GetReference(l_前の挿入得点);
+                    ref var l_r_今の得点 = ref MemoryMarshal.GetReference(l_今の得点);
+                    ref var l_r_今の挿入得点 = ref MemoryMarshal.GetReference(l_今の挿入得点);
+                    ref var l_r_今の削除得点 = ref MemoryMarshal.GetReference(l_今の削除得点);
+                    ref readonly var l_r_参照帯 = ref MemoryMarshal.GetReference(l_参照帯);
+                    ref var l_r_経路行 = ref MemoryMarshal.GetReference(l_経路行);
                     for (var j = l_左; j <= l_右; j++)
                     {
-                        var l_上の得点 = Unsafe.Add(ref r_前の得点, j);
-                        var l_対角 = l_斜めの得点 + (l_リード塩基 == Unsafe.Add(ref Unsafe.AsRef(in r_参照帯), j - 1) ? C_一致得点 : C_不一致罰点);
-                        var l_挿入 = Math.Max(l_上の得点 + C_ギャップ開始罰点, Unsafe.Add(ref r_前の挿入得点, j) + C_ギャップ延長罰点);
+                        var l_上の得点 = Unsafe.Add(ref l_r_前の得点, j);
+                        var l_対角 = l_斜めの得点 + (l_リード塩基 == Unsafe.Add(ref Unsafe.AsRef(in l_r_参照帯), j - 1) ? C_一致得点 : C_不一致罰点);
+                        var l_挿入 = Math.Max(l_上の得点 + C_ギャップ開始罰点, Unsafe.Add(ref l_r_前の挿入得点, j) + C_ギャップ延長罰点);
                         var l_削除 = Math.Max(l_左の得点 + C_ギャップ開始罰点, l_左の削除得点 + C_ギャップ延長罰点);
                         var l_得点 = Math.Max(l_対角, Math.Max(l_挿入, l_削除));
-                        Unsafe.Add(ref r_今の挿入得点, j) = l_挿入;
-                        Unsafe.Add(ref r_今の削除得点, j) = l_削除;
-                        Unsafe.Add(ref r_今の得点, j) = l_得点;
-                        Unsafe.Add(ref r_経路行, j) = l_得点 == l_対角 ? (byte)0 : l_得点 == l_挿入 ? (byte)1 : (byte)2;
+                        Unsafe.Add(ref l_r_今の挿入得点, j) = l_挿入;
+                        Unsafe.Add(ref l_r_今の削除得点, j) = l_削除;
+                        Unsafe.Add(ref l_r_今の得点, j) = l_得点;
+                        Unsafe.Add(ref l_r_経路行, j) = l_得点 == l_対角 ? (byte)0 : l_得点 == l_挿入 ? (byte)1 : (byte)2;
                         l_斜めの得点 = l_上の得点;
                         l_左の得点 = l_得点;
                         l_左の削除得点 = l_削除;
@@ -567,6 +402,163 @@ namespace Tsumiki.Cores.Mapping
             {
                 ArrayPool<int>.Shared.Return(l_得点領域);
                 ArrayPool<byte>.Shared.Return(l_経路領域);
+            }
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 2 本の配置が同じ配列で向かい合い、右を向く側の始まりから左を向く側の終わりまでが p_断片長の上限 未満か
+        /// </summary>
+        /// <param name="p_配置1"></param>
+        /// <param name="p_配置2"></param>
+        /// <param name="p_断片長の上限"></param>
+        /// <returns></returns>
+        private static bool Is向かい合う組(リード配置 p_配置1, リード配置 p_配置2, int p_断片長の上限)
+        {
+            if (p_配置1.A_配列番号 != p_配置2.A_配列番号 || p_配置1.A_Is逆鎖 == p_配置2.A_Is逆鎖 || p_配置1.A_整列位置群.Count == 0 || p_配置2.A_整列位置群.Count == 0)
+            {
+                return false;
+            }
+
+            var (l_右向き, l_左向き) = p_配置1.A_Is逆鎖 ? (p_配置2, p_配置1) : (p_配置1, p_配置2);
+            var l_始まり = l_右向き.A_整列位置群[0].A_参照位置;
+            var l_終わり = l_左向き.A_整列位置群[^1].A_参照位置 + 1;
+            return l_始まり <= l_終わり && l_終わり - l_始まり < p_断片長の上限;
+        }
+
+        /// <summary>
+        /// 最良と次善の得点差から信頼度 (0〜60) を出す
+        /// </summary>
+        /// <param name="p_最良スコア"></param>
+        /// <param name="p_次善スコア"></param>
+        /// <returns></returns>
+        private static int Get_信頼度(int p_最良スコア, int p_次善スコア)
+        {
+            return Math.Clamp((p_最良スコア - Math.Max(0, p_次善スコア)) * 3, 0, 60);
+        }
+
+        /// <summary>
+        /// 種索引を構築する
+        /// </summary>
+        private void V_構築_種索引()
+        {
+            for (var i = 0; i < this._参照配列群.Count; i++)
+            {
+                var l_配列 = this._参照配列群[i];
+                for (var j = 0; j + C_種長 <= l_配列.Length; j += C_種間隔)
+                {
+                    if (!KmerPacking.Is成功_パック(l_配列, j, C_種長, out var l_順鎖))
+                    {
+                        continue;
+                    }
+
+                    this.V_登録_種(l_順鎖, new 種ヒット(i, j, false));
+                    this.V_登録_種(KmerPacking.Get_逆相補(l_順鎖, C_種長), new 種ヒット(i, j, true));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 種を索引へ登録する
+        /// </summary>
+        /// <param name="p_種"></param>
+        /// <param name="p_ヒット"></param>
+        private void V_登録_種(UInt128 p_種, 種ヒット p_ヒット)
+        {
+            if (!this._種索引.TryGetValue(p_種, out var l_ヒット群))
+            {
+                l_ヒット群 = [];
+                this._種索引[p_種] = l_ヒット群;
+            }
+
+            if (l_ヒット群.Count < C_種ヒット上限)
+            {
+                l_ヒット群.Add(p_ヒット);
+            }
+        }
+
+        /// <summary>
+        /// 2 つの配置が別の場所にあるかを返す
+        /// </summary>
+        /// <param name="p_基準"></param>
+        /// <param name="p_比較対象"></param>
+        /// <returns>別の配置なら true</returns>
+        private static bool Is異なる配置(リード配置 p_基準, リード配置 p_比較対象)
+        {
+            if (p_基準.A_配列番号 != p_比較対象.A_配列番号 || p_基準.A_Is逆鎖 != p_比較対象.A_Is逆鎖)
+            {
+                return true;
+            }
+
+            if (p_基準.A_整列位置群.Count == 0 || p_比較対象.A_整列位置群.Count == 0)
+            {
+                return true;
+            }
+
+            var l_基準の開始 = p_基準.A_整列位置群.Min(x => x.A_参照位置);
+            var l_基準の終了 = p_基準.A_整列位置群.Max(x => x.A_参照位置);
+            var l_比較対象の開始 = p_比較対象.A_整列位置群.Min(x => x.A_参照位置);
+            var l_比較対象の終了 = p_比較対象.A_整列位置群.Max(x => x.A_参照位置);
+            var l_重なり = Math.Min(l_基準の終了, l_比較対象の終了) - Math.Max(l_基準の開始, l_比較対象の開始) + 1;
+            return l_重なり * 2 < Math.Min(p_基準.A_整列位置群.Count, p_比較対象.A_整列位置群.Count);
+        }
+
+        /// <summary>
+        /// 候補の対角線でリードが参照と完全に一致し、帯の左側に同じ得点の一致が無ければ、帯つきの整列と同じ結果を直接返す
+        /// </summary>
+        /// <param name="p_リード">元のリード</param>
+        /// <param name="p_照合リード">候補の向きに直したリード</param>
+        /// <param name="p_参照">参照配列</param>
+        /// <param name="p_候補">候補</param>
+        /// <returns>整列と同じ配置、当てはまらなければ null (帯つきの整列で求める)</returns>
+        private static リード配置? Get_完全一致の配置(string p_リード, string p_照合リード, string p_参照, (int A_配列番号, bool A_Is逆鎖, int A_対角線) p_候補)
+        {
+            var l_長さ = p_照合リード.Length;
+            if (p_候補.A_対角線 < C_帯域幅 || p_候補.A_対角線 + l_長さ + C_帯域幅 > p_参照.Length || !p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線, l_長さ)))
+            {
+                return null;
+            }
+
+            for (var l_ずれ = 1; l_ずれ <= C_帯域幅; l_ずれ++)
+            {
+                if (p_照合リード.AsSpan().SequenceEqual(p_参照.AsSpan(p_候補.A_対角線 - l_ずれ, l_長さ)))
+                {
+                    return null;
+                }
+            }
+
+            var l_位置群 = new List<整列位置>(l_長さ);
+            for (var i = 1; i <= l_長さ; i++)
+            {
+                l_位置群.Add(new 整列位置(p_候補.A_Is逆鎖 ? p_リード.Length - i : i - 1, p_候補.A_対角線 + i - 1));
+            }
+
+            return new リード配置(p_候補.A_配列番号, p_候補.A_Is逆鎖, l_長さ * C_一致得点, 0, l_位置群);
+        }
+
+        /// <summary>
+        /// 帯 [p_左, p_右] のすぐ外側の 2 マスを p_値 で埋める (帯の内側はその行の計算で上書きされる)
+        /// </summary>
+        /// <param name="p_行">1 行分の得点</param>
+        /// <param name="p_左">帯の左端</param>
+        /// <param name="p_右">帯の右端</param>
+        /// <param name="p_幅">列の最大番号</param>
+        /// <param name="p_値">埋める値</param>
+        private static void V_埋める_帯の外(Span<int> p_行, int p_左, int p_右, int p_幅, int p_値)
+        {
+            if (p_左 > p_右)
+            {
+                p_行.Slice(Math.Min(p_左 - 1, p_幅), Math.Max(0, p_幅 - p_左 + 2)).Fill(p_値);
+                return;
+            }
+
+            p_行[p_左 - 1] = p_値;
+            if (p_右 < p_幅)
+            {
+                p_行[p_右 + 1] = p_値;
             }
         }
 

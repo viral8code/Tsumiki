@@ -23,29 +23,26 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
-
             var l_Isパック値 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.C_パック値のk上限;
             var l_束群 = l_Isパック値 ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray() : null;
             var l_長い束群 = l_Isパック値 ? null : Enumerable.Range(0, l_スレッド数).Select(_ => new WideKmerCountBatch(p_kmerインデックス)).ToArray();
-
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_レコード列(p_ファイルパス), (l_レコード, l_ワーカー番号) =>
+            {
+                if (l_束群 is not null)
                 {
-                    if (l_束群 is not null)
-                    {
-                        V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号], p_Phredオフセット);
-                    }
-                    else
-                    {
-                        V_登録_1リード_長いk(l_レコード.A_配列, l_レコード.A_クオリティ, l_長い束群![l_ワーカー番号], p_Phredオフセット);
-                    }
+                    V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号], p_Phredオフセット);
+                }
+                else
+                {
+                    V_登録_1リード_長いk(l_レコード.A_配列, l_レコード.A_クオリティ, l_長い束群![l_ワーカー番号], p_Phredオフセット);
+                }
 
-                    var l_件数 = Interlocked.Increment(ref l_総リード数);
-                    if (l_件数 % Consts.進捗ログ間隔 == 0UL)
-                    {
-                        Logger.V_出力(メッセージID.リード読込の進捗, l_件数);
-                    }
-                });
-
+                var l_件数 = Interlocked.Increment(ref l_総リード数);
+                if (l_件数 % Consts.進捗ログ間隔 == 0UL)
+                {
+                    Logger.V_出力(メッセージID.リード読込の進捗, l_件数);
+                }
+            });
             foreach (var l_束 in l_束群 ?? [])
             {
                 l_束.V_吐き出し();
@@ -57,7 +54,6 @@ namespace Tsumiki.Cores.Preprocessing
             }
 
             p_kmerインデックス.V_数える_預かり_全部();
-
             Logger.V_出力(メッセージID.リード読込完了, l_総リード数, Path.GetFileName(p_ファイルパス));
         }
 
@@ -72,9 +68,9 @@ namespace Tsumiki.Cores.Preprocessing
             using var l_計測 = new StageTimer($"kmer-count k={p_引数.A_k長}");
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
-                var (A_リード1, A_リード2) = p_引数.A_ライブラリ群[i];
+                var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
                 var l_Phred = p_引数.Get_Phredオフセット(i);
-                var l_Isペアエンド = !string.IsNullOrWhiteSpace(A_リード2);
+                var l_Isペアエンド = !string.IsNullOrWhiteSpace(l_逆リード);
                 if (p_Is進行状況出力)
                 {
                     Logger.V_出力(l_Isペアエンド ? メッセージID.リード1の読込開始 : メッセージID.単一リードの読込開始);
@@ -87,14 +83,11 @@ namespace Tsumiki.Cores.Preprocessing
                         Logger.V_出力(メッセージID.リード2の読込開始);
                     }
 
-                    Parallel.Invoke(
-                        () => V_読込_リードファイル(A_リード1, p_kmerインデックス, l_Phred),
-                        () => V_読込_リードファイル(A_リード2!, p_kmerインデックス, l_Phred));
+                    Parallel.Invoke(() => V_読込_リードファイル(l_順リード, p_kmerインデックス, l_Phred), () => V_読込_リードファイル(l_逆リード!, p_kmerインデックス, l_Phred));
                     continue;
                 }
 
-                V_読込_1ファイル(A_リード1, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
-
+                V_読込_1ファイル(l_順リード, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
                 if (!l_Isペアエンド)
                 {
                     continue;
@@ -105,7 +98,7 @@ namespace Tsumiki.Cores.Preprocessing
                     Logger.V_出力(メッセージID.リード2の読込開始);
                 }
 
-                V_読込_1ファイル(A_リード2, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
+                V_読込_1ファイル(l_逆リード, p_引数.A_Is曖昧塩基許容, p_kmerインデックス, l_Phred);
             }
         }
 
@@ -122,7 +115,6 @@ namespace Tsumiki.Cores.Preprocessing
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_Phredオフセット = p_Phredオフセット;
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
-
             using var l_読み込み = new FastqReader(p_ファイルパス);
             while (l_読み込み.Has続き())
             {
@@ -215,7 +207,7 @@ namespace Tsumiki.Cores.Preprocessing
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
-                if (l_窓.Try追加(l_塩基, out var l_キー))
+                if (l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
                     p_束.V_追加(l_キー.A_上位, l_キー.A_下位);
                 }
@@ -242,7 +234,7 @@ namespace Tsumiki.Cores.Preprocessing
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
-                if (l_窓.Try追加(l_塩基, out var l_キー))
+                if (l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
                     p_束.V_追加(TrustedKmerIndex.Get_パック済み(l_キー, l_k長));
                 }

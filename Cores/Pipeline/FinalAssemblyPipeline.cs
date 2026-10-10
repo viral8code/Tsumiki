@@ -21,6 +21,121 @@ namespace Tsumiki.Cores.Pipeline
         #region 定数
 
         /// <summary>
+        /// 見出し agp version 2 1
+        /// </summary>
+        private const string C_見出し_agp_version_2_1 = "##agp-version	2.1";
+
+        /// <summary>
+        /// 項目 U
+        /// </summary>
+        private const string C_項目_U = "U";
+
+        /// <summary>
+        /// 長さ指定ギャップ種別
+        /// </summary>
+        private const string C_長さ指定ギャップ種別 = "N";
+
+        /// <summary>
+        /// 項目 contigs
+        /// </summary>
+        private const string C_項目_contigs = "contigs";
+
+        /// <summary>
+        /// 項目 scaffolds
+        /// </summary>
+        private const string C_項目_scaffolds = "scaffolds";
+
+        /// <summary>
+        /// 項目 assembly
+        /// </summary>
+        private const string C_項目_assembly = "assembly";
+
+        /// <summary>
+        /// ファイル名 assembly provenance json
+        /// </summary>
+        private const string C_ファイル名_assembly_provenance_json = "assembly.provenance.json";
+
+        /// <summary>
+        /// 項目 schema version
+        /// </summary>
+        private const string C_項目_schema_version = "schema_version";
+
+        /// <summary>
+        /// 項目 build id
+        /// </summary>
+        private const string C_項目_build_id = "build_id";
+
+        /// <summary>
+        /// 項目 validation source
+        /// </summary>
+        private const string C_項目_validation_source = "validation_source";
+
+        /// <summary>
+        /// 項目 uncorrected reads from t ent holdout data
+        /// </summary>
+        private const string C_項目_uncorrected_reads_from_t_ent_holdout_data = "uncorrected reads from the assembly library; not independent holdout data";
+
+        /// <summary>
+        /// 項目 assembly sha256
+        /// </summary>
+        private const string C_項目_assembly_sha256 = "assembly_sha256";
+
+        /// <summary>
+        /// 項目 thread count
+        /// </summary>
+        private const string C_項目_thread_count = "thread_count";
+
+        /// <summary>
+        /// 項目 settings
+        /// </summary>
+        private const string C_項目_settings = "settings";
+
+        /// <summary>
+        /// 項目 assembly settings
+        /// </summary>
+        private const string C_項目_assembly_settings = "assembly_settings";
+
+        /// <summary>
+        /// 項目 copy number baseline requested
+        /// </summary>
+        private const string C_項目_copy_number_baseline_requested = "copy_number_baseline_requested";
+
+        /// <summary>
+        /// 項目 copy number baseline actual
+        /// </summary>
+        private const string C_項目_copy_number_baseline_actual = "copy_number_baseline_actual";
+
+        /// <summary>
+        /// 項目 trim low coverage ends
+        /// </summary>
+        private const string C_項目_trim_low_coverage_ends = "trim_low_coverage_ends";
+
+        /// <summary>
+        /// 項目 inputs
+        /// </summary>
+        private const string C_項目_inputs = "inputs";
+
+        /// <summary>
+        /// 項目 path
+        /// </summary>
+        private const string C_項目_path = "path";
+
+        /// <summary>
+        /// 項目 sha256
+        /// </summary>
+        private const string C_項目_sha256 = "sha256";
+
+        /// <summary>
+        /// 項目 corrected read hashes
+        /// </summary>
+        private const string C_項目_corrected_read_hashes = "corrected_read_hashes";
+
+        /// <summary>
+        /// 項目 pipeline fingerprint
+        /// </summary>
+        private const string C_項目_pipeline_fingerprint = "pipeline_fingerprint";
+
+        /// <summary>
         /// 支持のない箇所のファイル名
         /// </summary>
         private const string C_支持のない箇所ファイル名 = "assembly.unsupported.tsv";
@@ -38,7 +153,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 長さが分からない繋ぎ目に入れる N の数 (NCBI の慣例)
         /// </summary>
-        internal const int C_長さ不明のギャップ長 = 100;
+        public const int C_長さ不明のギャップ長 = 100;
 
         /// <summary>
         /// 最終成果物の構成を書き出す AGP ファイルの拡張子
@@ -122,70 +237,43 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 配列の端どうしを、跨ぐリード 2 本以上で繋ぐ。繋いだ数が 1 以上なら、同じパスに書き戻す
-        /// </summary>
-        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
-        /// <param name="p_リード長">代表リード長</param>
-        /// <param name="p_リードパス群">生リードのパス</param>
-        private static void V_繋ぐ_リードで跨げる端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群)
-        {
-            if (RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
-            {
-                return;
-            }
-
-            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
-            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, l_配列群.Select(x => x.A_配列));
-            var l_繋いだ配列群 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, p_リード長, l_一意の出現数, out var l_候補数, out var l_繋いだ数);
-            if (l_繋いだ数 >= 1)
-            {
-                using var l_書き込み = new FastaWriter(p_最終パス);
-                foreach (var (l_ID, l_配列) in l_繋いだ配列群)
-                {
-                    l_書き込み.V_書き込み(l_ID, l_配列);
-                }
-            }
-
-            Logger.V_出力(メッセージID.リードで端を繋いだ, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
-        }
-
-        /// <summary>
-        /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む。畳めなければ、両側を跨ぐリードの続きで埋められるか試す
+        /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む<br/>
+        /// 畳めなければ、両側を跨ぐリードの続きで埋められるか試す
         /// </summary>
         /// <param name="p_配列">配列</param>
         /// <param name="p_索引">リードの索引</param>
         /// <param name="p_k長">採用した k 長</param>
         /// <param name="p_リード長">代表リード長</param>
-        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Scaffolder.Get_一意の出現数)、分からなければ 0</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Scaffolder.Get_一意の出現数) 、分からなければ 0</param>
         /// <param name="p_総数">未確認の繋ぎ目の数 (加算する)</param>
         /// <param name="p_畳んだ数">畳んだ数 (加算する)</param>
         /// <param name="p_埋めた数">リードの続きで埋めた数 (加算する)</param>
         /// <returns>畳んだ後の配列</returns>
-        internal static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数)
+        public static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
-            var i = 0;
-            while (i < p_配列.Length)
+            var l_インデックス = 0;
+            while (l_インデックス < p_配列.Length)
             {
-                if (p_配列[i] != Consts.未確認の繋ぎ目)
+                if (p_配列[l_インデックス] != Consts.未確認の繋ぎ目)
                 {
-                    _ = l_出力.Append(p_配列[i]);
-                    i++;
+                    _ = l_出力.Append(p_配列[l_インデックス]);
+                    l_インデックス++;
                     continue;
                 }
 
                 p_総数++;
-                var l_次の終わり = i + 1;
+                var l_次の終わり = l_インデックス + 1;
                 while (l_次の終わり < p_配列.Length && !Util.Isギャップ文字(p_配列[l_次の終わり]))
                 {
                     l_次の終わり++;
                 }
 
-                var l_次の配列 = p_配列[(i + 1)..l_次の終わり];
+                var l_次の配列 = p_配列[(l_インデックス + 1)..l_次の終わり];
                 if (Scaffolder.Get_リードで確かめた重なり長(p_索引, l_出力, l_次の配列, p_k長, p_リード長, p_一意の出現数) is { } l_重なり長)
                 {
                     p_畳んだ数++;
-                    i += 1 + l_重なり長;
+                    l_インデックス += 1 + l_重なり長;
                     continue;
                 }
 
@@ -194,12 +282,12 @@ namespace Tsumiki.Cores.Pipeline
                     p_埋めた数++;
                     l_出力.Length -= l_埋め方.A_左から削る長さ;
                     _ = l_出力.Append(l_埋め方.A_埋める配列);
-                    i += 1 + l_埋め方.A_右から削る長さ;
+                    l_インデックス += 1 + l_埋め方.A_右から削る長さ;
                     continue;
                 }
 
                 _ = l_出力.Append(Consts.未確認の繋ぎ目);
-                i++;
+                l_インデックス++;
             }
 
             return l_出力.ToString();
@@ -254,7 +342,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_配列">配列</param>
         /// <param name="p_長さ不明の番号">長さ不明のギャップになった N の連続の番号 (0 始まり) を足す先</param>
         /// <returns>置き換えた配列</returns>
-        internal static string Get_長さ不明のギャップへ置換(string p_配列, HashSet<int> p_長さ不明の番号)
+        public static string Get_長さ不明のギャップへ置換(string p_配列, HashSet<int> p_長さ不明の番号)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
             var l_連続の番号 = -1;
@@ -294,7 +382,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             using var l_書き込み = new StreamWriter(p_AGPパス);
-            l_書き込み.WriteLine("##agp-version	2.1");
+            l_書き込み.WriteLine(C_見出し_agp_version_2_1);
             foreach (var (l_ID, l_配列) in FastaReader.Get_全エントリ(p_FASTAパス))
             {
                 var l_名前 = Get_配列名(l_ID);
@@ -312,7 +400,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_配列">配列</param>
         /// <param name="p_長さ不明の番号">長さ不明のギャップの N の連続の番号、無ければ null</param>
         /// <returns>AGP の行</returns>
-        internal static IEnumerable<string> Get_AGP行(string p_名前, string p_配列, IReadOnlySet<int>? p_長さ不明の番号)
+        public static IEnumerable<string> Get_AGP行(string p_名前, string p_配列, IReadOnlySet<int>? p_長さ不明の番号)
         {
             var l_部品番号 = 1;
             var l_片番号 = 1;
@@ -330,7 +418,7 @@ namespace Tsumiki.Cores.Pipeline
                 var l_長さ = l_終わり - l_位置;
                 if (l_Isギャップ)
                 {
-                    var l_種類 = p_長さ不明の番号?.Contains(l_連続の番号) == true ? "U" : "N";
+                    var l_種類 = p_長さ不明の番号?.Contains(l_連続の番号) == true ? C_項目_U : C_長さ指定ギャップ種別;
                     yield return FormattableString.Invariant($"{p_名前}	{l_位置 + 1}	{l_終わり}	{l_部品番号}	{l_種類}	{l_長さ}	scaffold	yes	paired-ends");
                     l_連続の番号++;
                 }
@@ -356,7 +444,6 @@ namespace Tsumiki.Cores.Pipeline
         public static void V_実行(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_一時ディレクトリ, int? p_リード長, Parameters? p_処理済み設定 = null)
         {
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
-
             V_除外_短い配列(l_最終パス, p_リード長);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
@@ -364,27 +451,57 @@ namespace Tsumiki.Cores.Pipeline
             {
                 V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
             }
+
             RepeatRMerVerifier.V_解放_共有索引();
             var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス, p_Isログ出力: true);
             _ = V_置換_未確認の繋ぎ目(l_scaffoldパス, p_Isログ出力: false);
-
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
             V_書き出し_AGP(l_最終パス, l_長さ不明の番号, Path.ChangeExtension(l_最終パス, C_AGP拡張子));
             V_評価_継ぎ目(p_原入力, p_一時ディレクトリ, l_最終パス);
             var l_閉鎖検証 = V_検証_環状閉鎖(p_原入力, l_最終パス);
             var l_支持検査 = V_検査_リード支持(p_原入力, l_最終パス);
-
-            p_結果 = p_結果 with { A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ) };
+            p_結果 = p_結果 with
+            {
+                A_整合性検査 = Get_最終整合性(p_原入力, p_結果.A_k長, l_最終パス, p_一時ディレクトリ)
+            };
             V_記録_出所(p_原入力, p_結果, l_最終パス, p_一時ディレクトリ, p_処理済み設定);
             V_出力_最終統計(p_一時ディレクトリ, l_最終パス);
             V_出力_完全性レポート(p_結果, p_原入力, l_最終パス, l_ポリッシュ統計, l_閉鎖検証, l_支持検査, p_一時ディレクトリ);
-
             Logger.V_出力(メッセージID.最終成果物, l_最終パス);
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 配列の端どうしを、跨ぐリード 2 本以上で繋ぐ<br/>
+        /// 繋いだ数が 1 以上なら、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_リードパス群">生リードのパス</param>
+        private static void V_繋ぐ_リードで跨げる端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群)
+        {
+            if (RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
+            {
+                return;
+            }
+
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, l_配列群.Select(x => x.A_配列));
+            var l_繋いだ配列群 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, p_リード長, l_一意の出現数, out var l_候補数, out var l_繋いだ数);
+            if (l_繋いだ数 >= 1)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_繋いだ配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            Logger.V_出力(メッセージID.リードで端を繋いだ, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
+        }
 
         /// <summary>
         /// 作業ディレクトリ直下に出した最終成果物の統計をログに出す
@@ -411,11 +528,10 @@ namespace Tsumiki.Cores.Pipeline
         /// <returns></returns>
         private static (string A_ラベル, string A_FASTAパス)[] Get_最終成果物群(string p_一時ディレクトリ, string p_最終パス)
         {
-            return
-            [
-                ("contigs", Path.Combine(p_一時ディレクトリ, AssemblyPipeline.C_Contigファイル名)),
-                ("scaffolds", Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名)),
-                ("assembly", p_最終パス),
+            return [
+                (C_項目_contigs, Path.Combine(p_一時ディレクトリ, AssemblyPipeline.C_Contigファイル名)),
+                (C_項目_scaffolds, Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名)),
+                (C_項目_assembly, p_最終パス),
             ];
         }
 
@@ -442,8 +558,7 @@ namespace Tsumiki.Cores.Pipeline
                 using var l_索引 = new TrustedKmerIndex(l_検査パス);
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
                 var l_分布 = l_索引.Get_出現回数ヒストグラム();
-                var l_基準 = KmerSpectrumMixtureModel.Get_解析結果(l_分布)?.A_単一コピー平均
-                    ?? KmerHistogram.Get_解析結果(l_分布)?.A_単一コピー基準値 ?? 0D;
+                var l_基準 = KmerSpectrumMixtureModel.Get_解析結果(l_分布)?.A_単一コピー平均 ?? KmerHistogram.Get_解析結果(l_分布)?.A_単一コピー基準値 ?? 0D;
                 KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_索引);
                 l_索引.V_適用_カットオフ(l_設定.A_kmerカットオフ);
                 return l_基準 > 0D ? AssemblyValidator.Get_検査結果(p_最終パス, l_索引, p_k長, l_基準) : null;
@@ -459,28 +574,28 @@ namespace Tsumiki.Cores.Pipeline
         /// 検査に使った原入力と最終配列の出所を記録する
         /// </summary>
         /// <param name="p_原入力">加工前の設定</param>
+        /// <param name="p_結果"></param>
         /// <param name="p_最終パス">最終配列</param>
         /// <param name="p_作業パス">出力先</param>
         /// <param name="p_処理済み設定">前処理・エラー訂正後のパスを保持した設定、無ければ null</param>
-        /// <param name="p_結果"></param>
         private static void V_記録_出所(Parameters p_原入力, アセンブリ実行結果 p_結果, string p_最終パス, string p_作業パス, Parameters? p_処理済み設定)
         {
-            using var l_出力 = File.Create(Path.Combine(p_作業パス, "assembly.provenance.json"));
+            using var l_出力 = File.Create(Path.Combine(p_作業パス, C_ファイル名_assembly_provenance_json));
             using var l_JSON = new System.Text.Json.Utf8JsonWriter(l_出力, new System.Text.Json.JsonWriterOptions { Indented = true });
             l_JSON.WriteStartObject();
-            l_JSON.WriteNumber("schema_version", 1);
-            l_JSON.WriteString("build_id", typeof(FinalAssemblyPipeline).Assembly.ManifestModule.ModuleVersionId);
-            l_JSON.WriteString("validation_source", "uncorrected reads from the assembly library; not independent holdout data");
-            l_JSON.WriteString("assembly_sha256", StageCheckpoint.Get_ハッシュ(p_最終パス));
-            l_JSON.WriteNumber("thread_count", p_原入力.A_スレッド数);
-            l_JSON.WriteString("settings", p_原入力.ToString());
-            l_JSON.WriteStartObject("assembly_settings");
-            l_JSON.WriteString("copy_number_baseline_requested", p_原入力.A_コピー数基準の出所.ToString());
-            l_JSON.WriteString("copy_number_baseline_actual", p_結果.A_実際のコピー数基準.ToString());
-            l_JSON.WriteBoolean("trim_low_coverage_ends", p_原入力.A_Is低カバレッジ端トリミング);
+            l_JSON.WriteNumber(C_項目_schema_version, 1);
+            l_JSON.WriteString(C_項目_build_id, typeof(FinalAssemblyPipeline).Assembly.ManifestModule.ModuleVersionId);
+            l_JSON.WriteString(C_項目_validation_source, C_項目_uncorrected_reads_from_t_ent_holdout_data);
+            l_JSON.WriteString(C_項目_assembly_sha256, StageCheckpoint.Get_ハッシュ(p_最終パス));
+            l_JSON.WriteNumber(C_項目_thread_count, p_原入力.A_スレッド数);
+            l_JSON.WriteString(C_項目_settings, p_原入力.ToString());
+            l_JSON.WriteStartObject(C_項目_assembly_settings);
+            l_JSON.WriteString(C_項目_copy_number_baseline_requested, p_原入力.A_コピー数基準の出所.ToString());
+            l_JSON.WriteString(C_項目_copy_number_baseline_actual, p_結果.A_実際のコピー数基準.ToString());
+            l_JSON.WriteBoolean(C_項目_trim_low_coverage_ends, p_原入力.A_Is低カバレッジ端トリミング);
             l_JSON.WriteEndObject();
-            l_JSON.WriteStartArray("inputs");
-            foreach (var l_入力 in p_原入力.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
+            l_JSON.WriteStartArray(C_項目_inputs);
+            foreach (var l_入力 in p_原入力.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード }))
             {
                 if (string.IsNullOrWhiteSpace(l_入力))
                 {
@@ -488,17 +603,16 @@ namespace Tsumiki.Cores.Pipeline
                 }
 
                 l_JSON.WriteStartObject();
-                l_JSON.WriteString("path", Path.GetFullPath(l_入力));
-                l_JSON.WriteString("sha256", StageCheckpoint.Get_ハッシュ(l_入力));
+                l_JSON.WriteString(C_項目_path, Path.GetFullPath(l_入力));
+                l_JSON.WriteString(C_項目_sha256, StageCheckpoint.Get_ハッシュ(l_入力));
                 l_JSON.WriteEndObject();
             }
 
             l_JSON.WriteEndArray();
-
             if (p_処理済み設定 is { } l_処理済み設定)
             {
-                l_JSON.WriteStartArray("corrected_read_hashes");
-                foreach (var l_入力 in l_処理済み設定.A_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 }))
+                l_JSON.WriteStartArray(C_項目_corrected_read_hashes);
+                foreach (var l_入力 in l_処理済み設定.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード }))
                 {
                     if (!中間データ置き場.Is存在(l_入力))
                     {
@@ -506,14 +620,13 @@ namespace Tsumiki.Cores.Pipeline
                     }
 
                     l_JSON.WriteStartObject();
-                    l_JSON.WriteString("path", Path.GetFullPath(l_入力));
-                    l_JSON.WriteString("sha256", StageCheckpoint.Get_ハッシュ(l_入力));
+                    l_JSON.WriteString(C_項目_path, Path.GetFullPath(l_入力));
+                    l_JSON.WriteString(C_項目_sha256, StageCheckpoint.Get_ハッシュ(l_入力));
                     l_JSON.WriteEndObject();
                 }
 
                 l_JSON.WriteEndArray();
-
-                l_JSON.WriteString("pipeline_fingerprint", StageCheckpoint.Get_入力署名(l_処理済み設定));
+                l_JSON.WriteString(C_項目_pipeline_fingerprint, StageCheckpoint.Get_入力署名(l_処理済み設定));
             }
 
             l_JSON.WriteEndObject();
@@ -603,40 +716,31 @@ namespace Tsumiki.Cores.Pipeline
         /// 完全長かどうかを判定し、根拠ごとレポートへ残す
         /// </summary>
         /// <param name="p_結果">アセンブリ実行結果</param>
+        /// <param name="p_原入力"></param>
         /// <param name="p_最終パス">最終成果物パス</param>
         /// <param name="p_ポリッシュ統計">ポリッシュ統計、実行していなければ null</param>
         /// <param name="p_閉鎖検証">環状閉鎖の検証結果、実行していなければ null</param>
         /// <param name="p_支持検査">リード支持の検査結果</param>
         /// <param name="p_出力ディレクトリ">レポートの出力先ディレクトリ</param>
-        /// <param name="p_原入力"></param>
         private static void V_出力_完全性レポート(アセンブリ実行結果 p_結果, Parameters p_原入力, string p_最終パス, ポリッシュ統計? p_ポリッシュ統計, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, 支持検査結果? p_支持検査, string p_出力ディレクトリ)
         {
             var l_曖昧箇所 = AmbiguityRecorder.Get_記録(p_結果.A_k長);
             var l_未解決ギャップ数 = CompletenessValidator.Get_未解決ギャップ数(p_最終パス);
             var l_環状本数 = CompletenessValidator.Get_環状本数(p_最終パス);
-
             var l_判定 = CompletenessValidator.Get_判定結果(l_未解決ギャップ数, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所, p_支持検査);
             CompletenessValidator.V_出力_判定結果(l_判定);
-
             var l_レポートパス = Path.Combine(p_出力ディレクトリ, Consts.レポートファイル名);
             var l_曖昧箇所パス = Path.Combine(p_出力ディレクトリ, Consts.曖昧箇所ファイル名);
-
             var l_配列群 = FastaReader.Get_全エントリ(p_最終パス).Select(x => x.A_配列).ToList();
             const int l_統計の最小長 = 500;
-            ReportWriter.V_書き出し_レポート(l_レポートパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計(l_配列群), l_未解決ギャップ数, l_環状本数, l_判定, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所,
-                AssemblyStatsReporter.Get_N分割統計(l_配列群, l_統計の最小長), l_統計の最小長, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_原入力.A_Is低カバレッジ端トリミング,
-                AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)), p_結果.A_固定アンカー評価, PhaseTimingRecorder.Get_記録());
+            ReportWriter.V_書き出し_レポート(l_レポートパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計(l_配列群), l_未解決ギャップ数, l_環状本数, l_判定, p_結果.A_整合性検査, p_閉鎖検証, p_ポリッシュ統計, l_曖昧箇所, AssemblyStatsReporter.Get_N分割統計(l_配列群, l_統計の最小長), l_統計の最小長, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_原入力.A_Is低カバレッジ端トリミング, AssemblyStatsReporter.Get_統計(l_配列群.Where(x => x.Length >= l_統計の最小長)), p_結果.A_固定アンカー評価, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.レポートを書き出した, l_レポートパス);
-
             var l_Markdownパス = Path.Combine(p_出力ディレクトリ, C_統計表ファイル名);
             ReportWriter.V_書き出し_Markdownレポート(l_Markdownパス, p_結果.A_k長, AssemblyStatsReporter.Get_統計表(Get_最終成果物群(p_出力ディレクトリ, p_最終パス)), l_判定, l_未解決ギャップ数, l_環状本数, l_曖昧箇所.Count, p_原入力.A_コピー数基準の出所.ToString(), p_結果.A_実際のコピー数基準.ToString(), p_結果.A_整合性検査, p_結果.A_固定アンカー評価, p_ポリッシュ統計, p_支持検査, p_閉鎖検証, PhaseTimingRecorder.Get_記録());
             Logger.V_出力(メッセージID.統計表を書き出した, l_Markdownパス);
-
             ReportWriter.V_書き出し_曖昧箇所(l_曖昧箇所パス, l_曖昧箇所);
             Logger.V_出力(メッセージID.曖昧箇所を書き出した, l_曖昧箇所.Count, l_曖昧箇所パス);
-
             AmbiguityRecorder.V_保存_履歴(p_出力ディレクトリ);
-
             if (p_支持検査 is { } l_支持検査)
             {
                 var l_支持パス = Path.Combine(p_出力ディレクトリ, C_支持のない箇所ファイル名);

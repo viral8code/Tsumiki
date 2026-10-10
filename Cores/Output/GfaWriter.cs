@@ -7,6 +7,25 @@ namespace Tsumiki.Cores.Output
     /// </summary>
     internal static class GfaWriter
     {
+        #region 定数
+
+        /// <summary>
+        /// 項目 H VN Z 1 0
+        /// </summary>
+        private const string C_項目_H_VN_Z_1_0 = "H\tVN:Z:1.0";
+
+        /// <summary>
+        /// FASTQ 品質区切り
+        /// </summary>
+        private const string C_FASTQ品質区切り = "+";
+
+        /// <summary>
+        /// 未指定表示
+        /// </summary>
+        private const string C_未指定表示 = "-";
+
+        #endregion
+
         #region 公開メソッド
 
         /// <summary>
@@ -21,16 +40,12 @@ namespace Tsumiki.Cores.Output
         {
             var l_重なり長 = Math.Max(0, p_k長 - 1);
             var l_unitig数 = (p_unitig配列.Count - 2) / 2;
-
             using var l_書き込み = new StreamWriter(p_パス);
-            l_書き込み.WriteLine("H\tVN:Z:1.0");
-
+            l_書き込み.WriteLine(C_項目_H_VN_Z_1_0);
             for (var l_ID = 1; l_ID <= l_unitig数; l_ID++)
             {
                 var l_配列 = p_unitig配列[l_ID << 1];
-                var l_深度タグ = p_コピー数 is not null && p_コピー数.TryGetValue(l_ID, out var l_コピー数値)
-                    ? $"\tCN:i:{l_コピー数値}"
-                    : string.Empty;
+                var l_深度タグ = p_コピー数 is not null && p_コピー数.TryGetValue(l_ID, out var l_コピー数値) ? $"\tCN:i:{l_コピー数値}" : string.Empty;
                 l_書き込み.WriteLine($"S\t{l_ID}\t{l_配列}\tLN:i:{l_配列.Length}{l_深度タグ}");
             }
 
@@ -45,11 +60,10 @@ namespace Tsumiki.Cores.Output
                     }
 
                     _ = l_出力済み.Add((v, w));
-
                     var l_始点ID = v >> 1;
-                    var l_始点向き = (v & 1) == 0 ? "+" : "-";
+                    var l_始点向き = (v & 1) == 0 ? C_FASTQ品質区切り : C_未指定表示;
                     var l_終点ID = w >> 1;
-                    var l_終点向き = (w & 1) == 0 ? "+" : "-";
+                    var l_終点向き = (w & 1) == 0 ? C_FASTQ品質区切り : C_未指定表示;
                     l_書き込み.WriteLine($"L\t{l_始点ID}\t{l_始点向き}\t{l_終点ID}\t{l_終点向き}\t{l_重なり長}M");
                 }
             }

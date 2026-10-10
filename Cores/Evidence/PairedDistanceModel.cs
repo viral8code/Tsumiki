@@ -62,7 +62,6 @@
         public PairedDistanceModel(IReadOnlyList<int> p_フラグメント長標本, int p_リード長)
         {
             this._リード長 = Math.Max(1, p_リード長);
-
             var l_並び = p_フラグメント長標本.Where(x => x > 0).OrderBy(x => x).ToArray();
             if (l_並び.Length == 0)
             {
@@ -76,7 +75,6 @@
             var l_上限 = Get_分位(l_並び, 0.99D);
             this._中央フラグメント長 = Get_分位(l_並び, 0.5D);
             this._窓幅 = Math.Max((l_上限 - l_下限) / 2, C_既知長のばらつき幅の下限);
-
             var l_件数 = new Dictionary<int, int>();
             var l_総数 = 0;
             foreach (var l_長さ in l_並び)
@@ -139,19 +137,19 @@
         }
 
         /// <summary>
-        /// ギャップ長 p_ギャップ長 で隣り合う長さ p_長さ1・p_長さ2 の配列に跨がりうるフラグメントの開始位置の総数
+        /// ギャップ長 p_ギャップ長 で隣り合う長さ p_基準長・p_比較長 の配列に跨がりうるフラグメントの開始位置の総数
         /// </summary>
-        /// <param name="p_長さ1">片側の長さ</param>
-        /// <param name="p_長さ2">もう片側の長さ</param>
+        /// <param name="p_基準長">片側の長さ</param>
+        /// <param name="p_比較長">もう片側の長さ</param>
         /// <param name="p_ギャップ長">両者の間のギャップ長</param>
         /// <returns>フラグメントの開始位置の総数</returns>
-        public double Get_期待位置数(long p_長さ1, long p_長さ2, int p_ギャップ長)
+        public double Get_期待位置数(long p_基準長, long p_比較長, int p_ギャップ長)
         {
             var l_合計 = 0D;
             foreach (var (l_長さ, l_確率) in this._分布)
             {
-                var l_下 = Math.Max(-p_長さ1, p_ギャップ長 + this._リード長 - l_長さ);
-                var l_上 = Math.Min(-this._リード長, p_ギャップ長 + p_長さ2 - l_長さ);
+                var l_下 = Math.Max(-p_基準長, p_ギャップ長 + this._リード長 - l_長さ);
+                var l_上 = Math.Min(-this._リード長, p_ギャップ長 + p_比較長 - l_長さ);
                 if (l_上 >= l_下)
                 {
                     l_合計 += l_確率 * (l_上 - l_下 + 1L);
@@ -189,7 +187,7 @@
         /// 昇順に並んだ値から分位点を返す
         /// </summary>
         /// <param name="p_昇順">昇順に並んだ値</param>
-        /// <param name="p_位置">求める分位 (0 から 1) </param>
+        /// <param name="p_位置">求める分位 (0 から 1)</param>
         /// <returns>分位点</returns>
         private static int Get_分位(int[] p_昇順, double p_位置)
         {

@@ -16,6 +16,11 @@ namespace Tsumiki.Cores.Preprocessing
         #region 定数
 
         /// <summary>
+        /// 項目 error correction
+        /// </summary>
+        private const string C_項目_error_correction = "error-correction";
+
+        /// <summary>
         /// 位置ごとの作業域をスタックに置くリード長の上限
         /// </summary>
         private const int C_スタックに置く長さ = 1_024;
@@ -57,53 +62,47 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// リードファイルを読み込んでエラー訂正を行い、結果を出力先へ書き出す
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_順リードのパス"></param>
+        /// <param name="p_逆リードのパス"></param>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_出力先1"></param>
         /// <param name="p_出力先2"></param>
         /// <param name="p_Phredオフセット"></param>
         /// <returns>訂正の前後で数えた誤りの無い区間、カバレッジを見積もれなければ null</returns>
-        public static 無誤り区間の度数? V_訂正_リードファイル(string p_リード1のパス, string? p_リード2のパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2, int p_Phredオフセット)
+        public static 無誤り区間の度数? V_訂正_リードファイル(string p_順リードのパス, string? p_逆リードのパス, string p_一時ディレクトリ, string p_出力先1, string? p_出力先2, int p_Phredオフセット)
         {
-            using var l_計測 = new StageTimer("error-correction");
+            using var l_計測 = new StageTimer(C_項目_error_correction);
             var l_設定 = ConfigurationManager.A_実行時引数;
             var l_組み立てk長 = l_設定.A_k長;
             var l_k長 = l_設定.A_エラー訂正k長;
             l_設定.Set_推定k長(l_k長);
             var l_度数 = l_k長 <= 64 ? new 無誤り区間の度数(l_k長) : null;
-
             try
             {
                 var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_エラー訂正ディレクトリ名);
                 _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
-
                 Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
                 using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ))
                 {
-                    if (p_リード2のパス != null)
+                    if (p_逆リードのパス != null)
                     {
-                        Parallel.Invoke(
-                            () => KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット),
-                            () => KmerCounting.V_読込_リードファイル(p_リード2のパス, l_kmerインデックス, p_Phredオフセット));
+                        Parallel.Invoke(() => KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット), () => KmerCounting.V_読込_リードファイル(p_逆リードのパス, l_kmerインデックス, p_Phredオフセット));
                     }
                     else
                     {
-                        KmerCounting.V_読込_リードファイル(p_リード1のパス, l_kmerインデックス, p_Phredオフセット);
+                        KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット);
                     }
 
                     KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_kmerインデックス);
                     l_kmerインデックス.V_適用_カットオフ(l_設定.A_kmerカットオフ);
                     l_度数?.A_単一コピー平均 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均 ?? 0D;
-
                     Logger.V_出力(メッセージID.エラー訂正_訂正開始);
-                    var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長, l_度数);
-                    Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード1のパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
-
-                    if (p_リード2のパス != null && p_出力先2 != null)
+                    var l_統計1 = Get_訂正統計_ファイル(p_順リードのパス, p_出力先1, l_kmerインデックス, l_k長, l_度数);
+                    Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_順リードのパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
+                    if (p_逆リードのパス != null && p_出力先2 != null)
                     {
-                        var l_統計2 = Get_訂正統計_ファイル(p_リード2のパス, p_出力先2, l_kmerインデックス, l_k長, l_度数);
-                        Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_リード2のパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
+                        var l_統計2 = Get_訂正統計_ファイル(p_逆リードのパス, p_出力先2, l_kmerインデックス, l_k長, l_度数);
+                        Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_逆リードのパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
                     }
                 }
 
@@ -127,11 +126,7 @@ namespace Tsumiki.Cores.Preprocessing
         /// <returns></returns>
         public static 訂正結果 Get_訂正結果(ReadOnlySpan<byte> p_リード, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数 = 10, 無誤り区間の度数? p_度数 = null)
         {
-            return p_リード.Length < p_k長
-                ? new 訂正結果(p_リード.ToArray(), 0)
-                : p_k長 <= 64
-                ? Get_訂正結果_パック(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数, p_度数)
-                : Get_訂正結果_逐次(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数);
+            return p_リード.Length < p_k長 ? new 訂正結果(p_リード.ToArray(), 0) : p_k長 <= 64 ? Get_訂正結果_パック(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数, p_度数) : Get_訂正結果_逐次(p_リード.ToArray(), p_kmerインデックス, p_k長, p_最大反復数);
         }
 
         /// <summary>
@@ -142,12 +137,11 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_k長"></param>
         /// <param name="p_最大反復数"></param>
         /// <returns></returns>
-        internal static 訂正結果 Get_訂正結果_逐次(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
+        public static 訂正結果 Get_訂正結果_逐次(byte[] p_塩基列, TrustedKmerIndex p_kmerインデックス, int p_k長, int p_最大反復数)
         {
             var l_塩基列 = p_塩基列;
             var l_窓数 = l_塩基列.Length - p_k長 + 1;
             var l_訂正数 = 0;
-
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
             {
                 var l_信頼状況 = Get_窓別信頼状況(l_塩基列, p_k長, p_kmerインデックス);
@@ -159,7 +153,6 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_最良位置 = -1;
                 byte l_最良塩基 = 0;
                 var l_最良改善数 = 0;
-
                 for (var l_位置 = 0; l_位置 < l_塩基列.Length; l_位置++)
                 {
                     if (l_塩基列[l_位置] == Consts.無効な塩基)
@@ -169,7 +162,6 @@ namespace Tsumiki.Cores.Preprocessing
 
                     var l_窓開始 = Math.Max(0, l_位置 - p_k長 + 1);
                     var l_窓終了 = Math.Min(l_窓数 - 1, l_位置);
-
                     var l_Has未信頼窓 = false;
                     for (var w = l_窓開始; w <= l_窓終了; w++)
                     {
@@ -233,27 +225,21 @@ namespace Tsumiki.Cores.Preprocessing
             var l_総リード数 = 0;
             var l_訂正されたリード数 = 0;
             var l_総訂正塩基数 = 0;
-
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
             using var l_中断 = new CancellationTokenSource();
             using var l_読込済み = new BlockingCollection<訂正バッチ>(C_先読みするバッチ数);
             using var l_訂正済み = new BlockingCollection<訂正バッチ>(C_先読みするバッチ数);
-
             var l_読み込み = Task.Run(() => V_読込_バッチ群(p_入力パス, l_読込済み, l_中断));
             var l_書き出し = Task.Run(() => V_書出_バッチ群(p_出力パス, l_訂正済み, l_中断));
-
             try
             {
                 foreach (var l_バッチ in l_読込済み.GetConsumingEnumerable(l_中断.Token))
                 {
                     l_総リード数 += l_バッチ.A_件数;
-
                     _ = Parallel.For(0, l_バッチ.A_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                     {
                         l_バッチ.A_結果群[i] = Get_訂正結果(l_バッチ.A_塩基列群[i], p_kmerインデックス, p_k長, p_度数: p_度数);
                     });
-
                     for (var i = 0; i < l_バッチ.A_件数; i++)
                     {
                         if (l_バッチ.A_結果群[i].A_訂正数 > 0)
@@ -281,7 +267,6 @@ namespace Tsumiki.Cores.Preprocessing
 
             l_読み込み.GetAwaiter().GetResult();
             l_書き出し.GetAwaiter().GetResult();
-
             return new ファイル訂正統計(l_総リード数, l_訂正されたリード数, l_総訂正塩基数);
         }
 
@@ -361,8 +346,8 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         /// <summary>
-        /// パック経路の訂正本体。1 回の置き換えで変わるのはその位置を含む窓だけなので、窓の状態はその範囲だけ引き直し、
-        /// 位置と塩基ごとの改善数 (確かな値か、打ち切ったときの上界) を控えて、置き換えた位置から k 未満の位置の控えだけを捨てる (選ぶ置き換えは控えなしと同じ)
+        /// パック経路の訂正本体<br/>
+        /// 1 回の置き換えで変わるのはその位置を含む窓だけなので、窓の状態はその範囲だけ引き直し、 位置と塩基ごとの改善数 (確かな値か、打ち切ったときの上界) を控えて、置き換えた位置から k 未満の位置の控えだけを捨てる (選ぶ置き換えは控えなしと同じ)
         /// </summary>
         /// <param name="p_塩基列"></param>
         /// <param name="p_kmerインデックス"></param>
@@ -379,7 +364,6 @@ namespace Tsumiki.Cores.Preprocessing
             var l_逆相補 = l_作業域.A_逆相補.AsSpan(0, l_窓数);
             var l_無効数 = l_作業域.A_無効数.AsSpan(0, l_窓数);
             var l_信頼状況 = l_作業域.A_信頼状況.AsSpan(0, l_窓数);
-
             var l_未信頼累積 = l_作業域.A_未信頼累積.AsSpan(0, l_窓数 + 1);
             var l_上限 = p_塩基列.Length <= C_スタックに置く長さ ? stackalloc int[p_塩基列.Length] : new int[p_塩基列.Length];
             var l_順番 = p_塩基列.Length <= C_スタックに置く長さ ? stackalloc int[p_塩基列.Length] : new int[p_塩基列.Length];
@@ -390,7 +374,6 @@ namespace Tsumiki.Cores.Preprocessing
             var l_訂正数 = 0;
             var l_直した位置 = -1;
             var l_Is状況が古い = false;
-
             for (var l_反復 = 0; l_反復 < p_最大反復数; l_反復++)
             {
                 l_Is状況が古い = false;
@@ -422,7 +405,6 @@ namespace Tsumiki.Cores.Preprocessing
                 var l_最良位置 = -1;
                 byte l_最良塩基 = 0;
                 var l_最良改善数 = 0;
-
                 for (var i = 0; i < l_候補数; i++)
                 {
                     var l_位置 = l_順番[i];
@@ -556,7 +538,6 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_マスク = Get_マスク(p_k長);
             var l_最上位への移動 = 2 * (p_k長 - 1);
-
             UInt128 l_パック = 0;
             UInt128 l_逆相補 = 0;
             var l_無効数 = 0;
@@ -592,8 +573,7 @@ namespace Tsumiki.Cores.Preprocessing
                 p_パック[w] = l_パック;
                 p_逆相補[w] = l_逆相補;
                 p_無効数[w] = l_無効数;
-                p_信頼状況[w] = l_無効数 == 0
-                    && Haskmer(p_kmerインデックス, p_k長, l_パック, l_逆相補);
+                p_信頼状況[w] = l_無効数 == 0 && Haskmer(p_kmerインデックス, p_k長, l_パック, l_逆相補);
             }
         }
 
@@ -620,7 +600,6 @@ namespace Tsumiki.Cores.Preprocessing
             var l_相補コドン = Get_相補コドン(p_候補);
             var l_改善数 = 0;
             p_Is打ち切り = false;
-
             for (var w = p_窓開始; w <= p_窓終了; w++)
             {
                 var l_残りの上界 = p_未信頼累積[p_窓終了 + 1] - p_未信頼累積[w];
@@ -641,8 +620,7 @@ namespace Tsumiki.Cores.Preprocessing
                     var l_移動 = 2 * (p_k長 - 1 - l_窓内の位置);
                     var l_逆相補の移動 = 2 * l_窓内の位置;
                     var l_パック = (p_パック[w] & ~((UInt128)3 << l_移動)) | (l_コドン << l_移動);
-                    var l_逆相補 =
-                        (p_逆相補[w] & ~((UInt128)3 << l_逆相補の移動)) | (l_相補コドン << l_逆相補の移動);
+                    var l_逆相補 = (p_逆相補[w] & ~((UInt128)3 << l_逆相補の移動)) | (l_相補コドン << l_逆相補の移動);
                     l_Is信頼可能 = Haskmer(p_kmerインデックス, p_k長, l_パック, l_逆相補);
                 }
 
@@ -670,9 +648,7 @@ namespace Tsumiki.Cores.Preprocessing
         private static bool Haskmer(TrustedKmerIndex p_kmerインデックス, int p_k長, UInt128 p_パック, UInt128 p_逆相補)
         {
             var l_正規形 = p_パック < p_逆相補 ? p_パック : p_逆相補;
-            return p_k長 <= 32
-                ? p_kmerインデックス.Haskmer_小((ulong)l_正規形)
-                : p_kmerインデックス.Haskmer_中(l_正規形);
+            return p_k長 <= 32 ? p_kmerインデックス.Haskmer_小((ulong)l_正規形) : p_kmerインデックス.Haskmer_中(l_正規形);
         }
 
         /// <summary>
@@ -761,7 +737,6 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_元の塩基 = p_塩基列[p_位置];
             p_塩基列[p_位置] = p_候補;
-
             var l_改善数 = 0;
             for (var w = p_窓開始; w <= p_窓終了; w++)
             {
@@ -781,6 +756,5 @@ namespace Tsumiki.Cores.Preprocessing
         }
 
         #endregion
-
     }
 }

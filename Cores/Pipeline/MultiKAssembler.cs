@@ -16,6 +16,21 @@ namespace Tsumiki.Cores.Pipeline
         #region 定数
 
         /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
+        /// 改行
+        /// </summary>
+        private const string C_改行 = "\n";
+
+        /// <summary>
+        /// 区切り
+        /// </summary>
+        private const string C_区切り = ",";
+
+        /// <summary>
         /// 自動で試す k のリード長に対する上限比
         /// </summary>
         private const double C_マルチk上限のリード長比 = 0.9D;
@@ -60,20 +75,15 @@ namespace Tsumiki.Cores.Pipeline
         public static アセンブリ実行結果? Get_実行結果(Parameters p_引数, string p_一時ディレクトリ, int? p_リード長, Parameters? p_原入力 = null)
         {
             var l_k候補 = Get_k候補一覧(p_引数, p_リード長);
-            Logger.V_出力(メッセージID.試すk一覧, string.Join(", ", l_k候補));
-
+            Logger.V_出力(メッセージID.試すk一覧, string.Join(C_項目区切り, l_k候補));
             var l_実行結果一覧 = new List<アセンブリ実行結果>();
             アセンブリ実行結果? l_直前 = null;
-
             List<引き継ぎ配列> l_引き継ぎ = [];
             List<引き継ぎ配列> l_次への引き継ぎ = [];
-
             List<引き継ぎ配列> l_合成リードの控え = [];
-
             var l_再開署名 = 中間データ置き場.A_Is有効 ? null : Get_再開署名(p_引数, l_k候補);
             var l_Is再利用中 = p_引数.A_Is再開 && l_再開署名 is not null;
             var l_Is合成リード保存済み = false;
-
             foreach (var l_k長 in l_k候補)
             {
                 if (Is薄すぎる(l_直前, l_k長, p_リード長, p_引数, out var l_予測))
@@ -83,7 +93,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
 
                 var l_k作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"k{l_k長}");
-                if (l_Is再利用中 && Try再利用(p_引数, l_k作業ディレクトリ, p_一時ディレクトリ, l_再開署名!, l_合成リードの控え, out var l_再利用結果, out var l_再利用引き継ぎ))
+                if (l_Is再利用中 && Is成功_再利用(p_引数, l_k作業ディレクトリ, p_一時ディレクトリ, l_再開署名!, l_合成リードの控え, out var l_再利用結果, out var l_再利用引き継ぎ))
                 {
                     Logger.V_出力(メッセージID.再開_kの結果を再利用, l_k長);
                     l_Is合成リード保存済み |= l_合成リードの控え.Count > 0;
@@ -111,7 +121,6 @@ namespace Tsumiki.Cores.Pipeline
                 l_実行結果一覧.Add(l_結果);
                 l_直前 = l_結果;
                 l_引き継ぎ = [.. l_次への引き継ぎ];
-
                 if (l_再開署名 is not null)
                 {
                     if (!l_Is合成リード保存済み && l_合成リードの控え.Count > 0)
@@ -126,7 +135,6 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
-
             if (l_実行結果一覧.Count == 0)
             {
                 return null;
@@ -135,18 +143,15 @@ namespace Tsumiki.Cores.Pipeline
             var l_アンカーk長 = Get_アンカーk長(l_k候補);
             var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
             _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
-
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
             p_引数.Set_推定k長(l_アンカーk長);
             using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_アンカー;
-
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
             l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
             KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
-
             var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
             if (l_解析 is null)
             {
@@ -165,22 +170,24 @@ namespace Tsumiki.Cores.Pipeline
             if (l_実行結果一覧.Count == 1)
             {
                 Logger.V_出力(メッセージID.単一のkのみ成功);
-                return l_候補[0].A_実行結果 with { A_固定アンカー評価 = l_候補[0].A_評価 };
+                return l_候補[0].A_実行結果 with
+                {
+                    A_固定アンカー評価 = l_候補[0].A_評価
+                };
             }
 
             var l_最良 = AssemblySelector.Get_最良(l_候補)!.Value;
             AssemblySelector.V_出力_候補一覧(l_候補, l_最良.A_実行結果);
             Logger.V_出力(メッセージID.採用したk, l_最良.A_実行結果.A_k長);
-
-            var l_採用 = (p_引数.A_Isマージ
-                    ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群)
-                    : null)
-                ?? l_最良.A_実行結果 with { A_固定アンカー評価 = l_最良.A_評価 };
+            var l_採用 = (p_引数.A_Isマージ ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群) : null) ?? l_最良.A_実行結果 with
+            {
+                A_固定アンカー評価 = l_最良.A_評価
+            };
             return Get_補完結果(l_採用, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ) ?? l_採用;
         }
 
         /// <summary>
-        /// 単一 k 指定 (マルチk不使用) で得た結果に、固定アンカー k-mer 集合による独立評価を付ける
+        /// 単一 k 指定 (マルチ k 不使用) で得た結果に、固定アンカー k-mer 集合による独立評価を付ける
         /// </summary>
         /// <param name="p_結果">単一 k で得たアセンブリ実行結果</param>
         /// <param name="p_引数">実行時引数</param>
@@ -192,18 +199,15 @@ namespace Tsumiki.Cores.Pipeline
             var l_アンカーk長 = Get_アンカーk長([p_結果.A_k長]);
             var l_アンカー作業ディレクトリ = Path.Combine(p_一時ディレクトリ, $"anchor{l_アンカーk長}");
             _ = Directory.CreateDirectory(l_アンカー作業ディレクトリ);
-
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
             p_引数.Set_推定k長(l_アンカーk長);
             using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
             ConfigurationManager.A_kmerインデックス = l_アンカー;
-
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
             l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
             KmerHistogram.V_出力_スペクトル(l_アンカー.A_出現回数ヒストグラム, l_アンカーk長, p_リード長);
-
             var l_解析 = KmerHistogram.Get_解析結果(l_アンカー.A_出現回数ヒストグラム);
             if (l_解析 is null)
             {
@@ -219,7 +223,10 @@ namespace Tsumiki.Cores.Pipeline
                 return p_結果;
             }
 
-            return p_結果 with { A_固定アンカー評価 = l_評価 };
+            return p_結果 with
+            {
+                A_固定アンカー評価 = l_評価
+            };
         }
 
         /// <summary>
@@ -258,6 +265,72 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 次段で使用する引き継ぎ配列を準備する必要があるか判定する
+        /// </summary>
+        /// <param name="p_引数"></param>
+        /// <param name="p_k候補"></param>
+        /// <param name="p_現在k"></param>
+        /// <returns></returns>
+        public static bool Is次段引き継ぎ必要(Parameters p_引数, IReadOnlyList<int> p_k候補, int p_現在k)
+        {
+            return p_引数.A_Is引き継ぎ && p_k候補.Any(x => x > p_現在k);
+        }
+
+        /// <summary>
+        /// 候補を評価する物差しの k
+        /// </summary>
+        /// <param name="p_k候補"></param>
+        /// <returns></returns>
+        public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
+        {
+            var l_k長 = p_k候補[0] - C_アンカーk長の候補からの差;
+            if (l_k長 % 2 == 0)
+            {
+                l_k長--;
+            }
+
+            return Math.Max(C_アンカーk長の下限, l_k長);
+        }
+
+        /// <summary>
+        /// 直前の k での単一コピーカバレッジから、次の k でのカバレッジを予測する
+        /// </summary>
+        /// <param name="p_直前の基準値"></param>
+        /// <param name="p_直前のk長"></param>
+        /// <param name="p_次のk長"></param>
+        /// <param name="p_リード長"></param>
+        /// <returns></returns>
+        public static double Get_予測kmerカバレッジ(double p_直前の基準値, int p_直前のk長, int p_次のk長, int p_リード長)
+        {
+            var l_直前の本数 = p_リード長 - p_直前のk長 + 1;
+            var l_次の本数 = p_リード長 - p_次のk長 + 1;
+            return l_直前の本数 <= 0 || l_次の本数 <= 0 ? 0D : p_直前の基準値 * l_次の本数 / l_直前の本数;
+        }
+
+        /// <summary>
+        /// 配列を N の連続で分断して書き出す
+        /// </summary>
+        /// <param name="p_入力パス">分断する FASTA</param>
+        /// <param name="p_出力パス">書き出す FASTA</param>
+        public static void V_書き出し_N分割(string p_入力パス, string p_出力パス)
+        {
+            using var l_書き込み = new FastaWriter(p_出力パス);
+            var l_連番 = 1;
+            foreach (var (l_ID, l_配列) in FastaReader.Get_全エントリ(p_入力パス))
+            {
+                foreach (var l_片 in l_配列.Split(['N', Consts.未確認の繋ぎ目], StringSplitOptions.RemoveEmptyEntries))
+                {
+                    l_書き込み.V_書き込み($"NODE{l_連番}", l_片);
+                    l_連番++;
+                }
+            }
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
         /// エラー訂正で数えた誤りの無い区間から、予測カバレッジが試す価値のある下限を保てる最大の k を返す
         /// </summary>
         /// <param name="p_引数">実行時引数</param>
@@ -290,75 +363,6 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 次段で使用する引き継ぎ配列を準備する必要があるか判定する
-        /// </summary>
-        /// <param name="p_引数"></param>
-        /// <param name="p_k候補"></param>
-        /// <param name="p_現在k"></param>
-        /// <returns></returns>
-        internal static bool Is次段引き継ぎ必要(Parameters p_引数, IReadOnlyList<int> p_k候補, int p_現在k)
-        {
-            return p_引数.A_Is引き継ぎ && p_k候補.Any(x => x > p_現在k);
-        }
-
-        /// <summary>
-        /// 候補を評価する物差しの k
-        /// </summary>
-        /// <param name="p_k候補"></param>
-        /// <returns></returns>
-        public static int Get_アンカーk長(IReadOnlyList<int> p_k候補)
-        {
-            var l_k長 = p_k候補[0] - C_アンカーk長の候補からの差;
-
-            if (l_k長 % 2 == 0)
-            {
-                l_k長--;
-            }
-
-            return Math.Max(C_アンカーk長の下限, l_k長);
-        }
-
-        /// <summary>
-        /// 直前の k での単一コピーカバレッジから、次の k でのカバレッジを予測する
-        /// </summary>
-        /// <param name="p_直前の基準値"></param>
-        /// <param name="p_直前のk長"></param>
-        /// <param name="p_次のk長"></param>
-        /// <param name="p_リード長"></param>
-        /// <returns></returns>
-        public static double Get_予測kmerカバレッジ(double p_直前の基準値, int p_直前のk長, int p_次のk長, int p_リード長)
-        {
-            var l_直前の本数 = p_リード長 - p_直前のk長 + 1;
-            var l_次の本数 = p_リード長 - p_次のk長 + 1;
-            return l_直前の本数 <= 0 || l_次の本数 <= 0
-                ? 0D
-                : p_直前の基準値 * l_次の本数 / l_直前の本数;
-        }
-
-        /// <summary>
-        /// 配列を N の連続で分断して書き出す
-        /// </summary>
-        /// <param name="p_入力パス">分断する FASTA</param>
-        /// <param name="p_出力パス">書き出す FASTA</param>
-        public static void V_書き出し_N分割(string p_入力パス, string p_出力パス)
-        {
-            using var l_書き込み = new FastaWriter(p_出力パス);
-            var l_連番 = 1;
-            foreach (var (A_ID, A_配列) in FastaReader.Get_全エントリ(p_入力パス))
-            {
-                foreach (var l_片 in A_配列.Split(['N', Consts.未確認の繋ぎ目], StringSplitOptions.RemoveEmptyEntries))
-                {
-                    l_書き込み.V_書き込み($"NODE{l_連番}", l_片);
-                    l_連番++;
-                }
-            }
-        }
-
-        #endregion
-
-        #region 内部メソッド
-
-        /// <summary>
         /// k ごとの記録が前回と同じ入力・設定・k の候補一覧で作られたかを見分ける値を作る
         /// </summary>
         /// <param name="p_引数"></param>
@@ -372,7 +376,7 @@ namespace Tsumiki.Cores.Pipeline
                 l_設定.Set_推定kmerカットオフ(1UL);
             }
 
-            return StageCheckpoint.Get_入力署名(l_設定) + "\n" + string.Join(",", p_k候補);
+            return StageCheckpoint.Get_入力署名(l_設定) + C_改行 + string.Join(C_区切り, p_k候補);
         }
 
         /// <summary>
@@ -386,17 +390,17 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_結果"></param>
         /// <param name="p_引き継ぎ">次の k への引き継ぎ (合成リードを含む)</param>
         /// <returns>読み戻せたら true</returns>
-        private static bool Try再利用(Parameters p_引数, string p_k作業ディレクトリ, string p_一時ディレクトリ, string p_署名, List<引き継ぎ配列> p_合成リードの控え, out アセンブリ実行結果? p_結果, out List<引き継ぎ配列> p_引き継ぎ)
+        private static bool Is成功_再利用(Parameters p_引数, string p_k作業ディレクトリ, string p_一時ディレクトリ, string p_署名, List<引き継ぎ配列> p_合成リードの控え, out アセンブリ実行結果? p_結果, out List<引き継ぎ配列> p_引き継ぎ)
         {
             p_引き継ぎ = [];
-            if (!MultiKCheckpoint.Try読込_k(p_k作業ディレクトリ, p_署名, out p_結果, out var l_引き継ぎ, out var l_合成リード数) || p_結果 is null)
+            if (!MultiKCheckpoint.Is成功_読込_k(p_k作業ディレクトリ, p_署名, out p_結果, out var l_引き継ぎ, out var l_合成リード数) || p_結果 is null)
             {
                 return false;
             }
 
             if (l_合成リード数 > 0 && p_合成リードの控え.Count == 0)
             {
-                if (!MultiKCheckpoint.Try読込_合成リード(p_一時ディレクトリ, p_署名, l_合成リード数, out var l_合成リード))
+                if (!MultiKCheckpoint.Is成功_読込_合成リード(p_一時ディレクトリ, p_署名, l_合成リード数, out var l_合成リード))
                 {
                     p_結果 = null;
                     return false;
@@ -446,7 +450,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_橋渡しの場所">統合した配列の中の橋渡しした配列の場所</param>
         /// <param name="p_ライブラリ群">元リード</param>
         /// <returns>見送る始点の頂点 (評価できなければ空)</returns>
-        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
             HashSet<int> l_見送る = [];
             if (p_橋渡しの場所.Count == 0 || JunctionRiskEvaluator.Get_評価(p_統合パス, p_ライブラリ群) is not { } l_評価群)
@@ -459,9 +463,9 @@ namespace Tsumiki.Cores.Pipeline
             var l_最高 = 0D;
             foreach (var l_評価 in l_評価群)
             {
-                foreach (var (A_配列名, A_開始, A_終了, A_始点) in l_場所[l_評価.A_候補.A_配列名])
+                foreach (var (l_配列名, l_開始, l_終了, l_始点) in l_場所[l_評価.A_候補.A_配列名])
                 {
-                    if (l_評価.A_候補.A_開始 >= A_終了 + C_橋渡しに掛かる余白 || l_評価.A_候補.A_終了 <= A_開始 - C_橋渡しに掛かる余白)
+                    if (l_評価.A_候補.A_開始 >= l_終了 + C_橋渡しに掛かる余白 || l_評価.A_候補.A_終了 <= l_開始 - C_橋渡しに掛かる余白)
                     {
                         continue;
                     }
@@ -470,7 +474,7 @@ namespace Tsumiki.Cores.Pipeline
                     l_最高 = Math.Max(l_最高, l_評価.A_誤りの確率);
                     if (l_評価.A_誤りの確率 >= C_橋渡しを見送る確率)
                     {
-                        _ = l_見送る.Add(A_始点);
+                        _ = l_見送る.Add(l_始点);
                     }
                 }
             }
@@ -490,16 +494,15 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_ライブラリ群">継ぎ目の誤り確率を見る元リード</param>
         /// <returns></returns>
-        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.統合開始);
-
             var l_統合パス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + Consts.Scaffoldファイル名);
             var l_全候補 = p_候補.Select(x => x.A_実行結果).ToList();
             var l_期待コピー数 = Get_期待コピー数(p_アンカー, p_アンカーk長, p_解析);
             List<(string A_配列名, int A_開始, int A_終了, int A_始点)> l_橋渡しの場所 = [];
-            if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_橋渡しの場所: l_橋渡しの場所))
+            if (!AssemblyMerger.Is成功_統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_橋渡しの場所: l_橋渡しの場所))
             {
                 return null;
             }
@@ -508,7 +511,7 @@ namespace Tsumiki.Cores.Pipeline
             if (l_見送る始点.Count > 0)
             {
                 Logger.V_出力(メッセージID.危ない橋渡しを見送る, l_見送る始点.Count, C_橋渡しを見送る確率);
-                if (!AssemblyMerger.Try統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_見送る始点: l_見送る始点))
+                if (!AssemblyMerger.Is成功_統合(p_最良.A_実行結果, l_全候補, p_アンカーk長, l_統合パス, l_期待コピー数, p_見送る始点: l_見送る始点))
                 {
                     return null;
                 }
@@ -516,13 +519,11 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_統合contigパス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_統合接頭辞 + AssemblyPipeline.C_Contigファイル名);
             V_書き出し_N分割(l_統合パス, l_統合contigパス);
-
             var l_統合結果 = p_最良.A_実行結果 with
             {
                 A_contigパス = l_統合contigパス,
                 A_scaffoldパス = l_統合パス,
             };
-
             var l_統合の評価 = AssemblyScorer.Get_評価(l_統合結果.A_最終パス, p_アンカー, p_アンカーk長, p_解析.A_単一コピー基準値, p_解析.A_推定ゲノムサイズ, p_解析.A_単一コピー上限);
             if (l_統合の評価 is null)
             {
@@ -530,11 +531,12 @@ namespace Tsumiki.Cores.Pipeline
                 return null;
             }
 
-            l_統合結果 = l_統合結果 with { A_固定アンカー評価 = l_統合の評価 };
-
+            l_統合結果 = l_統合結果 with
+            {
+                A_固定アンカー評価 = l_統合の評価
+            };
             Logger.V_出力(メッセージID.統合前の評価, p_最良.A_評価);
             Logger.V_出力(メッセージID.統合後の評価, l_統合の評価);
-
             var (l_実行結果, l_評価) = AssemblySelector.Get_最良([p_最良, (l_統合結果, l_統合の評価)])!.Value;
             if (l_実行結果.A_最終パス != l_統合パス)
             {
@@ -572,7 +574,6 @@ namespace Tsumiki.Cores.Pipeline
 
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.補完した配列, l_本数, l_延長);
-
             var l_補完contigパス = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_補完接頭辞 + AssemblyPipeline.C_Contigファイル名);
             V_書き出し_N分割(l_補完パス, l_補完contigパス);
             var l_補完結果 = p_採用 with
@@ -580,7 +581,6 @@ namespace Tsumiki.Cores.Pipeline
                 A_contigパス = l_補完contigパス,
                 A_scaffoldパス = l_補完パス,
             };
-
             var l_補完後の評価 = AssemblyScorer.Get_評価(l_補完パス, p_アンカー, p_アンカーk長, p_解析.A_単一コピー基準値, p_解析.A_推定ゲノムサイズ, p_解析.A_単一コピー上限);
             if (l_補完後の評価 is null)
             {
@@ -596,7 +596,10 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.補完結果を採用);
-            return l_補完結果 with { A_固定アンカー評価 = l_補完後の評価 };
+            return l_補完結果 with
+            {
+                A_固定アンカー評価 = l_補完後の評価
+            };
         }
 
         /// <summary>

@@ -15,6 +15,11 @@ namespace Tsumiki.Cores.Polishing
         #region 定数
 
         /// <summary>
+        /// 項目 polishing
+        /// </summary>
+        private const string C_項目_polishing = "polishing";
+
+        /// <summary>
         /// リードの置き場所を探す種にする長さ
         /// </summary>
         private const int C_シード長 = 21;
@@ -56,9 +61,9 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_出力パス"></param>
         /// <param name="p_Is訂正">false なら配列を変更せず深度を再測定する</param>
         /// <returns></returns>
-        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, string p_出力パス, bool p_Is訂正 = true)
+        public static ポリッシュ統計? Get_磨いた結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, string p_出力パス, bool p_Is訂正 = true)
         {
-            using var l_計測 = new StageTimer("polishing");
+            using var l_計測 = new StageTimer(C_項目_polishing);
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
             if (l_エントリ群.Count == 0)
             {
@@ -67,7 +72,6 @@ namespace Tsumiki.Cores.Polishing
 
             var l_配列群 = l_エントリ群.Select(x => x.A_配列.ToCharArray()).ToList();
             var l_総延長 = l_配列群.Sum(x => (long)x.Length);
-
             Logger.V_出力(メッセージID.ポリッシュの索引構築, l_エントリ群.Count, l_総延長);
             var l_マッパー = new ReadMapper([.. l_配列群.Select(x => new string(x))]);
             if (l_配列群.All(x => x.Length < C_シード長))
@@ -77,15 +81,13 @@ namespace Tsumiki.Cores.Polishing
             }
 
             var l_得票 = l_配列群.Select(x => new int[x.Length * 4]).ToArray();
-
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_マップ数 = new long[l_スレッド数];
             var l_棄却数 = new long[l_スレッド数];
-
             Logger.V_出力(メッセージID.ポリッシュのマッピング開始);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, l_ワーカー番号) =>
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]), (l_リード, l_ワーカー番号) =>
             {
-                if (Try集計_塩基票(l_リード, l_マッパー, l_得票))
+                if (Is成功_集計_塩基票(l_リード, l_マッパー, l_得票))
                 {
                     l_マップ数[l_ワーカー番号]++;
                 }
@@ -94,12 +96,9 @@ namespace Tsumiki.Cores.Polishing
                     l_棄却数[l_ワーカー番号]++;
                 }
             });
-
             var l_中央値 = Get_深度中央値(l_配列群, l_得票);
             Logger.V_出力(メッセージID.ポリッシュの深度中央値, l_中央値);
-
             var l_訂正数 = V_訂正_多数決(l_配列群, l_得票, l_中央値, out var l_深度不足数, out var l_評価位置数, p_Is訂正);
-
             using (var l_書き込み = new FastaWriter(p_出力パス))
             {
                 for (var i = 0; i < l_エントリ群.Count; i++)
@@ -139,7 +138,7 @@ namespace Tsumiki.Cores.Polishing
         /// <param name="p_マッパー"></param>
         /// <param name="p_得票"></param>
         /// <returns></returns>
-        private static bool Try集計_塩基票(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
+        private static bool Is成功_集計_塩基票(string p_リード, ReadMapper p_マッパー, int[][] p_得票)
         {
             var l_配置 = p_マッパー.Get_配置(p_リード);
             if (l_配置.A_配列番号 < 0 || l_配置.A_信頼度 == 0 || l_配置.A_整列位置群.Count < C_最小整列長)
@@ -239,11 +238,9 @@ namespace Tsumiki.Cores.Polishing
         private static long V_訂正_多数決(List<char[]> p_配列群, int[][] p_得票, double p_深度の中央値, out long p_深度不足数, out long p_評価位置数, bool p_Is訂正)
         {
             var l_深度不足の閾値 = p_深度の中央値 * C_深度不足とみなす比;
-
             var l_訂正数 = 0L;
             p_深度不足数 = 0L;
             p_評価位置数 = 0L;
-
             for (var i = 0; i < p_配列群.Count; i++)
             {
                 var l_配列 = p_配列群[i];
@@ -256,7 +253,6 @@ namespace Tsumiki.Cores.Polishing
                     }
 
                     p_評価位置数++;
-
                     var l_深度 = Get_深度(l_票, l_位置);
                     if (l_深度 == 0 || l_深度 < l_深度不足の閾値)
                     {

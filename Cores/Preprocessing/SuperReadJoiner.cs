@@ -56,8 +56,8 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// ペアの FASTQ を読み込み、統合できたペアを合成配列 (引き継ぎ配列) として返す
         /// </summary>
-        /// <param name="p_リード1のパス">リード 1 のパス</param>
-        /// <param name="p_リード2のパス">リード 2 のパス</param>
+        /// <param name="p_順リードのパス">リード 1 のパス</param>
+        /// <param name="p_逆リードのパス">リード 2 のパス</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_統計">統合の内訳</param>
@@ -65,35 +65,30 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_推定断片長下限">重なりを探すオフセットの下限を決める断片長、分からなければ null</param>
         /// <param name="p_重なり結合の出力パス">渡すと、重なりで繋いだ断片だけを FASTQ として書き出す</param>
         /// <returns>橋渡しで繋いだ合成配列 (重なりで繋いだものは p_重なり結合の出力パス へ書き出し、引き継ぎには含めない)</returns>
-        public static List<引き継ぎ配列> Get_合成リード(string p_リード1のパス, string p_リード2のパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計, int? p_推定断片長上限 = null, int? p_推定断片長下限 = null, string? p_重なり結合の出力パス = null)
+        public static List<引き継ぎ配列> Get_合成リード(string p_順リードのパス, string p_逆リードのパス, TrustedKmerIndex p_kmerインデックス, int p_k長, out SuperRead統計 p_統計, int? p_推定断片長上限 = null, int? p_推定断片長下限 = null, string? p_重なり結合の出力パス = null)
         {
             using var l_計測 = new StageTimer($"superread k={p_k長}");
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_インサートサイズ = ConfigurationManager.A_実行時引数.A_インサートサイズ ?? p_推定断片長上限;
-
             var l_総ペア数 = 0;
             var l_統合数 = 0;
             var l_重なり結合数 = 0;
             var l_曖昧で捨てた数 = 0;
             var l_出力済みの区切り = 0UL;
             List<引き継ぎ配列> l_結果 = [];
-
             Logger.V_出力(メッセージID.SuperRead橋渡し開始);
-
-            using var l_読み込み1 = new FastqReader(p_リード1のパス);
-            using var l_読み込み2 = new FastqReader(p_リード2のパス);
+            using var l_読み込み1 = new FastqReader(p_順リードのパス);
+            using var l_読み込み2 = new FastqReader(p_逆リードのパス);
             using var l_書き出し = p_重なり結合の出力パス is null ? null : new FastqWriter(p_重なり結合の出力パス);
-
             var l_統合結果群 = new (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数)[C_バッチサイズ];
             var l_引き継ぎ群 = new 引き継ぎ配列?[C_バッチサイズ];
-
             var l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
             try
             {
                 while (true)
                 {
-                    var (l_配列1群, l_配列2群) = l_次の読み込み.Result;
-                    var l_件数 = l_配列1群.Length;
+                    var (l_基準配列群, l_比較配列群) = l_次の読み込み.Result;
+                    var l_件数 = l_基準配列群.Length;
                     if (l_件数 == 0)
                     {
                         break;
@@ -101,13 +96,11 @@ namespace Tsumiki.Cores.Preprocessing
 
                     l_次の読み込み = Task.Run(() => Get_ペアの束(l_読み込み1, l_読み込み2));
                     l_総ペア数 += l_件数;
-
                     _ = Parallel.For(0, l_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                     {
-                        l_統合結果群[i] = Get_合成配列_内訳つき(l_配列1群[i], l_配列2群[i], p_kmerインデックス, p_k長, l_インサートサイズ, p_推定断片長下限, p_推定断片長上限);
+                        l_統合結果群[i] = Get_合成配列_内訳つき(l_基準配列群[i], l_比較配列群[i], p_kmerインデックス, p_k長, l_インサートサイズ, p_推定断片長下限, p_推定断片長上限);
                         l_引き継ぎ群[i] = l_統合結果群[i] is { A_配列: { } l_合成, A_Is重なり結合: false } ? Get_引き継ぎ配列(l_合成, p_kmerインデックス, p_k長) : null;
                     });
-
                     for (var i = 0; i < l_件数; i++)
                     {
                         l_曖昧で捨てた数 += l_統合結果群[i].A_曖昧で捨てた数;
@@ -164,6 +157,28 @@ namespace Tsumiki.Cores.Preprocessing
             }
         }
 
+        /// <summary>
+        /// 1 ペア分の統合を、どちらの手段で繋いだかと一緒に返す
+        /// </summary>
+        /// <param name="p_基準配列">read1 の配列</param>
+        /// <param name="p_比較配列">read2 の配列</param>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_k長">この k の長さ</param>
+        /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
+        /// <param name="p_断片長下限">重なりを探す断片長の下限、分からなければ null</param>
+        /// <param name="p_断片長上限">重なりを探す断片長の上限、分からなければ null</param>
+        /// <returns>合成配列と、重なりで繋いだかどうか、重なりが曖昧で捨てた数</returns>
+        public static (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_基準配列, string p_比較配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ, int? p_断片長下限 = null, int? p_断片長上限 = null)
+        {
+            var l_曖昧 = 0;
+            if (Get_重なりで結合(p_基準配列, p_比較配列, p_kmerインデックス, p_k長, ref l_曖昧, p_断片長下限, p_断片長上限) is { } l_重なり結合)
+            {
+                return (l_重なり結合, true, 0);
+            }
+
+            return (Get_橋渡しで結合(p_基準配列, p_比較配列, p_kmerインデックス, p_k長, p_インサートサイズ), false, l_曖昧);
+        }
+
         #endregion
 
         #region テストメソッド
@@ -171,15 +186,15 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// 1 ペア分の統合を試みる
         /// </summary>
-        /// <param name="p_配列1">read1 の配列</param>
-        /// <param name="p_配列2">read2 の配列</param>
+        /// <param name="p_基準配列">read1 の配列</param>
+        /// <param name="p_比較配列">read2 の配列</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
         /// <returns>合成配列、統合できなかった場合は null</returns>
-        internal static string? Get_合成配列(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ = null)
+        public static string? Get_合成配列(string p_基準配列, string p_比較配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ = null)
         {
-            return Get_合成配列_内訳つき(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ).A_配列;
+            return Get_合成配列_内訳つき(p_基準配列, p_比較配列, p_kmerインデックス, p_k長, p_インサートサイズ).A_配列;
         }
 
         #endregion
@@ -187,48 +202,22 @@ namespace Tsumiki.Cores.Preprocessing
         #region 内部メソッド
 
         /// <summary>
-        /// 1 ペア分の統合を、どちらの手段で繋いだかと一緒に返す
-        /// </summary>
-        /// <param name="p_配列1">read1 の配列</param>
-        /// <param name="p_配列2">read2 の配列</param>
-        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
-        /// <param name="p_k長">この k の長さ</param>
-        /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
-        /// <param name="p_断片長下限">重なりを探す断片長の下限、分からなければ null</param>
-        /// <param name="p_断片長上限">重なりを探す断片長の上限、分からなければ null</param>
-        /// <returns>合成配列と、重なりで繋いだかどうか、重なりが曖昧で捨てた数</returns>
-        internal static (string? A_配列, bool A_Is重なり結合, int A_曖昧で捨てた数) Get_合成配列_内訳つき(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ, int? p_断片長下限 = null, int? p_断片長上限 = null)
-        {
-            var l_曖昧 = 0;
-            if (Get_重なりで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, ref l_曖昧, p_断片長下限, p_断片長上限) is { } l_重なり結合)
-            {
-                return (l_重なり結合, true, 0);
-            }
-
-            return (Get_橋渡しで結合(p_配列1, p_配列2, p_kmerインデックス, p_k長, p_インサートサイズ), false, l_曖昧);
-        }
-
-        /// <summary>
         /// read1 と RC (read2) の重なりから断片を復元する
         /// </summary>
-        /// <param name="p_配列1">read1 の配列</param>
-        /// <param name="p_配列2">read2 の配列</param>
+        /// <param name="p_基準配列">read1 の配列</param>
+        /// <param name="p_比較配列">read2 の配列</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_曖昧で捨てた数">重なりが一つに定まらず捨てた数、該当すれば 1 加算する</param>
         /// <param name="p_断片長下限">重なりを探す断片長の下限、分からなければ null</param>
         /// <param name="p_断片長上限">重なりを探す断片長の上限、分からなければ null</param>
-        /// <returns>
-        /// 復元した断片<br/>
-        /// 重なりが見つからない (断片がリード長の 2 倍を超える) 場合と、繋いでも伸びない場合は null
-        /// </returns>
-        private static string? Get_重なりで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数, int? p_断片長下限 = null, int? p_断片長上限 = null)
+        /// <returns>復元した断片<br/> 重なりが見つからない (断片がリード長の 2 倍を超える) 場合と、繋いでも伸びない場合は null</returns>
+        private static string? Get_重なりで結合(string p_基準配列, string p_比較配列, TrustedKmerIndex p_kmerインデックス, int p_k長, ref int p_曖昧で捨てた数, int? p_断片長下限 = null, int? p_断片長上限 = null)
         {
-            var l_RC配列2 = Util.V_逆相補_曖昧塩基あり(p_配列2);
-
-            var l_最小オフセット = p_断片長下限 is { } l_下限 ? l_下限 - p_配列2.Length : (int?)null;
-            var l_最大オフセット = p_断片長上限 is { } l_上限 ? l_上限 - p_配列2.Length : (int?)null;
-            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_配列1), Util.V_変換_塩基列(l_RC配列2), C_ペア結合の最小重なり長, C_ペア結合の許容不一致率, out var l_対抗馬があるか, l_最小オフセット, l_最大オフセット);
+            var l_RC比較配列 = Util.V_逆相補_曖昧塩基あり(p_比較配列);
+            var l_最小オフセット = p_断片長下限 is { } l_下限 ? l_下限 - p_比較配列.Length : (int?)null;
+            var l_最大オフセット = p_断片長上限 is { } l_上限 ? l_上限 - p_比較配列.Length : (int?)null;
+            var l_重なり = Preprocessor.Get_最適オーバーラップ(Util.V_変換_塩基列(p_基準配列), Util.V_変換_塩基列(l_RC比較配列), C_ペア結合の最小重なり長, C_ペア結合の許容不一致率, out var l_対抗馬があるか, l_最小オフセット, l_最大オフセット);
             if (l_重なり is not { } l_位置合わせ || l_位置合わせ.A_offset < 0)
             {
                 return null;
@@ -240,16 +229,14 @@ namespace Tsumiki.Cores.Preprocessing
                 return null;
             }
 
-            var l_フラグメント長 = l_位置合わせ.A_offset + p_配列2.Length;
-            if (l_フラグメント長 <= p_配列1.Length)
+            var l_フラグメント長 = l_位置合わせ.A_offset + p_比較配列.Length;
+            if (l_フラグメント長 <= p_基準配列.Length)
             {
                 return null;
             }
 
-            var l_合成 = p_配列1 + l_RC配列2[(p_配列1.Length - l_位置合わせ.A_offset)..];
-            return l_合成.Length >= p_k長 && Has継ぎ目支持(l_合成, p_配列1.Length, p_kmerインデックス, p_k長)
-                ? l_合成
-                : null;
+            var l_合成 = p_基準配列 + l_RC比較配列[(p_基準配列.Length - l_位置合わせ.A_offset)..];
+            return l_合成.Length >= p_k長 && Has継ぎ目支持(l_合成, p_基準配列.Length, p_kmerインデックス, p_k長) ? l_合成 : null;
         }
 
         /// <summary>
@@ -267,8 +254,7 @@ namespace Tsumiki.Cores.Preprocessing
             for (var l_位置 = l_開始; l_位置 <= l_終了; l_位置++)
             {
                 var l_kmer = Util.V_変換_塩基列(p_合成.Substring(l_位置, p_k長));
-                if (Array.IndexOf(l_kmer, Consts.無効な塩基) >= 0
-                    || !p_kmerインデックス.Haskmer(l_kmer))
+                if (Array.IndexOf(l_kmer, Consts.無効な塩基) >= 0 || !p_kmerインデックス.Haskmer(l_kmer))
                 {
                     return false;
                 }
@@ -280,68 +266,61 @@ namespace Tsumiki.Cores.Preprocessing
         /// <summary>
         /// read1 の末尾 k-mer から RC (read2) の先頭 k-mer まで、信頼できる k-mer 集合の中で経路を探して繋ぐ
         /// </summary>
-        /// <param name="p_配列1">read1 の配列</param>
-        /// <param name="p_配列2">read2 の配列</param>
+        /// <param name="p_基準配列">read1 の配列</param>
+        /// <param name="p_比較配列">read2 の配列</param>
         /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
         /// <param name="p_k長">この k の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
-        /// <returns>
-        /// 繋いだ配列<br/>
-        /// どちらかの端の k-mer が集合に無い、あるいは経路が一意に定まらない場合は null
-        /// </returns>
-        private static string? Get_橋渡しで結合(string p_配列1, string p_配列2, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ)
+        /// <returns>繋いだ配列<br/> どちらかの端の k-mer が集合に無い、あるいは経路が一意に定まらない場合は null</returns>
+        private static string? Get_橋渡しで結合(string p_基準配列, string p_比較配列, TrustedKmerIndex p_kmerインデックス, int p_k長, int? p_インサートサイズ)
         {
-            if (p_配列1.Length < p_k長 || p_配列2.Length < p_k長)
+            if (p_基準配列.Length < p_k長 || p_比較配列.Length < p_k長)
             {
                 return null;
             }
 
-            var l_最大長 = Get_橋渡し長上限(p_配列1.Length, p_配列2.Length, p_インサートサイズ);
+            var l_最大長 = Get_橋渡し長上限(p_基準配列.Length, p_比較配列.Length, p_インサートサイズ);
             if (l_最大長 < 0)
             {
                 return null;
             }
 
-            var l_左のkmer = Util.V_変換_塩基列(p_配列1[^p_k長..]);
-            if (Array.IndexOf(l_左のkmer, Consts.無効な塩基) >= 0
-                || !p_kmerインデックス.Haskmer(l_左のkmer))
+            var l_左のkmer = Util.V_変換_塩基列(p_基準配列[^p_k長..]);
+            if (Array.IndexOf(l_左のkmer, Consts.無効な塩基) >= 0 || !p_kmerインデックス.Haskmer(l_左のkmer))
             {
                 return null;
             }
 
-            var l_目標kmer = Util.V_変換_塩基列(Util.V_逆相補_曖昧塩基あり(p_配列2[^p_k長..]));
-            if (Array.IndexOf(l_目標kmer, Consts.無効な塩基) >= 0
-                || !p_kmerインデックス.Haskmer(l_目標kmer))
+            var l_目標kmer = Util.V_変換_塩基列(Util.V_逆相補_曖昧塩基あり(p_比較配列[^p_k長..]));
+            if (Array.IndexOf(l_目標kmer, Consts.無効な塩基) >= 0 || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
                 return null;
             }
 
-            if (Util.V_変換_塩基列(p_配列1).AsSpan().IndexOf(l_目標kmer) >= 0)
+            if (Util.V_変換_塩基列(p_基準配列).AsSpan().IndexOf(l_目標kmer) >= 0)
             {
                 return null;
             }
 
             var (l_橋渡し配列, l_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, p_最小長: 0, p_最大長: l_最大長, p_kmerインデックス, p_k長, C_橋渡しの状態数上限);
-            return l_判定 == ギャップ充填判定.充填済み
-                ? p_配列1 + l_橋渡し配列 + Util.V_逆相補_曖昧塩基あり(p_配列2)
-                : null;
+            return l_判定 == ギャップ充填判定.充填済み ? p_基準配列 + l_橋渡し配列 + Util.V_逆相補_曖昧塩基あり(p_比較配列) : null;
         }
 
         /// <summary>
         /// このペアで探索してよい橋渡し長の上限
         /// </summary>
-        /// <param name="p_長さ1">read1 の長さ</param>
-        /// <param name="p_長さ2">read2 の長さ</param>
+        /// <param name="p_基準長">read1 の長さ</param>
+        /// <param name="p_比較長">read2 の長さ</param>
         /// <param name="p_インサートサイズ">-i で指定されたインサートサイズ、未指定なら null</param>
         /// <returns>探索してよい橋渡し長の上限</returns>
-        private static int Get_橋渡し長上限(int p_長さ1, int p_長さ2, int? p_インサートサイズ)
+        private static int Get_橋渡し長上限(int p_基準長, int p_比較長, int? p_インサートサイズ)
         {
             if (p_インサートサイズ is not { } l_インサートサイズ)
             {
                 return C_橋渡し長の上限;
             }
 
-            var l_見積もり = (int)(l_インサートサイズ * C_インサートサイズの許容比) - p_長さ1 - p_長さ2;
+            var l_見積もり = (int)(l_インサートサイズ * C_インサートサイズの許容比) - p_基準長 - p_比較長;
             return Math.Min(C_橋渡し長の上限, l_見積もり);
         }
 
@@ -351,13 +330,13 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_読み込み1">read1 の読み込み</param>
         /// <param name="p_読み込み2">read2 の読み込み</param>
         /// <returns>読み込んだ配列の組、読み終えていれば空</returns>
-        private static (string[] A_配列1群, string[] A_配列2群) Get_ペアの束(FastqReader p_読み込み1, FastqReader p_読み込み2)
+        private static (string[] A_順リード配列群, string[] A_逆リード配列群) Get_ペアの束(FastqReader p_読み込み1, FastqReader p_読み込み2)
         {
             var l_読み込み1 = Task.Run(() => Get_配列の束(p_読み込み1));
-            var l_配列2群 = Get_配列の束(p_読み込み2);
-            var l_配列1群 = l_読み込み1.Result;
-            var l_件数 = Math.Min(l_配列1群.Count, l_配列2群.Count);
-            return ([.. l_配列1群[..l_件数]], [.. l_配列2群[..l_件数]]);
+            var l_比較配列群 = Get_配列の束(p_読み込み2);
+            var l_基準配列群 = l_読み込み1.Result;
+            var l_件数 = Math.Min(l_基準配列群.Count, l_比較配列群.Count);
+            return ([.. l_基準配列群[..l_件数]], [.. l_比較配列群[..l_件数]]);
         }
 
         /// <summary>
