@@ -23,6 +23,31 @@ namespace Tsumiki.Cores.Scaffolding
         #region 定数
 
         /// <summary>
+        /// 項目 contig
+        /// </summary>
+        private const string C_項目_contig = "contig";
+
+        /// <summary>
+        /// 足場候補の列見出し
+        /// </summary>
+        private const string C_足場候補の列見出し = "from\tfrom_end\tto\tto_end\tgap\tsupport_by_library\texpected_by_library";
+
+        /// <summary>
+        /// 区切り
+        /// </summary>
+        private const string C_区切り = ",";
+
+        /// <summary>
+        /// 項目 F1
+        /// </summary>
+        private const string C_項目_F1 = "F1";
+
+        /// <summary>
+        /// 足場選択の列見出し
+        /// </summary>
+        private const string C_足場選択の列見出し = "from\tfrom_end\tto\tto_end\tsupport\tratio\tsupport_by_library\texpected_by_library\tchosen";
+
+        /// <summary>
         /// 複数ライブラリのインサートサイズをログに並べるときの区切り
         /// </summary>
         private const string C_インサートサイズの区切り = " / ";
@@ -40,9 +65,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 期待本数がこれ未満の候補は、期待に対する比で優劣を決められないため生の支持数で比べる
         /// </summary>
-        /// <remarks>
-        /// リード長に近い短い contig などは期待本数がほぼ 0 になり、比が 0 か極端に大きくなる
-        /// </remarks>
         private const double C_信頼できる期待本数の下限 = 1.0D;
 
         /// <summary>
@@ -128,7 +150,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// リードに出てくる数が一意な配列の何倍以上なら反復とみなすか
         /// </summary>
-        private const double C_反復とみなす出現数の比 = 1.8;
+        private const double C_反復とみなす出現数の比 = 1.8D;
 
         /// <summary>
         /// 一意な配列がリードに出てくる数を測るのに、配列から問い合わせを取る間隔
@@ -188,7 +210,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_使えるライブラリ = 0;
             for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
             {
-                if (this.TryGet_インサートサイズ(l_ライブラリ, out var l_値))
+                if (this.Is成功_インサートサイズ(l_ライブラリ, out var l_値))
                 {
                     l_インサートサイズ群[l_ライブラリ] = l_値;
                     l_使えるライブラリ++;
@@ -203,9 +225,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力(メッセージID.Scaffolding開始_インサートサイズ, string.Join(C_インサートサイズの区切り, l_インサートサイズ群.Where(x => x > 0)));
-
             this.V_読込_Contig();
-
             if (this._contig配列.Count == 0)
             {
                 Logger.V_出力(メッセージID.Scaffolding省略_Contigなし);
@@ -213,10 +233,8 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_配置 = p_contig構築.A_unitig配置;
-
             var l_contig数 = this._contig配列.Keys.Count == 0 ? 0 : this._contig配列.Keys.Max();
             var l_頂点数 = (l_contig数 + 1) << 1;
-
             var l_隣接 = new List<Scaffold候補>[l_頂点数];
             for (var i = 0; i < l_頂点数; i++)
             {
@@ -229,24 +247,15 @@ namespace Tsumiki.Cores.Scaffolding
             var l_内部を指した数 = 0;
             var l_未配置を指した数 = 0;
             var l_unitig長 = p_contig構築.A_unitig長.Values.Select(x => (long)x).ToList();
-
             for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
             {
-                var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数
-                    ? p_contig構築.A_ペア経路群[l_ライブラリ]
-                    : new Dictionary<(int, int), List<int>>();
+                var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数 ? p_contig構築.A_ペア経路群[l_ライブラリ] : new Dictionary<(int, int), List<int>>();
                 l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
-
-                var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count
-                    ? p_contig構築.A_同一unitig標本群[l_ライブラリ]
-                    : [];
+                var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count ? p_contig構築.A_同一unitig標本群[l_ライブラリ] : [];
                 var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
-                var l_この長さ = l_ライブラリ < l_リード長群.Count && l_リード長群[l_ライブラリ] > 0
-                    ? l_リード長群[l_ライブラリ]
-                    : p_リード長 ?? (l_インサートサイズ群[l_ライブラリ] > 0 ? l_インサートサイズ群[l_ライブラリ] : this.A_有効インサートサイズ!.Value);
+                var l_この長さ = l_ライブラリ < l_リード長群.Count && l_リード長群[l_ライブラリ] > 0 ? l_リード長群[l_ライブラリ] : p_リード長 ?? (l_インサートサイズ群[l_ライブラリ] > 0 ? l_インサートサイズ群[l_ライブラリ] : this.A_有効インサートサイズ!.Value);
                 l_モデル群[l_ライブラリ] = new PairedDistanceModel(l_標本, l_この長さ);
                 l_較正器群[l_ライブラリ] = 証拠較正器.Get_較正器(l_標本, l_この長さ, l_unitig長);
-
                 if (l_ライブラリ数 > 1)
                 {
                     Logger.V_出力(メッセージID.Scaffoldingライブラリ別の概要, l_ライブラリ + 1, l_インサートサイズ群[l_ライブラリ], l_この長さ, l_標本.Count, l_対称化群[l_ライブラリ].Count);
@@ -265,7 +274,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_候補キー = l_対称化群.SelectMany(x => x.Keys).ToHashSet();
             var l_ライブラリ別本数 = l_ライブラリ数 > 1 ? new Dictionary<(int, int), (int[] A_本数, double[] A_期待)>() : null;
-
             foreach (var (l_始点, l_終点) in l_候補キー)
             {
                 var l_本数群 = l_ライブラリ別本数 is null ? null : new int[l_ライブラリ数];
@@ -293,9 +301,7 @@ namespace Tsumiki.Cores.Scaffolding
                     l_最良比 = l_較正器群[l_ライブラリ].Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
                 }
 
-                var l_最良期待本数 = l_最良ライブラリ >= 0 && l_較正器群[l_最良ライブラリ].A_Is使用可能
-                    ? l_較正器群[l_最良ライブラリ].Get_期待本数(this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_最良ギャップ))
-                    : double.NaN;
+                var l_最良期待本数 = l_最良ライブラリ >= 0 && l_較正器群[l_最良ライブラリ].A_Is使用可能 ? l_較正器群[l_最良ライブラリ].Get_期待本数(this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_最良ギャップ)) : double.NaN;
                 l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比, l_最良期待本数));
                 if (l_本数群 is not null)
                 {
@@ -311,9 +317,7 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_優勢閾値 = ConfigurationManager.A_実行時引数.A_ペア結合閾値;
             var l_最小証拠数 = C_Scaffold支持数の下限;
-
             Logger.V_出力(メッセージID.Scaffold候補辺数, l_候補キー.Count, Messages.Get_文言(l_較正器群.Any(x => x.A_Is使用可能) ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
-
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
             var l_生の支持数で判定数 = 0;
             var l_生の支持数で採用数 = 0;
@@ -332,7 +336,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力(メッセージID.Scaffold生の支持数で判定, l_生の支持数で判定数, l_生の支持数で採用数);
-
             if (l_ライブラリ別本数 is not null)
             {
                 this.V_書き出し_競合候補(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_競合候補の書き出し名), l_隣接, l_確定辺, l_ライブラリ別本数, l_最小証拠数);
@@ -361,12 +364,11 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     l_確定辺[v] = null;
                     l_相互一意で棄却した数++;
-                    AmbiguityRecorder.V_記録(曖昧箇所の種別.経路が一意でない, AmbiguityRecorder.Get_場所名(v, "contig"));
+                    AmbiguityRecorder.V_記録(曖昧箇所の種別.経路が一意でない, AmbiguityRecorder.Get_場所名(v, C_項目_contig));
                 }
             }
 
             Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
-
             if (l_ライブラリ別本数 is not null)
             {
                 this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
@@ -414,9 +416,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_総延長 = 0L;
             foreach (var (l_配列, l_Is環状) in l_scaffold群)
             {
-                var l_名前 = l_Is環状
-                    ? $"SCAFFOLD{l_scaffoldID}_{Consts.環状の目印}"
-                    : $"SCAFFOLD{l_scaffoldID}";
+                var l_名前 = l_Is環状 ? $"SCAFFOLD{l_scaffoldID}_{Consts.環状の目印}" : $"SCAFFOLD{l_scaffoldID}";
                 l_書き込み.V_書き込み(l_名前, l_配列);
                 l_scaffoldID++;
                 l_総延長 += l_配列.Length;
@@ -454,13 +454,13 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 生の支持数で判定するかを返す。支持数の下限を満たす候補のうち、期待に対する比で最良の候補の期待本数が C_信頼できる期待本数の下限 未満か
-        /// (比そのものがあてにならない)、期待本数が下限未満の別の候補が最良の候補以上の支持数を持つ (比では評価できないが、同じだけの証拠がある競合) ときに真
+        /// 生の支持数で判定するかを返す<br/>
+        /// 支持数の下限を満たす候補のうち、期待に対する比で最良の候補の期待本数が C_信頼できる期待本数の下限 未満か (比そのものがあてにならない) 、期待本数が下限未満の別の候補が最良の候補以上の支持数を持つ (比では評価できないが、同じだけの証拠がある競合) ときに真
         /// </summary>
         /// <param name="p_候補">頂点の候補</param>
         /// <param name="p_最小証拠数">確定に要求する支持数</param>
         /// <returns>生の支持数で判定するなら真</returns>
-        internal static bool Is生の支持数で判定(IReadOnlyList<Scaffold候補> p_候補, ulong p_最小証拠数)
+        public static bool Is生の支持数で判定(IReadOnlyList<Scaffold候補> p_候補, ulong p_最小証拠数)
         {
             var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
             if (l_候補.Count == 0)
@@ -482,16 +482,6 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 候補の期待本数が分かっていて、C_信頼できる期待本数の下限 未満か
-        /// </summary>
-        /// <param name="p_候補">候補</param>
-        /// <returns>下限未満なら真</returns>
-        private static bool Is期待本数が小さい(Scaffold候補 p_候補)
-        {
-            return !double.IsNaN(p_候補.A_期待本数) && p_候補.A_期待本数 < C_信頼できる期待本数の下限;
-        }
-
-        /// <summary>
         /// k-1 より短い重なり (0 を含む) のうち、繋いだ配列がリードに出てくるものがただ 1 つなら、その長さを返す
         /// </summary>
         /// <param name="p_リード索引">リードの索引</param>
@@ -499,7 +489,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
         /// <param name="p_k長">k 長</param>
         /// <param name="p_リード長">リード長</param>
-        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数)、分からなければ 0</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数) 、分からなければ 0</param>
         /// <returns>確かめた重なりの長さ、無いか 2 つ以上なら null</returns>
         public static int? Get_リードで確かめた重なり長(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_k長, int p_リード長, int p_一意の出現数)
         {
@@ -551,29 +541,6 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 繋いだ配列の、繋ぎ目の区間 (左右の片が重なる所) とその両脇の 最短の問い合わせ長 ずつをそのまま含むリードが 繋ぎ目の支持数の下限 に満たないかを返す。
-        /// その長さがリード長を超えるときは、両脇と区間の両端 (どれも 最短の問い合わせ長) のどれかが反復 (Is反復の中) かを返す
-        /// (区間が反復だと、別のコピーの境目で繋いだ繋ぎ目の短い配列もリードに出てくるが、両脇まで含めた配列は出てこないため)
-        /// </summary>
-        /// <param name="p_リード索引">リードの索引</param>
-        /// <param name="p_繋いだ配列">繋ぎ目の前後を繋いだ配列</param>
-        /// <param name="p_区間の始まり">繋ぎ目の区間の始まり</param>
-        /// <param name="p_区間の終わり">繋ぎ目の区間の終わり (含まない)</param>
-        /// <param name="p_リード長">リード長</param>
-        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
-        /// <returns>繋ぐのに要る跨ぐリードが無ければ true</returns>
-        private static bool Is両脇まで跨ぐリードが無い(ReadMinimizerIndex p_リード索引, string p_繋いだ配列, int p_区間の始まり, int p_区間の終わり, int p_リード長, int p_一意の出現数)
-        {
-            const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
-            var l_左の始まり = p_区間の始まり - l_錨長;
-            var l_跨ぐ長さ = p_区間の終わり + l_錨長 - l_左の始まり;
-            return l_左の始まり >= 0 && p_区間の終わり + l_錨長 <= p_繋いだ配列.Length && (l_跨ぐ長さ <= p_リード長
-                ? p_リード索引.Get_出現数(p_繋いだ配列.AsSpan(l_左の始まり, l_跨ぐ長さ), C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限
-                : Is反復の中(p_リード索引, p_繋いだ配列, l_左の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり, p_一意の出現数)
-                    || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり - l_錨長, p_一意の出現数));
-        }
-
-        /// <summary>
         /// 配列の p_位置 からの 最短の問い合わせ長 の配列が反復か (近くに似た配列があるか、リードに出てくる数が一意な配列の 反復とみなす出現数の比 倍以上か)
         /// </summary>
         /// <param name="p_リード索引">リードの索引</param>
@@ -611,7 +578,7 @@ namespace Tsumiki.Cores.Scaffolding
                 for (var l_位置 = 0; l_位置 + ReadMinimizerIndex.C_最短の問い合わせ長 <= l_配列.Length; l_位置 += C_一意の出現数を測る間隔)
                 {
                     var l_断片 = l_配列.AsSpan(l_位置, ReadMinimizerIndex.C_最短の問い合わせ長);
-                    if (l_断片.IndexOfAnyExcept("ACGT") < 0)
+                    if (l_断片.IndexOfAnyExcept(Consts.塩基文字) < 0)
                     {
                         l_数群.Add(p_リード索引.Get_出現数(l_断片, C_一意の出現数の上限));
                     }
@@ -623,14 +590,14 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 繋ぎ目を、両側を跨ぐリードの続きで埋める。左の末尾を錨にして右へ読む向きで埋められなければ、右の先頭を錨にして左へ読む向きでも試す
-        /// (GC に富む所の読み違いは読む向きで出方が違い、片方の向きのリードは崩れていても逆の向きのリードは読めていることがある)
+        /// 繋ぎ目を、両側を跨ぐリードの続きで埋める<br/>
+        /// 左の末尾を錨にして右へ読む向きで埋められなければ、右の先頭を錨にして左へ読む向きでも試す (GC に富む所の読み違いは読む向きで出方が違い、片方の向きのリードは崩れていても逆の向きのリードは読めていることがある)
         /// </summary>
         /// <param name="p_リード索引">リードの索引</param>
         /// <param name="p_出力">ここまでの配列</param>
         /// <param name="p_次の配列">繋ぐ向きに直した次の片</param>
         /// <param name="p_リード長">リード長</param>
-        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数)、分からなければ 0</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Get_一意の出現数) 、分からなければ 0</param>
         /// <param name="p_要るリード数">埋めるのに要る、同じ埋め方をするリードの数 (既定は C_埋めるのに要るリード数)</param>
         /// <param name="p_削る上限">左の末尾・右の先頭から削ってみる長さの上限 (既定は C_埋めるときに削る上限)</param>
         /// <returns>左の末尾から削る長さ・間に入れる配列・右の先頭から削る長さ、埋められなければ null</returns>
@@ -639,21 +606,62 @@ namespace Tsumiki.Cores.Scaffolding
             var l_左 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, C_埋めるときに見る長さ), Math.Min(p_出力.Length, C_埋めるときに見る長さ));
             l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
             var l_右 = p_次の配列[..Math.Min(p_次の配列.Length, C_埋めるときに見る長さ)];
-            return Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_右へ
-                ? l_右へ
-                : Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_左へ
-                ? (l_左へ.A_右から削る長さ, Util.V_逆相補_曖昧塩基あり(l_左へ.A_埋める配列), l_左へ.A_左から削る長さ)
-                : null;
+            return Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_右へ ? l_右へ : Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_左へ ? (l_左へ.A_右から削る長さ, Util.V_逆相補_曖昧塩基あり(l_左へ.A_埋める配列), l_左へ.A_左から削る長さ) : null;
         }
 
         /// <summary>
-        /// 左の末尾を少しずつ削って錨にし、錨を含むリードの続きに右の先頭 (これも少しずつ削る) が現れるまでの配列で繋ぎ目を埋める。
-        /// 錨より手前も左の片と (読み違いを除いて) 一致するリードだけを使う (錨がゲノムの別の場所にもあると、そこから来たリードが別の続きを持ち込むため)。
-        /// さらに、手前が 場所を確かめる手前の長さ まで左の片と一致するのに、採る埋め方とは揃って別の続きを持つリードが 埋めるのに要るリード数 以上あれば、左の片の末尾がゲノムに 2 回ある所なので埋めない。
-        /// 右の先頭が続きに 1 回だけ現れ、そこから先の続きも右の片とそのまま一致し、その一致が錨の先へ 繋ぎ目の余白 以上及ぶリードだけを数える
-        /// (隙間の中にある右の先頭と同じ配列で間を飛ばさないため。錨の直後で終わるリードは、錨と右の先頭が同じ配列なら証拠なしに一致してしまう)。
-        /// 同じ埋め方をするリードが 埋めるのに要るリード数 以上あり、次点の 首位の優勢比 倍以上のときだけ採る (末尾の読み違い・重なり・短い隙間をまとめて扱う)。
-        /// 埋めた所が縦に並んだ反復の中 (Is縦の反復の中) か、左右の片が重なる埋め方で両脇まで跨ぐリードが無い (Is両脇まで跨ぐリードが無い) ときは埋めない
+        /// 連結の際に畳んでよい重なりの長さを返す
+        /// </summary>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
+        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
+        public static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
+        {
+            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
+            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長 ? 0 : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 候補の期待本数が分かっていて、C_信頼できる期待本数の下限 未満か
+        /// </summary>
+        /// <param name="p_候補">候補</param>
+        /// <returns>下限未満なら真</returns>
+        private static bool Is期待本数が小さい(Scaffold候補 p_候補)
+        {
+            return !double.IsNaN(p_候補.A_期待本数) && p_候補.A_期待本数 < C_信頼できる期待本数の下限;
+        }
+
+        /// <summary>
+        /// 繋いだ配列の、繋ぎ目の区間 (左右の片が重なる所) とその両脇の 最短の問い合わせ長 ずつをそのまま含むリードが 繋ぎ目の支持数の下限 に満たないかを返す<br/>
+        /// その長さがリード長を超えるときは、両脇と区間の両端 (どれも 最短の問い合わせ長) のどれかが反復 (Is 反復の中) かを返す (区間が反復だと、別のコピーの境目で繋いだ繋ぎ目の短い配列もリードに出てくるが、両脇まで含めた配列は出てこないため)
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_繋いだ配列">繋ぎ目の前後を繋いだ配列</param>
+        /// <param name="p_区間の始まり">繋ぎ目の区間の始まり</param>
+        /// <param name="p_区間の終わり">繋ぎ目の区間の終わり (含まない)</param>
+        /// <param name="p_リード長">リード長</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns>繋ぐのに要る跨ぐリードが無ければ true</returns>
+        private static bool Is両脇まで跨ぐリードが無い(ReadMinimizerIndex p_リード索引, string p_繋いだ配列, int p_区間の始まり, int p_区間の終わり, int p_リード長, int p_一意の出現数)
+        {
+            const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
+            var l_左の始まり = p_区間の始まり - l_錨長;
+            var l_跨ぐ長さ = p_区間の終わり + l_錨長 - l_左の始まり;
+            return l_左の始まり >= 0 && p_区間の終わり + l_錨長 <= p_繋いだ配列.Length && (l_跨ぐ長さ <= p_リード長 ? p_リード索引.Get_出現数(p_繋いだ配列.AsSpan(l_左の始まり, l_跨ぐ長さ), C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限 : Is反復の中(p_リード索引, p_繋いだ配列, l_左の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり - l_錨長, p_一意の出現数));
+        }
+
+        /// <summary>
+        /// 左の末尾を少しずつ削って錨にし、錨を含むリードの続きに右の先頭 (これも少しずつ削る) が現れるまでの配列で繋ぎ目を埋める<br/>
+        /// 錨より手前も左の片と (読み違いを除いて) 一致するリードだけを使う (錨がゲノムの別の場所にもあると、そこから来たリードが別の続きを持ち込むため)<br/>
+        /// さらに、手前が 場所を確かめる手前の長さ まで左の片と一致するのに、採る埋め方とは揃って別の続きを持つリードが 埋めるのに要るリード数 以上あれば、左の片の末尾がゲノムに 2 回ある所なので埋めない<br/>
+        /// 右の先頭が続きに 1 回だけ現れ、そこから先の続きも右の片とそのまま一致し、その一致が錨の先へ 繋ぎ目の余白 以上及ぶリードだけを数える (隙間の中にある右の先頭と同じ配列で間を飛ばさないため<br/>
+        /// 錨の直後で終わるリードは、錨と右の先頭が同じ配列なら証拠なしに一致してしまう)<br/>
+        /// 同じ埋め方をするリードが 埋めるのに要るリード数 以上あり、次点の 首位の優勢比 倍以上のときだけ採る (末尾の読み違い・重なり・短い隙間をまとめて扱う)<br/>
+        /// 埋めた所が縦に並んだ反復の中 (Is 縦の反復の中) か、左右の片が重なる埋め方で両脇まで跨ぐリードが無い (Is 両脇まで跨ぐリードが無い) ときは埋めない
         /// </summary>
         /// <param name="p_リード索引">リードの索引</param>
         /// <param name="p_左">左の片の末尾</param>
@@ -717,9 +725,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 var l_見えたはずの長さ = Math.Max(C_右の錨長, l_埋める配列.Length - l_錨長 + C_右の錨長);
-                var l_別の続きの最多 = Enumerable.Range(0, l_前後群.Count)
-                    .Where(x => l_投票[x] != l_並び[0].Key && l_前後群[x].A_続き.Length >= l_見えたはずの長さ && l_前後群[x].A_前.Length >= C_場所を確かめる手前の長さ && Is手前が同じ場所(l_手前, l_前後群[x].A_前, C_場所を確かめる手前の長さ))
-                    .GroupBy(x => l_前後群[x].A_続き[..C_右の錨長]).Select(x => x.Count()).DefaultIfEmpty(0).Max();
+                var l_別の続きの最多 = Enumerable.Range(0, l_前後群.Count).Where(x => l_投票[x] != l_並び[0].Key && l_前後群[x].A_続き.Length >= l_見えたはずの長さ && l_前後群[x].A_前.Length >= C_場所を確かめる手前の長さ && Is手前が同じ場所(l_手前, l_前後群[x].A_前, C_場所を確かめる手前の長さ)).GroupBy(x => l_前後群[x].A_続き[..C_右の錨長]).Select(x => x.Count()).DefaultIfEmpty(0).Max();
                 if (l_別の続きの最多 >= p_要るリード数)
                 {
                     return null;
@@ -728,10 +734,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_繋いだ配列 = string.Concat(p_左.AsSpan(0, p_左.Length - l_削る - l_錨長), l_埋める配列, p_右.AsSpan(l_右を削る長さ));
                 var l_右の錨の位置 = p_左.Length - l_削る - l_錨長 + l_埋める配列.Length;
                 var l_左の終わり = p_左.Length - l_削る;
-                return Is縦の反復の中(l_繋いだ配列, p_左.Length - l_削る - l_錨長, l_右の錨の位置)
-                    || (l_右の錨の位置 < l_左の終わり && Is両脇まで跨ぐリードが無い(p_リード索引, l_繋いだ配列, l_右の錨の位置, l_左の終わり, p_リード長, p_一意の出現数))
-                    ? null
-                    : (l_削る + l_錨長, l_埋める配列, l_右を削る長さ);
+                return Is縦の反復の中(l_繋いだ配列, p_左.Length - l_削る - l_錨長, l_右の錨の位置) || (l_右の錨の位置 < l_左の終わり && Is両脇まで跨ぐリードが無い(p_リード索引, l_繋いだ配列, l_右の錨の位置, l_左の終わり, p_リード長, p_一意の出現数)) ? null : (l_削る + l_錨長, l_埋める配列, l_右を削る長さ);
             }
 
             return null;
@@ -760,7 +763,7 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 繋いだ配列の、錨の始まりから右の錨の先 (錨の長さ分) までの区間を 縦の反復を調べる間隔 ずつずらした 右の錨長 の配列のどれかに、似た配列が別の場所にあるか。
+        /// 繋いだ配列の、錨の始まりから右の錨の先 (錨の長さ分) までの区間を 縦の反復を調べる間隔 ずつずらした 右の錨長 の配列のどれかに、似た配列が別の場所にあるか<br/>
         /// あれば縦に並んだ反復の中の繋ぎ目で、リードで跨げず単位の数を取り違えるので埋めない
         /// </summary>
         /// <param name="p_繋いだ配列"></param>
@@ -816,24 +819,6 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 連結の際に畳んでよい重なりの長さを返す
-        /// </summary>
-        /// <param name="p_出力">ここまでの scaffold 配列</param>
-        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列</param>
-        /// <returns>畳んでよい重なりの長さ、畳めないなら 0</returns>
-        public static int Get_畳める重なり長(StringBuilder p_出力, string p_次の配列)
-        {
-            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-            return l_重なり長 <= 0 || p_出力.Length < l_重なり長 || p_次の配列.Length < l_重なり長
-                ? 0
-                : p_出力.ToString(p_出力.Length - l_重なり長, l_重なり長) == p_次の配列[..l_重なり長] ? l_重なり長 : 0;
-        }
-
-        #endregion
-
-        #region 内部メソッド
-
-        /// <summary>
         /// 1 ライブラリのペア経路を contig 末端の辺へ畳み、双子側も含めて対称化する
         /// </summary>
         /// <param name="p_配置">unitig の contig 上の配置</param>
@@ -841,19 +826,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_内部を指した数">contig 内部を指した観測の数</param>
         /// <param name="p_未配置を指した数">contig に載っていない unitig を指した観測の数</param>
         /// <returns>対称化した辺の集計</returns>
-        private static Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(
-            IReadOnlyDictionary<int, Unitig配置> p_配置,
-            IReadOnlyDictionary<(int, int), List<int>> p_ペア経路,
-            ref int p_内部を指した数,
-            ref int p_未配置を指した数)
+        private static Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlyDictionary<(int, int), List<int>> p_ペア経路, ref int p_内部を指した数, ref int p_未配置を指した数)
         {
             Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_辺の集計 = [];
-
             foreach (var (l_キー, l_標本) in p_ペア経路)
             {
                 var (l_始点unitig, l_終点unitig) = l_キー;
-
-                if (!TryGet_Contig末端頂点(p_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
+                if (!Is成功_Contig末端頂点(p_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
                 {
                     if (!p_配置.ContainsKey(Math.Abs(l_始点unitig)))
                     {
@@ -867,7 +846,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (!TryGet_Contig末端頂点(p_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
+                if (!Is成功_Contig末端頂点(p_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
                 {
                     if (!p_配置.ContainsKey(Math.Abs(l_終点unitig)))
                     {
@@ -901,7 +880,13 @@ namespace Tsumiki.Cores.Scaffolding
             Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_対称化 = [];
             foreach (var ((l_始点, l_終点), (l_支持数, l_標本)) in l_辺の集計)
             {
-                foreach (var l_キー in new[] { (l_始点, l_終点), (l_終点 ^ 1, l_始点 ^ 1) })
+                foreach (var l_キー in new[]
+                {
+                    (l_始点, l_終点),
+                    (l_終点 ^ 1, l_始点 ^ 1)
+                }
+
+                )
                 {
                     if (l_対称化.TryGetValue(l_キー, out var l_累積))
                     {
@@ -921,10 +906,10 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// インサートサイズを確定する
         /// </summary>
-        /// <param name="p_インサートサイズ"></param>
         /// <param name="p_ライブラリ"></param>
+        /// <param name="p_インサートサイズ"></param>
         /// <returns></returns>
-        private bool TryGet_インサートサイズ(int p_ライブラリ, out int p_インサートサイズ)
+        private bool Is成功_インサートサイズ(int p_ライブラリ, out int p_インサートサイズ)
         {
             if (ConfigurationManager.A_実行時引数.A_インサートサイズ is { } l_指定値)
             {
@@ -933,10 +918,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_ラベル = p_contig構築.A_ペアのライブラリ数 > 1 ? FormattableString.Invariant($" (ライブラリ {p_ライブラリ + 1})") : string.Empty;
-
-            var l_同一unitig標本 = p_ライブラリ < p_contig構築.A_同一unitig標本群.Count
-                ? p_contig構築.A_同一unitig標本群[p_ライブラリ]
-                : [];
+            var l_同一unitig標本 = p_ライブラリ < p_contig構築.A_同一unitig標本群.Count ? p_contig構築.A_同一unitig標本群[p_ライブラリ] : [];
             if (l_同一unitig標本.Count >= C_インサートサイズ標本数の下限)
             {
                 var l_推定値 = StatsUtil.Get_中央値(l_同一unitig標本);
@@ -949,9 +931,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            var l_確定辺標本 = p_ライブラリ < p_contig構築.A_確定辺標本群.Count
-                ? p_contig構築.A_確定辺標本群[p_ライブラリ]
-                : [];
+            var l_確定辺標本 = p_ライブラリ < p_contig構築.A_確定辺標本群.Count ? p_contig構築.A_確定辺標本群[p_ライブラリ] : [];
             if (l_確定辺標本.Count >= C_インサートサイズ標本数の下限)
             {
                 p_インサートサイズ = StatsUtil.Get_中央値(l_確定辺標本);
@@ -959,8 +939,7 @@ namespace Tsumiki.Cores.Scaffolding
                 return true;
             }
 
-            Logger.V_出力_そのまま(FormattableString.Invariant(
-                $"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {C_インサートサイズ標本数の下限})"));
+            Logger.V_出力_そのまま(FormattableString.Invariant($"[Info] インサートサイズを推定できる標本が足りない{l_ラベル}: 同一 unitig {l_同一unitig標本.Count:N0} 件、確定辺 {l_確定辺標本.Count:N0} 件 (下限 {C_インサートサイズ標本数の下限})"));
             p_インサートサイズ = 0;
             return false;
         }
@@ -974,7 +953,7 @@ namespace Tsumiki.Cores.Scaffolding
         private void V_書き出し_採用辺(string p_パス, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数)
         {
             using var l_書き込み = new StreamWriter(p_パス);
-            l_書き込み.WriteLine("from\tfrom_end\tto\tto_end\tgap\tsupport_by_library\texpected_by_library");
+            l_書き込み.WriteLine(C_足場候補の列見出し);
             for (var v = 2; v < p_確定辺.Length; v++)
             {
                 if (p_確定辺[v] is not { } l_辺 || !p_ライブラリ別本数.TryGetValue((v, l_辺.A_行き先), out var l_支持))
@@ -984,7 +963,7 @@ namespace Tsumiki.Cores.Scaffolding
 
                 var l_始点名 = this._contig名.GetValueOrDefault(v >> 1, string.Empty);
                 var l_終点名 = this._contig名.GetValueOrDefault(l_辺.A_行き先 >> 1, string.Empty);
-                l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_辺.A_行き先 & 1}\t{l_辺.A_ギャップ長}\t{string.Join(",", l_支持.A_本数)}\t{string.Join(",", l_支持.A_期待.Select(x => x.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}"));
+                l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_辺.A_行き先 & 1}\t{l_辺.A_ギャップ長}\t{string.Join(C_区切り, l_支持.A_本数)}\t{string.Join(C_区切り, l_支持.A_期待.Select(x => x.ToString(C_項目_F1, System.Globalization.CultureInfo.InvariantCulture)))}"));
             }
         }
 
@@ -999,7 +978,7 @@ namespace Tsumiki.Cores.Scaffolding
         private void V_書き出し_競合候補(string p_パス, List<Scaffold候補>[] p_隣接, (int A_行き先, int A_ギャップ長)?[] p_確定辺, Dictionary<(int, int), (int[] A_本数, double[] A_期待)> p_ライブラリ別本数, ulong p_最小証拠数)
         {
             using var l_書き込み = new StreamWriter(p_パス);
-            l_書き込み.WriteLine("from\tfrom_end\tto\tto_end\tsupport\tratio\tsupport_by_library\texpected_by_library\tchosen");
+            l_書き込み.WriteLine(C_足場選択の列見出し);
             for (var v = 2; v < p_隣接.Length; v++)
             {
                 var l_候補群 = p_隣接[v].Where(x => x.A_支持数 >= p_最小証拠数).ToList();
@@ -1014,7 +993,7 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_終点名 = this._contig名.GetValueOrDefault(l_候補.A_行き先 >> 1, string.Empty);
                     var (l_本数, l_期待) = p_ライブラリ別本数.TryGetValue((v, l_候補.A_行き先), out var l_支持) ? l_支持 : ([], []);
                     var l_Is採用 = p_確定辺[v] is { } l_辺 && l_辺.A_行き先 == l_候補.A_行き先;
-                    l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_候補.A_行き先 & 1}\t{l_候補.A_支持数}\t{l_候補.A_期待に対する比:F2}\t{string.Join(",", l_本数)}\t{string.Join(",", l_期待.Select(x => x.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)))}\t{(l_Is採用 ? 1 : 0)}"));
+                    l_書き込み.WriteLine(FormattableString.Invariant($"{l_始点名}\t{v & 1}\t{l_終点名}\t{l_候補.A_行き先 & 1}\t{l_候補.A_支持数}\t{l_候補.A_期待に対する比:F2}\t{string.Join(C_区切り, l_本数)}\t{string.Join(C_区切り, l_期待.Select(x => x.ToString(C_項目_F1, System.Globalization.CultureInfo.InvariantCulture)))}\t{(l_Is採用 ? 1 : 0)}"));
                 }
             }
         }
@@ -1053,29 +1032,24 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_Is出口側"></param>
         /// <param name="p_頂点番号"></param>
         /// <returns></returns>
-        private static bool TryGet_Contig末端頂点(IReadOnlyDictionary<int, Unitig配置> p_配置, int p_符号付きunitigID, bool p_Is出口側, out int p_頂点番号)
+        private static bool Is成功_Contig末端頂点(IReadOnlyDictionary<int, Unitig配置> p_配置, int p_符号付きunitigID, bool p_Is出口側, out int p_頂点番号)
         {
             p_頂点番号 = 0;
             var l_unitigID = Math.Abs(p_符号付きunitigID);
             var l_Is順鎖 = p_符号付きunitigID > 0;
-
             if (!p_配置.TryGetValue(l_unitigID, out var l_配置情報))
             {
                 return false;
             }
 
             var l_Is実効順鎖 = l_Is順鎖 != l_配置情報.A_Iswalk中逆鎖;
-
-            var l_Is該当端 = p_Is出口側
-                ? l_Is実効順鎖 ? l_配置情報.A_IsContig末尾 : l_配置情報.A_IsContig先頭
-                : l_Is実効順鎖 ? l_配置情報.A_IsContig先頭 : l_配置情報.A_IsContig末尾;
+            var l_Is該当端 = p_Is出口側 ? l_Is実効順鎖 ? l_配置情報.A_IsContig末尾 : l_配置情報.A_IsContig先頭 : l_Is実効順鎖 ? l_配置情報.A_IsContig先頭 : l_配置情報.A_IsContig末尾;
             if (!l_Is該当端)
             {
                 return false;
             }
 
             var l_Is最終配列順鎖 = l_配置情報.A_IsContig逆相補 ? !l_Is実効順鎖 : l_Is実効順鎖;
-
             p_頂点番号 = (l_配置情報.A_ContigID << 1) | (l_Is最終配列順鎖 ? 0 : 1);
             return true;
         }
@@ -1129,7 +1103,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             p_連結したcontig数 = 1;
-
             var l_出力 = new StringBuilder(l_Is逆鎖 ? Util.V_逆相補(l_配列) : l_配列);
             var l_現在 = p_始点;
             V_記録_訪問済み(p_訪問済み, l_現在);
@@ -1188,8 +1161,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <returns></returns>
         private bool Is環状(int p_contigID)
         {
-            return this._contig名.TryGetValue(p_contigID, out var l_名前)
-                && l_名前.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase);
+            return this._contig名.TryGetValue(p_contigID, out var l_名前) && l_名前.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

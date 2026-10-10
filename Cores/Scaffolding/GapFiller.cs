@@ -35,13 +35,11 @@ namespace Tsumiki.Cores.Scaffolding
         public static ギャップ充填統計 V_充填_ギャップ(string p_scaffoldパス, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
             var l_scaffold群 = FastaReader.Get_全エントリ(p_scaffoldパス);
-
             var l_総ギャップ数 = 0;
             var l_埋めたギャップ数 = 0;
             var l_埋めた塩基数 = 0;
             var l_一意でない数 = 0;
             var l_到達不能数 = 0;
-
             List<(string A_ID, string A_配列)> l_結果 = [];
             foreach (var (l_ID, l_配列) in l_scaffold群)
             {
@@ -58,10 +56,8 @@ namespace Tsumiki.Cores.Scaffolding
 
                     var l_ギャップ開始 = l_位置;
                     l_位置 = Util.Get_ギャップの終わり(l_配列, l_位置);
-
                     var l_ギャップ長 = l_位置 - l_ギャップ開始;
                     l_総ギャップ数++;
-
                     var l_埋めた配列 = Get_ギャップ充填配列(l_出力, l_配列, l_ギャップ長, l_位置, p_kmerインデックス, p_k長, out var l_判定, out var l_Isアンカー不足, out var l_Is支持不足, out var l_安定ID);
                     if (l_埋めた配列 != null)
                     {
@@ -80,14 +76,12 @@ namespace Tsumiki.Cores.Scaffolding
                             l_到達不能数++;
                         }
 
-                        var l_種別 = l_Isアンカー不足 ? 曖昧箇所の種別.アンカー不足
-                            : l_Is支持不足 ? 曖昧箇所の種別.支持なし
-                            : l_判定 switch
-                            {
-                                ギャップ充填判定.一意でない => 曖昧箇所の種別.経路が一意でない,
-                                ギャップ充填判定.探索打切り => 曖昧箇所の種別.探索打切り,
-                                _ => 曖昧箇所の種別.到達不能,
-                            };
+                        var l_種別 = l_Isアンカー不足 ? 曖昧箇所の種別.アンカー不足 : l_Is支持不足 ? 曖昧箇所の種別.支持なし : l_判定 switch
+                        {
+                            ギャップ充填判定.一意でない => 曖昧箇所の種別.経路が一意でない,
+                            ギャップ充填判定.探索打切り => 曖昧箇所の種別.探索打切り,
+                            _ => 曖昧箇所の種別.到達不能,
+                        };
                         AmbiguityRecorder.V_記録(l_種別, $"{l_ID.TrimStart('>')}:{l_ギャップ開始}-{l_位置}", p_安定ID: l_安定ID);
                         _ = l_出力.Append(l_配列, l_ギャップ開始, l_ギャップ長);
                     }
@@ -138,7 +132,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_判定"></param>
         /// <param name="p_Isアンカー不足">足場そのものが信頼できる k-mer 集合に無く、探索を始められなかった場合 true</param>
         /// <param name="p_Is支持不足">経路自体は一意に見つかったが、経路上の k-mer カバレッジが薄く採用を見送った場合 true</param>
-        /// <param name="p_安定ID">この箇所を再実行をまたいで追跡するための安定ID</param>
+        /// <param name="p_安定ID">この箇所を再実行をまたいで追跡するための安定 ID</param>
         /// <returns></returns>
         private static string? Get_ギャップ充填配列(StringBuilder p_左側の出力, string p_配列, int p_ギャップ長, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長, out ギャップ充填判定 p_判定, out bool p_Isアンカー不足, out bool p_Is支持不足, out string p_安定ID)
         {
@@ -146,7 +140,6 @@ namespace Tsumiki.Cores.Scaffolding
             p_Isアンカー不足 = false;
             p_Is支持不足 = false;
             p_安定ID = string.Empty;
-
             if (p_ギャップ長 > Consts.ギャップ充填のギャップ長上限 || p_左側の出力.Length < p_k長)
             {
                 return null;
@@ -175,7 +168,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             p_安定ID = AmbiguityRecorder.Get_安定ID(new string([.. l_左のkmer.Select(Util.Get_塩基文字)]), new string([.. l_目標kmer.Select(Util.Get_塩基文字)]));
-
             if (!p_kmerインデックス.Haskmer(l_左のkmer) || !p_kmerインデックス.Haskmer(l_目標kmer))
             {
                 p_Isアンカー不足 = true;
@@ -184,7 +176,6 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_最小長 = Math.Max(0, p_ギャップ長 - Consts.ギャップ充填の長さの余裕幅);
             var l_最大長 = p_ギャップ長 + Consts.ギャップ充填の長さの余裕幅;
-
             (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, l_最小長, l_最大長, p_kmerインデックス, p_k長);
             if (l_経路 is null)
             {
@@ -212,7 +203,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <returns>すべての k-mer が最小カバレッジ以上なら true</returns>
         private static bool Has十分なカバレッジ支持(StringBuilder p_左側の出力, string p_経路, string p_配列, int p_ギャップ終端, TrustedKmerIndex p_kmerインデックス, int p_k長)
         {
-            var l_接続 = p_左側の出力.ToString(p_左側の出力.Length - p_k長, p_k長) + p_経路 + p_配列.Substring(p_ギャップ終端, p_k長);
+            var l_接続 = string.Concat(p_左側の出力.ToString(p_左側の出力.Length - p_k長, p_k長), p_経路, p_配列.AsSpan(p_ギャップ終端, p_k長));
             for (var i = 0; i + p_k長 <= l_接続.Length; i++)
             {
                 var l_kmer = Get_kmerバイト列(l_接続, i, p_k長);
