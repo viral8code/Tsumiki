@@ -421,7 +421,7 @@ namespace Tsumiki.Utilities
 
             List<(long A_開始, bool A_Is逆鎖)> l_見つけた場所 = [];
             HashSet<(long, bool)> l_見つけた印 = [];
-            var l_下 =Get_下限(this._種, l_種);
+            var l_下 = Get_下限(this._種, l_種);
             for (var l_項 = l_下; l_項 < this._種.LongLength && this._種[l_項] == l_種; l_項++)
             {
                 var l_場所 = this._位置32?[l_項] ?? this._位置64![l_項];

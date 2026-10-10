@@ -730,7 +730,7 @@ namespace Tsumiki.Cores.Evaluation
                 V_登録_繋ぎ長(l_繋ぎ長, (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1), l_候補);
             }
 
-            Dictionary<(int, int), (int A_長さ, int A_支持数, int A_他の支持数)> l_最多の繋ぎ長 = p_反復を挟む辺.Where(l_繋ぎ長.ContainsKey).ToDictionary(x => x, x => Get_最多の繋ぎ長(l_繋ぎ長[x]));
+            var l_最多の繋ぎ長 = p_反復を挟む辺.Where(l_繋ぎ長.ContainsKey).ToDictionary(x => x, x => Get_最多の繋ぎ長(l_繋ぎ長[x]));
 
             Dictionary<int, HashSet<int>> l_行き先 = [];
             Dictionary<(int, int), 橋渡し候補> l_代表 = [];

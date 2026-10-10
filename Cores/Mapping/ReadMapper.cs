@@ -128,10 +128,10 @@ namespace Tsumiki.Cores.Mapping
                 .ToArray();
             Array.Sort(l_候補順, (x, y) => x.A_数 != y.A_数 ? y.A_数.CompareTo(x.A_数) : x.A_順.CompareTo(y.A_順));
             string? l_逆相補リード = null;
-            foreach (var l_候補 in l_候補順.Take(C_種ヒット上限))
+            foreach (var (A_候補, A_数, A_順) in l_候補順.Take(C_種ヒット上限))
             {
-                var l_照合リード = l_候補.A_候補.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
-                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, l_候補.A_候補));
+                var l_照合リード = A_候補.A_Is逆鎖 ? l_逆相補リード ??= Util.V_逆相補_曖昧塩基あり(p_リード) : p_リード;
+                l_配置候補.Add(this.Get_整列(p_リード, l_照合リード, A_候補));
             }
 
             return l_配置候補;

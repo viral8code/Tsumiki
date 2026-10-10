@@ -567,15 +567,10 @@ namespace Tsumiki.Cores.Scaffolding
             const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
             var l_左の始まり = p_区間の始まり - l_錨長;
             var l_跨ぐ長さ = p_区間の終わり + l_錨長 - l_左の始まり;
-            if (l_左の始まり < 0 || p_区間の終わり + l_錨長 > p_繋いだ配列.Length)
-            {
-                return false;
-            }
-
-            return l_跨ぐ長さ <= p_リード長
+            return l_左の始まり >= 0 && p_区間の終わり + l_錨長 <= p_繋いだ配列.Length && (l_跨ぐ長さ <= p_リード長
                 ? p_リード索引.Get_出現数(p_繋いだ配列.AsSpan(l_左の始まり, l_跨ぐ長さ), C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限
                 : Is反復の中(p_リード索引, p_繋いだ配列, l_左の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり, p_一意の出現数)
-                    || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり - l_錨長, p_一意の出現数);
+                    || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の始まり, p_一意の出現数) || Is反復の中(p_リード索引, p_繋いだ配列, p_区間の終わり - l_錨長, p_一意の出現数));
         }
 
         /// <summary>
@@ -644,12 +639,9 @@ namespace Tsumiki.Cores.Scaffolding
             var l_左 = p_出力.ToString(p_出力.Length - Math.Min(p_出力.Length, C_埋めるときに見る長さ), Math.Min(p_出力.Length, C_埋めるときに見る長さ));
             l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
             var l_右 = p_次の配列[..Math.Min(p_次の配列.Length, C_埋めるときに見る長さ)];
-            if (Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_右へ)
-            {
-                return l_右へ;
-            }
-
-            return Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_左へ
+            return Get_片側から埋める方法(p_リード索引, l_左, l_右, p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_右へ
+                ? l_右へ
+                : Get_片側から埋める方法(p_リード索引, Util.V_逆相補_曖昧塩基あり(l_右), Util.V_逆相補_曖昧塩基あり(l_左), p_リード長, p_一意の出現数, p_要るリード数, p_削る上限) is { } l_左へ
                 ? (l_左へ.A_右から削る長さ, Util.V_逆相補_曖昧塩基あり(l_左へ.A_埋める配列), l_左へ.A_左から削る長さ)
                 : null;
         }
@@ -674,7 +666,7 @@ namespace Tsumiki.Cores.Scaffolding
         private static (int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)? Get_片側から埋める方法(ReadMinimizerIndex p_リード索引, string p_左, string p_右, int p_リード長, int p_一意の出現数, int p_要るリード数, int p_削る上限)
         {
             const int l_錨長 = ReadMinimizerIndex.C_最短の問い合わせ長;
-            for (var l_削る = 0; l_削る <= p_削る上限 &&p_左.Length >= l_削る + l_錨長 + C_繋ぎ目の余白; l_削る++)
+            for (var l_削る = 0; l_削る <= p_削る上限 && p_左.Length >= l_削る + l_錨長 + C_繋ぎ目の余白; l_削る++)
             {
                 var l_錨 = p_左.Substring(p_左.Length - l_削る - l_錨長, l_錨長);
                 var l_手前 = p_左[..(p_左.Length - l_削る - l_錨長)];
@@ -690,7 +682,7 @@ namespace Tsumiki.Cores.Scaffolding
                 {
                     var l_続き = l_前後群[l_番号].A_続き;
                     var l_錨から = l_錨 + l_続き;
-                    for (var l_右を削る = 0; l_右を削る <= p_削る上限 &&l_右を削る + C_右の錨長 <= p_右.Length; l_右を削る++)
+                    for (var l_右を削る = 0; l_右を削る <= p_削る上限 && l_右を削る + C_右の錨長 <= p_右.Length; l_右を削る++)
                     {
                         var l_右の錨 = p_右.AsSpan(l_右を削る, C_右の錨長);
                         var l_位置 = l_錨から.AsSpan().IndexOf(l_右の錨);

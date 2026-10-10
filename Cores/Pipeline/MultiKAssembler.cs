@@ -459,9 +459,9 @@ namespace Tsumiki.Cores.Pipeline
             var l_最高 = 0D;
             foreach (var l_評価 in l_評価群)
             {
-                foreach (var l_橋渡し in l_場所[l_評価.A_候補.A_配列名])
+                foreach (var (A_配列名, A_開始, A_終了, A_始点) in l_場所[l_評価.A_候補.A_配列名])
                 {
-                    if (l_評価.A_候補.A_開始 >= l_橋渡し.A_終了 + C_橋渡しに掛かる余白 || l_評価.A_候補.A_終了 <= l_橋渡し.A_開始 - C_橋渡しに掛かる余白)
+                    if (l_評価.A_候補.A_開始 >= A_終了 + C_橋渡しに掛かる余白 || l_評価.A_候補.A_終了 <= A_開始 - C_橋渡しに掛かる余白)
                     {
                         continue;
                     }
@@ -470,7 +470,7 @@ namespace Tsumiki.Cores.Pipeline
                     l_最高 = Math.Max(l_最高, l_評価.A_誤りの確率);
                     if (l_評価.A_誤りの確率 >= C_橋渡しを見送る確率)
                     {
-                        _ = l_見送る.Add(l_橋渡し.A_始点);
+                        _ = l_見送る.Add(A_始点);
                     }
                 }
             }

@@ -646,17 +646,11 @@ namespace Tsumiki.Utilities
         /// <returns></returns>
         public List<byte[]> Get_開始kmer一覧()
         {
-            if (this._Is小経路使用)
-            {
-                return this.Get_開始kmer一覧_小();
-            }
-
-            if (this._Is中経路使用)
-            {
-                return this.Get_開始kmer一覧_中();
-            }
-
-            return [.. this.Get_信頼kmer一覧()
+            return this._Is小経路使用
+                ? this.Get_開始kmer一覧_小()
+                : this._Is中経路使用
+                ? this.Get_開始kmer一覧_中()
+                : [.. this.Get_信頼kmer一覧()
                 .AsParallel()
                 .AsOrdered()
                 .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))

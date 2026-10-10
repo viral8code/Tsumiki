@@ -607,10 +607,7 @@ namespace Tsumiki.Utilities
             lock (_共有索引の錠)
             {
                 var l_大窓 = Get_共有索引(p_パス群);
-                if (_共有小窓索引 is null)
-                {
-                    _共有小窓索引 = l_大窓.Get_窓違い(ReadMinimizerIndex.C_短い問い合わせ用の窓の種数);
-                }
+                _共有小窓索引 ??= l_大窓.Get_窓違い(ReadMinimizerIndex.C_短い問い合わせ用の窓の種数);
 
                 return _共有小窓索引;
             }

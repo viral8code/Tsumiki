@@ -94,10 +94,7 @@ namespace Tsumiki.Cores.Preprocessing
 
                     KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_kmerインデックス);
                     l_kmerインデックス.V_適用_カットオフ(l_設定.A_kmerカットオフ);
-                    if (l_度数 is not null)
-                    {
-                        l_度数.A_単一コピー平均 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均 ?? 0D;
-                    }
+                    l_度数?.A_単一コピー平均 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均 ?? 0D;
 
                     Logger.V_出力(メッセージID.エラー訂正_訂正開始);
                     var l_統計1 = Get_訂正統計_ファイル(p_リード1のパス, p_出力先1, l_kmerインデックス, l_k長, l_度数);
