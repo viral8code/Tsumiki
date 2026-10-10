@@ -38,6 +38,14 @@ namespace Tsumiki.Cores.Scaffolding
         private const ulong C_Scaffold支持数の下限 = 3UL;
 
         /// <summary>
+        /// 期待本数がこれ未満の候補は、期待に対する比で優劣を決められないため生の支持数で比べる
+        /// </summary>
+        /// <remarks>
+        /// リード長に近い短い contig などは期待本数がほぼ 0 になり、比が 0 か極端に大きくなる
+        /// </remarks>
+        private const double C_信頼できる期待本数の下限 = 1.0D;
+
+        /// <summary>
         /// インサートサイズ推定に必要な標本数
         /// </summary>
         private const int C_インサートサイズ標本数の下限 = 30;
@@ -264,6 +272,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_最良本数 = 0;
                 var l_最良ギャップ = 0;
                 var l_最良比 = 0D;
+                var l_最良ライブラリ = -1;
                 for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
                 {
                     if (!l_対称化群[l_ライブラリ].TryGetValue((l_始点, l_終点), out var l_項目))
@@ -280,10 +289,14 @@ namespace Tsumiki.Cores.Scaffolding
 
                     l_最良本数 = l_一貫した本数;
                     l_最良ギャップ = l_ギャップ長;
+                    l_最良ライブラリ = l_ライブラリ;
                     l_最良比 = l_較正器群[l_ライブラリ].Get_正規化済み支持((ulong)l_一貫した本数, this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_ギャップ長));
                 }
 
-                l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比));
+                var l_最良期待本数 = l_最良ライブラリ >= 0 && l_較正器群[l_最良ライブラリ].A_Is使用可能
+                    ? l_較正器群[l_最良ライブラリ].Get_期待本数(this.Get_Contig長(l_始点), this.Get_Contig長(l_終点), Math.Max(0, l_最良ギャップ))
+                    : double.NaN;
+                l_隣接[l_始点].Add(new Scaffold候補(l_終点, (ulong)l_最良本数, l_最良ギャップ, l_最良比, l_最良期待本数));
                 if (l_本数群 is not null)
                 {
                     var l_期待群 = new double[l_ライブラリ数];
@@ -302,10 +315,23 @@ namespace Tsumiki.Cores.Scaffolding
             Logger.V_出力(メッセージID.Scaffold候補辺数, l_候補キー.Count, Messages.Get_文言(l_較正器群.Any(x => x.A_Is使用可能) ? メッセージID.理想本数モデルあり : メッセージID.理想本数モデルなし));
 
             var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[l_頂点数];
+            var l_生の支持数で判定数 = 0;
+            var l_生の支持数で採用数 = 0;
             for (var v = 2; v < l_頂点数; v++)
             {
+                var l_生の支持数で判定 = Is生の支持数で判定(l_隣接[v], l_最小証拠数);
                 V_確定_Scaffold辺(l_隣接, v, l_優勢閾値, l_最小証拠数, l_確定辺);
+                if (l_生の支持数で判定)
+                {
+                    l_生の支持数で判定数++;
+                    if (l_確定辺[v] != null)
+                    {
+                        l_生の支持数で採用数++;
+                    }
+                }
             }
+
+            Logger.V_出力(メッセージID.Scaffold生の支持数で判定, l_生の支持数で判定数, l_生の支持数で採用数);
 
             if (l_ライブラリ別本数 is not null)
             {
@@ -415,9 +441,27 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
+            if (Is生の支持数で判定(l_候補, p_最小証拠数))
+            {
+                var l_支持合計 = l_候補.Sum(x => (long)x.A_支持数);
+                var l_支持最良 = l_候補.OrderByDescending(x => x.A_支持数).First();
+                return l_支持合計 == 0L || (decimal)l_支持最良.A_支持数 / l_支持合計 < p_優勢閾値 ? null : l_支持最良;
+            }
+
             var l_合計 = l_候補.Sum(x => x.A_期待に対する比);
             var l_最良 = l_候補.OrderByDescending(x => x.A_期待に対する比).First();
             return l_合計 <= 0D || (decimal)(l_最良.A_期待に対する比 / l_合計) < p_優勢閾値 ? null : l_最良;
+        }
+
+        /// <summary>
+        /// 支持数の下限を満たす候補に、期待本数が C_信頼できる期待本数の下限 未満のものが 1 つでもあり、生の支持数で判定するかを返す
+        /// </summary>
+        /// <param name="p_候補">頂点の候補</param>
+        /// <param name="p_最小証拠数">確定に要求する支持数</param>
+        /// <returns>生の支持数で判定するなら真</returns>
+        internal static bool Is生の支持数で判定(IReadOnlyList<Scaffold候補> p_候補, ulong p_最小証拠数)
+        {
+            return p_候補.Any(x => x.A_支持数 >= p_最小証拠数 && !double.IsNaN(x.A_期待本数) && x.A_期待本数 < C_信頼できる期待本数の下限);
         }
 
         /// <summary>
