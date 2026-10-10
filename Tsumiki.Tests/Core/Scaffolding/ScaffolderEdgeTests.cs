@@ -155,6 +155,32 @@ namespace Tsumiki.Tests.Core
             Assert.False(Scaffolder.Is生の支持数で判定([V_構築_scaffold候補(4, 20UL, 5.0D, 4.0D), V_構築_scaffold候補(6, 2UL, 0.0D, 0.0D)], 3UL));
         }
 
+        /// <summary>
+        /// 比で最良の候補の期待本数が足りていて、期待本数の小さい競合の支持数が最良より少なければ、今までどおり比で判定する
+        /// </summary>
+        [Fact]
+        public void Get_優勢な候補_期待本数の小さい競合が最良より少ない支持なら比で判定する()
+        {
+            var l_候補 = new List<Scaffold候補> { V_構築_scaffold候補(4, 21UL, 6.0D, 3.5D), V_構築_scaffold候補(6, 7UL, 0.0D, 0.0D) };
+
+            Assert.False(Scaffolder.Is生の支持数で判定(l_候補, 3UL));
+            var l_結果 = Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 3UL);
+            Assert.NotNull(l_結果);
+            Assert.Equal(4, l_結果!.Value.A_行き先);
+        }
+
+        /// <summary>
+        /// 比で最良の候補の期待本数が足りていても、期待本数の小さい競合が最良以上の支持数を持てば、生の支持数で判定する
+        /// </summary>
+        [Fact]
+        public void Get_優勢な候補_期待本数の小さい競合が最良以上の支持なら生の支持数で判定する()
+        {
+            var l_候補 = new List<Scaffold候補> { V_構築_scaffold候補(8, 15UL, 2.57D, 5.8D), V_構築_scaffold候補(4, 17UL, 0.0D, 0.0D) };
+
+            Assert.True(Scaffolder.Is生の支持数で判定(l_候補, 3UL));
+            Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 3UL));
+        }
+
         #endregion
 
         #region 内部メソッド

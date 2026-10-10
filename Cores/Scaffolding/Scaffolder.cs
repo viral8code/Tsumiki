@@ -454,14 +454,41 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 支持数の下限を満たす候補に、期待本数が C_信頼できる期待本数の下限 未満のものが 1 つでもあり、生の支持数で判定するかを返す
+        /// 生の支持数で判定するかを返す。支持数の下限を満たす候補のうち、期待に対する比で最良の候補の期待本数が C_信頼できる期待本数の下限 未満か
+        /// (比そのものがあてにならない)、期待本数が下限未満の別の候補が最良の候補以上の支持数を持つ (比では評価できないが、同じだけの証拠がある競合) ときに真
         /// </summary>
         /// <param name="p_候補">頂点の候補</param>
         /// <param name="p_最小証拠数">確定に要求する支持数</param>
         /// <returns>生の支持数で判定するなら真</returns>
         internal static bool Is生の支持数で判定(IReadOnlyList<Scaffold候補> p_候補, ulong p_最小証拠数)
         {
-            return p_候補.Any(x => x.A_支持数 >= p_最小証拠数 && !double.IsNaN(x.A_期待本数) && x.A_期待本数 < C_信頼できる期待本数の下限);
+            var l_候補 = p_候補.Where(x => x.A_支持数 >= p_最小証拠数).ToList();
+            if (l_候補.Count == 0)
+            {
+                return false;
+            }
+
+            var l_最良の番号 = 0;
+            for (var i = 1; i < l_候補.Count; i++)
+            {
+                if (l_候補[i].A_期待に対する比 > l_候補[l_最良の番号].A_期待に対する比)
+                {
+                    l_最良の番号 = i;
+                }
+            }
+
+            var l_最良 = l_候補[l_最良の番号];
+            return Is期待本数が小さい(l_最良) || l_候補.Where((x, i) => i != l_最良の番号).Any(x => Is期待本数が小さい(x) && x.A_支持数 >= l_最良.A_支持数);
+        }
+
+        /// <summary>
+        /// 候補の期待本数が分かっていて、C_信頼できる期待本数の下限 未満か
+        /// </summary>
+        /// <param name="p_候補">候補</param>
+        /// <returns>下限未満なら真</returns>
+        private static bool Is期待本数が小さい(Scaffold候補 p_候補)
+        {
+            return !double.IsNaN(p_候補.A_期待本数) && p_候補.A_期待本数 < C_信頼できる期待本数の下限;
         }
 
         /// <summary>
