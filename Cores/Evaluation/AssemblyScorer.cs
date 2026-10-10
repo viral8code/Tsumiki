@@ -39,19 +39,16 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_観測 = Get_出現回数(p_FASTAパス, p_アンカーk長, out var l_長さ一覧, out var l_総延長, out var l_環状本数, out var l_環状延長);
-
             var l_期待延べ数 = 0L;
             var l_欠損延べ数 = 0L;
             var l_過剰延べ数 = 0L;
             var l_単一コピー上限 = p_単一コピー上限 ?? KmerHistogram.C_単一コピー上限の最小比 * p_単一コピー基準値;
-
             foreach (var l_kmer in p_アンカーインデックス.Get_信頼kmer一覧())
             {
-                var l_正規形 = KmerPacking.TryGet_正規化パック(l_kmer);
+                var l_正規形 = KmerPacking.Get_正規化パック(l_kmer);
                 var l_カバレッジ = p_アンカーインデックス.Get_カバレッジ(l_kmer);
                 var l_期待コピー数 = KmerHistogram.Get_期待コピー数(l_カバレッジ, p_単一コピー基準値, l_単一コピー上限);
                 var l_出現数 = l_観測.GetValueOrDefault(l_正規形);
-
                 l_期待延べ数 += l_期待コピー数;
                 if (l_出現数 < l_期待コピー数)
                 {
@@ -64,7 +61,6 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_統計対象 = l_長さ一覧.Where(x => x >= C_評価に含める最小長).ToList();
-
             return new アセンブリ評価(A_期待延べ数: l_期待延べ数, A_欠損延べ数: l_欠損延べ数, A_過剰延べ数: l_過剰延べ数, A_総延長: l_統計対象.Sum(), A_本数: l_統計対象.Count, A_NG50: Get_NG50(l_統計対象, p_推定ゲノムサイズ, l_総延長), A_環状本数: l_環状本数, A_環状化率: p_推定ゲノムサイズ > 0L ? (double)l_環状延長 / p_推定ゲノムサイズ : 0D);
         }
 
@@ -89,7 +85,6 @@ namespace Tsumiki.Cores.Evaluation
             p_総延長 = 0L;
             p_環状本数 = 0;
             p_環状延長 = 0L;
-
             using var l_読み込み = new FastaReader(p_FASTAパス);
             while (l_読み込み.Has続き())
             {
@@ -102,7 +97,6 @@ namespace Tsumiki.Cores.Evaluation
 
                 p_長さ一覧.Add(l_配列.Length);
                 p_総延長 += l_配列.Length;
-
                 if (l_エントリ.A_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase))
                 {
                     p_環状本数++;
@@ -111,7 +105,7 @@ namespace Tsumiki.Cores.Evaluation
 
                 for (var i = 0; i + p_アンカーk長 <= l_配列.Length; i++)
                 {
-                    if (KmerPacking.TryGet_正規化パック(l_配列, i, p_アンカーk長, out var l_正規形))
+                    if (KmerPacking.Is成功_正規化パック(l_配列, i, p_アンカーk長, out var l_正規形))
                     {
                         l_観測[l_正規形] = l_観測.GetValueOrDefault(l_正規形) + 1;
                     }

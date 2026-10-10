@@ -39,27 +39,25 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_配列群">当てる先の配列</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組 (リード 2 が空なら片側だけのライブラリ)</param>
         /// <returns>集めた証拠</returns>
-        public static 継ぎ目の証拠 Get_証拠(IReadOnlyList<string> p_配列群, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        public static 継ぎ目の証拠 Get_証拠(IReadOnlyList<string> p_配列群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
             var l_マッパー = new ReadMapper(p_配列群);
             var l_深さの差分 = p_配列群.Select(x => new int[x.Length + 1]).ToArray();
             var l_一意な深さの差分 = p_配列群.Select(x => new int[x.Length + 1]).ToArray();
             var l_左の切れ端 = p_配列群.Select(x => new int[x.Length + 1]).ToArray();
             var l_右の切れ端 = p_配列群.Select(x => new int[x.Length + 1]).ToArray();
-
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_読み = Enumerable.Range(0, l_スレッド数).Select(_ => new List<(int, int, int)>()).ToArray();
             var l_断片 = Enumerable.Range(0, l_スレッド数).Select(_ => new List<(int, int, int)>()).ToArray();
             var l_外れ錨 = Enumerable.Range(0, l_スレッド数).Select(_ => new List<(int, int, int)>()).ToArray();
-
-            foreach (var (l_リード1, l_リード2) in p_ライブラリ群)
+            foreach (var (l_順リード, l_逆リード) in p_ライブラリ群)
             {
-                var l_Isペア = !string.IsNullOrWhiteSpace(l_リード2);
-                var l_供給元 = l_Isペア ? FastqReader.Get_ペア塩基列(l_リード1, l_リード2) : FastqReader.Get_生リード列(l_リード1).Select(x => (x, string.Empty));
+                var l_Isペア = !string.IsNullOrWhiteSpace(l_逆リード);
+                var l_供給元 = l_Isペア ? FastqReader.Get_ペア塩基列(l_順リード, l_逆リード) : FastqReader.Get_生リード列(l_順リード).Select(x => (x, string.Empty));
                 ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, l_供給元, (l_組, l_ワーカー番号) =>
                 {
                     var (l_当たり1, l_当たり2) = Get_ペアの当たり(l_マッパー, l_組.Item1, l_組.Item2);
-                    foreach (var l_当たり in new[] { l_当たり1, l_当たり2 })
+                    foreach (var l_当たり in new[] { l_当たり1, l_当たり2, })
                     {
                         if (l_当たり is { } l_有効)
                         {
@@ -93,22 +91,23 @@ namespace Tsumiki.Cores.Evaluation
         #region 内部メソッド
 
         /// <summary>
-        /// ペアの 2 本を当てる。向かい合わせに組める置き方があればそれを選び (反復に入った片方も相方の近くのコピーに置く)、無ければ 1 本ずつ最良の場所に置く
+        /// ペアの 2 本を当てる<br/>
+        /// 向かい合わせに組める置き方があればそれを選び (反復に入った片方も相方の近くのコピーに置く) 、無ければ 1 本ずつ最良の場所に置く
         /// </summary>
         /// <param name="p_マッパー"></param>
-        /// <param name="p_リード1"></param>
-        /// <param name="p_リード2">片側だけのライブラリなら空文字</param>
+        /// <param name="p_順リード"></param>
+        /// <param name="p_逆リード">片側だけのライブラリなら空文字</param>
         /// <returns>2 本の当たり、当たらなかった側は null</returns>
-        private static (リードの当たり? A_当たり1, リードの当たり? A_当たり2) Get_ペアの当たり(ReadMapper p_マッパー, string p_リード1, string p_リード2)
+        private static (リードの当たり? A_当たり1, リードの当たり? A_当たり2) Get_ペアの当たり(ReadMapper p_マッパー, string p_順リード, string p_逆リード)
         {
-            var l_候補1 = string.IsNullOrEmpty(p_リード1) ? [] : p_マッパー.Get_配置候補群(p_リード1);
-            var l_候補2 = string.IsNullOrEmpty(p_リード2) ? [] : p_マッパー.Get_配置候補群(p_リード2);
+            var l_候補1 = string.IsNullOrEmpty(p_順リード) ? [] : p_マッパー.Get_配置候補群(p_順リード);
+            var l_候補2 = string.IsNullOrEmpty(p_逆リード) ? [] : p_マッパー.Get_配置候補群(p_逆リード);
             if (ReadMapper.Get_組んだ配置(l_候補1, l_候補2, C_断片長の上限) is { } l_組)
             {
-                return (Get_当たり(l_組.A_配置1, p_リード1.Length), Get_当たり(l_組.A_配置2, p_リード2.Length));
+                return (Get_当たり(l_組.A_配置1, p_順リード.Length), Get_当たり(l_組.A_配置2, p_逆リード.Length));
             }
 
-            return (Get_当たり(ReadMapper.Get_最良の配置(l_候補1), p_リード1.Length), Get_当たり(ReadMapper.Get_最良の配置(l_候補2), p_リード2.Length));
+            return (Get_当たり(ReadMapper.Get_最良の配置(l_候補1), p_順リード.Length), Get_当たり(ReadMapper.Get_最良の配置(l_候補2), p_逆リード.Length));
         }
 
         /// <summary>
@@ -141,23 +140,23 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_右の切れ端"></param>
         private static void V_加算_深さと切れ端(リードの当たり p_当たり, int[][] p_深さの差分, int[][] p_一意な深さの差分, int[][] p_左の切れ端, int[][] p_右の切れ端)
         {
-            var i = p_当たり.A_配列番号;
-            _ = Interlocked.Increment(ref p_深さの差分[i][p_当たり.A_開始]);
-            _ = Interlocked.Decrement(ref p_深さの差分[i][p_当たり.A_終了]);
+            var l_配列番号 = p_当たり.A_配列番号;
+            _ = Interlocked.Increment(ref p_深さの差分[l_配列番号][p_当たり.A_開始]);
+            _ = Interlocked.Decrement(ref p_深さの差分[l_配列番号][p_当たり.A_終了]);
             if (p_当たり.A_信頼度 >= C_一意とみなす信頼度)
             {
-                _ = Interlocked.Increment(ref p_一意な深さの差分[i][p_当たり.A_開始]);
-                _ = Interlocked.Decrement(ref p_一意な深さの差分[i][p_当たり.A_終了]);
+                _ = Interlocked.Increment(ref p_一意な深さの差分[l_配列番号][p_当たり.A_開始]);
+                _ = Interlocked.Decrement(ref p_一意な深さの差分[l_配列番号][p_当たり.A_終了]);
             }
 
             if (p_当たり.A_左の切れ端 >= C_切れ端の最小長)
             {
-                _ = Interlocked.Increment(ref p_左の切れ端[i][p_当たり.A_開始]);
+                _ = Interlocked.Increment(ref p_左の切れ端[l_配列番号][p_当たり.A_開始]);
             }
 
             if (p_当たり.A_右の切れ端 >= C_切れ端の最小長)
             {
-                _ = Interlocked.Increment(ref p_右の切れ端[i][p_当たり.A_終了]);
+                _ = Interlocked.Increment(ref p_右の切れ端[l_配列番号][p_当たり.A_終了]);
             }
         }
 
@@ -170,8 +169,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_外れ錨">(配列番号, 位置, 向き) を足す先</param>
         private static void V_分類_ペア(リードの当たり? p_当たり1, リードの当たり? p_当たり2, List<(int, int, int)> p_断片, List<(int, int, int)> p_外れ錨)
         {
-            if (p_当たり1 is { } l_1 && p_当たり2 is { } l_2 && l_1.A_配列番号 == l_2.A_配列番号 && l_1.A_Is逆鎖 != l_2.A_Is逆鎖
-                && Math.Min(l_1.A_信頼度, l_2.A_信頼度) >= C_一意とみなす信頼度)
+            if (p_当たり1 is { } l_1 && p_当たり2 is { } l_2 && l_1.A_配列番号 == l_2.A_配列番号 && l_1.A_Is逆鎖 != l_2.A_Is逆鎖 && Math.Min(l_1.A_信頼度, l_2.A_信頼度) >= C_一意とみなす信頼度)
             {
                 var (l_左, l_右) = l_1.A_Is逆鎖 ? (l_2, l_1) : (l_1, l_2);
                 if (l_左.A_開始 <= l_右.A_終了 && l_右.A_終了 - l_左.A_開始 < C_断片長の上限)
@@ -181,7 +179,7 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
 
-            foreach (var l_当たり in new[] { p_当たり1, p_当たり2 })
+            foreach (var l_当たり in new[] { p_当たり1, p_当たり2, })
             {
                 if (l_当たり is { } l_有効 && l_有効.A_信頼度 >= C_一意とみなす信頼度)
                 {

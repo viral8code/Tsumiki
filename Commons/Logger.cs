@@ -126,7 +126,6 @@ namespace Tsumiki.Commons
         {
             V_出力_標準エラー(メッセージID.例外を無視_見出し);
             V_出力_標準エラー(メッセージID.例外を無視_メソッド, p_メソッド名);
-
             V_書き出し(p_例外.ToString(), p_Is標準エラー: true);
         }
 
@@ -212,11 +211,7 @@ namespace Tsumiki.Commons
         /// <returns></returns>
         private static ログ水準 Get_水準(string p_行)
         {
-            return p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal)
-                ? ログ水準.詳細
-                : p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal) || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal)
-                ? ログ水準.最小
-                : ログ水準.標準;
+            return p_行.StartsWith(Consts.ログ目印.詳細, StringComparison.Ordinal) ? ログ水準.詳細 : p_行.StartsWith(Consts.ログ目印.完全性, StringComparison.Ordinal) || p_行.StartsWith(Consts.ログ目印.レポート, StringComparison.Ordinal) ? ログ水準.最小 : ログ水準.標準;
         }
 
         #endregion

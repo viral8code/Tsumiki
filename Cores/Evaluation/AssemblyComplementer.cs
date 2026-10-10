@@ -99,23 +99,23 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>区間の開始位置と長さ</returns>
         public static IEnumerable<(int A_開始, int A_長さ)> Get_欠けた区間(string p_配列, IReadOnlySet<UInt128> p_既知, int p_k長)
         {
-            var i = 0;
-            while (i + p_k長 <= p_配列.Length)
+            var l_インデックス1 = 0;
+            while (l_インデックス1 + p_k長 <= p_配列.Length)
             {
-                if (!Is未知(p_配列, i, p_既知, p_k長))
+                if (!Is未知(p_配列, l_インデックス1, p_既知, p_k長))
                 {
-                    i++;
+                    l_インデックス1++;
                     continue;
                 }
 
-                var j = i;
-                while (j + p_k長 <= p_配列.Length && Is未知(p_配列, j, p_既知, p_k長))
+                var l_インデックス2 = l_インデックス1;
+                while (l_インデックス2 + p_k長 <= p_配列.Length && Is未知(p_配列, l_インデックス2, p_既知, p_k長))
                 {
-                    j++;
+                    l_インデックス2++;
                 }
 
-                yield return (i, j - 1 + p_k長 - i);
-                i = j;
+                yield return (l_インデックス1, l_インデックス2 - 1 + p_k長 - l_インデックス1);
+                l_インデックス1 = l_インデックス2;
             }
         }
 
@@ -127,18 +127,18 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>つないだ区間の開始位置と長さ</returns>
         public static IEnumerable<(int A_開始, int A_長さ)> Get_つないだ区間(string p_配列, IReadOnlyList<(int A_開始, int A_長さ)> p_欠けた区間)
         {
-            var i = 0;
-            while (i < p_欠けた区間.Count)
+            var l_インデックス1 = 0;
+            while (l_インデックス1 < p_欠けた区間.Count)
             {
-                var l_開始 = p_欠けた区間[i].A_開始;
-                var l_終了 = l_開始 + p_欠けた区間[i].A_長さ;
-                var l_欠け = p_欠けた区間[i].A_長さ;
-                var j = i + 1;
-                while (j < p_欠けた区間.Count && p_欠けた区間[j].A_開始 - l_終了 <= C_挟める既知区間の最長 && Is塩基のみ(p_配列, l_終了, p_欠けた区間[j].A_開始))
+                var l_開始 = p_欠けた区間[l_インデックス1].A_開始;
+                var l_終了 = l_開始 + p_欠けた区間[l_インデックス1].A_長さ;
+                var l_欠け = p_欠けた区間[l_インデックス1].A_長さ;
+                var l_インデックス2 = l_インデックス1 + 1;
+                while (l_インデックス2 < p_欠けた区間.Count && p_欠けた区間[l_インデックス2].A_開始 - l_終了 <= C_挟める既知区間の最長 && Is塩基のみ(p_配列, l_終了, p_欠けた区間[l_インデックス2].A_開始))
                 {
-                    l_終了 = Math.Max(l_終了, p_欠けた区間[j].A_開始 + p_欠けた区間[j].A_長さ);
-                    l_欠け += p_欠けた区間[j].A_長さ;
-                    j++;
+                    l_終了 = Math.Max(l_終了, p_欠けた区間[l_インデックス2].A_開始 + p_欠けた区間[l_インデックス2].A_長さ);
+                    l_欠け += p_欠けた区間[l_インデックス2].A_長さ;
+                    l_インデックス2++;
                 }
 
                 if (l_欠け >= (l_終了 - l_開始) * C_欠けの最小割合)
@@ -146,7 +146,7 @@ namespace Tsumiki.Cores.Evaluation
                     yield return (l_開始, l_終了 - l_開始);
                 }
 
-                i = j;
+                l_インデックス1 = l_インデックス2;
             }
         }
 
@@ -164,7 +164,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>未知なら true</returns>
         private static bool Is未知(string p_配列, int p_位置, IReadOnlySet<UInt128> p_既知, int p_k長)
         {
-            return KmerPacking.TryGet_正規化パック(p_配列, p_位置, p_k長, out var l_鍵) && !p_既知.Contains(l_鍵);
+            return KmerPacking.Is成功_正規化パック(p_配列, p_位置, p_k長, out var l_鍵) && !p_既知.Contains(l_鍵);
         }
 
         /// <summary>
@@ -189,7 +189,7 @@ namespace Tsumiki.Cores.Evaluation
         {
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
             {
-                if (KmerPacking.TryGet_正規化パック(p_配列, i, p_k長, out var l_鍵))
+                if (KmerPacking.Is成功_正規化パック(p_配列, i, p_k長, out var l_鍵))
                 {
                     _ = p_集合.Add(l_鍵);
                 }
@@ -209,7 +209,7 @@ namespace Tsumiki.Cores.Evaluation
             var l_信頼 = 0;
             for (var i = 0; i + p_k長 <= p_配列.Length; i++)
             {
-                if (KmerPacking.TryGet_正規化パック(p_配列, i, p_k長, out var l_鍵))
+                if (KmerPacking.Is成功_正規化パック(p_配列, i, p_k長, out var l_鍵))
                 {
                     l_件数++;
                     l_信頼 += p_Is信頼(l_鍵) ? 1 : 0;

@@ -66,17 +66,16 @@ namespace Tsumiki.Core
         /// </summary>
         /// <param name="p_ヒット1"></param>
         /// <param name="p_ヒット2"></param>
-        /// <param name="p_リード1"></param>
-        /// <param name="p_リード2"></param>
+        /// <param name="p_順リード"></param>
+        /// <param name="p_逆リード"></param>
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
-        private static void V_収集_同一unitig標本(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, List<int> p_同一向き標本, List<int> p_逆向き標本)
+        private static void V_収集_同一unitig標本(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_順リード, string p_逆リード, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
             if ((p_ヒット1.A_unitigID > 0) == (p_ヒット2.A_unitigID > 0))
             {
                 var l_内側距離 = Math.Abs(Get_順鎖座標(p_ヒット1) - Get_順鎖座標(p_ヒット2));
-                var l_フラグメント長 = l_内側距離 + Math.Max(p_リード1.Length, p_リード2.Length);
-
+                var l_フラグメント長 = l_内側距離 + Math.Max(p_順リード.Length, p_逆リード.Length);
                 if (l_フラグメント長 > 0)
                 {
                     p_同一向き標本.Add(l_フラグメント長);
@@ -87,11 +86,9 @@ namespace Tsumiki.Core
                 var l_Isヒット1順鎖 = p_ヒット1.A_unitigID > 0;
                 var l_順鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット1 : p_ヒット2);
                 var l_逆鎖側の端 = Get_順鎖座標(l_Isヒット1順鎖 ? p_ヒット2 : p_ヒット1);
-                var l_順鎖側リード長 = l_Isヒット1順鎖 ? p_リード1.Length : p_リード2.Length;
-                var l_逆鎖側リード長 = l_Isヒット1順鎖 ? p_リード2.Length : p_リード1.Length;
-
+                var l_順鎖側リード長 = l_Isヒット1順鎖 ? p_順リード.Length : p_逆リード.Length;
+                var l_逆鎖側リード長 = l_Isヒット1順鎖 ? p_逆リード.Length : p_順リード.Length;
                 var l_フラグメント長 = (l_逆鎖側の端 + l_逆鎖側リード長) - (l_順鎖側の端 - l_順鎖側リード長);
-
                 if (l_フラグメント長 > 0)
                 {
                     p_逆向き標本.Add(l_フラグメント長);
@@ -104,17 +101,15 @@ namespace Tsumiki.Core
         /// </summary>
         /// <param name="p_ヒット1"></param>
         /// <param name="p_ヒット2"></param>
-        /// <param name="p_リード1"></param>
-        /// <param name="p_リード2"></param>
+        /// <param name="p_順リード"></param>
+        /// <param name="p_逆リード"></param>
         /// <param name="p_ローカルペア経路"></param>
-        private static void V_収集_ペア経路(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_リード1, string p_リード2, Dictionary<(int, int), List<int>> p_ローカルペア経路)
+        private static void V_収集_ペア経路(代表Unitigヒット p_ヒット1, 代表Unitigヒット p_ヒット2, string p_順リード, string p_逆リード, Dictionary<(int, int), List<int>> p_ローカルペア経路)
         {
             var l_キー = (p_ヒット1.A_unitigID, -p_ヒット2.A_unitigID);
-
             var l_残り1 = p_ヒット1.A_末尾までの残り長;
             var l_残り2 = p_ヒット2.A_末尾までの残り長;
-            var l_既知長 = l_残り1 + l_残り2 + p_リード1.Length + p_リード2.Length;
-
+            var l_既知長 = l_残り1 + l_残り2 + p_順リード.Length + p_逆リード.Length;
             if (p_ローカルペア経路.TryGetValue(l_キー, out var l_一覧))
             {
                 l_一覧.Add(l_既知長);
@@ -137,10 +132,6 @@ namespace Tsumiki.Core
 
         /// <summary>
         /// 結合が確定した辺について、ペア経路の既知長から「フラグメント長 = 既知長 - (k-1) 」を計算して標本に積む
-        /// </summary>
-        /// <param name="p_結合"></param>
-        /// <summary>
-        /// そのライブラリのペア経路を取り出す (無ければ作る)
         /// </summary>
         /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
         /// <returns></returns>
@@ -216,16 +207,13 @@ namespace Tsumiki.Core
         private void V_収集_確定辺標本(int[] p_結合)
         {
             var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-
             for (var l_ライブラリ = 0; l_ライブラリ < this._ペア経路群.Count; l_ライブラリ++)
             {
                 var l_ペア経路 = this._ペア経路群[l_ライブラリ];
                 List<int> l_確定辺標本 = [];
-
                 for (var v = 2; v < p_結合.Length; v++)
                 {
                     var l_次 = p_結合[v];
-
                     if (l_次 < 0)
                     {
                         continue;
@@ -233,7 +221,6 @@ namespace Tsumiki.Core
 
                     var l_始点unitig = (v >> 1) * ((v & 1) == 0 ? 1 : -1);
                     var l_終点unitig = (l_次 >> 1) * ((l_次 & 1) == 0 ? 1 : -1);
-
                     if (!l_ペア経路.TryGetValue((l_始点unitig, l_終点unitig), out var l_既知長標本))
                     {
                         continue;
@@ -252,9 +239,7 @@ namespace Tsumiki.Core
                 this.A_インサートサイズ標本.AddRange(l_確定辺標本);
                 this.A_確定辺標本.AddRange(l_確定辺標本);
                 this.Get_確定辺標本(l_ライブラリ).AddRange(l_確定辺標本);
-
                 Logger.V_出力(メッセージID.確定辺標本数, l_確定辺標本.Count);
-
                 if (l_確定辺標本.Count > 0)
                 {
                     Logger.V_出力(メッセージID.確定辺標本の中央値, StatsUtil.Get_中央値(l_確定辺標本), l_確定辺標本.Count);

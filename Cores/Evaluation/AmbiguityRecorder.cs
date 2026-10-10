@@ -14,6 +14,16 @@ namespace Tsumiki.Cores.Evaluation
         #region 定数
 
         /// <summary>
+        /// 表区切り
+        /// </summary>
+        private const string C_表区切り = "|";
+
+        /// <summary>
+        /// 項目 R
+        /// </summary>
+        private const string C_項目_R = "R";
+
+        /// <summary>
         /// k ごとの作業ディレクトリに残す控え
         /// </summary>
         private const string C_保存ファイル名 = "ambiguous.tsv";
@@ -96,10 +106,10 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_左アンカー">左側の足場配列</param>
         /// <param name="p_右アンカー">右側の足場配列</param>
-        /// <returns>16 文字の16進ID</returns>
+        /// <returns>16 文字の 16 進 ID</returns>
         public static string Get_安定ID(string p_左アンカー, string p_右アンカー)
         {
-            var l_ハッシュ = SHA256.HashData(Encoding.ASCII.GetBytes(p_左アンカー + "|" + p_右アンカー));
+            var l_ハッシュ = SHA256.HashData(Encoding.ASCII.GetBytes(p_左アンカー + C_表区切り + p_右アンカー));
             return Convert.ToHexStringLower(l_ハッシュ)[..16];
         }
 
@@ -209,13 +219,12 @@ namespace Tsumiki.Cores.Evaluation
             var l_文 = new StringBuilder();
             foreach (var l_箇所 in p_記録)
             {
-                _ = l_文.AppendLine(string.Join('\t', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString("R", CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString("R", CultureInfo.InvariantCulture)));
+                _ = l_文.AppendLine(string.Join('\t', (int)l_箇所.A_種別, l_箇所.A_場所, l_箇所.A_安定ID, l_箇所.A_首位の支持.ToString(C_項目_R, CultureInfo.InvariantCulture), l_箇所.A_次点の支持.ToString(C_項目_R, CultureInfo.InvariantCulture), l_箇所.A_首位の生支持数, l_箇所.A_確信度.ToString(C_項目_R, CultureInfo.InvariantCulture)));
             }
 
             return l_文.ToString();
         }
 
         #endregion
-
     }
 }

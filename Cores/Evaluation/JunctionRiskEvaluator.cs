@@ -15,6 +15,16 @@ namespace Tsumiki.Cores.Evaluation
         #region 定数
 
         /// <summary>
+        /// 項目 junction risk
+        /// </summary>
+        private const string C_項目_junction_risk = "junction-risk";
+
+        /// <summary>
+        /// 項目
+        /// </summary>
+        private const string C_項目 = "_";
+
+        /// <summary>
         /// 配列の中の反復を見る k-mer の長さ
         /// </summary>
         private const int C_反復のk長 = 31;
@@ -100,9 +110,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_出力パス">書き出し先の TSV</param>
         /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
-        public static IReadOnlyList<継ぎ目の評価>? Get_評価結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群, string p_出力パス)
+        public static IReadOnlyList<継ぎ目の評価>? Get_評価結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, string p_出力パス)
         {
-            using var l_計測 = new StageTimer("junction-risk");
+            using var l_計測 = new StageTimer(C_項目_junction_risk);
             Logger.V_出力(メッセージID.継ぎ目の評価開始);
             if (Get_評価(p_FASTAパス, p_ライブラリ群) is not { } l_評価群)
             {
@@ -121,10 +131,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_FASTAパス">評価する配列</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
-        public static List<継ぎ目の評価>? Get_評価(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        public static List<継ぎ目の評価>? Get_評価(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
-            if (l_エントリ群.Count == 0 || p_ライブラリ群.All(x => string.IsNullOrWhiteSpace(x.A_リード2)))
+            if (l_エントリ群.Count == 0 || p_ライブラリ群.All(x => string.IsNullOrWhiteSpace(x.A_逆リード)))
             {
                 return null;
             }
@@ -167,20 +177,22 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 配列を切る所 (反復の区間) で切る。反復の区間は両側の片に残し (どちらのコピーかは分からないため)、区間に N のギャップがあればその手前と後ろで切る。切ったら環状の目印は外す
+        /// 配列を切る所 (反復の区間) で切る<br/>
+        /// 反復の区間は両側の片に残し (どちらのコピーかは分からないため) 、区間に N のギャップがあればその手前と後ろで切る<br/>
+        /// 切ったら環状の目印は外す
         /// </summary>
         /// <param name="p_名前">配列名</param>
         /// <param name="p_配列"></param>
         /// <param name="p_切る所">反復の区間 (始まり, 終わり)</param>
         /// <returns>(片の名前, 片)</returns>
-        internal static List<(string A_名前, string A_配列)> Get_切った配列群(string p_名前, string p_配列, IReadOnlyList<(int A_開始, int A_終了)> p_切る所)
+        public static List<(string A_名前, string A_配列)> Get_切った配列群(string p_名前, string p_配列, IReadOnlyList<(int A_開始, int A_終了)> p_切る所)
         {
             if (p_切る所.Count == 0)
             {
                 return [(p_名前, p_配列)];
             }
 
-            var l_名前 = p_名前.Replace("_" + Consts.環状の目印, string.Empty, StringComparison.OrdinalIgnoreCase);
+            var l_名前 = p_名前.Replace(C_項目 + Consts.環状の目印, string.Empty, StringComparison.OrdinalIgnoreCase);
             List<(string A_名前, string A_配列)> l_片群 = [];
             var l_始まり = 0;
             foreach (var (l_開始, l_終了) in p_切る所.Order())
@@ -203,70 +215,40 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 両端の N を落とした片を、通し番号の名前で足す (N だけの片は捨てる)
-        /// </summary>
-        /// <param name="p_片群"></param>
-        /// <param name="p_名前"></param>
-        /// <param name="p_片"></param>
-        private static void V_追加_片(List<(string A_名前, string A_配列)> p_片群, string p_名前, string p_片)
-        {
-            var l_片 = p_片.Trim('N', 'n');
-            if (l_片.Length > 0)
-            {
-                p_片群.Add(($"{p_名前}_{p_片群.Count + 1}", l_片));
-            }
-        }
-
-        #endregion
-
-        #region 内部メソッド
-
-        /// <summary>
         /// 証拠から継ぎ目の候補を拾い、特徴量を付ける
         /// </summary>
         /// <param name="p_証拠"></param>
         /// <param name="p_名前群">配列名</param>
         /// <returns>候補</returns>
-        internal static List<継ぎ目候補> Get_候補群(継ぎ目の証拠 p_証拠, IReadOnlyList<string> p_名前群)
+        public static List<継ぎ目候補> Get_候補群(継ぎ目の証拠 p_証拠, IReadOnlyList<string> p_名前群)
         {
             var l_配列群 = p_証拠.A_配列群;
             var l_反復の印 = Get_反復の印(l_配列群);
             var l_中央 = Get_固有の深さの中央値(p_証拠, l_反復の印);
-
             var l_断片長 = p_証拠.A_断片.SelectMany(x => x).Select(x => x.A_終了 - x.A_開始).Order().ToArray();
             var l_p1 = l_断片長[(int)(0.01D * (l_断片長.Length - 1))];
             var l_p50 = l_断片長[(int)(0.5D * (l_断片長.Length - 1))];
             var l_p99 = l_断片長[(int)(0.99D * (l_断片長.Length - 1))];
             var l_断片密度 = (double)l_断片長.Count(x => x >= l_p1 && x <= l_p99) / l_配列群.Sum(x => (long)x.Length);
             var l_断片長の標本 = p_証拠.A_断片.SelectMany(x => x.Where((_, i) => i % Math.Max(1, x.Length / C_配列あたりの断片の標本数) == 0)).Select(x => x.A_終了 - x.A_開始).Where(x => x >= l_p1 && x <= l_p99).ToArray();
-
             List<継ぎ目候補> l_候補群 = [];
             for (var c = 0; c < l_配列群.Count; c++)
             {
                 var l_配列 = l_配列群[c];
                 var l_長さ = l_配列.Length;
-                foreach (var (a, b) in Get_反復の区間(l_反復の印[c], p_証拠.A_深さ[c], p_証拠.A_一意な深さ[c], l_中央))
+                foreach (var (l_a, l_b) in Get_反復の区間(l_反復の印[c], p_証拠.A_深さ[c], p_証拠.A_一意な深さ[c], l_中央))
                 {
-                    if (b - a < C_反復の最小長 || a < C_固有の最小長 || l_長さ - b < C_固有の最小長)
+                    if (l_b - l_a < C_反復の最小長 || l_a < C_固有の最小長 || l_長さ - l_b < C_固有の最小長)
                     {
                         continue;
                     }
 
-                    var l_N数 = l_配列.AsSpan(a, b - a).Count('N');
-                    var l_左深 = Get_平均(p_証拠.A_一意な深さ[c].AsSpan(a - C_両側の深さの窓, C_両側の深さの窓)) / l_中央;
-                    var l_右深 = Get_平均(p_証拠.A_一意な深さ[c].AsSpan(b, C_両側の深さの窓)) / l_中央;
-                    var l_期待 = Get_期待の組(a, b - l_N数, l_長さ - l_N数, l_断片長の標本, l_断片密度) * Math.Clamp(Math.Min(l_左深, l_右深), 0D, C_深さ比の上限);
-                    var l_外れ錨 = Get_外れ錨の数(p_証拠.A_外れ錨[c], Math.Max(0, a - l_p99), a, 1, l_p50, l_長さ) + Get_外れ錨の数(p_証拠.A_外れ錨[c], b, Math.Min(l_長さ, b + l_p99), -1, l_p50, l_長さ);
-                    l_候補群.Add(new 継ぎ目候補(
-                        p_名前群[c], a, b, l_N数 > 0,
-                        Get_中央値(p_証拠.A_深さ[c].AsSpan(a, b - a)) / l_中央,
-                        Get_跨ぐ読みの数(p_証拠.A_読み[c], a - C_端の許容, b + C_端の許容),
-                        Get_跨ぐ組の数(p_証拠.A_断片[c], a, b, l_N数, l_p1, l_p99),
-                        l_期待,
-                        l_外れ錨,
-                        Get_切れ端の数(p_証拠, c, a, b) / l_中央,
-                        l_左深,
-                        l_右深));
+                    var l_N数 = l_配列.AsSpan(l_a, l_b - l_a).Count('N');
+                    var l_左深 = Get_平均(p_証拠.A_一意な深さ[c].AsSpan(l_a - C_両側の深さの窓, C_両側の深さの窓)) / l_中央;
+                    var l_右深 = Get_平均(p_証拠.A_一意な深さ[c].AsSpan(l_b, C_両側の深さの窓)) / l_中央;
+                    var l_期待 = Get_期待の組(l_a, l_b - l_N数, l_長さ - l_N数, l_断片長の標本, l_断片密度) * Math.Clamp(Math.Min(l_左深, l_右深), 0D, C_深さ比の上限);
+                    var l_外れ錨 = Get_外れ錨の数(p_証拠.A_外れ錨[c], Math.Max(0, l_a - l_p99), l_a, 1, l_p50, l_長さ) + Get_外れ錨の数(p_証拠.A_外れ錨[c], l_b, Math.Min(l_長さ, l_b + l_p99), -1, l_p50, l_長さ);
+                    l_候補群.Add(new 継ぎ目候補(p_名前群[c], l_a, l_b, l_N数 > 0, Get_中央値(p_証拠.A_深さ[c].AsSpan(l_a, l_b - l_a)) / l_中央, Get_跨ぐ読みの数(p_証拠.A_読み[c], l_a - C_端の許容, l_b + C_端の許容), Get_跨ぐ組の数(p_証拠.A_断片[c], l_a, l_b, l_N数, l_p1, l_p99), l_期待, l_外れ錨, Get_切れ端の数(p_証拠, c, l_a, l_b) / l_中央, l_左深, l_右深));
                 }
             }
 
@@ -278,7 +260,7 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_配列群"></param>
         /// <returns>配列ごとの印</returns>
-        internal static bool[][] Get_反復の印(IReadOnlyList<string> p_配列群)
+        public static bool[][] Get_反復の印(IReadOnlyList<string> p_配列群)
         {
             var l_全kmer = new List<ulong>(p_配列群.Sum(x => Math.Max(0, x.Length - C_反復のk長 + 1)));
             foreach (var l_配列 in p_配列群)
@@ -335,6 +317,25 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             return l_印;
+        }
+
+        #endregion
+
+        #region 内部メソッド
+
+        /// <summary>
+        /// 両端の N を落とした片を、通し番号の名前で足す (N だけの片は捨てる)
+        /// </summary>
+        /// <param name="p_片群"></param>
+        /// <param name="p_名前"></param>
+        /// <param name="p_片"></param>
+        private static void V_追加_片(List<(string A_名前, string A_配列)> p_片群, string p_名前, string p_片)
+        {
+            var l_片 = p_片.Trim('N', 'n');
+            if (l_片.Length > 0)
+            {
+                p_片群.Add(($"{p_名前}_{p_片群.Count + 1}", l_片));
+            }
         }
 
         /// <summary>
@@ -552,7 +553,7 @@ namespace Tsumiki.Cores.Evaluation
             var l_左 = p_証拠.A_左の切れ端[p_配列番号];
             var l_右 = p_証拠.A_右の切れ端[p_配列番号];
             var l_数 = 0;
-            foreach (var l_端 in new[] { p_開始, p_終了 })
+            foreach (var l_端 in new[] { p_開始, p_終了, })
             {
                 for (var x = Math.Max(0, l_端 - C_切れ端の窓); x <= Math.Min(l_左.Length - 1, l_端 + C_切れ端の窓); x++)
                 {

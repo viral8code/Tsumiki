@@ -13,6 +13,21 @@ namespace Tsumiki.Cores.Evaluation
         #region 定数
 
         /// <summary>
+        /// 項目 file   filter   count      N50   L50   GC
+        /// </summary>
+        private const string C_項目_file___filter___count______N50___L50___GC = "| file | filter | count | total length | max | min | N50 | L50 | GC% |";
+
+        /// <summary>
+        /// 項目
+        /// </summary>
+        private const string C_項目 = "|---|---|---:|---:|---:|---:|---:|---:|---:|";
+
+        /// <summary>
+        /// 項目 all
+        /// </summary>
+        private const string C_項目_all = "all";
+
+        /// <summary>
         /// 他アセンブラとの比較で慣習的に使われる最小長 (abyss-fac の既定)
         /// </summary>
         public const int C_比較用の最小長 = 500;
@@ -32,7 +47,6 @@ namespace Tsumiki.Cores.Evaluation
             var l_総延長 = 0L;
             var l_GC数 = 0L;
             var l_塩基数 = 0L;
-
             foreach (var l_配列 in p_配列群)
             {
                 l_長さ一覧.Add(l_配列.Length);
@@ -59,7 +73,6 @@ namespace Tsumiki.Cores.Evaluation
 
             var (l_N50, l_L50) = StatsUtil.Get_N50([.. l_長さ一覧.Select(x => (long)x)]);
             var l_GC率 = l_塩基数 == 0D ? 0D : (100D * l_GC数 / l_塩基数);
-
             return new アセンブリ統計(A_配列数: l_長さ一覧.Count, A_総延長: l_総延長, A_最大長: l_長さ一覧.Max(), A_最小長: l_長さ一覧.Min(), A_N50: (int)l_N50, A_L50: l_L50, A_GC率: l_GC率);
         }
 
@@ -72,7 +85,6 @@ namespace Tsumiki.Cores.Evaluation
         public static アセンブリ統計 Get_N分割統計(IEnumerable<string> p_配列群, int p_最小長 = 0)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(p_最小長);
-
             List<string> l_断片群 = [];
             foreach (var l_配列 in p_配列群)
             {
@@ -107,10 +119,8 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_統計 = Get_統計_FASTA(p_FASTAパス);
             Logger.V_出力(メッセージID.統計, p_ラベル, l_統計);
-
             var l_絞り込み統計 = Get_統計(Get_配列群(p_FASTAパス).Where(x => x.Length >= C_比較用の最小長));
             Logger.V_出力(メッセージID.統計_長さで絞り込み, p_ラベル, C_比較用の最小長, l_絞り込み統計);
-
             var l_N分割統計 = Get_N分割統計(Get_配列群(p_FASTAパス), C_比較用の最小長);
             Logger.V_出力_そのまま($"[Stats] {p_ラベル} (N-split, >= {C_比較用の最小長}bp): {l_N分割統計}");
         }
@@ -122,11 +132,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>見出し行を含む表の行</returns>
         public static List<string> Get_統計表(IReadOnlyList<(string A_ラベル, string A_FASTAパス)> p_対象群)
         {
-            List<string> l_行群 =
-            [
-                "| file | filter | count | total length | max | min | N50 | L50 | GC% |",
-                "|---|---|---:|---:|---:|---:|---:|---:|---:|",
-            ];
+            List<string> l_行群 = [C_項目_file___filter___count______N50___L50___GC, C_項目,];
             foreach (var (l_ラベル, l_パス) in p_対象群)
             {
                 if (!File.Exists(l_パス))
@@ -135,9 +141,8 @@ namespace Tsumiki.Cores.Evaluation
                 }
 
                 var l_配列群 = Get_配列群(l_パス).ToList();
-                (string A_条件, アセンブリ統計 A_統計)[] l_絞り込み群 =
-                [
-                    ("all", Get_統計(l_配列群)),
+                (string A_条件, アセンブリ統計 A_統計)[] l_絞り込み群 = [
+                    (C_項目_all, Get_統計(l_配列群)),
                     ($">= {C_比較用の最小長}bp", Get_統計(l_配列群.Where(x => x.Length >= C_比較用の最小長))),
                     ($"N-split, >= {C_比較用の最小長}bp", Get_N分割統計(l_配列群, C_比較用の最小長)),
                 ];

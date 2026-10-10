@@ -104,7 +104,6 @@ namespace Tsumiki.Core
             this._unitig長 = [];
             this._unitig配列 = [string.Empty, string.Empty];
             this._リード隣接 = [];
-
             this._経路引き継ぎ隣接 = [];
             this._経路集計 = [];
             this._引き継ぎ経路集計 = [];
@@ -125,7 +124,6 @@ namespace Tsumiki.Core
 
                 l_キー群[n] = l_キー;
             });
-
             var l_短すぎるunitig数 = 0;
             var l_曖昧数 = 0;
             for (var n = 0; n < l_配列群.Length; n++)
@@ -135,7 +133,6 @@ namespace Tsumiki.Core
                 this._unitig長[l_ID] = l_配列.Length;
                 this._unitig配列.Add(l_配列);
                 this._unitig配列.Add(l_逆相補群[n]);
-
                 if (l_配列.Length < l_k長)
                 {
                     l_短すぎるunitig数++;
@@ -175,7 +172,6 @@ namespace Tsumiki.Core
         public UnitigGraph Get_グラフ()
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-
             return UnitigGraph.Get_グラフ(this._unitig配列, this._kmer辞書, l_k長, C_曖昧kmerの番兵);
         }
 
@@ -183,7 +179,7 @@ namespace Tsumiki.Core
         /// ここまでに貼り付けたリードとペアが通った並びの索引を作る
         /// </summary>
         /// <returns></returns>
-        internal ReadPathIndex Get_経路索引()
+        public ReadPathIndex Get_経路索引()
         {
             return ReadPathIndex.Get_索引(this._経路集計);
         }
@@ -195,7 +191,6 @@ namespace Tsumiki.Core
         public void V_マッピング_リード(string p_リードパス)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
             var l_ローカル経路 = new Dictionary<経路キー, ulong>[l_スレッド数];
             var l_作業域 = new リード走査作業域[l_スレッド数];
@@ -207,7 +202,6 @@ namespace Tsumiki.Core
             }
 
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, 塩基列控え.Get_塩基列(p_リードパス), (l_リード, l_ワーカー番号) => this.V_処理_1リード(l_リード, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域[l_ワーカー番号]));
-
             V_統合_隣接(this._リード隣接, l_ローカル隣接);
             V_統合_経路(this._経路集計, l_ローカル経路);
         }
@@ -215,20 +209,17 @@ namespace Tsumiki.Core
         /// <summary>
         /// ペアエンドから unitig 間の隣接を検出する
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_順リードのパス"></param>
+        /// <param name="p_逆リードのパス"></param>
         /// <param name="p_ライブラリ番号"></param>
-        public void V_マッピング_ペアリード(string p_リード1のパス, string p_リード2のパス, int p_ライブラリ番号 = 0)
+        public void V_マッピング_ペアリード(string p_順リードのパス, string p_逆リードのパス, int p_ライブラリ番号 = 0)
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-
             var l_ローカル隣接 = new Dictionary<(int, int), ulong>[l_スレッド数];
             var l_ローカル経路 = new Dictionary<経路キー, ulong>[l_スレッド数];
             var l_作業域1 = new リード走査作業域[l_スレッド数];
             var l_作業域2 = new リード走査作業域[l_スレッド数];
-
             var l_ローカルペア経路 = new Dictionary<(int, int), List<int>>[l_スレッド数];
-
             var l_ローカル同一向き標本 = new List<int>[l_スレッド数];
             var l_ローカル逆向き標本 = new List<int>[l_スレッド数];
             for (var i = 0; i < l_スレッド数; i++)
@@ -242,11 +233,9 @@ namespace Tsumiki.Core
                 l_ローカル逆向き標本[i] = [];
             }
 
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_ペアリード列(p_リード1のパス, p_リード2のパス), (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(l_ペア.A_リード1, l_ペア.A_リード2, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域1[l_ワーカー番号], l_作業域2[l_ワーカー番号], l_ローカルペア経路[l_ワーカー番号], l_ローカル同一向き標本[l_ワーカー番号], l_ローカル逆向き標本[l_ワーカー番号]));
-
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, Get_ペアリード列(p_順リードのパス, p_逆リードのパス), (l_ペア, l_ワーカー番号) => this.V_処理_1ペア(l_ペア.A_順リード, l_ペア.A_逆リード, l_ローカル隣接[l_ワーカー番号], l_ローカル経路[l_ワーカー番号], l_作業域1[l_ワーカー番号], l_作業域2[l_ワーカー番号], l_ローカルペア経路[l_ワーカー番号], l_ローカル同一向き標本[l_ワーカー番号], l_ローカル逆向き標本[l_ワーカー番号]));
             V_統合_隣接(this._リード隣接, l_ローカル隣接);
             V_統合_経路(this._経路集計, l_ローカル経路);
-
             var l_ペア経路 = this.Get_ペア経路(p_ライブラリ番号);
             foreach (var l_ローカルペア in l_ローカルペア経路)
             {
@@ -265,10 +254,8 @@ namespace Tsumiki.Core
 
             var l_同一向き合計 = l_ローカル同一向き標本.Sum(x => x.Count);
             var l_逆向き合計 = l_ローカル逆向き標本.Sum(x => x.Count);
-
             IEnumerable<List<int>> l_採用する標本群;
             string l_採用ラベル;
-
             if (l_同一向き合計 == 0 && l_逆向き合計 == 0)
             {
                 l_採用する標本群 = [];
@@ -294,11 +281,9 @@ namespace Tsumiki.Core
             this.A_インサートサイズ標本.AddRange(l_同一unitig標本);
             this.A_同一unitig標本.AddRange(l_同一unitig標本);
             this.Get_同一unitig標本(p_ライブラリ番号).AddRange(l_同一unitig標本);
-
             var l_ペア支持数 = l_ペア経路.Values.Sum(x => x.Count);
             Logger.V_出力(メッセージID.ペア隣接候補数, l_ペア経路.Count, l_ペア支持数);
             Logger.V_出力(メッセージID.同一unitigのペア向き集計, l_同一向き合計, l_逆向き合計, l_採用ラベル, l_同一unitig標本.Count);
-
             if (l_同一unitig標本.Count > 0)
             {
                 Logger.V_出力(メッセージID.同一unitigの断片長分布, Get_分布要約(l_同一unitig標本));
@@ -401,34 +386,32 @@ namespace Tsumiki.Core
         /// <summary>
         /// read1/read2 を同時に読み進めて対応するペアを返す
         /// </summary>
-        /// <param name="p_リード1のパス"></param>
-        /// <param name="p_リード2のパス"></param>
+        /// <param name="p_順リードのパス"></param>
+        /// <param name="p_逆リードのパス"></param>
         /// <returns></returns>
-        private static IEnumerable<(string A_リード1, string A_リード2)> Get_ペアリード列(string p_リード1のパス, string p_リード2のパス)
+        private static IEnumerable<(string A_順リード, string A_逆リード)> Get_ペアリード列(string p_順リードのパス, string p_逆リードのパス)
         {
-            using var l_読み込み1 = new FastqReader(p_リード1のパス);
-            using var l_読み込み2 = new FastqReader(p_リード2のパス);
-
+            using var l_読み込み1 = new FastqReader(p_順リードのパス);
+            using var l_読み込み2 = new FastqReader(p_逆リードのパス);
             var l_Is不一致警告済み = false;
             while (l_読み込み1.Has続き() && l_読み込み2.Has続き())
             {
-                var (A_ID1, A_配列1, _) = l_読み込み1.Get_次のレコード();
-                var (A_ID2, A_配列2, _) = l_読み込み2.Get_次のレコード();
-
-                if (Util.Get_ペア共通ID(A_ID1) != Util.Get_ペア共通ID(A_ID2))
+                var (l_ID1, l_基準配列, _) = l_読み込み1.Get_次のレコード();
+                var (l_ID2, l_比較配列, _) = l_読み込み2.Get_次のレコード();
+                if (Util.Get_ペア共通ID(l_ID1) != Util.Get_ペア共通ID(l_ID2))
                 {
                     if (!l_Is不一致警告済み)
                     {
-                        Logger.V_出力(メッセージID.ペアリードIDの不一致, A_ID1, A_ID2);
+                        Logger.V_出力(メッセージID.ペアリードIDの不一致, l_ID1, l_ID2);
                         l_Is不一致警告済み = true;
                     }
 
-                    yield return (A_配列1, string.Empty);
-                    yield return (A_配列2, string.Empty);
+                    yield return (l_基準配列, string.Empty);
+                    yield return (l_比較配列, string.Empty);
                     continue;
                 }
 
-                yield return (A_配列1, A_配列2);
+                yield return (l_基準配列, l_比較配列);
             }
 
             while (l_読み込み1.Has続き())
@@ -445,8 +428,8 @@ namespace Tsumiki.Core
         /// <summary>
         /// ペア 1 組を処理する
         /// </summary>
-        /// <param name="p_リード1"></param>
-        /// <param name="p_リード2"></param>
+        /// <param name="p_順リード"></param>
+        /// <param name="p_逆リード"></param>
         /// <param name="p_ローカル隣接"></param>
         /// <param name="p_ローカル経路"></param>
         /// <param name="p_作業域1"></param>
@@ -454,12 +437,11 @@ namespace Tsumiki.Core
         /// <param name="p_ローカルペア経路"></param>
         /// <param name="p_同一向き標本"></param>
         /// <param name="p_逆向き標本"></param>
-        private void V_処理_1ペア(string p_リード1, string p_リード2, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<経路キー, ulong> p_ローカル経路, リード走査作業域 p_作業域1, リード走査作業域 p_作業域2, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
+        private void V_処理_1ペア(string p_順リード, string p_逆リード, Dictionary<(int, int), ulong> p_ローカル隣接, Dictionary<経路キー, ulong> p_ローカル経路, リード走査作業域 p_作業域1, リード走査作業域 p_作業域2, Dictionary<(int, int), List<int>> p_ローカルペア経路, List<int> p_同一向き標本, List<int> p_逆向き標本)
         {
-            var l_ヒット1 = this.Get_走査結果(p_リード1, p_ローカル隣接, p_作業域1);
-            var l_ヒット2 = this.Get_走査結果(p_リード2, p_ローカル隣接, p_作業域2);
+            var l_ヒット1 = this.Get_走査結果(p_順リード, p_ローカル隣接, p_作業域1);
+            var l_ヒット2 = this.Get_走査結果(p_逆リード, p_ローカル隣接, p_作業域2);
             V_集計_ペアの並び(p_作業域1.A_経路, p_作業域2.A_経路, p_ローカル経路);
-
             if (l_ヒット1.A_unitigID == 0 || l_ヒット2.A_unitigID == 0)
             {
                 return;
@@ -467,11 +449,11 @@ namespace Tsumiki.Core
 
             if (Math.Abs(l_ヒット1.A_unitigID) == Math.Abs(l_ヒット2.A_unitigID))
             {
-                V_収集_同一unitig標本(l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_同一向き標本, p_逆向き標本);
+                V_収集_同一unitig標本(l_ヒット1, l_ヒット2, p_順リード, p_逆リード, p_同一向き標本, p_逆向き標本);
             }
             else
             {
-                V_収集_ペア経路(l_ヒット1, l_ヒット2, p_リード1, p_リード2, p_ローカルペア経路);
+                V_収集_ペア経路(l_ヒット1, l_ヒット2, p_順リード, p_逆リード, p_ローカルペア経路);
             }
         }
 
@@ -512,26 +494,26 @@ namespace Tsumiki.Core
         /// <param name="p_ローカル経路"></param>
         private static void V_集計_ペアの並び(List<int> p_経路1, List<int> p_経路2, Dictionary<経路キー, ulong> p_ローカル経路)
         {
-            var l_長さ1 = p_経路1.Count;
-            var l_長さ2 = p_経路2.Count;
-            if (l_長さ1 < ReadPathIndex.C_最短の頂点数 && l_長さ2 < ReadPathIndex.C_最短の頂点数 && (l_長さ1 < C_ペア経路を繋ぐ最小の重なり || l_長さ2 < C_ペア経路を繋ぐ最小の重なり))
+            var l_基準長 = p_経路1.Count;
+            var l_比較長 = p_経路2.Count;
+            if (l_基準長 < ReadPathIndex.C_最短の頂点数 && l_比較長 < ReadPathIndex.C_最短の頂点数 && (l_基準長 < C_ペア経路を繋ぐ最小の重なり || l_比較長 < C_ペア経路を繋ぐ最小の重なり))
             {
                 return;
             }
 
             var l_並び1 = CollectionsMarshal.AsSpan(p_経路1);
-            var l_並び2 = l_長さ2 <= 64 ? stackalloc int[l_長さ2] : new int[l_長さ2];
-            for (var i = 0; i < l_長さ2; i++)
+            var l_並び2 = l_比較長 <= 64 ? stackalloc int[l_比較長] : new int[l_比較長];
+            for (var i = 0; i < l_比較長; i++)
             {
-                l_並び2[i] = -p_経路2[l_長さ2 - 1 - i];
+                l_並び2[i] = -p_経路2[l_比較長 - 1 - i];
             }
 
             var l_重なり = Get_並びの重なり(l_並び1, l_並び2);
             if (l_重なり >= C_ペア経路を繋ぐ最小の重なり)
             {
-                var l_繋いだ並び = new int[l_長さ1 + l_長さ2 - l_重なり];
+                var l_繋いだ並び = new int[l_基準長 + l_比較長 - l_重なり];
                 l_並び1.CopyTo(l_繋いだ並び);
-                l_並び2[l_重なり..].CopyTo(l_繋いだ並び.AsSpan(l_長さ1));
+                l_並び2[l_重なり..].CopyTo(l_繋いだ並び.AsSpan(l_基準長));
                 if (!Has重複unitig(l_繋いだ並び))
                 {
                     V_集計_並び(l_繋いだ並び, p_ローカル経路);
@@ -539,13 +521,13 @@ namespace Tsumiki.Core
                 }
             }
 
-            if (l_長さ1 >= l_長さ2 && l_並び1.IndexOf(l_並び2) >= 0)
+            if (l_基準長 >= l_比較長 && l_並び1.IndexOf(l_並び2) >= 0)
             {
                 V_集計_並び(l_並び1, p_ローカル経路);
                 return;
             }
 
-            if (l_長さ2 > l_長さ1 && l_並び2.IndexOf(l_並び1) >= 0)
+            if (l_比較長 > l_基準長 && l_並び2.IndexOf(l_並び1) >= 0)
             {
                 V_集計_並び(l_並び2, p_ローカル経路);
                 return;
@@ -587,7 +569,6 @@ namespace Tsumiki.Core
                 for (var j = i + 1; j < p_並び.Length; j++)
                 {
                     var l_並び2 = Math.Abs(p_並び[j]);
-
                     if (l_並び1 == l_並び2)
                     {
                         return true;
@@ -609,7 +590,6 @@ namespace Tsumiki.Core
         {
             p_作業域.V_初期化();
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-
             if (p_リード.Length < l_k長 || p_リード.Any(Util.Is曖昧塩基))
             {
                 return 代表Unitigヒット.C_ヒットなし;
@@ -619,10 +599,9 @@ namespace Tsumiki.Core
             var l_票数 = p_作業域.A_票数;
             var l_終端位置 = p_作業域.A_終端位置;
             var l_窓 = new 順鎖Kmer転がし(l_k長);
-
             foreach (var l_塩基 in p_リード)
             {
-                if (!l_窓.Try追加(l_塩基, out var l_キー))
+                if (!l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
                     continue;
                 }
@@ -633,7 +612,6 @@ namespace Tsumiki.Core
                 }
 
                 var l_ID = l_項目.A_unitigID;
-
                 var l_終端 = l_項目.A_開始位置 + l_k長;
                 if (l_経路.Count > 0 && l_経路[^1] == l_ID)
                 {

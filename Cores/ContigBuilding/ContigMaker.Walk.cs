@@ -27,7 +27,7 @@ namespace Tsumiki.Core
         /// <param name="p_walk順"></param>
         /// <param name="p_k長"></param>
         /// <returns></returns>
-        internal static IEnumerable<string> Get_分岐の継ぎ目(UnitigGraph p_グラフ, IReadOnlyList<string> p_unitig配列, IReadOnlyList<int> p_walk順, int p_k長)
+        public static IEnumerable<string> Get_分岐の継ぎ目(UnitigGraph p_グラフ, IReadOnlyList<string> p_unitig配列, IReadOnlyList<int> p_walk順, int p_k長)
         {
             for (var w = 1; w < p_walk順.Count; w++)
             {
@@ -103,7 +103,6 @@ namespace Tsumiki.Core
             while (true)
             {
                 var l_次 = p_結合[l_現在];
-
                 if (l_次 < 0)
                 {
                     break;
@@ -116,7 +115,6 @@ namespace Tsumiki.Core
                 }
 
                 var l_配列 = p_unitig配列[l_次];
-
                 if (l_配列.Length < p_重なり長 || l_出力.Length < p_重なり長)
                 {
                     break;

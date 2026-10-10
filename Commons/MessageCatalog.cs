@@ -841,11 +841,7 @@ namespace Tsumiki.Commons
         public static string Get_書式(言語 p_言語, メッセージID p_ID)
         {
             var l_辞書 = Get_辞書(p_言語);
-            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式)
-                ? l_書式
-                : C_辞書_英語.TryGetValue(p_ID, out var l_英語)
-                ? l_英語
-                : p_ID.ToString();
+            return l_辞書 is not null && l_辞書.TryGetValue(p_ID, out var l_書式) ? l_書式 : C_辞書_英語.TryGetValue(p_ID, out var l_英語) ? l_英語 : p_ID.ToString();
         }
 
         #endregion

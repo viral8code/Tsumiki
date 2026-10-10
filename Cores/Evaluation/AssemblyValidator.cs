@@ -26,7 +26,6 @@ namespace Tsumiki.Cores.Evaluation
             using var l_計測 = new StageTimer($"assembly-validation k={p_k長}");
             Dictionary<UInt128, int> l_観測 = [];
             var l_延べ数 = 0L;
-
             using (var l_読み込み = new FastaReader(p_FASTAパス))
             {
                 while (l_読み込み.Has続き())
@@ -34,7 +33,7 @@ namespace Tsumiki.Cores.Evaluation
                     var l_配列 = l_読み込み.Get_次の配列().A_配列;
                     for (var i = 0; i + p_k長 <= l_配列.Length; i++)
                     {
-                        if (!KmerPacking.TryGet_正規化キー(l_配列, i, p_k長, out var l_正規形))
+                        if (!KmerPacking.Is成功_正規化キー(l_配列, i, p_k長, out var l_正規形))
                         {
                             continue;
                         }
@@ -45,15 +44,7 @@ namespace Tsumiki.Cores.Evaluation
                 }
             }
 
-            var (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数) = p_kmerインデックス.Get_信頼kmer一覧()
-                .AsParallel()
-                .WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数))
-                .Aggregate(
-                    () => (0L, 0L, 0L, 0L),
-                    (l_途中, l_kmer) => Get_突き合わせた集計(l_途中, l_kmer, l_観測, p_kmerインデックス, p_単一コピー基準値),
-                    (l_左, l_右) => (l_左.Item1 + l_右.Item1, l_左.Item2 + l_右.Item2, l_左.Item3 + l_右.Item3, l_左.Item4 + l_右.Item4),
-                    l_合計 => l_合計);
-
+            var (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数) = p_kmerインデックス.Get_信頼kmer一覧().AsParallel().WithDegreeOfParallelism(Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数)).Aggregate(() => (0L, 0L, 0L, 0L), (l_途中, l_kmer) => Get_突き合わせた集計(l_途中, l_kmer, l_観測, p_kmerインデックス, p_単一コピー基準値), (l_左, l_右) => (l_左.Item1 + l_右.Item1, l_左.Item2 + l_右.Item2, l_左.Item3 + l_右.Item3, l_左.Item4 + l_右.Item4), l_合計 => l_合計);
             return new 整合性検査結果(l_信頼kmer数, l_延べ数, l_観測.Count, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
 
@@ -91,10 +82,10 @@ namespace Tsumiki.Cores.Evaluation
         {
             var (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数) = p_途中;
             l_信頼kmer数++;
-            var l_出現数 = p_観測.GetValueOrDefault(KmerPacking.TryGet_正規化キー(p_kmer));
+            var l_出現数 = p_観測.GetValueOrDefault(KmerPacking.Get_正規化キー(p_kmer));
             if (l_出現数 == 0)
             {
-                return (l_信頼kmer数, l_取りこぼし数 + 1, l_出しすぎ種類数, l_余分な延べ数);
+                return (l_信頼kmer数, l_取りこぼし数 + 1L, l_出しすぎ種類数, l_余分な延べ数);
             }
 
             if (p_単一コピー基準値 <= 0D)
@@ -103,9 +94,7 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_期待コピー数 = Math.Max(1, (int)Math.Round(p_kmerインデックス.Get_カバレッジ(p_kmer) / p_単一コピー基準値));
-            return l_出現数 > l_期待コピー数
-                ? (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数 + 1, l_余分な延べ数 + l_出現数 - l_期待コピー数)
-                : (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
+            return l_出現数 > l_期待コピー数 ? (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数 + 1L, l_余分な延べ数 + l_出現数 - l_期待コピー数) : (l_信頼kmer数, l_取りこぼし数, l_出しすぎ種類数, l_余分な延べ数);
         }
 
         #endregion

@@ -36,26 +36,22 @@ namespace Tsumiki.Cores.Evaluation
         /// p_FASTAパス の環状配列それぞれについて、閉じ目を跨ぐリードを数える
         /// </summary>
         /// <param name="p_FASTAパス">検証する配列を含む FASTA のパス</param>
-        /// <param name="p_リード1のパス">支持を数えるリードのパス</param>
-        /// <param name="p_リード2のパス">ペアの相方のパス、無ければ null</param>
         /// <param name="p_ライブラリ群"></param>
         /// <returns>配列ごとの環状閉鎖検証結果</returns>
-        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, IReadOnlyList<(string A_リード1, string A_リード2)> p_ライブラリ群)
+        public static IReadOnlyList<環状閉鎖検証結果> Get_検証結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
-
             List<(string A_ID, int A_長さ)> l_対象 = [];
             Dictionary<UInt128, int> l_接合窓 = [];
             foreach (var (l_ID, l_配列) in l_エントリ群)
             {
-                if (!l_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase)
-                    || l_配列.Length < C_接合窓長)
+                if (!l_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase) || l_配列.Length < C_接合窓長)
                 {
                     continue;
                 }
 
                 var l_窓 = string.Concat(l_配列.AsSpan(l_配列.Length - C_接合フランク長), l_配列.AsSpan(0, C_接合フランク長));
-                if (!KmerPacking.TryGet_パック(l_窓, 0, C_接合窓長, out var l_順鎖))
+                if (!KmerPacking.Is成功_パック(l_窓, 0, C_接合窓長, out var l_順鎖))
                 {
                     continue;
                 }
@@ -70,11 +66,9 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             Logger.V_出力(メッセージID.閉じ目の検証開始, l_対象.Count, C_接合窓長);
-
             var l_支持数 = new int[l_対象.Count];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_リード1, x.A_リード2 })]), (l_リード, _) => V_集計_接合支持(l_リード, l_接合窓, l_支持数));
-
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]), (l_リード, _) => V_集計_接合支持(l_リード, l_接合窓, l_支持数));
             List<環状閉鎖検証結果> l_結果 = [];
             for (var i = 0; i < l_対象.Count; i++)
             {
@@ -110,7 +104,7 @@ namespace Tsumiki.Cores.Evaluation
         /// 1 本のリードが閉じ目の窓を含むかを調べ、含めばその配列の支持を 1 つ増やす
         /// </summary>
         /// <param name="p_リード">検査するリードの配列</param>
-        /// <param name="p_接合窓">正規形の窓 -> 配列番号</param>
+        /// <param name="p_接合窓">正規形の窓 -&gt; 配列番号</param>
         /// <param name="p_支持数">配列番号ごとの支持数、見つかれば加算する</param>
         private static void V_集計_接合支持(string p_リード, Dictionary<UInt128, int> p_接合窓, int[] p_支持数)
         {
@@ -125,7 +119,6 @@ namespace Tsumiki.Cores.Evaluation
             UInt128 l_逆鎖 = 0;
             var l_直近の曖昧位置 = -1;
             HashSet<int>? l_数えた配列 = null;
-
             for (var i = 0; i < p_リード.Length; i++)
             {
                 var l_塩基ID = Util.Get_塩基ID(p_リード[i]);

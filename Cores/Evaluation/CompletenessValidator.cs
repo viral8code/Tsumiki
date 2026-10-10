@@ -15,6 +15,131 @@ namespace Tsumiki.Cores.Evaluation
         #region 定数
 
         /// <summary>
+        /// 項目 graph coverage
+        /// </summary>
+        private const string C_項目_graph_coverage = "graph_coverage";
+
+        /// <summary>
+        /// 項目 copy consistency
+        /// </summary>
+        private const string C_項目_copy_consistency = "copy_consistency";
+
+        /// <summary>
+        /// 項目 coverage continuity
+        /// </summary>
+        private const string C_項目_coverage_continuity = "coverage_continuity";
+
+        /// <summary>
+        /// 項目 unsupported join
+        /// </summary>
+        private const string C_項目_unsupported_join = "unsupported_join";
+
+        /// <summary>
+        /// 項目 junction support
+        /// </summary>
+        private const string C_項目_junction_support = "junction_support";
+
+        /// <summary>
+        /// 項目 no alternative path
+        /// </summary>
+        private const string C_項目_no_alternative_path = "no_alternative_path";
+
+        /// <summary>
+        /// 項目 read support
+        /// </summary>
+        private const string C_項目_read_support = "read_support";
+
+        /// <summary>
+        /// 項目 circular closure
+        /// </summary>
+        private const string C_項目_circular_closure = "circular_closure";
+
+        /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
+        /// 項目 kmer missing
+        /// </summary>
+        private const string C_項目_kmer_missing = "kmer-missing";
+
+        /// <summary>
+        /// 項目 kmer excess
+        /// </summary>
+        private const string C_項目_kmer_excess = "kmer-excess";
+
+        /// <summary>
+        /// 項目 self check unavailable
+        /// </summary>
+        private const string C_項目_self_check_unavailable = "self-check-unavailable";
+
+        /// <summary>
+        /// 項目 unsupported sequence
+        /// </summary>
+        private const string C_項目_unsupported_sequence = "unsupported-sequence";
+
+        /// <summary>
+        /// 項目 read support unchecked
+        /// </summary>
+        private const string C_項目_read_support_unchecked = "read-support-unchecked";
+
+        /// <summary>
+        /// 項目 unresolved gap
+        /// </summary>
+        private const string C_項目_unresolved_gap = "unresolved-gap";
+
+        /// <summary>
+        /// 項目 ambiguous junction
+        /// </summary>
+        private const string C_項目_ambiguous_junction = "ambiguous-junction";
+
+        /// <summary>
+        /// 項目 depth discontinuity
+        /// </summary>
+        private const string C_項目_depth_discontinuity = "depth-discontinuity";
+
+        /// <summary>
+        /// 項目 depth unmeasured
+        /// </summary>
+        private const string C_項目_depth_unmeasured = "depth-unmeasured";
+
+        /// <summary>
+        /// 項目 not circular
+        /// </summary>
+        private const string C_項目_not_circular = "not-circular";
+
+        /// <summary>
+        /// 項目 closure unsupported
+        /// </summary>
+        private const string C_項目_closure_unsupported = "closure-unsupported";
+
+        /// <summary>
+        /// 項目 closure unverified
+        /// </summary>
+        private const string C_項目_closure_unverified = "closure-unverified";
+
+        /// <summary>
+        /// 項目 pass
+        /// </summary>
+        private const string C_項目_pass = "pass";
+
+        /// <summary>
+        /// 項目 fail
+        /// </summary>
+        private const string C_項目_fail = "fail";
+
+        /// <summary>
+        /// 項目 unknown
+        /// </summary>
+        private const string C_項目_unknown = "unknown";
+
+        /// <summary>
+        /// 項目 0
+        /// </summary>
+        private const string C_項目_0 = "0";
+
+        /// <summary>
         /// 信頼できる k-mer の取りこぼしとして許す割合 (%)
         /// </summary>
         private const double C_取りこぼしの許容率 = 5D;
@@ -51,44 +176,25 @@ namespace Tsumiki.Cores.Evaluation
         public static 完全性判定結果 Get_判定結果(int p_未解決ギャップ数, 整合性検査結果? p_整合性, IReadOnlyList<環状閉鎖検証結果>? p_閉鎖検証, ポリッシュ統計? p_ポリッシュ, IReadOnlyList<曖昧箇所> p_曖昧箇所, 支持検査結果? p_支持検査)
         {
             var l_僅差の数 = p_曖昧箇所.Count(x => x.A_種別 == 曖昧箇所の種別.僅差);
-
             List<検査項目> l_項目 = [];
             List<未達理由> l_理由 = [];
-
-            var l_取りこぼし = p_整合性 is { } l_整合1
-                ? Get_判定(l_整合1.A_取りこぼし率 <= C_取りこぼしの許容率, 未達理由.取りこぼしが多い, l_理由)
-                : Get_判定不能(未達理由.自己検査を行えなかった, l_理由);
-            l_項目.Add(new 検査項目("graph_coverage", メッセージID.検査項目_グラフ被覆, l_取りこぼし, p_整合性 is { } l_整合2 ? $"{l_整合2.A_取りこぼし率:F2}% <= {C_取りこぼしの許容率:F2}%" : string.Empty));
-
-            var l_出しすぎ = p_整合性 is { } l_整合3
-                ? Get_判定(l_整合3.A_出しすぎ率 <= C_出しすぎの許容率, 未達理由.出しすぎている, l_理由)
-                : 検査判定.判定不能;
-            l_項目.Add(new 検査項目("copy_consistency", メッセージID.検査項目_コピー数整合, l_出しすぎ, p_整合性 is { } l_整合4 ? $"{l_整合4.A_出しすぎ率:F2}% <= {C_出しすぎの許容率:F2}%" : string.Empty));
-
-            var l_深度 = p_ポリッシュ is { } l_ポリッシュ1
-                ? Get_判定(l_ポリッシュ1.A_深度不足率 <= C_深度不足の許容率, 未達理由.深度が不連続, l_理由)
-                : Get_判定不能(未達理由.深度を測っていない, l_理由);
-            l_項目.Add(new 検査項目("coverage_continuity", メッセージID.検査項目_深度の連続性, l_深度, p_ポリッシュ is { } l_ポリッシュ2 ? $"{l_ポリッシュ2.A_深度不足率 * 100D:F2}% <= {C_深度不足の許容率 * 100D:F2}%" : string.Empty));
-
+            var l_取りこぼし = p_整合性 is { } l_整合1 ? Get_判定(l_整合1.A_取りこぼし率 <= C_取りこぼしの許容率, 未達理由.取りこぼしが多い, l_理由) : Get_判定不能(未達理由.自己検査を行えなかった, l_理由);
+            l_項目.Add(new 検査項目(C_項目_graph_coverage, メッセージID.検査項目_グラフ被覆, l_取りこぼし, p_整合性 is { } l_整合2 ? $"{l_整合2.A_取りこぼし率:F2}% <= {C_取りこぼしの許容率:F2}%" : string.Empty));
+            var l_出しすぎ = p_整合性 is { } l_整合3 ? Get_判定(l_整合3.A_出しすぎ率 <= C_出しすぎの許容率, 未達理由.出しすぎている, l_理由) : 検査判定.判定不能;
+            l_項目.Add(new 検査項目(C_項目_copy_consistency, メッセージID.検査項目_コピー数整合, l_出しすぎ, p_整合性 is { } l_整合4 ? $"{l_整合4.A_出しすぎ率:F2}% <= {C_出しすぎの許容率:F2}%" : string.Empty));
+            var l_深度 = p_ポリッシュ is { } l_ポリッシュ1 ? Get_判定(l_ポリッシュ1.A_深度不足率 <= C_深度不足の許容率, 未達理由.深度が不連続, l_理由) : Get_判定不能(未達理由.深度を測っていない, l_理由);
+            l_項目.Add(new 検査項目(C_項目_coverage_continuity, メッセージID.検査項目_深度の連続性, l_深度, p_ポリッシュ is { } l_ポリッシュ2 ? $"{l_ポリッシュ2.A_深度不足率 * 100D:F2}% <= {C_深度不足の許容率 * 100D:F2}%" : string.Empty));
             var l_ギャップ = Get_判定(p_未解決ギャップ数 == 0, 未達理由.未解決のギャップが残る, l_理由);
-            l_項目.Add(new 検査項目("unsupported_join", メッセージID.検査項目_未解決のギャップ, l_ギャップ, p_未解決ギャップ数.ToString()));
-
+            l_項目.Add(new 検査項目(C_項目_unsupported_join, メッセージID.検査項目_未解決のギャップ, l_ギャップ, p_未解決ギャップ数.ToString()));
             var l_接合点 = Get_判定(p_曖昧箇所.Count == 0, 未達理由.決めきれない分岐が残る, l_理由);
-            l_項目.Add(new 検査項目("junction_support", メッセージID.検査項目_接合点の支持, l_接合点, p_曖昧箇所.Count.ToString()));
-
+            l_項目.Add(new 検査項目(C_項目_junction_support, メッセージID.検査項目_接合点の支持, l_接合点, p_曖昧箇所.Count.ToString()));
             var l_代替経路 = Get_判定(l_僅差の数 == 0, 未達理由.決めきれない分岐が残る, l_理由);
-            l_項目.Add(new 検査項目("no_alternative_path", メッセージID.検査項目_競合経路, l_代替経路, l_僅差の数.ToString()));
-
-            var l_支持 = p_支持検査 is { } l_支持1
-                ? Get_判定(l_支持1.A_支持のない位置数 <= C_支持のない位置の許容数, 未達理由.リードに裏付けの無い箇所がある, l_理由)
-                : Get_判定不能(未達理由.リードの支持を調べていない, l_理由);
-            l_項目.Add(new 検査項目("read_support", メッセージID.検査項目_リードの支持, l_支持, p_支持検査 is { } l_支持2 ? $"{l_支持2.A_支持のない位置数} <= {C_支持のない位置の許容数} ({l_支持2.A_区間.Count} stretch(es))" : string.Empty));
-
+            l_項目.Add(new 検査項目(C_項目_no_alternative_path, メッセージID.検査項目_競合経路, l_代替経路, l_僅差の数.ToString()));
+            var l_支持 = p_支持検査 is { } l_支持1 ? Get_判定(l_支持1.A_支持のない位置数 <= C_支持のない位置の許容数, 未達理由.リードに裏付けの無い箇所がある, l_理由) : Get_判定不能(未達理由.リードの支持を調べていない, l_理由);
+            l_項目.Add(new 検査項目(C_項目_read_support, メッセージID.検査項目_リードの支持, l_支持, p_支持検査 is { } l_支持2 ? $"{l_支持2.A_支持のない位置数} <= {C_支持のない位置の許容数} ({l_支持2.A_区間.Count} stretch(es))" : string.Empty));
             var (l_閉鎖, l_閉鎖の内訳) = Get_閉鎖の判定(p_閉鎖検証, l_理由);
-            l_項目.Add(new 検査項目("circular_closure", メッセージID.検査項目_環状閉鎖, l_閉鎖, l_閉鎖の内訳));
-
+            l_項目.Add(new 検査項目(C_項目_circular_closure, メッセージID.検査項目_環状閉鎖, l_閉鎖, l_閉鎖の内訳));
             var l_レベル = Get_品質保証レベル(l_取りこぼし, l_出しすぎ, l_深度, l_支持, l_ギャップ, l_接合点, l_代替経路, l_閉鎖);
-
             return new 完全性判定結果(A_Is完全長: l_レベル == 品質保証レベル.完全長, A_品質保証レベル: l_レベル, A_検査項目: l_項目, A_未達理由: [.. l_理由.Distinct()]);
         }
 
@@ -108,7 +214,7 @@ namespace Tsumiki.Cores.Evaluation
             Logger.V_出力(p_判定.A_Is完全長 ? メッセージID.完全長と判定 : メッセージID.完全長に届かず, (int)p_判定.A_品質保証レベル);
             if (p_判定.A_未達理由.Count > 0)
             {
-                Logger.V_出力(メッセージID.完全性の未達理由, string.Join(", ", p_判定.A_未達理由.Select(Get_理由コード)));
+                Logger.V_出力(メッセージID.完全性の未達理由, string.Join(C_項目区切り, p_判定.A_未達理由.Select(Get_理由コード)));
             }
         }
 
@@ -121,18 +227,18 @@ namespace Tsumiki.Cores.Evaluation
         {
             return p_理由 switch
             {
-                未達理由.取りこぼしが多い => "kmer-missing",
-                未達理由.出しすぎている => "kmer-excess",
-                未達理由.自己検査を行えなかった => "self-check-unavailable",
-                未達理由.リードに裏付けの無い箇所がある => "unsupported-sequence",
-                未達理由.リードの支持を調べていない => "read-support-unchecked",
-                未達理由.未解決のギャップが残る => "unresolved-gap",
-                未達理由.決めきれない分岐が残る => "ambiguous-junction",
-                未達理由.深度が不連続 => "depth-discontinuity",
-                未達理由.深度を測っていない => "depth-unmeasured",
-                未達理由.環状に閉じていない => "not-circular",
-                未達理由.閉じ目がリードで裏付けられない => "closure-unsupported",
-                _ => "closure-unverified",
+                未達理由.取りこぼしが多い => C_項目_kmer_missing,
+                未達理由.出しすぎている => C_項目_kmer_excess,
+                未達理由.自己検査を行えなかった => C_項目_self_check_unavailable,
+                未達理由.リードに裏付けの無い箇所がある => C_項目_unsupported_sequence,
+                未達理由.リードの支持を調べていない => C_項目_read_support_unchecked,
+                未達理由.未解決のギャップが残る => C_項目_unresolved_gap,
+                未達理由.決めきれない分岐が残る => C_項目_ambiguous_junction,
+                未達理由.深度が不連続 => C_項目_depth_discontinuity,
+                未達理由.深度を測っていない => C_項目_depth_unmeasured,
+                未達理由.環状に閉じていない => C_項目_not_circular,
+                未達理由.閉じ目がリードで裏付けられない => C_項目_closure_unsupported,
+                _ => C_項目_closure_unverified,
             };
         }
 
@@ -145,9 +251,9 @@ namespace Tsumiki.Cores.Evaluation
         {
             return p_判定 switch
             {
-                検査判定.合格 => "pass",
-                検査判定.不合格 => "fail",
-                _ => "unknown",
+                検査判定.合格 => C_項目_pass,
+                検査判定.不合格 => C_項目_fail,
+                _ => C_項目_unknown,
             };
         }
 
@@ -264,7 +370,7 @@ namespace Tsumiki.Cores.Evaluation
             if (p_閉鎖検証.Count == 0)
             {
                 p_理由一覧.Add(未達理由.環状に閉じていない);
-                return (検査判定.不合格, "0");
+                return (検査判定.不合格, C_項目_0);
             }
 
             var l_支持数 = p_閉鎖検証.Count(x => x.A_Has支持);
@@ -292,17 +398,7 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>段階に畳んだ品質保証レベル</returns>
         private static 品質保証レベル Get_品質保証レベル(検査判定 p_取りこぼし, 検査判定 p_出しすぎ, 検査判定 p_深度, 検査判定 p_支持, 検査判定 p_ギャップ, 検査判定 p_接合点, 検査判定 p_代替経路, 検査判定 p_閉鎖)
         {
-            return p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格
-                ? 品質保証レベル.出力のみ
-                : p_深度 != 検査判定.合格 || p_支持 != 検査判定.合格
-                ? 品質保証レベル.グラフ整合
-                : p_ギャップ != 検査判定.合格
-                ? 品質保証レベル.マッピング整合
-                : p_接合点 != 検査判定.合格
-                ? 品質保証レベル.ペア整合
-                : p_代替経路 != 検査判定.合格 || p_閉鎖 != 検査判定.合格
-                ? 品質保証レベル.接合点が支持済み
-                : 品質保証レベル.完全長;
+            return p_取りこぼし != 検査判定.合格 || p_出しすぎ != 検査判定.合格 ? 品質保証レベル.出力のみ : p_深度 != 検査判定.合格 || p_支持 != 検査判定.合格 ? 品質保証レベル.グラフ整合 : p_ギャップ != 検査判定.合格 ? 品質保証レベル.マッピング整合 : p_接合点 != 検査判定.合格 ? 品質保証レベル.ペア整合 : p_代替経路 != 検査判定.合格 || p_閉鎖 != 検査判定.合格 ? 品質保証レベル.接合点が支持済み : 品質保証レベル.完全長;
         }
 
         #endregion

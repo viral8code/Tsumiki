@@ -517,6 +517,96 @@
         }
 
         /// <summary>
+        /// IUPAC の塩基文字
+        /// </summary>
+        public static class 塩基コード
+        {
+            #region 定数
+
+            /// <summary>
+            /// アデニン
+            /// </summary>
+            public const char A = 'A';
+
+            /// <summary>
+            /// シトシン
+            /// </summary>
+            public const char C = 'C';
+
+            /// <summary>
+            /// グアニン
+            /// </summary>
+            public const char G = 'G';
+
+            /// <summary>
+            /// チミン
+            /// </summary>
+            public const char T = 'T';
+
+            /// <summary>
+            /// ウラシル
+            /// </summary>
+            public const char U = 'U';
+
+            /// <summary>
+            /// A または G
+            /// </summary>
+            public const char R = 'R';
+
+            /// <summary>
+            /// C または T
+            /// </summary>
+            public const char Y = 'Y';
+
+            /// <summary>
+            /// C または G
+            /// </summary>
+            public const char S = 'S';
+
+            /// <summary>
+            /// A または T
+            /// </summary>
+            public const char W = 'W';
+
+            /// <summary>
+            /// G または T
+            /// </summary>
+            public const char K = 'K';
+
+            /// <summary>
+            /// A または C
+            /// </summary>
+            public const char M = 'M';
+
+            /// <summary>
+            /// C、G または T
+            /// </summary>
+            public const char B = 'B';
+
+            /// <summary>
+            /// A、G または T
+            /// </summary>
+            public const char D = 'D';
+
+            /// <summary>
+            /// A、C または T
+            /// </summary>
+            public const char H = 'H';
+
+            /// <summary>
+            /// A、C または G
+            /// </summary>
+            public const char V = 'V';
+
+            /// <summary>
+            /// A、C、G または T
+            /// </summary>
+            public const char N = 'N';
+
+            #endregion
+        }
+
+        /// <summary>
         /// 塩基の内部表現
         /// </summary>
         public static class 塩基ID

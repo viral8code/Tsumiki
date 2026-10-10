@@ -5,23 +5,36 @@
     /// </summary>
     internal class Util
     {
-        #region 公開メソッド
+        #region 定数
 
         /// <summary>
-        /// 塩基 ID 列の逆相補を返す
+        /// メモリサイズの単位 G
         /// </summary>
-        /// <param name="p_塩基列">元の塩基 ID 列</param>
-        /// <returns>逆相補の塩基 ID 列</returns>
-        public static Span<byte> V_逆相補(Span<byte> p_塩基列)
-        {
-            var l_結果 = new byte[p_塩基列.Length];
-            for (var i = 0; i < p_塩基列.Length; i++)
-            {
-                l_結果[p_塩基列.Length - 1 - i] = Get_相補塩基ID(p_塩基列[i]);
-            }
+        private const string C_メモリ単位_G = "G";
 
-            return l_結果.AsSpan();
-        }
+        /// <summary>
+        /// メモリサイズの単位 T
+        /// </summary>
+        private const string C_メモリ単位_T = "T";
+
+        /// <summary>
+        /// メモリサイズ未指定メッセージ
+        /// </summary>
+        private const string C_メモリサイズ未指定メッセージ = "Memory size must not be empty (e.g. 2G, 512M, 1024)";
+
+        /// <summary>
+        /// メモリサイズの単位 K
+        /// </summary>
+        private const string C_メモリ単位_K = "K";
+
+        /// <summary>
+        /// メモリサイズの単位 M
+        /// </summary>
+        private const string C_メモリ単位_M = "M";
+
+        #endregion
+
+        #region 公開メソッド
 
         /// <summary>
         /// 塩基 ID の相補を返す
@@ -49,35 +62,16 @@
         {
             return p_塩基 switch
             {
-                'A' => 'T',
-                'C' => 'G',
-                'G' => 'C',
-                'T' => 'A',
+                Consts.塩基コード.A => Consts.塩基コード.T,
+                Consts.塩基コード.C => Consts.塩基コード.G,
+                Consts.塩基コード.G => Consts.塩基コード.C,
+                Consts.塩基コード.T => Consts.塩基コード.A,
                 var l_文字 => l_文字,
             };
         }
 
         /// <summary>
-        /// 配列の逆相補を返す
-        /// </summary>
-        /// <param name="p_配列">元の配列</param>
-        /// <returns>逆相補の配列</returns>
-        public static string V_逆相補(string p_配列)
-        {
-            var l_結果 = new char[p_配列.Length];
-            for (var i = 0; i < p_配列.Length; i++)
-            {
-                var l_塩基 = Get_相補塩基(p_配列[i]);
-                l_結果[p_配列.Length - 1 - i] = l_塩基 == p_配列[i] && p_配列[i] is not ('A' or 'C' or 'G' or 'T')
-                    ? throw new ArgumentException($"{p_配列[i]} is not the expected value for a base")
-                    : l_塩基;
-            }
-
-            return new string(l_結果);
-        }
-
-        /// <summary>
-        /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する (Booth のアルゴリズム、O(n))
+        /// 環状配列の開始位置を、辞書式順序で最小になる回転へ正規化する (Booth のアルゴリズム、O (n) )
         /// </summary>
         /// <param name="p_配列"></param>
         /// <returns></returns>
@@ -117,8 +111,8 @@
         {
             return p_塩基文字 switch
             {
-                'A' or 'C' or 'G' or 'T' => false,
-                'M' or 'V' or 'N' or 'H' or 'R' or 'D' or 'W' or 'S' or 'B' or 'Y' or 'K' or Consts.未確認の繋ぎ目 => true,
+                Consts.塩基コード.A or Consts.塩基コード.C or Consts.塩基コード.G or Consts.塩基コード.T => false,
+                Consts.塩基コード.M or Consts.塩基コード.V or Consts.塩基コード.N or Consts.塩基コード.H or Consts.塩基コード.R or Consts.塩基コード.D or Consts.塩基コード.W or Consts.塩基コード.S or Consts.塩基コード.B or Consts.塩基コード.Y or Consts.塩基コード.K or Consts.未確認の繋ぎ目 => true,
                 _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code"),
             };
         }
@@ -139,7 +133,7 @@
         /// <returns>ギャップの文字なら true</returns>
         public static bool Isギャップ文字(char p_文字)
         {
-            return p_文字 is 'N' or Consts.未確認の繋ぎ目;
+            return p_文字 is Consts.塩基コード.N or Consts.未確認の繋ぎ目;
         }
 
         /// <summary>
@@ -156,7 +150,7 @@
             }
 
             var l_位置 = p_開始;
-            while (l_位置 < p_配列.Length && p_配列[l_位置] == 'N')
+            while (l_位置 < p_配列.Length && p_配列[l_位置] == Consts.塩基コード.N)
             {
                 l_位置++;
             }
@@ -173,10 +167,10 @@
         {
             return p_塩基文字 switch
             {
-                'A' => Consts.塩基ID.A,
-                'C' => Consts.塩基ID.C,
-                'G' => Consts.塩基ID.G,
-                'T' => Consts.塩基ID.T,
+                Consts.塩基コード.A => Consts.塩基ID.A,
+                Consts.塩基コード.C => Consts.塩基ID.C,
+                Consts.塩基コード.G => Consts.塩基ID.G,
+                Consts.塩基コード.T => Consts.塩基ID.T,
                 _ => Consts.無効な塩基,
             };
         }
@@ -188,14 +182,7 @@
         /// <returns>塩基文字</returns>
         public static string V_変換_塩基文字(byte p_塩基ID)
         {
-            return p_塩基ID switch
-            {
-                Consts.塩基ID.A => "A",
-                Consts.塩基ID.C => "C",
-                Consts.塩基ID.G => "G",
-                Consts.塩基ID.T => "T",
-                _ => "N",
-            };
+            return Get_塩基文字(p_塩基ID).ToString();
         }
 
         /// <summary>
@@ -207,11 +194,11 @@
         {
             return p_塩基ID switch
             {
-                Consts.塩基ID.A => 'A',
-                Consts.塩基ID.C => 'C',
-                Consts.塩基ID.G => 'G',
-                Consts.塩基ID.T => 'T',
-                _ => 'N',
+                Consts.塩基ID.A => Consts.塩基コード.A,
+                Consts.塩基ID.C => Consts.塩基コード.C,
+                Consts.塩基ID.G => Consts.塩基コード.G,
+                Consts.塩基ID.T => Consts.塩基コード.T,
+                _ => Consts.塩基コード.N,
             };
         }
 
@@ -222,41 +209,24 @@
         /// <returns>位置ごとの塩基候補列</returns>
         public static List<byte[]> V_変換_塩基候補列(string p_リード)
         {
-            return [.. p_リード.Select<char, byte[]>(x => x switch
+            return [..p_リード.Select<char, byte[]>(x => x switch
             {
-                'A' => [Consts.塩基ID.A],
-                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
-                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
-                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
-                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
-                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
-                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
-                'C' => [Consts.塩基ID.C],
-                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
-                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
-                'G' => [Consts.塩基ID.G],
-                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
-                'T' => [Consts.塩基ID.T],
-                _ => throw new ArgumentException($"{x} is not nucleotide base code")
-            })];
-        }
-
-        /// <summary>
-        /// 曖昧塩基を無視する経路向けの軽量版
-        /// </summary>
-        /// <param name="p_リード"></param>
-        /// <returns></returns>
-        public static byte[] V_変換_塩基列(string p_リード)
-        {
-            var l_結果 = new byte[p_リード.Length];
-            for (var i = 0; i < p_リード.Length; i++)
-            {
-                l_結果[i] = Get_塩基ID(p_リード[i]);
-            }
-
-            return l_結果;
+                Consts.塩基コード.A => [Consts.塩基ID.A],
+                Consts.塩基コード.M => [Consts.塩基ID.A, Consts.塩基ID.C],
+                Consts.塩基コード.V => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                Consts.塩基コード.N => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.H => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                Consts.塩基コード.R => [Consts.塩基ID.A, Consts.塩基ID.G],
+                Consts.塩基コード.D => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.W => [Consts.塩基ID.A, Consts.塩基ID.T],
+                Consts.塩基コード.C => [Consts.塩基ID.C],
+                Consts.塩基コード.S => [Consts.塩基ID.C, Consts.塩基ID.G],
+                Consts.塩基コード.B => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.Y => [Consts.塩基ID.C, Consts.塩基ID.T],
+                Consts.塩基コード.G => [Consts.塩基ID.G],
+                Consts.塩基コード.K => [Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.T => [Consts.塩基ID.T],
+                _ => throw new ArgumentException($"{x} is not nucleotide base code")})];
         }
 
         /// <summary>
@@ -278,7 +248,7 @@
         {
             if (string.IsNullOrWhiteSpace(p_表記))
             {
-                throw new ArgumentException("Memory size must not be empty (e.g. 2G, 512M, 1024)");
+                throw new ArgumentException(C_メモリサイズ未指定メッセージ);
             }
 
             var l_本体 = p_表記.Trim();
@@ -326,7 +296,7 @@
         /// <returns></returns>
         public static string Get_表示用メモリサイズ(long p_バイト数)
         {
-            string[] l_単位 = [string.Empty, "K", "M", "G", "T"];
+            string[] l_単位 = [string.Empty, C_メモリ単位_K, C_メモリ単位_M, C_メモリ単位_G, C_メモリ単位_T];
             double l_サイズ = p_バイト数;
             var l_単位位置 = 0;
             while (l_サイズ >= 1_024D && l_単位位置 < l_単位.Length - 1)
@@ -355,14 +325,61 @@
                 }
             }
 
-            return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2')
-                ? p_ID[..^2]
-                : p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
+            return p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == '1' || p_ID[^1] == '2') ? p_ID[..^2] : p_ID.Length > 2 && p_ID[^2] == '/' && (p_ID[^1] == 'A' || p_ID[^1] == 'B') ? p_ID[..^2] : p_ID;
         }
 
         #endregion
 
         #region テストメソッド
+
+        /// <summary>
+        /// 塩基 ID 列の逆相補を返す
+        /// </summary>
+        /// <param name="p_塩基列">元の塩基 ID 列</param>
+        /// <returns>逆相補の塩基 ID 列</returns>
+        public static Span<byte> V_逆相補(Span<byte> p_塩基列)
+        {
+            var l_結果 = new byte[p_塩基列.Length];
+            for (var i = 0; i < p_塩基列.Length; i++)
+            {
+                l_結果[p_塩基列.Length - 1 - i] = Get_相補塩基ID(p_塩基列[i]);
+            }
+
+            return l_結果.AsSpan();
+        }
+
+        /// <summary>
+        /// 配列の逆相補を返す
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <returns>逆相補の配列</returns>
+        public static string V_逆相補(string p_配列)
+        {
+            var l_結果 = new char[p_配列.Length];
+            for (var i = 0; i < p_配列.Length; i++)
+            {
+                var l_塩基 = Get_相補塩基(p_配列[i]);
+                l_結果[p_配列.Length - 1 - i] = l_塩基 == p_配列[i] && p_配列[i] is not (Consts.塩基コード.A or Consts.塩基コード.C or Consts.塩基コード.G or Consts.塩基コード.T) ? throw new ArgumentException($"{p_配列[i]} is not the expected value for a base") : l_塩基;
+            }
+
+            return new string(l_結果);
+        }
+
+        /// <summary>
+        /// 曖昧塩基を無視する経路向けの軽量版
+        /// </summary>
+        /// <param name="p_リード"></param>
+        /// <returns></returns>
+        public static byte[] V_変換_塩基列(string p_リード)
+        {
+            var l_結果 = new byte[p_リード.Length];
+            for (var i = 0; i < p_リード.Length; i++)
+            {
+                l_結果[i] = Get_塩基ID(p_リード[i]);
+            }
+
+            return l_結果;
+        }
 
         /// <summary>
         /// 位置ごとの塩基候補列の逆相補を返す
@@ -396,21 +413,21 @@
         {
             return p_塩基文字 switch
             {
-                'A' => [Consts.塩基ID.A],
-                'M' => [Consts.塩基ID.A, Consts.塩基ID.C],
-                'V' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
-                'N' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'H' => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
-                'R' => [Consts.塩基ID.A, Consts.塩基ID.G],
-                'D' => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
-                'W' => [Consts.塩基ID.A, Consts.塩基ID.T],
-                'C' => [Consts.塩基ID.C],
-                'S' => [Consts.塩基ID.C, Consts.塩基ID.G],
-                'B' => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
-                'Y' => [Consts.塩基ID.C, Consts.塩基ID.T],
-                'G' => [Consts.塩基ID.G],
-                'K' => [Consts.塩基ID.G, Consts.塩基ID.T],
-                'T' => [Consts.塩基ID.T],
+                Consts.塩基コード.A => [Consts.塩基ID.A],
+                Consts.塩基コード.M => [Consts.塩基ID.A, Consts.塩基ID.C],
+                Consts.塩基コード.V => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G],
+                Consts.塩基コード.N => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.H => [Consts.塩基ID.A, Consts.塩基ID.C, Consts.塩基ID.T],
+                Consts.塩基コード.R => [Consts.塩基ID.A, Consts.塩基ID.G],
+                Consts.塩基コード.D => [Consts.塩基ID.A, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.W => [Consts.塩基ID.A, Consts.塩基ID.T],
+                Consts.塩基コード.C => [Consts.塩基ID.C],
+                Consts.塩基コード.S => [Consts.塩基ID.C, Consts.塩基ID.G],
+                Consts.塩基コード.B => [Consts.塩基ID.C, Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.Y => [Consts.塩基ID.C, Consts.塩基ID.T],
+                Consts.塩基コード.G => [Consts.塩基ID.G],
+                Consts.塩基コード.K => [Consts.塩基ID.G, Consts.塩基ID.T],
+                Consts.塩基コード.T => [Consts.塩基ID.T],
                 _ => throw new ArgumentException($"{p_塩基文字} is not nucleotide base code")
             };
         }
@@ -422,7 +439,7 @@
         /// <returns>塩基 ID 列</returns>
         public static byte[] V_変換_塩基列(byte p_パック済みバイト)
         {
-            return [.. new[]
+            return [..new[]
             {
                 (p_パック済みバイト >>> 6) & 3,
                 (p_パック済みバイト >>> 4) & 3,
@@ -434,8 +451,7 @@
                 Consts.塩基ID.C => Consts.塩基ID.C,
                 Consts.塩基ID.G => Consts.塩基ID.G,
                 Consts.塩基ID.T => Consts.塩基ID.T,
-                _ => throw new ArgumentException($"{x + 1} is not the expected value for a base")
-            })];
+                _ => throw new ArgumentException($"{x + 1} is not the expected value for a base")})];
         }
 
         /// <summary>

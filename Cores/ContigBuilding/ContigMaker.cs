@@ -20,6 +20,11 @@ namespace Tsumiki.Core
         #region 定数
 
         /// <summary>
+        /// 項目区切り
+        /// </summary>
+        private const string C_項目区切り = ", ";
+
+        /// <summary>
         /// 簡略化ラウンド上限
         /// </summary>
         private const int C_ラウンド数上限 = 5;
@@ -41,59 +46,27 @@ namespace Tsumiki.Core
         /// <summary>
         /// unitig グラフから辺を選び結合を確定して、contig を FASTA へ書き出す
         /// </summary>
-        /// <param name="p_contigパス">
-        /// 出力先の FASTA パス
-        /// </param>
-        /// <param name="p_優勢閾値">
-        /// 分岐選択で優勢とみなす正規化支持の割合
-        /// </param>
-        /// <param name="p_最小証拠数">
-        /// 分岐選択に必要な最小の証拠数
-        /// </param>
-        /// <param name="p_コピー数">
-        /// unitig ID -> 推定コピー数<br/>
-        /// 先読み探索で「この unitig を何回まで通ってよいか」の予算に使う<br/>
-        /// 渡さない場合はすべて 1 コピーとして扱い、先読み探索も控えめになる
-        /// </param>
-        /// <param name="p_バブル敗者への引き継ぎ先">
-        /// 渡すと、バブル除去で外れた側の経路の配列 (careful_bubble) をここへ集める<br/>
-        /// 呼び出し側がマルチ k の次の k への引き継ぎに足すことを想定している
-        /// </param>
-        /// <param name="p_リード長">
-        /// 分岐選択・先読みスコアを生カウントではなく期待本数との比で測るための較正器の構築に使う<br/>
-        /// 渡さない場合は生カウント方式になる
-        /// </param>
-        /// <param name="p_r_mer検証器">
-        /// 渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/>
-        /// 詳細は <see cref="UnitigGraph.V_解決_短い反復"/> を参照
-        /// </param>
-        /// <param name="p_GFAパス">
-        /// 渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)
-        /// </param>
-        /// <param name="p_引き継ぎ経路群">
-        /// 前段 k で確定した scaffold/contig 全体の配列 (P2: 経路の持ち越し)<br/>
-        /// この k 自身の read/pair 支持だけでは分岐を決められない場合に限り、追加の判断材料として使う<br/>
-        /// 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、
-        /// この経路投影が分岐の対応を決める効果を持つことがある
-        /// </param>
-        /// <param name="p_コピー数区間">
-        /// 観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/>
-        /// 先読み探索 (<see cref="BeamSearchExtender"/>) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う
-        /// </param>
+        /// <param name="p_contigパス">出力先の FASTA パス</param>
+        /// <param name="p_優勢閾値">分岐選択で優勢とみなす正規化支持の割合</param>
+        /// <param name="p_最小証拠数">分岐選択に必要な最小の証拠数</param>
+        /// <param name="p_コピー数">unitig ID -&gt; 推定コピー数<br/> 先読み探索で「この unitig を何回まで通ってよいか」の予算に使う<br/> 渡さない場合はすべて 1 コピーとして扱い、先読み探索も控えめになる</param>
+        /// <param name="p_バブル敗者への引き継ぎ先">渡すと、バブル除去で外れた側の経路の配列 (careful_bubble) をここへ集める<br/> 呼び出し側がマルチ k の次の k への引き継ぎに足すことを想定している</param>
+        /// <param name="p_リード長">分岐選択・先読みスコアを生カウントではなく期待本数との比で測るための較正器の構築に使う<br/> 渡さない場合は生カウント方式になる</param>
+        /// <param name="p_r_mer検証器">渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/> 詳細は <see cref="UnitigGraph.V_解決_短い反復"/> を参照</param>
+        /// <param name="p_GFAパス">渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)</param>
+        /// <param name="p_引き継ぎ経路群">前段 k で確定した scaffold/contig 全体の配列 (P2: 経路の持ち越し)<br/> この k 自身の read/pair 支持だけでは分岐を決められない場合に限り、追加の判断材料として使う<br/> 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、 この経路投影が分岐の対応を決める効果を持つことがある</param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/> 先読み探索 (<see cref="BeamSearchExtender"/>) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う</param>
         public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
             var l_重なり長 = l_k長 - 1;
-
             var l_unitig配列 = this._unitig配列;
-
             if (p_引き継ぎ経路群 is { Count: > 0 })
             {
                 this.V_マッピング_引き継ぎ経路(p_引き継ぎ経路群);
             }
 
             var l_グラフ = UnitigGraph.Get_グラフ(l_unitig配列, this._kmer辞書, l_k長, C_曖昧kmerの番兵);
-
             var l_辺数 = 0;
             var l_分岐頂点数 = 0;
             for (var v = 2; v < l_グラフ.A_出辺.Count; v++)
@@ -106,30 +79,22 @@ namespace Tsumiki.Core
             }
 
             Logger.V_出力(メッセージID.deBruijnグラフの要約, l_辺数, l_分岐頂点数, l_グラフ.A_出辺.Count - 2);
-
             var (l_支持, l_ペア連結) = this.Get_辺重み(l_グラフ);
             var l_経路索引 = this.Get_経路索引();
             var l_引き継ぎ経路索引 = this._引き継ぎ経路集計.Count > 0 ? ReadPathIndex.Get_索引(this._引き継ぎ経路集計) : null;
             Logger.V_出力(メッセージID.リード経路索引の件数, l_経路索引.A_経路数, l_引き継ぎ経路索引?.A_経路数 ?? 0);
-
             var l_反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_中央値(this.A_同一unitig標本) : l_k長 * 4;
             var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], C_解ける反復長の分位) : l_k長 * 4;
-
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
-
             V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引, p_コピー数);
-
             var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
             var l_較正用リード長 = l_リード長群.Count > 1 && l_リード長群.All(x => x > 0) ? l_リード長群.Min() : p_リード長;
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, l_較正用リード長, this._unitig長.Values.Select(x => (long)x));
-
             HashSet<int> l_経路で通す頂点 = [];
             var l_選択 = this.Get_辺選択(l_グラフ, l_支持, l_較正器, p_コピー数, p_優勢閾値, p_最小証拠数, Get_頂点番号キーへ変換(this._経路引き継ぎ隣接), l_経路索引, l_引き継ぎ経路索引, l_経路で通す頂点, l_反復長の上限);
             var l_結合 = Get_結合確定(l_グラフ, l_選択, p_コピー数, l_unitig配列, l_経路で通す頂点);
-
             var l_先読みで解決した数 = BeamSearchExtender.V_延長_先読み(l_グラフ, l_unitig配列, l_結合, l_ペア連結, p_コピー数 ?? new Dictionary<int, int>(), l_反復長の上限, p_優勢閾値, p_最小証拠数, l_較正器, p_コピー数区間, l_経路索引);
-
             if (l_先読みで解決した数 > 0)
             {
                 Logger.V_出力(メッセージID.先読みで解決した分岐数, l_先読みで解決した数 >> 1);
@@ -142,7 +107,6 @@ namespace Tsumiki.Core
             }
 
             this.V_収集_確定辺標本(l_結合);
-
             this.V_walk実行してFASTA書き出し(l_グラフ, l_unitig配列, l_結合, l_重なり長, p_contigパス);
         }
 
@@ -191,7 +155,6 @@ namespace Tsumiki.Core
             }
 
             Logger.V_出力(メッセージID.分岐選択の重み内訳, this._リード隣接.Count, l_ペア支持を足した数);
-
             return (l_支持, l_ペア連結);
         }
 
@@ -224,7 +187,6 @@ namespace Tsumiki.Core
                 l_除去バブル数 += l_今回のバブル数;
                 l_解決した反復数 += l_今回の反復数;
                 l_外した枝数 += l_今回の枝数;
-
                 if (l_今回のバブル数 == 0 && l_今回の反復数 == 0 && l_今回の枝数 == 0)
                 {
                     Logger.V_出力(メッセージID.単純化の収束, l_ラウンド);
@@ -279,7 +241,6 @@ namespace Tsumiki.Core
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
                 var l_出辺 = p_グラフ.A_出辺[v];
-
                 if (l_出辺.Count == 0)
                 {
                     continue;
@@ -317,7 +278,6 @@ namespace Tsumiki.Core
                 {
                     var l_件数 = p_支持.GetValueOrDefault((v, w));
                     var l_終点長 = this._unitig長.GetValueOrDefault(w >> 1, 0);
-
                     var l_正規化 = p_較正器.A_Is使用可能 ? p_較正器.Get_正規化済み支持(l_件数, l_始点長, l_終点長, p_ギャップ長: 0) : l_件数;
                     l_正規化合計 += l_正規化;
                     if (l_正規化 > l_最良の正規化)
@@ -365,7 +325,6 @@ namespace Tsumiki.Core
             }
 
             Logger.V_出力(メッセージID.辺選択の内訳, l_一意な頂点数, l_支持で解決した数, l_反復由来で未解決の数);
-
             if (l_引き継ぎで解決した数 > 0)
             {
                 Logger.V_出力(メッセージID.経路引き継ぎで解決した数, l_引き継ぎで解決した数);
@@ -528,7 +487,6 @@ namespace Tsumiki.Core
             }
 
             Logger.V_出力(メッセージID.相互一意で残った結合数, l_結合数, l_結合数 >> 1);
-
             return l_結合;
         }
 
@@ -544,11 +502,9 @@ namespace Tsumiki.Core
         {
             var l_unitig数 = (p_unitig配列.Count - 2) >> 1;
             var l_訪問済み = new bool[l_unitig数 + 1];
-
             List<string> l_contig群 = [];
             List<List<int>> l_walk順群 = [];
             List<bool> l_環状フラグ群 = [];
-
             for (var v = 2; v < p_グラフ.A_出辺.Count; v++)
             {
                 if (p_結合[v ^ 1] != -1 || l_訪問済み[v >> 1])
@@ -578,18 +534,15 @@ namespace Tsumiki.Core
                 var l_walk順 = l_walk順群[c];
                 var l_逆相補 = Util.V_逆相補(l_contig);
                 var l_Is逆相補採用 = string.CompareOrdinal(l_contig, l_逆相補) > 0;
-
                 var l_Is複製単位 = l_環状フラグ群[c] && l_contig群[c].Length >= Consts.環状として数える最小長;
                 var l_名前 = l_Is複製単位 ? $"NODE{l_ID}_{Consts.環状の目印}" : $"NODE{l_ID}";
                 var l_出力配列 = l_Is逆相補採用 ? l_逆相補 : l_contig;
-
                 if (l_環状フラグ群[c])
                 {
                     l_出力配列 = Util.Get_最小回転(l_出力配列);
                 }
 
                 l_書き込み.V_書き込み(l_名前, l_出力配列);
-
                 foreach (var l_辺 in Get_分岐の継ぎ目(p_グラフ, p_unitig配列, l_walk順, p_重なり長 + 1))
                 {
                     _ = this.A_分岐の継ぎ目.Add(l_辺);
@@ -607,13 +560,8 @@ namespace Tsumiki.Core
             }
 
             Logger.V_出力(メッセージID.Contig総延長, l_総延長);
-
-            var l_環状contig = Enumerable.Range(0, l_contig群.Count)
-                .Where(x => l_環状フラグ群[x] && l_contig群[x].Length >= Consts.環状として数える最小長)
-                .ToList();
-            var l_短すぎる閉路 = Enumerable.Range(0, l_contig群.Count)
-                .Count(x => l_環状フラグ群[x] && l_contig群[x].Length < Consts.環状として数える最小長);
-
+            var l_環状contig = Enumerable.Range(0, l_contig群.Count).Where(x => l_環状フラグ群[x] && l_contig群[x].Length >= Consts.環状として数える最小長).ToList();
+            var l_短すぎる閉路 = Enumerable.Range(0, l_contig群.Count).Count(x => l_環状フラグ群[x] && l_contig群[x].Length < Consts.環状として数える最小長);
             if (l_短すぎる閉路 > 0)
             {
                 Logger.V_出力(メッセージID.短すぎる閉路, l_短すぎる閉路, Consts.環状として数える最小長);
@@ -621,7 +569,7 @@ namespace Tsumiki.Core
 
             if (l_環状contig.Count > 0)
             {
-                var l_長さ一覧 = string.Join(", ", l_環状contig.Select(x => $"{l_contig群[x].Length}bp"));
+                var l_長さ一覧 = string.Join(C_項目区切り, l_環状contig.Select(x => $"{l_contig群[x].Length}bp"));
                 Logger.V_出力(メッセージID.環状Contigあり, l_環状contig.Count, l_長さ一覧);
             }
             else

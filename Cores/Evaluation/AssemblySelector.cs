@@ -12,6 +12,11 @@ namespace Tsumiki.Cores.Evaluation
         #region 定数
 
         /// <summary>
+        /// 項目 selected
+        /// </summary>
+        private const string C_項目_selected = " <- selected";
+
+        /// <summary>
         /// 足切りに使う完全性の許容差
         /// </summary>
         public const double C_完全性の許容差 = 0.01D;
@@ -59,12 +64,7 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_最良の完全性 = p_候補.Max(x => x.A_評価.A_完全性);
             var l_最良の正確性 = p_候補.Max(x => x.A_評価.A_正確性);
-
-            var l_残った候補 = p_候補
-                .Where(x => x.A_評価.A_完全性 >= l_最良の完全性 - C_完全性の許容差)
-                .Where(x => x.A_評価.A_正確性 >= l_最良の正確性 - C_正確性の許容差)
-                .ToList();
-
+            var l_残った候補 = p_候補.Where(x => x.A_評価.A_完全性 >= l_最良の完全性 - C_完全性の許容差).Where(x => x.A_評価.A_正確性 >= l_最良の正確性 - C_正確性の許容差).ToList();
             if (l_残った候補.Count == 0)
             {
                 l_残った候補 = [.. p_候補];
@@ -72,26 +72,10 @@ namespace Tsumiki.Cores.Evaluation
 
             var l_完全性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_完全性));
             var l_正確性の段 = Get_段表(l_残った候補.Select(x => x.A_評価.A_正確性));
-
-            var l_最上段 = l_残った候補
-                .GroupBy(x => (-x.A_評価.A_環状本数, -x.A_評価.A_環状化率, l_完全性の段[x.A_評価.A_完全性], l_正確性の段[x.A_評価.A_正確性]))
-                .OrderBy(x => x.Key)
-                .First()
-                .ToList();
-            var l_NG50で最良 = l_最上段
-                .OrderByDescending(x => x.A_評価.A_NG50)
-                .ThenByDescending(x => x.A_評価.A_完全性)
-                .ThenByDescending(x => x.A_評価.A_正確性)
-                .First();
+            var l_最上段 = l_残った候補.GroupBy(x => (-x.A_評価.A_環状本数, -x.A_評価.A_環状化率, l_完全性の段[x.A_評価.A_完全性], l_正確性の段[x.A_評価.A_正確性])).OrderBy(x => x.Key).First().ToList();
+            var l_NG50で最良 = l_最上段.OrderByDescending(x => x.A_評価.A_NG50).ThenByDescending(x => x.A_評価.A_完全性).ThenByDescending(x => x.A_評価.A_正確性).First();
             var l_NG50の下限 = l_NG50で最良.A_評価.A_NG50 * (1D - C_NG50で同点とみなす割合);
-
-            return l_最上段
-                .Where(x => x.A_評価.A_NG50 >= l_NG50の下限 && x.A_評価.A_完全性 >= l_NG50で最良.A_評価.A_完全性 + C_乗り換えに要る完全性の差)
-                .OrderByDescending(x => x.A_評価.A_完全性)
-                .ThenByDescending(x => x.A_評価.A_正確性)
-                .ThenByDescending(x => x.A_評価.A_NG50)
-                .ThenByDescending(x => x.A_実行結果.A_k長)
-                .FirstOrDefault(l_NG50で最良);
+            return l_最上段.Where(x => x.A_評価.A_NG50 >= l_NG50の下限 && x.A_評価.A_完全性 >= l_NG50で最良.A_評価.A_完全性 + C_乗り換えに要る完全性の差).OrderByDescending(x => x.A_評価.A_完全性).ThenByDescending(x => x.A_評価.A_正確性).ThenByDescending(x => x.A_評価.A_NG50).ThenByDescending(x => x.A_実行結果.A_k長).FirstOrDefault(l_NG50で最良);
         }
 
         /// <summary>
@@ -127,7 +111,7 @@ namespace Tsumiki.Cores.Evaluation
             Logger.V_出力(メッセージID.候補一覧の見出し);
             foreach (var (l_実行結果, l_評価) in p_候補.OrderBy(x => x.A_実行結果.A_k長))
             {
-                var l_印 = l_実行結果.A_k長 == p_採用したもの.A_k長 ? " <- selected" : string.Empty;
+                var l_印 = l_実行結果.A_k長 == p_採用したもの.A_k長 ? C_項目_selected : string.Empty;
                 Logger.V_出力(メッセージID.候補一覧の明細, l_実行結果.A_k長, l_評価, l_印);
             }
         }
