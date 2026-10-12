@@ -273,6 +273,277 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 分岐元と合流先が 2 コピーと推定される単純バブルで、負けた枝の支持が勝った枝の 3 割以上あり、枝どうしが大きく違えば、反復のコピーごとの違いとみなして潰さない
+        /// </summary>
+        [Fact]
+        public void V_多コピーの反復内で支持が拮抗する泡は残す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            // b1 と b2 は同じ長さ (45 塩基) で、編集距離 12、類似度 約 0.73
+            const string l_b1 = "TTACGCAATTAATACTTTTCTAGATAGGCCATTATATCTGCACGT";
+            const string l_b2 = "TTACGCATTATTACTTCTTCGAATAGACATGTCGTTATTGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+            var l_wV = ContigMaker.Get_頂点番号(4);
+            Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
+
+            // 逆鎖側 (w から分岐する泡) の支持も対称に与える。与えないと逆鎖の泡は支持 0 同士になり、潰されてしまう
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 30UL,
+                [(l_wV ^ 1, l_b1V ^ 1)] = 40UL,
+                [(l_wV ^ 1, l_b2V ^ 1)] = 30UL,
+            };
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 2,
+                [4] = 2,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_コピー数: l_コピー数);
+
+            Assert.Equal(0, l_popped);
+            Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
+            Assert.Contains(l_b1V, l_グラフ.A_出辺[l_uV]);
+            Assert.Contains(l_b2V, l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(l_wV, l_グラフ.A_出辺[l_b1V][0]);
+            // 順鎖と逆鎖の泡をそれぞれ 1 回ずつ残す
+            Assert.Equal(2, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// 枝どうしが 1 塩基だけ違う泡は、コピー数が 2 でも支持が拮抗していても潰す (違いが小さい泡は読み取りの誤りとみなす)
+        /// </summary>
+        [Fact]
+        public void V_一塩基だけ違う多コピーの泡は支持が拮抗していても潰す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            const string l_b1 = "TTACGCAAGGATCCTGCACGT";
+            const string l_b2 = "TTACGCACTTAGCATGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 30UL,
+            };
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 2,
+                [4] = 2,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_コピー数: l_コピー数);
+
+            Assert.Equal(1, l_popped);
+            Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(0, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// 枝どうしが大きく違っていても、コピー数が 3 以上の反復の泡は潰す (泡を残すと反復が解けず配列が切れるため)
+        /// </summary>
+        [Fact]
+        public void V_三コピー以上の反復内の大きく違う泡は支持が拮抗していても潰す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            const string l_b1 = "TTACGCAATTAATACTTTTCTAGATAGGCCATTATATCTGCACGT";
+            const string l_b2 = "TTACGCATTATTACTTCTTCGAATAGACATGTCGTTATTGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 30UL,
+            };
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 3,
+                [4] = 3,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_コピー数: l_コピー数);
+
+            Assert.Equal(1, l_popped);
+            Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(0, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// 負けた枝の支持が勝った枝の 3 割未満なら、読み取りの誤りとみなして従来どおり潰す
+        /// </summary>
+        [Fact]
+        public void V_多コピーの反復内でも支持の差が大きい泡は潰す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            const string l_b1 = "TTACGCAAGGATCCTGCACGT";
+            const string l_b2 = "TTACGCACTTAGCATGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 3UL,
+            };
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 2,
+                [4] = 2,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_コピー数: l_コピー数);
+
+            Assert.Equal(1, l_popped);
+            Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(0, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// 分岐元が 1 コピーなら、支持が拮抗していても反復のコピーごとの違いとはみなさず潰す
+        /// </summary>
+        [Fact]
+        public void V_分岐元が1コピーの泡は支持が拮抗していても潰す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            const string l_b1 = "TTACGCAAGGATCCTGCACGT";
+            const string l_b2 = "TTACGCACTTAGCATGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 30UL,
+            };
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 1,
+                [4] = 2,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長, p_コピー数: l_コピー数);
+
+            Assert.Equal(1, l_popped);
+            Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(0, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// コピー数を渡さない既存の呼び出しでは、支持が拮抗していても従来どおり潰す
+        /// </summary>
+        [Fact]
+        public void V_コピー数を渡さなければ支持が拮抗していても単純バブルを潰す()
+        {
+            const int l_k長 = 8;
+            const string l_u = "GCTAAAGACAATTACGCA";
+            const string l_b1 = "TTACGCAAGGATCCTGCACGT";
+            const string l_b2 = "TTACGCACTTAGCATGCACGT";
+            const string l_終点 = "TGCACGTAAGGCTTACCA";
+
+            var (l_unitig一覧, l_kmer辞書) = V_構築(l_k長, l_u, l_b1, l_b2, l_終点);
+            var l_グラフ = UnitigGraph.Get_グラフ(l_unitig一覧, l_kmer辞書, l_k長, C_曖昧kmer番号);
+
+            var l_uV = ContigMaker.Get_頂点番号(1);
+            var l_b1V = ContigMaker.Get_頂点番号(2);
+            var l_b2V = ContigMaker.Get_頂点番号(3);
+
+            Dictionary<(int, int), ulong> l_支持 = new()
+            {
+                [(l_uV, l_b1V)] = 40UL,
+                [(l_uV, l_b2V)] = 30UL,
+            };
+
+            var l_popped = l_グラフ.V_除去_単純バブル(l_unitig一覧, l_支持, l_k長);
+
+            Assert.Equal(1, l_popped);
+            Assert.Equal([l_b1V], l_グラフ.A_出辺[l_uV]);
+            Assert.Equal(0, l_グラフ.A_残したコピーの違いの泡の数);
+        }
+
+        /// <summary>
+        /// Isコピーの違いの泡は、分岐元と合流先がどちらもちょうど 2 コピーで、負けた枝の支持が勝った枝の 3 割以上 (0 より大きい) かつ
+        /// 枝どうしの編集距離が 10 以上のときだけ真になる
+        /// </summary>
+        [Fact]
+        public void Isコピーの違いの泡は支持の割合とコピー数と編集距離で判定する()
+        {
+            // 勝者は 20 塩基の A、編集距離 10 の枝は前半 10 塩基を C に置き換えたもの、編集距離 9 の枝は前半 9 塩基を C に置き換えたもの
+            const string l_勝者 = "AAAAAAAAAAAAAAAAAAAA";
+            const string l_編集距離10 = "CCCCCCCCCCAAAAAAAAAA";
+            const string l_編集距離9 = "CCCCCCCCCAAAAAAAAAAA";
+
+            // 分岐元・合流先は頂点番号で渡し、コピー数の辞書は unitig 番号 (>> 1) で引く
+            var l_分岐元 = ContigMaker.Get_頂点番号(1);
+            var l_合流先 = ContigMaker.Get_頂点番号(4);
+            Dictionary<int, int> l_コピー数 = new()
+            {
+                [1] = 2,
+                [4] = 2,
+            };
+
+            Assert.True(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_コピー数, [l_勝者, l_編集距離10]));
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 11UL], 0, l_コピー数, [l_勝者, l_編集距離10]));
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 0UL], 0, l_コピー数, [l_勝者, l_編集距離10]));
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, null, [l_勝者, l_編集距離10]));
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_コピー数, [l_勝者, l_編集距離9]));
+
+            // 合流先が 3 コピーなら偽 (3 コピー以上の反復は潰す)
+            Dictionary<int, int> l_3コピー = new()
+            {
+                [1] = 2,
+                [4] = 3,
+            };
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_3コピー, [l_勝者, l_編集距離10]));
+
+            // 頂点番号をそのまま辞書のキーにしていれば (キーが 2 と 8 になり) 1 コピー扱いで偽になる
+            Dictionary<int, int> l_頂点番号キー = new()
+            {
+                [l_分岐元] = 2,
+                [l_合流先] = 2,
+            };
+            Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_頂点番号キー, [l_勝者, l_編集距離10]));
+        }
+
+        /// <summary>
         /// 長さが大きく異なる分岐は、同じ領域の別表現 (バブル) ではなく本物の分岐 (反復配列の出入口など) である可能性が高いため、支持の低い側であっても勝手に経路から外してはならない
         /// </summary>
         [Fact]

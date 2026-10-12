@@ -23,6 +23,21 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         private const decimal C_二対二で組ごとに要る割合 = 0.6M;
 
+        /// <summary>
+        /// 分岐元・合流先が多コピーの泡で、負けた枝の支持が勝った枝のこの割合以上あれば、読み取りの誤りではなくコピーごとの違いとみなす
+        /// </summary>
+        private const double C_コピーの違いとみなす支持の割合 = 0.3D;
+
+        /// <summary>
+        /// コピーごとの違いとみなす泡の、分岐元・合流先の推定コピー数。3 コピー以上の反復は、泡を残しても解けずに配列が切れるだけなので、今までどおり潰す
+        /// </summary>
+        private const int C_コピーの違いとみなすコピー数 = 2;
+
+        /// <summary>
+        /// コピーごとの違いとみなす泡の、枝どうしの最小の編集距離。違いが小さい泡は潰しても誤りは数塩基にとどまり、残すと反復が解けなくなるため潰す
+        /// </summary>
+        private const int C_コピーの違いとみなす最小の編集距離 = 10;
+
         #endregion
 
         #region プロパティ
@@ -41,6 +56,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// walk に通り抜けさせない頂点
         /// </summary>
         public HashSet<int> A_通り抜け禁止の頂点 { get; } = [];
+
+        /// <summary>
+        /// 単純バブルのうち、反復のコピーごとの違いとみなして潰さずに残した泡の延べ数
+        /// </summary>
+        public int A_残したコピーの違いの泡の数 { get; private set; }
 
         #endregion
 
@@ -350,8 +370,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_長さ帯の下限"></param>
         /// <param name="p_類似度の下限"></param>
         /// <param name="p_経路長の上限"></param>
+        /// <param name="p_コピー数">unitig ごとの推定コピー数。渡すと、反復の中のコピーごとの違いによる泡を残す</param>
         /// <returns>取り除いた経路の数</returns>
-        public int V_除去_単純バブル(List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_支持, int p_k長, List<string>? p_敗者への引き継ぎ先 = null, double p_長さ帯の割合 = 0.1D, int p_長さ帯の下限 = 3, double p_類似度の下限 = 0.7D, int p_経路長の上限 = 2_000)
+        public int V_除去_単純バブル(List<string> p_unitig配列, IReadOnlyDictionary<(int, int), ulong> p_支持, int p_k長, List<string>? p_敗者への引き継ぎ先 = null, double p_長さ帯の割合 = 0.1D, int p_長さ帯の下限 = 3, double p_類似度の下限 = 0.7D, int p_経路長の上限 = 2_000, IReadOnlyDictionary<int, int>? p_コピー数 = null)
         {
             var l_除去数 = 0;
             for (var l_分岐元 = 2; l_分岐元 < this.A_出辺.Count; l_分岐元++)
@@ -407,6 +428,13 @@ namespace Tsumiki.Cores.UnitigBuilding
                     }
 
                     var l_勝者index = Enumerable.Range(0, l_経路群.Count).OrderByDescending(i => p_支持.GetValueOrDefault((l_分岐元, l_経路群[i][0]))).ThenByDescending(i => l_配列群[i].Length).First();
+
+                    if (Isコピーの違いの泡(l_分岐元, l_再合流先, l_経路群.Select(x => p_支持.GetValueOrDefault((l_分岐元, x[0]))).ToList(), l_勝者index, p_コピー数, l_配列群))
+                    {
+                        this.A_残したコピーの違いの泡の数++;
+                        continue;
+                    }
+
                     for (var i = 0; i < l_経路群.Count; i++)
                     {
                         if (i == l_勝者index)
@@ -768,6 +796,48 @@ namespace Tsumiki.Cores.UnitigBuilding
         private static bool Is三コピー以上(List<int> p_鎖, IReadOnlyDictionary<int, int>? p_コピー数)
         {
             return p_コピー数 is not null && p_鎖.Exists(x => p_コピー数.GetValueOrDefault(x >> 1, 0) >= 3);
+        }
+
+        /// <summary>
+        /// 単純バブルが、反復のコピーごとの違いによるものとみなして潰さずに残すべき泡か判定する<br/>
+        /// 分岐元と合流先がどちらもちょうど 2 コピーと推定され、勝者以外の枝の支持のどれかが勝者の支持の一定割合以上 (かつ 0 より大きい) で、
+        /// その枝の配列が勝者の配列と一定以上違う (編集距離が一定以上) のとき真
+        /// </summary>
+        /// <param name="p_分岐元">分岐元の頂点番号</param>
+        /// <param name="p_再合流先">再合流先の頂点番号</param>
+        /// <param name="p_枝の支持">枝ごとの支持 (分岐元から枝の先頭への辺の支持)</param>
+        /// <param name="p_勝者index">支持の最も高い枝の index</param>
+        /// <param name="p_コピー数">unitig ごとの推定コピー数、無ければ null</param>
+        /// <param name="p_枝の配列">枝ごとの配列 (p_枝の支持と同じ並び)</param>
+        /// <returns></returns>
+        internal static bool Isコピーの違いの泡(int p_分岐元, int p_再合流先, IReadOnlyList<ulong> p_枝の支持, int p_勝者index, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyList<string> p_枝の配列)
+        {
+            if (p_コピー数 is null || p_コピー数.GetValueOrDefault(p_分岐元 >> 1, 1) != C_コピーの違いとみなすコピー数 || p_コピー数.GetValueOrDefault(p_再合流先 >> 1, 1) != C_コピーの違いとみなすコピー数)
+            {
+                return false;
+            }
+
+            var l_勝者の支持 = (double)p_枝の支持[p_勝者index];
+            for (var i = 0; i < p_枝の支持.Count; i++)
+            {
+                if (i == p_勝者index)
+                {
+                    continue;
+                }
+
+                var l_支持 = p_枝の支持[i];
+                if (l_支持 == 0UL || (double)l_支持 < l_勝者の支持 * C_コピーの違いとみなす支持の割合)
+                {
+                    continue;
+                }
+
+                if (Get_編集距離(p_枝の配列[p_勝者index], p_枝の配列[i]) >= C_コピーの違いとみなす最小の編集距離)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
