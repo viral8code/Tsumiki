@@ -108,6 +108,34 @@ namespace Tsumiki.Tests.Core
             Assert.Null(UnitigGraph.Get_二対二の合算で決着した組([10, 20, 50], [30, 40], new ulong[,] { { 50UL, 0UL }, { 0UL, 50UL }, { 0UL, 0UL } }, new ulong[,] { { 0UL, 0UL }, { 0UL, 0UL }, { 0UL, 0UL } }, C_優勢閾値, C_最小証拠数));
         }
 
+        /// <summary>
+        /// 選ばない組の支持が選ぶ組の四分の一未満なら、経路とペアの両方が支持していても雑音とみなし、まっすぐの組を返す
+        /// </summary>
+        [Fact]
+        public void Get_二対二の合算で決着した組_選ばない組の支持が四分の一未満なら解く()
+        {
+            var l_組 = UnitigGraph.Get_二対二の合算で決着した組([10, 20], [30, 40], new ulong[,] { { 2UL, 2UL }, { 0UL, 3UL } }, new ulong[,] { { 12UL, 1UL }, { 0UL, 13UL } }, C_優勢閾値, C_最小証拠数);
+            Assert.Equal([(10, 30), (20, 40)], l_組);
+        }
+
+        /// <summary>
+        /// 選ばない組の支持が選ぶ組の四分の一以上なら、両方の証拠が支持するとみなして解かない
+        /// </summary>
+        [Fact]
+        public void Get_二対二の合算で決着した組_選ばない組の支持が四分の一以上なら解かない()
+        {
+            Assert.Null(UnitigGraph.Get_二対二の合算で決着した組([10, 20], [30, 40], new ulong[,] { { 2UL, 2UL }, { 0UL, 3UL } }, new ulong[,] { { 8UL, 2UL }, { 0UL, 13UL } }, C_優勢閾値, C_最小証拠数));
+        }
+
+        /// <summary>
+        /// 経路の選ぶ側が 0 でも、選ばない組の支持が選ぶ組の四分の一以上 (ここでは 3 対 12) なら、従来どおり解かない
+        /// </summary>
+        [Fact]
+        public void Get_二対二の合算で決着した組_経路の選ぶ側が0なら従来どおり解かない()
+        {
+            Assert.Null(UnitigGraph.Get_二対二の合算で決着した組([10, 20], [30, 40], new ulong[,] { { 0UL, 2UL }, { 0UL, 3UL } }, new ulong[,] { { 12UL, 1UL }, { 0UL, 13UL } }, C_優勢閾値, C_最小証拠数));
+        }
+
         #endregion
     }
 }

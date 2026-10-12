@@ -55,7 +55,7 @@ namespace Tsumiki.Core
         /// <param name="p_r_mer検証器">渡すと、短い反復解決の対応付けを r-mer で検証する拒否権 (ABySS RResolver 型) を課す<br/> 詳細は <see cref="UnitigGraph.V_解決_短い反復"/> を参照</param>
         /// <param name="p_GFAパス">渡すと、バブル除去・反復解決を終えたあとの unitig グラフを GFA1 形式でこのパスへ書き出す (Bandage 等のビューア向け)</param>
         /// <param name="p_引き継ぎ経路群">前段 k で確定した scaffold/contig 全体の配列 (P2: 経路の持ち越し)<br/> この k 自身の read/pair 支持だけでは分岐を決められない場合に限り、追加の判断材料として使う<br/> 全 k-mer が既にこの k に存在していて集合の持ち越しだけでは何も変わらない場合でも、 この経路投影が分岐の対応を決める効果を持つことがある</param>
-        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/> 先読み探索 (<see cref="BeamSearchExtender"/>) の反復通行予算にのみ使い、分岐選択の保守的な判定は引き続き点推定を使う</param>
+        /// <param name="p_コピー数区間">観測された分散を踏まえたコピー数の妥当な範囲 (P1c)<br/> 先読み探索 (<see cref="BeamSearchExtender"/>) の反復通行予算と、短い反復の解決 (<see cref="UnitigGraph.V_解決_短い反復"/>) の 3 コピー以上の判定に使い、分岐選択の保守的な判定は引き続き点推定を使う</param>
         public void V_結合_Contig(string p_contigパス, decimal p_優勢閾値, ulong p_最小証拠数, IReadOnlyDictionary<int, int>? p_コピー数 = null, List<string>? p_バブル敗者への引き継ぎ先 = null, int? p_リード長 = null, RepeatRMerVerifier? p_r_mer検証器 = null, string? p_GFAパス = null, IReadOnlyList<string>? p_引き継ぎ経路群 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
@@ -87,7 +87,7 @@ namespace Tsumiki.Core
             var l_解ける反復長の上限 = this.A_同一unitig標本.Count > 0 ? StatsUtil.Get_分位点([.. this.A_同一unitig標本.Order()], C_解ける反復長の分位) : l_k長 * 4;
             var l_基準長 = p_リード長 is { } l_リード長 ? Math.Min(l_k長, l_リード長 / 2) : l_k長;
             var l_枝長の上限 = Math.Max(10 * l_基準長, p_リード長 ?? 0);
-            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引, p_コピー数);
+            V_簡略化ラウンド(l_グラフ, l_unitig配列, l_支持, l_ペア連結, l_解ける反復長の上限, l_枝長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_バブル敗者への引き継ぎ先, l_経路索引, l_引き継ぎ経路索引, p_コピー数, p_コピー数区間);
             var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
             var l_較正用リード長 = l_リード長群.Count > 1 && l_リード長群.All(x => x > 0) ? l_リード長群.Min() : p_リード長;
             var l_較正器 = 証拠較正器.Get_較正器(this.A_同一unitig標本, l_較正用リード長, this._unitig長.Values.Select(x => (long)x));
@@ -174,14 +174,15 @@ namespace Tsumiki.Core
         /// <param name="p_経路索引"></param>
         /// <param name="p_引き継ぎ経路索引"></param>
         /// <param name="p_コピー数">unitig ごとの推定コピー数、無ければ null</param>
-        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先, ReadPathIndex p_経路索引, ReadPathIndex? p_引き継ぎ経路索引, IReadOnlyDictionary<int, int>? p_コピー数)
+        /// <param name="p_コピー数区間">unitig ごとのコピー数区間、無ければ null (短い反復の解決の 3 コピー以上の判定に使う)</param>
+        private static void V_簡略化ラウンド(UnitigGraph p_グラフ, List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, int p_枝長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器, List<string>? p_バブル敗者への引き継ぎ先, ReadPathIndex p_経路索引, ReadPathIndex? p_引き継ぎ経路索引, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間)
         {
             var l_除去バブル数 = 0;
             var l_解決した反復数 = 0;
             var l_外した枝数 = 0;
             for (var l_ラウンド = 1; l_ラウンド <= C_ラウンド数上限; l_ラウンド++)
             {
-                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引, p_コピー数);
+                var l_今回の反復数 = p_グラフ.V_解決_短い反復(p_unitig配列, p_支持, p_ペア連結, p_反復長の上限, p_優勢閾値, p_最小証拠数, p_r_mer検証器, p_経路索引, p_引き継ぎ経路索引, p_コピー数, p_コピー数区間: p_コピー数区間);
                 var l_今回のバブル数 = p_グラフ.V_除去_単純バブル(p_unitig配列, p_支持, ConfigurationManager.A_実行時引数.A_k長, p_バブル敗者への引き継ぎ先, p_コピー数: p_コピー数);
                 var l_今回の枝数 = p_グラフ.V_除去_行き止まり枝(p_unitig配列, p_枝長の上限);
                 l_除去バブル数 += l_今回のバブル数;

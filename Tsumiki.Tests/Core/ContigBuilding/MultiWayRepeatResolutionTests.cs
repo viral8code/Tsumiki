@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Core;
 using Tsumiki.Cores.UnitigBuilding;
+using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Tests.Core
 {
@@ -221,6 +222,54 @@ namespace Tsumiki.Tests.Core
             var l_頂点数 = l_グラフ.A_出辺.Count;
             Assert.Equal(1, l_グラフ.V_解決_短い反復(l_unitig配列, [], l_ペア連結, 500, C_優勢閾値, C_最小証拠数, p_経路索引: l_索引));
             Assert.True(l_グラフ.A_出辺.Count > l_頂点数);
+        }
+
+        /// <summary>
+        /// 鎖の推定コピー数が 3 でも区間の下限が 2 なら 3 コピー以上とみなさず、合算でだけ寄る証拠で解く
+        /// </summary>
+        [Fact]
+        public void V_コピー数区間の下限が2なら三コピー扱いせず合算で解く()
+        {
+            var (l_グラフ, l_unitig配列) = Get_放射状の反復(2, 2, 4301);
+            var l_反復 = Get_頂点(1);
+            var l_索引 = new ReadPathIndex();
+            l_索引.V_追加([Get_入口(0), l_反復, Get_出口(2, 1)], 11UL);
+            l_索引.V_追加([Get_入口(1), l_反復, Get_出口(2, 0)], 9UL);
+            l_索引.V_追加([Get_入口(1), l_反復, Get_出口(2, 1)], 6UL);
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(Get_入口(0), Get_出口(2, 1))] = 24UL,
+                [(Get_入口(1), Get_出口(2, 0))] = 27UL,
+            };
+            Dictionary<int, int> l_コピー数 = new() { [l_反復 >> 1] = 3 };
+            Dictionary<int, コピー数区間> l_コピー数区間 = new() { [l_反復 >> 1] = new(2, 4) };
+            var l_頂点数 = l_グラフ.A_出辺.Count;
+            Assert.Equal(1, l_グラフ.V_解決_短い反復(l_unitig配列, [], l_ペア連結, 500, C_優勢閾値, C_最小証拠数, p_経路索引: l_索引, p_コピー数: l_コピー数, p_コピー数区間: l_コピー数区間));
+            Assert.True(l_グラフ.A_出辺.Count > l_頂点数);
+        }
+
+        /// <summary>
+        /// 鎖の推定コピー数が 3 で区間の下限も 3 なら、3 コピー以上とみなして合算では解かない
+        /// </summary>
+        [Fact]
+        public void V_コピー数区間の下限が3なら三コピーとみなし合算では解かない()
+        {
+            var (l_グラフ, l_unitig配列) = Get_放射状の反復(2, 2, 4401);
+            var l_反復 = Get_頂点(1);
+            var l_索引 = new ReadPathIndex();
+            l_索引.V_追加([Get_入口(0), l_反復, Get_出口(2, 1)], 11UL);
+            l_索引.V_追加([Get_入口(1), l_反復, Get_出口(2, 0)], 9UL);
+            l_索引.V_追加([Get_入口(1), l_反復, Get_出口(2, 1)], 6UL);
+            Dictionary<(int, int), ulong> l_ペア連結 = new()
+            {
+                [(Get_入口(0), Get_出口(2, 1))] = 24UL,
+                [(Get_入口(1), Get_出口(2, 0))] = 27UL,
+            };
+            Dictionary<int, int> l_コピー数 = new() { [l_反復 >> 1] = 3 };
+            Dictionary<int, コピー数区間> l_コピー数区間 = new() { [l_反復 >> 1] = new(3, 4) };
+            var l_頂点数 = l_グラフ.A_出辺.Count;
+            Assert.Equal(0, l_グラフ.V_解決_短い反復(l_unitig配列, [], l_ペア連結, 500, C_優勢閾値, C_最小証拠数, p_経路索引: l_索引, p_コピー数: l_コピー数, p_コピー数区間: l_コピー数区間));
+            Assert.Equal(l_頂点数, l_グラフ.A_出辺.Count);
         }
 
         /// <summary>

@@ -2,6 +2,7 @@
 using Tsumiki.Commons;
 using Tsumiki.Core;
 using Tsumiki.Models.Foundation;
+using Tsumiki.Models.UnitigBuilding;
 using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.UnitigBuilding
@@ -22,6 +23,12 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// 入口 2 つ・出口 2 つの合算で解くとき、選ぶ組がその行と列の支持で占めるべき割合
         /// </summary>
         private const decimal C_二対二で組ごとに要る割合 = 0.6M;
+
+        /// <summary>
+        /// 入口 2 つ・出口 2 つの合算で、選ばない組を経路とペアの両方が支持するとき、その支持の合計が選ぶ組の合計のこの割合以上なら、1 対 1 で表せない形とみなして解かない<br/>
+        /// 割合未満なら、読み取りの誤りや誤った合流による少数の雑音とみなす
+        /// </summary>
+        private const decimal C_二対二で矛盾とみなす割合 = 0.25M;
 
         /// <summary>
         /// 分岐元・合流先が多コピーの泡で、負けた枝の支持が勝った枝のこの割合以上あれば、読み取りの誤りではなくコピーごとの違いとみなす
@@ -212,8 +219,9 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <param name="p_経路索引">渡すと、入口から反復を通って出口まで 1 本で読んだ並びを証拠に加える (複製に合わせて書き換える)</param>
         /// <param name="p_引き継ぎ経路索引">前段 k の確定経路の並び、この k の証拠が 1 件も無い反復に限って使う (複製に合わせて書き換える)</param>
         /// <param name="p_コピー数">unitig ごとの推定コピー数、渡すと 3 コピー以上と見込まれる鎖は入口 2・出口 2 の合算では解かない (近縁な遺伝子群では、他のコピーのリードが証拠に混ざる)</param>
+        /// <param name="p_コピー数区間">unitig ごとのコピー数区間、渡すと点推定が 3 以上でも区間の下限が 3 未満の unitig は、3 コピー以上とみなさない</param>
         /// <returns>解きほぐした反復の数</returns>
-        public int V_解決_短い反復(List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null, ReadPathIndex? p_経路索引 = null, ReadPathIndex? p_引き継ぎ経路索引 = null, IReadOnlyDictionary<int, int>? p_コピー数 = null)
+        public int V_解決_短い反復(List<string> p_unitig配列, Dictionary<(int, int), ulong> p_支持, IReadOnlyDictionary<(int, int), ulong> p_ペア連結, int p_反復長の上限, decimal p_優勢閾値, ulong p_最小証拠数, RepeatRMerVerifier? p_r_mer検証器 = null, ReadPathIndex? p_経路索引 = null, ReadPathIndex? p_引き継ぎ経路索引 = null, IReadOnlyDictionary<int, int>? p_コピー数 = null, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間 = null)
         {
             var l_解決数 = 0;
             var l_r_mer検証で棄却した数 = 0;
@@ -300,7 +308,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                 if (l_決着.Count == 0 || l_一本道になる組.Exists(x => !Is組が優勢(l_経路行列, l_入口群.IndexOf(x.A_入口), l_出口群.IndexOf(x.A_出口), p_優勢閾値) || !Is組が優勢(l_ペア行列, l_入口群.IndexOf(x.A_入口), l_出口群.IndexOf(x.A_出口), p_優勢閾値)))
                 {
-                    if (Is三コピー以上(l_鎖, p_コピー数) || Get_二対二の合算で決着した組(l_入口群, l_出口群, l_経路行列, l_ペア行列, p_優勢閾値, p_最小証拠数) is not { } l_合算の組)
+                    if (Is三コピー以上(l_鎖, p_コピー数, p_コピー数区間) || Get_二対二の合算で決着した組(l_入口群, l_出口群, l_経路行列, l_ペア行列, p_優勢閾値, p_最小証拠数) is not { } l_合算の組)
                     {
                         _ = l_決着.Count == 0 && l_実測合計 < p_最小証拠数 ? l_証拠不足の数++ : l_僅差の数++;
                         continue;
@@ -563,12 +571,13 @@ namespace Tsumiki.Cores.UnitigBuilding
             (int A_行, int A_列)[] l_組群 = l_Isまっすぐ ? [(0, 0), (1, 1)] : [(0, 1), (1, 0)];
             foreach (var (l_行, l_列) in l_組群)
             {
-                if (p_経路行列[l_行, 1 - l_列] > 0UL && p_ペア行列[l_行, 1 - l_列] > 0UL)
+                var l_値 = p_経路行列[l_行, l_列] + p_ペア行列[l_行, l_列];
+                var l_選ばない側 = p_経路行列[l_行, 1 - l_列] + p_ペア行列[l_行, 1 - l_列];
+                if (p_経路行列[l_行, 1 - l_列] > 0UL && p_ペア行列[l_行, 1 - l_列] > 0UL && (decimal)l_選ばない側 >= C_二対二で矛盾とみなす割合 * l_値)
                 {
                     return null;
                 }
 
-                var l_値 = p_経路行列[l_行, l_列] + p_ペア行列[l_行, l_列];
                 var l_行和 = l_値 + p_経路行列[l_行, 1 - l_列] + p_ペア行列[l_行, 1 - l_列];
                 var l_列和 = l_値 + p_経路行列[1 - l_行, l_列] + p_ペア行列[1 - l_行, l_列];
                 if (l_値 == 0UL || (decimal)l_値 / l_行和 < C_二対二で組ごとに要る割合 || (decimal)l_値 / l_列和 < C_二対二で組ごとに要る割合)
@@ -792,10 +801,11 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// </summary>
         /// <param name="p_鎖"></param>
         /// <param name="p_コピー数">unitig ごとの推定コピー数、無ければ常に false</param>
+        /// <param name="p_コピー数区間">unitig ごとのコピー数区間、渡すと区間の下限が 3 以上の unitig だけを 3 コピー以上とみなす (区間の無い unitig は点推定のみで判定する)</param>
         /// <returns></returns>
-        private static bool Is三コピー以上(List<int> p_鎖, IReadOnlyDictionary<int, int>? p_コピー数)
+        private static bool Is三コピー以上(List<int> p_鎖, IReadOnlyDictionary<int, int>? p_コピー数, IReadOnlyDictionary<int, コピー数区間>? p_コピー数区間)
         {
-            return p_コピー数 is not null && p_鎖.Exists(x => p_コピー数.GetValueOrDefault(x >> 1, 0) >= 3);
+            return p_コピー数 is not null && p_鎖.Exists(x => p_コピー数.GetValueOrDefault(x >> 1, 0) >= 3 && (p_コピー数区間 is null || !p_コピー数区間.TryGetValue(x >> 1, out var l_区間) || l_区間.A_下限 >= 3));
         }
 
         /// <summary>
