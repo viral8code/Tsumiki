@@ -194,6 +194,38 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(0, MercyKmerRescuer.Get_救済数(l_引数, l_インデックス, p_k長: 65));
         }
 
+        /// <summary>
+        /// ローリングで求めた窓の正規形の値が、同じ窓の <see cref="TrustedKmerIndex.Get_正規形_値"/> と一致することを検証する (順向きと逆相補)
+        /// </summary>
+        /// <param name="p_k長">窓の長さ</param>
+        [Theory]
+        [InlineData(21)]
+        [InlineData(77)]
+        public void V_ローリングの正規形の値は窓の正規形の値と一致する(int p_k長)
+        {
+            var l_配列 = Get_乱数配列(p_k長 + 40, p_k長 * 3);
+            var l_逆相補配列 = Util.V_逆相補(l_配列);
+            foreach (var l_対象 in new[] { l_配列, l_逆相補配列 })
+            {
+                var l_窓 = new RollingKmer(p_k長);
+                var l_一致数 = 0;
+                for (var i = 0; i < l_対象.Length; i++)
+                {
+                    if (!l_窓.Is成功_追加(l_対象[i], out var l_キー))
+                    {
+                        continue;
+                    }
+
+                    var l_塩基 = Util.V_変換_塩基列(l_対象.Substring(i - p_k長 + 1, p_k長));
+                    Assert.Equal((l_キー.A_上位, l_キー.A_下位), TrustedKmerIndex.Get_正規形_値(l_塩基));
+                    Assert.Equal(TrustedKmerIndex.Get_正規形_値(l_塩基), TrustedKmerIndex.Get_正規形_値(Util.V_逆相補(l_塩基.AsSpan()).ToArray()));
+                    l_一致数++;
+                }
+
+                Assert.Equal(l_対象.Length - p_k長 + 1, l_一致数);
+            }
+        }
+
         #endregion
 
         #region 内部メソッド

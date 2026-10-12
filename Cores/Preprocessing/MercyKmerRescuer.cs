@@ -39,7 +39,20 @@ namespace Tsumiki.Cores.Preprocessing
             using var l_計測 = new StageTimer($"mercy k={p_k長}");
             ConcurrentDictionary<UInt128, (int A_観測数, byte[] A_kmer)> l_候補 = [];
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
-            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]), (l_リード, _) => V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補));
+            HashSet<(UInt128 A_上位, UInt128 A_下位)>? l_行き止まり = null;
+            if (p_k長 <= TrustedKmerIndex.C_パック値のk上限)
+            {
+                l_行き止まり = Get_行き止まり集合(p_kmerインデックス, l_スレッド数);
+                Logger.V_出力_そのまま(FormattableString.Invariant($"[Mercy] dead-end k-mers: {l_行き止まり.Count}"));
+            }
+
+            ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 256, FastqReader.Get_生リード列([.. p_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード })]), (l_リード, _) =>
+            {
+                if (l_行き止まり is null || Is行き止まりを含む_1リード(l_リード, l_行き止まり, p_k長))
+                {
+                    V_集める_1リード(l_リード, p_kmerインデックス, p_k長, l_候補);
+                }
+            });
             var l_追加数 = 0;
             foreach (var (_, l_候補中身) in l_候補.OrderBy(x => x.Key))
             {
@@ -73,6 +86,51 @@ namespace Tsumiki.Cores.Preprocessing
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 信頼できる k-mer のうち、どちらかの向きで出次数または入次数が 0 のものの正規形の値を集める
+        /// </summary>
+        /// <param name="p_kmerインデックス">この k の信頼できる k-mer 集合</param>
+        /// <param name="p_スレッド数">並列度</param>
+        /// <returns>行き止まりの正規形の値の集合</returns>
+        private static HashSet<(UInt128 A_上位, UInt128 A_下位)> Get_行き止まり集合(TrustedKmerIndex p_kmerインデックス, int p_スレッド数)
+        {
+            var l_結果 = new ConcurrentBag<(UInt128 A_上位, UInt128 A_下位)>();
+            Parallel.ForEach(p_kmerインデックス.Get_信頼kmer一覧(), new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, l_kmer =>
+            {
+                if (p_kmerインデックス.Get_出次数(l_kmer) == 0 || p_kmerインデックス.Get_入次数(l_kmer) == 0)
+                {
+                    l_結果.Add(TrustedKmerIndex.Get_正規形_値(l_kmer));
+                }
+            });
+            return new HashSet<(UInt128 A_上位, UInt128 A_下位)>(l_結果);
+        }
+
+        /// <summary>
+        /// リードの窓のいずれかの正規形が行き止まりの集合に入るかを調べる (曖昧塩基を含む窓は飛ばす)
+        /// </summary>
+        /// <param name="p_リード">リードの配列</param>
+        /// <param name="p_行き止まり">行き止まりの正規形の値の集合</param>
+        /// <param name="p_k長">この k の長さ</param>
+        /// <returns>入る窓が 1 つでもあれば true</returns>
+        private static bool Is行き止まりを含む_1リード(string p_リード, HashSet<(UInt128 A_上位, UInt128 A_下位)> p_行き止まり, int p_k長)
+        {
+            if (p_リード.Length < p_k長 + 2)
+            {
+                return false;
+            }
+
+            var l_窓 = new RollingKmer(p_k長);
+            foreach (var l_塩基 in p_リード)
+            {
+                if (l_窓.Is成功_追加(l_塩基, out var l_キー) && p_行き止まり.Contains(l_キー))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// 1 本のリードから救済候補を集める
