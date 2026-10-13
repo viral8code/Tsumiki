@@ -168,6 +168,7 @@ namespace Tsumiki.Cores.Pipeline
 
             _ = Directory.CreateDirectory(l_一時ディレクトリ);
             Logger.V_開始_ファイル出力(l_一時ディレクトリ);
+            ReadPreparationPipeline.V_間引き(l_引数, l_一時ディレクトリ);
             var l_原入力 = l_引数.Get_複製();
             ReadPreparationPipeline.V_実行(l_引数, l_一時ディレクトリ);
             if (l_引数.A_Is準備のみ)

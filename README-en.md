@@ -189,6 +189,7 @@ Run `Tsumiki.exe -h` for the full list.
 | `-i <int>` | Insert size (bp) | Estimated from mapped pairs |
 | `-pu <decimal>` | Dominance ratio required to accept a connection (overrides `-mode` if placed after it) | `0.8` |
 | `-pc <int>` | Read pairs required to resolve a short repeat (overrides `-mode` if placed after it) | `10` |
+| `-cov <int>` | When the estimated input depth exceeds 1.2 times this value, thin reads uniformly to this depth before assembly (`0` keeps all reads) | `100` |
 
 Values set by each `-mode` preset:
 

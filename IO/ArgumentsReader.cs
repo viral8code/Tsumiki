@@ -97,6 +97,9 @@ namespace Tsumiki.IO
                         case Consts.引数キー.ペア支持数閾値:
                             l_引数.A_ペア支持数閾値 = ulong.Parse(p_引数列[l_位置++]);
                             break;
+                        case Consts.引数キー.目標深度:
+                            l_引数.A_目標深度 = int.Parse(p_引数列[l_位置++]);
+                            break;
                         case Consts.引数キー.ヘルプ:
                             l_引数.A_Isヘルプモード = true;
                             break;

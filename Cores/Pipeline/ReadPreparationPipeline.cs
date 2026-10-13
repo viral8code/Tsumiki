@@ -38,6 +38,16 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const string C_度数の接尾辞 = ".segments.tsv";
 
+        /// <summary>
+        /// 項目 thinning
+        /// </summary>
+        private const string C_項目_thinning = "thinning";
+
+        /// <summary>
+        /// 目標の深度へ間引いたリードのファイル名の幹
+        /// </summary>
+        private const string C_間引き済みの幹 = "thinned";
+
         #endregion
 
         #region 公開メソッド
@@ -68,6 +78,69 @@ namespace Tsumiki.Cores.Pipeline
             {
                 V_訂正(p_引数, p_一時ディレクトリ);
             }
+        }
+
+        /// <summary>
+        /// 入力の推定深度が目標の深度を十分に超えていれば、リードのペアを一様に間引き、入力を間引いたリードへ切り替える
+        /// </summary>
+        /// <param name="p_引数">入力の設定</param>
+        /// <param name="p_一時ディレクトリ">間引いたリードの出力先</param>
+        public static void V_間引き(Parameters p_引数, string p_一時ディレクトリ)
+        {
+            if (p_引数.A_目標深度 == 0)
+            {
+                return;
+            }
+
+            using var l_計測 = new StageTimer(C_項目_thinning);
+            var l_署名 = Get_署名(p_引数);
+            List<(string A_出力1, string? A_出力2)> l_出力群 = [];
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var l_Hasペア = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_逆リード);
+                l_出力群.Add((Get_中間パス(p_一時ディレクトリ, C_間引き済みの幹, i, 1), l_Hasペア ? Get_中間パス(p_一時ディレクトリ, C_間引き済みの幹, i, 2) : null));
+            }
+
+            if (p_引数.A_Is再開 && l_署名 is not null && l_出力群.Count > 0 && l_出力群.All(x => StageCheckpoint.Is再利用可能(l_署名, x.A_出力1, x.A_出力2)))
+            {
+                Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力群[0].A_出力1);
+                p_引数.Set_ライブラリ群(l_出力群.Select(x => (x.A_出力1, x.A_出力2 ?? string.Empty)));
+                return;
+            }
+
+            var l_総塩基数 = ReadThinner.Get_総塩基数(p_引数);
+            var l_推定ゲノムサイズ = ReadThinner.Get_推定ゲノムサイズ(p_引数, p_一時ディレクトリ);
+            if (l_推定ゲノムサイズ is not > 0)
+            {
+                Logger.V_出力(メッセージID.間引き_推定できず);
+                return;
+            }
+
+            var l_深度 = (double)l_総塩基数 / l_推定ゲノムサイズ.Value;
+            var l_割合 = ReadThinner.Get_採用割合(l_総塩基数, l_推定ゲノムサイズ.Value, p_引数.A_目標深度);
+            if (l_割合 is not { } l_採用割合)
+            {
+                Logger.V_出力(メッセージID.間引き_不要, l_深度, p_引数.A_目標深度, Consts.間引きを始める倍率);
+                return;
+            }
+
+            long l_元の件数 = 0;
+            long l_採用件数 = 0;
+            List<(string A_順リード, string A_逆リード)> l_間引き後群 = [];
+            for (var i = 0; i < p_引数.A_ライブラリ数; i++)
+            {
+                var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
+                var (l_出力1, l_出力2) = l_出力群[i];
+                var (l_元, l_採用) = ReadThinner.V_間引き_ファイル(l_順リード, l_逆リード, l_出力1, l_出力2, l_採用割合);
+                l_元の件数 += l_元;
+                l_採用件数 += l_採用;
+                V_保存_記録(l_署名, l_出力1, l_出力2);
+                l_間引き後群.Add((l_出力1, l_出力2 ?? string.Empty));
+            }
+
+            Logger.V_出力(メッセージID.間引き_結果, l_深度, l_総塩基数, l_推定ゲノムサイズ.Value, p_引数.A_目標深度, l_元の件数, l_採用件数);
+            p_引数.Set_ライブラリ群(l_間引き後群);
+            Logger.V_出力_タイムスタンプ();
         }
 
         /// <summary>

@@ -98,6 +98,16 @@
         public const ulong ペア支持数閾値の既定値 = 10UL;
 
         /// <summary>
+        /// 間引きの目標深度の既定値 (x)
+        /// </summary>
+        public const int 目標深度の既定値 = 100;
+
+        /// <summary>
+        /// 推定深度が目標深度のこの倍率を超えたときだけ間引く
+        /// </summary>
+        public const double 間引きを始める倍率 = 1.2D;
+
+        /// <summary>
         /// 短い反復解決の拒否権で、経路の接合点が「実際にリードに読まれている」と認めるのに必要な、接合点を跨ぐ r-mer の最小本数
         /// </summary>
         public const int r_mer接合点支持の閾値の既定値 = 4;
@@ -292,6 +302,11 @@
             /// ペア支持数閾値
             /// </summary>
             public const string ペア支持数閾値 = "-pc";
+
+            /// <summary>
+            /// 目標深度
+            /// </summary>
+            public const string 目標深度 = "-cov";
 
             /// <summary>
             /// エラー訂正を行わない

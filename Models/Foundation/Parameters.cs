@@ -47,6 +47,11 @@ namespace Tsumiki.Models.Foundation
         private const string C_ペア支持数の正数制約メッセージ = "Please make the value of pair count threshold a positive integer";
 
         /// <summary>
+        /// 目標深度の正数制約メッセージ
+        /// </summary>
+        private const string C_目標深度の正数制約メッセージ = "Please make the value of target depth 0 or a positive integer";
+
+        /// <summary>
         /// k 長未指定メッセージ
         /// </summary>
         private const string C_k長未指定メッセージ = "Please set at least one kmer length";
@@ -164,6 +169,11 @@ namespace Tsumiki.Models.Foundation
         /// 結合を確定させるために要求するペアの支持数
         /// </summary>
         private ulong _ペア支持数閾値 = Consts.ペア支持数閾値の既定値;
+
+        /// <summary>
+        /// 間引きの目標深度 (x)。0 なら間引かない
+        /// </summary>
+        private int _目標深度 = Consts.目標深度の既定値;
 
         #endregion
 
@@ -560,6 +570,23 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// 間引きの目標深度 (x)。0 なら間引かない
+        /// </summary>
+        public int A_目標深度
+        {
+            get => this._目標深度;
+            set
+            {
+                if (value < 0)
+                {
+                    throw new ArgumentException(C_目標深度の正数制約メッセージ);
+                }
+
+                this._目標深度 = value;
+            }
+        }
+
+        /// <summary>
         /// v0.2 仕上げ経路の設定
         /// </summary>
         public 仕上げ設定 A_仕上げ設定 { get; set; } = new();
@@ -777,6 +804,7 @@ namespace Tsumiki.Models.Foundation
                 console log level : {Get_ログ水準名(this.A_ログ水準)}
                 pair unite threshold : {this.A_ペア結合閾値}
                 pair count threshold : {this.A_ペア支持数閾値}
+                target depth (0 = keep all) : {this.A_目標深度}
 
                 ======================================
 
