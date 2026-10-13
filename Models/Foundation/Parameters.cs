@@ -587,6 +587,16 @@ namespace Tsumiki.Models.Foundation
         }
 
         /// <summary>
+        /// 間引く前のライブラリ群 (間引いたときだけ入る、間引かなければ空)
+        /// </summary>
+        public IReadOnlyList<(string A_順リード, string A_逆リード)> A_間引き前ライブラリ群 { get; set; } = [];
+
+        /// <summary>
+        /// 間引きの採用割合 (0 から 1、間引かなければ 1.0)
+        /// </summary>
+        public double A_間引きの採用割合 { get; set; } = 1.0;
+
+        /// <summary>
         /// v0.2 仕上げ経路の設定
         /// </summary>
         public 仕上げ設定 A_仕上げ設定 { get; set; } = new();
@@ -657,6 +667,8 @@ namespace Tsumiki.Models.Foundation
             l_複製._逆リードのパス群 = [.. this._逆リードのパス群];
             l_複製._シングルのパス群 = [.. this._シングルのパス群];
             l_複製._差し替えたライブラリ群 = this._差し替えたライブラリ群 is null ? null : [.. this._差し替えたライブラリ群];
+            l_複製.A_間引き前ライブラリ群 = [.. this.A_間引き前ライブラリ群];
+            l_複製.A_間引きの採用割合 = this.A_間引きの採用割合;
             l_複製.A_仕上げ設定 = new()
             {
                 A_Is有効 = this.A_仕上げ設定.A_Is有効,

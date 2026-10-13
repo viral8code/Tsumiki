@@ -36,6 +36,27 @@ namespace Tsumiki.Cores.Pipeline
         private const string C_長さ指定ギャップ種別 = "N";
 
         /// <summary>
+        /// 余ったリードで端を繋ぐときの、跨ぐリードの必要本数<br/>
+        /// 余ったリードを含む全リードは間引いたリードより深く、読み誤りや異常なリードも多く跨ぐため、要るリード数を 1 つ上げる
+        /// </summary>
+        private const int C_余りで要るリード数 = 3;
+
+        /// <summary>
+        /// 端として見る窓の長さ（先頭と末尾それぞれ）
+        /// </summary>
+        private const int C_端の窓長 = 300;
+
+        /// <summary>
+        /// 端に触れるかを判定するキーの長さ
+        /// </summary>
+        private const int C_端の種長 = 25;
+
+        /// <summary>
+        /// 端を繋ぐ対象にする配列の最短長
+        /// </summary>
+        private const int C_端つなぎの最短長 = 150;
+
+        /// <summary>
         /// 項目 contigs
         /// </summary>
         private const string C_項目_contigs = "contigs";
@@ -449,7 +470,8 @@ namespace Tsumiki.Cores.Pipeline
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
             if (p_リード長 > 0)
             {
-                V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
+                var l_一意の出現数 = V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
+                V_繋ぐ_余ったリードで端(l_最終パス, p_リード長 ?? 0, p_原入力, l_一意の出現数);
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
@@ -481,11 +503,12 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
         /// <param name="p_リード長">代表リード長</param>
         /// <param name="p_リードパス群">生リードのパス</param>
-        private static void V_繋ぐ_リードで跨げる端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群)
+        /// <returns>算出した一意の出現数、索引が作れなければ 0</returns>
+        private static int V_繋ぐ_リードで跨げる端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群)
         {
             if (RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
             {
-                return;
+                return 0;
             }
 
             var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
@@ -501,6 +524,104 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.リードで端を繋いだ, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
+            return l_一意の出現数;
+        }
+
+        /// <summary>
+        /// 間引く前の全リードのうち、配列の端に触れるものだけで、もう一度端をつなぐ<br/>
+        /// 間引いたときだけ行う。繋いだ数が 1 以上なら、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_原入力">間引く前のライブラリ群と採用割合を保持した設定</param>
+        /// <param name="p_一意の出現数">間引いたリードから算出した一意の出現数</param>
+        private static void V_繋ぐ_余ったリードで端(string p_最終パス, int p_リード長, Parameters p_原入力, int p_一意の出現数)
+        {
+            var l_採用割合 = p_原入力.A_間引きの採用割合;
+            if (p_原入力.A_間引き前ライブラリ群.Count == 0 || l_採用割合 <= 0 || l_採用割合 >= 1 || p_一意の出現数 <= 0)
+            {
+                return;
+            }
+
+            using var l_計測 = new StageTimer("read-join-surplus");
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_種集合 = Get_端の種集合(l_配列群.Where(x => x.A_配列.Length >= C_端つなぎの最短長 && !x.A_ID.Contains(Consts.環状の目印)).Select(x => x.A_配列));
+            if (l_種集合.Count == 0)
+            {
+                return;
+            }
+
+            var l_端リード群 = new List<string>();
+            foreach (var (l_順リード, l_逆リード) in p_原入力.A_間引き前ライブラリ群)
+            {
+                l_端リード群.AddRange(Get_端に触れるリード(l_種集合, FastqReader.Get_生リード列(l_順リード, l_逆リード)));
+            }
+
+            if (l_端リード群.Count == 0)
+            {
+                return;
+            }
+
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_端リード群);
+            var l_目安 = (int)Math.Round(p_一意の出現数 / l_採用割合);
+            var l_繋いだ配列群 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, p_リード長, l_目安, out var l_候補数, out var l_繋いだ数, p_要るリード数: C_余りで要るリード数);
+            if (l_繋いだ数 >= 1)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_繋いだ配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            Logger.V_出力(メッセージID.余ったリードで端を繋いだ, l_端リード群.Count, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
+        }
+
+        /// <summary>
+        /// 配列の先頭と末尾（各 300 bp、配列が 600 bp 未満なら全体）から、長さ 25 の正準キーの集合を作る
+        /// </summary>
+        /// <param name="p_配列群">端を見る配列の列</param>
+        /// <returns>正準キーの集合</returns>
+        internal static HashSet<ulong> Get_端の種集合(IEnumerable<string> p_配列群)
+        {
+            HashSet<ulong> l_種集合 = [];
+            foreach (var l_配列 in p_配列群)
+            {
+                string[] l_区間群 = l_配列.Length < 2 * C_端の窓長 ? [l_配列] : [l_配列[..C_端の窓長], l_配列[^C_端の窓長..]];
+                foreach (var l_区間 in l_区間群)
+                {
+                    var l_窓 = new RollingKmer(C_端の種長);
+                    foreach (var l_塩基 in l_区間)
+                    {
+                        if (l_窓.Is成功_追加(l_塩基, out var l_キー))
+                        {
+                            _ = l_種集合.Add((ulong)l_キー.A_下位);
+                        }
+                    }
+                }
+            }
+
+            return l_種集合;
+        }
+
+        /// <summary>
+        /// リードのうち、端の種集合と 25 塩基を共有するものを読み順のまま集める
+        /// </summary>
+        /// <param name="p_種集合">端の正準キーの集合</param>
+        /// <param name="p_リード群">調べるリードの列</param>
+        /// <returns>端に触れるリードの列</returns>
+        internal static List<string> Get_端に触れるリード(HashSet<ulong> p_種集合, IEnumerable<string> p_リード群)
+        {
+            List<string> l_結果 = [];
+            foreach (var l_リード in p_リード群)
+            {
+                if (LocalAssembler.Has種一致(l_リード, p_種集合, C_端の種長))
+                {
+                    l_結果.Add(l_リード);
+                }
+            }
+
+            return l_結果;
         }
 
         /// <summary>

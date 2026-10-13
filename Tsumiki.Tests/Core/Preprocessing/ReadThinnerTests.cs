@@ -241,6 +241,28 @@ namespace Tsumiki.Tests.Core
             }
         }
 
+        /// <summary>
+        /// 採用割合 0.3456789 を thinned.info に書いて読むと、同じ値が返る
+        /// </summary>
+        [Fact]
+        public void V_採用割合を書いて読むと同じ値になり_無いファイルはnull()
+        {
+            var l_パス = Path.Combine(Path.GetTempPath(), $"{C_項目_tsumiki_read_thinner_tests}info_{Guid.NewGuid():N}.info");
+            try
+            {
+                Assert.Null(ReadThinner.Get_読込_採用割合(l_パス));
+                ReadThinner.V_書き出し_採用割合(l_パス, 0.3456789);
+                Assert.Equal(0.3456789, ReadThinner.Get_読込_採用割合(l_パス));
+            }
+            finally
+            {
+                if (File.Exists(l_パス))
+                {
+                    File.Delete(l_パス);
+                }
+            }
+        }
+
         #endregion
 
         #region 内部メソッド

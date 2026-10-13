@@ -48,6 +48,11 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const string C_間引き済みの幹 = "thinned";
 
+        /// <summary>
+        /// 間引いたときの元のライブラリ群と採用割合を記録するファイル名 (一時ディレクトリに置く、1 行の採用割合)
+        /// </summary>
+        private const string C_間引きの情報ファイル名 = "thinned.info";
+
         #endregion
 
         #region 公開メソッド
@@ -104,6 +109,12 @@ namespace Tsumiki.Cores.Pipeline
             if (p_引数.A_Is再開 && l_署名 is not null && l_出力群.Count > 0 && l_出力群.All(x => StageCheckpoint.Is再利用可能(l_署名, x.A_出力1, x.A_出力2)))
             {
                 Logger.V_出力(メッセージID.再開_中間ファイルを再利用, l_出力群[0].A_出力1);
+                if (ReadThinner.Get_読込_採用割合(Path.Combine(p_一時ディレクトリ, C_間引きの情報ファイル名)) is { } l_再利用の採用割合)
+                {
+                    p_引数.A_間引き前ライブラリ群 = [.. p_引数.A_ライブラリ群];
+                    p_引数.A_間引きの採用割合 = l_再利用の採用割合;
+                }
+
                 p_引数.Set_ライブラリ群(l_出力群.Select(x => (x.A_出力1, x.A_出力2 ?? string.Empty)));
                 return;
             }
@@ -139,6 +150,9 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.間引き_結果, l_深度, l_総塩基数, l_推定ゲノムサイズ.Value, p_引数.A_目標深度, l_元の件数, l_採用件数);
+            ReadThinner.V_書き出し_採用割合(Path.Combine(p_一時ディレクトリ, C_間引きの情報ファイル名), l_採用割合);
+            p_引数.A_間引き前ライブラリ群 = [.. p_引数.A_ライブラリ群];
+            p_引数.A_間引きの採用割合 = l_採用割合;
             p_引数.Set_ライブラリ群(l_間引き後群);
             Logger.V_出力_タイムスタンプ();
         }

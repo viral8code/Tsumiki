@@ -73,11 +73,12 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Scaffolder.Get_一意の出現数) 、分からなければ 0</param>
         /// <param name="p_候補数">互いに一意な端の組 (埋める前) の数</param>
         /// <param name="p_繋いだ数">連結に使った辺の数</param>
+        /// <param name="p_要るリード数">相手を決める票数の下限、および埋めるのに要るリード数 (既定は C_要るリード数)</param>
         /// <returns>
         /// 繋いだ後の配列の ID と配列<br/>
         /// 鎖に入らなかった配列は元の順と ID のまま
         /// </returns>
-        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, ReadMinimizerIndex p_索引, int p_リード長, int p_一意の出現数, out int p_候補数, out int p_繋いだ数)
+        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, ReadMinimizerIndex p_索引, int p_リード長, int p_一意の出現数, out int p_候補数, out int p_繋いだ数, int p_要るリード数 = C_要るリード数)
         {
             var l_配列数 = p_配列群.Count;
             var l_頂点 = new string[2 * l_配列数];
@@ -90,7 +91,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_登録 = Get_一意な先頭の登録(l_頂点, l_対象);
-            var l_相手 = Get_相手(l_頂点, l_対象, p_索引, p_リード長, l_登録);
+            var l_相手 = Get_相手(l_頂点, l_対象, p_索引, p_リード長, l_登録, p_要るリード数);
             var l_出る = new (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[l_頂点.Length];
             var l_入る = new int[l_頂点.Length];
             Array.Fill(l_入る, -1);
@@ -109,7 +110,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (Scaffolder.Get_リードで埋めた繋ぎ目(p_索引, new StringBuilder(l_頂点[v]), l_頂点[w], p_リード長, p_一意の出現数, C_要るリード数, C_削る上限) is not { } l_辺)
+                if (Scaffolder.Get_リードで埋めた繋ぎ目(p_索引, new StringBuilder(l_頂点[v]), l_頂点[w], p_リード長, p_一意の出現数, p_要るリード数, C_削る上限) is not { } l_辺)
                 {
                     continue;
                 }
@@ -329,15 +330,16 @@ namespace Tsumiki.Cores.Scaffolding
 
         /// <summary>
         /// 対象の各頂点について、末尾の錨を含むリードの続きから、相手の頂点を決める<br/>
-        /// 票が首位 (C_要るリード数 以上、次点の C_首位の優勢比 倍以上) のときだけ相手とする
+        /// 票が首位 (p_要るリード数 以上、次点の C_首位の優勢比 倍以上) のときだけ相手とする
         /// </summary>
         /// <param name="p_頂点">向き付きの配列</param>
         /// <param name="p_対象">配列ごとの対象かどうか</param>
         /// <param name="p_索引">リードの索引</param>
         /// <param name="p_リード長">代表リード長</param>
         /// <param name="p_登録">一意な先頭の登録</param>
+        /// <param name="p_要るリード数">相手を決める票数の下限</param>
         /// <returns>頂点ごとの相手の頂点、無ければ -1</returns>
-        private static int[] Get_相手(string[] p_頂点, bool[] p_対象, ReadMinimizerIndex p_索引, int p_リード長, Dictionary<string, (int A_頂点, int A_位置)> p_登録)
+        private static int[] Get_相手(string[] p_頂点, bool[] p_対象, ReadMinimizerIndex p_索引, int p_リード長, Dictionary<string, (int A_頂点, int A_位置)> p_登録, int p_要るリード数)
         {
             var l_相手 = new int[p_頂点.Length];
             Array.Fill(l_相手, -1);
@@ -384,7 +386,7 @@ namespace Tsumiki.Cores.Scaffolding
                     }
                 }
 
-                if (l_首位 >= 0 && l_首位の票 >= C_要るリード数 && l_首位の票 >= C_首位の優勢比 * l_次点の票)
+                if (l_首位 >= 0 && l_首位の票 >= p_要るリード数 && l_首位の票 >= C_首位の優勢比 * l_次点の票)
                 {
                     l_相手[v] = l_首位;
                 }

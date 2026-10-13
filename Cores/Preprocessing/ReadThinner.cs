@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Globalization;
+using Tsumiki.Commons;
 using Tsumiki.IO;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Utilities;
@@ -180,6 +181,32 @@ namespace Tsumiki.Cores.Preprocessing
                     Directory.Delete(l_作業パス, recursive: true);
                 }
             }
+        }
+
+        /// <summary>
+        /// 間引きの採用割合を、1 行のテキストとして書き出す (文化に依らず "R" 書式)
+        /// </summary>
+        /// <param name="p_パス">書き出すパス</param>
+        /// <param name="p_採用割合">採用割合</param>
+        internal static void V_書き出し_採用割合(string p_パス, double p_採用割合)
+        {
+            File.WriteAllText(p_パス, p_採用割合.ToString("R", CultureInfo.InvariantCulture) + "\n");
+        }
+
+        /// <summary>
+        /// V_書き出し_採用割合 で書いた採用割合を読む
+        /// </summary>
+        /// <param name="p_パス">読むパス</param>
+        /// <returns>採用割合、ファイルが無い・読めないときは null</returns>
+        internal static double? Get_読込_採用割合(string p_パス)
+        {
+            if (!File.Exists(p_パス))
+            {
+                return null;
+            }
+
+            var l_行 = File.ReadAllText(p_パス).Trim();
+            return double.TryParse(l_行, NumberStyles.Float, CultureInfo.InvariantCulture, out var l_割合) ? l_割合 : null;
         }
 
         #endregion

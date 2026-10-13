@@ -235,6 +235,53 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_配列群, l_結果);
         }
 
+        /// <summary>
+        /// 隙間なしの配列の継ぎ目を、2 本ずつの跨ぐリードだけが挟む (A の末尾と B の先頭の両方に触れるリードが各 2 本) ときは、
+        /// 既定では繋がるが、要るリード数を 3 にすると繋がず元のまま
+        /// </summary>
+        [Fact]
+        public void Get_繋いだ配列群_要るリード数3なら跨ぐリード2本では繋がない()
+        {
+            var l_ゲノム = Get_ゲノム();
+            var l_配列群 = new List<(string A_ID, string A_配列)>
+            {
+                (C_項目_A, l_ゲノム[..3000]),
+                (C_項目_B, l_ゲノム[3000..])
+            };
+            var l_リード群 = Get_リード群(l_ゲノム, s => s < 2855 || s >= 2975 || s == 2900 || s == 2910);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            var l_既定結果 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, C_リード長, 0, out _, out var l_既定繋いだ数);
+            Assert.Equal(1, l_既定繋いだ数);
+            Assert.Single(l_既定結果);
+            Assert.Contains(l_既定結果[0].A_配列, new[] { l_ゲノム, Util.V_逆相補_曖昧塩基あり(l_ゲノム) });
+
+            var l_結果 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, C_リード長, 0, out _, out var l_繋いだ数, p_要るリード数: 3);
+            Assert.Equal(0, l_繋いだ数);
+            Assert.Equal(l_配列群, l_結果);
+        }
+
+        /// <summary>
+        /// 隙間なしの継ぎ目を、跨ぐリードが 3 本ずつ挟むなら、要るリード数を 3 にしても繋がり、ゲノムと一致する
+        /// </summary>
+        [Fact]
+        public void Get_繋いだ配列群_要るリード数3で跨ぐリード3本なら繋がりゲノムと一致する()
+        {
+            var l_ゲノム = Get_ゲノム();
+            var l_配列群 = new List<(string A_ID, string A_配列)>
+            {
+                (C_項目_A, l_ゲノム[..3000]),
+                (C_項目_B, l_ゲノム[3000..])
+            };
+            var l_リード群 = Get_リード群(l_ゲノム, s => s < 2855 || s >= 2975 || s == 2900 || s == 2910 || s == 2920);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+
+            var l_結果 = ReadEndJoiner.Get_繋いだ配列群(l_配列群, l_索引, C_リード長, 0, out _, out var l_繋いだ数, p_要るリード数: 3);
+            Assert.Equal(1, l_繋いだ数);
+            Assert.Single(l_結果);
+            Assert.Contains(l_結果[0].A_配列, new[] { l_ゲノム, Util.V_逆相補_曖昧塩基あり(l_ゲノム) });
+        }
+
         #endregion
 
         #region 内部メソッド
