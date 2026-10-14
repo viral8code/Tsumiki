@@ -128,7 +128,8 @@ namespace Tsumiki.Tests.Core
             var l_総数 = 0;
             var l_畳んだ数 = 0;
             var l_埋めた数 = 0;
-            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 89, 100, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数);
+            var l_一致で畳んだ数 = 0;
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 89, 100, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数);
             Assert.Equal(1, l_総数);
             Assert.Equal(p_Is畳む ? 1 : 0, l_畳んだ数);
             Assert.Equal(p_Is畳む ? l_繋いだ配列 : l_左 + Consts.未確認の繋ぎ目 + l_右, l_結果);
@@ -150,9 +151,74 @@ namespace Tsumiki.Tests.Core
             var l_総数 = 0;
             var l_畳んだ数 = 0;
             var l_埋めた数 = 0;
-            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 63, 150, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数);
+            var l_一致で畳んだ数 = 0;
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 63, 150, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数);
             Assert.Equal((1, 0, 1), (l_総数, l_畳んだ数, l_埋めた数));
             Assert.Equal(l_本当, l_結果);
+        }
+
+        /// <summary>
+        /// 両側の片が長く完全に一致し、その長さがただ 1 通りなら、リードが無くても畳む
+        /// </summary>
+        /// <param name="p_共通">両側の片の末尾と先頭が一致する長さ</param>
+        /// <param name="p_k長">k 長</param>
+        /// <param name="p_Is畳む">畳むはずか</param>
+        [Theory]
+        [InlineData(120, 135, true)]
+        [InlineData(40, 135, false)]
+        [InlineData(120, 101, false)]
+        public void Get_確かめた繋ぎ目を畳んだ配列_両側の長い一致で畳む(int p_共通, int p_k長, bool p_Is畳む)
+        {
+            var l_乱数 = new Random(31);
+            var l_共通 = Get_乱配列(l_乱数, p_共通);
+            var l_左 = Get_乱配列(l_乱数, 300) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(l_乱数, 300);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => new List<string>());
+            var l_総数 = 0;
+            var l_畳んだ数 = 0;
+            var l_埋めた数 = 0;
+            var l_一致で畳んだ数 = 0;
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, p_k長, 100, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数);
+            Assert.Equal(1, l_総数);
+            Assert.Equal(0, l_畳んだ数);
+            Assert.Equal(0, l_埋めた数);
+            Assert.Equal(p_Is畳む ? 1 : 0, l_一致で畳んだ数);
+            Assert.Equal(p_Is畳む ? l_左 + l_右[p_共通..] : l_左 + Consts.未確認の繋ぎ目 + l_右, l_結果);
+        }
+
+        /// <summary>
+        /// 一致する長さが複数あれば (縦の反復の中)、畳まない
+        /// </summary>
+        [Fact]
+        public void Get_確かめた繋ぎ目を畳んだ配列_一致が複数あれば畳まない()
+        {
+            var l_乱数 = new Random(32);
+            var l_単位 = Get_乱配列(l_乱数, 12);
+            var l_共通 = string.Concat(Enumerable.Repeat(l_単位, 10));
+            var l_左 = Get_乱配列(l_乱数, 300) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(l_乱数, 300);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => new List<string>());
+            var l_総数 = 0;
+            var l_畳んだ数 = 0;
+            var l_埋めた数 = 0;
+            var l_一致で畳んだ数 = 0;
+            var l_結果 = FinalAssemblyPipeline.Get_確かめた繋ぎ目を畳んだ配列(l_左 + Consts.未確認の繋ぎ目 + l_右, l_索引, 135, 100, 0, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数);
+            Assert.Equal(0, l_一致で畳んだ数);
+            Assert.Equal(l_左 + Consts.未確認の繋ぎ目 + l_右, l_結果);
+        }
+
+        /// <summary>
+        /// 左の片は、最後のギャップ文字より後ろだけを見る
+        /// </summary>
+        [Fact]
+        public void Get_配列の一致で決めた重なり長_最後のギャップより後ろだけを左の片とする()
+        {
+            var l_乱数 = new Random(33);
+            var l_共通 = Get_乱配列(l_乱数, 120);
+            var l_左 = Get_乱配列(l_乱数, 300) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(l_乱数, 300);
+            var l_出力 = new StringBuilder("ACGT" + 'N' + Get_乱配列(l_乱数, 50) + l_左);
+            Assert.Equal(120, Scaffolder.Get_配列の一致で決めた重なり長(l_出力, l_右, 135));
         }
 
         /// <summary>

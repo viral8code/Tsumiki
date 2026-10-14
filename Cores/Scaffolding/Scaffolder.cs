@@ -162,6 +162,21 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_一意の出現数の上限 = 1_000;
 
+        /// <summary>
+        /// 両側の配列の一致を探す重なりの長さの上限
+        /// </summary>
+        private const int C_一致を探す長さの上限 = 300;
+
+        /// <summary>
+        /// 両側の配列の一致を確かめる重なりの長さの下限
+        /// </summary>
+        private const int C_一致を確かめる長さの下限 = 12;
+
+        /// <summary>
+        /// 両側の配列の一致だけで畳む重なりの長さの下限
+        /// </summary>
+        private const int C_一致で畳む重なりの下限 = 64;
+
         #endregion
 
         #region 内部変数
@@ -538,6 +553,39 @@ namespace Tsumiki.Cores.Scaffolding
             l_左 = l_左[(l_左.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
             var l_畳んだ配列 = string.Concat(l_左, p_次の配列.AsSpan(l_重なり長, Math.Min(p_次の配列.Length, C_埋めるときに見る長さ) - l_重なり長));
             return Is両脇まで跨ぐリードが無い(p_リード索引, l_畳んだ配列, l_左.Length - l_重なり長, l_左.Length, p_リード長, p_一意の出現数) ? null : l_重なり長;
+        }
+
+        /// <summary>
+        /// 左の片の末尾と右の片の先頭が完全に一致する重なりのうち、長さがただ 1 つに決まり、C_一致で畳む重なりの下限 以上 k-1 以下ならその長さを返す<br/>
+        /// 左の片は p_出力 のうち最後のギャップ文字より後ろの部分 (長さは C_一致を探す長さの上限 までを見る)
+        /// </summary>
+        /// <param name="p_出力">ここまでの scaffold 配列</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の contig 配列 (次のギャップ文字の手前まで)</param>
+        /// <param name="p_k長">k 長</param>
+        /// <returns>一致で決めた重なりの長さ、決められなければ null</returns>
+        public static int? Get_配列の一致で決めた重なり長(StringBuilder p_出力, string p_次の配列, int p_k長)
+        {
+            var l_窓の長さ = Math.Min(p_出力.Length, C_一致を探す長さの上限 + 1);
+            var l_窓 = p_出力.ToString(p_出力.Length - l_窓の長さ, l_窓の長さ);
+            var l_左 = l_窓[(l_窓.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
+            var l_上限 = Math.Min(Math.Min(l_左.Length, p_次の配列.Length) - 1, C_一致を探す長さの上限);
+            int? l_一致の長さ = null;
+            for (var l_長さ = C_一致を確かめる長さの下限; l_長さ <= l_上限; l_長さ++)
+            {
+                if (!l_左.AsSpan(l_左.Length - l_長さ).SequenceEqual(p_次の配列.AsSpan(0, l_長さ)))
+                {
+                    continue;
+                }
+
+                if (l_一致の長さ is not null)
+                {
+                    return null;
+                }
+
+                l_一致の長さ = l_長さ;
+            }
+
+            return l_一致の長さ is { } l_重なり長 && l_重なり長 >= C_一致で畳む重なりの下限 && l_重なり長 <= p_k長 - 1 ? l_重なり長 : null;
         }
 
         /// <summary>

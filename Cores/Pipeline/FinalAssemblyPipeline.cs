@@ -242,24 +242,26 @@ namespace Tsumiki.Cores.Pipeline
                 var l_総数 = 0;
                 var l_畳んだ数 = 0;
                 var l_埋めた数 = 0;
+                var l_一致で畳んだ数 = 0;
                 using (var l_書き込み = new FastaWriter(l_対象[i].A_パス))
                 {
                     foreach (var (l_ID, l_配列) in l_対象[i].A_全件)
                     {
-                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, l_一意の出現数, ref l_総数, ref l_畳んだ数, ref l_埋めた数));
+                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, l_一意の出現数, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数));
                     }
                 }
 
                 if (l_対象[i].A_パス == p_パス群[0])
                 {
-                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数, l_埋めた数);
+                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数, l_埋めた数, l_一致で畳んだ数);
                 }
             }
         }
 
         /// <summary>
         /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む<br/>
-        /// 畳めなければ、両側を跨ぐリードの続きで埋められるか試す
+        /// 畳めなければ、両側を跨ぐリードの続きで埋められるか試す<br/>
+        /// それもできなければ、両側の配列が長く完全に一致する重なりでただ 1 通りに決まるか試す
         /// </summary>
         /// <param name="p_配列">配列</param>
         /// <param name="p_索引">リードの索引</param>
@@ -267,10 +269,11 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_リード長">代表リード長</param>
         /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安 (Scaffolder.Get_一意の出現数) 、分からなければ 0</param>
         /// <param name="p_総数">未確認の繋ぎ目の数 (加算する)</param>
-        /// <param name="p_畳んだ数">畳んだ数 (加算する)</param>
+        /// <param name="p_畳んだ数">リードで確かめた重なりで畳んだ数 (加算する)</param>
         /// <param name="p_埋めた数">リードの続きで埋めた数 (加算する)</param>
+        /// <param name="p_一致で畳んだ数">両側の配列の長い一致で畳んだ数 (加算する)</param>
         /// <returns>畳んだ後の配列</returns>
-        public static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数)
+        public static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数, ref int p_一致で畳んだ数)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
             var l_インデックス = 0;
@@ -304,6 +307,13 @@ namespace Tsumiki.Cores.Pipeline
                     l_出力.Length -= l_埋め方.A_左から削る長さ;
                     _ = l_出力.Append(l_埋め方.A_埋める配列);
                     l_インデックス += 1 + l_埋め方.A_右から削る長さ;
+                    continue;
+                }
+
+                if (Scaffolder.Get_配列の一致で決めた重なり長(l_出力, l_次の配列, p_k長) is { } l_一致の重なり長)
+                {
+                    p_一致で畳んだ数++;
+                    l_インデックス += 1 + l_一致の重なり長;
                     continue;
                 }
 
