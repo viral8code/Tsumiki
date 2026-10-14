@@ -175,7 +175,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_k長">文脈長</param>
         /// <param name="p_判定">探索の結果</param>
         /// <returns>一意な充填配列、未確定なら null</returns>
-        public static string? Get_固定kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定, int p_長さの余裕幅 = Consts.ギャップ充填の長さの余裕幅)
+        public static string? Get_固定kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定)
         {
             if (p_ギャップ.A_左アンカー.Length < p_k長 || p_ギャップ.A_右アンカー.Length < p_k長)
             {
@@ -199,8 +199,8 @@ namespace Tsumiki.Cores.Scaffolding
                 return null;
             }
 
-            var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - p_長さの余裕幅);
-            var l_最大長 = p_ギャップ.A_長さ + p_長さの余裕幅;
+            var l_最小長 = Math.Max(0, p_ギャップ.A_長さ - Consts.ギャップ充填の長さの余裕幅);
+            var l_最大長 = p_ギャップ.A_長さ + Consts.ギャップ充填の長さの余裕幅;
             (var l_経路, p_判定) = ConstrainedPathFinder.Get_経路(l_左のkmer, l_目標kmer, l_最小長, l_最大長, l_集合, p_k長);
             return l_経路;
         }
@@ -234,10 +234,10 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_k長"></param>
         /// <param name="p_判定"></param>
         /// <returns></returns>
-        public static string? Get_適応kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定, int p_長さの余裕幅 = Consts.ギャップ充填の長さの余裕幅)
+        public static string? Get_適応kの局所結果(局所ギャップ p_ギャップ, List<読取証拠> p_局所リード, int p_k長, out ギャップ充填判定 p_判定)
         {
             var l_異なるリード = p_局所リード.DistinctBy(x => x.A_配列, StringComparer.Ordinal).ToList();
-            var l_経路 = Get_固定kの局所結果(p_ギャップ, p_局所リード, p_k長, out p_判定, p_長さの余裕幅);
+            var l_経路 = Get_固定kの局所結果(p_ギャップ, p_局所リード, p_k長, out p_判定);
             if (l_経路 is not null && Has経路支持(p_ギャップ, l_経路, l_異なるリード, p_k長))
             {
                 return l_経路;
@@ -253,7 +253,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                var l_候補 = Get_固定kの局所結果(p_ギャップ, l_異なるリード, l_局所k, out var l_局所判定, p_長さの余裕幅);
+                var l_候補 = Get_固定kの局所結果(p_ギャップ, l_異なるリード, l_局所k, out var l_局所判定);
                 if (l_局所判定 == ギャップ充填判定.一意でない)
                 {
                     l_競合あり = true;
