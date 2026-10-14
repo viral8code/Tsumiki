@@ -160,7 +160,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_塩基">塩基</param>
         /// <returns>塩基値、または -1</returns>
-        private static int Get_塩基値(char p_塩基)
+        internal static int Get_塩基値(char p_塩基)
         {
             return p_塩基 switch
             {
@@ -407,7 +407,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_入る">頂点ごとの入る辺の元の頂点、無ければ -1</param>
         /// <param name="p_繋いだ数">連結に使った辺の数</param>
         /// <returns>配列の出力 (元の番号の順)</returns>
-        private static List<(string A_ID, string A_配列)> Get_鎖にして書き出す(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, string[] p_頂点, (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[] p_出る, int[] p_入る, out int p_繋いだ数)
+        internal static List<(string A_ID, string A_配列)> Get_鎖にして書き出す(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, string[] p_頂点, (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[] p_出る, int[] p_入る, out int p_繋いだ数)
         {
             var l_配列数 = p_配列群.Count;
             var l_使った = new bool[l_配列数];
