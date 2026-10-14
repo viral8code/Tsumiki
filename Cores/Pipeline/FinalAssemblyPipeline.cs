@@ -466,13 +466,13 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
             V_除外_短い配列(l_最終パス, p_リード長);
-            V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
             if (p_リード長 > 0)
             {
                 var l_一意の出現数 = V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
                 V_繋ぐ_余ったリードで端(l_最終パス, p_リード長 ?? 0, p_原入力, l_一意の出現数);
+                V_繋ぐ_余ったペアで橋渡し(l_最終パス, p_原入力);
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
@@ -579,23 +579,22 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// ペアで端どうしの相手を決め、間を局所組み立てで埋めて繋ぐ。埋まらなくても票が多ければ未確認の繋ぎ目で繋ぐ<br/>
-        /// ライブラリは間引く前の群があればそれ、無ければ間引かないライブラリ群を使う<br/>
+        /// 間引いたときだけ、間引く前の全リードのペアで端どうしの相手を決め、間を局所組み立てで埋めて繋ぐ<br/>
         /// 配列の数が減ったときだけ、同じパスに書き戻す
         /// </summary>
         /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
-        /// <param name="p_原入力">ライブラリ群を保持した設定</param>
-        private static void V_繋ぐ_ペアで橋渡し(string p_最終パス, Parameters p_原入力)
+        /// <param name="p_原入力">間引く前のライブラリ群と採用割合を保持した設定</param>
+        private static void V_繋ぐ_余ったペアで橋渡し(string p_最終パス, Parameters p_原入力)
         {
-            var l_ライブラリ群 = p_原入力.A_間引き前ライブラリ群.Count > 0 ? p_原入力.A_間引き前ライブラリ群 : p_原入力.A_ライブラリ群;
-            if (l_ライブラリ群.Count == 0)
+            var l_採用割合 = p_原入力.A_間引きの採用割合;
+            if (p_原入力.A_間引き前ライブラリ群.Count == 0 || l_採用割合 <= 0 || l_採用割合 >= 1)
             {
                 return;
             }
 
             using var l_計測 = new StageTimer("pair-bridge");
             var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
-            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ群, out var l_統計);
+            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, p_原入力.A_間引き前ライブラリ群, out var l_統計);
             if (l_繋いだ配列群.Count < l_配列群.Count)
             {
                 using var l_書き込み = new FastaWriter(p_最終パス);
@@ -605,7 +604,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count, l_統計.A_印で繋いだ辺の数);
+            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count);
         }
 
         /// <summary>

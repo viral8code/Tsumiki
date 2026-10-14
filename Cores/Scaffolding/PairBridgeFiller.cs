@@ -72,10 +72,9 @@ namespace Tsumiki.Cores.Scaffolding
         private const int C_局所リード数の上限 = 4_000;
 
         /// <summary>
-        /// 埋められない繋ぎ目を未確認の印 (N) で繋ぐのに要る、首位の票数の下限<br/>
-        /// 埋めて繋ぐより強い証拠があるときだけにする
+        /// 間の見込みの下限 (負は重なり)
         /// </summary>
-        private const int C_印で繋ぐのに要るペア数 = 10;
+        private const int C_間の見込みの下限 = -30;
 
         #endregion
 
@@ -108,7 +107,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_候補 = Get_候補の辺(l_票, l_挿入長);
             if (l_候補.Count == 0)
             {
-                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0);
+                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0);
                 return p_配列群.ToList();
             }
 
@@ -121,47 +120,30 @@ namespace Tsumiki.Cores.Scaffolding
             var l_埋めた数 = 0;
             var l_一意でない数 = 0;
             var l_届かない数 = 0;
-            var l_印の数 = 0;
             for (var i = 0; i < l_候補.Count; i++)
             {
                 var l_u = l_候補[i].A_u;
                 var l_x = l_候補[i].A_x;
-                var l_埋める配列 = l_結果[i];
-                var l_印 = false;
-                if (l_埋める配列 is not null)
+                if (l_結果[i] is { } l_埋める配列)
                 {
                     l_埋めた数++;
+                    l_出る[l_u] = (l_x, 0, l_埋める配列, 0);
+                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, Util.V_逆相補_曖昧塩基あり(l_埋める配列), 0);
+                    l_入る[l_x] = l_u;
+                    l_入る[l_u ^ 1] = l_x ^ 1;
+                }
+                else if (l_判定[i] == ギャップ充填判定.一意でない)
+                {
+                    l_一意でない数++;
                 }
                 else
                 {
-                    if (l_判定[i] == ギャップ充填判定.一意でない)
-                    {
-                        l_一意でない数++;
-                    }
-                    else
-                    {
-                        l_届かない数++;
-                    }
-
-                    if (l_候補[i].A_票数 >= C_印で繋ぐのに要るペア数)
-                    {
-                        l_埋める配列 = Consts.未確認の繋ぎ目.ToString();
-                        l_印 = true;
-                        l_印の数++;
-                    }
-                }
-
-                if (l_埋める配列 is { } l_配列)
-                {
-                    l_出る[l_u] = (l_x, 0, l_配列, 0);
-                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, l_印 ? l_配列 : Util.V_逆相補_曖昧塩基あり(l_配列), 0);
-                    l_入る[l_x] = l_u;
-                    l_入る[l_u ^ 1] = l_x ^ 1;
+                    l_届かない数++;
                 }
             }
 
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out var l_繋いだ数);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補.Count, l_埋めた数, l_一意でない数, l_届かない数);
             return l_書き出し;
         }
 
@@ -445,12 +427,12 @@ namespace Tsumiki.Cores.Scaffolding
                 }
 
                 var l_間の見込み = p_挿入長 - StatsUtil.Get_中央値(l_首位[l_u].A_一覧);
-                if (l_間の見込み > Consts.ギャップ充填のギャップ長上限)
+                if (l_間の見込み < C_間の見込みの下限 || l_間の見込み > Consts.ギャップ充填のギャップ長上限)
                 {
                     continue;
                 }
 
-                l_候補.Add(new 候補の辺(l_u, l_x, l_間の見込み, l_首位[l_u].A_一覧.Count));
+                l_候補.Add(new 候補の辺(l_u, l_x, l_間の見込み));
             }
 
             return l_候補;
@@ -669,8 +651,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="A_u">始点の頂点</param>
         /// <param name="A_x">終点の頂点</param>
         /// <param name="A_間の長さ">間の見込み (挿入長 − d1 − d2 の中央値)</param>
-        /// <param name="A_票数">首位の辺の票数 (ペアの数)</param>
-        private readonly record struct 候補の辺(int A_u, int A_x, int A_間の長さ, int A_票数);
+        private readonly record struct 候補の辺(int A_u, int A_x, int A_間の長さ);
 
         #endregion
     }

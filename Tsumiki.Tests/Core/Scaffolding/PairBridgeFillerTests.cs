@@ -62,16 +62,6 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_間隔_疎 = 200;
 
-        /// <summary>
-        /// 間 30 bp の場面での配列 B の開始 (B = G[2830..6000])
-        /// </summary>
-        private const int C_B開始_間30bp = 2830;
-
-        /// <summary>
-        /// 間 30 bp の場面で、A と B を跨ぐ断片の長さ (間の見込みが負になる長さ)
-        /// </summary>
-        private const int C_跨ぐ断片長_間30bp = 370;
-
         #endregion
 
         #region フィールド
@@ -252,76 +242,6 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 印で繋ぐ: 間を跨ぐリードが無く埋まらなくても、A と B を結ぶペアが 10 組以上あれば、未確認の繋ぎ目 (n) で 1 本に繋ぐ
-        /// </summary>
-        [Fact]
-        public void 印で繋ぐ_埋まらなくても票が10組以上あれば未確認の繋ぎ目で1本に繋ぐ()
-        {
-            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
-            var l_A = l_G[..C_A長];
-            var l_B = l_G[C_B開始..];
-            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2650, 2698, 3), C_挿入長);
-            var l_ライブラリ = V_書き出し_断片("mark", l_G, l_断片群);
-
-            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
-
-            Assert.Single(l_結果);
-            Assert.Equal(l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
-            Assert.Equal(1, l_統計.A_候補の辺の数);
-            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
-            Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
-        }
-
-        /// <summary>
-        /// 印の下限未満: 埋まらず、A と B を結ぶペアが 10 組未満 (6 組) なら、印では繋がず元の 2 本のまま
-        /// </summary>
-        [Fact]
-        public void 印で繋がない_埋まらず票が10組未満なら元の2本のまま()
-        {
-            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
-            var l_A = l_G[..C_A長];
-            var l_B = l_G[C_B開始..];
-            var l_跨ぐ開始群 = V_断片の開始群(2650, 2698, 3).Where((s, i) => i % 3 == 0).ToList();
-            var l_断片群 = V_場面の断片群(C_B開始, l_跨ぐ開始群, C_挿入長);
-            var l_ライブラリ = V_書き出し_断片("fewmark", l_G, l_断片群);
-
-            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
-
-            Assert.Equal(2, l_結果.Count);
-            Assert.Equal(l_A, l_結果[0].A_配列);
-            Assert.Equal(l_B, l_結果[1].A_配列);
-            Assert.Equal(1, l_統計.A_候補の辺の数);
-            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
-            Assert.Equal(0, l_統計.A_印で繋いだ辺の数);
-        }
-
-        /// <summary>
-        /// 間の見込みが負: 間 30 bp で、跨ぐ断片の長さ 370 により間の見込みは −40 (旧下限 −30 より小さい)。
-        /// 候補になり、票が 10 組以上なので、埋まれば埋めて、埋まらなければ印で 1 本に繋ぐ
-        /// </summary>
-        [Fact]
-        public void 間の見込みが負でも候補になり票が10組以上なら1本に繋ぐ()
-        {
-            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
-            var l_A = l_G[..C_A長];
-            var l_B = l_G[C_B開始_間30bp..];
-            var l_跨ぐ開始群 = V_断片の開始群(2612, 2650, 2);
-            var l_断片群 = V_場面の断片群(C_B開始_間30bp, l_跨ぐ開始群, C_跨ぐ断片長_間30bp);
-            var l_ライブラリ = V_書き出し_断片("neg", l_G, l_断片群);
-
-            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
-
-            Assert.Equal(1, l_統計.A_候補の辺の数);
-            Assert.Equal(C_挿入長, l_統計.A_挿入長);
-            Assert.Equal(1, l_統計.A_埋めて繋いだ辺の数 + l_統計.A_印で繋いだ辺の数);
-            Assert.Single(l_結果);
-            if (l_統計.A_印で繋いだ辺の数 == 1)
-            {
-                Assert.Equal(l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
-            }
-        }
-
-        /// <summary>
         /// スレッド数 1 と 4 で、出力が同じになる
         /// </summary>
         [Fact]
@@ -431,57 +351,20 @@ namespace Tsumiki.Tests.Core
         /// <returns>ライブラリ (順リードと逆リードのパス)</returns>
         private List<(string A_順リード, string A_逆リード)> V_書き出し_ペア(string p_接頭辞, string p_ゲノム, IReadOnlyList<int> p_開始群)
         {
-            return V_書き出し_断片(p_接頭辞, p_ゲノム, V_断片群(p_開始群, C_挿入長));
-        }
-
-        /// <summary>
-        /// 断片ごとに FASTQ のペアを書き出す (断片の長さは断片ごと。R1 = 先頭 100 bp、R2 = 末尾 100 bp の逆相補)
-        /// </summary>
-        /// <param name="p_接頭辞">ファイル名の接頭辞</param>
-        /// <param name="p_ゲノム">ゲノム</param>
-        /// <param name="p_断片群">断片の開始と長さの並び</param>
-        /// <returns>ライブラリ (順リードと逆リードのパス)</returns>
-        private List<(string A_順リード, string A_逆リード)> V_書き出し_断片(string p_接頭辞, string p_ゲノム, IReadOnlyList<(int A_開始, int A_断片長)> p_断片群)
-        {
             var l_パス1 = Path.Combine(this._作業ディレクトリ, p_接頭辞 + "_1.fq");
             var l_パス2 = Path.Combine(this._作業ディレクトリ, p_接頭辞 + "_2.fq");
             using var l_書き込み1 = new StreamWriter(l_パス1);
             using var l_書き込み2 = new StreamWriter(l_パス2);
-            for (var i = 0; i < p_断片群.Count; i++)
+            for (var i = 0; i < p_開始群.Count; i++)
             {
-                var (l_s, l_長さ) = p_断片群[i];
+                var l_s = p_開始群[i];
                 var l_R1 = p_ゲノム.Substring(l_s, C_リード長);
-                var l_R2 = Util.V_逆相補_曖昧塩基あり(p_ゲノム.Substring(l_s + l_長さ - C_リード長, C_リード長));
+                var l_R2 = Util.V_逆相補_曖昧塩基あり(p_ゲノム.Substring(l_s + C_挿入長 - C_リード長, C_リード長));
                 l_書き込み1.WriteLine($"@pair{i}/1\n{l_R1}\n+\n{new string('I', C_リード長)}");
                 l_書き込み2.WriteLine($"@pair{i}/2\n{l_R2}\n+\n{new string('I', C_リード長)}");
             }
 
             return [(l_パス1, l_パス2)];
-        }
-
-        /// <summary>
-        /// 開始の並びに同じ断片の長さを付ける
-        /// </summary>
-        /// <param name="p_開始群">断片の開始の並び</param>
-        /// <param name="p_断片長">断片の長さ</param>
-        /// <returns>断片の開始と長さの並び</returns>
-        private static List<(int A_開始, int A_断片長)> V_断片群(IEnumerable<int> p_開始群, int p_断片長)
-        {
-            return p_開始群.Select(s => (s, p_断片長)).ToList();
-        }
-
-        /// <summary>
-        /// 印・間の場面の断片の並びを作る: A と B の中だけの挿入長 300 の断片 (A と B を跨がないもの) と、A と B を跨ぐ断片
-        /// </summary>
-        /// <param name="p_B開始">配列 B の開始 (ゲノムの位置)</param>
-        /// <param name="p_跨ぐ開始群">A と B を跨ぐ断片の開始の並び</param>
-        /// <param name="p_跨ぐ断片長">A と B を跨ぐ断片の長さ</param>
-        /// <returns>断片の開始と長さの並び</returns>
-        private static List<(int A_開始, int A_断片長)> V_場面の断片群(int p_B開始, IEnumerable<int> p_跨ぐ開始群, int p_跨ぐ断片長)
-        {
-            var l_一覧 = V_断片群(V_断片の開始群(0, 5700, C_間隔_密).Where(s => s + C_挿入長 <= C_A長 || s >= p_B開始), C_挿入長);
-            l_一覧.AddRange(V_断片群(p_跨ぐ開始群, p_跨ぐ断片長));
-            return l_一覧;
         }
 
         #endregion
