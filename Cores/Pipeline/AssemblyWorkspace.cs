@@ -55,7 +55,7 @@
         /// <summary>
         /// 中間ファイルを判定する正規表現
         /// </summary>
-        private const string C_成果物Regex_ファイル = @"^(thinned|preprocessed|corrected)\.[12]\.fq(\.sha256(\.tmp)?)?$";
+        private const string C_成果物Regex_ファイル = @"^(thinned|preprocessed|corrected)\.[12]\.fq(\.gz)?(\.sha256(\.tmp)?)?$";
 
         /// <summary>
         /// 中間ディレクトリを判定する正規表現

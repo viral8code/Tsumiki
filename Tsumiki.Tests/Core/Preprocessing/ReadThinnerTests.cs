@@ -167,6 +167,35 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 8 組のペアを割合 0.25 で gzip 圧縮して間引くと、出力は gzip で、展開すると番号 3 と 7 の組が書かれる
+        /// </summary>
+        [Fact]
+        public void V_圧縮して間引くとgzipで書かれ_展開すると採られた組だけになる()
+        {
+            var l_順 = this.Get_パス("gz_r1.fq");
+            var l_逆 = this.Get_パス("gz_r2.fq");
+            this.V_書込_FASTQ(l_順, Enumerable.Range(0, 8).Select(x => $"r{x}"));
+            this.V_書込_FASTQ(l_逆, Enumerable.Range(0, 8).Select(x => $"s{x}"));
+            var l_出力1 = this.Get_パス("thinned.1.fq.gz");
+            var l_出力2 = this.Get_パス("thinned.2.fq.gz");
+
+            var (l_元, l_採用) = ReadThinner.V_間引き_ファイル(l_順, l_逆, l_出力1, l_出力2, 0.25, p_Is圧縮: true);
+
+            Assert.Equal(8, l_元);
+            Assert.Equal(2, l_採用);
+            Assert.Equal(new byte[] { 0x1F, 0x8B }, File.ReadAllBytes(l_出力1).Take(2).ToArray());
+            Assert.Equal(new byte[] { 0x1F, 0x8B }, File.ReadAllBytes(l_出力2).Take(2).ToArray());
+            var l_行1 = this.Get_展開行(l_出力1);
+            var l_行2 = this.Get_展開行(l_出力2);
+            Assert.Equal(8, l_行1.Count);
+            Assert.Equal(8, l_行2.Count);
+            Assert.Contains("r3", l_行1[0], StringComparison.Ordinal);
+            Assert.Contains("r7", l_行1[4], StringComparison.Ordinal);
+            Assert.Contains("s3", l_行2[0], StringComparison.Ordinal);
+            Assert.Contains("s7", l_行2[4], StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// 単一リード 4 件を割合 0.5 で間引くと 2 件が残り、番号 1 と 3 が書かれる
         /// </summary>
         [Fact]
@@ -275,6 +304,26 @@ namespace Tsumiki.Tests.Core
         private string Get_パス(string p_名前)
         {
             return Path.Combine(this._作業ディレクトリ, p_名前);
+        }
+
+        /// <summary>
+        /// gzip のファイルを展開して、行の一覧を返す
+        /// </summary>
+        /// <param name="p_パス">gzip のファイル</param>
+        /// <returns>展開した各行</returns>
+        private List<string> Get_展開行(string p_パス)
+        {
+            var l_行群 = new List<string>();
+            using var l_元 = File.OpenRead(p_パス);
+            using var l_展開 = new GZipStream(l_元, CompressionMode.Decompress);
+            using var l_読込 = new StreamReader(l_展開);
+            string? l_行;
+            while ((l_行 = l_読込.ReadLine()) is not null)
+            {
+                l_行群.Add(l_行);
+            }
+
+            return l_行群;
         }
 
         /// <summary>

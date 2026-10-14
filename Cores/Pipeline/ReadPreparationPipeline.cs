@@ -53,6 +53,11 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         private const string C_間引きの情報ファイル名 = "thinned.info";
 
+        /// <summary>
+        /// 圧縮して置くリードのファイル名の接尾辞 (gzip)
+        /// </summary>
+        private const string C_圧縮ファイル拡張子 = ".gz";
+
         #endregion
 
         #region 公開メソッド
@@ -99,11 +104,12 @@ namespace Tsumiki.Cores.Pipeline
 
             using var l_計測 = new StageTimer(C_項目_thinning);
             var l_署名 = Get_署名(p_引数);
+            var l_圧縮 = !中間データ置き場.A_Is有効;
             List<(string A_出力1, string? A_出力2)> l_出力群 = [];
             for (var i = 0; i < p_引数.A_ライブラリ数; i++)
             {
                 var l_Hasペア = !string.IsNullOrWhiteSpace(p_引数.A_ライブラリ群[i].A_逆リード);
-                l_出力群.Add((Get_中間パス(p_一時ディレクトリ, C_間引き済みの幹, i, 1), l_Hasペア ? Get_中間パス(p_一時ディレクトリ, C_間引き済みの幹, i, 2) : null));
+                l_出力群.Add((Get_間引きパス(p_一時ディレクトリ, i, 1, l_圧縮), l_Hasペア ? Get_間引きパス(p_一時ディレクトリ, i, 2, l_圧縮) : null));
             }
 
             if (p_引数.A_Is再開 && l_署名 is not null && l_出力群.Count > 0 && l_出力群.All(x => StageCheckpoint.Is再利用可能(l_署名, x.A_出力1, x.A_出力2)))
@@ -142,7 +148,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 var (l_順リード, l_逆リード) = p_引数.A_ライブラリ群[i];
                 var (l_出力1, l_出力2) = l_出力群[i];
-                var (l_元, l_採用) = ReadThinner.V_間引き_ファイル(l_順リード, l_逆リード, l_出力1, l_出力2, l_採用割合);
+                var (l_元, l_採用) = ReadThinner.V_間引き_ファイル(l_順リード, l_逆リード, l_出力1, l_出力2, l_採用割合, p_Is圧縮: l_圧縮);
                 l_元の件数 += l_元;
                 l_採用件数 += l_採用;
                 V_保存_記録(l_署名, l_出力1, l_出力2);
@@ -296,6 +302,20 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_接尾 = p_ライブラリ番号 == 0 ? string.Empty : FormattableString.Invariant($".lib{p_ライブラリ番号 + 1}");
             return Path.Combine(p_一時ディレクトリ, FormattableString.Invariant($"{p_幹}{l_接尾}.{p_side}.fq"));
+        }
+
+        /// <summary>
+        /// 間引いたリードのパス (圧縮するときは gzip の接尾辞を付ける)。判定と書き出しの両方がこれを使う
+        /// </summary>
+        /// <param name="p_一時ディレクトリ">置き場</param>
+        /// <param name="p_ライブラリ番号">0 起点のライブラリ番号</param>
+        /// <param name="p_side">1 か 2</param>
+        /// <param name="p_Is圧縮">gzip で置くか</param>
+        /// <returns>間引いたリードのパス</returns>
+        private static string Get_間引きパス(string p_一時ディレクトリ, int p_ライブラリ番号, int p_side, bool p_Is圧縮)
+        {
+            var l_パス = Get_中間パス(p_一時ディレクトリ, C_間引き済みの幹, p_ライブラリ番号, p_side);
+            return p_Is圧縮 ? l_パス + C_圧縮ファイル拡張子 : l_パス;
         }
 
         /// <summary>

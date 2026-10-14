@@ -69,8 +69,9 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_出力1">出力の順リード</param>
         /// <param name="p_出力2">出力の逆リード、単一リードなら null</param>
         /// <param name="p_割合">採用割合</param>
+        /// <param name="p_Is圧縮">真なら出力を gzip で書く</param>
         /// <returns>元の件数 (ペアなら組の数) と採用件数</returns>
-        public static (long A_元の件数, long A_採用件数) V_間引き_ファイル(string p_順リード, string? p_逆リード, string p_出力1, string? p_出力2, double p_割合)
+        public static (long A_元の件数, long A_採用件数) V_間引き_ファイル(string p_順リード, string? p_逆リード, string p_出力1, string? p_出力2, double p_割合, bool p_Is圧縮 = false)
         {
             var l_Hasペア = !string.IsNullOrWhiteSpace(p_逆リード);
             var l_直接書く = 中間データ置き場.A_Is有効;
@@ -81,8 +82,8 @@ namespace Tsumiki.Cores.Preprocessing
             long l_採用件数 = 0;
             using (var l_読込1 = new FastqReader(p_順リード))
             using (var l_読込2 = l_Hasペア ? new FastqReader(p_逆リード!) : null)
-            using (var l_書込1 = new FastqWriter(l_書込先1))
-            using (var l_書込2 = l_書込先2 is null ? null : new FastqWriter(l_書込先2))
+            using (var l_書込1 = new FastqWriter(l_書込先1, p_Is圧縮))
+            using (var l_書込2 = l_書込先2 is null ? null : new FastqWriter(l_書込先2, p_Is圧縮))
             {
                 while (l_読込1.Has続き())
                 {
