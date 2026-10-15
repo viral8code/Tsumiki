@@ -113,6 +113,16 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_重なりを探すk長 = 135;
 
+        /// <summary>
+        /// 端の窓の密度が基準の密度の何倍を超えたら、多コピーの片と見なして繋がないか
+        /// </summary>
+        private const double C_多コピーとみなす密度の比 = 1.8;
+
+        /// <summary>
+        /// 多コピーの検査の基準の密度を作るのに要る、長さ C_窓長 以上の頂点の数の下限 (未満なら検査しない)
+        /// </summary>
+        private const int C_多コピーの判定に要る頂点数 = 10;
+
         #endregion
 
         #region 公開メソッド
@@ -133,7 +143,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_表 = Get_種の索引(l_頂点, l_対象);
             var l_並列数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
 
-            var (l_標本, l_票) = Get_1回目の集計(l_頂点, l_表, p_ライブラリ群, l_並列数);
+            var (l_標本, l_票, l_当たり数) = Get_1回目の集計(l_頂点, l_表, p_ライブラリ群, l_並列数);
             if (l_標本.Count < C_挿入長の最少標本数)
             {
                 p_統計 = default;
@@ -144,13 +154,15 @@ namespace Tsumiki.Cores.Scaffolding
             var l_候補全体 = Get_候補の辺(l_票, l_挿入長);
             if (l_候補全体.Count == 0)
             {
-                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0, 0, 0);
+                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0, 0, 0, 0);
                 return p_配列群.ToList();
             }
 
+            var l_多コピーの基準 = Get_多コピーの基準密度(l_当たり数, l_頂点);
             var l_候補 = new List<候補の辺>();
             var l_重なり群 = new List<int?>();
             var l_反復の端で除いた数 = 0;
+            var l_多コピーの端で除いた数 = 0;
             foreach (var l_辺 in l_候補全体)
             {
                 var l_u文字列 = l_頂点[l_辺.A_u];
@@ -162,13 +174,19 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
+                if (Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準))
+                {
+                    l_多コピーの端で除いた数++;
+                    continue;
+                }
+
                 l_候補.Add(l_辺);
                 l_重なり群.Add(l_重なり);
             }
 
             if (l_候補.Count == 0)
             {
-                p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_反復の端で除いた数, 0);
+                p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_反復の端で除いた数, 0, l_多コピーの端で除いた数);
                 return p_配列群.ToList();
             }
 
@@ -230,7 +248,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out var l_繋いだ数);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数);
             return l_書き出し;
         }
 
@@ -380,11 +398,12 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_表">種の索引</param>
         /// <param name="p_ライブラリ群">ペアのファイル</param>
         /// <param name="p_並列数">並列数</param>
-        /// <returns>挿入長の標本と、正準辺ごとの票</returns>
-        private static (List<int> 標本, Dictionary<(int A_始, int A_終), List<int>> 票) Get_1回目の集計(string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, int p_並列数)
+        /// <returns>挿入長の標本と、正準辺ごとの票と、頂点ごとの窓に当たったリードの数</returns>
+        private static (List<int> 標本, Dictionary<(int A_始, int A_終), List<int>> 票, int[] 当たり数) Get_1回目の集計(string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, int p_並列数)
         {
             var l_標本 = new List<int>();
             var l_票 = new Dictionary<(int A_始, int A_終), List<int>>();
+            var l_当たり数 = new int[p_頂点.Length];
             var l_結果群 = Get_全ペア(p_ライブラリ群)
                 .AsParallel()
                 .AsOrdered()
@@ -395,6 +414,16 @@ namespace Tsumiki.Cores.Scaffolding
                 if (l_結果.A_標本あり)
                 {
                     l_標本.Add(l_結果.A_挿入長);
+                }
+
+                if (l_結果.A_窓の頂点1 is { } l_窓1)
+                {
+                    l_当たり数[l_窓1]++;
+                }
+
+                if (l_結果.A_窓の頂点2 is { } l_窓2)
+                {
+                    l_当たり数[l_窓2]++;
                 }
 
                 if (!l_結果.A_票あり)
@@ -412,7 +441,7 @@ namespace Tsumiki.Cores.Scaffolding
                 l_一覧.Add(l_結果.A_和);
             }
 
-            return (l_標本, l_票);
+            return (l_標本, l_票, l_当たり数);
         }
 
         /// <summary>
@@ -427,9 +456,11 @@ namespace Tsumiki.Cores.Scaffolding
         {
             var l_当たり1 = Get_当たり(p_順リード, p_表, p_頂点);
             var l_当たり2 = Get_当たり(p_逆リード, p_表, p_頂点);
+            var l_窓1 = Get_窓の頂点(l_当たり1, p_頂点);
+            var l_窓2 = Get_窓の頂点(l_当たり2, p_頂点);
             if (l_当たり1 is null || l_当たり2 is null)
             {
-                return default;
+                return new 組の結果(false, 0, false, 0, 0, 0, l_窓1, l_窓2);
             }
 
             var l_u1 = l_当たり1.Value.A_頂点;
@@ -439,16 +470,92 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_u2 == (l_u1 ^ 1))
             {
                 var l_断片長 = l_d1 + l_d2 - p_頂点[l_u1].Length;
-                return new 組の結果(l_断片長 >= 1 && l_断片長 <= C_挿入長の上限, l_断片長, false, 0, 0, 0);
+                return new 組の結果(l_断片長 >= 1 && l_断片長 <= C_挿入長の上限, l_断片長, false, 0, 0, 0, l_窓1, l_窓2);
             }
 
             if (l_u1 / 2 != l_u2 / 2 && l_d1 > 0 && l_d1 <= C_窓長 && l_d2 > 0 && l_d2 <= C_窓長)
             {
                 var (l_始, l_終) = Get_正準辺(l_u1, l_u2 ^ 1);
-                return new 組の結果(false, 0, true, l_始, l_終, l_d1 + l_d2);
+                return new 組の結果(false, 0, true, l_始, l_終, l_d1 + l_d2, l_窓1, l_窓2);
             }
 
-            return default;
+            return new 組の結果(false, 0, false, 0, 0, 0, l_窓1, l_窓2);
+        }
+
+        /// <summary>
+        /// 1 本のリードの当たりが、頂点の右端の窓 (C_窓長) に当たっていれば、その頂点を返す
+        /// </summary>
+        /// <param name="p_当たり">当たりの頂点と位置、無ければ null</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <returns>窓に当たった頂点、当たらなければ null</returns>
+        private static int? Get_窓の頂点((int A_頂点, int A_位置)? p_当たり, string[] p_頂点)
+        {
+            if (p_当たり is not { } l_当たり)
+            {
+                return null;
+            }
+
+            var l_d = p_頂点[l_当たり.A_頂点].Length - l_当たり.A_位置;
+            return l_d > 0 && l_d <= C_窓長 ? l_当たり.A_頂点 : null;
+        }
+
+        /// <summary>
+        /// 頂点ごとの、右端の窓 (C_窓長 と長さの小さい方) に当たったリードの密度を求める
+        /// </summary>
+        /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <param name="p_頂点番号">頂点の番号</param>
+        /// <returns>密度 (数 / min(C_窓長, 長さ))</returns>
+        private static double Get_密度(int[] p_当たり数, string[] p_頂点, int p_頂点番号)
+        {
+            var l_窓の長さ = Math.Min(C_窓長, p_頂点[p_頂点番号].Length);
+            return l_窓の長さ <= 0 ? 0 : (double)p_当たり数[p_頂点番号] / l_窓の長さ;
+        }
+
+        /// <summary>
+        /// 多コピーの検査の基準の密度を、長さ C_窓長 以上の頂点の密度の中央値として求める
+        /// </summary>
+        /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <returns>基準の密度、頂点が C_多コピーの判定に要る頂点数 未満なら null (検査しない)</returns>
+        private static double? Get_多コピーの基準密度(int[] p_当たり数, string[] p_頂点)
+        {
+            var l_密度群 = new List<double>();
+            for (var v = 0; v < p_頂点.Length; v++)
+            {
+                if (p_頂点[v].Length >= C_窓長)
+                {
+                    l_密度群.Add(Get_密度(p_当たり数, p_頂点, v));
+                }
+            }
+
+            if (l_密度群.Count < C_多コピーの判定に要る頂点数)
+            {
+                return null;
+            }
+
+            return StatsUtil.Get_中央値(l_密度群);
+        }
+
+        /// <summary>
+        /// 候補の辺 u→x の端が多コピーの片と見なせるかを調べる<br/>
+        /// u の右端の窓、または x^1 (x の左端の窓) の密度が、基準の C_多コピーとみなす密度の比 倍を超えれば多コピーとする
+        /// </summary>
+        /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <param name="p_u">始点の頂点</param>
+        /// <param name="p_x">終点の頂点</param>
+        /// <param name="p_基準密度">基準の密度、検査しないなら null</param>
+        /// <returns>多コピーの端なら true</returns>
+        private static bool Is多コピーの端(int[] p_当たり数, string[] p_頂点, int p_u, int p_x, double? p_基準密度)
+        {
+            if (p_基準密度 is not { } l_基準)
+            {
+                return false;
+            }
+
+            var l_閾値 = C_多コピーとみなす密度の比 * l_基準;
+            return Get_密度(p_当たり数, p_頂点, p_u) > l_閾値 || Get_密度(p_当たり数, p_頂点, p_x ^ 1) > l_閾値;
         }
 
         /// <summary>
@@ -789,7 +896,9 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="A_始">票の正準辺の始点</param>
         /// <param name="A_終">票の正準辺の終点</param>
         /// <param name="A_和">d1 + d2</param>
-        private readonly record struct 組の結果(bool A_標本あり, int A_挿入長, bool A_票あり, int A_始, int A_終, int A_和);
+        /// <param name="A_窓の頂点1">順リードが窓 (右端 C_窓長) に当たったときの頂点、当たらなければ null</param>
+        /// <param name="A_窓の頂点2">逆リードが窓 (右端 C_窓長) に当たったときの頂点、当たらなければ null</param>
+        private readonly record struct 組の結果(bool A_標本あり, int A_挿入長, bool A_票あり, int A_始, int A_終, int A_和, int? A_窓の頂点1, int? A_窓の頂点2);
 
         /// <summary>
         /// 候補の辺 (u→x) と、u と x の端の間の見込み

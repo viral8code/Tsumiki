@@ -87,6 +87,26 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_重なりの長さ = 100;
 
+        /// <summary>
+        /// 多コピーの場面で足す、単一コピーの配列の本数 (基準の密度を作るのに要る頂点数を超える数)
+        /// </summary>
+        private const int C_多コピーの配列数 = 10;
+
+        /// <summary>
+        /// 多コピーの場面で足す、単一コピーの配列の長さ
+        /// </summary>
+        private const int C_多コピーの配列の長さ = 1000;
+
+        /// <summary>
+        /// 多コピーの場面で足す配列の乱数の種の始まり
+        /// </summary>
+        private const int C_多コピーの種 = 20000;
+
+        /// <summary>
+        /// 多コピーの場面で 2.5 倍にする B の先頭の範囲 (端の窓 C_窓長 と同じ 1000 bp)
+        /// </summary>
+        private const int C_B先頭の窓 = 1000;
+
         #endregion
 
         #region フィールド
@@ -383,6 +403,48 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 多コピーの片はつながない: 埋まらないが票が多い場面で、単一コピーの配列を 10 本足し、B の先頭 1000 bp から出るリードを 2.5 倍にすると、
+        /// B の先頭の端は多コピーの片と見なして繋がず、統計の多コピーの端で除いた数は 1
+        /// </summary>
+        [Fact]
+        public void 多コピーの片はつながない_B先頭のリードを増やすと繋がず多コピーの端で除く()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_配列群 = V_多コピーの配列群(l_G[..C_A長], l_G[C_B開始..]);
+            var l_ライブラリ = V_書き出し_多コピーの場面("multi_head", l_G, p_B先頭を増やす: true);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ, out var l_統計);
+
+            Assert.Equal(l_配列群.Count, l_結果.Count);
+            Assert.Contains(l_配列群[0].A_配列, l_結果.Select(x => x.A_配列));
+            Assert.Contains(l_配列群[1].A_配列, l_結果.Select(x => x.A_配列));
+            Assert.DoesNotContain(l_結果, x => x.A_配列.Contains('N'));
+            Assert.Equal(1, l_統計.A_多コピーの端で除いた数);
+            Assert.Equal(0, l_統計.A_印で繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
+        }
+
+        /// <summary>
+        /// 多コピーの片の検査: 同じ場面で B の先頭のリードを増やさなければ、今どおり印の N 列で繋ぎ、多コピーの端で除く数は 0
+        /// </summary>
+        [Fact]
+        public void 多コピーの片の検査_B先頭のリードを増やさなければ今どおり印で繋ぐ()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_G[C_B開始..];
+            var l_配列群 = V_多コピーの配列群(l_A, l_B);
+            var l_ライブラリ = V_書き出し_多コピーの場面("multi_plain", l_G, p_B先頭を増やす: false);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ, out var l_統計);
+
+            Assert.Equal(l_配列群.Count - 1, l_結果.Count);
+            Assert.Contains(l_A[..^30] + new string('N', 110) + l_B[30..], l_結果.Select(x => x.A_配列));
+            Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_多コピーの端で除いた数);
+        }
+
+        /// <summary>
         /// スレッド数 1 と 4 で、出力が同じになる
         /// </summary>
         [Fact]
@@ -543,6 +605,65 @@ namespace Tsumiki.Tests.Core
             var l_一覧 = V_断片群(V_断片の開始群(0, 5700, C_間隔_密).Where(s => s + C_挿入長 <= C_A長 || s >= p_B開始), C_挿入長);
             l_一覧.AddRange(V_断片群(p_跨ぐ開始群, p_跨ぐ断片長));
             return l_一覧;
+        }
+
+        /// <summary>
+        /// 多コピーの場面の配列群を作る: A と B、それに単一コピーの配列を C_多コピーの配列数 本足す
+        /// </summary>
+        /// <param name="p_A">配列 A</param>
+        /// <param name="p_B">配列 B</param>
+        /// <returns>配列群 (ID と配列)</returns>
+        private static List<(string A_ID, string A_配列)> V_多コピーの配列群(string p_A, string p_B)
+        {
+            var l_配列群 = new List<(string A_ID, string A_配列)> { ("a", p_A), ("b", p_B) };
+            for (var k = 0; k < C_多コピーの配列数; k++)
+            {
+                l_配列群.Add(($"x{k}", V_生成_ゲノム(C_多コピーの配列の長さ, C_多コピーの種 + k)));
+            }
+
+            return l_配列群;
+        }
+
+        /// <summary>
+        /// 多コピーの場面のリードを書き出す: 印・間の場面の断片に、必要なら B の先頭 1000 bp の断片を 2.5 倍にし、
+        /// 足した単一コピーの配列それぞれの断片も書き出す
+        /// </summary>
+        /// <param name="p_接頭辞">ファイル名の接頭辞</param>
+        /// <param name="p_ゲノム">ゲノム</param>
+        /// <param name="p_B先頭を増やす">true なら B の先頭 1000 bp の断片を 2.5 倍にする</param>
+        /// <returns>ライブラリ (順リードと逆リードのパス)</returns>
+        private List<(string A_順リード, string A_逆リード)> V_書き出し_多コピーの場面(string p_接頭辞, string p_ゲノム, bool p_B先頭を増やす)
+        {
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2650, 2698, 3), C_挿入長);
+            if (p_B先頭を増やす)
+            {
+                var l_追加 = new List<(int A_開始, int A_断片長)>();
+                var l_番号 = 0;
+                foreach (var l_断片 in l_断片群)
+                {
+                    if (l_断片.A_開始 >= C_B開始 && l_断片.A_開始 < C_B開始 + C_B先頭の窓)
+                    {
+                        l_追加.Add(l_断片);
+                        if (l_番号 % 2 == 0)
+                        {
+                            l_追加.Add(l_断片);
+                        }
+
+                        l_番号++;
+                    }
+                }
+
+                l_断片群.AddRange(l_追加);
+            }
+
+            var l_ライブラリ = V_書き出し_断片(p_接頭辞, p_ゲノム, l_断片群);
+            for (var k = 0; k < C_多コピーの配列数; k++)
+            {
+                var l_配列 = V_生成_ゲノム(C_多コピーの配列の長さ, C_多コピーの種 + k);
+                l_ライブラリ.AddRange(V_書き出し_断片(p_接頭辞 + "_" + k, l_配列, V_断片群(V_断片の開始群(0, 700, C_間隔_密), C_挿入長)));
+            }
+
+            return l_ライブラリ;
         }
 
         #endregion
