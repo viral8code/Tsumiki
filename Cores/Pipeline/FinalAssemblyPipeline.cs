@@ -177,6 +177,12 @@ namespace Tsumiki.Cores.Pipeline
         public const int C_長さ不明のギャップ長 = 100;
 
         /// <summary>
+        /// 長さ不明のギャップに置き換えるとき、印の左右の片の端を削る長さ (削った分は同じ N 100 個に含める)<br/>
+        /// 左右どちらの片も 2 × この長さ + 1 以上のときだけ削る
+        /// </summary>
+        private const int C_長さ不明のギャップの両側で削る長さ = 30;
+
+        /// <summary>
         /// 最終成果物の構成を書き出す AGP ファイルの拡張子
         /// </summary>
         private const string C_AGP拡張子 = ".agp";
@@ -325,7 +331,8 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 未確認の繋ぎ目の印を、長さ不明のギャップ (N を 100 個) に置き換える
+        /// 未確認の繋ぎ目の印を、長さ不明のギャップ (N を 100 個) に置き換える<br/>
+        /// 印の左右の片の端 (左は末尾、右は先頭) を削り、その分は N 100 個に含める
         /// </summary>
         /// <param name="p_パス">対象の FASTA パス</param>
         /// <param name="p_Isログ出力">置き換えた数をログに出すか</param>
@@ -368,7 +375,8 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 未確認の繋ぎ目の印を長さ不明のギャップに置き換え、それが何番目の N の連続になったかを集める
+        /// 未確認の繋ぎ目の印を長さ不明のギャップに置き換え、それが何番目の N の連続になったかを集める<br/>
+        /// 左の片は出力済みの配列のうち最後のギャップ文字より後ろ、右の片は印の次から次のギャップ文字の手前まで
         /// </summary>
         /// <param name="p_配列">配列</param>
         /// <param name="p_長さ不明の番号">長さ不明のギャップになった N の連続の番号 (0 始まり) を足す先</param>
@@ -387,8 +395,15 @@ namespace Tsumiki.Cores.Pipeline
 
                 if (l_文字 == Consts.未確認の繋ぎ目)
                 {
+                    var l_要る片の長さ = (2 * C_長さ不明のギャップの両側で削る長さ) + 1;
+                    var l_左の片の長さ = Get_末尾の片の長さ(l_出力);
+                    var l_右の片の長さ = Get_先頭の片の長さ(p_配列, i + 1);
+                    var l_削る長さ = l_左の片の長さ >= l_要る片の長さ && l_右の片の長さ >= l_要る片の長さ ? C_長さ不明のギャップの両側で削る長さ : 0;
+                    l_出力.Length -= l_削る長さ;
+
                     _ = l_出力.Append('N', C_長さ不明のギャップ長);
                     _ = p_長さ不明の番号.Add(l_連続の番号);
+                    i += l_削る長さ;
                 }
                 else
                 {
@@ -506,6 +521,39 @@ namespace Tsumiki.Cores.Pipeline
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 出力済みの配列で、最後のギャップ文字より後ろの片の長さ
+        /// </summary>
+        /// <param name="p_出力">出力済みの配列</param>
+        /// <returns>末尾の片の長さ (ギャップ文字が無ければ全体の長さ)</returns>
+        private static int Get_末尾の片の長さ(StringBuilder p_出力)
+        {
+            var l_長さ = 0;
+            while (l_長さ < p_出力.Length && !Util.Isギャップ文字(p_出力[p_出力.Length - 1 - l_長さ]))
+            {
+                l_長さ++;
+            }
+
+            return l_長さ;
+        }
+
+        /// <summary>
+        /// 指定した位置から始まる片の長さ (次のギャップ文字の手前まで)
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_始め">片の始まりの位置</param>
+        /// <returns>先頭の片の長さ (ギャップ文字が無ければ末尾までの長さ)</returns>
+        private static int Get_先頭の片の長さ(string p_配列, int p_始め)
+        {
+            var l_終わり = p_始め;
+            while (l_終わり < p_配列.Length && !Util.Isギャップ文字(p_配列[l_終わり]))
+            {
+                l_終わり++;
+            }
+
+            return l_終わり - p_始め;
+        }
 
         /// <summary>
         /// 配列の端どうしを、跨ぐリード 2 本以上で繋ぐ<br/>

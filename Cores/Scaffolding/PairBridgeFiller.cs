@@ -84,6 +84,16 @@ namespace Tsumiki.Cores.Scaffolding
         private const int C_N列の最小数 = 10;
 
         /// <summary>
+        /// N 列で繋ぐとき、左の片の末尾と右の片の先頭を削る長さ (削った分は N 列で埋める)
+        /// </summary>
+        private const int C_N列の両側で削る長さ = 30;
+
+        /// <summary>
+        /// 両側の片の端を削るのに要る、左右どちらの片の長さの下限 (未満なら削らない)
+        /// </summary>
+        private const int C_削るのに要る片の長さ = 500;
+
+        /// <summary>
         /// 反復の端を調べる長さ (u の末尾、x の先頭)
         /// </summary>
         private const int C_反復を調べる長さ = 500;
@@ -209,10 +219,11 @@ namespace Tsumiki.Cores.Scaffolding
 
                 if (l_候補[i].A_票数 >= C_印で繋ぐのに要るペア数)
                 {
-                    var l_N列 = new string('N', Math.Max(C_N列の最小数, l_候補[i].A_間の長さ));
+                    var l_削る長さ = Math.Min(l_頂点[l_u].Length, l_頂点[l_x].Length) >= C_削るのに要る片の長さ ? C_N列の両側で削る長さ : 0;
+                    var l_N列 = new string('N', Math.Max(C_N列の最小数, l_候補[i].A_間の長さ) + (2 * l_削る長さ));
                     l_印の数++;
-                    l_出る[l_u] = (l_x, 0, l_N列, 0);
-                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, l_N列, 0);
+                    l_出る[l_u] = (l_x, l_削る長さ, l_N列, l_削る長さ);
+                    l_出る[l_x ^ 1] = (l_u ^ 1, l_削る長さ, l_N列, l_削る長さ);
                     l_入る[l_x] = l_u;
                     l_入る[l_u ^ 1] = l_x ^ 1;
                 }

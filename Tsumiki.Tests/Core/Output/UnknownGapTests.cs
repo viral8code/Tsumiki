@@ -93,6 +93,33 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 印の左右の片が長いとき、左の片の末尾 30 bp と右の片の先頭 30 bp を削り、N 100 個に置き換える
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_両側の片の端を削って置き換える()
+        {
+            var l_乱数 = new Random(41);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_Y, l_番号群);
+            Assert.Equal(l_X[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y[30..], l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 左の片の手前に別の N の連続があるとき、左の片はその N より後ろだけで数える (80 bp は 61 以上なので削る)
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_左の片は手前のギャップより後ろだけを数える()
+        {
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(new string('A', 100) + "NNNN" + new string('C', 80) + "n" + new string('G', 200), l_番号群);
+            Assert.Equal(new string('A', 100) + "NNNN" + new string('C', 50) + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + new string('G', 170), l_結果);
+            Assert.Equal([1], l_番号群.Order());
+        }
+
+        /// <summary>
         /// AGP では、長さ不明のギャップを U、推定長のギャップを N、配列の片を W として書く
         /// </summary>
         [Fact]

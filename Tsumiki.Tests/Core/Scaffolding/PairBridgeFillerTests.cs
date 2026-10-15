@@ -267,7 +267,8 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 印で繋ぐ: 間を跨ぐリードが無く埋まらなくても、A と B を結ぶペアが 10 組以上あれば、N 列 (見込み 50 bp の 50 個) で 1 本に繋ぐ
+        /// 印で繋ぐ: 間を跨ぐリードが無く埋まらなくても、A と B を結ぶペアが 10 組以上あれば、N 列で 1 本に繋ぐ。
+        /// 両側の片の端 30 bp を削り、N 列は見込み 50 bp + 削った 60 bp = 110 個
         /// </summary>
         [Fact]
         public void 印で繋ぐ_埋まらなくても票が10組以上あればN列で1本に繋ぐ()
@@ -281,7 +282,7 @@ namespace Tsumiki.Tests.Core
             var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
 
             Assert.Single(l_結果);
-            Assert.Equal(l_A + new string('N', 50) + l_B, l_結果[0].A_配列);
+            Assert.Equal(l_A[..^30] + new string('N', 110) + l_B[30..], l_結果[0].A_配列);
             Assert.Equal(1, l_統計.A_候補の辺の数);
             Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
             Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
@@ -332,7 +333,7 @@ namespace Tsumiki.Tests.Core
             Assert.Single(l_結果);
             if (l_統計.A_印で繋いだ辺の数 == 1)
             {
-                Assert.Equal(l_A + new string('N', 10) + l_B, l_結果[0].A_配列);
+                Assert.Equal(l_A[..^30] + new string('N', 70) + l_B[30..], l_結果[0].A_配列);
             }
         }
 
