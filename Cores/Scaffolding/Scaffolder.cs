@@ -262,14 +262,10 @@ namespace Tsumiki.Cores.Scaffolding
             var l_内部を指した数 = 0;
             var l_未配置を指した数 = 0;
             var l_unitig長 = p_contig構築.A_unitig長.Values.Select(x => (long)x).ToList();
-            var l_walk順 = Get_contig別のwalk順(l_配置);
-            var l_重なり長 = ConfigurationManager.A_実行時引数.A_k長 - 1;
-            var l_内側を使わないcontig = this.Get_内側を使わないcontig(l_walk順, p_contig構築.A_unitig長, l_重なり長);
             for (var l_ライブラリ = 0; l_ライブラリ < l_ライブラリ数; l_ライブラリ++)
             {
                 var l_ペア経路 = l_ライブラリ < p_contig構築.A_ペアのライブラリ数 ? p_contig構築.A_ペア経路群[l_ライブラリ] : new Dictionary<(int, int), List<int>>();
-                var l_距離の上限 = l_インサートサイズ群[l_ライブラリ] > 0 ? l_インサートサイズ群[l_ライブラリ] : this.A_有効インサートサイズ!.Value;
-                l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, l_walk順, p_contig構築.A_unitig長, l_重なり長, l_距離の上限, l_内側を使わないcontig, ref l_内部を指した数, ref l_未配置を指した数);
+                l_対称化群[l_ライブラリ] = Get_対称化した辺(l_配置, l_ペア経路, ref l_内部を指した数, ref l_未配置を指した数);
                 var l_標本 = l_ライブラリ < p_contig構築.A_同一unitig標本群.Count ? p_contig構築.A_同一unitig標本群[l_ライブラリ] : [];
                 var l_リード長群 = ConfigurationManager.A_実行時引数.A_ライブラリのリード長;
                 var l_この長さ = l_ライブラリ < l_リード長群.Count && l_リード長群[l_ライブラリ] > 0 ? l_リード長群[l_ライブラリ] : p_リード長 ?? (l_インサートサイズ群[l_ライブラリ] > 0 ? l_インサートサイズ群[l_ライブラリ] : this.A_有効インサートサイズ!.Value);
@@ -875,21 +871,16 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_配置">unitig の contig 上の配置</param>
         /// <param name="p_ペア経路">そのライブラリのペア経路</param>
-        /// <param name="p_walk順">contig ID → walk 順の unitig ID の配列</param>
-        /// <param name="p_unitig長">unitig ID → unitig 長</param>
-        /// <param name="p_重なり長">隣り合う unitig の重なり長</param>
-        /// <param name="p_距離の上限">端までの距離の上限 (そのライブラリのインサートサイズ)</param>
-        /// <param name="p_内側を使わないcontig">内側の unitig を端に対応づけない contig ID の集合</param>
         /// <param name="p_内部を指した数">contig 内部を指した観測の数</param>
         /// <param name="p_未配置を指した数">contig に載っていない unitig を指した観測の数</param>
         /// <returns>対称化した辺の集計</returns>
-        internal static Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlyDictionary<(int, int), List<int>> p_ペア経路, IReadOnlyDictionary<int, int[]> p_walk順, IReadOnlyDictionary<int, int> p_unitig長, int p_重なり長, int p_距離の上限, IReadOnlySet<int> p_内側を使わないcontig, ref int p_内部を指した数, ref int p_未配置を指した数)
+        private static Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> Get_対称化した辺(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlyDictionary<(int, int), List<int>> p_ペア経路, ref int p_内部を指した数, ref int p_未配置を指した数)
         {
             Dictionary<(int, int), (ulong A_支持数, List<int> A_既知長標本)> l_辺の集計 = [];
             foreach (var (l_キー, l_標本) in p_ペア経路)
             {
                 var (l_始点unitig, l_終点unitig) = l_キー;
-                if (!Is成功_Contig端の近くの頂点(p_配置, p_walk順, p_unitig長, p_重なり長, l_始点unitig, p_Is出口側: true, Get_端までの距離の上限(p_配置, p_内側を使わないcontig, l_始点unitig, p_距離の上限), out var l_始点頂点, out var l_始点までの距離))
+                if (!Is成功_Contig末端頂点(p_配置, l_始点unitig, p_Is出口側: true, out var l_始点頂点))
                 {
                     if (!p_配置.ContainsKey(Math.Abs(l_始点unitig)))
                     {
@@ -903,7 +894,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (!Is成功_Contig端の近くの頂点(p_配置, p_walk順, p_unitig長, p_重なり長, l_終点unitig, p_Is出口側: false, Get_端までの距離の上限(p_配置, p_内側を使わないcontig, l_終点unitig, p_距離の上限), out var l_終点頂点, out var l_終点までの距離))
+                if (!Is成功_Contig末端頂点(p_配置, l_終点unitig, p_Is出口側: false, out var l_終点頂点))
                 {
                     if (!p_配置.ContainsKey(Math.Abs(l_終点unitig)))
                     {
@@ -922,17 +913,15 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                // 既知長に、両端の unitig から contig 端までの距離を足して contig 端どうしの距離にする
-                var l_補正後の標本 = l_標本.Select(x => x + l_始点までの距離 + l_終点までの距離).ToList();
                 var l_辺キー = (l_始点頂点, l_終点頂点);
                 if (l_辺の集計.TryGetValue(l_辺キー, out var l_既存))
                 {
-                    l_既存.A_既知長標本.AddRange(l_補正後の標本);
-                    l_辺の集計[l_辺キー] = (l_既存.A_支持数 + (ulong)l_補正後の標本.Count, l_既存.A_既知長標本);
+                    l_既存.A_既知長標本.AddRange(l_標本);
+                    l_辺の集計[l_辺キー] = (l_既存.A_支持数 + (ulong)l_標本.Count, l_既存.A_既知長標本);
                 }
                 else
                 {
-                    l_辺の集計[l_辺キー] = ((ulong)l_補正後の標本.Count, [.. l_補正後の標本]);
+                    l_辺の集計[l_辺キー] = ((ulong)l_標本.Count, [.. l_標本]);
                 }
             }
 
@@ -1114,127 +1103,6 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// contig ごとに、walk 順に並べた unitig ID の配列を作る
-        /// </summary>
-        /// <param name="p_配置">unitig の contig 上の配置</param>
-        /// <returns>contig ID → walk 順の unitig ID (符号なし) の配列</returns>
-        internal static Dictionary<int, int[]> Get_contig別のwalk順(IReadOnlyDictionary<int, Unitig配置> p_配置)
-        {
-            var l_群 = new Dictionary<int, List<(int A_位置, int A_unitigID)>>();
-            foreach (var (l_unitigID, l_配置情報) in p_配置)
-            {
-                if (!l_群.TryGetValue(l_配置情報.A_ContigID, out var l_一覧))
-                {
-                    l_一覧 = [];
-                    l_群[l_配置情報.A_ContigID] = l_一覧;
-                }
-
-                l_一覧.Add((l_配置情報.A_walk順の位置, l_unitigID));
-            }
-
-            return l_群.ToDictionary(x => x.Key, x => x.Value.OrderBy(y => y.A_位置).Select(y => y.A_unitigID).ToArray());
-        }
-
-        /// <summary>
-        /// 符号付き unitig ID が contig の端の近くにあるかを判定し、近ければ対応する contig 頂点と端までの距離を返す
-        /// </summary>
-        /// <remarks>
-        /// 進む向きは、出口側かつ実効順鎖、または入口側かつ実効逆鎖なら walk の後ろ側、それ以外は前側とする。
-        /// 端までの距離は、進む向きにある unitig の (unitig 長 − 重なり長) の和。端の unitig なら 0 になり、その場合の頂点は <see cref="Is成功_Contig末端頂点"/> と同じになる。
-        /// </remarks>
-        /// <param name="p_配置">unitig の contig 上の配置</param>
-        /// <param name="p_walk順">contig ID → walk 順の unitig ID の配列</param>
-        /// <param name="p_unitig長">unitig ID → unitig 長</param>
-        /// <param name="p_重なり長">隣り合う unitig の重なり長</param>
-        /// <param name="p_符号付きunitigID"></param>
-        /// <param name="p_Is出口側"></param>
-        /// <param name="p_距離の上限">端までの距離の上限</param>
-        /// <param name="p_頂点番号"></param>
-        /// <param name="p_端までの距離"></param>
-        /// <returns>上限以内に端があれば真</returns>
-        internal static bool Is成功_Contig端の近くの頂点(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlyDictionary<int, int[]> p_walk順, IReadOnlyDictionary<int, int> p_unitig長, int p_重なり長, int p_符号付きunitigID, bool p_Is出口側, int p_距離の上限, out int p_頂点番号, out int p_端までの距離)
-        {
-            p_頂点番号 = 0;
-            p_端までの距離 = 0;
-            var l_unitigID = Math.Abs(p_符号付きunitigID);
-            if (!p_配置.TryGetValue(l_unitigID, out var l_配置情報))
-            {
-                return false;
-            }
-
-            if (!p_walk順.TryGetValue(l_配置情報.A_ContigID, out var l_walk))
-            {
-                return false;
-            }
-
-            var l_位置 = l_配置情報.A_walk順の位置;
-            if (l_位置 < 0 || l_位置 >= l_walk.Length || l_walk[l_位置] != l_unitigID)
-            {
-                return false;
-            }
-
-            var l_Is順鎖 = p_符号付きunitigID > 0;
-            var l_Is実効順鎖 = l_Is順鎖 != l_配置情報.A_Iswalk中逆鎖;
-            var l_Is後ろへ = p_Is出口側 == l_Is実効順鎖;
-            var l_距離 = 0L;
-            if (l_Is後ろへ)
-            {
-                for (var j = l_位置 + 1; j < l_walk.Length; j++)
-                {
-                    if (!p_unitig長.TryGetValue(l_walk[j], out var l_長さ))
-                    {
-                        return false;
-                    }
-
-                    l_距離 += l_長さ - p_重なり長;
-                    if (l_距離 > p_距離の上限)
-                    {
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                for (var j = l_位置 - 1; j >= 0; j--)
-                {
-                    if (!p_unitig長.TryGetValue(l_walk[j], out var l_長さ))
-                    {
-                        return false;
-                    }
-
-                    l_距離 += l_長さ - p_重なり長;
-                    if (l_距離 > p_距離の上限)
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            if (l_距離 > p_距離の上限)
-            {
-                return false;
-            }
-
-            p_端までの距離 = (int)l_距離;
-            var l_Is最終配列順鎖 = l_配置情報.A_IsContig逆相補 ? !l_Is実効順鎖 : l_Is実効順鎖;
-            p_頂点番号 = (l_配置情報.A_ContigID << 1) | (l_Is最終配列順鎖 ? 0 : 1);
-            return true;
-        }
-
-        /// <summary>
-        /// 端までの距離の上限を返す。内側の unitig を端に対応づけない contig の unitig は、上限 0 (端の unitig だけ数える)
-        /// </summary>
-        /// <param name="p_配置">unitig の contig 上の配置</param>
-        /// <param name="p_内側を使わないcontig">内側の unitig を端に対応づけない contig ID の集合</param>
-        /// <param name="p_符号付きunitigID"></param>
-        /// <param name="p_距離の上限">通常の距離の上限</param>
-        /// <returns>その unitig に使う距離の上限</returns>
-        private static int Get_端までの距離の上限(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlySet<int> p_内側を使わないcontig, int p_符号付きunitigID, int p_距離の上限)
-        {
-            return p_配置.TryGetValue(Math.Abs(p_符号付きunitigID), out var l_配置情報) && p_内側を使わないcontig.Contains(l_配置情報.A_ContigID) ? 0 : p_距離の上限;
-        }
-
-        /// <summary>
         /// 候補のなかで優勢なものを、その頂点の scaffold 辺として確定する
         /// </summary>
         /// <param name="p_隣接">頂点ごとの候補</param>
@@ -1342,54 +1210,6 @@ namespace Tsumiki.Cores.Scaffolding
         private bool Is環状(int p_contigID)
         {
             return this._contig名.TryGetValue(p_contigID, out var l_名前) && l_名前.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// 内側の unitig を端に対応づけない contig の ID を集める。環状の contig と、unitig 長から求めた長さが contig 配列の長さと一致しない contig が対象
-        /// </summary>
-        /// <param name="p_walk順">contig ID → walk 順の unitig ID の配列</param>
-        /// <param name="p_unitig長">unitig ID → unitig 長</param>
-        /// <param name="p_重なり長">隣り合う unitig の重なり長</param>
-        /// <returns>除外する contig ID の集合</returns>
-        private HashSet<int> Get_内側を使わないcontig(IReadOnlyDictionary<int, int[]> p_walk順, IReadOnlyDictionary<int, int> p_unitig長, int p_重なり長)
-        {
-            var l_除外 = new HashSet<int>();
-            foreach (var (l_contigID, l_walk) in p_walk順)
-            {
-                if (this.Is環状(l_contigID))
-                {
-                    _ = l_除外.Add(l_contigID);
-                    continue;
-                }
-
-                if (!this._contig配列.TryGetValue(l_contigID, out var l_配列))
-                {
-                    _ = l_除外.Add(l_contigID);
-                    continue;
-                }
-
-                var l_和 = 0L;
-                var l_欠けあり = false;
-                foreach (var l_unitigID in l_walk)
-                {
-                    if (p_unitig長.TryGetValue(l_unitigID, out var l_長さ))
-                    {
-                        l_和 += l_長さ;
-                    }
-                    else
-                    {
-                        l_欠けあり = true;
-                        break;
-                    }
-                }
-
-                if (l_欠けあり || l_和 - (long)p_重なり長 * (l_walk.Length - 1) != l_配列.Length)
-                {
-                    _ = l_除外.Add(l_contigID);
-                }
-            }
-
-            return l_除外;
         }
 
         /// <summary>
