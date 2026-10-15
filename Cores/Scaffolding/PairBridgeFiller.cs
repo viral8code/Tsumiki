@@ -513,7 +513,7 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 多コピーの検査の基準の密度を、長さ C_窓長 以上の頂点の密度の中央値として求める
+        /// 多コピーの検査の基準の密度を、長さ C_窓長 以上でリードが当たった頂点の密度の中央値として求める (対象外で種の無い頂点は除く)
         /// </summary>
         /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
         /// <param name="p_頂点">頂点の文字列</param>
@@ -523,7 +523,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_密度群 = new List<double>();
             for (var v = 0; v < p_頂点.Length; v++)
             {
-                if (p_頂点[v].Length >= C_窓長)
+                if (p_頂点[v].Length >= C_窓長 && p_当たり数[v] > 0)
                 {
                     l_密度群.Add(Get_密度(p_当たり数, p_頂点, v));
                 }
