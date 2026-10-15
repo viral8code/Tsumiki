@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Text;
 using Tsumiki.Commons;
 using Tsumiki.IO;
 using Tsumiki.Models.Evidence;
@@ -77,6 +78,31 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_印で繋ぐのに要るペア数 = 10;
 
+        /// <summary>
+        /// 未確認の繋ぎ目を N 列で繋ぐときの、N の最小数
+        /// </summary>
+        private const int C_N列の最小数 = 10;
+
+        /// <summary>
+        /// 反復の端を調べる長さ (u の末尾、x の先頭)
+        /// </summary>
+        private const int C_反復を調べる長さ = 500;
+
+        /// <summary>
+        /// 反復の端と見なすまでに、両方に共有してよい 25-mer の数
+        /// </summary>
+        private const int C_共有を許す数 = 2;
+
+        /// <summary>
+        /// 配列の一致による重なりを探すときの、u の末尾の窓の長さ
+        /// </summary>
+        private const int C_重なりを探す窓長 = 301;
+
+        /// <summary>
+        /// 配列の一致による重なりを探すときの k 長 (重なりの上限は k - 1)
+        /// </summary>
+        private const int C_重なりを探すk長 = 135;
+
         #endregion
 
         #region 公開メソッド
@@ -105,10 +131,34 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_挿入長 = StatsUtil.Get_中央値(l_標本);
-            var l_候補 = Get_候補の辺(l_票, l_挿入長);
+            var l_候補全体 = Get_候補の辺(l_票, l_挿入長);
+            if (l_候補全体.Count == 0)
+            {
+                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0, 0, 0);
+                return p_配列群.ToList();
+            }
+
+            var l_候補 = new List<候補の辺>();
+            var l_重なり群 = new List<int?>();
+            var l_反復の端で除いた数 = 0;
+            foreach (var l_辺 in l_候補全体)
+            {
+                var l_u文字列 = l_頂点[l_辺.A_u];
+                var l_x文字列 = l_頂点[l_辺.A_x];
+                var l_重なり = Get_重なりの長さ(l_u文字列, l_x文字列);
+                if (Is反復の端(l_u文字列, l_x文字列, l_重なり))
+                {
+                    l_反復の端で除いた数++;
+                    continue;
+                }
+
+                l_候補.Add(l_辺);
+                l_重なり群.Add(l_重なり);
+            }
+
             if (l_候補.Count == 0)
             {
-                p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0);
+                p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_反復の端で除いた数, 0);
                 return p_配列群.ToList();
             }
 
@@ -122,46 +172,54 @@ namespace Tsumiki.Cores.Scaffolding
             var l_一意でない数 = 0;
             var l_届かない数 = 0;
             var l_印の数 = 0;
+            var l_重なりで畳んだ数 = 0;
             for (var i = 0; i < l_候補.Count; i++)
             {
                 var l_u = l_候補[i].A_u;
                 var l_x = l_候補[i].A_x;
                 var l_埋める配列 = l_結果[i];
-                var l_印 = false;
                 if (l_埋める配列 is not null)
                 {
                     l_埋めた数++;
+                    l_出る[l_u] = (l_x, 0, l_埋める配列, 0);
+                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, Util.V_逆相補_曖昧塩基あり(l_埋める配列), 0);
+                    l_入る[l_x] = l_u;
+                    l_入る[l_u ^ 1] = l_x ^ 1;
+                    continue;
+                }
+
+                if (l_判定[i] == ギャップ充填判定.一意でない)
+                {
+                    l_一意でない数++;
                 }
                 else
                 {
-                    if (l_判定[i] == ギャップ充填判定.一意でない)
-                    {
-                        l_一意でない数++;
-                    }
-                    else
-                    {
-                        l_届かない数++;
-                    }
-
-                    if (l_候補[i].A_票数 >= C_印で繋ぐのに要るペア数)
-                    {
-                        l_埋める配列 = Consts.未確認の繋ぎ目.ToString();
-                        l_印 = true;
-                        l_印の数++;
-                    }
+                    l_届かない数++;
                 }
 
-                if (l_埋める配列 is { } l_配列)
+                if (l_重なり群[i] is { } l_重なり長)
                 {
-                    l_出る[l_u] = (l_x, 0, l_配列, 0);
-                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, l_印 ? l_配列 : Util.V_逆相補_曖昧塩基あり(l_配列), 0);
+                    l_重なりで畳んだ数++;
+                    l_出る[l_u] = (l_x, 0, "", l_重なり長);
+                    l_出る[l_x ^ 1] = (l_u ^ 1, l_重なり長, "", 0);
+                    l_入る[l_x] = l_u;
+                    l_入る[l_u ^ 1] = l_x ^ 1;
+                    continue;
+                }
+
+                if (l_候補[i].A_票数 >= C_印で繋ぐのに要るペア数)
+                {
+                    var l_N列 = new string('N', Math.Max(C_N列の最小数, l_候補[i].A_間の長さ));
+                    l_印の数++;
+                    l_出る[l_u] = (l_x, 0, l_N列, 0);
+                    l_出る[l_x ^ 1] = (l_u ^ 1, 0, l_N列, 0);
                     l_入る[l_x] = l_u;
                     l_入る[l_u ^ 1] = l_x ^ 1;
                 }
             }
 
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out var l_繋いだ数);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数);
             return l_書き出し;
         }
 
@@ -582,6 +640,65 @@ namespace Tsumiki.Cores.Scaffolding
                 l_判定[i] = l_局所判定;
             });
             return (l_結果, l_判定);
+        }
+
+        /// <summary>
+        /// u の末尾と x の先頭が完全に一致する重なりの長さを、配列の一致で求める (u の末尾の窓は C_重なりを探す窓長)
+        /// </summary>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <returns>重なりの長さ、決められなければ null</returns>
+        private static int? Get_重なりの長さ(string p_u文字列, string p_x文字列)
+        {
+            var l_窓 = p_u文字列[Math.Max(0, p_u文字列.Length - C_重なりを探す窓長)..];
+            return Scaffolder.Get_配列の一致で決めた重なり長(new StringBuilder(l_窓), p_x文字列, C_重なりを探すk長);
+        }
+
+        /// <summary>
+        /// 候補の辺の両端が反復の端かを調べる<br/>
+        /// u の末尾 C_反復を調べる長さ (重なり o があれば最後の o bp を除く) と、x の先頭 C_反復を調べる長さ で、
+        /// 両方に現れる正準の 25-mer が C_共有を許す数 を超えれば反復の端とする
+        /// </summary>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <param name="p_重なり">u の末尾と x の先頭の重なりの長さ、無ければ null</param>
+        /// <returns>反復の端なら true</returns>
+        private static bool Is反復の端(string p_u文字列, string p_x文字列, int? p_重なり)
+        {
+            var l_u末尾 = p_u文字列[Math.Max(0, p_u文字列.Length - C_反復を調べる長さ)..];
+            var l_除く = Math.Min(p_重なり ?? 0, l_u末尾.Length);
+            l_u末尾 = l_u末尾[..(l_u末尾.Length - l_除く)];
+            var l_x先頭 = p_x文字列[..Math.Min(C_反復を調べる長さ, p_x文字列.Length)];
+            var l_x種 = Get_種の集合(l_x先頭);
+            var l_共有 = 0;
+            foreach (var l_キー in Get_種の集合(l_u末尾))
+            {
+                if (l_x種.Contains(l_キー))
+                {
+                    l_共有++;
+                }
+            }
+
+            return l_共有 > C_共有を許す数;
+        }
+
+        /// <summary>
+        /// 配列に現れる 25-mer の正準形の集合を求める
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <returns>正準形の集合 (A/C/G/T 以外を含む 25-mer は除く)</returns>
+        private static HashSet<ulong> Get_種の集合(string p_配列)
+        {
+            var l_集合 = new HashSet<ulong>();
+            for (var p = 0; p + C_種長 <= p_配列.Length; p++)
+            {
+                if (Is成功_キー(p_配列.AsSpan(p, C_種長), out var l_キー, out _))
+                {
+                    _ = l_集合.Add(l_キー);
+                }
+            }
+
+            return l_集合;
         }
 
         /// <summary>

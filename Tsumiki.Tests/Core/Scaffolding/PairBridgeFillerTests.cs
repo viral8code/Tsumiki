@@ -72,6 +72,21 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_跨ぐ断片長_間30bp = 370;
 
+        /// <summary>
+        /// 反復の端の場面で、B の先頭に複製する A の末尾の長さ
+        /// </summary>
+        private const int C_反復の長さ = 300;
+
+        /// <summary>
+        /// 反復の端の場面で、A と B を跨ぐ断片の長さ (B の先頭の複製のぶん、読みが B の一意な部分まで届く長さ)
+        /// </summary>
+        private const int C_跨ぐ断片長_反復 = 450;
+
+        /// <summary>
+        /// 重なりで畳む場面で、A の末尾と B の先頭が一致する長さ (本当の重なり)
+        /// </summary>
+        private const int C_重なりの長さ = 100;
+
         #endregion
 
         #region フィールド
@@ -252,10 +267,10 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 印で繋ぐ: 間を跨ぐリードが無く埋まらなくても、A と B を結ぶペアが 10 組以上あれば、未確認の繋ぎ目 (n) で 1 本に繋ぐ
+        /// 印で繋ぐ: 間を跨ぐリードが無く埋まらなくても、A と B を結ぶペアが 10 組以上あれば、N 列 (見込み 50 bp の 50 個) で 1 本に繋ぐ
         /// </summary>
         [Fact]
-        public void 印で繋ぐ_埋まらなくても票が10組以上あれば未確認の繋ぎ目で1本に繋ぐ()
+        public void 印で繋ぐ_埋まらなくても票が10組以上あればN列で1本に繋ぐ()
         {
             var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
             var l_A = l_G[..C_A長];
@@ -266,7 +281,7 @@ namespace Tsumiki.Tests.Core
             var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
 
             Assert.Single(l_結果);
-            Assert.Equal(l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
+            Assert.Equal(l_A + new string('N', 50) + l_B, l_結果[0].A_配列);
             Assert.Equal(1, l_統計.A_候補の辺の数);
             Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
             Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
@@ -317,8 +332,53 @@ namespace Tsumiki.Tests.Core
             Assert.Single(l_結果);
             if (l_統計.A_印で繋いだ辺の数 == 1)
             {
-                Assert.Equal(l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
+                Assert.Equal(l_A + new string('N', 10) + l_B, l_結果[0].A_配列);
             }
+        }
+
+        /// <summary>
+        /// 反復の端は繋がない (共有の 25-mer): B の先頭に A の末尾 300 bp と同じ配列を置く。票があっても反復の端として除き、繋がない
+        /// </summary>
+        [Fact]
+        public void 反復の端は繋がない_先頭に末尾の複製があれば除いて繋がない()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_A[(C_A長 - C_反復の長さ)..] + l_G[C_B開始..];
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2440, 2470, 5), C_跨ぐ断片長_反復);
+            var l_ライブラリ = V_書き出し_断片("dupend", l_G, l_断片群);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
+
+            Assert.Equal(2, l_結果.Count);
+            Assert.Equal(l_A, l_結果[0].A_配列);
+            Assert.Equal(l_B, l_結果[1].A_配列);
+            Assert.Equal(1, l_統計.A_候補の辺の数);
+            Assert.Equal(1, l_統計.A_反復の端で除いた数);
+            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_重なりで畳んだ辺の数);
+        }
+
+        /// <summary>
+        /// 重なりで畳む: A の末尾 100 bp と B の先頭 100 bp が同じ (本当の重なり)。間を読むリードが無く埋まらないので、重なりで畳んで A + B[100..] に繋ぐ
+        /// </summary>
+        [Fact]
+        public void 重なりで畳む_末尾と先頭が100bp重なれば畳んで1本に繋ぐ()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_G[(C_A長 - C_重なりの長さ)..];
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2510, 2670, 10), C_挿入長);
+            var l_ライブラリ = V_書き出し_断片("overlap", l_G, l_断片群);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
+
+            Assert.Single(l_結果);
+            Assert.Equal(l_A + l_B[C_重なりの長さ..], l_結果[0].A_配列);
+            Assert.Equal(l_G, l_結果[0].A_配列);
+            Assert.Equal(1, l_統計.A_重なりで畳んだ辺の数);
+            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_印で繋いだ辺の数);
         }
 
         /// <summary>
