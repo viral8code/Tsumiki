@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- コンテナのメモリ制限の下では、GC の既定の上限が制限の 75% になり、8 Mb 級のゲノムで足りなくなるため 90% に上げる。 -->
+    <RuntimeHostConfigurationOption Include="System.GC.HeapHardLimitPercent" Value="90" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Tsumiki.Tests がサブディレクトリにあるため、既定のglobに巻き込まれないよう除外する。 -->
     <Compile Remove="Tsumiki.Tests\**\*.cs" />
     <None Remove="Tsumiki.Tests\**\*" />
