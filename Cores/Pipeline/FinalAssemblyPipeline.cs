@@ -498,6 +498,7 @@ namespace Tsumiki.Cores.Pipeline
             {
                 var l_一意の出現数 = V_繋ぐ_リードで跨げる端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
                 V_繋ぐ_余ったリードで端(l_最終パス, p_リード長 ?? 0, p_原入力, l_一意の出現数);
+                V_伸ばす_端(l_最終パス, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力), l_一意の出現数);
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
@@ -634,6 +635,36 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.余ったリードで端を繋いだ, l_端リード群.Count, l_候補数, l_繋いだ数, l_配列群.Count, l_繋いだ配列群.Count);
+        }
+
+        /// <summary>
+        /// 配列の端を、端の手前の錨を含むリードの続きの合意で伸ばす<br/>
+        /// 伸ばした端が 1 以上なら、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_リードパス群">生リードのパス</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安</param>
+        private static void V_伸ばす_端(string p_最終パス, int p_リード長, IEnumerable<string> p_リードパス群, int p_一意の出現数)
+        {
+            using var l_計測 = new StageTimer("end-extension");
+            if (RepeatRMerVerifier.Get_リード索引(p_リードパス群) is not { } l_索引)
+            {
+                return;
+            }
+
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_伸ばした配列群 = ReadEndExtender.Get_伸ばした配列群(l_配列群, l_索引, p_リード長, p_一意の出現数, out var l_伸ばした端の数, out var l_伸ばした塩基数);
+            if (l_伸ばした端の数 >= 1)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_伸ばした配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+
+                Logger.V_出力(メッセージID.端をリードで伸ばした, l_伸ばした端の数, l_伸ばした塩基数);
+            }
         }
 
         /// <summary>

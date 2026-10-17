@@ -795,7 +795,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_リードの手前">リードの、錨より手前</param>
         /// <param name="p_比べる長さ"></param>
         /// <returns></returns>
-        private static bool Is手前が同じ場所(string p_左の手前, string p_リードの手前, int p_比べる長さ)
+        internal static bool Is手前が同じ場所(string p_左の手前, string p_リードの手前, int p_比べる長さ)
         {
             var l_長さ = Math.Min(p_比べる長さ, Math.Min(p_左の手前.Length, p_リードの手前.Length));
             var l_不一致 = 0;
