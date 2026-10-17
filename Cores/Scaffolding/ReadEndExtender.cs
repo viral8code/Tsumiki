@@ -44,14 +44,19 @@ namespace Tsumiki.Cores.Scaffolding
         private const int C_手前を比べる長さ = 20;
 
         /// <summary>
+        /// リードの続きの末尾から使わない塩基数 (リードの末尾は読み違いが多いので、多数決に入れない)
+        /// </summary>
+        private const int C_使わない末尾の長さ = 20;
+
+        /// <summary>
         /// 続きの位置ごとに、その位置まで続きがあるリードの数の下限
         /// </summary>
-        private const int C_要るリード数 = 5;
+        private const int C_要るリード数 = 8;
 
         /// <summary>
         /// 最多の塩基が、その位置まで続きがあるリードのうちで占める割合の下限 (これ以上なら合意とみなす)
         /// </summary>
-        private const double C_合意とみなす割合 = 0.9D;
+        private const double C_合意とみなす割合 = 0.95D;
 
         #endregion
 
@@ -132,7 +137,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_手前 = l_片[..l_錨の始め];
-            var l_続き群 = p_リード索引.Get_前後群(l_錨, p_リード長, C_続きを見るリード数の上限).Where(x => Scaffolder.Is手前が同じ場所(l_手前, x.A_前, C_手前を比べる長さ)).Select(x => x.A_続き).ToList();
+            var l_続き群 = p_リード索引.Get_前後群(l_錨, p_リード長, C_続きを見るリード数の上限).Where(x => Scaffolder.Is手前が同じ場所(l_手前, x.A_前, C_手前を比べる長さ)).Select(x => x.A_続き).Where(x => x.Length > C_使わない末尾の長さ).Select(x => x[..^C_使わない末尾の長さ]).ToList();
             var l_合意 = Get_合意(l_続き群);
             if (l_合意.Length <= C_置き直す長さ)
             {

@@ -131,6 +131,39 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, l_伸ばした端の数);
         }
 
+        /// <summary>
+        /// 続きの末尾 20 塩基だけが読み違いのリードを 10 本入れても、その末尾は合意に入らず、配列は G の先頭からの部分列になる
+        /// </summary>
+        [Fact]
+        public void Get_伸ばした配列群_続きの末尾だけ読み違いのリードが10本_読み違いは合意に入らずGの先頭からの部分列になる()
+        {
+            var l_ゲノム = Get_ゲノム();
+            var l_配列群 = new List<(string A_ID, string A_配列)> { (C_項目_S, l_ゲノム[..C_右端]) };
+            var l_リード群 = Get_右端のリード群_末尾に読み違い(l_ゲノム);
+            var (l_結果, l_伸ばした端の数, _) = Get_実行(l_配列群, l_リード群);
+            Assert.Single(l_結果);
+            var l_配列 = l_結果[0].A_配列;
+            Assert.True(l_配列.Length > C_元の長さ);
+            Assert.Equal(l_ゲノム[..l_配列.Length], l_配列);
+            Assert.Equal(1, l_伸ばした端の数);
+        }
+
+        /// <summary>
+        /// 17 本中 16 本が同じ塩基の位置 (94%) では、その位置の手前で合意が止まり、配列は G のその位置までになる
+        /// </summary>
+        [Fact]
+        public void Get_伸ばした配列群_94パーセントの位置_その手前で止まる()
+        {
+            var l_ゲノム = Get_ゲノム();
+            var l_配列群 = new List<(string A_ID, string A_配列)> { (C_項目_S, l_ゲノム[..C_右端]) };
+            var l_リード群 = Get_同じ位置が1本だけ違うリード群(l_ゲノム, 710);
+            var (l_結果, l_伸ばした端の数, l_伸ばした塩基数) = Get_実行(l_配列群, l_リード群);
+            Assert.Single(l_結果);
+            Assert.Equal(l_ゲノム[..710], l_結果[0].A_配列);
+            Assert.Equal(1, l_伸ばした端の数);
+            Assert.Equal(10, l_伸ばした塩基数);
+        }
+
         #endregion
 
         #region 内部メソッド
@@ -247,6 +280,57 @@ namespace Tsumiki.Tests.Core
                 var l_始め = 560 + 5 * i;
                 var l_リード = l_元.Substring(l_始め, C_リード長);
                 l_リード群.Add(i % 4 >= 2 ? Util.V_逆相補_曖昧塩基あり(l_リード) : l_リード);
+            }
+
+            return l_リード群;
+        }
+
+        /// <summary>
+        /// 右端の錨 (G[629..670)) を含む、G[520..] から始まる長さ 150 のリードを 5 塩基おきに 20 本作る<br/>
+        /// 偶数番目の 10 本は、G の向きで末尾の 20 塩基を別の塩基にしてから作る
+        /// </summary>
+        /// <param name="p_ゲノム">ゲノム</param>
+        /// <returns>リード群</returns>
+        private static List<string> Get_右端のリード群_末尾に読み違い(string p_ゲノム)
+        {
+            var l_リード群 = new List<string>();
+            for (var i = 0; i < 20; i++)
+            {
+                var l_始め = 520 + 5 * i;
+                var l_リード = p_ゲノム.Substring(l_始め, C_リード長);
+                if (i % 2 == 0)
+                {
+                    l_リード = Get_末尾を別の塩基にした(l_リード, 20);
+                }
+
+                l_リード群.Add(i % 2 == 1 ? Util.V_逆相補_曖昧塩基あり(l_リード) : l_リード);
+            }
+
+            return l_リード群;
+        }
+
+        /// <summary>
+        /// 右端の錨 (G[629..670)) を含む、G[600..] から始まる長さ 150 のリードを 1 塩基ずつずらして 17 本作る<br/>
+        /// そのうち最初の 1 本だけ、G の位置 p_違う位置 の塩基を別の塩基にする
+        /// </summary>
+        /// <param name="p_ゲノム">ゲノム</param>
+        /// <param name="p_違う位置">読み違いにするゲノムの位置</param>
+        /// <returns>リード群</returns>
+        private static List<string> Get_同じ位置が1本だけ違うリード群(string p_ゲノム, int p_違う位置)
+        {
+            const string l_塩基 = Consts.塩基文字;
+            var l_リード群 = new List<string>();
+            for (var i = 0; i < 17; i++)
+            {
+                var l_始め = 600 + i;
+                var l_リード = p_ゲノム.Substring(l_始め, C_リード長).ToCharArray();
+                if (i == 0)
+                {
+                    var l_位置 = p_違う位置 - l_始め;
+                    l_リード[l_位置] = l_塩基[(l_塩基.IndexOf(l_リード[l_位置]) + 1) % l_塩基.Length];
+                }
+
+                l_リード群.Add(new string(l_リード));
             }
 
             return l_リード群;
