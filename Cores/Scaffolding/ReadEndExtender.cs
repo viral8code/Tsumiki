@@ -63,6 +63,16 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_繰り返す回数 = 3;
 
+        /// <summary>
+        /// 伸ばした所の錨 (C_錨長 の配列) が、リードにこの回数より少なく出てくれば、混ざった合意とみなす
+        /// </summary>
+        private const int C_支える最少のリード数 = 2;
+
+        /// <summary>
+        /// 伸ばした所の錨が、一意な配列の出現数のこの倍以上リードに出てくれば、反復とみなす
+        /// </summary>
+        private const double C_繰り返しで反復とみなす比 = 1.5D;
+
         #endregion
 
         #region 公開メソッド
@@ -106,7 +116,8 @@ namespace Tsumiki.Cores.Scaffolding
         #region 内部メソッド
 
         /// <summary>
-        /// 配列の右端を、伸びなくなるか C_繰り返す回数 回に達するまで、伸ばした配列に対して繰り返し伸ばす
+        /// 配列の右端を、伸びなくなるか C_繰り返す回数 回に達するまで、伸ばした配列に対して繰り返し伸ばす<br/>
+        /// 2 回目以降の各回は、伸ばした所が リードに支えられている (Is伸ばした所を支える) ときだけ採り、支えられなければその回を捨てて止める
         /// </summary>
         /// <param name="p_配列">向き付きの配列</param>
         /// <param name="p_リード索引">リードの索引</param>
@@ -120,16 +131,65 @@ namespace Tsumiki.Cores.Scaffolding
             var l_配列 = p_配列;
             for (var i = 0; i < C_繰り返す回数; i++)
             {
-                l_配列 = Get_右端を伸ばした(l_配列, p_リード索引, p_リード長, p_一意の出現数, out var l_今回の塩基数);
+                var l_伸ばす前の長さ = l_配列.Length;
+                var l_伸ばした配列 = Get_右端を伸ばした(l_配列, p_リード索引, p_リード長, p_一意の出現数, out var l_今回の塩基数);
                 if (l_今回の塩基数 == 0)
                 {
                     break;
                 }
 
+                if (i >= 1)
+                {
+                    var l_確かめの始め = Math.Max(0, l_伸ばす前の長さ - C_置き直す長さ - C_錨長 + 1);
+                    if (!Is伸ばした所を支える(p_リード索引, l_伸ばした配列, l_確かめの始め, p_一意の出現数))
+                    {
+                        break;
+                    }
+                }
+
+                l_配列 = l_伸ばした配列;
                 p_伸ばした塩基数 += l_今回の塩基数;
             }
 
             return l_配列;
+        }
+
+        /// <summary>
+        /// 伸ばした所の配列が、リードに支えられていて、反復の中でも混ざった合意でもないかを確かめる<br/>
+        /// p_始め から末尾までの C_錨長 の配列を 1 塩基ずつずらして調べ、A・C・G・T 以外を含む配列、または出現数が C_支える最少のリード数 未満の配列があれば false<br/>
+        /// p_一意の出現数 が正のとき、出現数が ceil(p_一意の出現数 × C_繰り返しで反復とみなす比) 以上の配列があれば false (0 以下なら見ない)
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_配列">調べる配列</param>
+        /// <param name="p_始め">調べる始まりの位置</param>
+        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
+        /// <returns>すべての配列が支えられていれば true</returns>
+        internal static bool Is伸ばした所を支える(ReadMinimizerIndex p_リード索引, string p_配列, int p_始め, int p_一意の出現数)
+        {
+            var l_見る反復 = p_一意の出現数 > 0;
+            var l_反復の下限 = l_見る反復 ? (int)Math.Ceiling(p_一意の出現数 * C_繰り返しで反復とみなす比) : 0;
+            var l_上限 = Math.Max(C_支える最少のリード数, l_反復の下限);
+            for (var l_位置 = p_始め; l_位置 + C_錨長 <= p_配列.Length; l_位置++)
+            {
+                var l_錨 = p_配列.AsSpan(l_位置, C_錨長);
+                if (l_錨.IndexOfAnyExcept(Consts.塩基文字) >= 0)
+                {
+                    return false;
+                }
+
+                var l_数 = p_リード索引.Get_出現数(l_錨, l_上限);
+                if (l_数 < C_支える最少のリード数)
+                {
+                    return false;
+                }
+
+                if (l_見る反復 && l_数 >= l_反復の下限)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
