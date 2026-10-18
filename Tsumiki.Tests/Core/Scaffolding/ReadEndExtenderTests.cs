@@ -41,11 +41,6 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_元の長さ = 700;
 
-        /// <summary>
-        /// 繰り返して伸ばすテストで、配列 S の右端の位置 (G[0..500])
-        /// </summary>
-        private const int C_連続の右端 = 500;
-
         #endregion
 
         #region 公開メソッド
@@ -169,26 +164,6 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(10, l_伸ばした塩基数);
         }
 
-        /// <summary>
-        /// 続きが 1 回の上限を超えて続くとき、伸ばす処理を繰り返して G の先頭からの部分列になり、伸ばした塩基数は 60 (1 回 20 塩基 × 3 回)<br/>
-        /// 1 回で 20 塩基しか伸びないのは、8 本目までの続きが 50 塩基で、置き直す 30 を引いて 20 になるため。1 回だけなら 20 なので、3 回繰り返したことが分かる
-        /// </summary>
-        [Fact]
-        public void Get_伸ばした配列群_続きが長い_繰り返して伸びる()
-        {
-            var l_ゲノム = Get_ゲノム();
-            var l_配列群 = new List<(string A_ID, string A_配列)> { (C_項目_S, l_ゲノム[..C_連続の右端]) };
-            var (l_結果, l_伸ばした端の数, l_伸ばした塩基数) = Get_実行(l_配列群, Get_連続したリード群(l_ゲノム));
-            Assert.Single(l_結果);
-            Assert.Equal(C_項目_S, l_結果[0].A_ID);
-            var l_配列 = l_結果[0].A_配列;
-            Assert.Equal(l_ゲノム[..l_配列.Length], l_配列);
-            Assert.Equal(560, l_配列.Length);
-            Assert.Equal(60, l_伸ばした塩基数);
-            Assert.Equal(l_配列.Length - C_連続の右端, l_伸ばした塩基数);
-            Assert.Equal(1, l_伸ばした端の数);
-        }
-
         #endregion
 
         #region 内部メソッド
@@ -249,25 +224,6 @@ namespace Tsumiki.Tests.Core
             var l_乱数 = new Random(20240702);
             var l_位置の塩基 = l_塩基[(l_塩基.IndexOf(p_ゲノム[670]) + 1) % l_塩基.Length];
             return p_ゲノム[..670] + l_位置の塩基 + Get_ランダムな塩基(l_乱数, p_ゲノム.Length - 671);
-        }
-
-        /// <summary>
-        /// G[300..] から始まる長さ 150 のリードを 5 塩基おきに、始まりが 850 以下まで 111 本作る<br/>
-        /// 奇数番目は逆相補にする
-        /// </summary>
-        /// <param name="p_ゲノム">ゲノム</param>
-        /// <returns>リード群</returns>
-        private static List<string> Get_連続したリード群(string p_ゲノム)
-        {
-            var l_リード群 = new List<string>();
-            for (var i = 0; i < 111; i++)
-            {
-                var l_始め = 300 + 5 * i;
-                var l_リード = p_ゲノム.Substring(l_始め, C_リード長);
-                l_リード群.Add(i % 2 == 1 ? Util.V_逆相補_曖昧塩基あり(l_リード) : l_リード);
-            }
-
-            return l_リード群;
         }
 
         /// <summary>

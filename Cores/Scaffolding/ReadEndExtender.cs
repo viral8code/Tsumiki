@@ -58,11 +58,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const double C_合意とみなす割合 = 0.95D;
 
-        /// <summary>
-        /// 片側の端を伸ばす処理を繰り返す回数の上限 (伸ばした新しい端から、同じ条件でもう一度伸ばす)
-        /// </summary>
-        private const int C_繰り返す回数 = 3;
-
         #endregion
 
         #region 公開メソッド
@@ -90,8 +85,8 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                var l_右 = Get_右端を繰り返し伸ばした(l_配列, p_リード索引, p_リード長, p_一意の出現数, out var l_右の塩基数);
-                var l_左 = Get_右端を繰り返し伸ばした(Util.V_逆相補_曖昧塩基あり(l_右), p_リード索引, p_リード長, p_一意の出現数, out var l_左の塩基数);
+                var l_右 = Get_右端を伸ばした(l_配列, p_リード索引, p_リード長, p_一意の出現数, out var l_右の塩基数);
+                var l_左 = Get_右端を伸ばした(Util.V_逆相補_曖昧塩基あり(l_右), p_リード索引, p_リード長, p_一意の出現数, out var l_左の塩基数);
                 var l_伸ばした配列 = l_左の塩基数 > 0 ? Util.V_逆相補_曖昧塩基あり(l_左) : l_右;
                 p_伸ばした端の数 += (l_右の塩基数 > 0 ? 1 : 0) + (l_左の塩基数 > 0 ? 1 : 0);
                 p_伸ばした塩基数 += l_右の塩基数 + l_左の塩基数;
@@ -104,33 +99,6 @@ namespace Tsumiki.Cores.Scaffolding
         #endregion
 
         #region 内部メソッド
-
-        /// <summary>
-        /// 配列の右端を、伸びなくなるか C_繰り返す回数 回に達するまで、伸ばした配列に対して繰り返し伸ばす
-        /// </summary>
-        /// <param name="p_配列">向き付きの配列</param>
-        /// <param name="p_リード索引">リードの索引</param>
-        /// <param name="p_リード長">代表リード長</param>
-        /// <param name="p_一意の出現数">一意な配列がリードに出てくる数の目安、分からなければ 0</param>
-        /// <param name="p_伸ばした塩基数">すべての回で伸ばした塩基数の合計、伸ばさなければ 0</param>
-        /// <returns>伸ばした後の配列</returns>
-        private static string Get_右端を繰り返し伸ばした(string p_配列, ReadMinimizerIndex p_リード索引, int p_リード長, int p_一意の出現数, out int p_伸ばした塩基数)
-        {
-            p_伸ばした塩基数 = 0;
-            var l_配列 = p_配列;
-            for (var i = 0; i < C_繰り返す回数; i++)
-            {
-                l_配列 = Get_右端を伸ばした(l_配列, p_リード索引, p_リード長, p_一意の出現数, out var l_今回の塩基数);
-                if (l_今回の塩基数 == 0)
-                {
-                    break;
-                }
-
-                p_伸ばした塩基数 += l_今回の塩基数;
-            }
-
-            return l_配列;
-        }
 
         /// <summary>
         /// 配列の右端 (最後のギャップ文字より後ろの片) を、錨の続きの合意で伸ばす<br/>
