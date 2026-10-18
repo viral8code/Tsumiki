@@ -44,6 +44,11 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const string C_FASTQ品質区切り = "+";
 
+        /// <summary>
+        /// ファイル名 範囲群のリード
+        /// </summary>
+        private const string C_ファイル名_reads_range_fq = "reads_range.fq";
+
         #endregion
 
         #region 内部変数
@@ -136,6 +141,46 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 深く重なった位置の誤りは書き換えないことを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_磨いた結果_深く重なった位置は書き換えない()
+        {
+            var l_真の配列 = Get_乱数配列(2_000, 4);
+            var l_誤りを含む配列 = Get_誤りを入れた配列(l_真の配列, 1_000);
+            var l_FASTA = this.V_書き出し_FASTA(C_項目_contig1, l_誤りを含む配列);
+            var l_FASTQ = this.V_書き出し_FASTQ_範囲群(l_真の配列, p_リード長: 150, p_刻み: 10, (0, 2_000), (700, 1_300));
+            var l_出力 = Path.Combine(this._一時ディレクトリ, C_ファイル名_polished_fasta);
+            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, [(l_FASTQ, string.Empty)], l_出力);
+            Assert.NotNull(l_統計);
+            Assert.Equal(15D, l_統計!.Value.A_深度の中央値);
+            Assert.Equal(0L, l_統計!.Value.A_訂正した塩基数);
+            var l_結果 = FastaReader.Get_全エントリ(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.Equal(l_誤りを含む配列, l_結果[0].A_配列);
+        }
+
+        /// <summary>
+        /// 深く重なった位置以外の誤りは直し、深く重なった位置の誤りは残すことを確かめる
+        /// </summary>
+        [Fact]
+        public void Get_磨いた結果_深く重なった位置以外は書き換える()
+        {
+            var l_真の配列 = Get_乱数配列(2_000, 5);
+            var l_誤りを含む配列 = Get_誤りを入れた配列(l_真の配列, 300, 1_000);
+            var l_期待 = Get_誤りを入れた配列(l_真の配列, 1_000);
+            var l_FASTA = this.V_書き出し_FASTA(C_項目_contig1, l_誤りを含む配列);
+            var l_FASTQ = this.V_書き出し_FASTQ_範囲群(l_真の配列, p_リード長: 150, p_刻み: 10, (0, 2_000), (700, 1_300));
+            var l_出力 = Path.Combine(this._一時ディレクトリ, C_ファイル名_polished_fasta);
+            var l_統計 = Polisher.Get_磨いた結果(l_FASTA, [(l_FASTQ, string.Empty)], l_出力);
+            Assert.NotNull(l_統計);
+            Assert.Equal(1L, l_統計!.Value.A_訂正した塩基数);
+            var l_結果 = FastaReader.Get_全エントリ(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.Equal(l_期待, l_結果[0].A_配列);
+        }
+
+        /// <summary>
         /// リードが届かない範囲は深度不足として数えることを確かめる
         /// </summary>
         [Fact]
@@ -166,6 +211,24 @@ namespace Tsumiki.Tests.Core
             var l_乱数 = new Random(p_種);
             const string l_塩基 = Consts.塩基文字;
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => l_塩基[l_乱数.Next(4)]));
+        }
+
+        /// <summary>
+        /// 指定した位置の塩基を、ACGT の次の塩基へ変えた配列を作る
+        /// </summary>
+        /// <param name="p_真の配列">元になる配列</param>
+        /// <param name="p_位置群">変える位置</param>
+        /// <returns>誤りを入れた配列</returns>
+        private static string Get_誤りを入れた配列(string p_真の配列, params int[] p_位置群)
+        {
+            var l_文字 = p_真の配列.ToCharArray();
+            foreach (var l_位置 in p_位置群)
+            {
+                var l_塩基ID = Consts.塩基文字.IndexOf(l_文字[l_位置]);
+                l_文字[l_位置] = Consts.塩基文字[(l_塩基ID + 1) % Consts.塩基文字.Length];
+            }
+
+            return new string(l_文字);
         }
 
         /// <summary>
@@ -210,6 +273,40 @@ namespace Tsumiki.Tests.Core
                 l_書き込み.WriteLine(l_配列);
                 l_書き込み.WriteLine(C_FASTQ品質区切り);
                 l_書き込み.WriteLine(l_品質);
+            }
+
+            return l_パス;
+        }
+
+        /// <summary>
+        /// 範囲ごとに等間隔にリードを切り出し、1 つの FASTQ にまとめて書き出す
+        /// </summary>
+        /// <param name="p_真の配列">元になる配列</param>
+        /// <param name="p_リード長">切り出すリードの長さ</param>
+        /// <param name="p_刻み">開始位置の刻み幅</param>
+        /// <param name="p_範囲群">切り出しを行う範囲（開始は含み、終了は含まない）</param>
+        /// <returns>書き出したパス</returns>
+        private string V_書き出し_FASTQ_範囲群(string p_真の配列, int p_リード長, int p_刻み, params (int A_開始, int A_終了)[] p_範囲群)
+        {
+            var l_パス = Path.Combine(this._一時ディレクトリ, C_ファイル名_reads_range_fq);
+            var l_品質 = new string('I', p_リード長);
+            using var l_書き込み = new StreamWriter(l_パス);
+            var l_番号 = 0;
+            foreach (var (l_開始, l_終了) in p_範囲群)
+            {
+                for (var i = l_開始; i + p_リード長 <= l_終了; i += p_刻み)
+                {
+                    var l_配列 = p_真の配列.Substring(i, p_リード長);
+                    if (l_番号 % 2 == 1)
+                    {
+                        l_配列 = Util.V_逆相補(l_配列);
+                    }
+
+                    l_書き込み.WriteLine($"@read{l_番号++}");
+                    l_書き込み.WriteLine(l_配列);
+                    l_書き込み.WriteLine(C_FASTQ品質区切り);
+                    l_書き込み.WriteLine(l_品質);
+                }
             }
 
             return l_パス;

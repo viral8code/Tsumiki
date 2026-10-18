@@ -45,6 +45,11 @@ namespace Tsumiki.Cores.Polishing
         private const double C_深度不足とみなす比 = 0.2D;
 
         /// <summary>
+        /// 深さがこの倍以上の位置は、反復のコピーのリードが重なっているとみなして書き換えない
+        /// </summary>
+        private const double C_書き換えない深度の比 = 1.5D;
+
+        /// <summary>
         /// 深度のヒストグラムを取る上限
         /// </summary>
         private const int C_深度ヒストグラムの上限 = 65_535;
@@ -259,7 +264,8 @@ namespace Tsumiki.Cores.Polishing
                         p_深度不足数++;
                     }
 
-                    if (!p_Is訂正 || l_深度 < C_訂正に必要な深度)
+                    var l_深すぎる = p_深度の中央値 > 0D && l_深度 >= p_深度の中央値 * C_書き換えない深度の比;
+                    if (!p_Is訂正 || l_深度 < C_訂正に必要な深度 || l_深すぎる)
                     {
                         continue;
                     }
