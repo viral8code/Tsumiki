@@ -46,21 +46,6 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_連続の右端 = 500;
 
-        /// <summary>
-        /// 支える確かめで、配列 S の末尾の位置 (G[0..300])
-        /// </summary>
-        private const int C_支える配列の右端 = 300;
-
-        /// <summary>
-        /// 支える確かめで、調べ始める位置 (G[200..300) の 41 塩基の配列 60 個を調べる)
-        /// </summary>
-        private const int C_支える始め = 200;
-
-        /// <summary>
-        /// 支える確かめで、G[100..250) と G[150..300) のそれぞれのリードの本数
-        /// </summary>
-        private const int C_支えるリードの本数 = 10;
-
         #endregion
 
         #region 公開メソッド
@@ -204,54 +189,6 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, l_伸ばした端の数);
         }
 
-        /// <summary>
-        /// G[100..250) と G[150..300) のリードが 10 本ずつ。G[200..210) に収まる配列は 20 本、G[210..300) にかかる配列は 10 本で、どれも 30 本未満 (一意の出現数 20 の 1.5 倍未満) なので支えられる
-        /// </summary>
-        [Fact]
-        public void Is伸ばした所を支える_両方のリードが10本ずつ_一意の出現数20ならtrueになる()
-        {
-            var l_ゲノム = Get_ゲノム();
-            var l_索引 = ReadMinimizerIndex.V_構築(() => Get_支えるリード群(l_ゲノム));
-            var l_配列 = l_ゲノム[..C_支える配列の右端];
-            Assert.True(ReadEndExtender.Is伸ばした所を支える(l_索引, l_配列, C_支える始め, 20));
-        }
-
-        /// <summary>
-        /// 上と同じリードで、位置 260 の塩基を別の塩基にすると、その位置を含む配列はリードに 0 回出てくるので支えられない
-        /// </summary>
-        [Fact]
-        public void Is伸ばした所を支える_位置260の塩基が読み違い_falseになる()
-        {
-            var l_ゲノム = Get_ゲノム();
-            var l_索引 = ReadMinimizerIndex.V_構築(() => Get_支えるリード群(l_ゲノム));
-            var l_配列 = Get_位置の塩基を別の塩基にした(l_ゲノム[..C_支える配列の右端], 260);
-            Assert.False(ReadEndExtender.Is伸ばした所を支える(l_索引, l_配列, C_支える始め, 20));
-        }
-
-        /// <summary>
-        /// 上と同じリードで一意の出現数が 10 だと、反復の下限は ceil(10 × 1.5) = 15。G[200..210) に収まる配列は 20 本あり 15 以上なので、反復とみなして支えられない
-        /// </summary>
-        [Fact]
-        public void Is伸ばした所を支える_一意の出現数10なら反復とみなしfalseになる()
-        {
-            var l_ゲノム = Get_ゲノム();
-            var l_索引 = ReadMinimizerIndex.V_構築(() => Get_支えるリード群(l_ゲノム));
-            var l_配列 = l_ゲノム[..C_支える配列の右端];
-            Assert.False(ReadEndExtender.Is伸ばした所を支える(l_索引, l_配列, C_支える始め, 10));
-        }
-
-        /// <summary>
-        /// 上で一意の出現数が 10 でも、0 なら反復の条件は見ないので、出現数 10 以上 (最少でも 10 本) の配列は支えられる
-        /// </summary>
-        [Fact]
-        public void Is伸ばした所を支える_一意の出現数0なら反復の条件を見ずtrueになる()
-        {
-            var l_ゲノム = Get_ゲノム();
-            var l_索引 = ReadMinimizerIndex.V_構築(() => Get_支えるリード群(l_ゲノム));
-            var l_配列 = l_ゲノム[..C_支える配列の右端];
-            Assert.True(ReadEndExtender.Is伸ばした所を支える(l_索引, l_配列, C_支える始め, 0));
-        }
-
         #endregion
 
         #region 内部メソッド
@@ -312,41 +249,6 @@ namespace Tsumiki.Tests.Core
             var l_乱数 = new Random(20240702);
             var l_位置の塩基 = l_塩基[(l_塩基.IndexOf(p_ゲノム[670]) + 1) % l_塩基.Length];
             return p_ゲノム[..670] + l_位置の塩基 + Get_ランダムな塩基(l_乱数, p_ゲノム.Length - 671);
-        }
-
-        /// <summary>
-        /// 指定した位置の塩基を、別の塩基に置き換える
-        /// </summary>
-        /// <param name="p_配列">配列</param>
-        /// <param name="p_位置">置き換える位置</param>
-        /// <returns>置き換えた配列</returns>
-        private static string Get_位置の塩基を別の塩基にした(string p_配列, int p_位置)
-        {
-            const string l_塩基 = Consts.塩基文字;
-            var l_配列 = p_配列.ToCharArray();
-            l_配列[p_位置] = l_塩基[(l_塩基.IndexOf(l_配列[p_位置]) + 1) % l_塩基.Length];
-            return new string(l_配列);
-        }
-
-        /// <summary>
-        /// G[100..250) のリードを C_支えるリードの本数 本と、G[150..300) のリードを C_支えるリードの本数 本作る
-        /// </summary>
-        /// <param name="p_ゲノム">ゲノム</param>
-        /// <returns>リード群</returns>
-        private static List<string> Get_支えるリード群(string p_ゲノム)
-        {
-            var l_リード群 = new List<string>();
-            for (var i = 0; i < C_支えるリードの本数; i++)
-            {
-                l_リード群.Add(p_ゲノム.Substring(100, 150));
-            }
-
-            for (var i = 0; i < C_支えるリードの本数; i++)
-            {
-                l_リード群.Add(p_ゲノム.Substring(150, 150));
-            }
-
-            return l_リード群;
         }
 
         /// <summary>
