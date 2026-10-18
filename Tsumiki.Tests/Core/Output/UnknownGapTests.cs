@@ -120,6 +120,67 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 右の片の先頭が左の片の末尾より手前の配列の写しなら、その写しを読み飛ばす (写しの後ろの右の片は残す)
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_右の片の先頭が左の片の写しなら読み飛ばす()
+        {
+            var l_乱数 = new Random(51);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            if (l_Y[0] == l_X[140])
+            {
+                l_Y = (l_X[140] == 'A' ? "C" : "A") + l_Y[1..];
+            }
+
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X[60..140] + l_Y, l_番号群);
+            Assert.Equal(l_X[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y, l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 左の片の末尾が右の片の先頭より後ろの配列の写しなら、その写しを左の片の末尾から除く (左の片の残りは残す)
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_左の片の末尾が右の片の写しなら除く()
+        {
+            var l_乱数 = new Random(52);
+            var l_Z = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            if (l_Z[199] == l_Y[49])
+            {
+                l_Z = l_Z[..199] + (l_Y[49] == 'A' ? "C" : "A");
+            }
+
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_Z + l_Y[50..130] + Consts.未確認の繋ぎ目 + l_Y, l_番号群);
+            Assert.Equal(l_Z + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y[30..], l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 右の片の先頭の種が左の片の中に 2 か所あるときは、どちらの写しとも決めずに読み飛ばさない
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_種が左の片に2か所あれば読み飛ばさない()
+        {
+            var l_乱数 = new Random(53);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            if (l_Y[0] == l_X[140])
+            {
+                l_Y = (l_X[140] == 'A' ? "C" : "A") + l_Y[1..];
+            }
+
+            var l_X写し = l_X[..10] + l_X[90..115] + l_X[35..];
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X写し + Consts.未確認の繋ぎ目 + l_X写し[60..140] + l_Y, l_番号群);
+            Assert.Equal(l_X写し[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + (l_X写し[60..140] + l_Y)[30..], l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
         /// AGP では、長さ不明のギャップを U、推定長のギャップを N、配列の片を W として書く
         /// </summary>
         [Fact]

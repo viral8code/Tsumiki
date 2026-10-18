@@ -183,6 +183,16 @@ namespace Tsumiki.Cores.Pipeline
         private const int C_長さ不明のギャップの両側で削る長さ = 30;
 
         /// <summary>
+        /// 長さ不明のギャップに置き換えるとき、両側の片どうしの写しを探す種の長さ (A・C・G・T のみ、同じ向きの完全一致だけを数える)
+        /// </summary>
+        private const int C_写しを探す種の長さ = 25;
+
+        /// <summary>
+        /// 長さ不明のギャップに置き換えるとき、写しを探す片の端の長さ (左の片は末尾、右の片は先頭)
+        /// </summary>
+        private const int C_写しを探す長さ = 300;
+
+        /// <summary>
         /// 最終成果物の構成を書き出す AGP ファイルの拡張子
         /// </summary>
         private const string C_AGP拡張子 = ".agp";
@@ -401,9 +411,16 @@ namespace Tsumiki.Cores.Pipeline
                     var l_削る長さ = l_左の片の長さ >= l_要る片の長さ && l_右の片の長さ >= l_要る片の長さ ? C_長さ不明のギャップの両側で削る長さ : 0;
                     l_出力.Length -= l_削る長さ;
 
+                    var l_右の始め = i + 1 + l_削る長さ;
+                    var l_読み飛ばす長さ = Get_右の片の先頭の写しの長さ(l_出力, p_配列, l_右の始め);
+                    if (l_読み飛ばす長さ == 0)
+                    {
+                        l_出力.Length -= Get_左の片の末尾の写しの長さ(l_出力, p_配列, l_右の始め);
+                    }
+
                     _ = l_出力.Append('N', C_長さ不明のギャップ長);
                     _ = p_長さ不明の番号.Add(l_連続の番号);
-                    i += l_削る長さ;
+                    i += l_削る長さ + l_読み飛ばす長さ;
                 }
                 else
                 {
@@ -554,6 +571,128 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             return l_終わり - p_始め;
+        }
+
+        /// <summary>
+        /// 出力済みの配列の末尾の片 (最後のギャップ文字より後ろ) の配列
+        /// </summary>
+        /// <param name="p_出力">出力済みの配列</param>
+        /// <returns>末尾の片の配列</returns>
+        private static string Get_末尾の片(StringBuilder p_出力)
+        {
+            var l_長さ = Get_末尾の片の長さ(p_出力);
+            return p_出力.ToString(p_出力.Length - l_長さ, l_長さ);
+        }
+
+        /// <summary>
+        /// 右の片の先頭が、左の片の末尾の配列の写しなら、右の片の先頭から読み飛ばす長さを返す<br/>
+        /// 左の片の末尾 C_写しを探す長さ 塩基の中に種 (右の片の先頭 C_写しを探す種の長さ 塩基) がちょうど 1 か所だけあり、そこから同じ間の長さ ℓ を数えて、右の片の残りが種の長さ以上のときだけ ℓ を返す
+        /// </summary>
+        /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_右の始め">右の片の始まりの位置</param>
+        /// <returns>読み飛ばす長さ、写しと判らなければ 0</returns>
+        private static int Get_右の片の先頭の写しの長さ(StringBuilder p_出力, string p_配列, int p_右の始め)
+        {
+            var l_左 = Get_末尾の片(p_出力);
+            var l_右 = p_配列.Substring(p_右の始め, Get_先頭の片の長さ(p_配列, p_右の始め));
+            if (l_左.Length < C_写しを探す種の長さ || l_右.Length < C_写しを探す種の長さ)
+            {
+                return 0;
+            }
+
+            var l_種 = l_右[..C_写しを探す種の長さ];
+            if (!Is_ACGTのみ(l_種))
+            {
+                return 0;
+            }
+
+            var l_窓の始め = Math.Max(0, l_左.Length - C_写しを探す長さ);
+            var l_位置 = Get_窓で一意の位置(l_左[l_窓の始め..], l_種);
+            if (l_位置 < 0)
+            {
+                return 0;
+            }
+
+            var l_左の始め = l_窓の始め + l_位置;
+            var l_一致の長さ = 0;
+            while (l_左の始め + l_一致の長さ < l_左.Length && l_一致の長さ < l_右.Length && l_左[l_左の始め + l_一致の長さ] == l_右[l_一致の長さ])
+            {
+                l_一致の長さ++;
+            }
+
+            return l_右.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
+        }
+
+        /// <summary>
+        /// 左の片の末尾が、右の片の先頭の配列の写しなら、左の片の末尾から除く長さを返す<br/>
+        /// 左の片の末尾の種 (C_写しを探す種の長さ 塩基) が右の片の先頭 C_写しを探す長さ 塩基の中にちょうど 1 か所だけあり、そこから後ろ向きに同じ間の長さ ℓ を数えて、左の片の残りが種の長さ以上のときだけ ℓ を返す
+        /// </summary>
+        /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_右の始め">右の片の始まりの位置</param>
+        /// <returns>除く長さ、写しと判らなければ 0</returns>
+        private static int Get_左の片の末尾の写しの長さ(StringBuilder p_出力, string p_配列, int p_右の始め)
+        {
+            var l_左 = Get_末尾の片(p_出力);
+            var l_右 = p_配列.Substring(p_右の始め, Get_先頭の片の長さ(p_配列, p_右の始め));
+            if (l_左.Length < C_写しを探す種の長さ || l_右.Length < C_写しを探す種の長さ)
+            {
+                return 0;
+            }
+
+            var l_種 = l_左[^C_写しを探す種の長さ..];
+            if (!Is_ACGTのみ(l_種))
+            {
+                return 0;
+            }
+
+            var l_位置 = Get_窓で一意の位置(l_右[..Math.Min(C_写しを探す長さ, l_右.Length)], l_種);
+            if (l_位置 < 0)
+            {
+                return 0;
+            }
+
+            var l_右の終わり = l_位置 + C_写しを探す種の長さ - 1;
+            var l_一致の長さ = 0;
+            while (l_一致の長さ < l_左.Length && l_右の終わり - l_一致の長さ >= 0 && l_左[l_左.Length - 1 - l_一致の長さ] == l_右[l_右の終わり - l_一致の長さ])
+            {
+                l_一致の長さ++;
+            }
+
+            return l_左.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
+        }
+
+        /// <summary>
+        /// 窓の中に種がちょうど 1 か所だけ出てくるとき、その位置を返す (重なる出現も数える)
+        /// </summary>
+        /// <param name="p_窓">探す範囲</param>
+        /// <param name="p_種">探す配列</param>
+        /// <returns>窓の中の位置、出現が 1 か所でなければ -1</returns>
+        private static int Get_窓で一意の位置(string p_窓, string p_種)
+        {
+            var l_位置 = -1;
+            var l_数 = 0;
+            for (var i = 0; i + p_種.Length <= p_窓.Length; i++)
+            {
+                if (string.CompareOrdinal(p_窓, i, p_種, 0, p_種.Length) == 0)
+                {
+                    l_位置 = i;
+                    l_数++;
+                }
+            }
+
+            return l_数 == 1 ? l_位置 : -1;
+        }
+
+        /// <summary>
+        /// 配列が A・C・G・T だけからなるか
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <returns>A・C・G・T だけなら true</returns>
+        private static bool Is_ACGTのみ(string p_配列)
+        {
+            return p_配列.All(x => x is 'A' or 'C' or 'G' or 'T');
         }
 
         /// <summary>
