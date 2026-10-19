@@ -192,7 +192,7 @@ namespace Tsumiki.Tests.Core
             var l_X写し = Get_一部を変えた配列(l_X, 160);
             var l_番号群 = new HashSet<int>();
             var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y, l_番号群);
-            Assert.Equal(l_X[..170] + l_X写し[170..200] + l_Y, l_結果);
+            Assert.Equal(l_X[..150] + l_X写し[150..200] + l_Y, l_結果);
             Assert.Empty(l_番号群);
         }
 
@@ -210,7 +210,7 @@ namespace Tsumiki.Tests.Core
             var l_X写し = Get_一部を変えた配列(l_X, 160);
             var l_番号群 = new HashSet<int>();
             var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y + "NNNNN" + l_V + Consts.未確認の繋ぎ目 + l_U, l_番号群);
-            Assert.Equal(l_X + l_Y + "NNNNN" + l_V[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_U[30..], l_結果);
+            Assert.Equal(l_X[..150] + l_X写し[150..200] + l_Y + "NNNNN" + l_V[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_U[30..], l_結果);
             Assert.Equal([1], l_番号群.Order());
         }
 
@@ -228,6 +228,37 @@ namespace Tsumiki.Tests.Core
             var l_番号群 = new HashSet<int>();
             var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y, l_番号群);
             Assert.Equal(l_X[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_X写し[157..] + l_Y, l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 右の片の先頭の種が右の片の中に 2 か所あるとき (縦列反復) は、左の片の末尾から削らず、左の片の末尾の種は右の片に無いので (b) でも削らない
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_右の片の種が縦列反復なら読み飛ばさない()
+        {
+            var l_乱数 = new Random(71);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X[60..140] + l_X[90..115] + l_Y, l_番号群);
+            Assert.Equal(l_X[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_X[90..140] + l_X[90..115] + l_Y, l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 左の片の末尾の種が左の片の中に 2 か所あるとき (縦列反復) は、左の片の末尾から削らず、右の片の先頭の種は左の片に無いので (a) でも削らない
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_左の片の種が縦列反復なら除かない()
+        {
+            var l_乱数 = new Random(72);
+            var l_Z = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_Z写し = l_Z[..100] + l_Y[75..100] + l_Z[125..];
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_Z写し + l_Y[50..130] + Consts.未確認の繋ぎ目 + l_Y, l_番号群);
+            Assert.Equal(l_Z写し + l_Y[50..100] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y[30..], l_結果);
             Assert.Equal([0], l_番号群.Order());
         }
 

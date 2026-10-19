@@ -427,6 +427,13 @@ namespace Tsumiki.Cores.Pipeline
                     {
                         l_出力.Length -= Get_左の片の末尾の写しの長さ(l_出力, p_配列, l_右の始め);
                     }
+                    else if (l_畳む)
+                    {
+                        // 重なりの真ん中で繋ぐ: 左の片は重なりの後半 (ov - h) を除き、右の片は前半 h を読み飛ばす
+                        var l_半分 = l_読み飛ばす長さ / 2;
+                        l_出力.Length -= l_読み飛ばす長さ - l_半分;
+                        l_読み飛ばす長さ = l_半分;
+                    }
 
                     i += l_削る長さ + l_読み飛ばす長さ;
                     if (l_畳む)
@@ -604,6 +611,7 @@ namespace Tsumiki.Cores.Pipeline
 
         /// <summary>
         /// 右の片の先頭が、左の片の末尾の配列の写しなら、右の片の先頭から読み飛ばす長さを返す<br/>
+        /// 右の片の先頭 C_写しを探す長さ 塩基の中に種が 2 か所以上あるとき (縦列反復) は何もしない<br/>
         /// 左の片の末尾 C_写しを探す長さ 塩基の中に種 (右の片の先頭 C_写しを探す種の長さ 塩基) がちょうど 1 か所だけあり、そこから違いを許して同じ間の長さ ℓ を数えて、右の片の残りが種の長さ以上のときだけ ℓ を返す<br/>
         /// ℓ が左の片の末尾まで届いたときは、N を書かずに畳む (p_畳む を true にする)
         /// </summary>
@@ -628,6 +636,11 @@ namespace Tsumiki.Cores.Pipeline
                 return 0;
             }
 
+            if (Get_窓の出現数(l_右[..Math.Min(C_写しを探す長さ, l_右.Length)], l_種) >= 2)
+            {
+                return 0;
+            }
+
             var l_窓の始め = Math.Max(0, l_左.Length - C_写しを探す長さ);
             var l_位置 = Get_窓で一意の位置(l_左[l_窓の始め..], l_種);
             if (l_位置 < 0)
@@ -648,6 +661,7 @@ namespace Tsumiki.Cores.Pipeline
 
         /// <summary>
         /// 左の片の末尾が、右の片の先頭の配列の写しなら、左の片の末尾から除く長さを返す<br/>
+        /// 左の片の末尾 C_写しを探す長さ 塩基の中に種が 2 か所以上あるとき (縦列反復) は何もしない<br/>
         /// 左の片の末尾の種 (C_写しを探す種の長さ 塩基) が右の片の先頭 C_写しを探す長さ 塩基の中にちょうど 1 か所だけあり、そこから後ろ向きに違いを許して同じ間の長さ ℓ を数えて、左の片の残りが種の長さ以上のときだけ ℓ を返す
         /// </summary>
         /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
@@ -665,6 +679,11 @@ namespace Tsumiki.Cores.Pipeline
 
             var l_種 = l_左[^C_写しを探す種の長さ..];
             if (!Is_ACGTのみ(l_種))
+            {
+                return 0;
+            }
+
+            if (Get_窓の出現数(l_左[Math.Max(0, l_左.Length - C_写しを探す長さ)..], l_種) >= 2)
             {
                 return 0;
             }
@@ -775,6 +794,26 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             return l_数 == 1 ? l_位置 : -1;
+        }
+
+        /// <summary>
+        /// 窓の中に種が出てくる数 (重なる出現も数える)
+        /// </summary>
+        /// <param name="p_窓">探す範囲</param>
+        /// <param name="p_種">探す配列</param>
+        /// <returns>出現数</returns>
+        private static int Get_窓の出現数(string p_窓, string p_種)
+        {
+            var l_数 = 0;
+            for (var i = 0; i + p_種.Length <= p_窓.Length; i++)
+            {
+                if (string.CompareOrdinal(p_窓, i, p_種, 0, p_種.Length) == 0)
+                {
+                    l_数++;
+                }
+            }
+
+            return l_数;
         }
 
         /// <summary>
