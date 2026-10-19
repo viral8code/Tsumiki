@@ -193,6 +193,16 @@ namespace Tsumiki.Cores.Pipeline
         private const int C_写しを探す長さ = 300;
 
         /// <summary>
+        /// 写しを数えるとき、一致の途中で許す違いの数 (違いに当たったとき、それまでに許した数がこれ未満のときだけ許す)
+        /// </summary>
+        private const int C_写しで許す違いの数 = 2;
+
+        /// <summary>
+        /// 写しを数えるとき、許した違いの直後に一致が要る塩基の数 (片の端までの残りがこれより短ければ、残りが全部一致すること)
+        /// </summary>
+        private const int C_違いの後に要る一致の長さ = 10;
+
+        /// <summary>
         /// 最終成果物の構成を書き出す AGP ファイルの拡張子
         /// </summary>
         private const string C_AGP拡張子 = ".agp";
@@ -412,15 +422,23 @@ namespace Tsumiki.Cores.Pipeline
                     l_出力.Length -= l_削る長さ;
 
                     var l_右の始め = i + 1 + l_削る長さ;
-                    var l_読み飛ばす長さ = Get_右の片の先頭の写しの長さ(l_出力, p_配列, l_右の始め);
+                    var l_読み飛ばす長さ = Get_右の片の先頭の写しの長さ(l_出力, p_配列, l_右の始め, out var l_畳む);
                     if (l_読み飛ばす長さ == 0)
                     {
                         l_出力.Length -= Get_左の片の末尾の写しの長さ(l_出力, p_配列, l_右の始め);
                     }
 
-                    _ = l_出力.Append('N', C_長さ不明のギャップ長);
-                    _ = p_長さ不明の番号.Add(l_連続の番号);
                     i += l_削る長さ + l_読み飛ばす長さ;
+                    if (l_畳む)
+                    {
+                        // 畳んだ印は N の連続にならないので、後ろの番号を 1 つ戻す
+                        l_連続の番号--;
+                    }
+                    else
+                    {
+                        _ = l_出力.Append('N', C_長さ不明のギャップ長);
+                        _ = p_長さ不明の番号.Add(l_連続の番号);
+                    }
                 }
                 else
                 {
@@ -586,14 +604,17 @@ namespace Tsumiki.Cores.Pipeline
 
         /// <summary>
         /// 右の片の先頭が、左の片の末尾の配列の写しなら、右の片の先頭から読み飛ばす長さを返す<br/>
-        /// 左の片の末尾 C_写しを探す長さ 塩基の中に種 (右の片の先頭 C_写しを探す種の長さ 塩基) がちょうど 1 か所だけあり、そこから同じ間の長さ ℓ を数えて、右の片の残りが種の長さ以上のときだけ ℓ を返す
+        /// 左の片の末尾 C_写しを探す長さ 塩基の中に種 (右の片の先頭 C_写しを探す種の長さ 塩基) がちょうど 1 か所だけあり、そこから違いを許して同じ間の長さ ℓ を数えて、右の片の残りが種の長さ以上のときだけ ℓ を返す<br/>
+        /// ℓ が左の片の末尾まで届いたときは、N を書かずに畳む (p_畳む を true にする)
         /// </summary>
         /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
         /// <param name="p_配列">配列</param>
         /// <param name="p_右の始め">右の片の始まりの位置</param>
+        /// <param name="p_畳む">ℓ が左の片の末尾まで届き、N を書かずに畳むなら true</param>
         /// <returns>読み飛ばす長さ、写しと判らなければ 0</returns>
-        private static int Get_右の片の先頭の写しの長さ(StringBuilder p_出力, string p_配列, int p_右の始め)
+        private static int Get_右の片の先頭の写しの長さ(StringBuilder p_出力, string p_配列, int p_右の始め, out bool p_畳む)
         {
+            p_畳む = false;
             var l_左 = Get_末尾の片(p_出力);
             var l_右 = p_配列.Substring(p_右の始め, Get_先頭の片の長さ(p_配列, p_右の始め));
             if (l_左.Length < C_写しを探す種の長さ || l_右.Length < C_写しを探す種の長さ)
@@ -615,18 +636,19 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             var l_左の始め = l_窓の始め + l_位置;
-            var l_一致の長さ = 0;
-            while (l_左の始め + l_一致の長さ < l_左.Length && l_一致の長さ < l_右.Length && l_左[l_左の始め + l_一致の長さ] == l_右[l_一致の長さ])
+            var l_一致の長さ = Get_違いを許す一致の長さ(l_左, l_左の始め, l_右, 0, 1);
+            if (l_右.Length - l_一致の長さ < C_写しを探す種の長さ)
             {
-                l_一致の長さ++;
+                return 0;
             }
 
-            return l_右.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
+            p_畳む = l_左の始め + l_一致の長さ == l_左.Length;
+            return l_一致の長さ;
         }
 
         /// <summary>
         /// 左の片の末尾が、右の片の先頭の配列の写しなら、左の片の末尾から除く長さを返す<br/>
-        /// 左の片の末尾の種 (C_写しを探す種の長さ 塩基) が右の片の先頭 C_写しを探す長さ 塩基の中にちょうど 1 か所だけあり、そこから後ろ向きに同じ間の長さ ℓ を数えて、左の片の残りが種の長さ以上のときだけ ℓ を返す
+        /// 左の片の末尾の種 (C_写しを探す種の長さ 塩基) が右の片の先頭 C_写しを探す長さ 塩基の中にちょうど 1 か所だけあり、そこから後ろ向きに違いを許して同じ間の長さ ℓ を数えて、左の片の残りが種の長さ以上のときだけ ℓ を返す
         /// </summary>
         /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
         /// <param name="p_配列">配列</param>
@@ -654,13 +676,83 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             var l_右の終わり = l_位置 + C_写しを探す種の長さ - 1;
+            var l_一致の長さ = Get_違いを許す一致の長さ(l_左, l_左.Length - 1, l_右, l_右の終わり, -1);
+            return l_左.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
+        }
+
+        /// <summary>
+        /// 2 つの配列を、指定した位置から同じ向きに 1 塩基ずつ比べ、一致の長さ ℓ を返す<br/>
+        /// 違う塩基に当たったとき、それまでに許した違いが C_写しで許す違いの数 未満で、その直後の C_違いの後に要る一致の長さ 塩基がすべて一致するなら、その違いを許して数え続ける (片の端までの残りがそれより短ければ、残りがすべて一致すること。残りが 0 なら許さない)<br/>
+        /// 満たさなければ、その違いの手前で止める (ℓ は最後に一致した塩基までの長さ)
+        /// </summary>
+        /// <param name="p_左">左の配列</param>
+        /// <param name="p_左の始め">左の配列で比べ始める位置</param>
+        /// <param name="p_右">右の配列</param>
+        /// <param name="p_右の始め">右の配列で比べ始める位置</param>
+        /// <param name="p_向き">比べる向き (1 は後ろ、-1 は前)</param>
+        /// <returns>一致の長さ ℓ、比べ始めで一致しなければ 0</returns>
+        private static int Get_違いを許す一致の長さ(string p_左, int p_左の始め, string p_右, int p_右の始め, int p_向き)
+        {
             var l_一致の長さ = 0;
-            while (l_一致の長さ < l_左.Length && l_右の終わり - l_一致の長さ >= 0 && l_左[l_左.Length - 1 - l_一致の長さ] == l_右[l_右の終わり - l_一致の長さ])
+            var l_違いの数 = 0;
+            var l_左 = p_左の始め;
+            var l_右 = p_右の始め;
+            while (Is_範囲内(p_左, l_左) && Is_範囲内(p_右, l_右))
             {
-                l_一致の長さ++;
+                if (p_左[l_左] == p_右[l_右])
+                {
+                    l_一致の長さ = ((l_左 - p_左の始め) * p_向き) + 1;
+                }
+                else if (l_違いの数 < C_写しで許す違いの数 && Is_違いの後が一致(p_左, l_左 + p_向き, p_右, l_右 + p_向き, p_向き))
+                {
+                    l_違いの数++;
+                }
+                else
+                {
+                    break;
+                }
+
+                l_左 += p_向き;
+                l_右 += p_向き;
             }
 
-            return l_左.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
+            return l_一致の長さ;
+        }
+
+        /// <summary>
+        /// 違いの直後から、C_違いの後に要る一致の長さ 塩基 (片の端で尽きれば残り全部) が一致するか
+        /// </summary>
+        /// <param name="p_左">左の配列</param>
+        /// <param name="p_左の始め">左の配列で、違いの直後の位置</param>
+        /// <param name="p_右">右の配列</param>
+        /// <param name="p_右の始め">右の配列で、違いの直後の位置</param>
+        /// <param name="p_向き">比べる向き (1 は後ろ、-1 は前)</param>
+        /// <returns>一致するなら true (比べられる塩基が 0 個なら false)</returns>
+        private static bool Is_違いの後が一致(string p_左, int p_左の始め, string p_右, int p_右の始め, int p_向き)
+        {
+            var l_数 = 0;
+            while (l_数 < C_違いの後に要る一致の長さ && Is_範囲内(p_左, p_左の始め + (p_向き * l_数)) && Is_範囲内(p_右, p_右の始め + (p_向き * l_数)))
+            {
+                if (p_左[p_左の始め + (p_向き * l_数)] != p_右[p_右の始め + (p_向き * l_数)])
+                {
+                    return false;
+                }
+
+                l_数++;
+            }
+
+            return l_数 > 0;
+        }
+
+        /// <summary>
+        /// 位置が配列の中にあるか
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_位置">位置</param>
+        /// <returns>中にあれば true</returns>
+        private static bool Is_範囲内(string p_配列, int p_位置)
+        {
+            return p_位置 >= 0 && p_位置 < p_配列.Length;
         }
 
         /// <summary>

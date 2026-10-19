@@ -181,6 +181,57 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 右の片の先頭が左の片の末尾の写しで、1 塩基だけ違うなら、違いを許して左の片の末尾まで届いたところで N を書かずに畳む
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_1塩基違う写しは畳む()
+        {
+            var l_乱数 = new Random(61);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_X写し = Get_一部を変えた配列(l_X, 160);
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y, l_番号群);
+            Assert.Equal(l_X[..170] + l_X写し[170..200] + l_Y, l_結果);
+            Assert.Empty(l_番号群);
+        }
+
+        /// <summary>
+        /// 畳んだ印の後ろの N の連続の番号は、出力の中で何番目の N の連続かに合わせる (畳んだ印は数えない)
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_畳んだ後ろのNの連続の番号は出力に合わせる()
+        {
+            var l_乱数 = new Random(62);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_V = Get_乱配列(l_乱数, 200);
+            var l_U = Get_乱配列(l_乱数, 200);
+            var l_X写し = Get_一部を変えた配列(l_X, 160);
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y + "NNNNN" + l_V + Consts.未確認の繋ぎ目 + l_U, l_番号群);
+            Assert.Equal(l_X + l_Y + "NNNNN" + l_V[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_U[30..], l_結果);
+            Assert.Equal([1], l_番号群.Order());
+        }
+
+        /// <summary>
+        /// 写しの違いが 3 か所あれば、違いを許しきれず左の片の末尾まで届かないので畳まず、右の片の先頭 27 塩基を削って N 100 個にする<br/>
+        /// 手計算: X と X'' は位置 157・162・166 の 3 か所だけ違う (種 X[130..155) の外)。130〜156 の 27 塩基が一致する。157 で違い、その後の 10 塩基 (158〜167) に 162 の違いが入るので許さない。ℓ = 27 で、左の片の末尾 (170) に届かないので畳まない
+        /// </summary>
+        [Fact]
+        public void Get_長さ不明のギャップへ置換_違いが3か所あれば畳まない()
+        {
+            var l_乱数 = new Random(63);
+            var l_X = Get_乱配列(l_乱数, 200);
+            var l_Y = Get_乱配列(l_乱数, 200);
+            var l_X写し = Get_一部を変えた配列(l_X, 157, 162, 166);
+            var l_番号群 = new HashSet<int>();
+            var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_X + Consts.未確認の繋ぎ目 + l_X写し[100..] + l_Y, l_番号群);
+            Assert.Equal(l_X[..170] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_X写し[157..] + l_Y, l_結果);
+            Assert.Equal([0], l_番号群.Order());
+        }
+
+        /// <summary>
         /// AGP では、長さ不明のギャップを U、推定長のギャップを N、配列の片を W として書く
         /// </summary>
         [Fact]
@@ -328,6 +379,23 @@ namespace Tsumiki.Tests.Core
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 指定した位置の塩基だけを、別の塩基 (A なら C、それ以外なら A) に変えた配列
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_位置群">変える位置</param>
+        /// <returns>変えた配列</returns>
+        private static string Get_一部を変えた配列(string p_配列, params int[] p_位置群)
+        {
+            var l_文字群 = p_配列.ToCharArray();
+            foreach (var l_位置 in p_位置群)
+            {
+                l_文字群[l_位置] = l_文字群[l_位置] == 'A' ? 'C' : 'A';
+            }
+
+            return new string(l_文字群);
+        }
 
         /// <summary>
         /// 指定した乱数系列の塩基配列
