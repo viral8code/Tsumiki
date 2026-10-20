@@ -183,7 +183,7 @@ namespace Tsumiki.Cores.Pipeline
         private const int C_長さ不明のギャップの両側で削る長さ = 30;
 
         /// <summary>
-        /// 長さ不明のギャップに置き換えるとき、両側の片どうしの写しを探す種の長さ (A・C・G・T のみ、同じ向きの完全一致だけを数える)
+        /// 長さ不明のギャップに置き換えるとき、右の片の先頭から取る、左の片の末尾の窓で写しを探す種の長さ (A・C・G・T のみ、同じ向きの完全一致だけを数える)
         /// </summary>
         private const int C_写しを探す種の長さ = 25;
 
@@ -423,11 +423,7 @@ namespace Tsumiki.Cores.Pipeline
 
                     var l_右の始め = i + 1 + l_削る長さ;
                     var l_読み飛ばす長さ = Get_右の片の先頭の写しの長さ(l_出力, p_配列, l_右の始め, out var l_畳む);
-                    if (l_読み飛ばす長さ == 0)
-                    {
-                        l_出力.Length -= Get_左の片の末尾の写しの長さ(l_出力, p_配列, l_右の始め);
-                    }
-                    else if (l_畳む)
+                    if (l_畳む)
                     {
                         // 重なりの真ん中で繋ぐ: 左の片は重なりの後半 (ov - h) を除き、右の片は前半 h を読み飛ばす
                         var l_半分 = l_読み飛ばす長さ / 2;
@@ -657,46 +653,6 @@ namespace Tsumiki.Cores.Pipeline
 
             p_畳む = l_左の始め + l_一致の長さ == l_左.Length;
             return l_一致の長さ;
-        }
-
-        /// <summary>
-        /// 左の片の末尾が、右の片の先頭の配列の写しなら、左の片の末尾から除く長さを返す<br/>
-        /// 左の片の末尾 C_写しを探す長さ 塩基の中に種が 2 か所以上あるとき (縦列反復) は何もしない<br/>
-        /// 左の片の末尾の種 (C_写しを探す種の長さ 塩基) が右の片の先頭 C_写しを探す長さ 塩基の中にちょうど 1 か所だけあり、そこから後ろ向きに違いを許して同じ間の長さ ℓ を数えて、左の片の残りが種の長さ以上のときだけ ℓ を返す
-        /// </summary>
-        /// <param name="p_出力">出力済みの配列 (左の片は末尾の片)</param>
-        /// <param name="p_配列">配列</param>
-        /// <param name="p_右の始め">右の片の始まりの位置</param>
-        /// <returns>除く長さ、写しと判らなければ 0</returns>
-        private static int Get_左の片の末尾の写しの長さ(StringBuilder p_出力, string p_配列, int p_右の始め)
-        {
-            var l_左 = Get_末尾の片(p_出力);
-            var l_右 = p_配列.Substring(p_右の始め, Get_先頭の片の長さ(p_配列, p_右の始め));
-            if (l_左.Length < C_写しを探す種の長さ || l_右.Length < C_写しを探す種の長さ)
-            {
-                return 0;
-            }
-
-            var l_種 = l_左[^C_写しを探す種の長さ..];
-            if (!Is_ACGTのみ(l_種))
-            {
-                return 0;
-            }
-
-            if (Get_窓の出現数(l_左[Math.Max(0, l_左.Length - C_写しを探す長さ)..], l_種) >= 2)
-            {
-                return 0;
-            }
-
-            var l_位置 = Get_窓で一意の位置(l_右[..Math.Min(C_写しを探す長さ, l_右.Length)], l_種);
-            if (l_位置 < 0)
-            {
-                return 0;
-            }
-
-            var l_右の終わり = l_位置 + C_写しを探す種の長さ - 1;
-            var l_一致の長さ = Get_違いを許す一致の長さ(l_左, l_左.Length - 1, l_右, l_右の終わり, -1);
-            return l_左.Length - l_一致の長さ >= C_写しを探す種の長さ ? l_一致の長さ : 0;
         }
 
         /// <summary>

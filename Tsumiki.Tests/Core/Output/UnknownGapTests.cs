@@ -140,10 +140,10 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 左の片の末尾が右の片の先頭より後ろの配列の写しなら、その写しを左の片の末尾から除く (左の片の残りは残す)
+        /// 左の片の末尾が右の片の先頭の配列の写しでも、左の片の末尾からは除かず、左右の片の端を 30 bp ずつ削るだけ
         /// </summary>
         [Fact]
-        public void Get_長さ不明のギャップへ置換_左の片の末尾が右の片の写しなら除く()
+        public void Get_長さ不明のギャップへ置換_左の片の末尾が右の片の写しでも除かない()
         {
             var l_乱数 = new Random(52);
             var l_Z = Get_乱配列(l_乱数, 200);
@@ -155,7 +155,7 @@ namespace Tsumiki.Tests.Core
 
             var l_番号群 = new HashSet<int>();
             var l_結果 = FinalAssemblyPipeline.Get_長さ不明のギャップへ置換(l_Z + l_Y[50..130] + Consts.未確認の繋ぎ目 + l_Y, l_番号群);
-            Assert.Equal(l_Z + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y[30..], l_結果);
+            Assert.Equal(l_Z + l_Y[50..100] + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_Y[30..], l_結果);
             Assert.Equal([0], l_番号群.Order());
         }
 
