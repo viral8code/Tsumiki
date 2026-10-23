@@ -96,14 +96,14 @@ namespace Tsumiki.Cores.Preprocessing
         private static HashSet<(UInt128 A_上位, UInt128 A_下位)> Get_行き止まり集合(TrustedKmerIndex p_kmerインデックス, int p_スレッド数)
         {
             var l_結果 = new ConcurrentBag<(UInt128 A_上位, UInt128 A_下位)>();
-            Parallel.ForEach(p_kmerインデックス.Get_信頼kmer一覧(), new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, l_kmer =>
+            _ = Parallel.ForEach(p_kmerインデックス.Get_信頼kmer一覧(), new ParallelOptions { MaxDegreeOfParallelism = p_スレッド数 }, l_kmer =>
             {
                 if (p_kmerインデックス.Get_出次数(l_kmer) == 0 || p_kmerインデックス.Get_入次数(l_kmer) == 0)
                 {
                     l_結果.Add(TrustedKmerIndex.Get_正規形_値(l_kmer));
                 }
             });
-            return new HashSet<(UInt128 A_上位, UInt128 A_下位)>(l_結果);
+            return [.. l_結果];
         }
 
         /// <summary>

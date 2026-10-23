@@ -192,7 +192,7 @@ namespace Tsumiki.Cores.Scaffolding
                     break;
                 }
 
-                l_合意.Append(Consts.塩基文字[l_最多]);
+                _ = l_合意.Append(Consts.塩基文字[l_最多]);
             }
 
             return l_合意.ToString();

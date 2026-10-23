@@ -42,12 +42,7 @@ namespace Tsumiki.Cores.Preprocessing
             }
 
             var l_深度 = (double)p_総塩基数 / p_推定ゲノムサイズ;
-            if (l_深度 <= p_目標深度 * Consts.間引きを始める倍率)
-            {
-                return null;
-            }
-
-            return p_目標深度 / l_深度;
+            return l_深度 <= p_目標深度 * Consts.間引きを始める倍率 ? null : p_目標深度 / l_深度;
         }
 
         /// <summary>
@@ -87,13 +82,13 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 while (l_読込1.Has続き())
                 {
-                    var l_レコード1 = l_読込1.Get_次のレコード();
+                    var (l_ID1, l_配列1, l_クオリティ1) = l_読込1.Get_次のレコード();
                     var l_採る = Is採用(l_元の件数, p_割合);
                     if (l_読込2 is null)
                     {
                         if (l_採る)
                         {
-                            l_書込1.V_書き込み(l_レコード1.A_ID, l_レコード1.A_配列, l_レコード1.A_クオリティ);
+                            l_書込1.V_書き込み(l_ID1, l_配列1, l_クオリティ1);
                             l_採用件数++;
                         }
 
@@ -106,11 +101,11 @@ namespace Tsumiki.Cores.Preprocessing
                         throw new InvalidDataException($"{p_逆リード}: 順リード {p_順リード} より先に終わっている。");
                     }
 
-                    var l_レコード2 = l_読込2.Get_次のレコード();
+                    var (l_ID2, l_配列2, l_クオリティ2) = l_読込2.Get_次のレコード();
                     if (l_採る)
                     {
-                        l_書込1.V_書き込み(l_レコード1.A_ID, l_レコード1.A_配列, l_レコード1.A_クオリティ);
-                        l_書込2!.V_書き込み(l_レコード2.A_ID, l_レコード2.A_配列, l_レコード2.A_クオリティ);
+                        l_書込1.V_書き込み(l_ID1, l_配列1, l_クオリティ1);
+                        l_書込2!.V_書き込み(l_ID2, l_配列2, l_クオリティ2);
                         l_採用件数++;
                     }
 

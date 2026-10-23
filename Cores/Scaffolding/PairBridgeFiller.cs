@@ -4,7 +4,6 @@ using Tsumiki.Commons;
 using Tsumiki.IO;
 using Tsumiki.Models.Evidence;
 using Tsumiki.Models.Scaffolding;
-using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Scaffolding
 {
@@ -247,7 +246,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out var l_繋いだ数);
+            var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out _);
             p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数);
             return l_書き出し;
         }
@@ -470,7 +469,7 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_u2 == (l_u1 ^ 1))
             {
                 var l_断片長 = l_d1 + l_d2 - p_頂点[l_u1].Length;
-                return new 組の結果(l_断片長 >= 1 && l_断片長 <= C_挿入長の上限, l_断片長, false, 0, 0, 0, l_窓1, l_窓2);
+                return new 組の結果(l_断片長 is >= 1 and <= C_挿入長の上限, l_断片長, false, 0, 0, 0, l_窓1, l_窓2);
             }
 
             if (l_u1 / 2 != l_u2 / 2 && l_d1 > 0 && l_d1 <= C_窓長 && l_d2 > 0 && l_d2 <= C_窓長)
@@ -496,7 +495,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_d = p_頂点[l_当たり.A_頂点].Length - l_当たり.A_位置;
-            return l_d > 0 && l_d <= C_窓長 ? l_当たり.A_頂点 : null;
+            return l_d is > 0 and <= C_窓長 ? l_当たり.A_頂点 : null;
         }
 
         /// <summary>
@@ -529,12 +528,7 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
-            if (l_密度群.Count < C_多コピーの判定に要る頂点数)
-            {
-                return null;
-            }
-
-            return StatsUtil.Get_中央値(l_密度群);
+            return l_密度群.Count < C_多コピーの判定に要る頂点数 ? null : StatsUtil.Get_中央値(l_密度群);
         }
 
         /// <summary>
@@ -565,14 +559,14 @@ namespace Tsumiki.Cores.Scaffolding
         /// <returns>順リードと逆リードの組</returns>
         private static IEnumerable<(string A_順リード, string A_逆リード)> Get_全ペア(IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
         {
-            foreach (var l_ライブラリ in p_ライブラリ群)
+            foreach (var (l_順リード, l_逆リード) in p_ライブラリ群)
             {
-                if (string.IsNullOrEmpty(l_ライブラリ.A_逆リード))
+                if (string.IsNullOrEmpty(l_逆リード))
                 {
                     continue;
                 }
 
-                foreach (var l_ペア in FastqReader.Get_ペア塩基列(l_ライブラリ.A_順リード, l_ライブラリ.A_逆リード))
+                foreach (var l_ペア in FastqReader.Get_ペア塩基列(l_順リード, l_逆リード))
                 {
                     yield return l_ペア;
                 }
@@ -686,7 +680,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_表">種の索引</param>
         /// <param name="p_候補の鍵">(u, x^1) から候補の辺の番号への表</param>
         /// <returns>候補の辺の番号と局所リードの組</returns>
-        private static (int A_候補, 読取証拠 A_読取)[] Get_該当の読み(string p_順リード, string p_逆リード, int p_番号, string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, IReadOnlyDictionary<(int A_始, int A_終), int> p_候補の鍵)
+        private static (int A_候補, 読取証拠 A_読取)[] Get_該当の読み(string p_順リード, string p_逆リード, int p_番号, string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, Dictionary<(int A_始, int A_終), int> p_候補の鍵)
         {
             var l_当たり1 = Get_当たり(p_順リード, p_表, p_頂点);
             var l_当たり2 = Get_当たり(p_逆リード, p_表, p_頂点);
@@ -714,16 +708,12 @@ namespace Tsumiki.Cores.Scaffolding
                 ];
             }
 
-            if (p_候補の鍵.TryGetValue((l_h2, l_h1), out var l_候補2))
-            {
-                return
-                [
+            return p_候補の鍵.TryGetValue((l_h2, l_h1), out var l_候補2)
+                ? [
                     (l_候補2, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_順リード), l_ペアID)),
                     (l_候補2, new 読取証拠(p_逆リード, l_ペアID)),
-                ];
-            }
-
-            return [];
+                ]
+                : [];
         }
 
         /// <summary>
@@ -752,7 +742,7 @@ namespace Tsumiki.Cores.Scaffolding
 
                 var l_u文字列 = p_頂点[p_候補[i].A_u];
                 var l_x文字列 = p_頂点[p_候補[i].A_x];
-                var l_左 = l_u文字列.Substring(Math.Max(0, l_u文字列.Length - C_アンカー長));
+                var l_左 = l_u文字列[Math.Max(0, l_u文字列.Length - C_アンカー長)..];
                 var l_右 = l_x文字列[..Math.Min(C_アンカー長, l_x文字列.Length)];
                 l_結果[i] = LocalAssembler.Get_適応kの局所結果(new 局所ギャップ(0, 0, Math.Max(0, p_候補[i].A_間の長さ), l_左, l_右), p_読み[i], C_局所k, out var l_局所判定, C_長さの余裕幅);
                 l_判定[i] = l_局所判定;

@@ -437,7 +437,7 @@ namespace Tsumiki.Cores.UnitigBuilding
 
                     var l_勝者index = Enumerable.Range(0, l_経路群.Count).OrderByDescending(i => p_支持.GetValueOrDefault((l_分岐元, l_経路群[i][0]))).ThenByDescending(i => l_配列群[i].Length).First();
 
-                    if (Isコピーの違いの泡(l_分岐元, l_再合流先, l_経路群.Select(x => p_支持.GetValueOrDefault((l_分岐元, x[0]))).ToList(), l_勝者index, p_コピー数, l_配列群))
+                    if (Isコピーの違いの泡(l_分岐元, l_再合流先, [.. l_経路群.Select(x => p_支持.GetValueOrDefault((l_分岐元, x[0])))], l_勝者index, p_コピー数, l_配列群))
                     {
                         this.A_残したコピーの違いの泡の数++;
                         continue;
@@ -573,7 +573,7 @@ namespace Tsumiki.Cores.UnitigBuilding
             {
                 var l_値 = p_経路行列[l_行, l_列] + p_ペア行列[l_行, l_列];
                 var l_選ばない側 = p_経路行列[l_行, 1 - l_列] + p_ペア行列[l_行, 1 - l_列];
-                if (p_経路行列[l_行, 1 - l_列] > 0UL && p_ペア行列[l_行, 1 - l_列] > 0UL && (decimal)l_選ばない側 >= C_二対二で矛盾とみなす割合 * l_値)
+                if (p_経路行列[l_行, 1 - l_列] > 0UL && p_ペア行列[l_行, 1 - l_列] > 0UL && l_選ばない側 >= C_二対二で矛盾とみなす割合 * l_値)
                 {
                     return null;
                 }
@@ -836,7 +836,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 }
 
                 var l_支持 = p_枝の支持[i];
-                if (l_支持 == 0UL || (double)l_支持 < l_勝者の支持 * C_コピーの違いとみなす支持の割合)
+                if (l_支持 == 0UL || l_支持 < l_勝者の支持 * C_コピーの違いとみなす支持の割合)
                 {
                     continue;
                 }
