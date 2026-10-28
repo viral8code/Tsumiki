@@ -53,6 +53,9 @@ namespace Tsumiki.IO
                         case Consts.引数キー.シングルのパス:
                             l_引数.A_シングルのパス = p_引数列[l_位置++];
                             break;
+                        case Consts.引数キー.ロングリードのパス:
+                            l_引数.A_ロングリードのパス = p_引数列[l_位置++];
+                            break;
                         case Consts.引数キー.k長:
                             l_引数.Set_k長一覧(p_引数列[l_位置++].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse));
                             break;

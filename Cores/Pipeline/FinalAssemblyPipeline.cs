@@ -172,6 +172,16 @@ namespace Tsumiki.Cores.Pipeline
         private const string C_ポリッシュ済みファイル名 = "polished.fasta";
 
         /// <summary>
+        /// ロングリードの橋の埋めた配列を直すとき、直す塩基を中心にした k-mer が短いリードに出るのに要る、一意な配列の出現数の目安に対する比
+        /// </summary>
+        private const double C_直す塩基の確かめに要る出現数の比 = 0.5D;
+
+        /// <summary>
+        /// GFA の S 行 (segment) の行頭
+        /// </summary>
+        private const string C_GFAのS行の頭 = "S\t";
+
+        /// <summary>
         /// 長さが分からない繋ぎ目に入れる N の数 (NCBI の慣例)
         /// </summary>
         public const int C_長さ不明のギャップ長 = 100;
@@ -529,6 +539,7 @@ namespace Tsumiki.Cores.Pipeline
         {
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
             V_除外_短い配列(l_最終パス, p_リード長);
+            V_繋ぐ_ロングリードの橋(l_最終パス, p_原入力, p_一時ディレクトリ, p_結果.A_k長);
             V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
@@ -890,6 +901,88 @@ namespace Tsumiki.Cores.Pipeline
                 }
 
                 Logger.V_出力(メッセージID.端をリードで伸ばした, l_伸ばした端の数, l_伸ばした塩基数);
+            }
+        }
+
+        /// <summary>
+        /// ロングリードがあれば、最終配列に当てて互いに一意な端の組 (橋) を決め、間を重なりか組み立てグラフの経路で埋めて繋ぐ<br/>
+        /// 橋と埋め方は TSV とログに出す。配列の数が減ったときだけ、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_原入力">ロングリードのパスを保持した設定</param>
+        /// <param name="p_出力ディレクトリ">TSV の出力先 (組み立てグラフの GFA もここから読む)</param>
+        /// <param name="p_k長">選ばれた k (経路を探す k-mer の長さ)</param>
+        private static void V_繋ぐ_ロングリードの橋(string p_最終パス, Parameters p_原入力, string p_出力ディレクトリ, int p_k長)
+        {
+            if (p_原入力.A_ロングリードのパス群.Count == 0)
+            {
+                return;
+            }
+
+            using var l_計測 = new StageTimer("long-read-bridge");
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_橋群 = LongReadBridger.Get_決めた橋(l_配列群, FastqReader.Get_生リード列([.. p_原入力.A_ロングリードのパス群]), true, out var l_統計, out var l_区間群);
+            var l_パス = Path.Combine(p_出力ディレクトリ, Consts.ロングリードの橋ファイル名);
+            Logger.V_出力(メッセージID.ロングリードの橋を決めた, l_統計.A_リード数, l_統計.A_当たり数, l_統計.A_錨数, l_統計.A_多コピーの錨数, l_統計.A_候補数, l_統計.A_橋数, l_パス);
+            var l_GFAパス = Path.Combine(p_出力ディレクトリ, Consts.GFAファイル名);
+            var l_材料 = File.Exists(l_GFAパス) ? Get_GFAの短いsegment群(l_GFAパス) : null;
+            var l_繋いだ配列群 = LongReadBridger.Get_繋いだ配列群(l_配列群, l_橋群, l_材料, l_区間群, Get_短いリードの確かめ(p_原入力, l_配列群), p_k長, out var l_繋ぎ方群, out var l_繋ぎ統計);
+            LongReadBridger.V_書き出し_橋(l_パス, l_配列群, l_橋群, l_繋ぎ方群);
+            if (l_繋いだ配列群.Count < l_配列群.Count)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_繋いだ配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            Logger.V_出力(メッセージID.ロングリードの橋で繋いだ, l_繋ぎ統計.A_重なりで畳んだ数, l_繋ぎ統計.A_経路で埋めた数, l_繋ぎ統計.A_ロングリードで選んだ数, l_繋ぎ統計.A_決まらなかった数, l_繋ぎ統計.A_前の本数, l_繋ぎ統計.A_後の本数, l_繋ぎ統計.A_直した塩基数);
+        }
+
+        /// <summary>
+        /// 直す塩基を中心にした k-mer が、短いリードに一意な配列の出現数の目安の C_直す塩基の確かめに要る出現数の比 倍以上で出るかを判定する関数を作る<br/>
+        /// リードの索引が使えなければ null (直さない)
+        /// </summary>
+        /// <param name="p_原入力">ライブラリ群を保持した設定</param>
+        /// <param name="p_配列群">最終配列 (一意な配列の出現数の目安を測る)</param>
+        /// <returns>判定する関数、使えなければ null</returns>
+        private static Func<string, bool>? Get_短いリードの確かめ(Parameters p_原入力, IReadOnlyList<(string A_ID, string A_配列)> p_配列群)
+        {
+            if (RepeatRMerVerifier.Get_リード索引(AssemblyPipeline.Get_全リードパス(p_原入力)) is not { } l_索引)
+            {
+                return null;
+            }
+
+            var l_一意の出現数 = Scaffolder.Get_一意の出現数(l_索引, p_配列群.Select(x => x.A_配列));
+            if (l_一意の出現数 <= 0)
+            {
+                return null;
+            }
+
+            var l_下限 = (int)Math.Ceiling(C_直す塩基の確かめに要る出現数の比 * l_一意の出現数);
+            return x => l_索引.Get_出現数(x, l_下限) >= l_下限;
+        }
+
+        /// <summary>
+        /// GFA の S 行のうち、長さが LongReadBridger.C_材料にするsegmentの長さの上限 未満の配列を流す
+        /// </summary>
+        /// <param name="p_GFAパス">GFA のパス</param>
+        /// <returns>segment の配列</returns>
+        private static IEnumerable<string> Get_GFAの短いsegment群(string p_GFAパス)
+        {
+            foreach (var l_行 in File.ReadLines(p_GFAパス))
+            {
+                if (!l_行.StartsWith(C_GFAのS行の頭, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var l_列 = l_行.Split('\t', 4);
+                if (l_列.Length >= 3 && l_列[2].Length < LongReadBridger.C_材料にするsegmentの長さの上限)
+                {
+                    yield return l_列[2];
+                }
             }
         }
 

@@ -116,6 +116,11 @@ namespace Tsumiki.Models.Foundation
         private List<string> _シングルのパス群 = [];
 
         /// <summary>
+        /// ロングリードのパス
+        /// </summary>
+        private List<string> _ロングリードのパス群 = [];
+
+        /// <summary>
         /// 前処理などで差し替えたライブラリ、未差し替えなら null
         /// </summary>
         private List<(string A_順リード, string A_逆リード)>? _差し替えたライブラリ群;
@@ -222,6 +227,32 @@ namespace Tsumiki.Models.Foundation
                 this._差し替えたライブラリ群 = null;
             }
         }
+
+        /// <summary>
+        /// ロングリードのパス (カンマ区切り)
+        /// </summary>
+        public string A_ロングリードのパス
+        {
+            get => string.Join(C_パス一覧の区切り, this._ロングリードのパス群);
+            set
+            {
+                var l_群 = Get_パス群(value);
+                foreach (var l_パス in l_群)
+                {
+                    if (!File.Exists(l_パス))
+                    {
+                        throw new ArgumentException($"Long read's path {l_パス} is not found");
+                    }
+                }
+
+                this._ロングリードのパス群 = l_群;
+            }
+        }
+
+        /// <summary>
+        /// ロングリードのパスの一覧
+        /// </summary>
+        public IReadOnlyList<string> A_ロングリードのパス群 => this._ロングリードのパス群;
 
         /// <summary>
         /// シングルエンドのライブラリのパス (カンマ区切り)
@@ -666,6 +697,7 @@ namespace Tsumiki.Models.Foundation
             l_複製._ライブラリのリード長 = [.. this._ライブラリのリード長];
             l_複製._逆リードのパス群 = [.. this._逆リードのパス群];
             l_複製._シングルのパス群 = [.. this._シングルのパス群];
+            l_複製._ロングリードのパス群 = [.. this._ロングリードのパス群];
             l_複製._差し替えたライブラリ群 = this._差し替えたライブラリ群 is null ? null : [.. this._差し替えたライブラリ群];
             l_複製.A_間引き前ライブラリ群 = [.. this.A_間引き前ライブラリ群];
             l_複製.A_間引きの採用割合 = this.A_間引きの採用割合;

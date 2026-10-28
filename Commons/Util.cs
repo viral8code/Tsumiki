@@ -1,4 +1,6 @@
-﻿namespace Tsumiki.Commons
+﻿using System.Globalization;
+
+namespace Tsumiki.Commons
 {
     /// <summary>
     /// 塩基の変換など、どこからでも使う小さな処理
@@ -118,12 +120,25 @@
         }
 
         /// <summary>
-        /// k-mer カウント時のメモリ予算の既定値 (使えるメモリの 1/8 を、下限と上限の間に収めたもの)
+        /// k-mer カウント時のメモリ予算の既定値 (GC のヒープの上限の割合で割り戻したメモリから求める)
         /// </summary>
         /// <returns>メモリ予算 (バイト)</returns>
         public static long Get_既定のメモリ予算()
         {
-            return Math.Clamp(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / Consts.メモリ予算の分母, Consts.メモリ予算の下限, Consts.メモリ予算の上限);
+            var l_上限の割合 = GC.GetConfigurationVariables().TryGetValue(Consts.GCヒープ上限の割合の設定名, out var l_値) ? Convert.ToInt64(l_値, CultureInfo.InvariantCulture) : 0L;
+            return Get_メモリ予算(GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, l_上限の割合);
+        }
+
+        /// <summary>
+        /// 使えるメモリをヒープの上限の割合で割り戻し、その 1/8 を下限と上限の間に収めたメモリ予算
+        /// </summary>
+        /// <param name="p_使えるメモリ">GC が使えるメモリ (バイト)</param>
+        /// <param name="p_上限の割合">GC のヒープの上限の百分率 (1〜99 以外は割り戻さない)</param>
+        /// <returns>メモリ予算 (バイト)</returns>
+        public static long Get_メモリ予算(long p_使えるメモリ, long p_上限の割合)
+        {
+            var l_元のメモリ = p_上限の割合 is > 0L and < Consts.百分率の分母 ? p_使えるメモリ * Consts.百分率の分母 / p_上限の割合 : p_使えるメモリ;
+            return Math.Clamp(l_元のメモリ / Consts.メモリ予算の分母, Consts.メモリ予算の下限, Consts.メモリ予算の上限);
         }
 
         /// <summary>

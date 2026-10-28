@@ -63,6 +63,16 @@
         public const long メモリ予算の分母 = 8L;
 
         /// <summary>
+        /// GC のヒープの上限を物理メモリ (コンテナでは制限) の百分率で表す設定の名前
+        /// </summary>
+        public const string GCヒープ上限の割合の設定名 = "GCHeapHardLimitPercent";
+
+        /// <summary>
+        /// 百分率を割合に直すときの分母
+        /// </summary>
+        public const long 百分率の分母 = 100L;
+
+        /// <summary>
         /// Phred オフセットの既定値
         /// </summary>
         public const int Phredオフセットの既定値 = 33;
@@ -121,6 +131,11 @@
         /// GFA ファイル名
         /// </summary>
         public const string GFAファイル名 = "assembly.gfa";
+
+        /// <summary>
+        /// ロングリードで決めた橋の TSV ファイル名
+        /// </summary>
+        public const string ロングリードの橋ファイル名 = "longread_bridges.tsv";
 
         /// <summary>
         /// ペアでは繋がるが重なりを確かめられなかった scaffold の繋ぎ目の印 (最終出力で長さ不明のギャップにする)
@@ -222,6 +237,11 @@
             /// シングルエンドリードのパス
             /// </summary>
             public const string シングルのパス = "-s";
+
+            /// <summary>
+            /// ロングリードのパス
+            /// </summary>
+            public const string ロングリードのパス = "-long";
 
             /// <summary>
             /// k 長

@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- コンテナのメモリ制限の下では、GC の既定の上限が制限の 75% になり、8 Mb 級のゲノムで足りなくなるため 90% に上げる。 -->
+    <!-- コンテナのメモリ制限の下では、GC の既定の上限が制限の 75% になり、8 Mb 級のゲノムで足りなくなるため 90% に上げる。コンテナの外でも物理メモリの 90% が上限になるが、メモリ予算の既定値は Util.Get_既定のメモリ予算 で割り戻す。 -->
     <RuntimeHostConfigurationOption Include="System.GC.HeapHardLimitPercent" Value="90" />
   </ItemGroup>
 

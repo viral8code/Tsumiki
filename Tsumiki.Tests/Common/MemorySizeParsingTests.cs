@@ -95,6 +95,24 @@ namespace Tsumiki.Tests.Common
             Assert.Equal(p_期待値, Util.Get_表示用メモリサイズ(p_バイト数));
         }
 
+        /// <summary>
+        /// メモリ予算の既定値は、GC のヒープの上限の割合で割り戻したメモリの 1/8 を下限と上限の間に収めたもの
+        /// </summary>
+        /// <param name="p_使えるメモリ"></param>
+        /// <param name="p_上限の割合"></param>
+        /// <param name="p_期待値"></param>
+        [Theory]
+        [InlineData(30_252_651_724L, 90L, 4_201_757_183L)]
+        [InlineData(7_730_941_132L, 90L, 1_073_741_823L)]
+        [InlineData(8L * 1_024L * 1_024L * 1_024L, 0L, 1_024L * 1_024L * 1_024L)]
+        [InlineData(8L * 1_024L * 1_024L * 1_024L, 100L, 1_024L * 1_024L * 1_024L)]
+        [InlineData(4L * 1_024L * 1_024L * 1_024L, 90L, 768L * 1_024L * 1_024L)]
+        [InlineData(64L * 1_024L * 1_024L * 1_024L, 0L, 4L * 1_024L * 1_024L * 1_024L)]
+        public void V_メモリ予算を上限の割合で割り戻す(long p_使えるメモリ, long p_上限の割合, long p_期待値)
+        {
+            Assert.Equal(p_期待値, Util.Get_メモリ予算(p_使えるメモリ, p_上限の割合));
+        }
+
         #endregion
     }
 }
