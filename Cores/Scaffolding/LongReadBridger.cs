@@ -422,8 +422,16 @@ namespace Tsumiki.Cores.Scaffolding
                 l_入る[l_橋.A_u ^ 1] = l_橋.A_x ^ 1;
             }
 
+            var l_環状群 = Get_環状の鎖群(p_配列群, l_頂点, l_出る, l_入る);
             var l_結果 = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out _);
-            p_統計 = new ロングリード繋ぎ統計(p_繋ぎ方群.Count(x => x.A_重なり is not null), p_繋ぎ方群.Count(x => x.A_埋める配列 is not null && !x.A_Isロングリードで選んだ), p_繋ぎ方群.Count(x => x.A_Isロングリードで選んだ), p_繋ぎ方群.Count(x => x.A_理由 is not null), p_配列群.Count, l_結果.Count, l_直した塩基数);
+            if (l_環状群.Count > 0)
+            {
+                var l_外す = l_環状群.SelectMany(x => x.A_配列の番号群).Select(x => p_配列群[x].A_ID).ToHashSet(StringComparer.Ordinal);
+                var l_環状の配列 = l_環状群.ToDictionary(x => p_配列群[x.A_配列の番号群[0]].A_ID, x => (x.A_ID, x.A_配列), StringComparer.Ordinal);
+                l_結果 = [.. l_結果.Where(x => !l_外す.Contains(x.A_ID) || l_環状の配列.ContainsKey(x.A_ID)).Select(x => l_環状の配列.TryGetValue(x.A_ID, out var l_環) ? l_環 : x)];
+            }
+
+            p_統計 = new ロングリード繋ぎ統計(p_繋ぎ方群.Count(x => x.A_重なり is not null), p_繋ぎ方群.Count(x => x.A_埋める配列 is not null && !x.A_Isロングリードで選んだ), p_繋ぎ方群.Count(x => x.A_Isロングリードで選んだ), p_繋ぎ方群.Count(x => x.A_理由 is not null), p_配列群.Count, l_結果.Count, l_直した塩基数, l_環状群.Count);
             return l_結果;
         }
 
@@ -630,6 +638,83 @@ namespace Tsumiki.Cores.Scaffolding
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 確定した辺をたどって元の頂点に戻る輪を探し、環状の配列にする。輪に入った頂点の辺は外す (鎖の書き出しで二度使わないため)<br/>
+        /// 輪は頂点 2i (i の小さい順) から探し、辺を順に当ててつなぎ、最後の辺の重なり (右を削る長さ) は末尾から除く (先頭の配列の始まりを保つ)
+        /// </summary>
+        /// <param name="p_配列群">配列の ID と配列</param>
+        /// <param name="p_頂点">向き付きの配列</param>
+        /// <param name="p_出る">頂点ごとの確定した出る辺 (輪の分は消す)</param>
+        /// <param name="p_入る">頂点ごとの入る辺の元の頂点 (輪の分は消す)</param>
+        /// <returns>環状の配列の ID・配列と、輪に入った配列の番号 (先頭が ID の元)</returns>
+        private static List<(string A_ID, string A_配列, List<int> A_配列の番号群)> Get_環状の鎖群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, string[] p_頂点, (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[] p_出る, int[] p_入る)
+        {
+            var l_結果 = new List<(string A_ID, string A_配列, List<int> A_配列の番号群)>();
+            var l_使った = new bool[p_配列群.Count];
+            for (var i = 0; i < p_配列群.Count; i++)
+            {
+                if (l_使った[i] || p_出る[2 * i] is null)
+                {
+                    continue;
+                }
+
+                var l_輪 = new List<int> { 2 * i };
+                var l_今 = 2 * i;
+                var l_Is輪 = false;
+                while (p_出る[l_今] is { } l_辺)
+                {
+                    if (l_辺.A_先 == 2 * i)
+                    {
+                        l_Is輪 = true;
+                        break;
+                    }
+
+                    if (l_輪.Any(x => x / 2 == l_辺.A_先 / 2))
+                    {
+                        break;
+                    }
+
+                    l_輪.Add(l_辺.A_先);
+                    l_今 = l_辺.A_先;
+                }
+
+                if (!l_Is輪)
+                {
+                    continue;
+                }
+
+                var l_鎖 = new StringBuilder(p_頂点[l_輪[0]]);
+                for (var k = 0; k < l_輪.Count; k++)
+                {
+                    var l_辺 = p_出る[l_輪[k]]!.Value;
+                    l_鎖.Length -= Math.Min(l_鎖.Length, l_辺.A_左から削る長さ);
+                    _ = l_鎖.Append(l_辺.A_埋める配列);
+                    if (k + 1 < l_輪.Count)
+                    {
+                        _ = l_鎖.Append(p_頂点[l_辺.A_先], l_辺.A_右から削る長さ, p_頂点[l_辺.A_先].Length - l_辺.A_右から削る長さ);
+                    }
+                    else
+                    {
+                        l_鎖.Length -= Math.Min(l_鎖.Length, l_辺.A_右から削る長さ);
+                    }
+                }
+
+                foreach (var l_頂点 in l_輪)
+                {
+                    l_使った[l_頂点 / 2] = true;
+                    p_出る[l_頂点] = null;
+                    p_出る[l_頂点 ^ 1] = null;
+                    p_入る[l_頂点] = -1;
+                    p_入る[l_頂点 ^ 1] = -1;
+                }
+
+                var l_ID = p_配列群[i].A_ID.Contains(Consts.環状の目印, StringComparison.OrdinalIgnoreCase) ? p_配列群[i].A_ID : $"{p_配列群[i].A_ID}_{Consts.環状の目印}";
+                l_結果.Add((l_ID, l_鎖.ToString(), [.. l_輪.Select(x => x / 2)]));
+            }
+
+            return l_結果;
+        }
 
         /// <summary>
         /// 1 つの橋の間を、重なりで畳むか、グラフの経路で埋めるかを決める

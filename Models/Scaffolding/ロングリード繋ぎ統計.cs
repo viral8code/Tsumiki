@@ -10,5 +10,6 @@
     /// <param name="A_前の本数">繋ぐ前の配列の本数</param>
     /// <param name="A_後の本数">繋いだ後の配列の本数</param>
     /// <param name="A_直した塩基数">埋めた配列のうち、ロングリードと短いリードで直した塩基の数</param>
-    internal readonly record struct ロングリード繋ぎ統計(int A_重なりで畳んだ数, int A_経路で埋めた数, int A_ロングリードで選んだ数, int A_決まらなかった数, int A_前の本数, int A_後の本数, int A_直した塩基数);
+    /// <param name="A_環状にした数">繋いだ鎖が輪になり、環状の配列にした数</param>
+    internal readonly record struct ロングリード繋ぎ統計(int A_重なりで畳んだ数, int A_経路で埋めた数, int A_ロングリードで選んだ数, int A_決まらなかった数, int A_前の本数, int A_後の本数, int A_直した塩基数, int A_環状にした数);
 }

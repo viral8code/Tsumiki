@@ -511,6 +511,24 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 環状: 長さ 6000 の環状のゲノム C で、A = C[0..3000]、B = C[2908..6000] + C[0..50]。橋 A+→B+ (重なり 92) と B+→A+ (重なり 50) で、ID が a_circular の C 1 本になる
+        /// </summary>
+        [Fact]
+        public void 環状_輪になる鎖を環状の配列にする()
+        {
+            var l_C = V_生成_配列(6000, 121);
+            var l_A = l_C[..C_錨長];
+            var l_B = l_C[(C_錨長 - 92)..] + l_C[..50];
+
+            var l_結果 = LongReadBridger.Get_繋いだ配列群([("a", l_A), ("b", l_B)], [new ロングリードの橋(0, 2, 5, 0, -92), new ロングリードの橋(2, 0, 5, 0, -50)], null, null, null, C_経路のk, out _, out var l_統計);
+
+            var l_配列 = Assert.Single(l_結果);
+            Assert.Equal("a_" + Consts.環状の目印, l_配列.A_ID);
+            Assert.Equal(l_C, l_配列.A_配列);
+            Assert.Equal(1, l_統計.A_環状にした数);
+        }
+
+        /// <summary>
         /// 引数: -long はカンマ区切りで複数のパスを持ち、無いパスは例外
         /// </summary>
         [Fact]
