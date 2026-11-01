@@ -1,4 +1,4 @@
-using Tsumiki.Models.Foundation;
+﻿using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Tests.Models.Foundation
 {
@@ -18,14 +18,14 @@ namespace Tsumiki.Tests.Models.Foundation
             var l_元 = new Parameters
             {
                 A_間引き前ライブラリ群 = [("a.fq", "b.fq")],
-                A_間引きの採用割合 = 0.25
+                A_間引きの採用割合 = 0.25D
             };
             var l_複製 = l_元.Get_複製();
             Assert.Equal(l_元.A_間引き前ライブラリ群, l_複製.A_間引き前ライブラリ群);
-            Assert.Equal(0.25, l_複製.A_間引きの採用割合);
+            Assert.Equal(0.25D, l_複製.A_間引きの採用割合);
 
-            l_複製.A_間引きの採用割合 = 0.5;
-            Assert.Equal(0.25, l_元.A_間引きの採用割合);
+            l_複製.A_間引きの採用割合 = 0.5D;
+            Assert.Equal(0.25D, l_元.A_間引きの採用割合);
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace Tsumiki.Tests.Models.Foundation
         {
             var l_設定 = new Parameters();
             Assert.Empty(l_設定.A_間引き前ライブラリ群);
-            Assert.Equal(1.0, l_設定.A_間引きの採用割合);
+            Assert.Equal(1.0D, l_設定.A_間引きの採用割合);
         }
 
         /// <summary>
@@ -48,7 +48,7 @@ namespace Tsumiki.Tests.Models.Foundation
             var l_設定 = new Parameters
             {
                 A_間引き前ライブラリ群 = [("a.fq", "b.fq")],
-                A_間引きの採用割合 = 0.3456789
+                A_間引きの採用割合 = 0.3456789D
             };
             var l_文字列 = l_設定.ToString();
             Assert.DoesNotContain("0.3456789", l_文字列);

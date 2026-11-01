@@ -280,7 +280,6 @@ namespace Tsumiki.Tests.Core
         {
             const int l_k長 = 8;
             const string l_u = "GCTAAAGACAATTACGCA";
-            // b1 と b2 は同じ長さ (45 塩基) で、編集距離 12、類似度 約 0.73
             const string l_b1 = "TTACGCAATTAATACTTTTCTAGATAGGCCATTATATCTGCACGT";
             const string l_b2 = "TTACGCATTATTACTTCTTCGAATAGACATGTCGTTATTGCACGT";
             const string l_終点 = "TGCACGTAAGGCTTACCA";
@@ -294,7 +293,6 @@ namespace Tsumiki.Tests.Core
             var l_wV = ContigMaker.Get_頂点番号(4);
             Assert.Equal(2, l_グラフ.A_出辺[l_uV].Count);
 
-            // 逆鎖側 (w から分岐する泡) の支持も対称に与える。与えないと逆鎖の泡は支持 0 同士になり、潰されてしまう
             Dictionary<(int, int), ulong> l_支持 = new()
             {
                 [(l_uV, l_b1V)] = 40UL,
@@ -315,7 +313,6 @@ namespace Tsumiki.Tests.Core
             Assert.Contains(l_b1V, l_グラフ.A_出辺[l_uV]);
             Assert.Contains(l_b2V, l_グラフ.A_出辺[l_uV]);
             Assert.Equal(l_wV, l_グラフ.A_出辺[l_b1V][0]);
-            // 順鎖と逆鎖の泡をそれぞれ 1 回ずつ残す
             Assert.Equal(2, l_グラフ.A_残したコピーの違いの泡の数);
         }
 
@@ -506,12 +503,10 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void Isコピーの違いの泡は支持の割合とコピー数と編集距離で判定する()
         {
-            // 勝者は 20 塩基の A、編集距離 10 の枝は前半 10 塩基を C に置き換えたもの、編集距離 9 の枝は前半 9 塩基を C に置き換えたもの
             const string l_勝者 = "AAAAAAAAAAAAAAAAAAAA";
             const string l_編集距離10 = "CCCCCCCCCCAAAAAAAAAA";
             const string l_編集距離9 = "CCCCCCCCCAAAAAAAAAAA";
 
-            // 分岐元・合流先は頂点番号で渡し、コピー数の辞書は unitig 番号 (>> 1) で引く
             var l_分岐元 = ContigMaker.Get_頂点番号(1);
             var l_合流先 = ContigMaker.Get_頂点番号(4);
             Dictionary<int, int> l_コピー数 = new()
@@ -526,7 +521,6 @@ namespace Tsumiki.Tests.Core
             Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, null, [l_勝者, l_編集距離10]));
             Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_コピー数, [l_勝者, l_編集距離9]));
 
-            // 合流先が 3 コピーなら偽 (3 コピー以上の反復は潰す)
             Dictionary<int, int> l_3コピー = new()
             {
                 [1] = 2,
@@ -534,7 +528,6 @@ namespace Tsumiki.Tests.Core
             };
             Assert.False(UnitigGraph.Isコピーの違いの泡(l_分岐元, l_合流先, [40UL, 12UL], 0, l_3コピー, [l_勝者, l_編集距離10]));
 
-            // 頂点番号をそのまま辞書のキーにしていれば (キーが 2 と 8 になり) 1 コピー扱いで偽になる
             Dictionary<int, int> l_頂点番号キー = new()
             {
                 [l_分岐元] = 2,

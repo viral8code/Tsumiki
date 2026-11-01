@@ -414,13 +414,13 @@ namespace Tsumiki.Cores.Pipeline
         public static string Get_長さ不明のギャップへ置換(string p_配列, HashSet<int> p_長さ不明の番号)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
-            var l_連続の番号 = -1;
+            var l_未確認ギャップ番号 = -1;
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_文字 = p_配列[i];
                 if (Util.Isギャップ文字(l_文字) && (i == 0 || !Util.Isギャップ文字(p_配列[i - 1])))
                 {
-                    l_連続の番号++;
+                    l_未確認ギャップ番号++;
                 }
 
                 if (l_文字 == Consts.未確認の繋ぎ目)
@@ -435,22 +435,20 @@ namespace Tsumiki.Cores.Pipeline
                     var l_読み飛ばす長さ = Get_右の片の先頭の写しの長さ(l_出力, p_配列, l_右の始め, out var l_畳む);
                     if (l_畳む)
                     {
-                        // 重なりの真ん中で繋ぐ: 左の片は重なりの後半 (ov - h) を除き、右の片は前半 h を読み飛ばす
-                        var l_半分 = l_読み飛ばす長さ / 2;
-                        l_出力.Length -= l_読み飛ばす長さ - l_半分;
-                        l_読み飛ばす長さ = l_半分;
+                        var l_右の片で読み飛ばす長さ = l_読み飛ばす長さ / 2;
+                        l_出力.Length -= l_読み飛ばす長さ - l_右の片で読み飛ばす長さ;
+                        l_読み飛ばす長さ = l_右の片で読み飛ばす長さ;
                     }
 
                     i += l_削る長さ + l_読み飛ばす長さ;
                     if (l_畳む)
                     {
-                        // 畳んだ印は N の連続にならないので、後ろの番号を 1 つ戻す
-                        l_連続の番号--;
+                        l_未確認ギャップ番号--;
                     }
                     else
                     {
                         _ = l_出力.Append('N', C_長さ不明のギャップ長);
-                        _ = p_長さ不明の番号.Add(l_連続の番号);
+                        _ = p_長さ不明の番号.Add(l_未確認ギャップ番号);
                     }
                 }
                 else
