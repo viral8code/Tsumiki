@@ -132,6 +132,27 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(CompletenessValidator.Get_環状本数(l_contigパス), CompletenessValidator.Get_環状本数(l_scaffoldパス));
         }
 
+        /// <summary>
+        /// 環状の contig に触れる確定辺は、両向きとも外し、ほかの辺は残す
+        /// </summary>
+        [Fact]
+        public void V_環状のcontigに触れる辺を外す()
+        {
+            var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[10];
+            l_確定辺[2] = (4, 0);
+            l_確定辺[5] = (3, 0);
+            l_確定辺[6] = (8, 10);
+            l_確定辺[9] = (7, 10);
+
+            var l_外した数 = Scaffolder.V_外す_環状に触れる辺(l_確定辺, x => x == 1);
+
+            Assert.Equal(2, l_外した数);
+            Assert.Null(l_確定辺[2]);
+            Assert.Null(l_確定辺[5]);
+            Assert.Equal((8, 10), l_確定辺[6]);
+            Assert.Equal((7, 10), l_確定辺[9]);
+        }
+
         #endregion
 
         #region 内部メソッド

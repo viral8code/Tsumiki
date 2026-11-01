@@ -50,6 +50,16 @@ namespace Tsumiki.Cores.Preprocessing
         internal const int C_前処理バッチサイズ = 20_000;
 
         /// <summary>
+        /// 3' 末端の poly-G として削る長さの下限
+        /// </summary>
+        public const int C_polyGとみなす長さ = 10;
+
+        /// <summary>
+        /// poly-G の中に G でない塩基を 1 つ許す長さ (この長さごとに 1 つ)
+        /// </summary>
+        private const int C_polyGで1つ許す長さ = 8;
+
+        /// <summary>
         /// 読み込みと書き出しで先に溜めておくバッチの数
         /// </summary>
         private const int C_先読みするバッチ数 = 2;
@@ -76,6 +86,8 @@ namespace Tsumiki.Cores.Preprocessing
             var l_訂正塩基数 = 0;
             var l_総塩基数 = 0L;
             var l_トリム塩基数 = 0L;
+            var l_polyGリード数 = 0;
+            var l_polyG塩基数 = 0L;
             using var l_中断 = new CancellationTokenSource();
             using var l_読込済み = new BlockingCollection<前処理バッチ>(C_先読みするバッチ数);
             using var l_処理済み = new BlockingCollection<前処理バッチ>(C_先読みするバッチ数);
@@ -86,12 +98,20 @@ namespace Tsumiki.Cores.Preprocessing
                 foreach (var l_バッチ in l_読込済み.GetConsumingEnumerable(l_中断.Token))
                 {
                     l_総ペア数 += l_バッチ.A_件数;
+                    var l_polyG長 = new (int A_1, int A_2)[l_バッチ.A_件数];
                     _ = Parallel.For(0, l_バッチ.A_件数, new ParallelOptions { MaxDegreeOfParallelism = l_スレッド数 }, i =>
                     {
-                        l_バッチ.A_結果群[i] = Get_品質トリム済み(Get_前処理結果(l_バッチ.A_順リード配列群[i], l_バッチ.A_順リード品質群[i], l_バッチ.A_逆リード配列群[i], l_バッチ.A_逆リード品質群[i], p_Phredオフセット), p_Phredオフセット, l_トリム閾値);
+                        var l_1 = Get_polyG末尾の長さ(l_バッチ.A_順リード配列群[i]);
+                        var l_2 = Get_polyG末尾の長さ(l_バッチ.A_逆リード配列群[i]);
+                        l_polyG長[i] = (l_1, l_2);
+                        var l_長さ1 = l_バッチ.A_順リード配列群[i].Length - l_1;
+                        var l_長さ2 = l_バッチ.A_逆リード配列群[i].Length - l_2;
+                        l_バッチ.A_結果群[i] = Get_品質トリム済み(Get_前処理結果(l_バッチ.A_順リード配列群[i][..l_長さ1], l_バッチ.A_順リード品質群[i][..l_長さ1], l_バッチ.A_逆リード配列群[i][..l_長さ2], l_バッチ.A_逆リード品質群[i][..l_長さ2], p_Phredオフセット), p_Phredオフセット, l_トリム閾値);
                     });
                     for (var i = 0; i < l_バッチ.A_件数; i++)
                     {
+                        l_polyGリード数 += (l_polyG長[i].A_1 > 0 ? 1 : 0) + (l_polyG長[i].A_2 > 0 ? 1 : 0);
+                        l_polyG塩基数 += l_polyG長[i].A_1 + l_polyG長[i].A_2;
                         var l_結果 = l_バッチ.A_結果群[i];
                         if (l_結果.A_Hasアダプタ検出)
                         {
@@ -121,7 +141,7 @@ namespace Tsumiki.Cores.Preprocessing
 
             l_読み込み.GetAwaiter().GetResult();
             l_書き出し.GetAwaiter().GetResult();
-            return new 前処理統計(l_総ペア数, l_アダプタ検出ペア数, l_訂正塩基数, l_総塩基数, l_トリム塩基数, l_トリム閾値);
+            return new 前処理統計(l_総ペア数, l_アダプタ検出ペア数, l_訂正塩基数, l_総塩基数, l_トリム塩基数, l_トリム閾値, l_polyGリード数, l_polyG塩基数);
         }
 
         /// <summary>
@@ -131,11 +151,45 @@ namespace Tsumiki.Cores.Preprocessing
         public static void V_出力_前処理統計(前処理統計 p_統計)
         {
             Logger.V_出力(メッセージID.前処理統計, p_統計.A_アダプタ検出ペア数, p_統計.A_総ペア数, p_統計.A_訂正塩基数);
+            Logger.V_出力(メッセージID.polyG削除統計, p_統計.A_polyGを削ったリード数, p_統計.A_polyGで削った塩基数);
             if (p_統計.A_品質トリム閾値 > 0)
             {
                 var l_割合 = p_統計.A_総塩基数 > 0L ? 100D * p_統計.A_品質トリム塩基数 / p_統計.A_総塩基数 : 0D;
                 Logger.V_出力(メッセージID.品質トリム統計, p_統計.A_品質トリム閾値, p_統計.A_品質トリム塩基数.ToString(C_項目_N0, System.Globalization.CultureInfo.InvariantCulture), l_割合.ToString(C_項目_F1, System.Globalization.CultureInfo.InvariantCulture));
             }
+        }
+
+        /// <summary>
+        /// 3' 末端の poly-G (2 色化学で信号の無い所が G と読まれたもの) として削る長さを求める<br/>
+        /// 3' 末端から遡り、G でない塩基が C_polyGで1つ許す長さ ごとに 1 つまでの区間のうち、G で始まる最長のものを採る。
+        /// C_polyGとみなす長さ 未満なら削らない。配列は 1 塩基は残す
+        /// </summary>
+        /// <param name="p_配列">リードの配列</param>
+        /// <returns>削る長さ (削らなければ 0)</returns>
+        public static int Get_polyG末尾の長さ(string p_配列)
+        {
+            var l_最長 = 0;
+            var l_G以外 = 0;
+            for (var l_長さ = 1; l_長さ <= p_配列.Length; l_長さ++)
+            {
+                var l_塩基 = p_配列[^l_長さ];
+                if (l_塩基 != Consts.塩基コード.G)
+                {
+                    l_G以外++;
+                }
+
+                if (l_G以外 * C_polyGで1つ許す長さ > l_長さ + C_polyGで1つ許す長さ)
+                {
+                    break;
+                }
+
+                if (l_塩基 == Consts.塩基コード.G && l_G以外 * C_polyGで1つ許す長さ <= l_長さ)
+                {
+                    l_最長 = l_長さ;
+                }
+            }
+
+            return l_最長 < C_polyGとみなす長さ ? 0 : Math.Min(l_最長, p_配列.Length - 1);
         }
 
         /// <summary>

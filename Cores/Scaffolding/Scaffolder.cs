@@ -384,6 +384,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
+            _ = V_外す_環状に触れる辺(l_確定辺, this.Is環状);
             if (l_ライブラリ別本数 is not null)
             {
                 this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
@@ -1200,6 +1201,27 @@ namespace Tsumiki.Cores.Scaffolding
 
             this._確かめられなかった数++;
             return null;
+        }
+
+        /// <summary>
+        /// 環状に閉じた contig に触れる確定辺を外す (閉じた配列は、それ以上どこにも繋がない)
+        /// </summary>
+        /// <param name="p_確定辺">頂点ごとの確定辺 (外した所は null にする)</param>
+        /// <param name="p_Is環状">contig ID が環状に閉じたものか</param>
+        /// <returns>外した辺の数</returns>
+        internal static int V_外す_環状に触れる辺((int A_行き先, int A_ギャップ長)?[] p_確定辺, Func<int, bool> p_Is環状)
+        {
+            var l_外した数 = 0;
+            for (var v = 2; v < p_確定辺.Length; v++)
+            {
+                if (p_確定辺[v] is { } l_辺 && (p_Is環状(v >> 1) || p_Is環状(l_辺.A_行き先 >> 1)))
+                {
+                    p_確定辺[v] = null;
+                    l_外した数++;
+                }
+            }
+
+            return l_外した数;
         }
 
         /// <summary>
