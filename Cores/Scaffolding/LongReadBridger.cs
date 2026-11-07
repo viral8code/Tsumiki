@@ -352,7 +352,11 @@ namespace Tsumiki.Cores.Scaffolding
             var l_錨の深さ = l_区画の深さ.Select(Get_錨の深さ).ToArray();
             var l_Is多コピー = l_錨の深さ.Select((x, i) => l_長さ[i] < C_多コピーを判定する錨の長さの上限 && x >= C_多コピーとみなす深さの比 * l_基準).ToArray();
             var l_票 = new Dictionary<(int A_u, int A_x), List<int>>();
-            bool Is使える(ロングリードの当たり x) => !l_Is多コピー[x.A_錨] && Is証拠に使える(x, l_区画の深さ[x.A_錨], Math.Max(l_基準, l_錨の深さ[x.A_錨]));
+            bool Is使える(ロングリードの当たり x)
+            {
+                return !l_Is多コピー[x.A_錨] && Is証拠に使える(x, l_区画の深さ[x.A_錨], Math.Max(l_基準, l_錨の深さ[x.A_錨]));
+            }
+
             for (var r = 0; r < l_当たり群.Count; r++)
             {
                 V_数える_証拠(l_当たり群[r].Where(Is使える).ToList(), l_リード長群[r], l_長さ, l_票);
@@ -693,16 +697,16 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_鎖 = new StringBuilder(p_頂点[l_輪[0]]);
                 for (var k = 0; k < l_輪.Count; k++)
                 {
-                    var l_辺 = p_出る[l_輪[k]]!.Value;
-                    l_鎖.Length -= Math.Min(l_鎖.Length, l_辺.A_左から削る長さ);
-                    _ = l_鎖.Append(l_辺.A_埋める配列);
+                    var (A_先, A_左から削る長さ, A_埋める配列, A_右から削る長さ) = p_出る[l_輪[k]]!.Value;
+                    l_鎖.Length -= Math.Min(l_鎖.Length, A_左から削る長さ);
+                    _ = l_鎖.Append(A_埋める配列);
                     if (k + 1 < l_輪.Count)
                     {
-                        _ = l_鎖.Append(p_頂点[l_辺.A_先], l_辺.A_右から削る長さ, p_頂点[l_辺.A_先].Length - l_辺.A_右から削る長さ);
+                        _ = l_鎖.Append(p_頂点[A_先], A_右から削る長さ, p_頂点[A_先].Length - A_右から削る長さ);
                     }
                     else
                     {
-                        l_鎖.Length -= Math.Min(l_鎖.Length, l_辺.A_右から削る長さ);
+                        l_鎖.Length -= Math.Min(l_鎖.Length, A_右から削る長さ);
                     }
                 }
 
