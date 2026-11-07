@@ -57,7 +57,7 @@ namespace Tsumiki.Tests.Core
         /// <summary>
         /// poly-G の付いた読み 1 の末尾
         /// </summary>
-        private const string C_polyG15 = "GGGGGGGGGGGGGGG";
+        private const string C_polyG25 = "GGGGGGGGGGGGGGGGGGGGGGGGG";
 
         #endregion
 
@@ -102,7 +102,7 @@ namespace Tsumiki.Tests.Core
                 var l_入力2 = Path.Combine(l_作業, C_ファイル名_in_2_fq);
                 var l_出力1 = Path.Combine(l_作業, C_ファイル名_out_1_fq);
                 var l_出力2 = Path.Combine(l_作業, C_ファイル名_out_2_fq);
-                var l_読み1 = C_配列 + C_polyG15;
+                var l_読み1 = C_配列 + C_polyG25;
                 var l_読み2 = C_読み2;
                 File.WriteAllText(l_入力1, $"@r/1\n{l_読み1}\n+\n{new string('I', l_読み1.Length)}\n");
                 File.WriteAllText(l_入力2, $"@r/2\n{l_読み2}\n+\n{new string('I', l_読み2.Length)}\n");
@@ -113,7 +113,7 @@ namespace Tsumiki.Tests.Core
                 Assert.Equal(C_配列, l_行[1]);
                 Assert.Equal(C_配列.Length, l_行[3].Length);
                 Assert.Equal(1, l_統計.A_polyGを削ったリード数);
-                Assert.Equal(15L, l_統計.A_polyGで削った塩基数);
+                Assert.Equal(25L, l_統計.A_polyGで削った塩基数);
             }
             finally
             {

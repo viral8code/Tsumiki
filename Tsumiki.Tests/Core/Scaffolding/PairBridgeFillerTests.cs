@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Pipeline;
 using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Scaffolding;
@@ -381,6 +382,48 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 短い反復の端は N の列で繋ぐ: 100 bp の単位が 3 回並ぶ縦列反復で、A が 3 つ目の単位の途中で終わり、B が 1 つ目の単位の途中から始まる。
+        /// 共有は端から 250 bp 以内で、跨ぐペアが 57 組あるので、A + 長さ不明のギャップ (N 100 個) + B の 1 本にする
+        /// </summary>
+        [Fact]
+        public void 短い反復の端はNの列で繋ぐ_縦列反復を挟み票が20組以上なら1本に繋ぐ()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_単位 = V_生成_ゲノム(100, 4242);
+            var l_Gt = l_G[..C_A長] + l_単位 + l_単位 + l_単位 + l_G[C_A長..];
+            var l_A = l_Gt[..(C_A長 + 250)];
+            var l_B = l_Gt[(C_A長 + 50)..];
+            var l_断片群 = V_断片群(V_断片の開始群(0, l_Gt.Length - C_挿入長, C_間隔_密).Where(s => s + C_挿入長 <= l_A.Length || s >= C_A長 + 50), C_挿入長);
+            l_断片群.AddRange(V_断片群(V_断片の開始群(2600, 2770, 3), 500));
+            var l_ライブラリ = V_書き出し_断片("tandem", l_Gt, l_断片群);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
+
+            Assert.Equal(l_A + new string('N', FinalAssemblyPipeline.C_長さ不明のギャップ長) + l_B, Assert.Single(l_結果).A_配列);
+            Assert.Equal(1, l_統計.A_短い反復を印で繋いだ数);
+            Assert.Equal(0, l_統計.A_反復の端で除いた数);
+        }
+
+        /// <summary>
+        /// 長い反復の端は繋がない: B の先頭に A の末尾 450 bp の写しを置く。跨ぐペアが 20 組以上あっても、共有が端から 400 bp を超えるので繋がない
+        /// </summary>
+        [Fact]
+        public void 長い反復の端は繋がない_共有が400bpを超えれば票が多くても繋がない()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_A[(C_A長 - 450)..] + l_G[C_B開始..];
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2200, 2320, 3), 650);
+            var l_ライブラリ = V_書き出し_断片("longdup", l_G, l_断片群);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
+
+            Assert.Equal([l_A, l_B], l_結果.Select(x => x.A_配列));
+            Assert.Equal(1, l_統計.A_反復の端で除いた数);
+            Assert.Equal(0, l_統計.A_短い反復を印で繋いだ数);
+        }
+
+        /// <summary>
         /// 重なりで畳む: A の末尾 100 bp と B の先頭 100 bp が同じ (本当の重なり)。間を読むリードが無く埋まらないので、重なりで畳んで A + B[100..] に繋ぐ
         /// </summary>
         [Fact]
@@ -440,6 +483,25 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(l_配列群.Count - 1, l_結果.Count);
             Assert.Contains(l_A[..^30] + new string('N', 110) + l_B[30..], l_結果.Select(x => x.A_配列));
+            Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_多コピーの端で除いた数);
+        }
+
+        /// <summary>
+        /// 多コピーの片の検査 (両側が濃い): A の末尾 1000 bp と B の先頭 1000 bp の断片を同じだけ 2.5 倍にすると、被覆の偏りとみて多コピーとせず、印の N 列で繋ぐ
+        /// </summary>
+        [Fact]
+        public void 多コピーの片の検査_両側の窓が同じだけ濃ければ繋ぐ()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_G[C_B開始..];
+            var l_配列群 = V_多コピーの配列群(l_A, l_B);
+            var l_ライブラリ = V_書き出し_多コピーの場面("multi_both", l_G, p_B先頭を増やす: true, p_A末尾も増やす: true);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ, out var l_統計);
+
+            Assert.Equal(l_配列群.Count - 1, l_結果.Count);
             Assert.Equal(1, l_統計.A_印で繋いだ辺の数);
             Assert.Equal(0, l_統計.A_多コピーの端で除いた数);
         }
@@ -631,8 +693,9 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_接頭辞">ファイル名の接頭辞</param>
         /// <param name="p_ゲノム">ゲノム</param>
         /// <param name="p_B先頭を増やす">true なら B の先頭 1000 bp の断片を 2.5 倍にする</param>
+        /// <param name="p_A末尾も増やす">true なら A の末尾 1000 bp の中だけの断片も同じく 2.5 倍にする</param>
         /// <returns>ライブラリ (順リードと逆リードのパス)</returns>
-        private List<(string A_順リード, string A_逆リード)> V_書き出し_多コピーの場面(string p_接頭辞, string p_ゲノム, bool p_B先頭を増やす)
+        private List<(string A_順リード, string A_逆リード)> V_書き出し_多コピーの場面(string p_接頭辞, string p_ゲノム, bool p_B先頭を増やす, bool p_A末尾も増やす = false)
         {
             var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2650, 2698, 3), C_挿入長);
             if (p_B先頭を増やす)
@@ -641,7 +704,7 @@ namespace Tsumiki.Tests.Core
                 var l_番号 = 0;
                 foreach (var l_断片 in l_断片群)
                 {
-                    if (l_断片.A_開始 >= C_B開始 && l_断片.A_開始 < C_B開始 + C_B先頭の窓)
+                    if ((l_断片.A_開始 >= C_B開始 && l_断片.A_開始 < C_B開始 + C_B先頭の窓) || (p_A末尾も増やす && l_断片.A_開始 >= C_A長 - C_B先頭の窓 && l_断片.A_開始 + C_挿入長 <= C_A長))
                     {
                         l_追加.Add(l_断片);
                         if (l_番号 % 2 == 0)

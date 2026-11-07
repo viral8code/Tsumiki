@@ -133,6 +133,11 @@ namespace Tsumiki.Cores.Scaffolding
         private const int C_周期とみなす境界の長さ = 10;
 
         /// <summary>
+        /// 許す幅の中に重なりが無いとき、探し直す幅の倍率 (縦列反復の中で、ロングリードの見込みが 1 単位ずれる分)
+        /// </summary>
+        private const int C_重なりを探し直す幅の倍率 = 2;
+
+        /// <summary>
         /// ロングリードの区間に含める、当たりの外側の長さ (u の当たりの終わりの手前、x の当たりの始まりの先)
         /// </summary>
         private const int C_区間の外側の長さ = 300;
@@ -569,7 +574,8 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 1 本のリードの当たりを求める ((錨, 向き) ごとに最良の共線的な鎖を 1 本)<br/>
         /// リード上で C_重なりで捨てる割合 以上重なる当たりは、種の多いほうだけを残す (似た配列への二次の当たりを捨てる)<br/>
-        /// 重なる当たりの種の数が、残すほうの C_曖昧とみなす種の比 以上なら、どちらとも決められないので両方を捨てる
+        /// 重なる当たりの種の数が、残すほうの C_曖昧とみなす種の比 以上なら、どちらとも決められないので両方を捨てる<br/>
+        /// 同じ錨・向きでは、最良の鎖の外に残った点の最良の鎖も、錨の上で回り込む並び (リードで後の鎖が錨で手前) なら当たりにする
         /// </summary>
         /// <param name="p_リード">リードの配列</param>
         /// <param name="p_索引">錨の minimizer の索引</param>
@@ -607,11 +613,11 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                var l_錨始 = l_Is同じ向き ? l_鎖.A_y始 : p_長さ[l_錨] - C_種長 - l_鎖.A_y終;
-                var l_錨終 = (l_Is同じ向き ? l_鎖.A_y終 : p_長さ[l_錨] - C_種長 - l_鎖.A_y始) + C_種長;
-                if (l_鎖.A_数 >= C_当たりに要る種の数 && l_錨終 - l_錨始 >= C_当たりに要る錨上の幅)
+                V_追加_当たり(l_結果, l_錨, l_Is同じ向き, l_鎖, p_長さ);
+                var l_残り = l_点群.Where(x => x.A_r < l_鎖.A_r始 || x.A_r > l_鎖.A_r終).ToList();
+                if (Get_最良の鎖(l_残り) is { } l_次の鎖 && (l_次の鎖.A_r始 > l_鎖.A_r終 ? l_次の鎖.A_y終 < l_鎖.A_y始 : l_鎖.A_y終 < l_次の鎖.A_y始))
                 {
-                    l_結果.Add(new ロングリードの当たり(l_錨, l_Is同じ向き, l_鎖.A_r始, l_鎖.A_r終 + C_種長, l_錨始, l_錨終, l_鎖.A_数));
+                    V_追加_当たり(l_結果, l_錨, l_Is同じ向き, l_次の鎖, p_長さ);
                 }
             }
 
@@ -737,6 +743,12 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_重なり群.Count > 1)
             {
                 return new ロングリードの繋ぎ方(null, null, C_理由_一意でない);
+            }
+
+            var l_広げた幅 = C_重なりを探し直す幅の倍率 * l_幅;
+            if (l_重なり群.Count == 0 && p_間 <= l_広げた幅 && Get_重なり群(p_左, p_右, p_間, l_広げた幅) is [var l_広げた重なり] && Get_最長の境界(p_右.AsSpan(0, l_広げた重なり)) < C_周期とみなす境界の長さ)
+            {
+                return new ロングリードの繋ぎ方(l_広げた重なり, null, null);
             }
 
             if (p_間 + l_幅 < 0)
@@ -1362,6 +1374,24 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
+        /// 鎖が当たりの条件 (種の数と錨上の幅) を満たせば、錨の座標に直して当たりに足す
+        /// </summary>
+        /// <param name="p_結果">当たりの一覧</param>
+        /// <param name="p_錨">錨の番号</param>
+        /// <param name="p_Is同じ向き">リードと錨が同じ向きか</param>
+        /// <param name="p_鎖">鎖 (y はリードの向きに揃えた錨の位置)</param>
+        /// <param name="p_長さ">配列ごとの長さ</param>
+        private static void V_追加_当たり(List<ロングリードの当たり> p_結果, int p_錨, bool p_Is同じ向き, (int A_数, int A_r始, int A_r終, int A_y始, int A_y終) p_鎖, int[] p_長さ)
+        {
+            var l_錨始 = p_Is同じ向き ? p_鎖.A_y始 : p_長さ[p_錨] - C_種長 - p_鎖.A_y終;
+            var l_錨終 = (p_Is同じ向き ? p_鎖.A_y終 : p_長さ[p_錨] - C_種長 - p_鎖.A_y始) + C_種長;
+            if (p_鎖.A_数 >= C_当たりに要る種の数 && l_錨終 - l_錨始 >= C_当たりに要る錨上の幅)
+            {
+                p_結果.Add(new ロングリードの当たり(p_錨, p_Is同じ向き, p_鎖.A_r始, p_鎖.A_r終 + C_種長, l_錨始, l_錨終, p_鎖.A_数));
+            }
+        }
+
+        /// <summary>
         /// 2 つの当たりが、リード上で短いほうの長さの C_重なりで捨てる割合 以上重なるか
         /// </summary>
         /// <param name="p_a">当たり</param>
@@ -1463,7 +1493,8 @@ namespace Tsumiki.Cores.Scaffolding
         /// 1 本のリードの証拠に使える当たりから、隣り合う当たりの組 (橋の証拠) を求める<br/>
         /// 当たりの端から錨の端までが C_端までの残りの上限 を超える組は使わない<br/>
         /// 前の当たりは、リードの手前に C_端までの残りの上限 を超える配列があるのに錨の途中から入ったものなら使わない (後の当たりも向きを逆にして同じ)<br/>
-        /// 別の場所から錨の端の反復の部分にだけ入ったリードを除くため。同じ橋は 1 回だけ
+        /// 別の場所から錨の端の反復の部分にだけ入ったリードを除くため。同じ橋は 1 回だけ<br/>
+        /// 同じ錨の組は、末尾から先頭へ回り込むもの (環状のレプリコンを 1 本の錨が占めるとき) だけ使い、自己辺 u→u にする
         /// </summary>
         /// <param name="p_当たり">証拠に使える当たり (リード上の始まりの順)</param>
         /// <param name="p_リード長">リードの長さ</param>
@@ -1477,7 +1508,7 @@ namespace Tsumiki.Cores.Scaffolding
             {
                 var l_前 = p_当たり[i - 1];
                 var l_後 = p_当たり[i];
-                if (l_前.A_錨 == l_後.A_錨)
+                if (l_前.A_錨 == l_後.A_錨 && !Is回り込み(l_前, l_後))
                 {
                     continue;
                 }
@@ -1505,6 +1536,17 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_結果;
+        }
+
+        /// <summary>
+        /// 同じ錨の隣り合う 2 つの当たりが、同じ向きで、錨の上を末尾から先頭へ回り込んでいるか
+        /// </summary>
+        /// <param name="p_前">リード上で前の当たり</param>
+        /// <param name="p_後">リード上で後の当たり</param>
+        /// <returns>回り込んでいれば true</returns>
+        private static bool Is回り込み(ロングリードの当たり p_前, ロングリードの当たり p_後)
+        {
+            return p_前.A_Is順向き == p_後.A_Is順向き && (p_前.A_Is順向き ? p_後.A_錨始 < p_前.A_錨始 : p_後.A_錨終 > p_前.A_錨終);
         }
 
         /// <summary>

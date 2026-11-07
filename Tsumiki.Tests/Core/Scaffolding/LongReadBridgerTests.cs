@@ -529,6 +529,62 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 輪 (自己辺): 錨 A (6000 bp) と配列に無い R (1200 bp) の環状のゲノムで、A の末尾から R を跨いで A の先頭に入るリード 3 本で橋 A+→A+ を決め、
+        /// R の経路で埋めて、ID が a_circular の A + R 1 本にする
+        /// </summary>
+        [Fact]
+        public void 輪_1本の錨の末尾から先頭へ回り込むリードで環状にする()
+        {
+            var l_A = V_生成_配列(6000, 131);
+            var l_R = V_生成_配列(C_反復長, 132);
+            var l_2周 = l_A + l_R + l_A + l_R;
+            var l_リード群 = V_跨ぐリード群(l_2周, l_A.Length - C_錨に入る長さ, l_A.Length + C_反復長 + C_錨に入る長さ, 3, 1300);
+            var l_材料 = new List<string> { l_A[^300..] + l_R + l_A[..300] };
+
+            var l_橋群 = LongReadBridger.Get_決めた橋([("a", l_A)], l_リード群, out _);
+            var l_結果 = LongReadBridger.Get_繋いだ配列群([("a", l_A)], l_橋群, l_材料, null, null, C_経路のk, out _, out var l_統計);
+
+            var l_橋 = Assert.Single(l_橋群);
+            Assert.Equal((0, 0), (l_橋.A_u, l_橋.A_x));
+            Assert.InRange(l_橋.A_間の長さ, C_反復長 - C_間の誤差, C_反復長 + C_間の誤差);
+            var l_配列 = Assert.Single(l_結果);
+            Assert.Equal("a_" + Consts.環状の目印, l_配列.A_ID);
+            Assert.Equal(l_A + l_R, l_配列.A_配列);
+            Assert.Equal(1, l_統計.A_環状にした数);
+        }
+
+        /// <summary>
+        /// 輪にしない: 錨 A (1500 bp) の 800 bp 目に配列に無い 800 bp が挟まったリード 3 本は、A の上を先へ進むので回り込みではなく、自己辺の橋を決めない
+        /// </summary>
+        [Fact]
+        public void 輪にしない_錨の上を先へ進む2つの当たりは自己辺にしない()
+        {
+            var l_A = V_生成_配列(1500, 141);
+            var l_リード = l_A[..800] + V_生成_配列(800, 142) + l_A[800..];
+
+            var l_橋群 = LongReadBridger.Get_決めた橋([("a", l_A)], V_跨ぐリード群(l_リード, 0, l_リード.Length, 3, 1400), out var l_統計);
+
+            Assert.Empty(l_橋群);
+            Assert.Equal(0, l_統計.A_候補数);
+        }
+
+        /// <summary>
+        /// 繋ぐ (1 単位ずれた見込み): A = G[0..3000]、B = G[2922..6000] で、橋の間の見込みが −178 (本当の重なりは 78) でも、幅を広げて 78 で畳み 1 本の G にする
+        /// </summary>
+        [Fact]
+        public void 繋ぐ_見込みがずれた重なりは幅を広げて畳む()
+        {
+            var l_G = V_生成_配列(6000, 151);
+            var l_A = l_G[..C_錨長];
+            var l_B = l_G[(C_錨長 - 78)..];
+
+            var l_結果 = LongReadBridger.Get_繋いだ配列群([("a", l_A), ("b", l_B)], [new ロングリードの橋(0, 2, 5, 0, -178)], null, null, null, C_経路のk, out var l_繋ぎ方群, out _);
+
+            Assert.Equal([l_G], l_結果.Select(x => x.A_配列));
+            Assert.Equal(78, Assert.Single(l_繋ぎ方群).A_重なり);
+        }
+
+        /// <summary>
         /// 引数: -long はカンマ区切りで複数のパスを持ち、無いパスは例外
         /// </summary>
         [Fact]

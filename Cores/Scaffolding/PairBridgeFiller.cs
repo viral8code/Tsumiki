@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using Tsumiki.Commons;
+using Tsumiki.Cores.Pipeline;
 using Tsumiki.IO;
 using Tsumiki.Models.Evidence;
 using Tsumiki.Models.Scaffolding;
@@ -103,6 +104,16 @@ namespace Tsumiki.Cores.Scaffolding
         private const int C_共有を許す数 = 2;
 
         /// <summary>
+        /// 反復の端の組を、短い反復として長さ不明のギャップ (N の列) で繋ぐのに要る首位の票数の下限
+        /// </summary>
+        private const int C_短い反復で繋ぐのに要るペア数 = 10;
+
+        /// <summary>
+        /// 共有する 25-mer が、u の末尾・x の先頭の端からこの長さ以内にだけあれば、短い反復 (挿入長より短い縦列反復など) とみなす
+        /// </summary>
+        private const int C_短い反復とみなす長さ = 400;
+
+        /// <summary>
         /// 配列の一致による重なりを探すときの、u の末尾の窓の長さ
         /// </summary>
         private const int C_重なりを探す窓長 = 301;
@@ -116,6 +127,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// 端の窓の密度が基準の密度の何倍を超えたら、多コピーの片と見なして繋がないか
         /// </summary>
         private const double C_多コピーとみなす密度の比 = 1.8;
+
+        /// <summary>
+        /// 多コピーとみなすのに要る、u の右端の窓と x の左端の窓の密度の比 (大きいほう / 小さいほう)。両側が一緒に濃いのは被覆の偏りとみる
+        /// </summary>
+        private const double C_多コピーとみなす両側の密度の比 = 2.0;
 
         /// <summary>
         /// 多コピーの検査の基準の密度を作るのに要る、長さ C_窓長 以上の頂点の数の下限 (未満なら検査しない)
@@ -162,6 +178,7 @@ namespace Tsumiki.Cores.Scaffolding
             var l_重なり群 = new List<int?>();
             var l_反復の端で除いた数 = 0;
             var l_多コピーの端で除いた数 = 0;
+            var l_短い反復の辺 = new List<候補の辺>();
             foreach (var l_辺 in l_候補全体)
             {
                 var l_u文字列 = l_頂点[l_辺.A_u];
@@ -169,7 +186,15 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_重なり = Get_重なりの長さ(l_u文字列, l_x文字列);
                 if (Is反復の端(l_u文字列, l_x文字列, l_重なり))
                 {
-                    l_反復の端で除いた数++;
+                    if (l_辺.A_票数 >= C_短い反復で繋ぐのに要るペア数 && Is短い反復の端(l_u文字列, l_x文字列, l_重なり) && !Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準))
+                    {
+                        l_短い反復の辺.Add(l_辺);
+                    }
+                    else
+                    {
+                        l_反復の端で除いた数++;
+                    }
+
                     continue;
                 }
 
@@ -183,14 +208,13 @@ namespace Tsumiki.Cores.Scaffolding
                 l_重なり群.Add(l_重なり);
             }
 
-            if (l_候補.Count == 0)
+            if (l_候補.Count == 0 && l_短い反復の辺.Count == 0)
             {
                 p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_反復の端で除いた数, 0, l_多コピーの端で除いた数);
                 return p_配列群.ToList();
             }
 
-            var l_読み = Get_局所リード群(l_頂点, l_表, p_ライブラリ群, l_候補, l_並列数);
-            var (l_結果, l_判定) = Get_局所結果群(l_頂点, l_候補, l_読み);
+            var (l_結果, l_判定) = l_候補.Count == 0 ? (Array.Empty<string?>(), Array.Empty<ギャップ充填判定>()) : Get_局所結果群(l_頂点, l_候補, Get_局所リード群(l_頂点, l_表, p_ライブラリ群, l_候補, l_並列数));
 
             var l_出る = new (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[l_頂点.Length];
             var l_入る = new int[l_頂点.Length];
@@ -246,8 +270,24 @@ namespace Tsumiki.Cores.Scaffolding
                 }
             }
 
+            var l_短い反復で繋いだ数 = 0;
+            var l_印 = new string(Consts.塩基コード.N, FinalAssemblyPipeline.C_長さ不明のギャップ長);
+            foreach (var l_辺 in l_短い反復の辺)
+            {
+                if (l_出る[l_辺.A_u] is not null || l_入る[l_辺.A_x] >= 0)
+                {
+                    continue;
+                }
+
+                l_短い反復で繋いだ数++;
+                l_出る[l_辺.A_u] = (l_辺.A_x, 0, l_印, 0);
+                l_出る[l_辺.A_x ^ 1] = (l_辺.A_u ^ 1, 0, l_印, 0);
+                l_入る[l_辺.A_x] = l_辺.A_u;
+                l_入る[l_辺.A_u ^ 1] = l_辺.A_x ^ 1;
+            }
+
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out _);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数, l_短い反復で繋いだ数);
             return l_書き出し;
         }
 
@@ -533,7 +573,8 @@ namespace Tsumiki.Cores.Scaffolding
 
         /// <summary>
         /// 候補の辺 u→x の端が多コピーの片と見なせるかを調べる<br/>
-        /// u の右端の窓、または x^1 (x の左端の窓) の密度が、基準の C_多コピーとみなす密度の比 倍を超えれば多コピーとする
+        /// u の右端の窓、または x^1 (x の左端の窓) の密度が、基準の C_多コピーとみなす密度の比 倍を超え、<br/>
+        /// しかも濃いほうが薄いほうの C_多コピーとみなす両側の密度の比 倍を超えれば多コピーとする (片の側だけが濃い)
         /// </summary>
         /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
         /// <param name="p_頂点">頂点の文字列</param>
@@ -548,8 +589,10 @@ namespace Tsumiki.Cores.Scaffolding
                 return false;
             }
 
-            var l_閾値 = C_多コピーとみなす密度の比 * l_基準;
-            return Get_密度(p_当たり数, p_頂点, p_u) > l_閾値 || Get_密度(p_当たり数, p_頂点, p_x ^ 1) > l_閾値;
+            var l_u密度 = Get_密度(p_当たり数, p_頂点, p_u);
+            var l_x密度 = Get_密度(p_当たり数, p_頂点, p_x ^ 1);
+            var l_濃いほう = Math.Max(l_u密度, l_x密度);
+            return l_濃いほう > C_多コピーとみなす密度の比 * l_基準 && l_濃いほう > C_多コピーとみなす両側の密度の比 * Math.Min(l_u密度, l_x密度);
         }
 
         /// <summary>
@@ -788,6 +831,53 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_共有 > C_共有を許す数;
+        }
+
+        /// <summary>
+        /// 反復の端の組で、u の末尾と x の先頭が共有する 25-mer が、どちらも端から C_短い反復とみなす長さ 以内にだけあるか<br/>
+        /// 末尾・先頭の取り方は Is反復の端 と同じ (重なり o があれば u の最後の o bp を除く)
+        /// </summary>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <param name="p_重なり">u の末尾と x の先頭の重なりの長さ、無ければ null</param>
+        /// <returns>共有が端の近くに限られていれば true</returns>
+        private static bool Is短い反復の端(string p_u文字列, string p_x文字列, int? p_重なり)
+        {
+            var l_u末尾 = p_u文字列[Math.Max(0, p_u文字列.Length - C_反復を調べる長さ)..];
+            var l_除く = Math.Min(p_重なり ?? 0, l_u末尾.Length);
+            l_u末尾 = l_u末尾[..(l_u末尾.Length - l_除く)];
+            var l_x先頭 = p_x文字列[..Math.Min(C_反復を調べる長さ, p_x文字列.Length)];
+            var l_u位置 = Get_種の位置(l_u末尾, p_Is最初: true);
+            var l_x位置 = Get_種の位置(l_x先頭, p_Is最初: false);
+            foreach (var (l_キー, l_u始) in l_u位置)
+            {
+                if (l_x位置.TryGetValue(l_キー, out var l_x始) && (l_u末尾.Length - l_u始 > C_短い反復とみなす長さ || l_x始 + C_種長 > C_短い反復とみなす長さ))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 配列に現れる 25-mer の正準形ごとの位置を求める
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <param name="p_Is最初">最初の位置を取るか (false なら最後の位置)</param>
+        /// <returns>正準形から位置への表 (A/C/G/T 以外を含む 25-mer は除く)</returns>
+        private static Dictionary<ulong, int> Get_種の位置(string p_配列, bool p_Is最初)
+        {
+            var l_表 = new Dictionary<ulong, int>();
+            for (var p = 0; p + C_種長 <= p_配列.Length; p++)
+            {
+                if (Is成功_キー(p_配列.AsSpan(p, C_種長), out var l_キー, out _) && (!p_Is最初 || !l_表.ContainsKey(l_キー)))
+                {
+                    l_表[l_キー] = p;
+                }
+            }
+
+            return l_表;
         }
 
         /// <summary>
