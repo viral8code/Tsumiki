@@ -128,7 +128,7 @@ namespace Tsumiki.Tests.Utility
             };
             var l_乱数 = new Random(p_k長);
             var l_配列 = Enumerable.Range(0, p_k長 + 30).Select(_ => (byte)(l_乱数.Next(4) + 1)).ToArray();
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             for (var i = 0; i + p_k長 <= l_配列.Length; i++)
             {
                 for (var l_回数 = 0; l_回数 < 1 + (i % 3); l_回数++)
@@ -204,7 +204,7 @@ namespace Tsumiki.Tests.Utility
             var l_片 = new string([..Enumerable.Range(0, p_k長 + 3).Select(_ => Consts.塩基文字[l_乱数.Next(4)])]);
             var l_配列 = string.Concat(Enumerable.Range(0, 8).Select(_ => l_乱数.Next(3) == 0 ? l_片 : new string([..Enumerable.Range(0, l_乱数.Next(p_k長, 3 * p_k長)).Select(_ => Consts.塩基文字[l_乱数.Next(4)])])));
             var l_塩基 = Util.V_変換_塩基列(l_配列);
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             for (var i = 0; i + p_k長 <= l_塩基.Length; i++)
             {
                 l_索引.V_登録(l_塩基.AsSpan(i, p_k長));

@@ -120,7 +120,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_カバレッジの谷で途切れた配列は架橋される()
         {
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_谷つき(l_索引, C_主配列);
             l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
             Assert.False(l_索引.Haskmer(Get_kmer(C_主配列, C_谷の先頭)));
@@ -142,7 +142,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_合流しない低カバレッジの続きは足さない()
         {
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_索引, C_主配列, C_主経路の深さ);
             V_登録_全kmer(l_索引, C_主配列[^(C_k長 - 1)..] + C_塩基配列_CGTCGA, C_谷の深さ);
             l_索引.V_適用_カットオフ(C_カットオフ, LowCoverageBridger.C_控えの最小出現回数);
@@ -156,7 +156,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_続きが一本に決まらない谷は架橋しない()
         {
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_谷つき(l_索引, C_主配列);
             var l_対立配列 = C_主配列[..21] + C_項目_G + C_主配列[22..];
             for (var i = C_谷の先頭; i <= 21; i++)
@@ -175,7 +175,7 @@ namespace Tsumiki.Tests.Core
         [Fact]
         public void V_合流先に別の入口があれば架橋しない()
         {
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_谷つき(l_索引, C_主配列);
             var l_合流先 = C_主配列.Substring(C_谷の末尾 + 1, C_k長);
             var l_枝 = C_塩基配列_TGTTTGCA + C_項目_G + l_合流先[..^1];

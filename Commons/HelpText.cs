@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Tsumiki.Cores.Evaluation;
 using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Commons
@@ -97,6 +98,7 @@ namespace Tsumiki.Commons
             V_追加_節(l_文, メッセージID.ヘルプ節_完全性の検証);
             V_追加_行(l_文, Consts.引数キー.ポリッシュなし, メッセージID.ヘルプ_ポリッシュ);
             V_追加_行(l_文, Consts.引数キー.環状閉鎖検証なし, メッセージID.ヘルプ_環状閉鎖検証);
+            V_追加_行(l_文, $"{Consts.引数キー.継ぎ目モデル} <{C_形式_パス}>", メッセージID.ヘルプ_継ぎ目モデル, Consts.安全版ファイル名, Consts.引数キー.マージ, JunctionRiskModel.A_既定.A_名前, Consts.継ぎ目モデルのファイル名);
             V_追加_説明(l_文, メッセージID.ヘルプ_レポートの説明, Consts.レポートファイル名, Consts.曖昧箇所ファイル名);
             V_追加_節(l_文, メッセージID.ヘルプ節_出力とその他);
             V_追加_行(l_文, Consts.引数キー.GFA出力なし, メッセージID.ヘルプ_GFA出力, Consts.GFAファイル名);

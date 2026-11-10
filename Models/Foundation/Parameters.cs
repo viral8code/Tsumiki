@@ -1,5 +1,7 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Evaluation;
 using Tsumiki.Models.Correction;
+using Tsumiki.Models.Evaluation;
 using Tsumiki.Models.UnitigBuilding;
 
 namespace Tsumiki.Models.Foundation
@@ -20,6 +22,21 @@ namespace Tsumiki.Models.Foundation
         /// 訂正 k 長の正数制約メッセージ
         /// </summary>
         private const string C_訂正k長の正数制約メッセージ = "Please make the value of error correction kmer a positive integer";
+
+        /// <summary>
+        /// 設定の表示に出す、継ぎ目モデルの SHA-256 の桁数
+        /// </summary>
+        private const int C_表示するハッシュの桁 = 12;
+
+        /// <summary>
+        /// k 長の奇数制約メッセージ
+        /// </summary>
+        private const string C_k長の奇数制約メッセージ = "Please make each value of kmer an odd number: an even k-mer can equal its own reverse complement, which breaks the canonical form";
+
+        /// <summary>
+        /// 訂正 k 長の奇数制約メッセージ
+        /// </summary>
+        private const string C_訂正k長の奇数制約メッセージ = "Please make the value of error correction kmer an odd number: an even k-mer can equal its own reverse complement, which breaks the canonical form";
 
         /// <summary>
         /// kmer 閾値の正数制約メッセージ
@@ -347,6 +364,11 @@ namespace Tsumiki.Models.Foundation
                     throw new ArgumentException(C_訂正k長の正数制約メッセージ);
                 }
 
+                if (value % 2 == 0)
+                {
+                    throw new ArgumentException(C_訂正k長の奇数制約メッセージ);
+                }
+
                 this._エラー訂正k長 = value;
                 this.A_Isエラー訂正k長明示指定 = true;
             }
@@ -448,6 +470,11 @@ namespace Tsumiki.Models.Foundation
         /// 画面へ出す量
         /// </summary>
         public ログ水準 A_ログ水準 { get; set; } = ログ水準.標準;
+
+        /// <summary>
+        /// 継ぎ目の誤り確率モデル (既定は組み込みのモデル)
+        /// </summary>
+        public 継ぎ目モデル A_継ぎ目モデル { get; set; } = JunctionRiskModel.A_既定;
 
         /// <summary>
         /// 曖昧塩基を許容するか
@@ -728,6 +755,11 @@ namespace Tsumiki.Models.Foundation
                 {
                     throw new ArgumentException(C_k長の正数制約メッセージ);
                 }
+
+                if (l_k長 % 2 == 0)
+                {
+                    throw new ArgumentException(C_k長の奇数制約メッセージ);
+                }
             }
 
             this._k長一覧 = l_一覧;
@@ -838,6 +870,7 @@ namespace Tsumiki.Models.Foundation
                 trim low-coverage graph ends : {this.A_Is低カバレッジ端トリミング}
                 polish final assembly with reads : {this.A_Isポリッシュ}
                 verify circular closure with reads : {this.A_Is環状閉鎖検証}
+                junction risk model : {this.A_継ぎ目モデル.A_名前} ({this.A_継ぎ目モデル.A_出所}, sha256 {this.A_継ぎ目モデル.A_SHA256[..C_表示するハッシュの桁]})
                 resume from temp directory : {this.A_Is再開}
                 keep intermediate data in memory : {this.A_Isオンメモリ}
                 prepare reads only : {this.A_Is準備のみ}

@@ -132,11 +132,52 @@ namespace Tsumiki.Tests.Core.Evaluation
                 A_跨ぐ組 = 0,
                 A_外れ錨 = 40
             };
-            var l_低い = JunctionRiskModel.Get_評価(l_支えあり);
-            var l_高い = JunctionRiskModel.Get_評価(l_支えなし);
+            var l_低い = JunctionRiskModel.Get_評価(l_支えあり, JunctionRiskModel.A_既定);
+            var l_高い = JunctionRiskModel.Get_評価(l_支えなし, JunctionRiskModel.A_既定);
             Assert.Equal(継ぎ目の組.組で跨げる, l_低い.A_組);
             Assert.True(l_低い.A_誤りの確率 < 0.01D);
             Assert.True(l_高い.A_誤りの確率 > 0.5D);
+        }
+
+        /// <summary>
+        /// 組み込みのモデルの確率が、同じ式を手で (Python で) 計算した値と一致することを確かめる
+        /// </summary>
+        /// <param name="p_終了">反復の区間の終わり (始まりは 1,000)</param>
+        /// <param name="p_Isギャップ">区間に N を含むか</param>
+        /// <param name="p_コピー数">区間のコピー数</param>
+        /// <param name="p_跨ぐ読み">区間の前後を 1 本で読んだリードの数</param>
+        /// <param name="p_跨ぐ組">区間の前後を覆うペアの数</param>
+        /// <param name="p_期待の組">見込む跨ぐ組の数</param>
+        /// <param name="p_外れ錨">相方が正しく組めていないリードの数</param>
+        /// <param name="p_切れ端">途中から整列が切れたリードの割合</param>
+        /// <param name="p_左の深さ比">左の深さ比</param>
+        /// <param name="p_右の深さ比">右の深さ比</param>
+        /// <param name="p_期待値">手で計算した誤りの確率</param>
+        [Theory]
+        [InlineData(1_200, false, 1D, 0, 20, 20D, 0, 0D, 1D, 1D, 4.21181262429597e-06)]
+        [InlineData(1_200, false, 1D, 0, 0, 20D, 40, 0D, 1D, 1D, 0.9094013576998669)]
+        [InlineData(1_200, true, 1D, 0, 0, 5D, 3, 0.5D, 0.6D, 1D, 0.014061742829302566)]
+        [InlineData(1_800, false, 2D, 1, 0, 0.5D, 2, 0.4D, 0.8D, 1.2D, 0.03130576007433788)]
+        public void Get_評価_組み込みのモデルは手計算の確率と一致する(int p_終了, bool p_Isギャップ, double p_コピー数, int p_跨ぐ読み, int p_跨ぐ組, double p_期待の組, int p_外れ錨, double p_切れ端, double p_左の深さ比, double p_右の深さ比, double p_期待値)
+        {
+            var l_候補 = new 継ぎ目候補(C_項目_s, 1_000, p_終了, p_Isギャップ, p_コピー数, p_跨ぐ読み, p_跨ぐ組, p_期待の組, p_外れ錨, p_切れ端, p_左の深さ比, p_右の深さ比);
+            Assert.Equal(p_期待値, JunctionRiskModel.Get_評価(l_候補, JunctionRiskModel.A_既定).A_誤りの確率, 1e-12);
+        }
+
+        /// <summary>
+        /// 差し替えたモデルの係数で確率を出すことを確かめる (得点の係数を 0、跨げる組の較正を 0 にすると、ちょうど 0.5)
+        /// </summary>
+        [Fact]
+        public void Get_評価_差し替えたモデルの係数を使う()
+        {
+            var l_候補 = new 継ぎ目候補(C_項目_s, 1_000, 1_200, false, 1D, 0, 20, 20D, 0, 0D, 1D, 1D);
+            var l_モデル = JunctionRiskModel.A_既定 with
+            {
+                A_得点の係数 = new double[継ぎ目モデル.C_得点の項の数],
+                A_跨げる組の較正 = [0D, 0D]
+            };
+            Assert.Equal(0D, JunctionRiskModel.Get_得点(l_候補, l_モデル));
+            Assert.Equal(0.5D, JunctionRiskModel.Get_評価(l_候補, l_モデル).A_誤りの確率);
         }
 
         /// <summary>

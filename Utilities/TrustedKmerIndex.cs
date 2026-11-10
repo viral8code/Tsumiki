@@ -155,6 +155,11 @@ namespace Tsumiki.Utilities
         /// </summary>
         public int A_シャード数 => this._シャードロック?.Length ?? 0;
 
+        /// <summary>
+        /// この索引の k 長
+        /// </summary>
+        public int A_k長 => this._k長;
+
         #endregion
 
         #region コンストラクタ
@@ -163,9 +168,10 @@ namespace Tsumiki.Utilities
         /// シャードごとのカウンタを一時ディレクトリの下に用意する
         /// </summary>
         /// <param name="p_一時ディレクトリ">カウンタの置き場</param>
-        public TrustedKmerIndex(string p_一時ディレクトリ)
+        /// <param name="p_k長">数える k-mer の長さ</param>
+        public TrustedKmerIndex(string p_一時ディレクトリ, int p_k長)
         {
-            this._k長 = ConfigurationManager.A_実行時引数.A_k長;
+            this._k長 = p_k長;
             this._Is小経路使用 = this._k長 <= 32;
             this._Is中経路使用 = this._k長 is > 32 and <= 64;
             this._Is長経路使用 = this._k長 is > 64 and <= C_パック値のk上限;
@@ -176,7 +182,7 @@ namespace Tsumiki.Utilities
             this._預かり = new ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>[l_シャード数];
             for (var i = 0; i < l_シャード数; i++)
             {
-                this._カウンタ群[i] = new CountingDB(p_一時ディレクトリ, l_シャード数);
+                this._カウンタ群[i] = new CountingDB(p_一時ディレクトリ, p_k長, l_シャード数);
                 this._シャードロック[i] = new Lock();
                 this._預かり[i] = new ConcurrentQueue<((UInt128 A_上位, UInt128 A_下位)[] A_束, int A_件数)>();
             }

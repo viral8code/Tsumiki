@@ -279,7 +279,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = C_k長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_塩基列 = p_配列.Select(Util.Get_塩基ID).ToArray();
             for (var i = 0; i + C_k長 <= l_塩基列.Length; i++)
             {

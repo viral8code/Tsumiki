@@ -15,12 +15,12 @@ namespace Tsumiki.Models.UnitigBuilding
         /// <summary>
         /// k 長
         /// </summary>
-        private readonly int _k長 = ConfigurationManager.A_実行時引数.A_k長;
+        private readonly int _k長 = p_kmerインデックス.A_k長;
 
         /// <summary>
         /// 固定幅キーを転がす高速 walk
         /// </summary>
-        private readonly UnitigWalk? _高速walk = UnitigWalk.Is対応k長(ConfigurationManager.A_実行時引数.A_k長) ? new UnitigWalk(p_kmerインデックス, ConfigurationManager.A_実行時引数.A_k長) : null;
+        private readonly UnitigWalk? _高速walk = UnitigWalk.Is対応k長(p_kmerインデックス.A_k長) ? new UnitigWalk(p_kmerインデックス, p_kmerインデックス.A_k長) : null;
 
         /// <summary>
         /// 固定幅キーを使えない k 長向けの参照実装

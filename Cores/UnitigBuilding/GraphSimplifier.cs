@@ -80,6 +80,7 @@ namespace Tsumiki.Cores.UnitigBuilding
                 l_開始kmer = p_kmerインデックス.Get_開始kmer一覧();
             }
 
+            Logger.V_出力(メッセージID.グラフ単純化が収束しない, p_最大反復数, p_k長);
             return l_開始kmer;
         }
 

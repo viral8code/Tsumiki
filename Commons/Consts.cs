@@ -178,6 +178,11 @@
         public const string 継ぎ目ファイル名 = "assembly.junctions.tsv";
 
         /// <summary>
+        /// 実行ファイルと同じ場所にあれば使う、継ぎ目の誤り確率モデルのファイル名
+        /// </summary>
+        public const string 継ぎ目モデルのファイル名 = "JunctionRiskModel.tsv";
+
+        /// <summary>
         /// 誤りの確率の高い継ぎ目で切った安全版のファイル名
         /// </summary>
         public const string 安全版ファイル名 = "assembly.safe.fasta";
@@ -392,6 +397,11 @@
             /// 環状閉鎖検証を行わない
             /// </summary>
             public const string 環状閉鎖検証なし = "-ncc";
+
+            /// <summary>
+            /// 継ぎ目の誤り確率モデルのファイル
+            /// </summary>
+            public const string 継ぎ目モデル = "-jm";
 
             /// <summary>
             /// 低頻度 k-mer を救済しない

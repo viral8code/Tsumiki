@@ -132,6 +132,21 @@ namespace Tsumiki.Cores.Pipeline
         private const string C_項目_trim_low_coverage_ends = "trim_low_coverage_ends";
 
         /// <summary>
+        /// 項目 junction risk model
+        /// </summary>
+        private const string C_項目_junction_risk_model = "junction_risk_model";
+
+        /// <summary>
+        /// 項目 name
+        /// </summary>
+        private const string C_項目_name = "name";
+
+        /// <summary>
+        /// 項目 source
+        /// </summary>
+        private const string C_項目_source = "source";
+
+        /// <summary>
         /// 項目 inputs
         /// </summary>
         private const string C_項目_inputs = "inputs";
@@ -549,6 +564,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             RepeatRMerVerifier.V_解放_共有索引();
+            V_埋める_リードの合意で継ぎ目(l_最終パス, p_原入力);
             var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス, p_Isログ出力: true);
             _ = V_置換_未確認の繋ぎ目(l_scaffoldパス, p_Isログ出力: false);
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
@@ -903,6 +919,64 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 最終配列の継ぎ目 (未確認の繋ぎ目の印と N の連続) を、両側を跨ぐリードの品質を見た多数決で埋める (局所アセンブリが有効なときだけ)<br/>
+        /// リードは、間引いたときは間引く前の全リードを使う<br/>
+        /// 埋めた継ぎ目が 1 以上なら、同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_原入力">ライブラリ群 (間引いたときは間引く前のものも) と Phred オフセットを保持した設定</param>
+        private static void V_埋める_リードの合意で継ぎ目(string p_最終パス, Parameters p_原入力)
+        {
+            if (!p_原入力.A_Is局所アセンブリ)
+            {
+                return;
+            }
+
+            using var l_計測 = new StageTimer("junction-consensus");
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_ライブラリ群 = p_原入力.A_間引き前ライブラリ群.Count > 0 ? p_原入力.A_間引き前ライブラリ群 : p_原入力.A_ライブラリ群;
+            var l_埋めた配列群 = JunctionConsensusFiller.Get_埋めた配列群(l_配列群, () => Get_品質付きリード列(l_ライブラリ群, p_原入力), out var l_統計);
+            if (l_統計.A_対象数 == 0)
+            {
+                return;
+            }
+
+            if (l_統計.A_埋めた数 >= 1)
+            {
+                using var l_書き込み = new FastaWriter(p_最終パス);
+                foreach (var (l_ID, l_配列) in l_埋めた配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            Logger.V_出力(メッセージID.継ぎ目をリードの合意で埋めた, l_統計.A_対象数, l_統計.A_埋めた数, l_統計.A_跨ぐリード無し数, l_統計.A_票が足りない数, l_統計.A_票が割れた数, l_統計.A_合意が弱い数, l_統計.A_縦列反復数, l_統計.A_食い違い数, l_統計.A_片が収まる数);
+        }
+
+        /// <summary>
+        /// ライブラリ群のリードを、配列・品質・そのライブラリの Phred オフセットの組で順に流す
+        /// </summary>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードのパス (逆リードが無ければ空)</param>
+        /// <param name="p_原入力">Phred オフセットを保持した設定</param>
+        /// <returns>リードの配列・品質・Phred オフセット</returns>
+        private static IEnumerable<(string A_配列, string A_品質, int A_Phredオフセット)> Get_品質付きリード列(IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, Parameters p_原入力)
+        {
+            for (var i = 0; i < p_ライブラリ群.Count; i++)
+            {
+                var l_オフセット = p_原入力.Get_Phredオフセット(i);
+                foreach (var l_パス in new[] { p_ライブラリ群[i].A_順リード, p_ライブラリ群[i].A_逆リード, }.Where(static x => !string.IsNullOrWhiteSpace(x)))
+                {
+                    using var l_読み込み = new FastqReader(l_パス);
+                    while (l_読み込み.Has続き())
+                    {
+                        var (_, l_配列, l_品質) = l_読み込み.Get_次のレコード();
+                        yield return (l_配列, l_品質, l_オフセット);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// ロングリードがあれば、最終配列に当てて互いに一意な端の組 (橋) を決め、間を重なりか組み立てグラフの経路で埋めて繋ぐ<br/>
         /// 橋と埋め方は TSV とログに出す。配列の数が減ったときだけ、同じパスに書き戻す
         /// </summary>
@@ -1113,7 +1187,7 @@ namespace Tsumiki.Cores.Pipeline
                 ConfigurationManager.A_実行時引数 = l_設定;
                 var l_検査パス = Path.Combine(p_作業パス, AssemblyWorkspace.C_検査ディレクトリ名);
                 _ = Directory.CreateDirectory(l_検査パス);
-                using var l_索引 = new TrustedKmerIndex(l_検査パス);
+                using var l_索引 = new TrustedKmerIndex(l_検査パス, p_k長);
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
                 var l_分布 = l_索引.Get_出現回数ヒストグラム();
                 var l_基準 = KmerSpectrumMixtureModel.Get_解析結果(l_分布)?.A_単一コピー平均 ?? KmerHistogram.Get_解析結果(l_分布)?.A_単一コピー基準値 ?? 0D;
@@ -1151,6 +1225,11 @@ namespace Tsumiki.Cores.Pipeline
             l_JSON.WriteString(C_項目_copy_number_baseline_requested, p_原入力.A_コピー数基準の出所.ToString());
             l_JSON.WriteString(C_項目_copy_number_baseline_actual, p_結果.A_実際のコピー数基準.ToString());
             l_JSON.WriteBoolean(C_項目_trim_low_coverage_ends, p_原入力.A_Is低カバレッジ端トリミング);
+            l_JSON.WriteStartObject(C_項目_junction_risk_model);
+            l_JSON.WriteString(C_項目_name, p_原入力.A_継ぎ目モデル.A_名前);
+            l_JSON.WriteString(C_項目_source, p_原入力.A_継ぎ目モデル.A_出所);
+            l_JSON.WriteString(C_項目_sha256, p_原入力.A_継ぎ目モデル.A_SHA256);
+            l_JSON.WriteEndObject();
             l_JSON.WriteEndObject();
             l_JSON.WriteStartArray(C_項目_inputs);
             foreach (var l_入力 in p_原入力.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード }))
@@ -1242,7 +1321,7 @@ namespace Tsumiki.Cores.Pipeline
         private static void V_評価_継ぎ目(Parameters p_引数, string p_一時ディレクトリ, string p_最終パス)
         {
             Logger.V_出力_空行();
-            if (JunctionRiskEvaluator.Get_評価結果(p_最終パス, p_引数.A_ライブラリ群, Path.Combine(p_一時ディレクトリ, Consts.継ぎ目ファイル名)) is { } l_評価群)
+            if (JunctionRiskEvaluator.Get_評価結果(p_最終パス, p_引数.A_ライブラリ群, Path.Combine(p_一時ディレクトリ, Consts.継ぎ目ファイル名), p_引数.A_継ぎ目モデル) is { } l_評価群)
             {
                 JunctionRiskEvaluator.V_書き出し_切った配列(p_最終パス, l_評価群, Path.Combine(p_一時ディレクトリ, Consts.安全版ファイル名));
             }

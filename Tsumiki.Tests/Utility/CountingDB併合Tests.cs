@@ -86,7 +86,7 @@ namespace Tsumiki.Tests.Utility
             var l_乱数 = new Random(p_k長);
             var l_期待 = new Dictionary<(UInt128, UInt128), ulong>();
             var l_ビット数 = 2 * p_k長;
-            using var l_数え = new CountingDB(this._作業ディレクトリ);
+            using var l_数え = new CountingDB(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             for (var i = 0; i < 60_000; i++)
             {
                 var l_種 = (ulong)l_乱数.Next(20_000);

@@ -146,8 +146,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
             p_引数.Set_推定k長(l_アンカーk長);
-            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
-            ConfigurationManager.A_kmerインデックス = l_アンカー;
+            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ, l_アンカーk長);
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
             l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
@@ -179,7 +178,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_最良 = AssemblySelector.Get_最良(l_候補)!.Value;
             AssemblySelector.V_出力_候補一覧(l_候補, l_最良.A_実行結果);
             Logger.V_出力(メッセージID.採用したk, l_最良.A_実行結果.A_k長);
-            var l_採用 = (p_引数.A_Isマージ ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群) : null) ?? l_最良.A_実行結果 with
+            var l_採用 = (p_引数.A_Isマージ ? Get_統合結果(l_最良, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ, (p_原入力 ?? p_引数).A_ライブラリ群, p_引数.A_継ぎ目モデル) : null) ?? l_最良.A_実行結果 with
             {
                 A_固定アンカー評価 = l_最良.A_評価
             };
@@ -202,8 +201,7 @@ namespace Tsumiki.Cores.Pipeline
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.アンカーkmer集合の構築, l_アンカーk長);
             p_引数.Set_推定k長(l_アンカーk長);
-            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ);
-            ConfigurationManager.A_kmerインデックス = l_アンカー;
+            using var l_アンカー = new TrustedKmerIndex(l_アンカー作業ディレクトリ, l_アンカーk長);
             KmerCounting.V_読込_リードペア(p_引数, l_アンカー);
             KmerCutoffSelector.V_解決_kmerカットオフ(p_引数, l_アンカー);
             l_アンカー.V_適用_カットオフ(p_引数.A_kmerカットオフ);
@@ -449,11 +447,12 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_統合パス">統合した配列</param>
         /// <param name="p_橋渡しの場所">統合した配列の中の橋渡しした配列の場所</param>
         /// <param name="p_ライブラリ群">元リード</param>
+        /// <param name="p_モデル">継ぎ目の誤り確率モデル</param>
         /// <returns>見送る始点の頂点 (評価できなければ空)</returns>
-        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
+        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
         {
             HashSet<int> l_見送る = [];
-            if (p_橋渡しの場所.Count == 0 || JunctionRiskEvaluator.Get_評価(p_統合パス, p_ライブラリ群) is not { } l_評価群)
+            if (p_橋渡しの場所.Count == 0 || JunctionRiskEvaluator.Get_評価(p_統合パス, p_ライブラリ群, p_モデル) is not { } l_評価群)
             {
                 return l_見送る;
             }
@@ -493,8 +492,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_解析"></param>
         /// <param name="p_一時ディレクトリ"></param>
         /// <param name="p_ライブラリ群">継ぎ目の誤り確率を見る元リード</param>
+        /// <param name="p_モデル">継ぎ目の誤り確率モデル</param>
         /// <returns></returns>
-        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
+        private static アセンブリ実行結果? Get_統合結果((アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価) p_最良, List<(アセンブリ実行結果 A_実行結果, アセンブリ評価 A_評価)> p_候補, TrustedKmerIndex p_アンカー, int p_アンカーk長, スペクトル解析結果 p_解析, string p_一時ディレクトリ, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
         {
             Logger.V_出力_空行();
             Logger.V_出力(メッセージID.統合開始);
@@ -507,7 +507,7 @@ namespace Tsumiki.Cores.Pipeline
                 return null;
             }
 
-            var l_見送る始点 = Get_危ない橋渡し(l_統合パス, l_橋渡しの場所, p_ライブラリ群);
+            var l_見送る始点 = Get_危ない橋渡し(l_統合パス, l_橋渡しの場所, p_ライブラリ群, p_モデル);
             if (l_見送る始点.Count > 0)
             {
                 Logger.V_出力(メッセージID.危ない橋渡しを見送る, l_見送る始点.Count, C_橋渡しを見送る確率);

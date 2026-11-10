@@ -151,6 +151,9 @@ namespace Tsumiki.IO
                         case Consts.引数キー.環状閉鎖検証なし:
                             l_引数.A_Is環状閉鎖検証 = false;
                             break;
+                        case Consts.引数キー.継ぎ目モデル:
+                            l_引数.A_継ぎ目モデル = JunctionRiskModelReader.Get_読込(p_引数列[l_位置++]);
+                            break;
                         case Consts.引数キー.救済kmerなし:
                             l_引数.A_Is救済kmer使用 = false;
                             break;
@@ -186,6 +189,11 @@ namespace Tsumiki.IO
             if (l_引数.A_Isヘルプモード || l_引数.A_Isバージョンモード)
             {
                 return l_引数;
+            }
+
+            if (!l_指定済み.Contains(Consts.引数キー.継ぎ目モデル) && JunctionRiskModelReader.Get_読込_あれば(Path.Combine(AppContext.BaseDirectory, Consts.継ぎ目モデルのファイル名)) is { } l_見つけたモデル)
+            {
+                l_引数.A_継ぎ目モデル = l_見つけたモデル;
             }
 
             if (string.IsNullOrWhiteSpace(l_引数.A_順リードのパス) && !string.IsNullOrWhiteSpace(l_引数.A_逆リードのパス))

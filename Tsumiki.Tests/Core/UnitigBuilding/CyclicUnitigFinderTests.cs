@@ -145,7 +145,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = C_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var l_環状 in new[]
             {
                 l_環状1,
@@ -198,7 +198,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = C_k長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._一時ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             if (p_環状配列 is { } l_環状)
             {
                 var l_二周 = (l_環状 + l_環状).Select(Util.Get_塩基ID).ToArray();

@@ -20,6 +20,26 @@ namespace Tsumiki.Cores.Evaluation
         private const double C_比を信じる期待 = 3D;
 
         /// <summary>
+        /// コピー数の上限
+        /// </summary>
+        private const double C_コピー数の上限 = 5D;
+
+        /// <summary>
+        /// 組の比と低い側の深さ比の上限
+        /// </summary>
+        private const double C_比の上限 = 2D;
+
+        /// <summary>
+        /// 切れ端の上限
+        /// </summary>
+        private const double C_切れ端の上限 = 3D;
+
+        /// <summary>
+        /// 組み込みのモデルの版の名前
+        /// </summary>
+        private const string C_既定の名前 = "tsumiki-junction-v1";
+
+        /// <summary>
         /// 得点の説明変数ごとの係数 (切片、log 反復長、コピー数、log 跨ぐ読み、log 跨ぐ組、log 期待の組、組の比、期待なし、外れ割合、log 外れ錨、切れ端、低い側の深さ比、ギャップ)
         /// </summary>
         private static readonly double[] C_得点の係数 = [
@@ -91,20 +111,14 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         private static readonly double[] C_跨げない組の較正 = [0.3030979086174536D, 0.928841530928149D, -2.7693864888039D, 2.177682353092452D];
 
-        /// <summary>
-        /// コピー数の上限
-        /// </summary>
-        private const double C_コピー数の上限 = 5D;
+        #endregion
+
+        #region プロパティ
 
         /// <summary>
-        /// 組の比と低い側の深さ比の上限
+        /// 組み込みのモデル (検証データで合わせた既定の係数、雛形は <c>Cores/Evaluation/JunctionRiskModel.tsv</c>)
         /// </summary>
-        private const double C_比の上限 = 2D;
-
-        /// <summary>
-        /// 切れ端の上限
-        /// </summary>
-        private const double C_切れ端の上限 = 3D;
+        public static 継ぎ目モデル A_既定 { get; } = new(C_既定の名前, 継ぎ目モデル.C_組み込みの出所, C_得点の係数, C_得点の平均, C_得点の幅, C_ギャップの較正, C_跨げる組の較正, C_跨げない組の較正);
 
         #endregion
 
@@ -114,18 +128,22 @@ namespace Tsumiki.Cores.Evaluation
         /// 候補を組に分け、繋ぐ相手を誤っている確率を付ける
         /// </summary>
         /// <param name="p_候補"></param>
+        /// <param name="p_モデル">係数</param>
         /// <returns>評価</returns>
-        public static 継ぎ目の評価 Get_評価(継ぎ目候補 p_候補)
+        public static 継ぎ目の評価 Get_評価(継ぎ目候補 p_候補, 継ぎ目モデル p_モデル)
         {
-            var l_得点 = Get_得点(p_候補);
+            var l_得点 = Get_得点(p_候補, p_モデル);
             var l_深さ = Math.Min(p_候補.A_低い側の深さ比, C_比の上限);
             var l_切れ端 = Math.Min(p_候補.A_切れ端, C_切れ端の上限);
             var l_組 = Get_組(p_候補);
+            var l_ギャップ = p_モデル.A_ギャップの較正;
+            var l_跨げる = p_モデル.A_跨げる組の較正;
+            var l_跨げない = p_モデル.A_跨げない組の較正;
             var l_線形和 = l_組 switch
             {
-                継ぎ目の組.ギャップ => C_ギャップの較正[0] + (C_ギャップの較正[1] * l_得点) + (C_ギャップの較正[2] * l_深さ) + (C_ギャップの較正[3] * l_切れ端),
-                継ぎ目の組.組で跨げる => C_跨げる組の較正[0] + (C_跨げる組の較正[1] * l_得点),
-                _ => C_跨げない組の較正[0] + (C_跨げない組の較正[1] * l_得点) + (C_跨げない組の較正[2] * l_深さ) + (C_跨げない組の較正[3] * l_切れ端),
+                継ぎ目の組.ギャップ => l_ギャップ[0] + (l_ギャップ[1] * l_得点) + (l_ギャップ[2] * l_深さ) + (l_ギャップ[3] * l_切れ端),
+                継ぎ目の組.組で跨げる => l_跨げる[0] + (l_跨げる[1] * l_得点),
+                _ => l_跨げない[0] + (l_跨げない[1] * l_得点) + (l_跨げない[2] * l_深さ) + (l_跨げない[3] * l_切れ端),
             };
             return new 継ぎ目の評価(p_候補, l_組, Get_シグモイド(l_線形和));
         }
@@ -144,8 +162,9 @@ namespace Tsumiki.Cores.Evaluation
         /// 人工の誤結合で学習した得点 (ロジット)
         /// </summary>
         /// <param name="p_候補"></param>
+        /// <param name="p_モデル">係数</param>
         /// <returns></returns>
-        public static double Get_得点(継ぎ目候補 p_候補)
+        public static double Get_得点(継ぎ目候補 p_候補, 継ぎ目モデル p_モデル)
         {
             var l_Is比を信じる = p_候補.A_期待の組 >= C_比を信じる期待;
             ReadOnlySpan<double> l_説明変数 = [
@@ -166,7 +185,7 @@ namespace Tsumiki.Cores.Evaluation
             var l_得点 = 0D;
             for (var i = 0; i < l_説明変数.Length; i++)
             {
-                l_得点 += C_得点の係数[i] * (l_説明変数[i] - C_得点の平均[i]) / C_得点の幅[i];
+                l_得点 += p_モデル.A_得点の係数[i] * (l_説明変数[i] - p_モデル.A_得点の平均[i]) / p_モデル.A_得点の幅[i];
             }
 
             return l_得点;

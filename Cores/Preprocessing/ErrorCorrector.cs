@@ -73,46 +73,37 @@ namespace Tsumiki.Cores.Preprocessing
         {
             using var l_計測 = new StageTimer(C_項目_error_correction);
             var l_設定 = ConfigurationManager.A_実行時引数;
-            var l_組み立てk長 = l_設定.A_k長;
             var l_k長 = l_設定.A_エラー訂正k長;
-            l_設定.Set_推定k長(l_k長);
             var l_度数 = l_k長 <= 64 ? new 無誤り区間の度数(l_k長) : null;
-            try
+            var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_エラー訂正ディレクトリ名);
+            _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
+            Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
+            using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ, l_k長))
             {
-                var l_訂正用一時ディレクトリ = Path.Combine(p_一時ディレクトリ, AssemblyWorkspace.C_エラー訂正ディレクトリ名);
-                _ = Directory.CreateDirectory(l_訂正用一時ディレクトリ);
-                Logger.V_出力(メッセージID.エラー訂正_スペクトル構築);
-                using (var l_kmerインデックス = new TrustedKmerIndex(l_訂正用一時ディレクトリ))
+                if (p_逆リードのパス != null)
                 {
-                    if (p_逆リードのパス != null)
-                    {
-                        Parallel.Invoke(() => KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット), () => KmerCounting.V_読込_リードファイル(p_逆リードのパス, l_kmerインデックス, p_Phredオフセット));
-                    }
-                    else
-                    {
-                        KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット);
-                    }
-
-                    KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_kmerインデックス);
-                    l_kmerインデックス.V_適用_カットオフ(l_設定.A_kmerカットオフ);
-                    l_度数?.A_単一コピー平均 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均 ?? 0D;
-                    Logger.V_出力(メッセージID.エラー訂正_訂正開始);
-                    var l_統計1 = Get_訂正統計_ファイル(p_順リードのパス, p_出力先1, l_kmerインデックス, l_k長, l_度数);
-                    Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_順リードのパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
-                    if (p_逆リードのパス != null && p_出力先2 != null)
-                    {
-                        var l_統計2 = Get_訂正統計_ファイル(p_逆リードのパス, p_出力先2, l_kmerインデックス, l_k長, l_度数);
-                        Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_逆リードのパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
-                    }
+                    Parallel.Invoke(() => KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット), () => KmerCounting.V_読込_リードファイル(p_逆リードのパス, l_kmerインデックス, p_Phredオフセット));
+                }
+                else
+                {
+                    KmerCounting.V_読込_リードファイル(p_順リードのパス, l_kmerインデックス, p_Phredオフセット);
                 }
 
-                Directory.Delete(l_訂正用一時ディレクトリ, recursive: true);
-                return l_度数 is { A_単一コピー平均: > 0D } ? l_度数 : null;
+                KmerCutoffSelector.V_解決_kmerカットオフ(l_設定, l_kmerインデックス);
+                l_kmerインデックス.V_適用_カットオフ(l_設定.A_kmerカットオフ);
+                l_度数?.A_単一コピー平均 = ConfigurationManager.A_スペクトルモデル?.A_単一コピー平均 ?? 0D;
+                Logger.V_出力(メッセージID.エラー訂正_訂正開始);
+                var l_統計1 = Get_訂正統計_ファイル(p_順リードのパス, p_出力先1, l_kmerインデックス, l_k長, l_度数);
+                Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_順リードのパス), l_統計1.A_訂正されたリード数, l_統計1.A_総リード数, l_統計1.A_総訂正塩基数);
+                if (p_逆リードのパス != null && p_出力先2 != null)
+                {
+                    var l_統計2 = Get_訂正統計_ファイル(p_逆リードのパス, p_出力先2, l_kmerインデックス, l_k長, l_度数);
+                    Logger.V_出力(メッセージID.エラー訂正_ファイル別統計, Path.GetFileName(p_逆リードのパス), l_統計2.A_訂正されたリード数, l_統計2.A_総リード数, l_統計2.A_総訂正塩基数);
+                }
             }
-            finally
-            {
-                l_設定.Set_推定k長(l_組み立てk長);
-            }
+
+            Directory.Delete(l_訂正用一時ディレクトリ, recursive: true);
+            return l_度数 is { A_単一コピー平均: > 0D } ? l_度数 : null;
         }
 
         /// <summary>

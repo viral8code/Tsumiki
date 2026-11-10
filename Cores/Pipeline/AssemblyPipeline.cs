@@ -134,8 +134,7 @@ namespace Tsumiki.Cores.Pipeline
             }
 
             Logger.V_出力(メッセージID.kmerインデックス構築開始);
-            using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ);
-            ConfigurationManager.A_kmerインデックス = l_kmerインデックス;
+            using var l_kmerインデックス = new TrustedKmerIndex(l_作業ディレクトリ, p_k長);
             KmerCounting.V_読込_リードペア(p_引数, l_kmerインデックス, p_Is進行状況出力: true);
             Logger.V_出力_タイムスタンプ();
             Logger.V_出力(メッセージID.kmerカットオフ適用);

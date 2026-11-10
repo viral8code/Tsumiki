@@ -185,7 +185,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = C_k長,
                 A_スレッド数 = 4
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_種類数の合計 = C_スペクトルの形.Sum(x => x.A_種類数);
             var l_乱数生成器 = new Random(20_260_904);
             var l_bases = string.Concat(Enumerable.Range(0, l_種類数の合計 + C_k長 - 1).Select(_ => Consts.塩基文字[l_乱数生成器.Next(4)])).Select(Util.Get_塩基ID).ToArray();

@@ -113,6 +113,11 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
+            if (l_引数.A_継ぎ目モデル.A_出所 != 継ぎ目モデル.C_組み込みの出所)
+            {
+                Logger.V_出力(メッセージID.継ぎ目モデルを読んだ, l_引数.A_継ぎ目モデル.A_出所, l_引数.A_継ぎ目モデル.A_名前);
+            }
+
             if (中間データ置き場.A_Is有効)
             {
                 foreach (var l_パス in l_引数.A_ライブラリ群.SelectMany(x => new[] { x.A_順リード, x.A_逆リード }).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())

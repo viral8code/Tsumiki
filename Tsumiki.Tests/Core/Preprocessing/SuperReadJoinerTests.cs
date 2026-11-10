@@ -288,7 +288,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = p_k長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var l_配列 in p_配列群)
             {
                 var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();

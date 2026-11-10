@@ -190,6 +190,39 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 反復の上限まで除去を続けたときだけ警告を出し、受け渡しの unitig は空のまま返す
+        /// </summary>
+        /// <param name="p_最大反復数">反復の上限</param>
+        /// <param name="p_Is警告">警告を出すはずか</param>
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(30, false)]
+        public void V_反復の上限まで除去を続けたら警告を出す(int p_最大反復数, bool p_Is警告)
+        {
+            const string l_主配列 = C_塩基配列_GCTAAAGACAATTACATAACATAC_GGCAATTGACCTGAAT;
+            const int l_k長 = 8;
+            using var l_インデックス = this.V_構築_tip付き索引(l_主配列, l_k長, 20, 4);
+            List<string> l_最後のunitig群 = [];
+            var l_元の出力 = Console.Out;
+            var l_元の水準 = Logger.A_水準;
+            using var l_出力 = new StringWriter();
+            Console.SetOut(l_出力);
+            Logger.A_水準 = ログ水準.標準;
+            try
+            {
+                _ = GraphSimplifier.V_除去_tip(l_インデックス, l_k長, p_tip長閾値: l_k長 * 2, p_最大反復数: p_最大反復数, p_Is低カバレッジ端トリミング: false, p_最後のunitig群: l_最後のunitig群);
+            }
+            finally
+            {
+                Console.SetOut(l_元の出力);
+                Logger.A_水準 = l_元の水準;
+            }
+
+            Assert.Equal(p_Is警告, l_出力.ToString().Contains(Messages.Get_文言(メッセージID.グラフ単純化が収束しない, p_最大反復数, l_k長), StringComparison.Ordinal));
+            Assert.Equal(p_Is警告, l_最後のunitig群.Count == 0);
+        }
+
+        /// <summary>
         /// E2 では低カバレッジ端トリミングだけを独立に止められることを確かめる
         /// </summary>
         [Fact]
@@ -216,7 +249,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = l_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_配列), l_k長, 3);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             var l_before = l_インデックス.Get_信頼kmer一覧().Count();
@@ -242,7 +275,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = l_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_seqHighCoverage), l_k長, 20);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_seqLowCoverage), l_k長, 3);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -284,7 +317,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = l_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_prefixA + l_shared), l_k長, 10);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_prefixB + l_shared), l_k長, 10);
             var l_firstKmers = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -326,7 +359,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = l_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_上流 + l_続き), l_k長, 4);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_上流 + l_別の続き), l_k長, 4);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_続き), l_k長, 36);
@@ -355,7 +388,7 @@ namespace Tsumiki.Tests.Core
                     A_スレッド数 = 4
                 };
                 var l_場所 = Directory.CreateDirectory(Path.Combine(this._作業ディレクトリ, l_回.ToString())).FullName;
-                using var l_インデックス = new TrustedKmerIndex(l_場所);
+                using var l_インデックス = new TrustedKmerIndex(l_場所, ConfigurationManager.A_実行時引数.A_k長);
                 V_登録_全kmer(l_インデックス, V_変換_塩基ID列(l_主配列), l_k長, 10);
                 _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
                 List<(byte[] A_kmer, ulong A_出現回数)> l_足すkmer = [];
@@ -434,7 +467,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = p_kmer長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, V_変換_塩基ID列(p_主配列), p_kmer長, p_主経路反復回数);
             var l_overlap = p_主配列.Substring(p_分岐点, p_kmer長 - 1);
             var l_branchBaseChar = p_主配列[p_分岐点 + p_kmer長 - 1];

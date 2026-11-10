@@ -83,7 +83,7 @@ namespace Tsumiki.Tests.Core
             var l_後続単一配列 = V_生成_乱数配列(400, p_乱数種: 2);
             var l_二重配列 = V_生成_乱数配列(120, p_乱数種: 3);
             var l_四重配列 = V_生成_乱数配列(120, p_乱数種: 4);
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, l_先行単一配列, 20, l_k長);
             V_登録_全kmer(l_インデックス, l_後続単一配列, 20, l_k長);
             V_登録_全kmer(l_インデックス, l_二重配列, 40, l_k長);
@@ -120,7 +120,7 @@ namespace Tsumiki.Tests.Core
             };
             var l_基準配列 = V_生成_乱数配列(400, p_乱数種: 5);
             var l_微増配列 = V_生成_乱数配列(120, p_乱数種: 6);
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, l_基準配列, 20, l_k長);
             V_登録_全kmer(l_インデックス, l_微増配列, 26, l_k長);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -149,7 +149,7 @@ namespace Tsumiki.Tests.Core
             };
             var l_通常配列 = V_生成_乱数配列(300, p_乱数種: 8);
             var l_短すぎる配列 = V_生成_乱数配列(10, p_乱数種: 9);
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_全kmer(l_インデックス, l_通常配列, 20, l_k長);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
             Dictionary<int, string> l_unitig群 = new()

@@ -107,7 +107,7 @@ namespace Tsumiki.Tests.Utility
                 }
             }
 
-            using var l_信頼 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_信頼 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             Cores.Preprocessing.KmerCounting.V_読込_リードファイル(l_パス, l_信頼, 33);
             l_信頼.V_適用_カットオフ(3UL);
             var l_問い合わせ = Enumerable.Range(0, 40).Select(_ =>

@@ -614,6 +614,28 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
+        /// 繋いだ配列の、錨の始まりから右の錨の先 (錨の長さ分) までの区間を 縦の反復を調べる間隔 ずつずらした 右の錨長 の配列のどれかに、似た配列が別の場所にあるか<br/>
+        /// あれば縦に並んだ反復の中の繋ぎ目で、リードで跨げず単位の数を取り違えるので埋めない
+        /// </summary>
+        /// <param name="p_繋いだ配列"></param>
+        /// <param name="p_錨の位置">繋いだ配列での左の錨の始まり</param>
+        /// <param name="p_右の錨の位置">繋いだ配列での右の錨の始まり</param>
+        /// <returns></returns>
+        internal static bool Is縦の反復の中(string p_繋いだ配列, int p_錨の位置, int p_右の錨の位置)
+        {
+            var l_終わり = Math.Min(p_繋いだ配列.Length - C_右の錨長, p_右の錨の位置 + ReadMinimizerIndex.C_最短の問い合わせ長);
+            for (var l_位置 = Math.Min(p_錨の位置, p_右の錨の位置); l_位置 <= l_終わり; l_位置 += C_縦の反復を調べる間隔)
+            {
+                if (Has似た配列(p_繋いだ配列, p_繋いだ配列.AsSpan(l_位置, C_右の錨長), l_位置))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// 配列群から 一意の出現数を測る間隔 おきに取った 最短の問い合わせ長 の配列 (N を含まないもの) がリードに出てくる数の中央値を返す
         /// </summary>
         /// <param name="p_リード索引">リードの索引</param>
@@ -809,28 +831,6 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_不一致 <= C_似たとみなす不一致数;
-        }
-
-        /// <summary>
-        /// 繋いだ配列の、錨の始まりから右の錨の先 (錨の長さ分) までの区間を 縦の反復を調べる間隔 ずつずらした 右の錨長 の配列のどれかに、似た配列が別の場所にあるか<br/>
-        /// あれば縦に並んだ反復の中の繋ぎ目で、リードで跨げず単位の数を取り違えるので埋めない
-        /// </summary>
-        /// <param name="p_繋いだ配列"></param>
-        /// <param name="p_錨の位置">繋いだ配列での左の錨の始まり</param>
-        /// <param name="p_右の錨の位置">繋いだ配列での右の錨の始まり</param>
-        /// <returns></returns>
-        private static bool Is縦の反復の中(string p_繋いだ配列, int p_錨の位置, int p_右の錨の位置)
-        {
-            var l_終わり = Math.Min(p_繋いだ配列.Length - C_右の錨長, p_右の錨の位置 + ReadMinimizerIndex.C_最短の問い合わせ長);
-            for (var l_位置 = Math.Min(p_錨の位置, p_右の錨の位置); l_位置 <= l_終わり; l_位置 += C_縦の反復を調べる間隔)
-            {
-                if (Has似た配列(p_繋いだ配列, p_繋いだ配列.AsSpan(l_位置, C_右の錨長), l_位置))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         /// <summary>

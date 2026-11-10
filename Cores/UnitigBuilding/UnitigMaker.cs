@@ -60,7 +60,7 @@ namespace Tsumiki.Cores.UnitigBuilding
         /// <returns>組み上がった unitig</returns>
         public Unitig Get_Unitig(Span<byte> p_開始kmer)
         {
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            var l_k長 = this._kmerインデックス.A_k長;
             var l_Isパック経路使用 = l_k長 <= 64;
             this._訪問済み_パック.Clear();
             this._訪問済み_大.Clear();

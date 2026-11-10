@@ -256,7 +256,7 @@ namespace Tsumiki.Tests.Core
             };
             var l_前段の作業 = Path.Combine(this._作業ディレクトリ, Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(l_前段の作業);
-            using var l_前段 = new TrustedKmerIndex(l_前段の作業);
+            using var l_前段 = new TrustedKmerIndex(l_前段の作業, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var (l_配列, l_深さ)in new[]
             {
                 (l_単一, 20),
@@ -437,7 +437,7 @@ namespace Tsumiki.Tests.Core
             };
             var l_作業 = Path.Combine(this._作業ディレクトリ, Guid.NewGuid().ToString(C_GUID書式));
             _ = Directory.CreateDirectory(l_作業);
-            var l_インデックス = new TrustedKmerIndex(l_作業);
+            var l_インデックス = new TrustedKmerIndex(l_作業, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var l_配列 in p_配列群)
             {
                 var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();

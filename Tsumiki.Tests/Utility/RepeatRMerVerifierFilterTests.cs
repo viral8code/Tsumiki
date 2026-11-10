@@ -119,7 +119,7 @@ namespace Tsumiki.Tests.Utility
             var l_誤りの配列 = C_反復前配列 + l_誤りの反復[(C_アセンブリk長 - 1)..] + C_反復後配列[(C_アセンブリk長 - 1)..];
             var l_リードパス = Path.Combine(this._作業ディレクトリ, C_ファイル名_reads_fq);
             File.WriteAllText(l_リードパス, $"@r1\n{l_正しい配列}\n+\n{new string('I', l_正しい配列.Length)}\n@r2\n{l_誤りの配列}\n+\n{new string('I', l_誤りの配列.Length)}\n");
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_塩基列 = l_正しい配列.Select(Util.Get_塩基ID).ToArray();
             for (var i = 0; i + C_アセンブリk長 <= l_塩基列.Length; i++)
             {
@@ -142,7 +142,7 @@ namespace Tsumiki.Tests.Utility
         [Fact]
         public void V_控えはカットオフ未満かつ下限以上のkmerだけを保持する()
         {
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録(l_索引, C_塩基配列_AAACCCGG, 5);
             V_登録(l_索引, C_塩基配列_GATTACAG, 3);
             V_登録(l_索引, C_塩基配列_CCTTGGAA, 1);

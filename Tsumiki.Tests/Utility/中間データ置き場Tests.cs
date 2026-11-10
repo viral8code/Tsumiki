@@ -332,7 +332,7 @@ namespace Tsumiki.Tests.Utility
             var l_作業 = Path.Combine(this._作業ディレクトリ, p_Isメモリ ? C_項目_memory_run : C_項目_disk_run);
             _ = Directory.CreateDirectory(l_作業);
             var l_ゲノム = Get_ランダム配列(20_000, 2402);
-            using var l_索引 = new TrustedKmerIndex(l_作業);
+            using var l_索引 = new TrustedKmerIndex(l_作業, ConfigurationManager.A_実行時引数.A_k長);
             var l_塩基 = l_ゲノム.Select(Util.Get_塩基ID).ToArray();
             for (var l_回 = 0; l_回 < 3; l_回++)
             {

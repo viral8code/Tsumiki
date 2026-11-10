@@ -33,6 +33,11 @@ namespace Tsumiki.Tests.IO
         private const string C_項目_41 = "41";
 
         /// <summary>
+        /// 項目 odd number
+        /// </summary>
+        private const string C_項目_odd_number = "odd number";
+
+        /// <summary>
         /// ファイル名 0 5
         /// </summary>
         private const string C_ファイル名_0_5 = "0.5";
@@ -148,6 +153,20 @@ namespace Tsumiki.Tests.IO
         public void V_廃止したフラグは受け付けない(string p_引数)
         {
             Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, ..p_引数.Split(' ')]));
+        }
+
+        /// <summary>
+        /// 偶数の -k・-eck は、k-mer がそれ自身の逆相補と一致しうるので、引数を読む段で止める
+        /// </summary>
+        /// <param name="p_引数">渡す引数 (空白区切り)</param>
+        [Theory]
+        [InlineData("-k 32")]
+        [InlineData("-k 31,52")]
+        [InlineData("-eck 40")]
+        public void V_偶数のkは受け付けない(string p_引数)
+        {
+            var l_例外 = Assert.Throws<ArgumentException>(() => ArgumentsReader.Get_実行時引数([Consts.引数キー.リード1のパス, this._ダミーリードパス, ..p_引数.Split(' ')]));
+            Assert.Contains(C_項目_odd_number, l_例外.Message, StringComparison.Ordinal);
         }
 
         /// <summary>

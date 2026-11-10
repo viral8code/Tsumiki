@@ -146,6 +146,55 @@ namespace Tsumiki.Tests.Utility
             Assert.Equal(41, l_param.A_エラー訂正k長);
         }
 
+        /// <summary>
+        /// 明示した k がリード長以上なら、リードから k-mer を取れないので止める
+        /// </summary>
+        [Fact]
+        public void V_明示したk長がリード長以上なら例外()
+        {
+            var l_param = new Parameters();
+            l_param.Set_k長一覧([31, 151]);
+            _ = Assert.Throws<ArgumentException>(() => KmerLengthSelector.V_解決_k長(l_param, 151));
+        }
+
+        /// <summary>
+        /// 明示した k がリード長より短ければ、そのまま通す
+        /// </summary>
+        [Fact]
+        public void V_明示したk長がリード長より短ければ通す()
+        {
+            var l_param = new Parameters();
+            l_param.Set_k長一覧([149]);
+            KmerLengthSelector.V_解決_k長(l_param, 151);
+            Assert.Equal(149, l_param.A_k長);
+        }
+
+        /// <summary>
+        /// 明示したエラー訂正の k がリード長以上なら止める
+        /// </summary>
+        [Fact]
+        public void V_明示したエラー訂正のk長がリード長以上なら例外()
+        {
+            var l_param = new Parameters
+            {
+                A_エラー訂正k長 = 151
+            };
+            _ = Assert.Throws<ArgumentException>(() => KmerLengthSelector.V_解決_k長(l_param, 151));
+        }
+
+        /// <summary>
+        /// 偶数の k は、k-mer がそれ自身の逆相補と一致しうるので、組み立てでもエラー訂正でも受け付けない
+        /// </summary>
+        [Fact]
+        public void V_偶数のk長は受け付けない()
+        {
+            var l_param = new Parameters();
+            _ = Assert.Throws<ArgumentException>(() => l_param.Set_k長一覧([31, 52]));
+            _ = Assert.Throws<ArgumentException>(() => l_param.A_エラー訂正k長 = 40);
+            l_param.Set_k長一覧([31, 63]);
+            Assert.Equal(63, l_param.A_k長);
+        }
+
         #endregion
     }
 }

@@ -109,12 +109,13 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_FASTAパス">最終配列</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
         /// <param name="p_出力パス">書き出し先の TSV</param>
+        /// <param name="p_モデル">確率を出すモデル</param>
         /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
-        public static IReadOnlyList<継ぎ目の評価>? Get_評価結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, string p_出力パス)
+        public static IReadOnlyList<継ぎ目の評価>? Get_評価結果(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, string p_出力パス, 継ぎ目モデル p_モデル)
         {
             using var l_計測 = new StageTimer(C_項目_junction_risk);
             Logger.V_出力(メッセージID.継ぎ目の評価開始);
-            if (Get_評価(p_FASTAパス, p_ライブラリ群) is not { } l_評価群)
+            if (Get_評価(p_FASTAパス, p_ライブラリ群, p_モデル) is not { } l_評価群)
             {
                 Logger.V_出力(メッセージID.継ぎ目の評価を行えず);
                 return null;
@@ -130,8 +131,9 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         /// <param name="p_FASTAパス">評価する配列</param>
         /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
+        /// <param name="p_モデル">確率を出すモデル</param>
         /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
-        public static List<継ぎ目の評価>? Get_評価(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群)
+        public static List<継ぎ目の評価>? Get_評価(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
         {
             var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
             if (l_エントリ群.Count == 0 || p_ライブラリ群.All(x => string.IsNullOrWhiteSpace(x.A_逆リード)))
@@ -147,7 +149,7 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             var l_名前群 = l_エントリ群.Select(x => x.A_ID.TrimStart('>').Split(' ', 2)[0]).ToList();
-            return [.. Get_候補群(l_証拠, l_名前群).Select(JunctionRiskModel.Get_評価)];
+            return [.. Get_候補群(l_証拠, l_名前群).Select(x => JunctionRiskModel.Get_評価(x, p_モデル))];
         }
 
         /// <summary>

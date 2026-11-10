@@ -79,7 +79,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = l_k長,
                 A_スレッド数 = p_スレッド数
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_配列 = C_塩基配列_ACGGTCATTGACCTAGGATCA;
             var l_kmer = l_配列.Select(Util.Get_塩基ID).ToArray();
             for (var i = 0; i < 7; i++)
@@ -106,7 +106,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = l_k長,
                 A_スレッド数 = p_スレッド数
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_乱数 = new Random(1_234);
             var l_配列 = string.Concat(Enumerable.Range(0, 500).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
             var l_塩基列 = l_配列.Select(Util.Get_塩基ID).ToArray();

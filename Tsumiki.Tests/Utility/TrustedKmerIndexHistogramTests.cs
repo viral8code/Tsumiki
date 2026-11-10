@@ -126,7 +126,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = C_k長,
                 A_スレッド数 = 4
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_バイト列 = V_生成_乱数配列(400, p_乱数種: 4_242).Select(Util.Get_塩基ID).ToArray();
             p_期待ヒストグラム = [];
             for (var i = 0; i + C_k長 <= l_バイト列.Length; i++)

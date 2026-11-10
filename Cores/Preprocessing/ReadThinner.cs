@@ -164,7 +164,7 @@ namespace Tsumiki.Cores.Preprocessing
             {
                 ConfigurationManager.A_実行時引数 = l_設定;
                 _ = Directory.CreateDirectory(l_作業パス);
-                using var l_索引 = new TrustedKmerIndex(l_作業パス);
+                using var l_索引 = new TrustedKmerIndex(l_作業パス, l_設定.A_k長);
                 KmerCounting.V_読込_リードペア(l_設定, l_索引, p_Is進行状況出力: false);
                 return KmerHistogram.Get_解析結果(l_索引.Get_出現回数ヒストグラム())?.A_推定ゲノムサイズ;
             }

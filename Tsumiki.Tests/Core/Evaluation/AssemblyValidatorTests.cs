@@ -168,7 +168,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = C_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             V_登録_複数(l_インデックス, l_single, 20);
             V_登録_複数(l_インデックス, l_反復配列, 40);
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -207,7 +207,7 @@ namespace Tsumiki.Tests.Core
                 A_k長 = C_k長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var l_配列 in p_配列群)
             {
                 var l_バイト列 = l_配列.Select(Util.Get_塩基ID).ToArray();

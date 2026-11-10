@@ -23,18 +23,19 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_スレッド数 = Math.Max(1, ConfigurationManager.A_実行時引数.A_スレッド数);
             var l_総リード数 = 0UL;
-            var l_Isパック値 = ConfigurationManager.A_実行時引数.A_k長 <= TrustedKmerIndex.C_パック値のk上限;
+            var l_k長 = p_kmerインデックス.A_k長;
+            var l_Isパック値 = l_k長 <= TrustedKmerIndex.C_パック値のk上限;
             var l_束群 = l_Isパック値 ? Enumerable.Range(0, l_スレッド数).Select(_ => new KmerCountBatch(p_kmerインデックス)).ToArray() : null;
             var l_長い束群 = l_Isパック値 ? null : Enumerable.Range(0, l_スレッド数).Select(_ => new WideKmerCountBatch(p_kmerインデックス)).ToArray();
             ReadPipeline.V_実行(l_スレッド数, l_スレッド数 * 64, Get_レコード列(p_ファイルパス), (l_レコード, l_ワーカー番号) =>
             {
                 if (l_束群 is not null)
                 {
-                    V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号], p_Phredオフセット);
+                    V_登録_1リード_パック値(l_レコード.A_配列, l_レコード.A_クオリティ, l_束群[l_ワーカー番号], l_k長, p_Phredオフセット);
                 }
                 else
                 {
-                    V_登録_1リード_長いk(l_レコード.A_配列, l_レコード.A_クオリティ, l_長い束群![l_ワーカー番号], p_Phredオフセット);
+                    V_登録_1リード_長いk(l_レコード.A_配列, l_レコード.A_クオリティ, l_長い束群![l_ワーカー番号], l_k長, p_Phredオフセット);
                 }
 
                 var l_件数 = Interlocked.Increment(ref l_総リード数);
@@ -112,7 +113,7 @@ namespace Tsumiki.Cores.Preprocessing
         {
             var l_件数 = 0UL;
             var l_ログ回数 = 0UL;
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
+            var l_k長 = p_kmerインデックス.A_k長;
             var l_Phredオフセット = p_Phredオフセット;
             var l_クオリティカットオフ = ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
             using var l_読み込み = new FastqReader(p_ファイルパス);
@@ -193,17 +194,17 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_束"></param>
+        /// <param name="p_k長">索引の k 長</param>
         /// <param name="p_Phredオフセット"></param>
-        private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束, int p_Phredオフセット)
+        private static void V_登録_1リード_パック値(string p_配列, string p_クオリティ, KmerCountBatch p_束, int p_k長, int p_Phredオフセット)
         {
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            if (p_配列.Length < l_k長)
+            if (p_配列.Length < p_k長)
             {
                 return;
             }
 
             var l_品質下限 = p_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
-            var l_窓 = new RollingKmer(l_k長);
+            var l_窓 = new RollingKmer(p_k長);
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
@@ -220,23 +221,23 @@ namespace Tsumiki.Cores.Preprocessing
         /// <param name="p_配列"></param>
         /// <param name="p_クオリティ"></param>
         /// <param name="p_束"></param>
+        /// <param name="p_k長">索引の k 長</param>
         /// <param name="p_Phredオフセット"></param>
-        private static void V_登録_1リード_長いk(string p_配列, string p_クオリティ, WideKmerCountBatch p_束, int p_Phredオフセット)
+        private static void V_登録_1リード_長いk(string p_配列, string p_クオリティ, WideKmerCountBatch p_束, int p_k長, int p_Phredオフセット)
         {
-            var l_k長 = ConfigurationManager.A_実行時引数.A_k長;
-            if (p_配列.Length < l_k長)
+            if (p_配列.Length < p_k長)
             {
                 return;
             }
 
             var l_品質下限 = p_Phredオフセット + ConfigurationManager.A_実行時引数.A_クオリティカットオフ;
-            var l_窓 = new WideRollingKmer(l_k長);
+            var l_窓 = new WideRollingKmer(p_k長);
             for (var i = 0; i < p_配列.Length; i++)
             {
                 var l_塩基 = p_クオリティ[i] < l_品質下限 ? 'N' : p_配列[i];
                 if (l_窓.Is成功_追加(l_塩基, out var l_キー))
                 {
-                    p_束.V_追加(TrustedKmerIndex.Get_パック済み(l_キー, l_k長));
+                    p_束.V_追加(TrustedKmerIndex.Get_パック済み(l_キー, p_k長));
                 }
             }
         }

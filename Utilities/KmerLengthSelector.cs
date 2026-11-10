@@ -1,4 +1,5 @@
-﻿using Tsumiki.Commons;
+﻿using System.Globalization;
+using Tsumiki.Commons;
 using Tsumiki.Models.Foundation;
 
 namespace Tsumiki.Utilities
@@ -20,6 +21,11 @@ namespace Tsumiki.Utilities
         /// </summary>
         private const int C_自動k長に必要な最小リード長 = 32;
 
+        /// <summary>
+        /// k がリード長以上のときのメッセージ (引数は指定の名前・k・リード長)
+        /// </summary>
+        private const string C_kが長すぎるメッセージ = "Specified {0} {1} is not shorter than the observed read length ({2} bp), so no k-mer can be taken from the reads; lower {0}";
+
         #endregion
 
         #region 公開メソッド
@@ -35,6 +41,10 @@ namespace Tsumiki.Utilities
             if (!p_引数.A_Isエラー訂正k長明示指定)
             {
                 p_引数.Set_推定エラー訂正k長(p_リード長 is { } l_リード長 && Get_推奨k長(l_リード長) is { } l_推奨値 ? l_推奨値 : p_引数.A_k長);
+            }
+            else if (p_リード長 is { } l_観測リード長 && p_引数.A_エラー訂正k長 >= l_観測リード長)
+            {
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, C_kが長すぎるメッセージ, Consts.引数キー.エラー訂正k長, p_引数.A_エラー訂正k長, l_観測リード長));
             }
         }
 
@@ -81,7 +91,7 @@ namespace Tsumiki.Utilities
             {
                 if (p_引数.A_k長 >= l_リード長)
                 {
-                    Logger.V_出力(メッセージID.k自動選択_kが長すぎる, p_引数.A_k長, l_リード長);
+                    throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, C_kが長すぎるメッセージ, Consts.引数キー.k長, p_引数.A_k長, l_リード長));
                 }
 
                 return;

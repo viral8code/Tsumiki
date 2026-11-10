@@ -1,4 +1,5 @@
 ﻿using Tsumiki.Commons;
+using Tsumiki.Cores.Preprocessing;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Utilities;
 
@@ -61,6 +62,21 @@ namespace Tsumiki.Tests.Utility
         /// </summary>
         private const string C_塩基配列_GCTAAAGACAATTACATAACATAC = "GCTAAAGACAATTACATAACATAC";
 
+        /// <summary>
+        /// ファイル名 reads fq
+        /// </summary>
+        private const string C_ファイル名_reads_fq = "reads.fq";
+
+        /// <summary>
+        /// FASTQ のリード名
+        /// </summary>
+        private const string C_FASTQリード名 = "@r0";
+
+        /// <summary>
+        /// FASTQ 品質区切り
+        /// </summary>
+        private const string C_FASTQ品質区切り = "+";
+
         #endregion
 
         #region 内部変数
@@ -88,6 +104,31 @@ namespace Tsumiki.Tests.Utility
         #region 公開メソッド
 
         /// <summary>
+        /// 索引は渡された k で数え、広域の設定の k には左右されない
+        /// </summary>
+        [Fact]
+        public void V_索引は広域のkではなく渡したkで数える()
+        {
+            const int l_k長 = 9;
+            ConfigurationManager.A_実行時引数 = new Parameters
+            {
+                A_k長 = 31,
+                A_スレッド数 = 1
+            };
+            var l_パス = Path.Combine(this._作業ディレクトリ, C_ファイル名_reads_fq);
+            File.WriteAllLines(l_パス, [C_FASTQリード名, C_塩基配列_GCTAAAGACAATTACATAACATAC, C_FASTQ品質区切り, new string('I', C_塩基配列_GCTAAAGACAATTACATAACATAC.Length)]);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, l_k長);
+            KmerCounting.V_読込_リードファイル(l_パス, l_インデックス, 33);
+            l_インデックス.V_適用_カットオフ(1UL);
+            var l_kmer群 = l_インデックス.Get_信頼kmer一覧().ToList();
+            Assert.Equal(l_k長, l_インデックス.A_k長);
+            Assert.Equal(31, ConfigurationManager.A_実行時引数.A_k長);
+            Assert.InRange(l_kmer群.Count, 1, C_塩基配列_GCTAAAGACAATTACATAACATAC.Length - l_k長 + 1);
+            Assert.All(l_kmer群, x => Assert.Equal(l_k長, x.Length));
+            Assert.True(l_インデックス.Haskmer(Util.V_変換_塩基列(C_塩基配列_GCTAAAGACAATTACATAACATAC[..l_k長])));
+        }
+
+        /// <summary>
         /// 大量の曖昧候補を展開せず、観測済み k-mer だけを残す
         /// </summary>
         [Fact]
@@ -98,7 +139,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = 8,
                 A_スレッド数 = 1
             };
-            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_索引 = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_候補 = Enumerable.Range(0, 8).Select(_ => new byte[] { 1, 2, 3, 4 }).ToArray();
             l_索引.V_登録_曖昧塩基あり(l_候補, 0);
             l_索引.V_登録(V_変換_塩基ID列(C_塩基配列_ACGTACGT));
@@ -128,7 +169,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = 8,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_inserted = V_変換_塩基ID列(C_塩基配列_ACGTACGT);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(C_塩基配列_ACGTACGT));
             var l_neverInserted = V_変換_塩基ID列(C_塩基配列_TTTTTTTT);
@@ -154,7 +195,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = 8,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_belowThreshold = V_変換_塩基ID列(C_塩基配列_GGGGCCCC);
             l_インデックス.V_登録(l_belowThreshold.AsSpan());
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -172,7 +213,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = 8,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_forward = V_変換_塩基ID列(C_塩基配列_ACGTACGT);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(C_塩基配列_ACGTACGT));
             for (var i = 0; i < 3; i++)
@@ -201,7 +242,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = 8,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             l_インデックス.V_登録(V_変換_塩基ID列(C_塩基配列_AAAAAAAA).AsSpan());
             l_インデックス.V_登録(V_変換_塩基ID列(C_塩基配列_AAAAAAAA).AsSpan());
             _ = l_インデックス.V_カットオフ(p_カットオフ: 2UL);
@@ -224,7 +265,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = p_k長,
                 A_スレッド数 = 1
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_配列 = string.Concat(Enumerable.Range(0, p_k長).Select(i => C_塩基配列_ACGGTCATTGAC[(i * 7) % 12]));
             var l_inserted = V_変換_塩基ID列(l_配列);
             var l_revComp = V_変換_塩基ID列(Util.V_逆相補(l_配列));
@@ -359,7 +400,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = p_k長,
                 A_スレッド数 = 2
             };
-            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            using var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             foreach (var l_配列 in new[]
             {
                 l_本体,
@@ -436,7 +477,7 @@ namespace Tsumiki.Tests.Utility
                 A_k長 = p_kmer長,
                 A_スレッド数 = 1
             };
-            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ);
+            var l_インデックス = new TrustedKmerIndex(this._作業ディレクトリ, ConfigurationManager.A_実行時引数.A_k長);
             var l_バイト列 = V_変換_塩基ID列(p_配列);
             for (var i = 0; i + p_kmer長 <= l_バイト列.Length; i++)
             {

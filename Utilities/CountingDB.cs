@@ -118,14 +118,15 @@ namespace Tsumiki.Utilities
         /// p_シャード数 には、同時に生きている CountingDB の総数を渡す
         /// </summary>
         /// <param name="p_一時ディレクトリ"></param>
+        /// <param name="p_k長">数える k-mer の長さ</param>
         /// <param name="p_シャード数"></param>
-        public CountingDB(string p_一時ディレクトリ, int p_シャード数 = 1)
+        public CountingDB(string p_一時ディレクトリ, int p_k長, int p_シャード数 = 1)
         {
             this._ファイル接頭辞 = Guid.NewGuid().ToString(C_GUID書式);
             this._比較器 = new();
             this._等価比較器 = new();
             this._一時ディレクトリ = p_一時ディレクトリ;
-            this._k長 = ConfigurationManager.A_実行時引数.A_k長;
+            this._k長 = p_k長;
             this._パック長 = (this._k長 + 3) / 4;
             var l_総予算 = ConfigurationManager.A_実行時引数.A_メモリ予算バイト数;
             var l_シャードあたりの予算 = l_総予算 / Math.Max(1, p_シャード数);

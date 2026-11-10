@@ -116,8 +116,8 @@ namespace Tsumiki.Tests.Core.Preprocessing
             File.WriteAllLines(l_パス, l_リード群.SelectMany((x, i) => new[] { $"@r{i}", x.A_配列, C_FASTQ品質区切り, x.A_クオリティ }));
             var l_束の作業 = Directory.CreateDirectory(Path.Combine(this._作業ディレクトリ, C_項目_batch)).FullName;
             var l_窓の作業 = Directory.CreateDirectory(Path.Combine(this._作業ディレクトリ, C_項目_window)).FullName;
-            using var l_束 = new TrustedKmerIndex(l_束の作業);
-            using var l_窓 = new TrustedKmerIndex(l_窓の作業);
+            using var l_束 = new TrustedKmerIndex(l_束の作業, ConfigurationManager.A_実行時引数.A_k長);
+            using var l_窓 = new TrustedKmerIndex(l_窓の作業, ConfigurationManager.A_実行時引数.A_k長);
             KmerCounting.V_読込_リードファイル(l_パス, l_束, 33);
             foreach (var (l_配列, l_クオリティ)in l_リード群)
             {
