@@ -186,7 +186,7 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_重なり = Get_重なりの長さ(l_u文字列, l_x文字列);
                 if (Is反復の端(l_u文字列, l_x文字列, l_重なり))
                 {
-                    if (l_辺.A_票数 >= C_短い反復で繋ぐのに要るペア数 && Is短い反復の端(l_u文字列, l_x文字列, l_重なり) && !Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準))
+                    if (l_辺.A_票数 >= C_短い反復で繋ぐのに要るペア数 && Is短い反復の端(l_u文字列, l_x文字列, l_重なり) && !Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準) && !Is票が密度に見合わない(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準, l_辺.A_票数))
                     {
                         l_短い反復の辺.Add(l_辺);
                     }
@@ -198,7 +198,7 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準))
+                if (Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準) || Is票が密度に見合わない(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準, l_辺.A_票数))
                 {
                     l_多コピーの端で除いた数++;
                     continue;
@@ -593,6 +593,29 @@ namespace Tsumiki.Cores.Scaffolding
             var l_x密度 = Get_密度(p_当たり数, p_頂点, p_x ^ 1);
             var l_濃いほう = Math.Max(l_u密度, l_x密度);
             return l_濃いほう > C_多コピーとみなす密度の比 * l_基準 && l_濃いほう > C_多コピーとみなす両側の密度の比 * Math.Min(l_u密度, l_x密度);
+        }
+
+        /// <summary>
+        /// 候補の辺 u→x の票が、両側の端の濃さに見合わないかを調べる<br/>
+        /// u の右端の窓と x^1 (x の左端の窓) の密度の小さいほうが基準の r 倍 (r &gt; 1) なのに、票が C_要るペア数 の r 倍に届かなければ見合わないとする<br/>
+        /// 両側とも多コピーの端 (コピー数の多いプラスミドなど) を、入れ違いのペアの票で繋がないため
+        /// </summary>
+        /// <param name="p_当たり数">頂点ごとの窓に当たったリードの数</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <param name="p_u">始点の頂点</param>
+        /// <param name="p_x">終点の頂点</param>
+        /// <param name="p_基準密度">基準の密度、検査しないなら null</param>
+        /// <param name="p_票数">辺の票数 (ペアの数)</param>
+        /// <returns>票が濃さに見合わなければ true</returns>
+        private static bool Is票が密度に見合わない(int[] p_当たり数, string[] p_頂点, int p_u, int p_x, double? p_基準密度, int p_票数)
+        {
+            if (p_基準密度 is not { } l_基準 || l_基準 <= 0D)
+            {
+                return false;
+            }
+
+            var l_比 = Math.Min(Get_密度(p_当たり数, p_頂点, p_u), Get_密度(p_当たり数, p_頂点, p_x ^ 1)) / l_基準;
+            return l_比 > 1D && p_票数 < C_要るペア数 * l_比;
         }
 
         /// <summary>

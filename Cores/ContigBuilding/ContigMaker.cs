@@ -271,6 +271,7 @@ namespace Tsumiki.Core
                     }
 
                     l_反復由来で未解決の数++;
+                    _ = this.A_多コピー未解決の頂点.Add(v);
                     AmbiguityRecorder.V_記録(曖昧箇所の種別.反復の内側, AmbiguityRecorder.Get_場所名(v));
                     continue;
                 }

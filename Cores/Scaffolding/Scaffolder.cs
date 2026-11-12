@@ -385,6 +385,13 @@ namespace Tsumiki.Cores.Scaffolding
 
             Logger.V_出力(メッセージID.閾値後のscaffold辺, l_確定数, l_相互一意で棄却した数, l_確定数 - l_相互一意で棄却した数);
             _ = V_外す_環状に触れる辺(l_確定辺, this.Is環状);
+            var l_多コピーのcontig = Get_多コピーのcontig(l_配置, p_contig構築.A_多コピー未解決の頂点);
+            var l_多コピーで外した数 = V_外す_多コピーを通り抜ける辺(l_確定辺, l_多コピーのcontig.Contains, (x, y) => l_隣接[x].Exists(z => z.A_行き先 == y && z.A_支持数 >= l_最小証拠数));
+            if (l_多コピーで外した数 > 0)
+            {
+                Logger.V_出力(メッセージID.多コピーのcontigを通り抜ける辺を外した, l_多コピーで外した数);
+            }
+
             if (l_ライブラリ別本数 is not null)
             {
                 this.V_書き出し_採用辺(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(p_scaffoldパス))!, C_採用辺の書き出し名), l_確定辺, l_ライブラリ別本数);
@@ -1219,6 +1226,76 @@ namespace Tsumiki.Cores.Scaffolding
                     p_確定辺[v] = null;
                     l_外した数++;
                 }
+            }
+
+            return l_外した数;
+        }
+
+        /// <summary>
+        /// 両端とも、contig の段の辺の選択で多コピー未解決だった contig (多コピーの contig) の ID を集める<br/>
+        /// 先頭の unitig は walk と逆向きの頂点、末尾の unitig は walk の向きの頂点が、未解決の頂点に入っているかを見る
+        /// </summary>
+        /// <param name="p_配置">unitig の contig 上の配置</param>
+        /// <param name="p_多コピー未解決の頂点">辺の選択で多コピー未解決だった頂点 (unitig ID × 2 + 逆鎖なら 1)</param>
+        /// <returns>多コピーの contig の ID</returns>
+        internal static HashSet<int> Get_多コピーのcontig(IReadOnlyDictionary<int, Unitig配置> p_配置, IReadOnlySet<int> p_多コピー未解決の頂点)
+        {
+            HashSet<int> l_先頭が未解決 = [];
+            HashSet<int> l_末尾が未解決 = [];
+            foreach (var (l_unitigID, l_配置) in p_配置)
+            {
+                var l_walkの頂点 = (l_unitigID << 1) | (l_配置.A_Iswalk中逆鎖 ? 1 : 0);
+                if (l_配置.A_walk順の位置 == 0 && p_多コピー未解決の頂点.Contains(l_walkの頂点 ^ 1))
+                {
+                    _ = l_先頭が未解決.Add(l_配置.A_ContigID);
+                }
+
+                if (l_配置.A_walk順の位置 == l_配置.A_walk順の総数 - 1 && p_多コピー未解決の頂点.Contains(l_walkの頂点))
+                {
+                    _ = l_末尾が未解決.Add(l_配置.A_ContigID);
+                }
+            }
+
+            l_先頭が未解決.IntersectWith(l_末尾が未解決);
+            return l_先頭が未解決;
+        }
+
+        /// <summary>
+        /// 多コピーの contig の両端に確定辺があるとき、その 2 つの継ぎ目を外す (どの入口がどの出口に続くかは分からないので、通り抜けない)<br/>
+        /// 両隣の contig を直接結ぶペアの支持があれば、入口と出口の組が分かっているので外さない
+        /// </summary>
+        /// <param name="p_確定辺">頂点ごとの確定辺 (外した所は null にする)</param>
+        /// <param name="p_Is多コピー">contig ID が多コピーの contig か</param>
+        /// <param name="p_Has直接の支持">始点の頂点から終点の頂点へ、間の contig を飛び越えて結ぶペアの支持があるか</param>
+        /// <returns>外した継ぎ目の数</returns>
+        internal static int V_外す_多コピーを通り抜ける辺((int A_行き先, int A_ギャップ長)?[] p_確定辺, Func<int, bool> p_Is多コピー, Func<int, int, bool> p_Has直接の支持)
+        {
+            List<int> l_外す頂点 = [];
+            for (var v = 2; v + 1 < p_確定辺.Length; v += 2)
+            {
+                if (p_確定辺[v] is { } l_先 && p_確定辺[v + 1] is { } l_手前 && p_Is多コピー(v >> 1) && !p_Has直接の支持(l_手前.A_行き先 ^ 1, l_先.A_行き先))
+                {
+                    l_外す頂点.Add(v);
+                    l_外す頂点.Add(v + 1);
+                }
+            }
+
+            var l_外した数 = 0;
+            foreach (var v in l_外す頂点)
+            {
+                if (p_確定辺[v] is not { } l_辺)
+                {
+                    continue;
+                }
+
+                p_確定辺[v] = null;
+                var l_逆向き = l_辺.A_行き先 ^ 1;
+                if (l_逆向き < p_確定辺.Length)
+                {
+                    p_確定辺[l_逆向き] = null;
+                }
+
+                l_外した数++;
             }
 
             return l_外した数;

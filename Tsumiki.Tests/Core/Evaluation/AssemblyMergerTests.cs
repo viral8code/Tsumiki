@@ -89,6 +89,21 @@ namespace Tsumiki.Tests.Core
         private const string C_ファイル名_merged_amb_fasta = "merged_amb.fasta";
 
         /// <summary>
+        /// ファイル名 backbone end fasta
+        /// </summary>
+        private const string C_ファイル名_backbone_end_fasta = "backbone_end.fasta";
+
+        /// <summary>
+        /// ファイル名 other end fasta
+        /// </summary>
+        private const string C_ファイル名_other_end_fasta = "other_end.fasta";
+
+        /// <summary>
+        /// ファイル名 merged end fasta
+        /// </summary>
+        private const string C_ファイル名_merged_end_fasta = "merged_end.fasta";
+
+        /// <summary>
         /// ファイル名 backbone chain fasta
         /// </summary>
         private const string C_ファイル名_backbone_chain_fasta = "backbone_chain.fasta";
@@ -431,6 +446,158 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 正しい相手を示す配列が骨格の端の配列と合わなくても、行き先の競合になって別の相手とは繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_端の配列が合わない橋渡しも競合になり繋がない()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 901);
+            var l_B = V_生成_乱数配列(5_000, p_シード: 902);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 903);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, l_B, V_置換_先頭(l_C, 300, 20));
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A[^1_000..] + l_B, l_A + l_C);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 正しい相手を示す配列が骨格の端まで届かなくても、行き先の競合になって別の相手とは繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_端まで届かない橋渡しも競合になり繋がない()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 911);
+            var l_B = V_生成_乱数配列(5_000, p_シード: 912);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 913);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, l_B, V_生成_乱数配列(300, p_シード: 914) + l_C);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A[^1_000..] + l_B, l_A[^100..] + l_C);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 骨格の端の配列と合わない橋渡しだけでは繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_端の配列が合わない橋渡しだけでは繋がない()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 921);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 923);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, V_置換_先頭(l_C, 300, 20));
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A + l_C);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 競合する橋渡しが無ければ、端の配列が乱れた骨格配列があっても今までどおり繋ぐこと
+        /// </summary>
+        [Fact]
+        public void V_競合する橋渡しが無ければ繋ぐ()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 931);
+            var l_B = V_生成_乱数配列(5_000, p_シード: 932);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 933);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, l_B, V_置換_先頭(l_C, 300, 20));
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A[^1_000..] + l_B);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_A + l_B || x == Util.V_逆相補(l_A + l_B));
+        }
+
+        /// <summary>
+        /// 骨格の端までの配列と両側とも合わない配列は、行き先の競合にしないこと
+        /// </summary>
+        [Fact]
+        public void V_両側とも端の配列が合わない橋渡しは競合にしない()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 941);
+            var l_B = V_生成_乱数配列(5_000, p_シード: 942);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 943);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, l_B, V_置換_先頭(l_C, 300, 20));
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A[^1_000..] + l_B, l_A[..4_700] + V_生成_乱数配列(500, p_シード: 944) + l_C);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_A + l_B || x == Util.V_逆相補(l_A + l_B));
+        }
+
+        /// <summary>
+        /// 骨格配列に端から入り、その続きと合わないまま途中から別の骨格配列へ出る配列は、行き先の競合になって繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_入って途中から出る配列は競合になり繋がない()
+        {
+            var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(951);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280], l_P[4_000..] + l_R + l_Q[..1_000]);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 骨格配列に途中から入り、その手前と合わないまま端から別の骨格配列へ出る配列も、行き先の競合になって繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_途中から入って出る配列も競合になり繋がない()
+        {
+            var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(961);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280], l_S[4_000..] + l_R + l_T[..1_000]);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 通り抜ける配列が無ければ、反復の途中で切れた骨格配列を今までどおり繋ぐこと
+        /// </summary>
+        [Fact]
+        public void V_通り抜ける配列が無ければ繋ぐ()
+        {
+            var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(971);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280]);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_P + l_R + l_T || x == Util.V_逆相補(l_P + l_R + l_T));
+        }
+
+        /// <summary>
+        /// 骨格配列に端点に使う最小長以上触れてから別の骨格配列へ出る配列は、行き先の競合にしないこと
+        /// </summary>
+        [Fact]
+        public void V_長く触れてから出る配列は競合にしない()
+        {
+            var (l_P, l_Q, _, l_T, l_R) = V_生成_反復の途中で切れた並び(991);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280], l_P[4_000..] + l_R + l_T[..1_000] + l_Q[..1_000]);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = V_読み込み_配列群(l_出力);
+            Assert.Contains(l_結果, x => x == l_P + l_R + l_T || x == Util.V_逆相補(l_P + l_R + l_T));
+        }
+
+        /// <summary>
+        /// 短い骨格配列を端から端まで辿って次へ進む配列は、行き先の競合にしないこと
+        /// </summary>
+        [Fact]
+        public void V_短い骨格配列を端まで辿る配列は競合にしない()
+        {
+            var l_A = V_生成_乱数配列(5_000, p_シード: 981);
+            var l_B = V_生成_乱数配列(600, p_シード: 982);
+            var l_C = V_生成_乱数配列(5_000, p_シード: 983);
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_A, l_B, l_C);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_A + l_B + l_C);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = V_読み込み_配列群(l_出力);
+            _ = Assert.Single(l_結果);
+            Assert.True(l_結果[0] == l_A + l_B + l_C || l_結果[0] == Util.V_逆相補(l_A + l_B + l_C));
+        }
+
+        /// <summary>
         /// 3 本を 2 箇所で繋ぐ連鎖
         /// </summary>
         [Fact]
@@ -688,6 +855,34 @@ namespace Tsumiki.Tests.Core
         {
             var l_乱数 = new Random(p_シード);
             return string.Concat(Enumerable.Range(0, p_長さ).Select(_ => Consts.塩基文字[l_乱数.Next(4)]));
+        }
+
+        /// <summary>
+        /// 真の並びが P R Q と S R T (R は 300 bp の反復) になる乱数配列を作る
+        /// </summary>
+        /// <param name="p_シード">P のシード (Q・S・T・R は続きの番号)</param>
+        /// <returns></returns>
+        private static (string A_P, string A_Q, string A_S, string A_T, string A_R) V_生成_反復の途中で切れた並び(int p_シード)
+        {
+            return (V_生成_乱数配列(5_000, p_シード: p_シード), V_生成_乱数配列(5_000, p_シード: p_シード + 1), V_生成_乱数配列(5_000, p_シード: p_シード + 2), V_生成_乱数配列(5_000, p_シード: p_シード + 3), V_生成_乱数配列(300, p_シード: p_シード + 4));
+        }
+
+        /// <summary>
+        /// 配列の先頭を、決まった間隔で別の塩基に置き換える
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_長さ">置き換える範囲の長さ</param>
+        /// <param name="p_間隔">置き換える塩基の間隔</param>
+        /// <returns>置き換えた配列</returns>
+        private static string V_置換_先頭(string p_配列, int p_長さ, int p_間隔)
+        {
+            var l_文字 = p_配列.ToCharArray();
+            for (var i = p_間隔 >> 1; i < p_長さ; i += p_間隔)
+            {
+                l_文字[i] = l_文字[i] == 'A' ? 'C' : 'A';
+            }
+
+            return new string(l_文字);
         }
 
         /// <summary>

@@ -57,6 +57,11 @@ namespace Tsumiki.Core
         /// </summary>
         public IReadOnlyDictionary<int, Unitig配置> A_unitig配置 => this._unitig配置;
 
+        /// <summary>
+        /// 辺の選択で、推定コピー数が 2 以上で出辺が 2 本以上あり、行き先を決められなかった頂点 (多コピー未解決)
+        /// </summary>
+        public HashSet<int> A_多コピー未解決の頂点 { get; } = [];
+
         #endregion
 
         #region 内部メソッド

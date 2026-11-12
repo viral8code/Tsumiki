@@ -97,6 +97,8 @@ namespace Tsumiki.Cores.Evaluation
             HashSet<(int, int)> l_反復を挟む辺 = [];
             var l_枠で棄却 = 0;
             var l_反復だけに錨を下ろした棄却 = 0;
+            var l_端が合わない数 = 0;
+            var l_通り抜けの数 = 0;
             foreach (var l_他 in p_全候補)
             {
                 if (l_他.A_k長 == p_骨格.A_k長)
@@ -104,9 +106,9 @@ namespace Tsumiki.Cores.Evaluation
                     continue;
                 }
 
-                foreach (var l_橋渡し in Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長, p_期待コピー数, () => l_反復だけに錨を下ろした棄却++))
+                foreach (var l_橋渡し in Get_橋渡し候補(l_他, l_索引, l_骨格配列, p_アンカーk長, p_期待コピー数, () => l_反復だけに錨を下ろした棄却++, () => l_端が合わない数++, () => l_通り抜けの数++))
                 {
-                    if (l_橋渡し.A_Is錨が反復だけ)
+                    if (l_橋渡し.A_Is錨が反復だけ || l_橋渡し.A_Is端が合わない || l_橋渡し.A_Is通り抜け)
                     {
                         l_競合だけの候補.Add(l_橋渡し);
                         continue;
@@ -139,6 +141,16 @@ namespace Tsumiki.Cores.Evaluation
             if (l_反復だけに錨を下ろした棄却 > 0)
             {
                 Logger.V_出力(メッセージID.反復だけに錨を下ろした橋渡しの棄却, l_反復だけに錨を下ろした棄却);
+            }
+
+            if (l_端が合わない数 > 0)
+            {
+                Logger.V_出力(メッセージID.端が合わない橋渡しを競合に数えた, l_端が合わない数);
+            }
+
+            if (l_通り抜けの数 > 0)
+            {
+                Logger.V_出力(メッセージID.通り抜ける配列を競合に数えた, l_通り抜けの数);
             }
 
             Func<int, bool>? l_畳まれた端か = p_期待コピー数 is null || l_長い配列の出現数 is null ? null : x => Is畳まれた端(Get_出口側の端(l_骨格配列, x), p_期待コピー数, l_長い配列の出現数, p_アンカーk長);
@@ -557,8 +569,10 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_アンカーk長"></param>
         /// <param name="p_期待コピー数">アンカーの期待コピー数、null なら片側の錨が反復の中だけかを見ない</param>
         /// <param name="p_棄却時">反復だけに錨を下ろした橋渡しを見つけるたびに呼ぶ (その候補は A_Is錨が反復だけ を true にして返す) 、要らなければ null</param>
+        /// <param name="p_端が合わない時">骨格の端までの配列と合わない橋渡しを見つけるたびに呼ぶ (その候補は A_Is端が合わない を true にして返す) 、要らなければ null</param>
+        /// <param name="p_通り抜け時">骨格配列に短く触れて通り抜けた先への橋渡しを見つけるたびに呼ぶ (その候補は A_Is通り抜け を true にして返す) 、要らなければ null</param>
         /// <returns></returns>
-        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> p_索引, List<string> p_骨格配列, int p_アンカーk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null)
+        private static List<橋渡し候補> Get_橋渡し候補(アセンブリ実行結果 p_他, Dictionary<UInt128, (int A_配列番号, int A_位置, bool A_Is順鎖)> p_索引, List<string> p_骨格配列, int p_アンカーk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null, Action? p_端が合わない時 = null, Action? p_通り抜け時 = null)
         {
             List<橋渡し候補> l_結果 = [];
             var (_, l_他の配列) = Get_配列一覧(p_他.A_最終パス);
@@ -575,7 +589,13 @@ namespace Tsumiki.Cores.Evaluation
                     l_当たり.Add((i, l_骨格側.A_配列番号, l_骨格側.A_位置, Is順鎖(l_配列, i, p_アンカーk長) == l_骨格側.A_Is順鎖));
                 }
 
-                l_結果.AddRange(Get_連続2本跨ぎ(Get_塊として続く当たり(l_当たり), l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長, p_期待コピー数, p_棄却時));
+                var l_続く当たり = Get_塊として続く当たり(l_当たり);
+                l_結果.AddRange(Get_連続2本跨ぎ(l_続く当たり, l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長, p_期待コピー数, p_棄却時, p_端が合わない時));
+                foreach (var l_通り抜け in Get_通り抜けの候補(l_続く当たり, l_配列, p_骨格配列, p_アンカーk長, p_他.A_k長))
+                {
+                    p_通り抜け時?.Invoke();
+                    l_結果.Add(l_通り抜け);
+                }
             }
 
             return l_結果;
@@ -629,8 +649,9 @@ namespace Tsumiki.Cores.Evaluation
         /// <param name="p_由来のk長"></param>
         /// <param name="p_期待コピー数">アンカーの期待コピー数、null なら両側の錨を見ない</param>
         /// <param name="p_棄却時">反復だけに錨を下ろした橋渡しを棄却するたびに呼ぶ、要らなければ null</param>
+        /// <param name="p_端が合わない時">骨格の端までの配列と合わない橋渡しを返すたびに呼ぶ、要らなければ null</param>
         /// <returns></returns>
-        private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null)
+        private static IEnumerable<橋渡し候補> Get_連続2本跨ぎ(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長, Func<string, int, int>? p_期待コピー数 = null, Action? p_棄却時 = null, Action? p_端が合わない時 = null)
         {
             for (var i = 1; i < p_当たり.Count; i++)
             {
@@ -654,13 +675,16 @@ namespace Tsumiki.Cores.Evaluation
                 var l_後の手前 = l_後.A_Is同方向 ? l_後.A_位置 : l_後配列.Length - p_アンカーk長 - l_後.A_位置;
                 var l_開始 = l_前.A_自分の位置 + p_アンカーk長 + l_前の残り;
                 var l_終了 = l_後.A_自分の位置 - l_後の手前;
-                if (l_開始 > p_跨いだ配列.Length || l_終了 < 0)
+                var l_Is前が合う = Is一致(p_跨いだ配列, l_前.A_自分の位置, l_前配列, l_前配列.Length - p_アンカーk長 - l_前の残り, p_アンカーk長 + l_前の残り);
+                var l_Is後が合う = Is一致(p_跨いだ配列, l_終了, l_後配列, 0, l_後の手前 + p_アンカーk長);
+                if (l_開始 > p_跨いだ配列.Length || l_終了 < 0 || !l_Is前が合う || !l_Is後が合う)
                 {
-                    continue;
-                }
+                    if (l_Is前が合う != l_Is後が合う)
+                    {
+                        p_端が合わない時?.Invoke();
+                        yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, 0, false, true);
+                    }
 
-                if (!Is一致(p_跨いだ配列, l_前.A_自分の位置, l_前配列, l_前配列.Length - p_アンカーk長 - l_前の残り, p_アンカーk長 + l_前の残り) || !Is一致(p_跨いだ配列, l_終了, l_後配列, 0, l_後の手前 + p_アンカーk長))
-                {
                     continue;
                 }
 
@@ -690,6 +714,81 @@ namespace Tsumiki.Cores.Evaluation
 
                 yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長, l_反復だけに錨を下ろした);
             }
+        }
+
+        /// <summary>
+        /// 当たりの列を走査し、跨いだ配列が間の骨格配列に短く触れて通り抜けた所ごとに、手前の骨格配列から先の骨格配列への候補を作る
+        /// </summary>
+        /// <param name="p_当たり">跨いだ配列の位置順に並んだ当たり</param>
+        /// <param name="p_跨いだ配列"></param>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_由来のk長"></param>
+        /// <returns>A_Is通り抜け が true の候補</returns>
+        private static IEnumerable<橋渡し候補> Get_通り抜けの候補(List<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_当たり, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長, int p_由来のk長)
+        {
+            var l_区間の開始 = 0;
+            for (var i = 1; i <= p_当たり.Count; i++)
+            {
+                if (i < p_当たり.Count && p_当たり[i].A_配列番号 == p_当たり[i - 1].A_配列番号)
+                {
+                    continue;
+                }
+
+                var l_最初 = l_区間の開始;
+                l_区間の開始 = i;
+                if (l_最初 == 0 || i == p_当たり.Count)
+                {
+                    continue;
+                }
+
+                var l_前 = p_当たり[l_最初 - 1];
+                var l_後 = p_当たり[i];
+                if (l_前.A_配列番号 == l_後.A_配列番号 || Get_出口頂点(l_前, p_骨格配列, p_アンカーk長) is not { } l_始点 || Get_入口頂点(l_後, p_骨格配列, p_アンカーk長) is not { } l_終点)
+                {
+                    continue;
+                }
+
+                if (Is通り抜け(p_当たり[l_最初], p_当たり[i - 1], p_跨いだ配列, p_骨格配列, p_アンカーk長))
+                {
+                    yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, 0, false, false, true);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 跨いだ配列が、骨格配列に短く触れただけで、端から入って続きと合わないまま途中から出たか、途中から入って手前と合わないまま端から出たか
+        /// </summary>
+        /// <param name="p_最初">その骨格配列に続けて当たる区間の最初の当たり</param>
+        /// <param name="p_最後">その区間の最後の当たり</param>
+        /// <param name="p_跨いだ配列"></param>
+        /// <param name="p_骨格配列"></param>
+        /// <param name="p_アンカーk長"></param>
+        /// <returns></returns>
+        private static bool Is通り抜け((int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_最初, (int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向) p_最後, string p_跨いだ配列, List<string> p_骨格配列, int p_アンカーk長)
+        {
+            if (p_最初.A_Is同方向 != p_最後.A_Is同方向)
+            {
+                return false;
+            }
+
+            var l_最終位置 = p_骨格配列[p_最初.A_配列番号].Length - p_アンカーk長;
+            var l_入った位置 = p_最初.A_Is同方向 ? p_最初.A_位置 : l_最終位置 - p_最初.A_位置;
+            var l_出た位置 = p_最後.A_Is同方向 ? p_最後.A_位置 : l_最終位置 - p_最後.A_位置;
+            var l_触れた長さ = l_出た位置 - l_入った位置 + p_アンカーk長;
+            var l_残り = l_最終位置 - l_出た位置;
+            var l_Is途中から出た = Get_入口頂点(p_最初, p_骨格配列, p_アンカーk長) is not null && l_残り > l_触れた長さ;
+            var l_Is途中から入った = Get_出口頂点(p_最後, p_骨格配列, p_アンカーk長) is not null && l_入った位置 > l_触れた長さ;
+            if (l_出た位置 < l_入った位置 || l_触れた長さ >= C_端点に使う最小長 || (!l_Is途中から出た && !l_Is途中から入った))
+            {
+                return false;
+            }
+
+            var l_向き付き = Get_向き付き配列(p_骨格配列, (p_最初.A_配列番号 << 1) | (p_最初.A_Is同方向 ? 0 : 1));
+            var l_後ろの長さ = Math.Min(l_残り, p_跨いだ配列.Length - p_最後.A_自分の位置 - p_アンカーk長);
+            var l_手前の長さ = Math.Min(l_入った位置, p_最初.A_自分の位置);
+            return (l_Is途中から出た && l_後ろの長さ > 0 && !Is一致(p_跨いだ配列, p_最後.A_自分の位置 + p_アンカーk長, l_向き付き, l_出た位置 + p_アンカーk長, l_後ろの長さ))
+                || (l_Is途中から入った && l_手前の長さ > 0 && !Is一致(p_跨いだ配列, p_最初.A_自分の位置 - l_手前の長さ, l_向き付き, l_入った位置 - l_手前の長さ, l_手前の長さ));
         }
 
         /// <summary>

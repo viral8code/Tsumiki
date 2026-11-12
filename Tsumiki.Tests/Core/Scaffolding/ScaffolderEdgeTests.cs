@@ -1,5 +1,6 @@
 ﻿using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Core;
+using Tsumiki.Models.ContigBuilding;
 using Tsumiki.Models.Scaffolding;
 
 namespace Tsumiki.Tests.Core
@@ -187,9 +188,166 @@ namespace Tsumiki.Tests.Core
             Assert.Null(Scaffolder.Get_優勢な候補(l_候補, p_優勢閾値: 0.8M, p_最小証拠数: 3UL));
         }
 
+        /// <summary>
+        /// contig 1 → 2 → 3 の鎖で contig 2 が多コピーなら、両側の継ぎ目を両向きとも外す
+        /// </summary>
+        [Fact]
+        public void V_外す_多コピーを通り抜ける辺_通り抜ける辺を外す()
+        {
+            var l_確定辺 = V_構築_鎖の確定辺();
+
+            var l_外した数 = Scaffolder.V_外す_多コピーを通り抜ける辺(l_確定辺, x => x == 2, (_, _) => false);
+
+            Assert.Equal(2, l_外した数);
+            Assert.All(l_確定辺, x => Assert.Null(x));
+        }
+
+        /// <summary>
+        /// 多コピーの contig の片端にだけ確定辺があるなら、残す
+        /// </summary>
+        [Fact]
+        public void V_外す_多コピーを通り抜ける辺_片端だけなら残す()
+        {
+            var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[8];
+            l_確定辺[2] = (4, 0);
+            l_確定辺[5] = (3, 0);
+
+            var l_外した数 = Scaffolder.V_外す_多コピーを通り抜ける辺(l_確定辺, x => x == 2, (_, _) => false);
+
+            Assert.Equal(0, l_外した数);
+            Assert.Equal((4, 0), l_確定辺[2]);
+            Assert.Equal((3, 0), l_確定辺[5]);
+        }
+
+        /// <summary>
+        /// 通り抜けられる contig が多コピーでなければ、残す
+        /// </summary>
+        [Fact]
+        public void V_外す_多コピーを通り抜ける辺_多コピーでなければ残す()
+        {
+            var l_確定辺 = V_構築_鎖の確定辺();
+
+            var l_外した数 = Scaffolder.V_外す_多コピーを通り抜ける辺(l_確定辺, _ => false, (_, _) => false);
+
+            Assert.Equal(0, l_外した数);
+            Assert.Equal(V_構築_鎖の確定辺(), l_確定辺);
+        }
+
+        /// <summary>
+        /// 両隣 (contig 1 の出口の頂点 2 から contig 3 の入口の頂点 6) を直接結ぶ支持があれば、多コピーの contig 2 を通り抜ける辺を残す
+        /// </summary>
+        [Fact]
+        public void V_外す_多コピーを通り抜ける辺_両隣を直接結ぶ支持があれば残す()
+        {
+            var l_確定辺 = V_構築_鎖の確定辺();
+
+            var l_外した数 = Scaffolder.V_外す_多コピーを通り抜ける辺(l_確定辺, x => x == 2, (x, y) => x == 2 && y == 6);
+
+            Assert.Equal(0, l_外した数);
+            Assert.Equal(V_構築_鎖の確定辺(), l_確定辺);
+        }
+
+        /// <summary>
+        /// 多コピーの contig を通らない別の鎖 (contig 4 → 5) は残す
+        /// </summary>
+        [Fact]
+        public void V_外す_多コピーを通り抜ける辺_ほかの鎖は残す()
+        {
+            var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[12];
+            V_構築_鎖の確定辺().CopyTo(l_確定辺, 0);
+            l_確定辺[8] = (10, 10);
+            l_確定辺[11] = (9, 10);
+
+            var l_外した数 = Scaffolder.V_外す_多コピーを通り抜ける辺(l_確定辺, x => x == 2, (_, _) => false);
+
+            Assert.Equal(2, l_外した数);
+            Assert.All(l_確定辺[..8], x => Assert.Null(x));
+            Assert.Equal((10, 10), l_確定辺[8]);
+            Assert.Equal((9, 10), l_確定辺[11]);
+        }
+
+        /// <summary>
+        /// 先頭の unitig の逆向きの頂点と、末尾の unitig の walk の向きの頂点がどちらも多コピー未解決の contig だけを返す<br/>
+        /// contig 2 (unitig 2 → 3): 頂点 5 (unitig 2 の逆鎖) と 6 (unitig 3 の順鎖) が未解決 → 多コピー。contig 3 (unitig 4): 頂点 8 だけ未解決 → 片端なので多コピーでない
+        /// </summary>
+        [Fact]
+        public void Get_多コピーのcontig_両端が未解決のcontigを返す()
+        {
+            var l_結果 = Scaffolder.Get_多コピーのcontig(V_構築_配置(), new HashSet<int> { 5, 6, 8 });
+
+            Assert.Equal([2], l_結果);
+        }
+
+        /// <summary>
+        /// 1 つの unitig でできた contig は、その unitig の順鎖と逆鎖の頂点がどちらも未解決なら多コピー
+        /// </summary>
+        [Fact]
+        public void Get_多コピーのcontig_単独のunitigは両向きが未解決なら返す()
+        {
+            var l_結果 = Scaffolder.Get_多コピーのcontig(V_構築_配置(), new HashSet<int> { 8, 9, 10 });
+
+            Assert.Equal([3], l_結果);
+        }
+
+        /// <summary>
+        /// walk で逆鎖として使われた unitig は、向きを入れ替えて見る<br/>
+        /// contig 1 = unitig 1 (逆鎖で使用) だけ: 末尾は walk の向きの頂点 3、先頭はその逆の頂点 2
+        /// </summary>
+        [Fact]
+        public void Get_多コピーのcontig_逆鎖で使われたunitigは向きを入れ替えて見る()
+        {
+            var l_配置 = new Dictionary<int, Unitig配置>
+            {
+                [1] = new Unitig配置(1, false, 0, 2, true),
+                [2] = new Unitig配置(1, false, 1, 2, false)
+            };
+
+            Assert.Equal([1], Scaffolder.Get_多コピーのcontig(l_配置, new HashSet<int> { 2, 4 }));
+            Assert.Empty(Scaffolder.Get_多コピーのcontig(l_配置, new HashSet<int> { 3, 4 }));
+        }
+
+        /// <summary>
+        /// 未解決の頂点が無ければ、多コピーの contig は無い
+        /// </summary>
+        [Fact]
+        public void Get_多コピーのcontig_未解決の頂点が無ければ空()
+        {
+            Assert.Empty(Scaffolder.Get_多コピーのcontig(V_構築_配置(), new HashSet<int>()));
+        }
+
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// contig 1 → 2 → 3 の鎖の確定辺 (両向き) を組み立てる
+        /// </summary>
+        /// <returns>頂点ごとの確定辺</returns>
+        private static (int A_行き先, int A_ギャップ長)?[] V_構築_鎖の確定辺()
+        {
+            var l_確定辺 = new (int A_行き先, int A_ギャップ長)?[8];
+            l_確定辺[2] = (4, 0);
+            l_確定辺[5] = (3, 0);
+            l_確定辺[4] = (6, 0);
+            l_確定辺[7] = (5, 0);
+            return l_確定辺;
+        }
+
+        /// <summary>
+        /// unitig 1 (contig 1)、unitig 2 と 3 (contig 2)、unitig 4 (contig 3)、unitig 5 (contig 4) の配置を組み立てる
+        /// </summary>
+        /// <returns>unitig の配置</returns>
+        private static Dictionary<int, Unitig配置> V_構築_配置()
+        {
+            return new Dictionary<int, Unitig配置>
+            {
+                [1] = new Unitig配置(1, false, 0, 1, false),
+                [2] = new Unitig配置(2, false, 0, 2, false),
+                [3] = new Unitig配置(2, false, 1, 2, false),
+                [4] = new Unitig配置(3, false, 0, 1, false),
+                [5] = new Unitig配置(4, false, 0, 1, false)
+            };
+        }
 
         /// <summary>
         /// scaffold の候補を組み立てる

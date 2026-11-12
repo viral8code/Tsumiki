@@ -507,6 +507,28 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 多コピーの片の検査 (両側がずっと濃い): A の末尾 1000 bp と B の先頭 1000 bp の断片を 5 回ずつ足し (約 6 倍)、跨ぐペアは 17 組のままにすると、
+        /// 票が濃さに見合わないので繋がず、統計の多コピーの端で除いた数は 1
+        /// </summary>
+        [Fact]
+        public void 多コピーの片の検査_両側の窓がずっと濃いのに票が少なければ繋がない()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_G[C_B開始..];
+            var l_配列群 = V_多コピーの配列群(l_A, l_B);
+            var l_ライブラリ = V_書き出し_多コピーの場面("multi_dense", l_G, p_B先頭を増やす: true, p_A末尾も増やす: true, p_足す回数: 5);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ, out var l_統計);
+
+            Assert.Equal(l_配列群.Count, l_結果.Count);
+            Assert.DoesNotContain(l_結果, x => x.A_配列.Contains('N'));
+            Assert.Equal(1, l_統計.A_多コピーの端で除いた数);
+            Assert.Equal(0, l_統計.A_印で繋いだ辺の数);
+            Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
+        }
+
+        /// <summary>
         /// スレッド数 1 と 4 で、出力が同じになる
         /// </summary>
         [Fact]
@@ -694,8 +716,9 @@ namespace Tsumiki.Tests.Core
         /// <param name="p_ゲノム">ゲノム</param>
         /// <param name="p_B先頭を増やす">true なら B の先頭 1000 bp の断片を 2.5 倍にする</param>
         /// <param name="p_A末尾も増やす">true なら A の末尾 1000 bp の中だけの断片も同じく 2.5 倍にする</param>
+        /// <param name="p_足す回数">1 以上なら、増やす断片を 2.5 倍にする代わりに、それぞれこの回数だけ足す</param>
         /// <returns>ライブラリ (順リードと逆リードのパス)</returns>
-        private List<(string A_順リード, string A_逆リード)> V_書き出し_多コピーの場面(string p_接頭辞, string p_ゲノム, bool p_B先頭を増やす, bool p_A末尾も増やす = false)
+        private List<(string A_順リード, string A_逆リード)> V_書き出し_多コピーの場面(string p_接頭辞, string p_ゲノム, bool p_B先頭を増やす, bool p_A末尾も増やす = false, int p_足す回数 = 0)
         {
             var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2650, 2698, 3), C_挿入長);
             if (p_B先頭を増やす)
@@ -706,6 +729,12 @@ namespace Tsumiki.Tests.Core
                 {
                     if ((l_断片.A_開始 >= C_B開始 && l_断片.A_開始 < C_B開始 + C_B先頭の窓) || (p_A末尾も増やす && l_断片.A_開始 >= C_A長 - C_B先頭の窓 && l_断片.A_開始 + C_挿入長 <= C_A長))
                     {
+                        if (p_足す回数 > 0)
+                        {
+                            l_追加.AddRange(Enumerable.Repeat(l_断片, p_足す回数));
+                            continue;
+                        }
+
                         l_追加.Add(l_断片);
                         if (l_番号 % 2 == 0)
                         {
