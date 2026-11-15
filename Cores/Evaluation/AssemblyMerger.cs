@@ -65,6 +65,36 @@ namespace Tsumiki.Cores.Evaluation
         /// </summary>
         private const int C_畳み込みを見る端の長さ = 500;
 
+        /// <summary>
+        /// 骨格配列の端の片を外すのに要る、ギャップの向こうの配列との重なりの、片の長さに対する割合
+        /// </summary>
+        private const double C_外す片に要る重なりの割合 = 0.5D;
+
+        /// <summary>
+        /// 読み誤りを探す、配列の端からの長さ (bp)。<br/>骨格配列の端の片では内側の端 (ギャップの側) から、短い配列では両端から数える
+        /// </summary>
+        private const int C_読み誤りを探す端の長さ = 40;
+
+        /// <summary>
+        /// 骨格配列の端の片で、読み誤りとみなす同じ塩基の連続の長さ (bp)
+        /// </summary>
+        private const int C_片で読み誤りとみなす同じ塩基の連続 = 17;
+
+        /// <summary>
+        /// 短い配列の端の、長い配列にある k-mer に覆われない部分で、読み誤りとみなす同じ塩基の連続の長さ (bp)
+        /// </summary>
+        private const int C_短い配列で読み誤りとみなす同じ塩基の連続 = 7;
+
+        /// <summary>
+        /// 長い配列と重複した短い配列とみなす、アンカー k-mer のうち長い配列にあるものの割合
+        /// </summary>
+        private const double C_含まれるとみなす割合 = 0.95D;
+
+        /// <summary>
+        /// 辺を確定するのに、確定の候補の少なくとも 1 本が両側の骨格配列の端へ届いていなければならない長さ (bp)
+        /// </summary>
+        private const int C_確定に要る届き = 170;
+
         #endregion
 
         #region 公開メソッド
@@ -83,12 +113,15 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns></returns>
         public static bool Is成功_統合(アセンブリ実行結果 p_骨格, IReadOnlyList<アセンブリ実行結果> p_全候補, int p_アンカーk長, string p_出力パス, Func<string, int, int>? p_期待コピー数 = null, int p_必要な独立支持数 = C_必要な独立支持数の既定値, IReadOnlySet<int>? p_見送る始点 = null, List<(string A_配列名, int A_開始, int A_終了, int A_始点)>? p_橋渡しの場所 = null)
         {
-            var (l_骨格名一覧, l_骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
-            if (l_骨格配列.Count == 0)
+            var (l_骨格名一覧, l_元の骨格配列) = Get_配列一覧(p_骨格.A_最終パス);
+            if (l_元の骨格配列.Count == 0)
             {
                 return false;
             }
 
+            var l_片を外した配列群 = l_元の骨格配列.Select(Get_端の片を外した配列).ToList();
+            var l_骨格配列 = l_片を外した配列群.Select(x => x.A_残り).ToList();
+            var l_外した片 = l_片を外した配列群.Select(x => (x.A_先頭の片, x.A_末尾の片)).ToList();
             var l_索引 = Get_骨格索引(l_骨格配列, p_アンカーk長);
             var l_骨格kmer = Get_骨格kmer集合(l_骨格配列, p_アンカーk長);
             var l_長い配列の出現数 = p_期待コピー数 is null ? null : Get_長い配列のkmer出現数(l_骨格配列, p_アンカーk長);
@@ -160,6 +193,12 @@ namespace Tsumiki.Cores.Evaluation
                 Logger.V_出力(メッセージID.反復を挟む繋ぎ目の審査, l_反復を挟む辺.Count >> 1, l_枠で棄却, l_長さで棄却, l_端で棄却);
             }
 
+            var l_届きで見送った数 = V_除去_届きの短い辺(l_確定, l_候補);
+            if (l_届きで見送った数 > 0)
+            {
+                Logger.V_出力(メッセージID.端への届きが短い繋ぎ目を見送った, l_届きで見送った数, C_確定に要る届き);
+            }
+
             foreach (var l_始点 in p_見送る始点 ?? new HashSet<int>())
             {
                 if (l_確定.Remove(l_始点, out var l_見送る))
@@ -174,8 +213,13 @@ namespace Tsumiki.Cores.Evaluation
                 return false;
             }
 
-            V_書き出し(p_出力パス, l_骨格名一覧, l_骨格配列, l_確定, p_橋渡しの場所);
+            var l_片を外して繋いだ数 = V_書き出し(p_出力パス, l_骨格名一覧, l_骨格配列, l_外した片, l_確定, p_橋渡しの場所);
             Logger.V_出力(メッセージID.統合した接合点数, l_確定.Count);
+            if (l_片を外して繋いだ数 > 0)
+            {
+                Logger.V_出力(メッセージID.端の短い片を外して繋いだ, l_片を外して繋いだ数, C_端点に使う最小長);
+            }
+
             return true;
         }
 
@@ -189,6 +233,19 @@ namespace Tsumiki.Cores.Evaluation
         public static bool Has一意な錨(IReadOnlyList<(int A_自分の位置, int A_配列番号, int A_位置, bool A_Is同方向)> p_塊, string p_跨いだ配列, Func<string, int, int> p_期待コピー数)
         {
             return p_塊.Any(x => p_期待コピー数(p_跨いだ配列, x.A_自分の位置) <= 1);
+        }
+
+        /// <summary>
+        /// C_端点に使う最小長 未満の配列のうち、アンカー k-mer がほぼすべて長い配列にあり、長い配列だけでコピー数が足りている配列の番号を返す。<br/>両端の C_読み誤りを探す端の長さ までにある、長い配列に無い k-mer は、同じ塩基の長い連続を含めば読み誤りとみなして数えない
+        /// </summary>
+        /// <param name="p_配列群">統合した配列</param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_期待コピー数">配列とその位置のアンカー k-mer から、リードのカバレッジで見た期待コピー数を返す</param>
+        /// <returns>長い配列と重複した短い配列の番号</returns>
+        public static HashSet<int> Get_重複した短い配列(List<string> p_配列群, int p_アンカーk長, Func<string, int, int> p_期待コピー数)
+        {
+            var l_長い配列の出現数 = Get_長い配列のkmer出現数(p_配列群, p_アンカーk長);
+            return [.. Enumerable.Range(0, p_配列群.Count).Where(x => p_配列群[x].Length < C_端点に使う最小長 && Is長い配列と重複(p_配列群[x], l_長い配列の出現数, p_アンカーk長, p_期待コピー数))];
         }
 
         /// <summary>
@@ -290,6 +347,33 @@ namespace Tsumiki.Cores.Evaluation
         #region 内部メソッド
 
         /// <summary>
+        /// 確定の候補のどれもが、両側の骨格配列の端へ C_確定に要る届き 以上届かない辺を、両向きとも確定から外す
+        /// </summary>
+        /// <param name="p_確定">始点の頂点から確定した橋渡しへの対応 (逆向きの辺も持つ)</param>
+        /// <param name="p_候補">確定の候補にした橋渡し</param>
+        /// <returns>外した辺の数 (逆向きは数えない)</returns>
+        private static int V_除去_届きの短い辺(Dictionary<int, 橋渡し候補> p_確定, List<橋渡し候補> p_候補)
+        {
+            Dictionary<(int, int), int> l_最良の届き = [];
+            foreach (var l_候補 in p_候補)
+            {
+                foreach (var l_辺 in new[] { (l_候補.A_始点, l_候補.A_終点), (l_候補.A_終点 ^ 1, l_候補.A_始点 ^ 1) })
+                {
+                    l_最良の届き[l_辺] = Math.Max(l_最良の届き.GetValueOrDefault(l_辺), l_候補.A_届き);
+                }
+            }
+
+            var l_外す辺 = p_確定.Where(x => l_最良の届き.GetValueOrDefault((x.Key, x.Value.A_終点)) < C_確定に要る届き).ToList();
+            foreach (var (l_始点, l_橋渡し) in l_外す辺)
+            {
+                _ = p_確定.Remove(l_始点);
+                _ = p_確定.Remove(l_橋渡し.A_終点 ^ 1);
+            }
+
+            return l_外す辺.Count(x => x.Key <= (x.Value.A_終点 ^ 1));
+        }
+
+        /// <summary>
         /// FASTA から名前と配列の一覧を読み込む
         /// </summary>
         /// <param name="p_パス"></param>
@@ -307,6 +391,152 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             return (l_名前, l_配列);
+        }
+
+        /// <summary>
+        /// 骨格配列の両端から、端からギャップの文字までが C_端点に使う最小長 未満で、ギャップの向こうと片の長さの半分以上重なるか、内側の端に読み誤りの同じ塩基の連続がある片を、ギャップの文字ごと外す<br/>外したあとの端でも繰り返し、外すと残りが C_端点に使う最小長 未満になるときは外さない
+        /// </summary>
+        /// <param name="p_配列">骨格配列</param>
+        /// <returns>外した残り、先頭から外した片、末尾から外した片 (外さなければ空)</returns>
+        private static (string A_残り, string A_先頭の片, string A_末尾の片) Get_端の片を外した配列(string p_配列)
+        {
+            var l_開始 = 0;
+            var l_終了 = p_配列.Length;
+            while (Get_先頭の片の終わり(p_配列, l_開始, l_終了) is { } l_次の開始 && l_終了 - l_次の開始 >= C_端点に使う最小長)
+            {
+                l_開始 = l_次の開始;
+            }
+
+            while (Get_末尾の片の始まり(p_配列, l_開始, l_終了) is { } l_次の終了 && l_次の終了 - l_開始 >= C_端点に使う最小長)
+            {
+                l_終了 = l_次の終了;
+            }
+
+            return (p_配列[l_開始..l_終了], p_配列[..l_開始], p_配列[l_終了..]);
+        }
+
+        /// <summary>
+        /// 区間の先頭から C_端点に使う最小長 未満の所にギャップの文字があり、その手前の片がギャップの向こうと半分以上重なるか、片の内側の端に読み誤りの同じ塩基の連続があれば、そのギャップの直後の位置を返す
+        /// </summary>
+        /// <param name="p_配列">骨格配列</param>
+        /// <param name="p_開始">区間の始まり</param>
+        /// <param name="p_終了">区間の終わり (含まない)</param>
+        /// <returns>ギャップの直後の位置、外せる片が無ければ null</returns>
+        private static int? Get_先頭の片の終わり(string p_配列, int p_開始, int p_終了)
+        {
+            var l_片の長さ = p_配列.AsSpan(p_開始, Math.Min(C_端点に使う最小長, p_終了 - p_開始)).IndexOfAny(Consts.塩基コード.N, Consts.未確認の繋ぎ目);
+            if (l_片の長さ < 0)
+            {
+                return null;
+            }
+
+            var l_終わり = p_開始 + l_片の長さ;
+            while (l_終わり < p_終了 && Util.Isギャップ文字(p_配列[l_終わり]))
+            {
+                l_終わり++;
+            }
+
+            var l_片 = p_配列.AsSpan(p_開始, l_片の長さ);
+            return Is隣と重なる片(l_片, p_配列.AsSpan(l_終わり, Math.Min(l_片の長さ, p_終了 - l_終わり)), l_片の長さ) || Has読み誤りの連続(l_片[^Math.Min(C_読み誤りを探す端の長さ, l_片の長さ)..], C_片で読み誤りとみなす同じ塩基の連続) ? l_終わり : null;
+        }
+
+        /// <summary>
+        /// 区間の末尾から C_端点に使う最小長 未満の所にギャップの文字があり、その後ろの片がギャップの向こうと半分以上重なるか、片の内側の端に読み誤りの同じ塩基の連続があれば、そのギャップの始まりの位置を返す
+        /// </summary>
+        /// <param name="p_配列">骨格配列</param>
+        /// <param name="p_開始">区間の始まり</param>
+        /// <param name="p_終了">区間の終わり (含まない)</param>
+        /// <returns>ギャップの始まりの位置、外せる片が無ければ null</returns>
+        private static int? Get_末尾の片の始まり(string p_配列, int p_開始, int p_終了)
+        {
+            var l_長さ = Math.Min(C_端点に使う最小長, p_終了 - p_開始);
+            var l_位置 = p_配列.AsSpan(p_終了 - l_長さ, l_長さ).LastIndexOfAny(Consts.塩基コード.N, Consts.未確認の繋ぎ目);
+            if (l_位置 < 0)
+            {
+                return null;
+            }
+
+            var l_片の開始 = p_終了 - l_長さ + l_位置 + 1;
+            var l_始まり = l_片の開始 - 1;
+            while (l_始まり > p_開始 && Util.Isギャップ文字(p_配列[l_始まり - 1]))
+            {
+                l_始まり--;
+            }
+
+            var l_片の長さ = p_終了 - l_片の開始;
+            var l_手前の長さ = Math.Min(l_片の長さ, l_始まり - p_開始);
+            return Is隣と重なる片(p_配列.AsSpan(l_始まり - l_手前の長さ, l_手前の長さ), p_配列.AsSpan(l_片の開始, l_片の長さ), l_片の長さ) || Has読み誤りの連続(p_配列.AsSpan(l_片の開始, Math.Min(C_読み誤りを探す端の長さ, l_片の長さ)), C_片で読み誤りとみなす同じ塩基の連続) ? l_始まり : null;
+        }
+
+        /// <summary>
+        /// 配列の端に、同じ塩基が 読み誤りとみなす連続の長さ 以上続く所があるか
+        /// </summary>
+        /// <param name="p_端">片の内側の端 (ギャップの側) の C_読み誤りを探す端の長さ までの配列、または短い配列の端の、長い配列にある k-mer に覆われない部分</param>
+        /// <param name="p_連続の長さ">読み誤りとみなす同じ塩基の連続の長さ (bp)</param>
+        /// <returns>あれば true</returns>
+        private static bool Has読み誤りの連続(ReadOnlySpan<char> p_端, int p_連続の長さ)
+        {
+            var l_連続 = 0;
+            for (var i = 0; i < p_端.Length; i++)
+            {
+                l_連続 = i > 0 && p_端[i] == p_端[i - 1] ? l_連続 + 1 : 1;
+                if (l_連続 >= p_連続の長さ)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// ギャップの手前の配列の末尾とギャップの後ろの配列の先頭が一致する長さが、片の長さの C_外す片に要る重なりの割合 以上になるか
+        /// </summary>
+        /// <param name="p_手前">ギャップの手前の配列</param>
+        /// <param name="p_後ろ">ギャップの後ろの配列</param>
+        /// <param name="p_片の長さ">外すかを決める片の長さ</param>
+        /// <returns>重なりが足りれば true、片の長さが 0 でも true</returns>
+        private static bool Is隣と重なる片(ReadOnlySpan<char> p_手前, ReadOnlySpan<char> p_後ろ, int p_片の長さ)
+        {
+            var l_要る長さ = (int)Math.Ceiling(p_片の長さ * C_外す片に要る重なりの割合);
+            if (l_要る長さ == 0)
+            {
+                return true;
+            }
+
+            for (var l_重なり = Math.Min(p_手前.Length, p_後ろ.Length); l_重なり >= l_要る長さ; l_重なり--)
+            {
+                if (p_手前[^l_重なり..].SequenceEqual(p_後ろ[..l_重なり]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 頂点の向きで見た、骨格配列の入口側 (向き付き配列の先頭の側) から外した片
+        /// </summary>
+        /// <param name="p_外した片">骨格配列ごとの、先頭と末尾から外した片</param>
+        /// <param name="p_頂点">頂点</param>
+        /// <returns>向き付きの片、外していなければ空</returns>
+        private static string Get_入口側の片(List<(string A_先頭の片, string A_末尾の片)> p_外した片, int p_頂点)
+        {
+            var (l_先頭の片, l_末尾の片) = p_外した片[p_頂点 >> 1];
+            return (p_頂点 & 1) == 0 ? l_先頭の片 : Util.V_逆相補_曖昧塩基あり(l_末尾の片);
+        }
+
+        /// <summary>
+        /// 頂点の向きで見た、骨格配列の出口側 (向き付き配列の末尾の側) から外した片
+        /// </summary>
+        /// <param name="p_外した片">骨格配列ごとの、先頭と末尾から外した片</param>
+        /// <param name="p_頂点">頂点</param>
+        /// <returns>向き付きの片、外していなければ空</returns>
+        private static string Get_出口側の片(List<(string A_先頭の片, string A_末尾の片)> p_外した片, int p_頂点)
+        {
+            var (l_先頭の片, l_末尾の片) = p_外した片[p_頂点 >> 1];
+            return (p_頂点 & 1) == 0 ? l_末尾の片 : Util.V_逆相補_曖昧塩基あり(l_先頭の片);
         }
 
         /// <summary>
@@ -452,6 +682,40 @@ namespace Tsumiki.Cores.Evaluation
             }
 
             return l_期待.Count == 0 || (StatsUtil.Get_中央値(l_期待) <= C_既知の繋ぎ目に許すコピー数 && StatsUtil.Get_中央値(l_残り) >= 1D);
+        }
+
+        /// <summary>
+        /// 配列のアンカー k-mer の C_含まれるとみなす割合 以上が長い配列にあり、期待コピー数から長い配列での出現数を引いた残りの中央値が 0 以下か。<br/>長い配列に無い k-mer が端から続き、長い配列にある最初 (最後) の k-mer までが C_読み誤りを探す端の長さ 以下で、そこまでに同じ塩基が C_短い配列で読み誤りとみなす同じ塩基の連続 以上続けば、その端の k-mer は数えない
+        /// </summary>
+        /// <param name="p_配列">短い配列</param>
+        /// <param name="p_長い配列の出現数">C_端点に使う最小長 以上の配列での、k-mer の正規形の出現数</param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_期待コピー数"></param>
+        /// <returns>長い配列だけでコピー数が足りていれば true、長い配列にあるアンカー k-mer が無ければ false</returns>
+        private static bool Is長い配列と重複(string p_配列, Dictionary<UInt128, int> p_長い配列の出現数, int p_アンカーk長, Func<string, int, int> p_期待コピー数)
+        {
+            List<(int A_位置, int A_出現数)> l_kmer群 = [];
+            for (var i = 0; i + p_アンカーk長 <= p_配列.Length; i++)
+            {
+                if (KmerPacking.Is成功_正規化パック(p_配列, i, p_アンカーk長, out var l_鍵))
+                {
+                    l_kmer群.Add((i, p_長い配列の出現数.GetValueOrDefault(l_鍵)));
+                }
+            }
+
+            var l_最初 = l_kmer群.FindIndex(x => x.A_出現数 > 0);
+            if (l_最初 < 0)
+            {
+                return false;
+            }
+
+            var l_最後 = l_kmer群.FindLastIndex(x => x.A_出現数 > 0);
+            var l_先頭の長さ = l_kmer群[l_最初].A_位置;
+            var l_末尾の開始 = l_kmer群[l_最後].A_位置 + p_アンカーk長;
+            var l_始め = l_先頭の長さ <= C_読み誤りを探す端の長さ && Has読み誤りの連続(p_配列.AsSpan(0, l_先頭の長さ), C_短い配列で読み誤りとみなす同じ塩基の連続) ? l_最初 : 0;
+            var l_終わり = p_配列.Length - l_末尾の開始 <= C_読み誤りを探す端の長さ && Has読み誤りの連続(p_配列.AsSpan(l_末尾の開始), C_短い配列で読み誤りとみなす同じ塩基の連続) ? l_最後 : l_kmer群.Count - 1;
+            var l_数える = l_kmer群[l_始め..(l_終わり + 1)];
+            return l_数える.Count(x => x.A_出現数 > 0) >= l_数える.Count * C_含まれるとみなす割合 && StatsUtil.Get_中央値([.. l_数える.Select(x => (double)(p_期待コピー数(p_配列, x.A_位置) - x.A_出現数))]) <= 0D;
         }
 
         /// <summary>
@@ -706,13 +970,14 @@ namespace Tsumiki.Cores.Evaluation
                     p_棄却時?.Invoke();
                 }
 
+                var l_届き = Math.Min(Math.Min(l_開始, l_前配列.Length), Math.Min(p_跨いだ配列.Length - l_終了, l_後配列.Length));
                 if (l_長さ >= 0)
                 {
-                    yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長, 0, l_反復だけに錨を下ろした);
+                    yield return new 橋渡し候補(l_始点, l_終点, p_跨いだ配列.Substring(l_開始, l_長さ), p_由来のk長, 0, l_反復だけに錨を下ろした, A_届き: l_届き);
                     continue;
                 }
 
-                yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長, l_反復だけに錨を下ろした);
+                yield return new 橋渡し候補(l_始点, l_終点, string.Empty, p_由来のk長, l_重なり長, l_反復だけに錨を下ろした, A_届き: l_届き);
             }
         }
 
@@ -972,34 +1237,41 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// 確定した橋渡しに沿って骨格配列を連結し、書き出す
+        /// 確定した橋渡しに沿って骨格配列を連結し、書き出す<br/>鎖は、順鎖の頂点が先頭になる配列、逆鎖の頂点が先頭になる配列、残り (輪) の順に辿り始める
         /// </summary>
         /// <param name="p_出力パス"></param>
         /// <param name="p_骨格名一覧"></param>
-        /// <param name="p_骨格配列"></param>
+        /// <param name="p_骨格配列">端の短い片を外した骨格配列</param>
+        /// <param name="p_外した片">骨格配列ごとの、先頭と末尾から外した片 (繋がなかった端に戻す)</param>
         /// <param name="p_確定"></param>
         /// <param name="p_橋渡しの場所">橋渡しした配列の場所 (配列名, 始まり, 終わり, 始点の頂点) を足す先、要らなければ null</param>
-        private static void V_書き出し(string p_出力パス, List<string> p_骨格名一覧, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定, List<(string A_配列名, int A_開始, int A_終了, int A_始点)>? p_橋渡しの場所)
+        /// <returns>片を外したまま繋いだ端の数</returns>
+        private static int V_書き出し(string p_出力パス, List<string> p_骨格名一覧, List<string> p_骨格配列, List<(string A_先頭の片, string A_末尾の片)> p_外した片, Dictionary<int, 橋渡し候補> p_確定, List<(string A_配列名, int A_開始, int A_終了, int A_始点)>? p_橋渡しの場所)
         {
             var l_使用済み = new bool[p_骨格配列.Count];
             var l_ID = 1;
+            var l_片を外して繋いだ数 = 0;
             using var l_書き込み = new FastaWriter(p_出力パス);
             List<(int A_開始, int A_終了, int A_始点)> l_場所 = [];
-            foreach (var l_Is先頭 in new[] { true, false, })
+            foreach (var l_開始頂点を選ぶ in new Func<int, int?>[] { x => Has来訪元(p_確定, x << 1) ? null : x << 1, x => Has来訪元(p_確定, (x << 1) | 1) ? null : (x << 1) | 1, x => x << 1, })
             {
                 for (var l_番号 = 0; l_番号 < p_骨格配列.Count; l_番号++)
                 {
-                    if (l_使用済み[l_番号] || (l_Is先頭 && Has来訪元(p_確定, l_番号)))
+                    if (l_使用済み[l_番号] || l_開始頂点を選ぶ(l_番号) is not { } l_開始頂点)
                     {
                         continue;
                     }
 
                     var l_名前 = Get_名前(p_骨格名一覧, l_番号, l_ID++);
                     l_場所.Clear();
-                    l_書き込み.V_書き込み(l_名前, Get_連結配列(l_番号 << 1, p_骨格配列, p_確定, l_使用済み, l_場所));
+                    var (l_配列, l_繋いだ数) = Get_連結配列(l_開始頂点, p_骨格配列, p_外した片, p_確定, l_使用済み, l_場所);
+                    l_書き込み.V_書き込み(l_名前, l_配列);
+                    l_片を外して繋いだ数 += l_繋いだ数;
                     p_橋渡しの場所?.AddRange(l_場所.Select(x => (l_名前, x.A_開始, x.A_終了, x.A_始点)));
                 }
             }
+
+            return l_片を外して繋いだ数;
         }
 
         /// <summary>
@@ -1015,28 +1287,35 @@ namespace Tsumiki.Cores.Evaluation
         }
 
         /// <summary>
-        /// その配列へ入ってくる確定辺があるか
+        /// その頂点へ入ってくる確定辺があるか
         /// </summary>
-        /// <param name="p_確定"></param>
-        /// <param name="p_番号"></param>
-        /// <returns></returns>
-        private static bool Has来訪元(Dictionary<int, 橋渡し候補> p_確定, int p_番号)
+        /// <param name="p_確定">頂点ごとに確定した橋渡し</param>
+        /// <param name="p_頂点">頂点</param>
+        /// <returns>入ってくる確定辺があれば true</returns>
+        private static bool Has来訪元(Dictionary<int, 橋渡し候補> p_確定, int p_頂点)
         {
-            return p_確定.ContainsKey((p_番号 << 1) | 1);
+            return p_確定.ContainsKey(p_頂点 ^ 1);
         }
 
         /// <summary>
-        /// 確定した橋渡しを辿って、繋がった 1 本の配列を返す
+        /// 確定した橋渡しを辿って、繋がった 1 本の配列を返す<br/>繋がなかった両端には、外した片を戻す
         /// </summary>
         /// <param name="p_開始頂点">辿り始める頂点</param>
-        /// <param name="p_骨格配列">骨格の配列</param>
+        /// <param name="p_骨格配列">端の短い片を外した骨格配列</param>
+        /// <param name="p_外した片">骨格配列ごとの、先頭と末尾から外した片</param>
         /// <param name="p_確定">頂点ごとに確定した橋渡し</param>
         /// <param name="p_使用済み">既に使った配列</param>
         /// <param name="p_橋渡しの場所">繋がった配列の中の、橋渡しした配列の場所 (始まり, 終わり, 始点の頂点) を足す先</param>
-        /// <returns>繋がった配列</returns>
-        private static string Get_連結配列(int p_開始頂点, List<string> p_骨格配列, Dictionary<int, 橋渡し候補> p_確定, bool[] p_使用済み, List<(int A_開始, int A_終了, int A_始点)> p_橋渡しの場所)
+        /// <returns>繋がった配列と、片を外したまま繋いだ端の数</returns>
+        private static (string A_配列, int A_片を外して繋いだ数) Get_連結配列(int p_開始頂点, List<string> p_骨格配列, List<(string A_先頭の片, string A_末尾の片)> p_外した片, Dictionary<int, 橋渡し候補> p_確定, bool[] p_使用済み, List<(int A_開始, int A_終了, int A_始点)> p_橋渡しの場所)
         {
             var l_結果 = new StringBuilder();
+            var l_片を外して繋いだ数 = 0;
+            if (!Has来訪元(p_確定, p_開始頂点))
+            {
+                _ = l_結果.Append(Get_入口側の片(p_外した片, p_開始頂点));
+            }
+
             var l_頂点 = p_開始頂点;
             var l_削る長さ = 0;
             while (true)
@@ -1052,16 +1331,18 @@ namespace Tsumiki.Cores.Evaluation
                 _ = l_結果.Append(l_配列, Math.Min(l_削る長さ, l_配列.Length), l_配列.Length - Math.Min(l_削る長さ, l_配列.Length));
                 if (!p_確定.TryGetValue(l_頂点, out var l_橋渡し))
                 {
+                    _ = l_結果.Append(Get_出口側の片(p_外した片, l_頂点));
                     break;
                 }
 
+                l_片を外して繋いだ数 += (Get_出口側の片(p_外した片, l_頂点).Length > 0 ? 1 : 0) + (Get_入口側の片(p_外した片, l_橋渡し.A_終点).Length > 0 ? 1 : 0);
                 p_橋渡しの場所.Add((l_結果.Length, l_結果.Length + l_橋渡し.A_橋渡し配列.Length, l_頂点));
                 _ = l_結果.Append(l_橋渡し.A_橋渡し配列);
                 l_削る長さ = l_橋渡し.A_重なり長;
                 l_頂点 = l_橋渡し.A_終点;
             }
 
-            return l_結果.ToString();
+            return (l_結果.ToString(), l_片を外して繋いだ数);
         }
 
         #endregion

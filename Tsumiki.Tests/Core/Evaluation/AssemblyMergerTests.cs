@@ -309,6 +309,11 @@ namespace Tsumiki.Tests.Core
         private const string C_ファイル名_merged_fold_fasta = "merged_fold.fasta";
 
         /// <summary>
+        /// 読み誤りの片の先頭 (この後ろに G の連続を置く)
+        /// </summary>
+        private const string C_読み誤りの片の頭 = "GC";
+
+        /// <summary>
         /// アンカー k 長
         /// </summary>
         private const int C_アンカーk長 = 31;
@@ -410,6 +415,158 @@ namespace Tsumiki.Tests.Core
             var l_結果 = V_読み込み_配列群(l_出力);
             _ = Assert.Single(l_結果);
             Assert.True(l_結果[0] == l_真の配列 || l_結果[0] == Util.V_逆相補(l_真の配列), C_項目_merged_sequence_should_b_ion_or_the_other);
+        }
+
+        /// <summary>
+        /// 鎖の先頭の骨格配列が逆向きで、末尾が順向きでも、確定した橋渡しを辿って 1 本に書き出すこと
+        /// </summary>
+        [Fact]
+        public void V_鎖の先頭が逆向きでも1本に書き出す()
+        {
+            var l_左 = V_生成_乱数配列(5_000, p_シード: 621);
+            var l_中間 = V_生成_乱数配列(300, p_シード: 622);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 623);
+            var l_真の配列 = l_左 + l_中間 + l_右;
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_rc_fasta, 63, Util.V_逆相補(l_左), l_右);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_rc_fasta, 31, l_真の配列);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_rc_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = Assert.Single(V_読み込み_配列群(l_出力));
+            Assert.True(l_結果 == l_真の配列 || l_結果 == Util.V_逆相補(l_真の配列), C_項目_merged_sequence_should_b_ion_or_the_other);
+        }
+
+        /// <summary>
+        /// 骨格配列の端に、未確認の繋ぎ目で次の contig と重なる短い片が付いていても、片を外して繋ぐこと
+        /// </summary>
+        /// <param name="p_Is逆向き">片の付いた骨格配列を逆相補で置くか</param>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void V_端の短い片を外して繋ぐ(bool p_Is逆向き)
+        {
+            var (l_左, l_中間, l_右) = (V_生成_乱数配列(5_000, p_シード: 631), V_生成_乱数配列(300, p_シード: 632), V_生成_乱数配列(5_000, p_シード: 633));
+            var l_真の配列 = l_左 + l_中間 + l_右;
+            var l_片の付いた配列 = l_真の配列.Substring(5_290, 151) + Consts.未確認の繋ぎ目 + l_右;
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_左, p_Is逆向き ? Util.V_逆相補_曖昧塩基あり(l_片の付いた配列) : l_片の付いた配列);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_真の配列);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = Assert.Single(V_読み込み_配列群(l_出力));
+            Assert.True(l_結果 == l_真の配列 || l_結果 == Util.V_逆相補(l_真の配列), C_項目_merged_sequence_should_b_ion_or_the_other);
+        }
+
+        /// <summary>
+        /// 繋がなかった側の端の短い片は、外さずに元どおり書き出すこと
+        /// </summary>
+        /// <param name="p_Is逆向き">片の付いた骨格配列を逆相補で置くか</param>
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void V_繋がなかった端の片は戻す(bool p_Is逆向き)
+        {
+            var (l_左, l_中間, l_右) = (V_生成_乱数配列(5_000, p_シード: 641), V_生成_乱数配列(300, p_シード: 642), V_生成_乱数配列(5_000, p_シード: 643));
+            var l_片 = V_生成_乱数配列(10, p_シード: 644) + l_左[..141];
+            var l_片の付いた配列 = l_片 + Consts.未確認の繋ぎ目 + l_左;
+            var l_期待 = l_片の付いた配列 + l_中間 + l_右;
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, p_Is逆向き ? Util.V_逆相補_曖昧塩基あり(l_片の付いた配列) : l_片の付いた配列, l_右);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_左 + l_中間 + l_右);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            var l_結果 = Assert.Single(V_読み込み_配列群(l_出力));
+            Assert.True(l_結果 == l_期待 || l_結果 == Util.V_逆相補_曖昧塩基あり(l_期待), C_項目_merged_sequence_should_b_ion_or_the_other);
+        }
+
+        /// <summary>
+        /// 骨格配列の端の短い片が、未確認の繋ぎ目の向こうとほとんど重ならなければ、片を外さず今までどおり繋がないこと
+        /// </summary>
+        [Fact]
+        public void V_隣と重ならない端の片は外さない()
+        {
+            var (l_左, l_中間, l_右, l_片) = (V_生成_乱数配列(5_000, p_シード: 651), V_生成_乱数配列(300, p_シード: 652), V_生成_乱数配列(5_000, p_シード: 653), V_生成_乱数配列(150, p_シード: 654));
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_左, l_片 + Consts.未確認の繋ぎ目 + l_右);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_左 + l_中間 + l_右);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+        }
+
+        /// <summary>
+        /// 骨格配列の端の片が、内側の端の近くに同じ塩基の長い連続 (読み誤り) を持てば、手前と半分重ならなくても外して繋ぐこと
+        /// </summary>
+        /// <param name="p_連続の長さ">片の内側の端の近くに置く G の連続の長さ</param>
+        /// <param name="p_期待">繋ぐか</param>
+        [Theory]
+        [InlineData(17, true)]
+        [InlineData(16, false)]
+        public void V_内側の端に同じ塩基の長い連続がある片は外して繋ぐ(int p_連続の長さ, bool p_期待)
+        {
+            var l_左 = V_置換_塩基(V_生成_乱数配列(5_000, p_シード: 661), 5_000 - 57, Consts.塩基コード.A);
+            var l_右 = V_生成_乱数配列(5_000, p_シード: 662);
+            var l_真の配列 = l_左 + l_右;
+            var l_片 = C_読み誤りの片の頭 + new string(Consts.塩基コード.G, p_連続の長さ) + l_左[^57..] + l_右[..74];
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_左 + Consts.未確認の繋ぎ目 + l_片, l_左[^134..] + l_右);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_真の配列);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
+            Assert.Equal(p_期待, AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            if (p_期待)
+            {
+                Assert.Equal(l_真の配列, Assert.Single(V_読み込み_配列群(l_出力)));
+            }
+        }
+
+        /// <summary>
+        /// 長い配列に含まれ、長い配列だけでコピー数が足りている短い配列だけを、重複した短い配列として返すこと
+        /// </summary>
+        /// <param name="p_コピー数">どの k-mer にも答える期待コピー数</param>
+        /// <param name="p_期待">重複した短い配列とみなす番号 (無ければ空)</param>
+        [Theory]
+        [InlineData(1, new[] { 1 })]
+        [InlineData(2, new int[0])]
+        public void V_長い配列と重複した短い配列だけを返す(int p_コピー数, int[] p_期待)
+        {
+            var l_長い = V_生成_乱数配列(600, p_シード: 671);
+            var l_別の長い = V_生成_乱数配列(1_000, p_シード: 673);
+            List<string> l_配列群 = [l_長い, l_長い[100..400], V_生成_乱数配列(300, p_シード: 672), l_別の長い, l_別の長い[..500]];
+            var l_結果 = AssemblyMerger.Get_重複した短い配列(l_配列群, C_アンカーk長, (_, _) => p_コピー数);
+            Assert.Equal(p_期待, l_結果.Order());
+        }
+
+        /// <summary>
+        /// 端から 40 bp までの読み誤りは数えずに、長い配列と重複した短い配列とみなすこと
+        /// </summary>
+        /// <param name="p_先頭の誤り">短い配列の先頭に付ける G の数</param>
+        /// <param name="p_末尾の誤り">短い配列の末尾に付ける C の数</param>
+        /// <param name="p_期待">重複した短い配列とみなす番号 (無ければ空)</param>
+        [Theory]
+        [InlineData(21, 0, new[] { 1 })]
+        [InlineData(0, 34, new[] { 1 })]
+        [InlineData(40, 40, new[] { 1 })]
+        [InlineData(41, 0, new int[0])]
+        [InlineData(0, 41, new int[0])]
+        public void V_端の読み誤りは数えずに重複とみなす(int p_先頭の誤り, int p_末尾の誤り, int[] p_期待)
+        {
+            var l_長い = V_置換_塩基(V_置換_塩基(V_生成_乱数配列(600, p_シード: 674), 99, Consts.塩基コード.A), 300, Consts.塩基コード.A);
+            var l_短い = new string(Consts.塩基コード.G, p_先頭の誤り) + l_長い[100..300] + new string(Consts.塩基コード.C, p_末尾の誤り);
+            var l_結果 = AssemblyMerger.Get_重複した短い配列([l_長い, l_短い], C_アンカーk長, (_, _) => 1);
+            Assert.Equal(p_期待, l_結果.Order());
+        }
+
+        /// <summary>
+        /// 端の長い配列に無い部分に同じ塩基が 7 以上続くときだけ、その端を数えずに重複とみなすこと
+        /// </summary>
+        /// <param name="p_先頭">短い配列の先頭に付ける配列</param>
+        /// <param name="p_末尾">短い配列の末尾に付ける配列</param>
+        /// <param name="p_期待">重複した短い配列とみなす番号 (無ければ空)</param>
+        [Theory]
+        [InlineData("TACGTACGTACGTACGTACGT", "", new int[0])]
+        [InlineData("TACGTAGGGGGGGTACGTACT", "", new[] { 1 })]
+        [InlineData("TACGTAGGGGGGTACGTACTT", "", new int[0])]
+        [InlineData("", "GTACGTACGTACGTACGTACG", new int[0])]
+        [InlineData("", "GTACGTCCCCCCCGTACGTAC", new[] { 1 })]
+        public void V_端の違いが同じ塩基の長い連続でなければ重複とみなさない(string p_先頭, string p_末尾, int[] p_期待)
+        {
+            var l_長い = V_置換_塩基(V_置換_塩基(V_生成_乱数配列(600, p_シード: 674), 99, Consts.塩基コード.A), 300, Consts.塩基コード.A);
+            var l_結果 = AssemblyMerger.Get_重複した短い配列([l_長い, p_先頭 + l_長い[100..300] + p_末尾], C_アンカーk長, (_, _) => 1);
+            Assert.Equal(p_期待, l_結果.Order());
         }
 
         /// <summary>
@@ -531,7 +688,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(951);
             var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
-            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280], l_P[4_000..] + l_R + l_Q[..1_000]);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_P[^200..] + l_R + l_T[..200], l_P[4_000..] + l_R + l_Q[..1_000]);
             var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
             Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
         }
@@ -544,7 +701,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(961);
             var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
-            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280], l_S[4_000..] + l_R + l_T[..1_000]);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_P[^200..] + l_R + l_T[..200], l_S[4_000..] + l_R + l_T[..1_000]);
             var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
             Assert.False(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
         }
@@ -557,7 +714,7 @@ namespace Tsumiki.Tests.Core
         {
             var (l_P, l_Q, l_S, l_T, l_R) = V_生成_反復の途中で切れた並び(971);
             var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_end_fasta, 63, l_P + l_R[..200], l_R[150..] + l_T, l_Q, l_S);
-            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_R[20..280]);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_end_fasta, 31, l_P[^200..] + l_R + l_T[..200]);
             var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_end_fasta);
             Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
             var l_結果 = V_読み込み_配列群(l_出力);
@@ -671,6 +828,49 @@ namespace Tsumiki.Tests.Core
             var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_two_fasta);
             Assert.True(AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他1, l_他2], C_アンカーk長, l_出力));
             Assert.Equal(l_真の配列, V_読み込み_配列群(l_出力)[0]);
+        }
+
+        /// <summary>
+        /// 他の k の配列が骨格配列の端へ届く長さが 170 bp 未満なら繋がず、170 bp なら繋ぐこと
+        /// </summary>
+        /// <param name="p_届き">他の k の配列が、左の骨格配列の端より手前に持つ長さ</param>
+        /// <param name="p_期待">繋ぐか</param>
+        [Theory]
+        [InlineData(169, false)]
+        [InlineData(170, true)]
+        public void V_端への届きが足りない支持だけでは繋がない(int p_届き, bool p_期待)
+        {
+            var (l_左, l_中間, l_右) = (V_生成_乱数配列(5_000, p_シード: 1_101), V_生成_乱数配列(300, p_シード: 1_102), V_生成_乱数配列(5_000, p_シード: 1_103));
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_sup_fasta, 63, l_左, l_右);
+            var l_他 = this.V_書き込み_アセンブリ(C_ファイル名_other_sup_fasta, 31, l_左[^p_届き..] + l_中間 + l_右);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_sup_fasta);
+            Assert.Equal(p_期待, AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他], C_アンカーk長, l_出力, p_必要な独立支持数: 1));
+            if (p_期待)
+            {
+                Assert.Equal(l_左 + l_中間 + l_右, Assert.Single(V_読み込み_配列群(l_出力)));
+            }
+        }
+
+        /// <summary>
+        /// 支持した配列のうち 1 本が両側の骨格配列の端へ十分に届けば、ほかの k の配列の届きが短くても繋ぐこと
+        /// </summary>
+        /// <param name="p_長い方の届き">k=41 の配列が、左の骨格配列の端より手前に持つ長さ</param>
+        /// <param name="p_期待">繋ぐか</param>
+        [Theory]
+        [InlineData(1_000, true)]
+        [InlineData(120, false)]
+        public void V_支持のうち1本が端へ十分届けば繋ぐ(int p_長い方の届き, bool p_期待)
+        {
+            var (l_左, l_中間, l_右) = (V_生成_乱数配列(5_000, p_シード: 1_111), V_生成_乱数配列(300, p_シード: 1_112), V_生成_乱数配列(5_000, p_シード: 1_113));
+            var l_骨格 = this.V_書き込み_アセンブリ(C_ファイル名_backbone_two_fasta, 63, l_左, l_右);
+            var l_他1 = this.V_書き込み_アセンブリ(C_ファイル名_other_two_a_fasta, 31, l_左[^100..] + l_中間 + l_右);
+            var l_他2 = this.V_書き込み_アセンブリ(C_ファイル名_other_two_b_fasta, 41, l_左[^p_長い方の届き..] + l_中間 + l_右);
+            var l_出力 = Path.Combine(this._作業ディレクトリ, C_ファイル名_merged_two_fasta);
+            Assert.Equal(p_期待, AssemblyMerger.Is成功_統合(l_骨格, [l_骨格, l_他1, l_他2], C_アンカーk長, l_出力));
+            if (p_期待)
+            {
+                Assert.Equal(l_左 + l_中間 + l_右, Assert.Single(V_読み込み_配列群(l_出力)));
+            }
         }
 
         /// <summary>
@@ -882,6 +1082,20 @@ namespace Tsumiki.Tests.Core
                 l_文字[i] = l_文字[i] == 'A' ? 'C' : 'A';
             }
 
+            return new string(l_文字);
+        }
+
+        /// <summary>
+        /// 配列の 1 か所の塩基を置き換える
+        /// </summary>
+        /// <param name="p_配列">元の配列</param>
+        /// <param name="p_位置">置き換える位置</param>
+        /// <param name="p_塩基">置き換え後の塩基</param>
+        /// <returns>置き換えた配列</returns>
+        private static string V_置換_塩基(string p_配列, int p_位置, char p_塩基)
+        {
+            var l_文字 = p_配列.ToCharArray();
+            l_文字[p_位置] = p_塩基;
             return new string(l_文字);
         }
 

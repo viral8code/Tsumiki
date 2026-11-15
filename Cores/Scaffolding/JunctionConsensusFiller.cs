@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Tsumiki.Commons;
+using Tsumiki.Cores.Pipeline;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Scaffolding;
 using Tsumiki.Utilities;
@@ -119,6 +120,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_照合のバッチサイズ = 16_384;
 
+        /// <summary>
+        /// 跨ぐリードの票で決まった間の長さに合う N の列にするときの、N の数の下限
+        /// </summary>
+        private const int C_長さで置くNの最少数 = 10;
+
         #endregion
 
         #region 公開メソッド
@@ -160,8 +166,8 @@ namespace Tsumiki.Cores.Scaffolding
                 Logger.V_出力(メッセージID.継ぎ目の合意の内訳, p_配列群[l_継ぎ目.A_配列番号].A_ID, l_継ぎ目.A_開始, l_継ぎ目.A_左の片.Length, l_継ぎ目.A_右の片.Length, l_候補群[j].Count, l_内訳.A_跨ぐ数, l_内訳.A_間, l_内訳.A_食い違う数, l_内訳.A_合う数, l_判定群[j]);
             }
 
-            var l_結果 = Get_書き換えた配列群(p_配列群, l_継ぎ目群, l_埋め方群, out var l_埋めた数);
-            p_統計 = new 継ぎ目合意統計(l_継ぎ目群.Count, l_埋めた数, l_判定群.Count(static x => x == 継ぎ目合意判定.跨ぐリード無し), l_判定群.Count(static x => x == 継ぎ目合意判定.票が足りない), l_判定群.Count(static x => x == 継ぎ目合意判定.票が割れた), l_判定群.Count(static x => x == 継ぎ目合意判定.合意が弱い), l_判定群.Count(static x => x == 継ぎ目合意判定.縦列反復), l_判定群.Count(static x => x == 継ぎ目合意判定.片側のリードが食い違う), l_判定群.Count(static x => x == 継ぎ目合意判定.片が重なりに収まる));
+            var l_結果 = Get_書き換えた配列群(p_配列群, l_継ぎ目群, l_埋め方群, l_判定群, out var l_埋めた数, out var l_長さを決めた数);
+            p_統計 = new 継ぎ目合意統計(l_継ぎ目群.Count, l_埋めた数, l_判定群.Count(static x => x == 継ぎ目合意判定.跨ぐリード無し), l_判定群.Count(static x => x == 継ぎ目合意判定.票が足りない), l_判定群.Count(static x => x == 継ぎ目合意判定.票が割れた), l_判定群.Count(static x => x == 継ぎ目合意判定.合意が弱い), l_判定群.Count(static x => x == 継ぎ目合意判定.縦列反復), l_判定群.Count(static x => x == 継ぎ目合意判定.片側のリードが食い違う), l_判定群.Count(static x => x == 継ぎ目合意判定.片が重なりに収まる), l_長さを決めた数);
             return l_結果;
         }
 
@@ -202,7 +208,7 @@ namespace Tsumiki.Cores.Scaffolding
                     var l_Is対象の長さ = l_配列[i] == Consts.未確認の繋ぎ目 || l_終わり - i <= C_対象のNの長さ上限;
                     if (l_Is対象の長さ && l_左の長さ >= C_片の最短長 && l_右の長さ >= C_片の最短長)
                     {
-                        l_結果.Add(new 合意の継ぎ目(s, i, l_終わり, l_配列.Substring(i - l_左の長さ, l_左の長さ), l_配列.Substring(l_終わり, l_右の長さ)));
+                        l_結果.Add(new 合意の継ぎ目(s, i, l_終わり, l_配列.Substring(i - l_左の長さ, l_左の長さ), l_配列.Substring(l_終わり, l_右の長さ), l_配列[i] == Consts.未確認の繋ぎ目));
                     }
 
                     l_前の終わり = l_終わり;
@@ -362,13 +368,14 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 1 つの継ぎ目を、跨ぐリードの間の長さの票と、列ごとの確かな塩基の多数決で埋める方法を決める
+        /// 1 つの継ぎ目を、跨ぐリードの間の長さの票と、列ごとの確かな塩基の多数決で埋める方法を決める<br/>
+        /// 合意が弱いか縦列反復で埋めないときは、票で決まった間の長さに合う N の列にする方法を返す (Get_長さだけの埋め方)
         /// </summary>
         /// <param name="p_継ぎ目">継ぎ目</param>
         /// <param name="p_候補">候補のリード (配列と Phred 値)</param>
         /// <param name="p_判定">判定</param>
         /// <param name="p_内訳">判定に使ったリードの数</param>
-        /// <returns>埋め方、埋めなければ null</returns>
+        /// <returns>埋め方、埋めず長さも決めなければ null</returns>
         private static 継ぎ目の埋め方? Get_埋め方(合意の継ぎ目 p_継ぎ目, List<(string A_配列, byte[] A_品質)> p_候補, out 継ぎ目合意判定 p_判定, out 継ぎ目合意の内訳 p_内訳)
         {
             var l_左 = p_継ぎ目.A_左の片;
@@ -415,7 +422,7 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_余白 > l_左.Length - C_種長 || l_余白 > l_右.Length - C_種長 || Get_合意(l_跨ぐリード群.Where(x => x.A_間 == l_間), l_余白, (2 * l_余白) + l_間) is not { } l_合意)
             {
                 p_判定 = 継ぎ目合意判定.合意が弱い;
-                return null;
+                return Get_長さだけの埋め方(p_継ぎ目, l_間);
             }
 
             var l_合意の始まり = l_左.Length - l_余白;
@@ -423,11 +430,34 @@ namespace Tsumiki.Cores.Scaffolding
             if (Scaffolder.Is縦の反復の中(l_繋いだ配列, Math.Max(0, l_合意の始まり - C_反復を調べる外側の長さ), l_合意の始まり + l_合意.Length))
             {
                 p_判定 = 継ぎ目合意判定.縦列反復;
-                return null;
+                return Get_長さだけの埋め方(p_継ぎ目, l_間);
             }
 
             p_判定 = 継ぎ目合意判定.埋めた;
             return new 継ぎ目の埋め方(l_余白, l_合意, l_余白);
+        }
+
+        /// <summary>
+        /// 継ぎ目を、跨ぐリードの票で決まった間の長さ p_間 に合う N の列 (N の数は 2t + p_間、t は両側の片から削る長さ) にする埋め方を返す<br/>
+        /// t は、印の継ぎ目では FinalAssemblyPipeline.C_長さ不明のギャップの両側で削る長さ を先に 0 を次に、N の連続の継ぎ目では 0 を先に試す<br/>
+        /// N の数が C_長さで置くNの最少数 以上で、両側の片がどちらも 2t + 1 以上になる t が無ければ null
+        /// </summary>
+        /// <param name="p_継ぎ目">継ぎ目</param>
+        /// <param name="p_間">跨ぐリードの票で決まった間の長さ (負なら重なり)</param>
+        /// <returns>埋め方、決められなければ null</returns>
+        internal static 継ぎ目の埋め方? Get_長さだけの埋め方(合意の継ぎ目 p_継ぎ目, int p_間)
+        {
+            int[] l_削る長さ群 = p_継ぎ目.A_Is未確認 ? [FinalAssemblyPipeline.C_長さ不明のギャップの両側で削る長さ, 0] : [0, FinalAssemblyPipeline.C_長さ不明のギャップの両側で削る長さ];
+            foreach (var l_削る長さ in l_削る長さ群)
+            {
+                var l_N数 = (2 * l_削る長さ) + p_間;
+                if (l_N数 >= C_長さで置くNの最少数 && Math.Min(p_継ぎ目.A_左の片.Length, p_継ぎ目.A_右の片.Length) > 2 * l_削る長さ)
+                {
+                    return new 継ぎ目の埋め方(l_削る長さ, new string(Consts.塩基コード.N, l_N数), l_削る長さ);
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -708,11 +738,14 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_配列群">配列の ID と配列</param>
         /// <param name="p_継ぎ目群">継ぎ目の一覧 (配列の順・位置の順)</param>
         /// <param name="p_埋め方群">継ぎ目ごとの埋め方</param>
-        /// <param name="p_埋めた数">当てた継ぎ目の数</param>
+        /// <param name="p_判定群">継ぎ目ごとの判定</param>
+        /// <param name="p_埋めた数">当てた継ぎ目のうち、判定が埋めたものの数</param>
+        /// <param name="p_長さを決めた数">当てた継ぎ目のうち、判定が埋めた以外 (間の長さに合う N の列にした) ものの数</param>
         /// <returns>書き換えた配列の ID と配列</returns>
-        private static List<(string A_ID, string A_配列)> Get_書き換えた配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<合意の継ぎ目> p_継ぎ目群, 継ぎ目の埋め方?[] p_埋め方群, out int p_埋めた数)
+        private static List<(string A_ID, string A_配列)> Get_書き換えた配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<合意の継ぎ目> p_継ぎ目群, 継ぎ目の埋め方?[] p_埋め方群, 継ぎ目合意判定[] p_判定群, out int p_埋めた数, out int p_長さを決めた数)
         {
             p_埋めた数 = 0;
+            p_長さを決めた数 = 0;
             var l_配列ごと = Enumerable.Range(0, p_継ぎ目群.Count).Where(x => p_埋め方群[x] is not null).GroupBy(x => p_継ぎ目群[x].A_配列番号).ToDictionary(static x => x.Key, static x => x.ToList());
             List<(string A_ID, string A_配列)> l_結果 = [];
             for (var s = 0; s < p_配列群.Count; s++)
@@ -738,7 +771,14 @@ namespace Tsumiki.Cores.Scaffolding
 
                     _ = l_出力.Append(l_配列, l_読んだ位置, l_左の端 - l_読んだ位置).Append(l_埋め方.A_埋める配列);
                     l_読んだ位置 = l_継ぎ目.A_終わり + l_埋め方.A_右から削る長さ;
-                    p_埋めた数++;
+                    if (p_判定群[j] == 継ぎ目合意判定.埋めた)
+                    {
+                        p_埋めた数++;
+                    }
+                    else
+                    {
+                        p_長さを決めた数++;
+                    }
                 }
 
                 _ = l_出力.Append(l_配列, l_読んだ位置, l_配列.Length - l_読んだ位置);

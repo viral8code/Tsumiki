@@ -8,5 +8,6 @@
     /// <param name="A_終わり">継ぎ目の直後の位置</param>
     /// <param name="A_左の片">継ぎ目の左の片の末尾</param>
     /// <param name="A_右の片">継ぎ目の右の片の先頭</param>
-    internal sealed record 合意の継ぎ目(int A_配列番号, int A_開始, int A_終わり, string A_左の片, string A_右の片);
+    /// <param name="A_Is未確認">継ぎ目が未確認の繋ぎ目の印なら真、N の連続なら偽</param>
+    internal sealed record 合意の継ぎ目(int A_配列番号, int A_開始, int A_終わり, string A_左の片, string A_右の片, bool A_Is未確認);
 }

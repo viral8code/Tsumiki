@@ -442,17 +442,31 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
-        /// 統合した配列の継ぎ目を元リードで評価し、誤りの確率が 橋渡しを見送る確率 以上の継ぎ目に掛かる橋渡しの始点の頂点を返す
+        /// 統合した配列の継ぎ目を元リードで評価し、誤りの確率が 橋渡しを見送る確率 以上の継ぎ目に掛かる橋渡しの始点の頂点を返す<br/>長い配列と重複した短い配列は除いて評価する
         /// </summary>
         /// <param name="p_統合パス">統合した配列</param>
         /// <param name="p_橋渡しの場所">統合した配列の中の橋渡しした配列の場所</param>
         /// <param name="p_ライブラリ群">元リード</param>
         /// <param name="p_モデル">継ぎ目の誤り確率モデル</param>
+        /// <param name="p_アンカーk長"></param>
+        /// <param name="p_期待コピー数">配列とその位置のアンカー k-mer から、リードのカバレッジで見た期待コピー数を返す</param>
         /// <returns>見送る始点の頂点 (評価できなければ空)</returns>
-        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
+        private static HashSet<int> Get_危ない橋渡し(string p_統合パス, List<(string A_配列名, int A_開始, int A_終了, int A_始点)> p_橋渡しの場所, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル, int p_アンカーk長, Func<string, int, int> p_期待コピー数)
         {
             HashSet<int> l_見送る = [];
-            if (p_橋渡しの場所.Count == 0 || JunctionRiskEvaluator.Get_評価(p_統合パス, p_ライブラリ群, p_モデル) is not { } l_評価群)
+            if (p_橋渡しの場所.Count == 0)
+            {
+                return l_見送る;
+            }
+
+            var l_エントリ群 = FastaReader.Get_全エントリ(p_統合パス);
+            var l_除く = AssemblyMerger.Get_重複した短い配列([.. l_エントリ群.Select(x => x.A_配列)], p_アンカーk長, p_期待コピー数);
+            if (l_除く.Count > 0)
+            {
+                Logger.V_出力(メッセージID.継ぎ目の審査で重複した短い配列を除いた, l_除く.Count);
+            }
+
+            if (JunctionRiskEvaluator.Get_評価([.. l_エントリ群.Where((_, i) => !l_除く.Contains(i))], p_ライブラリ群, p_モデル) is not { } l_評価群)
             {
                 return l_見送る;
             }
@@ -507,7 +521,7 @@ namespace Tsumiki.Cores.Pipeline
                 return null;
             }
 
-            var l_見送る始点 = Get_危ない橋渡し(l_統合パス, l_橋渡しの場所, p_ライブラリ群, p_モデル);
+            var l_見送る始点 = Get_危ない橋渡し(l_統合パス, l_橋渡しの場所, p_ライブラリ群, p_モデル, p_アンカーk長, l_期待コピー数);
             if (l_見送る始点.Count > 0)
             {
                 Logger.V_出力(メッセージID.危ない橋渡しを見送る, l_見送る始点.Count, C_橋渡しを見送る確率);

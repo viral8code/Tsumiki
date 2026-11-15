@@ -165,6 +165,31 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(p_期待, Scaffolder.Get_リードで確かめた重なり長(l_索引, new StringBuilder(l_左), l_右, 89, 150, 0));
         }
 
+        /// <summary>
+        /// 一致で決めた重なりで繋いだ配列 (重なり + 両側 16 bp) は、リード長の半分以下ならリードで確かめ、2 か所未満しか無ければリードに無いとする
+        /// </summary>
+        /// <param name="p_共通">左の片の末尾と右の片の先頭が一致する長さ</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_リード数">繋いだ配列を含むリードの本数</param>
+        /// <param name="p_期待">リードに無いとするはずか</param>
+        [Theory]
+        [InlineData(72, 251, 0, true)]
+        [InlineData(72, 251, 2, false)]
+        [InlineData(72, 251, 1, true)]
+        [InlineData(120, 251, 0, false)]
+        [InlineData(72, 0, 0, false)]
+        public void Isリードに無い一致の重なり_リード長の半分以下ならリードで確かめる(int p_共通, int p_リード長, int p_リード数, bool p_期待)
+        {
+            var l_乱数 = new Random(p_共通 + p_リード数);
+            var l_共通 = Get_乱配列(l_乱数, p_共通);
+            var l_左 = Get_乱配列(l_乱数, 200) + l_共通;
+            var l_右 = l_共通 + Get_乱配列(l_乱数, 200);
+            var l_繋いだ配列 = l_左 + l_右[p_共通..];
+            var l_リード群 = Enumerable.Range(0, p_リード数).Select(i => l_繋いだ配列.Substring(150 + i, 150)).Append(Get_乱配列(l_乱数, 150)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
+            Assert.Equal(p_期待, Scaffolder.Isリードに無い一致の重なり(l_索引, new StringBuilder(l_左), l_右, p_共通, p_リード長));
+        }
+
         #endregion
 
         #region 内部メソッド

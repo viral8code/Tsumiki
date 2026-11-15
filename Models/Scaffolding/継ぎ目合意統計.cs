@@ -12,5 +12,6 @@
     /// <param name="A_縦列反復数">繋いだ配列が縦に並んだ反復の中なので埋めなかった継ぎ目の数</param>
     /// <param name="A_食い違い数">片側だけに置けるリードの多くが繋いだ形と食い違うので埋めなかった継ぎ目の数</param>
     /// <param name="A_片が収まる数">重なりが短いほうの片の長さ以上なので埋めなかった継ぎ目の数</param>
-    internal readonly record struct 継ぎ目合意統計(int A_対象数, int A_埋めた数, int A_跨ぐリード無し数, int A_票が足りない数, int A_票が割れた数, int A_合意が弱い数, int A_縦列反復数, int A_食い違い数, int A_片が収まる数);
+    /// <param name="A_長さを決めた数">合意が弱いか縦列反復で埋めなかったが、跨ぐリードの票で決まった間の長さに合う N の列にした継ぎ目の数 (埋めた数には含めない)</param>
+    internal readonly record struct 継ぎ目合意統計(int A_対象数, int A_埋めた数, int A_跨ぐリード無し数, int A_票が足りない数, int A_票が割れた数, int A_合意が弱い数, int A_縦列反復数, int A_食い違い数, int A_片が収まる数, int A_長さを決めた数);
 }

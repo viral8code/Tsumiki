@@ -177,6 +177,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_一致で畳む重なりの下限 = 64;
 
+        /// <summary>
+        /// 一致で決めた重なりをリードで確かめるのは、繋いだ配列がリード長のこの分の 1 以下のとき
+        /// </summary>
+        private const int C_一致の重なりを確かめる長さの分母 = 2;
+
         #endregion
 
         #region 内部変数
@@ -594,6 +599,35 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             return l_一致の長さ is { } l_重なり長 && l_重なり長 >= C_一致で畳む重なりの下限 && l_重なり長 <= p_k長 - 1 ? l_重なり長 : null;
+        }
+
+        /// <summary>
+        /// 一致で決めた重なりで繋いだ配列 (重なりと両側の C_繋ぎ目の余白) が、リードで確かめられる長さなのにリードに無いか<br/>
+        /// 繋いだ配列がリード長の C_一致の重なりを確かめる長さの分母 分の 1 以下で A・C・G・T だけのとき、リードに C_繋ぎ目の支持数の下限 か所未満しか出てこなければ真<br/>
+        /// それより長いとき、リード長が分からないとき、A・C・G・T 以外を含むときは確かめられないので偽
+        /// </summary>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_出力">ここまでの scaffold 配列 (左の片は最後のギャップ文字より後ろ)</param>
+        /// <param name="p_次の配列">繋ぐ向きに直した次の配列 (次のギャップ文字の手前まで)</param>
+        /// <param name="p_重なり長">一致で決めた重なりの長さ</param>
+        /// <param name="p_リード長">代表リード長、分からなければ 0</param>
+        /// <returns>リードに無ければ真</returns>
+        public static bool Isリードに無い一致の重なり(ReadMinimizerIndex p_リード索引, StringBuilder p_出力, string p_次の配列, int p_重なり長, int p_リード長)
+        {
+            var l_窓の長さ = Math.Min(p_出力.Length, C_一致を探す長さの上限 + C_繋ぎ目の余白 + 1);
+            var l_窓 = p_出力.ToString(p_出力.Length - l_窓の長さ, l_窓の長さ);
+            var l_左 = l_窓[(l_窓.AsSpan().LastIndexOfAny('N', 'n', Consts.未確認の繋ぎ目) + 1)..];
+            var l_余白 = Math.Min(C_繋ぎ目の余白, Math.Min(l_左.Length, p_次の配列.Length) - p_重なり長);
+            if (l_余白 < 0)
+            {
+                return false;
+            }
+
+            var l_繋いだ配列 = string.Concat(l_左.AsSpan(l_左.Length - p_重なり長 - l_余白), p_次の配列.AsSpan(p_重なり長, l_余白));
+            return l_繋いだ配列.Length * C_一致の重なりを確かめる長さの分母 <= p_リード長
+                && l_繋いだ配列.Length >= ReadMinimizerIndex.C_最短の問い合わせ長
+                && l_繋いだ配列.AsSpan().IndexOfAnyExcept(Consts.塩基文字) < 0
+                && p_リード索引.Get_出現数(l_繋いだ配列, C_繋ぎ目の支持数の下限) < C_繋ぎ目の支持数の下限;
         }
 
         /// <summary>

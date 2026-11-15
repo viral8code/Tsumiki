@@ -164,10 +164,11 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 間が 7 塩基の単位 10 回の縦列反復なら、跨ぐリードがあっても埋めず、縦列反復の数は 1
+        /// 間が 7 塩基の単位 10 回の縦列反復なら、跨ぐリードがあっても埋めず、縦列反復の数は 1<br/>
+        /// 票で決まった間の長さ D = 50 に合わせ、両側の片から 30 塩基ずつ削って N を 110 個置き、長さを決めた数は 1
         /// </summary>
         [Fact]
-        public void Get_埋めた配列群_縦列反復の中_埋めない()
+        public void Get_埋めた配列群_縦列反復の中_埋めず間の長さに合うNの列にする()
         {
             var l_元 = Get_ゲノム();
             var l_ゲノム = string.Concat(l_元[..500], string.Concat(Enumerable.Repeat("ACCGTTA", 10)), l_元[500..]);
@@ -179,9 +180,10 @@ namespace Tsumiki.Tests.Core
             }
 
             var (l_結果, l_統計) = Get_実行(l_配列, l_リード群);
-            Assert.Equal(l_配列, l_結果[0].A_配列);
+            Assert.Equal(string.Concat(l_ゲノム[..480], new string(Consts.塩基コード.N, 110), l_ゲノム[590..]), l_結果[0].A_配列);
             Assert.Equal(0, l_統計.A_埋めた数);
             Assert.Equal(1, l_統計.A_縦列反復数);
+            Assert.Equal(1, l_統計.A_長さを決めた数);
         }
 
         /// <summary>
@@ -260,18 +262,48 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
-        /// 品質 15 の列で、ある塩基が 3 本・別の塩基が 1 本なら (品質の合計 45 対 15 で 8 割に届かない) 埋めず、合意が弱い数は 1
+        /// 品質 15 の列で、ある塩基が 3 本・別の塩基が 1 本なら (品質の合計 45 対 15 で 8 割に届かない) 埋めず、合意が弱い数は 1<br/>
+        /// 印の継ぎ目は、票で決まった間の長さ D = 30 に合わせて両側の片から 30 塩基ずつ削り N を 90 個置き、N 50 個の継ぎ目は削らずに N を 30 個にする
         /// </summary>
-        [Fact]
-        public void Get_埋めた配列群_品質15の列が割れる_埋めない()
+        /// <param name="p_Is印">継ぎ目が未確認の繋ぎ目の印なら真、N 50 個なら偽</param>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void Get_埋めた配列群_品質15の列が割れる_埋めず間の長さに合うNの列にする(bool p_Is印)
         {
             var l_ゲノム = Get_ゲノム();
-            var l_配列 = string.Concat(l_ゲノム[..C_左の終わり], Consts.未確認の繋ぎ目.ToString(), l_ゲノム[C_右の始まり..]);
+            var l_継ぎ目 = p_Is印 ? Consts.未確認の繋ぎ目.ToString() : new string(Consts.塩基コード.N, 50);
+            var l_配列 = string.Concat(l_ゲノム[..C_左の終わり], l_継ぎ目, l_ゲノム[C_右の始まり..]);
             var l_リード群 = Get_間の品質を下げたリード群(l_ゲノム, 4, 3);
             var (l_結果, l_統計) = Get_実行(l_配列, l_リード群);
-            Assert.Equal(l_配列, l_結果[0].A_配列);
+            var l_期待 = p_Is印 ? string.Concat(l_ゲノム[..470], new string(Consts.塩基コード.N, 90), l_ゲノム[560..]) : string.Concat(l_ゲノム[..C_左の終わり], new string(Consts.塩基コード.N, 30), l_ゲノム[C_右の始まり..]);
+            Assert.Equal(l_期待, l_結果[0].A_配列);
             Assert.Equal(0, l_統計.A_埋めた数);
             Assert.Equal(1, l_統計.A_合意が弱い数);
+            Assert.Equal(1, l_統計.A_長さを決めた数);
+        }
+
+        /// <summary>
+        /// 票で決まった間の長さ D に合う N の列にする埋め方: 印の継ぎ目は 30 塩基ずつ削るのを先に、N の連続は削らないのを先に試し、N が 10 個以上で両側の片が 2 × 削る長さ + 1 以上なら採る
+        /// </summary>
+        /// <param name="p_Is印">継ぎ目が未確認の繋ぎ目の印か</param>
+        /// <param name="p_左の片の長さ">左の片の長さ (右の片は 300)</param>
+        /// <param name="p_間">票で決まった間の長さ</param>
+        /// <param name="p_削る長さ">期待する両側から削る長さ (決められなければ -1)</param>
+        /// <param name="p_N数">期待する N の数 (決められなければ -1)</param>
+        [Theory]
+        [InlineData(true, 300, 50, 30, 110)]
+        [InlineData(true, 300, -50, 30, 10)]
+        [InlineData(true, 300, -51, -1, -1)]
+        [InlineData(true, 60, 50, 0, 50)]
+        [InlineData(false, 300, 30, 0, 30)]
+        [InlineData(false, 300, -40, 30, 20)]
+        [InlineData(false, 300, 5, 30, 65)]
+        public void Get_長さだけの埋め方_削る長さとNの数(bool p_Is印, int p_左の片の長さ, int p_間, int p_削る長さ, int p_N数)
+        {
+            var l_継ぎ目 = new 合意の継ぎ目(0, p_左の片の長さ, p_左の片の長さ + 1, new string('A', p_左の片の長さ), new string('C', 300), p_Is印);
+            var l_埋め方 = JunctionConsensusFiller.Get_長さだけの埋め方(l_継ぎ目, p_間);
+            Assert.Equal(p_削る長さ < 0 ? null : new 継ぎ目の埋め方(p_削る長さ, new string(Consts.塩基コード.N, p_N数), p_削る長さ), l_埋め方);
         }
 
         /// <summary>

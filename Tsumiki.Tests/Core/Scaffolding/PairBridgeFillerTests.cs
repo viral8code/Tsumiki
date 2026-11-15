@@ -3,6 +3,7 @@ using Tsumiki.Cores.Pipeline;
 using Tsumiki.Cores.Scaffolding;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Scaffolding;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Tests.Core
 {
@@ -87,6 +88,16 @@ namespace Tsumiki.Tests.Core
         /// 重なりで畳む場面で、A の末尾と B の先頭が一致する長さ (本当の重なり)
         /// </summary>
         private const int C_重なりの長さ = 100;
+
+        /// <summary>
+        /// リードで確かめる場面で、A の末尾と B の先頭が一致する長さ (繋いだ配列 112 bp がリード長の半分以下になる長さ)
+        /// </summary>
+        private const int C_確かめる重なりの長さ = 80;
+
+        /// <summary>
+        /// リードで確かめる場面で渡す代表リード長
+        /// </summary>
+        private const int C_確かめるリード長 = 300;
 
         /// <summary>
         /// 多コピーの場面で足す、単一コピーの配列の本数 (基準の密度を作るのに要る頂点数を超える数)
@@ -443,6 +454,33 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(1, l_統計.A_重なりで畳んだ辺の数);
             Assert.Equal(0, l_統計.A_埋めて繋いだ辺の数);
             Assert.Equal(0, l_統計.A_印で繋いだ辺の数);
+        }
+
+        /// <summary>
+        /// 重なりをリードで確かめる: A の末尾と B の先頭が 80 bp 重なり、埋まらない場面で、繋いだ配列 (112 bp) を含むリードが索引に無ければ畳まずに A + 印 + B で繋ぐ。
+        /// 含むリードが 2 本あるときと、索引を渡さないときは今のまま畳む
+        /// </summary>
+        /// <param name="p_索引のリード数">索引に入れる、繋いだ配列を含むリードの本数 (負なら索引を渡さない)</param>
+        /// <param name="p_Is畳む">畳むはずか</param>
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(2, true)]
+        [InlineData(-1, true)]
+        public void 重なりをリードで確かめる_繋いだ配列がリードに無ければ畳まずに印で繋ぐ(int p_索引のリード数, bool p_Is畳む)
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_G[(C_A長 - C_確かめる重なりの長さ)..];
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2510, 2670, 10), C_挿入長);
+            var l_ライブラリ = V_書き出し_断片("confirm", l_G, l_断片群);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => Enumerable.Range(0, Math.Max(0, p_索引のリード数)).Select(i => l_G.Substring(2680 + (10 * i), 150)).ToList());
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計, p_索引のリード数 < 0 ? null : () => l_索引, C_確かめるリード長);
+
+            Assert.Single(l_結果);
+            Assert.Equal(p_Is畳む ? l_G : l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
+            Assert.Equal(p_Is畳む ? 1 : 0, l_統計.A_重なりで畳んだ辺の数);
+            Assert.Equal(p_Is畳む ? 0 : 1, l_統計.A_リードに無い重なりを印で繋いだ数);
         }
 
         /// <summary>

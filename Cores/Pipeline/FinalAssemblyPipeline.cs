@@ -205,7 +205,7 @@ namespace Tsumiki.Cores.Pipeline
         /// 長さ不明のギャップに置き換えるとき、印の左右の片の端を削る長さ (削った分は同じ N 100 個に含める)<br/>
         /// 左右どちらの片も 2 × この長さ + 1 以上のときだけ削る
         /// </summary>
-        private const int C_長さ不明のギャップの両側で削る長さ = 30;
+        public const int C_長さ不明のギャップの両側で削る長さ = 30;
 
         /// <summary>
         /// 長さ不明のギャップに置き換えるとき、右の片の先頭から取る、左の片の末尾の窓で写しを探す種の長さ (A・C・G・T のみ、同じ向きの完全一致だけを数える)
@@ -294,17 +294,18 @@ namespace Tsumiki.Cores.Pipeline
                 var l_畳んだ数 = 0;
                 var l_埋めた数 = 0;
                 var l_一致で畳んだ数 = 0;
+                var l_リードに無い数 = 0;
                 using (var l_書き込み = new FastaWriter(l_対象[i].A_パス))
                 {
                     foreach (var (l_ID, l_配列) in l_対象[i].A_全件)
                     {
-                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, l_一意の出現数, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数));
+                        l_書き込み.V_書き込み(l_ID, Get_確かめた繋ぎ目を畳んだ配列(l_配列, l_索引, p_k長, p_リード長, l_一意の出現数, ref l_総数, ref l_畳んだ数, ref l_埋めた数, ref l_一致で畳んだ数, ref l_リードに無い数));
                     }
                 }
 
                 if (l_対象[i].A_パス == p_パス群[0])
                 {
-                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数, l_埋めた数, l_一致で畳んだ数);
+                    Logger.V_出力(メッセージID.未確認の繋ぎ目をリードで畳んだ, l_総数, l_畳んだ数, l_埋めた数, l_一致で畳んだ数, l_リードに無い数);
                 }
             }
         }
@@ -312,7 +313,7 @@ namespace Tsumiki.Cores.Pipeline
         /// <summary>
         /// 配列の未確認の繋ぎ目ごとに、次の片との重なりをリードで確かめ、ただ 1 通りに決まれば畳む<br/>
         /// 畳めなければ、両側を跨ぐリードの続きで埋められるか試す<br/>
-        /// それもできなければ、両側の配列が長く完全に一致する重なりでただ 1 通りに決まるか試す
+        /// それもできなければ、両側の配列が長く完全に一致する重なりでただ 1 通りに決まるか試す (繋いだ配列がリードで確かめられる長さなのにリードに無ければ畳まない)
         /// </summary>
         /// <param name="p_配列">配列</param>
         /// <param name="p_索引">リードの索引</param>
@@ -323,8 +324,9 @@ namespace Tsumiki.Cores.Pipeline
         /// <param name="p_畳んだ数">リードで確かめた重なりで畳んだ数 (加算する)</param>
         /// <param name="p_埋めた数">リードの続きで埋めた数 (加算する)</param>
         /// <param name="p_一致で畳んだ数">両側の配列の長い一致で畳んだ数 (加算する)</param>
+        /// <param name="p_リードに無い数">両側の配列の長い一致で決まったが、繋いだ配列がリードに無いので畳まなかった数 (加算する)</param>
         /// <returns>畳んだ後の配列</returns>
-        public static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数, ref int p_一致で畳んだ数)
+        public static string Get_確かめた繋ぎ目を畳んだ配列(string p_配列, ReadMinimizerIndex p_索引, int p_k長, int p_リード長, int p_一意の出現数, ref int p_総数, ref int p_畳んだ数, ref int p_埋めた数, ref int p_一致で畳んだ数, ref int p_リードに無い数)
         {
             var l_出力 = new StringBuilder(p_配列.Length);
             var l_インデックス = 0;
@@ -363,9 +365,14 @@ namespace Tsumiki.Cores.Pipeline
 
                 if (Scaffolder.Get_配列の一致で決めた重なり長(l_出力, l_次の配列, p_k長) is { } l_一致の重なり長)
                 {
-                    p_一致で畳んだ数++;
-                    l_インデックス += 1 + l_一致の重なり長;
-                    continue;
+                    if (!Scaffolder.Isリードに無い一致の重なり(p_索引, l_出力, l_次の配列, l_一致の重なり長, p_リード長))
+                    {
+                        p_一致で畳んだ数++;
+                        l_インデックス += 1 + l_一致の重なり長;
+                        continue;
+                    }
+
+                    p_リードに無い数++;
                 }
 
                 _ = l_出力.Append(Consts.未確認の繋ぎ目);
@@ -553,7 +560,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
             V_除外_短い配列(l_最終パス, p_リード長);
             V_繋ぐ_ロングリードの橋(l_最終パス, p_原入力, p_一時ディレクトリ, p_結果.A_k長);
-            V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力);
+            V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力, p_リード長 ?? 0);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
             if (p_リード長 > 0)
@@ -941,7 +948,7 @@ namespace Tsumiki.Cores.Pipeline
                 return;
             }
 
-            if (l_統計.A_埋めた数 >= 1)
+            if (l_統計.A_埋めた数 + l_統計.A_長さを決めた数 >= 1)
             {
                 using var l_書き込み = new FastaWriter(p_最終パス);
                 foreach (var (l_ID, l_配列) in l_埋めた配列群)
@@ -950,7 +957,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            Logger.V_出力(メッセージID.継ぎ目をリードの合意で埋めた, l_統計.A_対象数, l_統計.A_埋めた数, l_統計.A_跨ぐリード無し数, l_統計.A_票が足りない数, l_統計.A_票が割れた数, l_統計.A_合意が弱い数, l_統計.A_縦列反復数, l_統計.A_食い違い数, l_統計.A_片が収まる数);
+            Logger.V_出力(メッセージID.継ぎ目をリードの合意で埋めた, l_統計.A_対象数, l_統計.A_埋めた数, l_統計.A_跨ぐリード無し数, l_統計.A_票が足りない数, l_統計.A_票が割れた数, l_統計.A_合意が弱い数, l_統計.A_縦列反復数, l_統計.A_食い違い数, l_統計.A_片が収まる数, l_統計.A_長さを決めた数);
         }
 
         /// <summary>
@@ -1065,7 +1072,8 @@ namespace Tsumiki.Cores.Pipeline
         /// </summary>
         /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
         /// <param name="p_原入力">ライブラリ群を保持した設定</param>
-        private static void V_繋ぐ_ペアで橋渡し(string p_最終パス, Parameters p_原入力)
+        /// <param name="p_リード長">代表リード長、分からなければ 0</param>
+        private static void V_繋ぐ_ペアで橋渡し(string p_最終パス, Parameters p_原入力, int p_リード長)
         {
             var l_ライブラリ群 = p_原入力.A_間引き前ライブラリ群.Count > 0 ? p_原入力.A_間引き前ライブラリ群 : p_原入力.A_ライブラリ群;
             if (l_ライブラリ群.Count == 0)
@@ -1075,7 +1083,7 @@ namespace Tsumiki.Cores.Pipeline
 
             using var l_計測 = new StageTimer("pair-bridge");
             var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
-            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ群, out var l_統計);
+            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ群, out var l_統計, () => RepeatRMerVerifier.Get_リード索引(AssemblyPipeline.Get_全リードパス(p_原入力)), p_リード長);
             if (l_繋いだ配列群.Count < l_配列群.Count)
             {
                 using var l_書き込み = new FastaWriter(p_最終パス);
@@ -1085,7 +1093,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count, l_統計.A_印で繋いだ辺の数, l_統計.A_反復の端で除いた数, l_統計.A_重なりで畳んだ辺の数, l_統計.A_多コピーの端で除いた数, l_統計.A_短い反復を印で繋いだ数);
+            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count, l_統計.A_印で繋いだ辺の数, l_統計.A_反復の端で除いた数, l_統計.A_重なりで畳んだ辺の数, l_統計.A_多コピーの端で除いた数, l_統計.A_短い反復を印で繋いだ数, l_統計.A_リードに無い重なりを印で繋いだ数);
         }
 
         /// <summary>

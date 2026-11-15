@@ -5,6 +5,7 @@ using Tsumiki.Cores.Pipeline;
 using Tsumiki.IO;
 using Tsumiki.Models.Evidence;
 using Tsumiki.Models.Scaffolding;
+using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Scaffolding
 {
@@ -148,11 +149,13 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_配列群">配列の ID と配列</param>
         /// <param name="p_ライブラリ群">ペアの順リードと逆リードのファイルのパス (逆リードが空のものは飛ばす)</param>
         /// <param name="p_統計">橋渡しの統計</param>
+        /// <param name="p_リード索引">配列の一致で決めた重なりをリードで確かめるときに呼ぶ、リードの索引を返す関数 (要るときだけ 1 回呼ぶ) 、無ければ確かめない</param>
+        /// <param name="p_リード長">代表リード長、分からなければ 0 (確かめない)</param>
         /// <returns>
         /// 繋いだ後の配列の ID と配列<br/>
         /// 繋がらなかった配列は元の順と ID のまま
         /// </returns>
-        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, out 橋渡し統計 p_統計)
+        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, out 橋渡し統計 p_統計, Func<ReadMinimizerIndex?>? p_リード索引 = null, int p_リード長 = 0)
         {
             var l_頂点 = Get_頂点群(p_配列群, out var l_対象);
             var l_表 = Get_種の索引(l_頂点, l_対象);
@@ -224,6 +227,10 @@ namespace Tsumiki.Cores.Scaffolding
             var l_届かない数 = 0;
             var l_印の数 = 0;
             var l_重なりで畳んだ数 = 0;
+            var l_リードに無い重なりの数 = 0;
+            var l_Is索引を作った = false;
+            ReadMinimizerIndex? l_索引 = null;
+            var l_未確認の印 = Consts.未確認の繋ぎ目.ToString();
             for (var i = 0; i < l_候補.Count; i++)
             {
                 var l_u = l_候補[i].A_u;
@@ -250,6 +257,22 @@ namespace Tsumiki.Cores.Scaffolding
 
                 if (l_重なり群[i] is { } l_重なり長)
                 {
+                    if (p_リード索引 is not null && p_リード長 > 0 && !l_Is索引を作った)
+                    {
+                        l_索引 = p_リード索引();
+                        l_Is索引を作った = true;
+                    }
+
+                    if (l_索引 is not null && Scaffolder.Isリードに無い一致の重なり(l_索引, new StringBuilder(l_頂点[l_u][Math.Max(0, l_頂点[l_u].Length - C_窓長)..]), l_頂点[l_x], l_重なり長, p_リード長))
+                    {
+                        l_リードに無い重なりの数++;
+                        l_出る[l_u] = (l_x, 0, l_未確認の印, 0);
+                        l_出る[l_x ^ 1] = (l_u ^ 1, 0, l_未確認の印, 0);
+                        l_入る[l_x] = l_u;
+                        l_入る[l_u ^ 1] = l_x ^ 1;
+                        continue;
+                    }
+
                     l_重なりで畳んだ数++;
                     l_出る[l_u] = (l_x, 0, "", l_重なり長);
                     l_出る[l_x ^ 1] = (l_u ^ 1, l_重なり長, "", 0);
@@ -287,7 +310,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out _);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数, l_短い反復で繋いだ数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数, l_短い反復で繋いだ数, l_リードに無い重なりの数);
             return l_書き出し;
         }
 

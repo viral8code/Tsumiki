@@ -135,20 +135,31 @@ namespace Tsumiki.Cores.Evaluation
         /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
         public static List<継ぎ目の評価>? Get_評価(string p_FASTAパス, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
         {
-            var l_エントリ群 = FastaReader.Get_全エントリ(p_FASTAパス);
-            if (l_エントリ群.Count == 0 || p_ライブラリ群.All(x => string.IsNullOrWhiteSpace(x.A_逆リード)))
+            return Get_評価(FastaReader.Get_全エントリ(p_FASTAパス), p_ライブラリ群, p_モデル);
+        }
+
+        /// <summary>
+        /// 配列の一覧の継ぎ目ごとに、繋ぐ相手を誤っている確率を出す (書き出さない)
+        /// </summary>
+        /// <param name="p_エントリ群">評価する配列の ID と配列</param>
+        /// <param name="p_ライブラリ群">ライブラリごとのリードの組</param>
+        /// <param name="p_モデル">確率を出すモデル</param>
+        /// <returns>評価、ペアのリードが足りず評価できなければ null</returns>
+        public static List<継ぎ目の評価>? Get_評価(IReadOnlyList<(string A_ID, string A_配列)> p_エントリ群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, 継ぎ目モデル p_モデル)
+        {
+            if (p_エントリ群.Count == 0 || p_ライブラリ群.All(x => string.IsNullOrWhiteSpace(x.A_逆リード)))
             {
                 return null;
             }
 
-            var l_配列群 = l_エントリ群.Select(x => x.A_配列.ToUpperInvariant()).ToList();
+            var l_配列群 = p_エントリ群.Select(x => x.A_配列.ToUpperInvariant()).ToList();
             var l_証拠 = JunctionEvidenceCollector.Get_証拠(l_配列群, p_ライブラリ群);
             if (l_証拠.A_断片.Sum(x => x.Length) < C_必要な断片数)
             {
                 return null;
             }
 
-            var l_名前群 = l_エントリ群.Select(x => x.A_ID.TrimStart('>').Split(' ', 2)[0]).ToList();
+            var l_名前群 = p_エントリ群.Select(x => x.A_ID.TrimStart('>').Split(' ', 2)[0]).ToList();
             return [.. Get_候補群(l_証拠, l_名前群).Select(x => JunctionRiskModel.Get_評価(x, p_モデル))];
         }
 
