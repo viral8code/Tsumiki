@@ -119,6 +119,16 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_B先頭の窓 = 1000;
 
+        /// <summary>
+        /// 埋め方を重なりと比べる場面の、縦の反復の単位の長さ (局所組み立ての k-mer より長い)
+        /// </summary>
+        private const int C_縦の反復の単位長 = 69;
+
+        /// <summary>
+        /// 埋め方を重なりと比べる場面の、A の末尾と B の先頭の本当の重なり
+        /// </summary>
+        private const int C_本当の重なり = 6;
+
         #endregion
 
         #region フィールド
@@ -416,6 +426,27 @@ namespace Tsumiki.Tests.Core
         }
 
         /// <summary>
+        /// 長い反復の端をほかの k で繋ぐ: B の先頭に A の末尾 450 bp の写しを置いた反復の端の辺でも、ほかの k の contig (G[1800..3850)) が<br/>
+        /// A の末尾と B の先頭の一意な錨の間を繋ぎ、その配列がリード (G の 250 bp の窓、5 bp おき) に続けて出てくるので、その配列で G の 1 本にする
+        /// </summary>
+        [Fact]
+        public void 長い反復の端をほかのkで繋ぐ_ほかのkのcontigが両端の錨を繋げばその配列で1本にする()
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..C_A長];
+            var l_B = l_A[(C_A長 - 450)..] + l_G[C_B開始..];
+            var l_断片群 = V_場面の断片群(C_B開始, V_断片の開始群(2200, 2320, 3), 650);
+            var l_ライブラリ = V_書き出し_断片("longdup_otherk", l_G, l_断片群);
+            var l_リード = Enumerable.Range(0, ((l_G.Length - 250) / 5) + 1).Select(i => l_G.Substring(i * 5, 250)).ToList();
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード.Concat(l_リード).ToList());
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計, () => l_索引, 250, [l_G[1800..3850]]);
+
+            Assert.Equal(l_G, Assert.Single(l_結果).A_配列);
+            Assert.Equal((1, 0), (l_統計.A_ほかのkで繋いだ数, l_統計.A_反復の端で除いた数));
+        }
+
+        /// <summary>
         /// 長い反復の端は繋がない: B の先頭に A の末尾 450 bp の写しを置く。跨ぐペアが 20 組以上あっても、共有が端から 400 bp を超えるので繋がない
         /// </summary>
         [Fact]
@@ -481,6 +512,164 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(p_Is畳む ? l_G : l_A + Consts.未確認の繋ぎ目 + l_B, l_結果[0].A_配列);
             Assert.Equal(p_Is畳む ? 1 : 0, l_統計.A_重なりで畳んだ辺の数);
             Assert.Equal(p_Is畳む ? 0 : 1, l_統計.A_リードに無い重なりを印で繋いだ数);
+        }
+
+        /// <summary>
+        /// 埋め方を重なりと比べる: 69 bp の単位 c が 2 回並ぶ所で、A は 1 つ目の c で終わり、B は 1 つ目の c の最後の 6 bp から始まる (本当の重なりは 6 bp)。<br/>
+        /// A の末尾の 6 bp を c の末尾と同じにしたので、A の末尾と B の先頭は 75 bp 一致し、局所組み立ては c を 1 回余分に回る 63 bp で埋める。<br/>
+        /// 2 つの写しと埋めた配列を繋いだ配列 (215 bp) が索引に無ければ、埋めずに重なりの扱いに回し、重なりもリードに無いので A + 印 + B で繋ぐ。<br/>
+        /// 繋いだ配列を含むリードが 2 本あるときと、索引を渡さないときは今のまま埋める
+        /// </summary>
+        /// <param name="p_埋めた形のリード数">索引に入れる、繋いだ配列そのもののリードの本数 (負なら索引を渡さない)</param>
+        /// <param name="p_Is埋める">今のまま埋めるはずか</param>
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(2, true)]
+        [InlineData(-1, true)]
+        public void 埋め方を重なりと比べる_縦の反復を余分に回った埋め方がリードに無ければ埋めずに印で繋ぐ(int p_埋めた形のリード数, bool p_Is埋める)
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_単位 = V_生成_ゲノム(C_縦の反復の単位長, 4343);
+            var l_Gt = l_G[..(C_A長 - C_本当の重なり)] + l_単位[^C_本当の重なり..] + l_単位 + l_単位 + l_G[C_A長..];
+            var l_A = l_Gt[..(C_A長 + C_縦の反復の単位長)];
+            var l_B = l_Gt[(C_A長 + C_縦の反復の単位長 - C_本当の重なり)..];
+            var l_埋めた配列 = l_単位[..^C_本当の重なり];
+            var l_一致の長さ = C_縦の反復の単位長 + C_本当の重なり;
+            var l_埋めた形 = l_A[^(l_一致の長さ + 1)..] + l_埋めた配列 + l_B[..(l_一致の長さ + 1)];
+            var l_ライブラリ = V_書き出し_ペア("tandemfill", l_Gt, V_断片の開始群(0, l_Gt.Length - C_挿入長, C_間隔_密));
+            var l_索引 = ReadMinimizerIndex.V_構築(() => Enumerable.Range(0, 10).Select(i => l_Gt.Substring(2650 + (10 * i), 250)).Concat(Enumerable.Repeat(l_埋めた形, Math.Max(0, p_埋めた形のリード数))).ToList());
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計, p_埋めた形のリード数 < 0 ? null : () => l_索引, C_確かめるリード長);
+
+            Assert.Equal(215, l_埋めた形.Length);
+            Assert.Equal(p_Is埋める ? l_A + l_埋めた配列 + l_B : l_A + Consts.未確認の繋ぎ目 + l_B, Assert.Single(l_結果).A_配列);
+            Assert.Equal(p_Is埋める ? 1 : 0, l_統計.A_埋めて繋いだ辺の数);
+            Assert.Equal(p_Is埋める ? 0 : 1, l_統計.A_重なりと食い違う埋め方の数);
+            Assert.Equal(p_Is埋める ? 0 : 1, l_統計.A_リードに無い重なりを印で繋いだ数);
+            Assert.Equal(0, l_統計.A_重なりで畳んだ辺の数);
+        }
+
+        /// <summary>
+        /// 埋め方の確かめ: u の末尾と x の先頭が 80 bp 一致し、間に 40 bp を埋めたとき、繋いだ配列 (81 + 40 + 81 = 202 bp) を含むリードが 2 本あれば食い違わない (偽)、無ければ真。<br/>
+        /// リード長が 202 bp 未満なら確かめられないので偽、埋めた配列に N があっても偽
+        /// </summary>
+        /// <param name="p_リード数">索引に入れる、繋いだ配列そのもののリードの本数</param>
+        /// <param name="p_リード長">渡すリード長</param>
+        /// <param name="p_IsNを含む">埋めた配列の先頭を N にするか</param>
+        /// <param name="p_期待">期待する戻り値</param>
+        [Theory]
+        [InlineData(2, 250, false, false)]
+        [InlineData(1, 250, false, true)]
+        [InlineData(0, 250, false, true)]
+        [InlineData(0, 201, false, false)]
+        [InlineData(0, 250, true, false)]
+        public void 埋め方の確かめ_写しと埋めた配列を繋いだ配列がリードに無ければ真(int p_リード数, int p_リード長, bool p_IsNを含む, bool p_期待)
+        {
+            var l_一致 = V_生成_ゲノム(80, 5151);
+            var l_u = V_生成_ゲノム(300, 5152) + l_一致;
+            var l_x = l_一致 + V_生成_ゲノム(300, 5153);
+            var l_埋めた配列 = V_生成_ゲノム(40, 5154);
+            var l_繋いだ配列 = l_u[^81..] + l_埋めた配列 + l_x[..81];
+            var l_索引 = ReadMinimizerIndex.V_構築(() => Enumerable.Repeat(l_繋いだ配列, p_リード数).ToList());
+            var l_渡す埋めた配列 = p_IsNを含む ? "N" + l_埋めた配列[1..] : l_埋めた配列;
+
+            Assert.Equal(202, l_繋いだ配列.Length);
+            Assert.Equal(p_期待, PairBridgeFiller.Is重なりと食い違う埋め方(l_索引, l_u, l_渡す埋めた配列, l_x, 80, p_リード長));
+        }
+
+        /// <summary>
+        /// 端の重なりを削って埋め直す: A = G[..3000) と B の先頭が G[2550..3000) で 450 bp 重なり、B の写しだけ G[2750..2792) の 42 bp が欠ける。<br/>
+        /// 共有が端から 400 bp を超えるので短い反復にはならないが、2 つの端の重なりの形なので、A の末尾 450 bp と B の先頭 408 bp を削って局所組み立てで埋め直し、G の 1 本にする。<br/>
+        /// 重なりの中を読むリードが無ければ埋まらず、今のとおり反復の端として繋がない
+        /// </summary>
+        /// <param name="p_Is重なりを読むリードあり">挿入長 300 の断片を G 全体から出すか (出さなければ、A と B を跨ぐ長い断片だけ)</param>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void 端の重なりを削って埋め直す_写しの欠けた重なりを局所組み立てで埋めて1本に繋ぐ(bool p_Is重なりを読むリードあり)
+        {
+            var l_G = V_生成_ゲノム(C_ゲノム長, C_ゲノムの種);
+            var l_A = l_G[..3000];
+            var l_B = l_G[2550..2750] + l_G[2792..];
+            var l_断片群 = p_Is重なりを読むリードあり ? V_断片群(V_断片の開始群(0, l_G.Length - C_挿入長, C_間隔_密), C_挿入長) : V_断片群(V_断片の開始群(0, 5700, C_間隔_密).Where(s => s + C_挿入長 <= 2550 || s >= 3000), C_挿入長);
+            l_断片群.AddRange(V_断片群(V_断片の開始群(2380, 2440, 3), 650));
+            var l_ライブラリ = V_書き出し_断片("trimfill", l_G, l_断片群);
+
+            var l_結果 = PairBridgeFiller.Get_繋いだ配列群([("a", l_A), ("b", l_B)], l_ライブラリ, out var l_統計);
+
+            Assert.Equal(p_Is重なりを読むリードあり ? [l_G] : [l_A, l_B], l_結果.Select(x => x.A_配列));
+            Assert.Equal(p_Is重なりを読むリードあり ? 1 : 0, l_統計.A_端の重なりを削って埋めた数);
+            Assert.Equal(p_Is重なりを読むリードあり ? 0 : 1, l_統計.A_反復の端で除いた数);
+            Assert.Equal(0, l_統計.A_短い反復を印で繋いだ数);
+        }
+
+        /// <summary>
+        /// 端の重なりの削り長: u = U(1500) + O(450)。x の先頭を O にすると (450, 450)、O から 42 bp を欠いた写しにすると (450, 408)。<br/>
+        /// x の先頭に乱数の 60 bp を置くと先頭に届かないので null、O の後半と前半を入れ替えると順がそろわないので null
+        /// </summary>
+        /// <param name="p_場面">x の先頭の作り方</param>
+        /// <param name="p_u側">期待する u 側の削る長さ (null なら戻り値が null)</param>
+        /// <param name="p_x側">期待する x 側の削る長さ</param>
+        [Theory]
+        [InlineData("一致", 450, 450)]
+        [InlineData("欠け", 450, 408)]
+        [InlineData("先頭に別の配列", null, 0)]
+        [InlineData("入れ替え", null, 0)]
+        public void 端の重なりの削り長_重なりの形のときだけ削る長さを返す(string p_場面, int? p_u側, int p_x側)
+        {
+            var l_O = V_生成_ゲノム(450, 6161);
+            var l_u = V_生成_ゲノム(1500, 6162) + l_O;
+            var l_W = V_生成_ゲノム(1500, 6163);
+            var l_x先頭 = p_場面 switch
+            {
+                "一致" => l_O,
+                "欠け" => l_O[..200] + l_O[242..],
+                "先頭に別の配列" => V_生成_ゲノム(60, 6164) + l_O,
+                _ => l_O[225..] + l_O[..225],
+            };
+
+            var l_結果 = PairBridgeFiller.Get_端の重なりの削り長(l_u, l_x先頭 + l_W);
+
+            Assert.Equal(p_u側 is { } l_u側 ? (l_u側, p_x側, 0, 0) : null, l_結果);
+        }
+
+        /// <summary>
+        /// 写しをリードで選ぶ: 12 bp の単位 c が 14 回並ぶ縦の反復を挟む G で、u = L + c×14 + R[..200)、x = c×4 + R (x の写しは単位が 10 個少ない)。<br/>
+        /// 削る長さは (168 + 200, 48 + 200)。索引に G の 250 bp の窓 (5 bp おき) を入れると、u の写しだけがリードに続けて出てくるので u の写しを返す。<br/>
+        /// 索引に x の形の窓を入れると x の写し、どちらの形も入れると決められないので null、何も入れなければ null
+        /// </summary>
+        /// <param name="p_索引の形">索引に入れるリードの形 (G、x の形、両方、無し)</param>
+        /// <param name="p_期待">期待する写し (u、x、null)</param>
+        [Theory]
+        [InlineData("G", "u")]
+        [InlineData("x の形", "x")]
+        [InlineData("両方", null)]
+        [InlineData("無し", null)]
+        public void 写しをリードで選ぶ_リードに続けて出てくる写しだけを返す(string p_索引の形, string? p_期待)
+        {
+            var l_単位 = V_生成_ゲノム(12, 7171);
+            var l_L = V_生成_ゲノム(1500, 7172);
+            var l_R = V_生成_ゲノム(1500, 7173);
+            var l_長い反復 = string.Concat(Enumerable.Repeat(l_単位, 14));
+            var l_短い反復 = string.Concat(Enumerable.Repeat(l_単位, 4));
+            var l_u = l_L + l_長い反復 + l_R[..200];
+            var l_x = l_短い反復 + l_R;
+            var l_G = l_L + l_長い反復 + l_R;
+            var l_x形 = l_L + l_短い反復 + l_R;
+            var l_削り = (l_長い反復.Length + 200, l_短い反復.Length + 200, 0, 0);
+            List<string> l_窓(string p_配列) => [.. Enumerable.Range(0, (p_配列.Length - 250) / 5).Select(i => p_配列.Substring(i * 5, 250))];
+            var l_リード = p_索引の形 switch
+            {
+                "G" => l_窓(l_G),
+                "x の形" => l_窓(l_x形),
+                "両方" => [.. l_窓(l_G), .. l_窓(l_x形)],
+                _ => [],
+            };
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード.Concat(l_リード).ToList());
+
+            var l_結果 = PairBridgeFiller.Get_リードで選んだ写し(l_索引, l_u, l_x, l_削り, 250);
+
+            Assert.Equal(p_期待 switch { "u" => l_長い反復 + l_R[..200], "x" => l_短い反復 + l_R[..200], _ => null }, l_結果);
         }
 
         /// <summary>

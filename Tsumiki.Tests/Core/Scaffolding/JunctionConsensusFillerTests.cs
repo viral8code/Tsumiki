@@ -343,6 +343,30 @@ namespace Tsumiki.Tests.Core
             Assert.Equal(l_配列, l_結果[0].A_配列);
             Assert.Equal(0, l_統計.A_埋めた数);
             Assert.Equal(1, l_統計.A_食い違い数);
+            Assert.Equal(0, l_統計.A_長さを決めた数);
+        }
+
+        /// <summary>
+        /// 左 = G[..500)、右 = G[530..) (D = 30) で、左にだけ置けて右と食い違うリードが 12 本あれば埋めず、片側のリードが食い違う数は 1<br/>
+        /// 間が 0 以上なので、印の継ぎ目は両側の片から 30 塩基ずつ削って N を 90 個置き、N 50 個の継ぎ目は削らずに N を 30 個にする
+        /// </summary>
+        /// <param name="p_Is印">継ぎ目が未確認の繋ぎ目の印なら真、N 50 個なら偽</param>
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void Get_埋めた配列群_間が0以上で片側のリードが12本食い違う_埋めず間の長さに合うNの列にする(bool p_Is印)
+        {
+            var l_ゲノム = Get_ゲノム();
+            var l_継ぎ目 = p_Is印 ? Consts.未確認の繋ぎ目.ToString() : new string(Consts.塩基コード.N, 50);
+            var l_配列 = string.Concat(l_ゲノム[..C_左の終わり], l_継ぎ目, l_ゲノム[C_右の始まり..]);
+            var l_リード群 = Get_跨ぐリード群(l_ゲノム, 5, 0);
+            l_リード群.AddRange(Get_食い違うリード群(l_ゲノム, 12));
+            var (l_結果, l_統計) = Get_実行(l_配列, l_リード群);
+            var l_期待 = p_Is印 ? string.Concat(l_ゲノム[..470], new string(Consts.塩基コード.N, 90), l_ゲノム[560..]) : string.Concat(l_ゲノム[..C_左の終わり], new string(Consts.塩基コード.N, 30), l_ゲノム[C_右の始まり..]);
+            Assert.Equal(l_期待, l_結果[0].A_配列);
+            Assert.Equal(0, l_統計.A_埋めた数);
+            Assert.Equal(1, l_統計.A_食い違い数);
+            Assert.Equal(1, l_統計.A_長さを決めた数);
         }
 
         /// <summary>

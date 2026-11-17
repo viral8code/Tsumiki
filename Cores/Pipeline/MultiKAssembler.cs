@@ -182,7 +182,11 @@ namespace Tsumiki.Cores.Pipeline
             {
                 A_固定アンカー評価 = l_最良.A_評価
             };
-            return Get_補完結果(l_採用, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ) ?? l_採用;
+            return (Get_補完結果(l_採用, l_候補, l_アンカー, l_アンカーk長, l_解析, p_一時ディレクトリ) ?? l_採用) with
+            {
+                A_ほかのkのcontigパス群 = [.. l_候補.Where(x => x.A_実行結果.A_k長 != l_最良.A_実行結果.A_k長).Select(x => x.A_実行結果.A_contigパス)],
+                A_ほかのkのscaffoldパス群 = [.. l_候補.Where(x => x.A_実行結果.A_k長 != l_最良.A_実行結果.A_k長).Select(x => x.A_実行結果.A_scaffoldパス).OfType<string>()]
+            };
         }
 
         /// <summary>

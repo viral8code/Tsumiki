@@ -9,6 +9,7 @@ using Tsumiki.IO;
 using Tsumiki.Models.Evaluation;
 using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Polishing;
+using Tsumiki.Models.Scaffolding;
 using Tsumiki.Utilities;
 
 namespace Tsumiki.Cores.Pipeline
@@ -34,6 +35,11 @@ namespace Tsumiki.Cores.Pipeline
         /// 長さ指定ギャップ種別
         /// </summary>
         private const string C_長さ指定ギャップ種別 = "N";
+
+        /// <summary>
+        /// ログに k 長群を並べるときの区切り
+        /// </summary>
+        private const char C_k長の区切り = '/';
 
         /// <summary>
         /// 余ったリードで端を繋ぐときの、跨ぐリードの必要本数<br/>
@@ -560,7 +566,7 @@ namespace Tsumiki.Cores.Pipeline
             var l_最終パス = AssemblyPipeline.V_複製_最終成果物(p_結果, p_一時ディレクトリ);
             V_除外_短い配列(l_最終パス, p_リード長);
             V_繋ぐ_ロングリードの橋(l_最終パス, p_原入力, p_一時ディレクトリ, p_結果.A_k長);
-            V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力, p_リード長 ?? 0);
+            V_繋ぐ_ペアで橋渡し(l_最終パス, p_原入力, p_リード長 ?? 0, p_結果.A_ほかのkのcontigパス群);
             var l_scaffoldパス = Path.Combine(p_一時ディレクトリ, Consts.Scaffoldファイル名);
             V_畳む_リードで確かめた繋ぎ目([l_最終パス, l_scaffoldパス], p_結果.A_k長, p_リード長 ?? 0, AssemblyPipeline.Get_全リードパス(p_原入力));
             if (p_リード長 > 0)
@@ -574,6 +580,7 @@ namespace Tsumiki.Cores.Pipeline
             V_埋める_リードの合意で継ぎ目(l_最終パス, p_原入力);
             var l_長さ不明の番号 = V_置換_未確認の繋ぎ目(l_最終パス, p_Isログ出力: true);
             _ = V_置換_未確認の繋ぎ目(l_scaffoldパス, p_Isログ出力: false);
+            l_長さ不明の番号 = Get_ほかのkで直した後の番号(l_最終パス, p_結果.A_ほかのkのcontigパス群, p_結果.A_ほかのkのscaffoldパス群, l_長さ不明の番号, p_原入力, p_リード長 ?? 0);
             var l_ポリッシュ統計 = V_磨く(p_原入力, p_一時ディレクトリ, l_最終パス);
             V_書き出し_AGP(l_最終パス, l_長さ不明の番号, Path.ChangeExtension(l_最終パス, C_AGP拡張子));
             V_評価_継ぎ目(p_原入力, p_一時ディレクトリ, l_最終パス);
@@ -961,6 +968,137 @@ namespace Tsumiki.Cores.Pipeline
         }
 
         /// <summary>
+        /// 最終配列を、ほかの k の contig の配列で、リードに確かめて直す<br/>
+        /// 残った N の列を contig で埋め (OtherKGapFiller)、両脇の片が完全に重なる N の列を畳み (OverlapGapFolder)、<br/>
+        /// そのあと錨の間の長さが食い違う区間を contig と scaffold の形に差し替える (OtherKRepeatReplacer)<br/>
+        /// ほかの k の contig が無いとき、リード長が分からないとき、リードの索引が使えないときは何もしない。変えたときだけ同じパスに書き戻す
+        /// </summary>
+        /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
+        /// <param name="p_ほかのkのcontigパス群">マルチ k で採用しなかった k の contig の FASTA パス</param>
+        /// <param name="p_ほかのkのscaffoldパス群">マルチ k で採用しなかった k の scaffold の FASTA パス</param>
+        /// <param name="p_長さ不明の番号">配列名ごとの、長さ不明のギャップの N の列の番号 (埋める前)</param>
+        /// <param name="p_原入力">リードのパスを保持した設定</param>
+        /// <param name="p_リード長">代表リード長、分からなければ 0</param>
+        /// <returns>配列名ごとの、長さ不明のギャップの N の列の番号 (埋めた後)</returns>
+        private static Dictionary<string, HashSet<int>> Get_ほかのkで直した後の番号(string p_最終パス, IReadOnlyList<string> p_ほかのkのcontigパス群, IReadOnlyList<string> p_ほかのkのscaffoldパス群, Dictionary<string, HashSet<int>> p_長さ不明の番号, Parameters p_原入力, int p_リード長)
+        {
+            var l_パス群 = p_ほかのkのcontigパス群.Where(File.Exists).ToList();
+            if (l_パス群.Count == 0 || p_リード長 <= 0 || !File.Exists(p_最終パス) || RepeatRMerVerifier.Get_リード索引(AssemblyPipeline.Get_全リードパス(p_原入力)) is not { } l_索引)
+            {
+                return p_長さ不明の番号;
+            }
+
+            var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
+            var l_ほかのk = l_パス群.SelectMany(FastaReader.Get_全エントリ).Select(static x => x.A_配列.ToUpperInvariant()).ToList();
+            var l_長さ不明の番号 = p_長さ不明の番号;
+            var l_Is変えた = false;
+            if (l_配列群.Any(static x => x.A_配列.Contains(Consts.塩基コード.N)))
+            {
+                ほかのkで埋めた統計 l_統計;
+                Dictionary<string, HashSet<int>> l_埋めた番号;
+                using (new StageTimer("other-k-gap-fill"))
+                {
+                    l_配列群 = OtherKGapFiller.Get_埋めた配列群(l_配列群, l_ほかのk, l_索引, p_リード長, out l_統計, out l_埋めた番号);
+                }
+
+                Logger.V_出力(メッセージID.ほかのkでNの列を埋めた, l_統計.A_対象数, l_統計.A_埋めた数, l_統計.A_錨が取れない数, l_統計.A_反復の端の数, l_統計.A_ほかのkに無い数, l_統計.A_リードに無い数);
+                if (l_統計.A_埋めた数 > 0)
+                {
+                    l_長さ不明の番号 = Get_埋めた後の長さ不明の番号(p_長さ不明の番号, l_埋めた番号);
+                    l_Is変えた = true;
+                }
+            }
+
+            if (l_配列群.Any(static x => x.A_配列.Contains(Consts.塩基コード.N)))
+            {
+                Nの列を畳んだ統計 l_畳んだ統計;
+                Dictionary<string, HashSet<int>> l_畳んだ番号;
+                using (new StageTimer("overlap-gap-fold"))
+                {
+                    l_配列群 = OverlapGapFolder.Get_畳んだ配列群(l_配列群, l_索引, p_リード長, out l_畳んだ統計, out l_畳んだ番号);
+                }
+
+                Logger.V_出力(メッセージID.重なりでNの列を畳んだ, l_畳んだ統計.A_対象数, l_畳んだ統計.A_畳んだ数, l_畳んだ統計.A_片が短い数, l_畳んだ統計.A_重なりが無い数, l_畳んだ統計.A_反復の端の数, l_畳んだ統計.A_リードに無い数, l_畳んだ統計.A_決まらない数);
+                if (l_畳んだ統計.A_畳んだ数 > 0)
+                {
+                    l_長さ不明の番号 = Get_埋めた後の長さ不明の番号(l_長さ不明の番号, l_畳んだ番号);
+                    l_Is変えた = true;
+                }
+            }
+
+            if (l_配列群.Any(static x => x.A_配列.Contains(Consts.塩基コード.N)))
+            {
+                深い錨で繋いだ統計 l_繋いだ統計;
+                Dictionary<string, HashSet<int>> l_繋いだ番号;
+                using (new StageTimer("other-k-deep-gap-bridge"))
+                {
+                    l_配列群 = OtherKDeepGapBridger.Get_繋いだ配列群(l_配列群, l_ほかのk, l_索引, p_リード長, out l_繋いだ統計, out l_繋いだ番号);
+                }
+
+                Logger.V_出力(メッセージID.深い錨でNの列を繋いだ, l_繋いだ統計.A_対象数, l_繋いだ統計.A_繋いだ数, l_繋いだ統計.A_畳んだ数, l_繋いだ統計.A_決まらない数, l_繋いだ統計.A_リードで確かめられない数);
+                if (l_繋いだ統計.A_繋いだ数 > 0)
+                {
+                    l_長さ不明の番号 = Get_埋めた後の長さ不明の番号(l_長さ不明の番号, l_繋いだ番号);
+                    l_Is変えた = true;
+                }
+            }
+
+            if (l_配列群.Any(static x => x.A_配列.Contains(Consts.塩基コード.N)))
+            {
+                リードの道で埋めた統計 l_道の統計;
+                Dictionary<string, HashSet<int>> l_道で埋めた番号;
+                using (new StageTimer("read-graph-gap-fill"))
+                {
+                    l_配列群 = ReadGraphGapFiller.Get_埋めた配列群(l_配列群, l_索引, p_リード長, out l_道の統計, out l_道で埋めた番号);
+                }
+
+                Logger.V_出力(メッセージID.リードの道でNの列を埋めた, string.Join(C_k長の区切り, l_道の統計.A_k長群), l_道の統計.A_対象数, l_道の統計.A_埋めた数, l_道の統計.A_畳んだ数, l_道の統計.A_小さいkで埋めた数, l_道の統計.A_片が短い数, l_道の統計.A_端がリードに無い数, l_道の統計.A_道が無い数, l_道の統計.A_道が決まらない数, l_道の統計.A_畳む形を確かめられない数, l_道の統計.A_錨から錨までを確かめられない数, l_道の統計.A_窓で選んだ数);
+                if (l_道の統計.A_埋めた数 > 0)
+                {
+                    l_長さ不明の番号 = Get_埋めた後の長さ不明の番号(l_長さ不明の番号, l_道で埋めた番号);
+                    l_Is変えた = true;
+                }
+            }
+
+            ほかのkで差し替えた統計 l_差し替えた統計;
+            using (new StageTimer("other-k-repeat-replace"))
+            {
+                var l_ほかのkのscaffold = p_ほかのkのscaffoldパス群.Where(File.Exists).SelectMany(FastaReader.Get_全エントリ).Select(static x => x.A_配列.ToUpperInvariant());
+                l_配列群 = OtherKRepeatReplacer.Get_差し替えた配列群(l_配列群, [.. l_ほかのk, .. l_ほかのkのscaffold], l_索引, p_リード長, out l_差し替えた統計);
+            }
+
+            RepeatRMerVerifier.V_解放_共有索引();
+            Logger.V_出力(メッセージID.ほかのkで差し替えた, l_差し替えた統計.A_対象数, l_差し替えた統計.A_差し替えた数, l_差し替えた統計.A_片が短い数, l_差し替えた統計.A_骨格がリードにある数, l_差し替えた統計.A_決まらない数, l_差し替えた統計.A_錨を確かめられない数);
+            if (!l_Is変えた && l_差し替えた統計.A_差し替えた数 == 0)
+            {
+                return p_長さ不明の番号;
+            }
+
+            using (var l_書き込み = new FastaWriter(p_最終パス))
+            {
+                foreach (var (l_ID, l_配列) in l_配列群)
+                {
+                    l_書き込み.V_書き込み(l_ID, l_配列);
+                }
+            }
+
+            return l_長さ不明の番号;
+        }
+
+        /// <summary>
+        /// 一部の N の列を埋めたあとの、配列名ごとの長さ不明のギャップの N の列の番号を求める<br/>
+        /// 埋めた番号は FASTA の ID 行ごとなので、配列名 (Get_配列名) に揃えてから OtherKGapFiller.Get_埋めた後の番号 で詰める
+        /// </summary>
+        /// <param name="p_長さ不明の番号">配列名ごとの、長さ不明のギャップの N の列の番号 (埋める前)</param>
+        /// <param name="p_埋めた番号">FASTA の ID 行ごとの、埋めた N の列の番号 (埋める前の配列での番号)</param>
+        /// <returns>配列名ごとの、長さ不明のギャップの N の列の番号 (埋めた後)</returns>
+        internal static Dictionary<string, HashSet<int>> Get_埋めた後の長さ不明の番号(Dictionary<string, HashSet<int>> p_長さ不明の番号, Dictionary<string, HashSet<int>> p_埋めた番号)
+        {
+            var l_名前ごとの埋めた番号 = p_埋めた番号.ToDictionary(static x => Get_配列名(x.Key), static x => x.Value);
+            return p_長さ不明の番号.ToDictionary(static x => x.Key, x => l_名前ごとの埋めた番号.TryGetValue(x.Key, out var l_埋めた) ? OtherKGapFiller.Get_埋めた後の番号(x.Value, l_埋めた) : x.Value);
+        }
+
+        /// <summary>
         /// ライブラリ群のリードを、配列・品質・そのライブラリの Phred オフセットの組で順に流す
         /// </summary>
         /// <param name="p_ライブラリ群">ライブラリごとのリードのパス (逆リードが無ければ空)</param>
@@ -1067,13 +1205,15 @@ namespace Tsumiki.Cores.Pipeline
 
         /// <summary>
         /// ペアで端どうしの相手を決め、間を局所組み立てで埋めて繋ぐ。埋まらなくても票が多ければ未確認の繋ぎ目で繋ぐ<br/>
+        /// 反復の端と見なした辺は、ほかの k の contig が両端の一意な錨の間を繋げば、その配列で繋ぐ<br/>
         /// ライブラリは間引く前の群があればそれ、無ければ間引かないライブラリ群を使う<br/>
         /// 配列の数が減ったときだけ、同じパスに書き戻す
         /// </summary>
         /// <param name="p_最終パス">最終アセンブリの FASTA パス</param>
         /// <param name="p_原入力">ライブラリ群を保持した設定</param>
         /// <param name="p_リード長">代表リード長、分からなければ 0</param>
-        private static void V_繋ぐ_ペアで橋渡し(string p_最終パス, Parameters p_原入力, int p_リード長)
+        /// <param name="p_ほかのkのcontigパス群">マルチ k で採用しなかった k の contig の FASTA パス</param>
+        private static void V_繋ぐ_ペアで橋渡し(string p_最終パス, Parameters p_原入力, int p_リード長, IReadOnlyList<string> p_ほかのkのcontigパス群)
         {
             var l_ライブラリ群 = p_原入力.A_間引き前ライブラリ群.Count > 0 ? p_原入力.A_間引き前ライブラリ群 : p_原入力.A_ライブラリ群;
             if (l_ライブラリ群.Count == 0)
@@ -1083,7 +1223,8 @@ namespace Tsumiki.Cores.Pipeline
 
             using var l_計測 = new StageTimer("pair-bridge");
             var l_配列群 = FastaReader.Get_全エントリ(p_最終パス);
-            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ群, out var l_統計, () => RepeatRMerVerifier.Get_リード索引(AssemblyPipeline.Get_全リードパス(p_原入力)), p_リード長);
+            var l_ほかのk = p_ほかのkのcontigパス群.Where(File.Exists).SelectMany(FastaReader.Get_全エントリ).Select(static x => x.A_配列.ToUpperInvariant()).ToList();
+            var l_繋いだ配列群 = PairBridgeFiller.Get_繋いだ配列群(l_配列群, l_ライブラリ群, out var l_統計, () => RepeatRMerVerifier.Get_リード索引(AssemblyPipeline.Get_全リードパス(p_原入力)), p_リード長, l_ほかのk);
             if (l_繋いだ配列群.Count < l_配列群.Count)
             {
                 using var l_書き込み = new FastaWriter(p_最終パス);
@@ -1093,7 +1234,7 @@ namespace Tsumiki.Cores.Pipeline
                 }
             }
 
-            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count, l_統計.A_印で繋いだ辺の数, l_統計.A_反復の端で除いた数, l_統計.A_重なりで畳んだ辺の数, l_統計.A_多コピーの端で除いた数, l_統計.A_短い反復を印で繋いだ数, l_統計.A_リードに無い重なりを印で繋いだ数);
+            Logger.V_出力(メッセージID.ペアで橋渡しした, l_統計.A_挿入長, l_統計.A_候補の辺の数, l_統計.A_埋めて繋いだ辺の数, l_統計.A_一意でなかった数, l_統計.A_届かなかった数, l_配列群.Count, l_繋いだ配列群.Count, l_統計.A_印で繋いだ辺の数, l_統計.A_反復の端で除いた数, l_統計.A_重なりで畳んだ辺の数, l_統計.A_多コピーの端で除いた数, l_統計.A_短い反復を印で繋いだ数, l_統計.A_リードに無い重なりを印で繋いだ数, l_統計.A_重なりと食い違う埋め方の数, l_統計.A_端の重なりを削って埋めた数, l_統計.A_写しをリードで選んで繋いだ数, l_統計.A_ほかのkで繋いだ数);
         }
 
         /// <summary>

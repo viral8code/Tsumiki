@@ -4,6 +4,7 @@ using Tsumiki.Commons;
 using Tsumiki.Cores.Pipeline;
 using Tsumiki.IO;
 using Tsumiki.Models.Evidence;
+using Tsumiki.Models.Foundation;
 using Tsumiki.Models.Scaffolding;
 using Tsumiki.Utilities;
 
@@ -27,6 +28,17 @@ namespace Tsumiki.Cores.Scaffolding
         /// 種を取る、頂点の右端の窓の長さ (配列の末尾から)、および票を数える距離の上限
         /// </summary>
         private const int C_窓長 = 1000;
+
+        /// <summary>
+        /// ほかの k の contig を連結するときの区切りの文字 (塩基にもギャップ文字にもない文字)
+        /// </summary>
+        private const char C_ほかのkの区切り = '#';
+
+        /// <summary>
+        /// ほかの k で繋いだ所のログに出す、両脇の配列の長さ<br/>
+        /// 評価のあとで、最終配列の中の場所を探すのに使う
+        /// </summary>
+        private const int C_ログの脇の長さ = 60;
 
         /// <summary>
         /// 種の k-mer の長さ
@@ -97,7 +109,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <summary>
         /// 反復の端を調べる長さ (u の末尾、x の先頭)
         /// </summary>
-        private const int C_反復を調べる長さ = 500;
+        internal const int C_反復を調べる長さ = 500;
 
         /// <summary>
         /// 反復の端と見なすまでに、両方に共有してよい 25-mer の数
@@ -139,6 +151,37 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_多コピーの判定に要る頂点数 = 10;
 
+        /// <summary>
+        /// 局所組み立てで埋めた配列を、両端の一致による重なりの 2 つの写しと繋いで確かめるとき、写しの外に含める塩基数<br/>
+        /// 写しの外の塩基まで含めないと、縦の反復の中だけのリードでも出てくる
+        /// </summary>
+        private const int C_埋め方を確かめる余白 = 1;
+
+        /// <summary>
+        /// 局所組み立てで埋めた配列を、両端の一致による重なりの 2 つの写しと繋いで確かめるとき、繋いだ配列がリードに出てくるのに要る数
+        /// </summary>
+        private const int C_埋め方の支持数の下限 = 2;
+
+        /// <summary>
+        /// u の末尾と x の先頭の共有を、2 つの端の重なりとみなすのに要る、共有する 25-mer の数
+        /// </summary>
+        private const int C_端の重なりに要る種数 = 10;
+
+        /// <summary>
+        /// 2 つの端の重なりとみなすとき、共有する 25-mer が x の先頭と u の端に届いていなければならない範囲 (端の読み違いを許す長さ)
+        /// </summary>
+        private const int C_端の重なりの端の余白 = 50;
+
+        /// <summary>
+        /// 端の重なりを削って埋めた配列をリードで確かめるとき、両側の片から含める塩基数
+        /// </summary>
+        private const int C_削って埋めた形を確かめる余白 = 16;
+
+        /// <summary>
+        /// 端の重なりの写しをリードで選ぶとき、確かめる窓の長さをリード長の何分の 1 にするか
+        /// </summary>
+        private const int C_写しを確かめる窓の分母 = 2;
+
         #endregion
 
         #region 公開メソッド
@@ -151,11 +194,12 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_統計">橋渡しの統計</param>
         /// <param name="p_リード索引">配列の一致で決めた重なりをリードで確かめるときに呼ぶ、リードの索引を返す関数 (要るときだけ 1 回呼ぶ) 、無ければ確かめない</param>
         /// <param name="p_リード長">代表リード長、分からなければ 0 (確かめない)</param>
+        /// <param name="p_ほかのkの配列群">反復の端と見なした辺を繋ぐのに使う、ほかの k の contig の配列 (大文字)。無ければ使わない</param>
         /// <returns>
         /// 繋いだ後の配列の ID と配列<br/>
         /// 繋がらなかった配列は元の順と ID のまま
         /// </returns>
-        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, out 橋渡し統計 p_統計, Func<ReadMinimizerIndex?>? p_リード索引 = null, int p_リード長 = 0)
+        public static List<(string A_ID, string A_配列)> Get_繋いだ配列群(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, out 橋渡し統計 p_統計, Func<ReadMinimizerIndex?>? p_リード索引 = null, int p_リード長 = 0, IReadOnlyList<string>? p_ほかのkの配列群 = null)
         {
             var l_頂点 = Get_頂点群(p_配列群, out var l_対象);
             var l_表 = Get_種の索引(l_頂点, l_対象);
@@ -179,7 +223,9 @@ namespace Tsumiki.Cores.Scaffolding
             var l_多コピーの基準 = Get_多コピーの基準密度(l_当たり数, l_頂点);
             var l_候補 = new List<候補の辺>();
             var l_重なり群 = new List<int?>();
-            var l_反復の端で除いた数 = 0;
+            var l_削り群 = new List<(int A_u側, int A_x側, int A_x先頭の余り, int A_u末尾の余り)?>();
+            var l_反復の端の辺 = new List<(int A_u, int A_x)>();
+            var l_多コピーの反復の端の数 = 0;
             var l_多コピーの端で除いた数 = 0;
             var l_短い反復の辺 = new List<候補の辺>();
             foreach (var l_辺 in l_候補全体)
@@ -187,21 +233,32 @@ namespace Tsumiki.Cores.Scaffolding
                 var l_u文字列 = l_頂点[l_辺.A_u];
                 var l_x文字列 = l_頂点[l_辺.A_x];
                 var l_重なり = Get_重なりの長さ(l_u文字列, l_x文字列);
+                var l_Is多コピー = Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準) || Is票が密度に見合わない(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準, l_辺.A_票数);
                 if (Is反復の端(l_u文字列, l_x文字列, l_重なり))
                 {
-                    if (l_辺.A_票数 >= C_短い反復で繋ぐのに要るペア数 && Is短い反復の端(l_u文字列, l_x文字列, l_重なり) && !Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準) && !Is票が密度に見合わない(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準, l_辺.A_票数))
+                    if (Is短い反復で繋ぐ辺(l_辺, l_u文字列, l_x文字列, l_重なり, l_Is多コピー))
                     {
                         l_短い反復の辺.Add(l_辺);
                     }
+                    else if (!l_Is多コピー && Get_端の重なりの削り長(l_u文字列, l_x文字列) is { } l_削り)
+                    {
+                        l_候補.Add(l_辺);
+                        l_重なり群.Add(null);
+                        l_削り群.Add(l_削り);
+                    }
+                    else if (l_Is多コピー)
+                    {
+                        l_多コピーの反復の端の数++;
+                    }
                     else
                     {
-                        l_反復の端で除いた数++;
+                        l_反復の端の辺.Add((l_辺.A_u, l_辺.A_x));
                     }
 
                     continue;
                 }
 
-                if (Is多コピーの端(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準) || Is票が密度に見合わない(l_当たり数, l_頂点, l_辺.A_u, l_辺.A_x, l_多コピーの基準, l_辺.A_票数))
+                if (l_Is多コピー)
                 {
                     l_多コピーの端で除いた数++;
                     continue;
@@ -209,15 +266,17 @@ namespace Tsumiki.Cores.Scaffolding
 
                 l_候補.Add(l_辺);
                 l_重なり群.Add(l_重なり);
+                l_削り群.Add(null);
             }
 
-            if (l_候補.Count == 0 && l_短い反復の辺.Count == 0)
+            var Isほかのkを使う = p_ほかのkの配列群 is { Count: > 0 } && p_リード索引 is not null && p_リード長 > 0;
+            if (l_候補.Count == 0 && l_短い反復の辺.Count == 0 && (l_反復の端の辺.Count == 0 || !Isほかのkを使う))
             {
-                p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_反復の端で除いた数, 0, l_多コピーの端で除いた数);
+                p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_多コピーの反復の端の数 + l_反復の端の辺.Count, 0, l_多コピーの端で除いた数);
                 return p_配列群.ToList();
             }
 
-            var (l_結果, l_判定) = l_候補.Count == 0 ? (Array.Empty<string?>(), Array.Empty<ギャップ充填判定>()) : Get_局所結果群(l_頂点, l_候補, Get_局所リード群(l_頂点, l_表, p_ライブラリ群, l_候補, l_並列数));
+            var (l_結果, l_判定) = l_候補.Count == 0 ? (Array.Empty<string?>(), Array.Empty<ギャップ充填判定>()) : Get_局所結果群(l_頂点, l_候補, l_削り群, Get_局所リード群(l_頂点, l_表, p_ライブラリ群, l_候補, l_削り群, l_並列数));
 
             var l_出る = new (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[l_頂点.Length];
             var l_入る = new int[l_頂点.Length];
@@ -228,15 +287,58 @@ namespace Tsumiki.Cores.Scaffolding
             var l_印の数 = 0;
             var l_重なりで畳んだ数 = 0;
             var l_リードに無い重なりの数 = 0;
+            var l_重なりと食い違う埋め方の数 = 0;
+            var l_削って埋めた数 = 0;
+            var l_写しで繋いだ数 = 0;
             var l_Is索引を作った = false;
             ReadMinimizerIndex? l_索引 = null;
             var l_未確認の印 = Consts.未確認の繋ぎ目.ToString();
+
+            ReadMinimizerIndex? Get_索引()
+            {
+                if (p_リード索引 is not null && p_リード長 > 0 && !l_Is索引を作った)
+                {
+                    l_索引 = p_リード索引();
+                    l_Is索引を作った = true;
+                }
+
+                return l_索引;
+            }
+
             for (var i = 0; i < l_候補.Count; i++)
             {
                 var l_u = l_候補[i].A_u;
                 var l_x = l_候補[i].A_x;
                 var l_埋める配列 = l_結果[i];
-                if (l_埋める配列 is not null)
+                if (l_削り群[i] is { } l_削る長さ群)
+                {
+                    var l_Is埋めた = l_埋める配列 is not null && !(Get_索引() is { } l_削りを確かめる索引 && Is削って埋めた形がリードに無い(l_削りを確かめる索引, l_頂点[l_u][..^l_削る長さ群.A_u側], l_埋める配列, l_頂点[l_x][l_削る長さ群.A_x側..], p_リード長));
+                    var l_繋ぐ配列 = l_Is埋めた ? l_埋める配列 : l_埋める配列 is null && Get_索引() is { } l_写しの索引 ? Get_リードで選んだ写し(l_写しの索引, l_頂点[l_u], l_頂点[l_x], l_削る長さ群, p_リード長) : null;
+                    if (l_繋ぐ配列 is not null)
+                    {
+                        if (l_Is埋めた)
+                        {
+                            l_削って埋めた数++;
+                        }
+                        else
+                        {
+                            l_写しで繋いだ数++;
+                        }
+
+                        l_出る[l_u] = (l_x, l_削る長さ群.A_u側, l_繋ぐ配列, l_削る長さ群.A_x側);
+                        l_出る[l_x ^ 1] = (l_u ^ 1, l_削る長さ群.A_x側, Util.V_逆相補_曖昧塩基あり(l_繋ぐ配列), l_削る長さ群.A_u側);
+                        l_入る[l_x] = l_u;
+                        l_入る[l_u ^ 1] = l_x ^ 1;
+                    }
+                    else
+                    {
+                        l_反復の端の辺.Add((l_u, l_x));
+                    }
+
+                    continue;
+                }
+
+                if (l_埋める配列 is not null && !(l_重なり群[i] is { } l_一致の長さ && Get_索引() is { } l_確かめる索引 && Is重なりと食い違う埋め方(l_確かめる索引, l_頂点[l_u], l_埋める配列, l_頂点[l_x], l_一致の長さ, p_リード長)))
                 {
                     l_埋めた数++;
                     l_出る[l_u] = (l_x, 0, l_埋める配列, 0);
@@ -246,7 +348,11 @@ namespace Tsumiki.Cores.Scaffolding
                     continue;
                 }
 
-                if (l_判定[i] == ギャップ充填判定.一意でない)
+                if (l_埋める配列 is not null)
+                {
+                    l_重なりと食い違う埋め方の数++;
+                }
+                else if (l_判定[i] == ギャップ充填判定.一意でない)
                 {
                     l_一意でない数++;
                 }
@@ -257,13 +363,7 @@ namespace Tsumiki.Cores.Scaffolding
 
                 if (l_重なり群[i] is { } l_重なり長)
                 {
-                    if (p_リード索引 is not null && p_リード長 > 0 && !l_Is索引を作った)
-                    {
-                        l_索引 = p_リード索引();
-                        l_Is索引を作った = true;
-                    }
-
-                    if (l_索引 is not null && Scaffolder.Isリードに無い一致の重なり(l_索引, new StringBuilder(l_頂点[l_u][Math.Max(0, l_頂点[l_u].Length - C_窓長)..]), l_頂点[l_x], l_重なり長, p_リード長))
+                    if (Get_索引() is { } l_重なりを確かめる索引 && Scaffolder.Isリードに無い一致の重なり(l_重なりを確かめる索引, new StringBuilder(l_頂点[l_u][Math.Max(0, l_頂点[l_u].Length - C_窓長)..]), l_頂点[l_x], l_重なり長, p_リード長))
                     {
                         l_リードに無い重なりの数++;
                         l_出る[l_u] = (l_x, 0, l_未確認の印, 0);
@@ -309,14 +409,55 @@ namespace Tsumiki.Cores.Scaffolding
                 l_入る[l_辺.A_u ^ 1] = l_辺.A_x ^ 1;
             }
 
+            var l_ほかのkで繋いだ数 = Isほかのkを使う && l_反復の端の辺.Count > 0 && Get_索引() is { } l_ほかのkの索引 ? V_繋ぐ_ほかのkで反復の端(p_配列群, l_頂点, l_反復の端の辺, p_ほかのkの配列群!, l_ほかのkの索引, p_リード長, l_出る, l_入る) : 0;
             var l_書き出し = ReadEndJoiner.Get_鎖にして書き出す(p_配列群, l_頂点, l_出る, l_入る, out _);
-            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_反復の端で除いた数, l_重なりで畳んだ数, l_多コピーの端で除いた数, l_短い反復で繋いだ数, l_リードに無い重なりの数);
+            p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, l_埋めた数, l_一意でない数, l_届かない数, l_印の数, l_多コピーの反復の端の数 + l_反復の端の辺.Count - l_ほかのkで繋いだ数, l_重なりで畳んだ数, l_多コピーの端で除いた数, l_短い反復で繋いだ数, l_リードに無い重なりの数, l_重なりと食い違う埋め方の数, l_削って埋めた数, l_写しで繋いだ数, l_ほかのkで繋いだ数);
             return l_書き出し;
         }
 
         #endregion
 
         #region 内部メソッド
+
+        /// <summary>
+        /// 反復の端と見なした辺を、ほかの k の contig の配列で繋ぐ (OtherKEdgeBridger.Get_繋ぐ形)<br/>
+        /// 両端がまだ繋がっていない辺だけを、前から順に繋ぐ。繋いだ辺ごとに、配列の ID と向き、削った長さ、繋いだ長さ、両脇の 60 bp を [Debug] のログに出す
+        /// </summary>
+        /// <param name="p_配列群">配列の ID と配列</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <param name="p_反復の端の辺">反復の端と見なした辺 (u と x の頂点)</param>
+        /// <param name="p_ほかのkの配列群">ほかの k の contig の配列 (大文字)</param>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_出る">頂点ごとの出る辺 (繋いだ辺を書き込む)</param>
+        /// <param name="p_入る">頂点ごとの入る辺 (繋いだ辺を書き込む)</param>
+        /// <returns>繋いだ辺の数</returns>
+        private static int V_繋ぐ_ほかのkで反復の端(IReadOnlyList<(string A_ID, string A_配列)> p_配列群, string[] p_頂点, List<(int A_u, int A_x)> p_反復の端の辺, IReadOnlyList<string> p_ほかのkの配列群, ReadMinimizerIndex p_索引, int p_リード長, (int A_先, int A_左から削る長さ, string A_埋める配列, int A_右から削る長さ)?[] p_出る, int[] p_入る)
+        {
+            var l_錨表 = OtherKRepeatReplacer.Get_一意な錨の表(p_配列群);
+            var l_ほかのk = string.Join(C_ほかのkの区切り, p_ほかのkの配列群);
+            string Get_名前(int p_頂点番号) => p_配列群[p_頂点番号 / 2].A_ID + (p_頂点番号 % 2 == 0 ? "+" : "-");
+            var l_繋いだ数 = 0;
+            foreach (var (l_u, l_x) in p_反復の端の辺)
+            {
+                if (p_出る[l_u] is not null || p_入る[l_x] >= 0 || OtherKEdgeBridger.Get_繋ぐ形(p_頂点[l_u], p_頂点[l_x], l_錨表, l_ほかのk, p_索引, p_リード長) is not { } l_形)
+                {
+                    continue;
+                }
+
+                l_繋いだ数++;
+                var l_u文字列 = p_頂点[l_u];
+                var l_x文字列 = p_頂点[l_x];
+                var l_左の終わり = l_u文字列.Length - l_形.A_u側;
+                Logger.V_出力(メッセージID.ほかのkで繋いだ反復の端の内訳, Get_名前(l_u), Get_名前(l_x), l_形.A_埋める配列.Length, l_形.A_u側, l_形.A_x側, l_u文字列[Math.Max(0, l_左の終わり - C_ログの脇の長さ)..l_左の終わり], l_x文字列[l_形.A_x側..Math.Min(l_x文字列.Length, l_形.A_x側 + C_ログの脇の長さ)]);
+                p_出る[l_u] = (l_x, l_形.A_u側, l_形.A_埋める配列, l_形.A_x側);
+                p_出る[l_x ^ 1] = (l_u ^ 1, l_形.A_x側, Util.V_逆相補_曖昧塩基あり(l_形.A_埋める配列), l_形.A_u側);
+                p_入る[l_x] = l_u;
+                p_入る[l_u ^ 1] = l_x ^ 1;
+            }
+
+            return l_繋いだ数;
+        }
 
         /// <summary>
         /// 配列から頂点の文字列を作る (2i が順向き、2i+1 が逆相補)
@@ -723,39 +864,49 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_表">種の索引</param>
         /// <param name="p_ライブラリ群">ペアのファイル</param>
         /// <param name="p_候補">候補の辺</param>
+        /// <param name="p_削り群">候補の辺ごとの、端の重なりを削ってから埋める長さ、削らなければ null (削る辺では、相方に種が無いペアも集める)</param>
         /// <param name="p_並列数">並列数</param>
-        /// <returns>候補の辺ごとの局所リード</returns>
-        private static List<読取証拠>[] Get_局所リード群(string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, List<候補の辺> p_候補, int p_並列数)
+        /// <returns>候補の辺ごとの局所リードと、削る辺で相方に種が無いペアのリード</returns>
+        private static (List<読取証拠>[] 読み, List<読取証拠>[] 片側の読み) Get_局所リード群(string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, IReadOnlyList<(string A_順リード, string A_逆リード)> p_ライブラリ群, List<候補の辺> p_候補, List<(int A_u側, int A_x側, int A_x先頭の余り, int A_u末尾の余り)?> p_削り群, int p_並列数)
         {
             var l_候補の鍵 = new Dictionary<(int A_始, int A_終), int>();
+            var l_片側の鍵 = new Dictionary<int, (int A_候補, bool A_Isu)>();
             for (var i = 0; i < p_候補.Count; i++)
             {
                 l_候補の鍵[(p_候補[i].A_u, p_候補[i].A_x ^ 1)] = i;
+                if (p_削り群[i] is not null)
+                {
+                    l_片側の鍵[p_候補[i].A_u] = (i, true);
+                    l_片側の鍵[p_候補[i].A_x ^ 1] = (i, false);
+                }
             }
 
             var l_読み = new List<読取証拠>[p_候補.Count];
+            var l_片側の読み = new List<読取証拠>[p_候補.Count];
             for (var i = 0; i < l_読み.Length; i++)
             {
                 l_読み[i] = [];
+                l_片側の読み[i] = [];
             }
 
             var l_結果群 = Get_全ペア(p_ライブラリ群)
                 .AsParallel()
                 .AsOrdered()
                 .WithDegreeOfParallelism(p_並列数)
-                .Select((l_ペア, l_番号) => Get_該当の読み(l_ペア.A_順リード, l_ペア.A_逆リード, l_番号, p_頂点, p_表, l_候補の鍵));
+                .Select((l_ペア, l_番号) => Get_該当の読み(l_ペア.A_順リード, l_ペア.A_逆リード, l_番号, p_頂点, p_表, l_候補の鍵, l_片側の鍵));
             foreach (var l_群 in l_結果群)
             {
-                foreach (var (l_候補番号, l_読取) in l_群)
+                foreach (var (l_候補番号, l_読取, l_Is片側) in l_群)
                 {
-                    if (l_読み[l_候補番号].Count < C_局所リード数の上限)
+                    var l_先 = l_Is片側 ? l_片側の読み[l_候補番号] : l_読み[l_候補番号];
+                    if (l_先.Count < C_局所リード数の上限)
                     {
-                        l_読み[l_候補番号].Add(l_読取);
+                        l_先.Add(l_読取);
                     }
                 }
             }
 
-            return l_読み;
+            return (l_読み, l_片側の読み);
         }
 
         /// <summary>
@@ -768,41 +919,66 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_頂点">頂点の文字列</param>
         /// <param name="p_表">種の索引</param>
         /// <param name="p_候補の鍵">(u, x^1) から候補の辺の番号への表</param>
-        /// <returns>候補の辺の番号と局所リードの組</returns>
-        private static (int A_候補, 読取証拠 A_読取)[] Get_該当の読み(string p_順リード, string p_逆リード, int p_番号, string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, Dictionary<(int A_始, int A_終), int> p_候補の鍵)
+        /// <param name="p_片側の鍵">端の重なりを削る辺の u と x^1 から、候補の辺の番号と u の側かへの表 (相方に種が無いペアも集める)</param>
+        /// <returns>候補の辺の番号と局所リードと、相方に種が無いペアのリードかの組</returns>
+        private static (int A_候補, 読取証拠 A_読取, bool A_Is片側)[] Get_該当の読み(string p_順リード, string p_逆リード, int p_番号, string[] p_頂点, IReadOnlyDictionary<ulong, (int A_頂点, int A_位置, bool A_順向き)> p_表, Dictionary<(int A_始, int A_終), int> p_候補の鍵, Dictionary<int, (int A_候補, bool A_Isu)> p_片側の鍵)
         {
             var l_当たり1 = Get_当たり(p_順リード, p_表, p_頂点);
             var l_当たり2 = Get_当たり(p_逆リード, p_表, p_頂点);
-            if (l_当たり1 is null || l_当たり2 is null)
-            {
-                return [];
-            }
-
-            var l_h1 = l_当たり1.Value.A_頂点;
-            var l_h2 = l_当たり2.Value.A_頂点;
-            var l_d1 = p_頂点[l_h1].Length - l_当たり1.Value.A_位置;
-            var l_d2 = p_頂点[l_h2].Length - l_当たり2.Value.A_位置;
-            if (l_d1 <= 0 || l_d1 > C_窓長 || l_d2 <= 0 || l_d2 > C_窓長)
-            {
-                return [];
-            }
-
             var l_ペアID = p_番号.ToString(CultureInfo.InvariantCulture);
-            if (p_候補の鍵.TryGetValue((l_h1, l_h2), out var l_候補1))
+            if (l_当たり1 is { } l_a1 && l_当たり2 is { } l_a2)
             {
-                return
-                [
-                    (l_候補1, new 読取証拠(p_順リード, l_ペアID)),
-                    (l_候補1, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_逆リード), l_ペアID)),
-                ];
+                var l_d1 = p_頂点[l_a1.A_頂点].Length - l_a1.A_位置;
+                var l_d2 = p_頂点[l_a2.A_頂点].Length - l_a2.A_位置;
+                if (l_d1 > 0 && l_d1 <= C_窓長 && l_d2 > 0 && l_d2 <= C_窓長)
+                {
+                    if (p_候補の鍵.TryGetValue((l_a1.A_頂点, l_a2.A_頂点), out var l_候補1))
+                    {
+                        return
+                        [
+                            (l_候補1, new 読取証拠(p_順リード, l_ペアID), false),
+                            (l_候補1, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_逆リード), l_ペアID), false),
+                        ];
+                    }
+
+                    if (p_候補の鍵.TryGetValue((l_a2.A_頂点, l_a1.A_頂点), out var l_候補2))
+                    {
+                        return
+                        [
+                            (l_候補2, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_順リード), l_ペアID), false),
+                            (l_候補2, new 読取証拠(p_逆リード, l_ペアID), false),
+                        ];
+                    }
+                }
             }
 
-            return p_候補の鍵.TryGetValue((l_h2, l_h1), out var l_候補2)
-                ? [
-                    (l_候補2, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_順リード), l_ペアID)),
-                    (l_候補2, new 読取証拠(p_逆リード, l_ペアID)),
-                ]
-                : [];
+            return Get_片側の読み(l_当たり1, p_順リード, p_逆リード, l_ペアID, p_頂点, p_片側の鍵) ?? Get_片側の読み(l_当たり2, p_逆リード, p_順リード, l_ペアID, p_頂点, p_片側の鍵) ?? [];
+        }
+
+        /// <summary>
+        /// 端の重なりを削る辺で、ペアの一方のリードが u か x^1 の端の窓に当たれば、相方の当たり方を問わず、2 本を u→x の向きで揃えて返す<br/>
+        /// u に当たったリードはそのままで相方は逆相補、x^1 に当たったリードは逆相補で相方はそのまま
+        /// </summary>
+        /// <param name="p_当たり">リードの当たり、無ければ null</param>
+        /// <param name="p_当てたリード">当たりを調べたリード</param>
+        /// <param name="p_相方">相方のリード</param>
+        /// <param name="p_ペアID">ペア ID</param>
+        /// <param name="p_頂点">頂点の文字列</param>
+        /// <param name="p_片側の鍵">端の重なりを削る辺の u と x^1 から、候補の辺の番号と u の側かへの表</param>
+        /// <returns>候補の辺の番号と局所リードの組、当たらなければ null</returns>
+        private static (int A_候補, 読取証拠 A_読取, bool A_Is片側)[]? Get_片側の読み((int A_頂点, int A_位置)? p_当たり, string p_当てたリード, string p_相方, string p_ペアID, string[] p_頂点, Dictionary<int, (int A_候補, bool A_Isu)> p_片側の鍵)
+        {
+            if (p_当たり is not { } l_当たり || !p_片側の鍵.TryGetValue(l_当たり.A_頂点, out var l_片側))
+            {
+                return null;
+            }
+
+            var l_d = p_頂点[l_当たり.A_頂点].Length - l_当たり.A_位置;
+            return l_d <= 0 || l_d > C_窓長
+                ? null
+                : l_片側.A_Isu
+                    ? [(l_片側.A_候補, new 読取証拠(p_当てたリード, p_ペアID), true), (l_片側.A_候補, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_相方), p_ペアID), true)]
+                    : [(l_片側.A_候補, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_当てたリード), p_ペアID), true), (l_片側.A_候補, new 読取証拠(p_相方, p_ペアID), true)];
         }
 
         /// <summary>
@@ -811,9 +987,10 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         /// <param name="p_頂点">頂点の文字列</param>
         /// <param name="p_候補">候補の辺</param>
-        /// <param name="p_読み">候補の辺ごとの局所リード</param>
+        /// <param name="p_削り群">候補の辺ごとの、端の重なりを削ってから埋める長さ (u の末尾と x の先頭)、削らなければ null</param>
+        /// <param name="p_読み">候補の辺ごとの局所リードと、削る辺で相方に種が無いペアのリード (今のリードで届かないときだけ足して埋め直す)</param>
         /// <returns>埋める配列 (埋まらなければ null) と判定の配列</returns>
-        private static (string?[] 結果, ギャップ充填判定[] 判定) Get_局所結果群(string[] p_頂点, List<候補の辺> p_候補, List<読取証拠>[] p_読み)
+        private static (string?[] 結果, ギャップ充填判定[] 判定) Get_局所結果群(string[] p_頂点, List<候補の辺> p_候補, List<(int A_u側, int A_x側, int A_x先頭の余り, int A_u末尾の余り)?> p_削り群, (List<読取証拠>[] 読み, List<読取証拠>[] 片側の読み) p_読み)
         {
             var l_結果 = new string?[p_候補.Count];
             var l_判定 = new ギャップ充填判定[p_候補.Count];
@@ -823,20 +1000,225 @@ namespace Tsumiki.Cores.Scaffolding
             };
             _ = Parallel.For(0, p_候補.Count, l_並列設定, i =>
             {
-                if (p_読み[i].Count == 0)
+                if (p_読み.読み[i].Count + p_読み.片側の読み[i].Count == 0)
                 {
                     l_判定[i] = ギャップ充填判定.到達不能;
                     return;
                 }
 
-                var l_u文字列 = p_頂点[p_候補[i].A_u];
-                var l_x文字列 = p_頂点[p_候補[i].A_x];
+                var (l_u側, l_x側, _, _) = p_削り群[i] ?? (0, 0, 0, 0);
+                var l_u文字列 = p_頂点[p_候補[i].A_u][..^l_u側];
+                var l_x文字列 = p_頂点[p_候補[i].A_x][l_x側..];
                 var l_左 = l_u文字列[Math.Max(0, l_u文字列.Length - C_アンカー長)..];
                 var l_右 = l_x文字列[..Math.Min(C_アンカー長, l_x文字列.Length)];
-                l_結果[i] = LocalAssembler.Get_適応kの局所結果(new 局所ギャップ(0, 0, Math.Max(0, p_候補[i].A_間の長さ), l_左, l_右), p_読み[i], C_局所k, out var l_局所判定, C_長さの余裕幅);
+                var l_間 = p_削り群[i] is null ? Math.Max(0, p_候補[i].A_間の長さ) : (l_u側 + l_x側) / 2;
+                var l_余裕幅 = C_長さの余裕幅 + (Math.Abs(l_u側 - l_x側) / 2);
+                var l_ギャップ = new 局所ギャップ(0, 0, l_間, l_左, l_右);
+                var l_局所判定 = ギャップ充填判定.到達不能;
+                l_結果[i] = p_読み.読み[i].Count == 0 ? null : LocalAssembler.Get_適応kの局所結果(l_ギャップ, p_読み.読み[i], C_局所k, out l_局所判定, l_余裕幅);
+                if (l_結果[i] is null && l_局所判定 == ギャップ充填判定.到達不能 && p_読み.片側の読み[i].Count > 0)
+                {
+                    l_結果[i] = LocalAssembler.Get_適応kの局所結果(l_ギャップ, [.. p_読み.読み[i], .. p_読み.片側の読み[i]], C_局所k, out l_局所判定, l_余裕幅);
+                }
+
                 l_判定[i] = l_局所判定;
             });
             return (l_結果, l_判定);
+        }
+
+        /// <summary>
+        /// 反復の端の辺を、短い反復として長さ不明のギャップで繋ぐか<br/>
+        /// 票が C_短い反復で繋ぐのに要るペア数 以上で、共有が端の近くに限られ (Is短い反復の端)、多コピーの端でもないときだけ真
+        /// </summary>
+        /// <param name="p_辺">候補の辺</param>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <param name="p_重なり">u の末尾と x の先頭の重なりの長さ、無ければ null</param>
+        /// <param name="p_Is多コピー">多コピーの端か、票が端の濃さに見合わないか</param>
+        /// <returns>短い反復として繋ぐなら真</returns>
+        private static bool Is短い反復で繋ぐ辺(候補の辺 p_辺, string p_u文字列, string p_x文字列, int? p_重なり, bool p_Is多コピー)
+        {
+            return p_辺.A_票数 >= C_短い反復で繋ぐのに要るペア数 && Is短い反復の端(p_u文字列, p_x文字列, p_重なり) && !p_Is多コピー;
+        }
+
+        /// <summary>
+        /// u の末尾と x の先頭が共有する 25-mer が、2 つの端の重なり (写しの違いを含んでよい) の形に並ぶとき、その重なりを両側から削る長さを返す<br/>
+        /// u の末尾と x の先頭の窓 (C_窓長) で、どちらの窓でも 1 回だけ現れる 25-mer のうち共有するものが C_端の重なりに要る種数 以上あり、<br/>
+        /// x の先頭から進むほど u の端に近づき (u の端からの距離が狭義に減る)、x の先頭と u の端から C_端の重なりの端の余白 以内に届くときだけ、重なりとみなす<br/>
+        /// 削る長さは、u 側が最も遠い共有の 25-mer の始まりから端まで、x 側が先頭から最も遠い共有の 25-mer の終わりまで<br/>
+        /// 共有が窓の端に届くとき、削ったあとの片が C_アンカー長 より短いとき、削ったあとの端どうしもまだ反復の端 (Is反復の端) のときは null
+        /// </summary>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <returns>u の末尾から削る長さ、x の先頭から削る長さ、x の先頭の最初の共有より前の長さ、u の末尾の最後の共有より後ろの長さ。重なりの形でなければ null</returns>
+        internal static (int A_u側, int A_x側, int A_x先頭の余り, int A_u末尾の余り)? Get_端の重なりの削り長(string p_u文字列, string p_x文字列)
+        {
+            var l_u末尾 = p_u文字列[Math.Max(0, p_u文字列.Length - C_窓長)..];
+            var l_x先頭 = p_x文字列[..Math.Min(C_窓長, p_x文字列.Length)];
+            var l_u位置 = Get_一度だけの種の位置(l_u末尾);
+            var l_x位置 = Get_一度だけの種の位置(l_x先頭);
+            var l_組 = new List<(int A_x位置, int A_u距離)>();
+            foreach (var (l_キー, l_x始) in l_x位置)
+            {
+                if (l_x始 >= 0 && l_u位置.TryGetValue(l_キー, out var l_u始) && l_u始 >= 0)
+                {
+                    l_組.Add((l_x始, l_u末尾.Length - l_u始));
+                }
+            }
+
+            if (l_組.Count < C_端の重なりに要る種数)
+            {
+                return null;
+            }
+
+            l_組.Sort();
+            for (var i = 1; i < l_組.Count; i++)
+            {
+                if (l_組[i].A_u距離 >= l_組[i - 1].A_u距離)
+                {
+                    return null;
+                }
+            }
+
+            var l_u側 = l_組[0].A_u距離;
+            var l_x側 = l_組[^1].A_x位置 + C_種長;
+            if (l_組[0].A_x位置 > C_端の重なりの端の余白 || l_組[^1].A_u距離 > C_端の重なりの端の余白 + C_種長)
+            {
+                return null;
+            }
+
+            var Is窓の端に届く = l_u側 > l_u末尾.Length - C_種長 || l_x側 > l_x先頭.Length - C_種長;
+            return Is窓の端に届く || p_u文字列.Length - l_u側 < C_アンカー長 || p_x文字列.Length - l_x側 < C_アンカー長 || Is反復の端(p_u文字列[..^l_u側], p_x文字列[l_x側..], null) ? null : (l_u側, l_x側, l_組[0].A_x位置, l_組[^1].A_u距離 - C_種長);
+        }
+
+        /// <summary>
+        /// 端の重なりを削っても局所組み立てで埋まらない辺で、重なりの 2 つの写しのうち、リードに続けて出てくるほうを返す<br/>
+        /// u の写しは最初の共有の 25-mer から u の末尾の余りの手前まで、x の写しは x の先頭の余りから最後の共有の 25-mer の終わりまでで、どちらも削ったあとの両側の片の間に入れる<br/>
+        /// 片方の写しだけが Is写しがリードに続けて出る を満たせばその写し、2 つの写しが同じならその写しが満たすときだけ返す。どちらも満たすか、どちらも満たさなければ null
+        /// </summary>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <param name="p_削り">端の重なりの削る長さと、x の先頭と u の末尾の共有の外の長さ (Get_端の重なりの削り長)</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <returns>選んだ写し、選べなければ null</returns>
+        internal static string? Get_リードで選んだ写し(ReadMinimizerIndex p_索引, string p_u文字列, string p_x文字列, (int A_u側, int A_x側, int A_x先頭の余り, int A_u末尾の余り) p_削り, int p_リード長)
+        {
+            var l_左 = p_u文字列[..^p_削り.A_u側];
+            var l_右 = p_x文字列[p_削り.A_x側..];
+            var l_u写し = p_u文字列[(p_u文字列.Length - p_削り.A_u側)..(p_u文字列.Length - p_削り.A_u末尾の余り)];
+            var l_x写し = p_x文字列[p_削り.A_x先頭の余り..p_削り.A_x側];
+            var l_窓長 = Math.Max(ReadMinimizerIndex.C_最短の問い合わせ長, p_リード長 / C_写しを確かめる窓の分母);
+            var l_Isu = Is写しがリードに続けて出る(p_索引, l_左, l_u写し, l_右, l_窓長);
+            if (l_u写し == l_x写し)
+            {
+                return l_Isu ? l_u写し : null;
+            }
+
+            var l_Isx = Is写しがリードに続けて出る(p_索引, l_左, l_x写し, l_右, l_窓長);
+            return l_Isu == l_Isx ? null : l_Isu ? l_u写し : l_x写し;
+        }
+
+        /// <summary>
+        /// 左の片の末尾、写し、右の片の先頭を繋いだ配列で、写しに 1 塩基以上掛かる長さ p_窓長 の窓が、どれもリードに C_埋め方の支持数の下限 か所以上出てくるか<br/>
+        /// 片が窓長 - 1 より短いときと、A・C・G・T 以外を含む窓があるときは偽
+        /// </summary>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_左">左の片</param>
+        /// <param name="p_写し">間に入れる写し</param>
+        /// <param name="p_右">右の片</param>
+        /// <param name="p_窓長">確かめる窓の長さ</param>
+        /// <returns>どの窓もリードに出てくれば真</returns>
+        internal static bool Is写しがリードに続けて出る(ReadMinimizerIndex p_索引, string p_左, string p_写し, string p_右, int p_窓長)
+        {
+            var l_余白 = p_窓長 - 1;
+            if (p_左.Length < l_余白 || p_右.Length < l_余白)
+            {
+                return false;
+            }
+
+            var l_繋いだ配列 = string.Concat(p_左.AsSpan(p_左.Length - l_余白), p_写し, p_右.AsSpan(0, l_余白));
+            for (var i = 0; i + p_窓長 <= l_繋いだ配列.Length; i++)
+            {
+                var l_窓 = l_繋いだ配列.AsSpan(i, p_窓長);
+                if (l_窓.IndexOfAnyExcept(Consts.塩基文字) >= 0 || p_索引.Get_出現数(l_窓, C_埋め方の支持数の下限) < C_埋め方の支持数の下限)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 端の重なりを削って局所組み立てで埋めた配列を、両側の片の C_削って埋めた形を確かめる余白 ずつと繋いだ配列が、リードで確かめられる長さなのにリードに無いか<br/>
+        /// 繋いだ配列がリード長以下で A・C・G・T だけのとき、リードに C_埋め方の支持数の下限 か所未満しか出てこなければ真<br/>
+        /// 片が余白より短いとき、リード長より長いとき、A・C・G・T 以外を含むときは確かめられないので偽 (埋める)
+        /// </summary>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_u削った後">末尾の重なりを削った u の文字列</param>
+        /// <param name="p_埋める配列">局所組み立てで埋めた配列</param>
+        /// <param name="p_x削った後">先頭の重なりを削った x の文字列</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <returns>埋めた形がリードに無ければ真</returns>
+        internal static bool Is削って埋めた形がリードに無い(ReadMinimizerIndex p_索引, string p_u削った後, string p_埋める配列, string p_x削った後, int p_リード長)
+        {
+            if (p_u削った後.Length < C_削って埋めた形を確かめる余白 || p_x削った後.Length < C_削って埋めた形を確かめる余白)
+            {
+                return false;
+            }
+
+            var l_繋いだ配列 = string.Concat(p_u削った後.AsSpan(p_u削った後.Length - C_削って埋めた形を確かめる余白), p_埋める配列, p_x削った後.AsSpan(0, C_削って埋めた形を確かめる余白));
+            return l_繋いだ配列.Length <= p_リード長
+                && l_繋いだ配列.AsSpan().IndexOfAnyExcept(Consts.塩基文字) < 0
+                && p_索引.Get_出現数(l_繋いだ配列, C_埋め方の支持数の下限) < C_埋め方の支持数の下限;
+        }
+
+        /// <summary>
+        /// 配列に現れる 25-mer の正準形ごとの位置を求める<br/>
+        /// 2 回以上現れる正準形の位置は -1 にする
+        /// </summary>
+        /// <param name="p_配列">配列</param>
+        /// <returns>正準形から位置 (2 回以上なら -1) への表 (A/C/G/T 以外を含む 25-mer は除く)</returns>
+        private static Dictionary<ulong, int> Get_一度だけの種の位置(string p_配列)
+        {
+            var l_表 = new Dictionary<ulong, int>();
+            for (var p = 0; p + C_種長 <= p_配列.Length; p++)
+            {
+                if (Is成功_キー(p_配列.AsSpan(p, C_種長), out var l_キー, out _))
+                {
+                    l_表[l_キー] = l_表.ContainsKey(l_キー) ? -1 : p;
+                }
+            }
+
+            return l_表;
+        }
+
+        /// <summary>
+        /// 局所組み立てで埋めた配列が、u の末尾と x の先頭の配列の一致による重なりと食い違い、リードでも確かめられないか<br/>
+        /// 重なりの 2 つの写し (u の末尾と x の先頭) と、その間に埋めた配列と、写しの外の C_埋め方を確かめる余白 ずつを繋いだ配列を作る<br/>
+        /// それがリード長以下で A・C・G・T だけのとき、リードに C_埋め方の支持数の下限 か所未満しか出てこなければ真<br/>
+        /// u か x が重なりと余白より短いとき、リード長より長いとき、A・C・G・T 以外を含むときは確かめられないので偽 (今のまま埋める)
+        /// </summary>
+        /// <param name="p_索引">リードの索引</param>
+        /// <param name="p_u文字列">u の文字列</param>
+        /// <param name="p_埋める配列">局所組み立てで埋めた配列</param>
+        /// <param name="p_x文字列">x の文字列</param>
+        /// <param name="p_重なり長">配列の一致で決めた重なりの長さ</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <returns>埋め方がリードに無ければ真</returns>
+        internal static bool Is重なりと食い違う埋め方(ReadMinimizerIndex p_索引, string p_u文字列, string p_埋める配列, string p_x文字列, int p_重なり長, int p_リード長)
+        {
+            var l_片側の長さ = p_重なり長 + C_埋め方を確かめる余白;
+            if (p_u文字列.Length < l_片側の長さ || p_x文字列.Length < l_片側の長さ)
+            {
+                return false;
+            }
+
+            var l_繋いだ配列 = string.Concat(p_u文字列.AsSpan(p_u文字列.Length - l_片側の長さ), p_埋める配列, p_x文字列.AsSpan(0, l_片側の長さ));
+            return l_繋いだ配列.Length <= p_リード長
+                && l_繋いだ配列.AsSpan().IndexOfAnyExcept(Consts.塩基文字) < 0
+                && p_索引.Get_出現数(l_繋いだ配列, C_埋め方の支持数の下限) < C_埋め方の支持数の下限;
         }
 
         /// <summary>
@@ -860,7 +1242,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_x文字列">x の文字列</param>
         /// <param name="p_重なり">u の末尾と x の先頭の重なりの長さ、無ければ null</param>
         /// <returns>反復の端なら true</returns>
-        private static bool Is反復の端(string p_u文字列, string p_x文字列, int? p_重なり)
+        internal static bool Is反復の端(string p_u文字列, string p_x文字列, int? p_重なり)
         {
             var l_u末尾 = p_u文字列[Math.Max(0, p_u文字列.Length - C_反復を調べる長さ)..];
             var l_除く = Math.Min(p_重なり ?? 0, l_u末尾.Length);

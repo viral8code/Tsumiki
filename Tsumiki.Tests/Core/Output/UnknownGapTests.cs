@@ -34,6 +34,16 @@ namespace Tsumiki.Tests.Core
         private const string C_項目_S1 = "S1";
 
         /// <summary>
+        /// 項目 S2
+        /// </summary>
+        private const string C_項目_S2 = "S2";
+
+        /// <summary>
+        /// 説明つきの ID 行 S1
+        /// </summary>
+        private const string C_項目_S1_説明つき = ">S1 len=5";
+
+        /// <summary>
         /// 項目 W
         /// </summary>
         private const string C_項目_W = "W";
@@ -435,6 +445,30 @@ namespace Tsumiki.Tests.Core
             var l_リード群 = Enumerable.Range(0, 12).Select(i => l_本当.Substring(100 + (i * 5), 200)).ToList();
             var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード群);
             Assert.Null(Scaffolder.Get_リードで埋めた繋ぎ目(l_索引, new StringBuilder(l_左), l_右, 200, 0));
+        }
+
+        /// <summary>
+        /// ほかの k で N の列を埋めたあと、埋めた番号の鍵が説明つきの ID 行でも、配列名の長さ不明の番号を詰める<br/>
+        /// S1 の {0, 2, 3} から 0 と 2 を埋めれば {1}、埋めていない S2 の {1} はそのまま
+        /// </summary>
+        [Fact]
+        public void Get_埋めた後の長さ不明の番号_説明つきのID行でも配列名の番号を詰める()
+        {
+            Dictionary<string, HashSet<int>> l_長さ不明の番号 = new()
+            {
+                [C_項目_S1] = [0, 2, 3],
+                [C_項目_S2] = [1],
+            };
+            Dictionary<string, HashSet<int>> l_埋めた番号 = new()
+            {
+                [C_項目_S1_説明つき] = [0, 2],
+            };
+
+            var l_結果 = FinalAssemblyPipeline.Get_埋めた後の長さ不明の番号(l_長さ不明の番号, l_埋めた番号);
+
+            Assert.Equal([C_項目_S1, C_項目_S2], l_結果.Keys.Order());
+            Assert.Equal([1], l_結果[C_項目_S1]);
+            Assert.Equal([1], l_結果[C_項目_S2]);
         }
 
         #endregion

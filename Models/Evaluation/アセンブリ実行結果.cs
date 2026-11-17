@@ -24,6 +24,18 @@ namespace Tsumiki.Models.Evaluation
         /// </summary>
         public string A_最終パス => this.A_scaffoldパス ?? this.A_contigパス;
 
+        /// <summary>
+        /// マルチ k で採用しなかった k の contig の FASTA パス (最終段で、残った N の列を埋めるのに使う)<br/>
+        /// 単一 k のときは空
+        /// </summary>
+        public IReadOnlyList<string> A_ほかのkのcontigパス群 { get; init; } = [];
+
+        /// <summary>
+        /// マルチ k で採用しなかった k の scaffold の FASTA パス (最終段で、縮んだ縦の反復を差し替えるのに contig と合わせて使う)<br/>
+        /// 単一 k のときと、scaffold を作らなかった k は空
+        /// </summary>
+        public IReadOnlyList<string> A_ほかのkのscaffoldパス群 { get; init; } = [];
+
         #endregion
     }
 }
