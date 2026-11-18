@@ -6,7 +6,8 @@ namespace Tsumiki.Tests.Core
 {
     /// <summary>
     /// 最終配列のうち、ほかの k の contig と錨の間の長さが食い違う所を、リードに続けて出てくる形に差し替える処理 (OtherKRepeatReplacer) の検証<br/>
-    /// G = A (1,000 bp) + 単位 100 bp × 3 + B (1,000 bp)、リードは G の 250 bp の窓 (5 bp おき) を 2 回ずつ、リード長 250 (窓 175 bp)
+    /// G = A (1,000 bp) + 単位 100 bp × 3 + B (1,000 bp)、リードは G の 250 bp の窓 (5 bp おき) を 2 回ずつ、リード長 250 (窓 175 bp)。<br/>
+    /// 窓で比べる場面は、単位 12 bp × 17 の G で、ReadWindowSelector の窓は 212 bp
     /// </summary>
     public class OtherKRepeatReplacerTests
     {
@@ -97,6 +98,16 @@ namespace Tsumiki.Tests.Core
         /// </summary>
         private const int C_欠けの始め = 1050;
 
+        /// <summary>
+        /// 窓で比べる場面の、縦の反復の単位の長さ
+        /// </summary>
+        private const int C_短い単位長 = 12;
+
+        /// <summary>
+        /// 窓で比べる場面の、G の縦の反復の単位の数 (204 bp)
+        /// </summary>
+        private const int C_短い単位の数 = 17;
+
         #endregion
 
         #region 公開メソッド
@@ -153,7 +164,34 @@ namespace Tsumiki.Tests.Core
 
             Assert.Equal(C_ID_S1, Assert.Single(l_結果).A_ID);
             Assert.Equal(p_Is差し替える ? l_G : l_元の配列, l_結果[0].A_配列);
-            Assert.Equal((1, p_Is差し替える ? 1 : 0, p_片が短い数, p_骨格がリードにある数, p_決まらない数, p_錨を確かめられない数), (l_統計.A_対象数, l_統計.A_差し替えた数, l_統計.A_片が短い数, l_統計.A_骨格がリードにある数, l_統計.A_決まらない数, l_統計.A_錨を確かめられない数));
+            Assert.Equal((1, p_Is差し替える ? 1 : 0, 0, p_片が短い数, p_骨格がリードにある数, p_決まらない数, p_錨を確かめられない数), (l_統計.A_対象数, l_統計.A_差し替えた数, l_統計.A_窓で選んだ数, l_統計.A_片が短い数, l_統計.A_骨格がリードにある数, l_統計.A_決まらない数, l_統計.A_錨を確かめられない数));
+        }
+
+        /// <summary>
+        /// 窓で比べる: 単位 12 bp の縦の反復で G は単位 17 個。最終配列が 16 個 (192 bp) なら 175 bp の窓ではリードに続けて出てくるが、<br/>
+        /// 212 bp の窓で比べると最終配列の形にだけある窓がリードに無いので、17 個のほかの k の形に差し替えて G にする。<br/>
+        /// 最終配列が 17 個でほかの k が 18 個なら、ほかの k の形にだけある窓がリードに無いので残す
+        /// </summary>
+        /// <param name="p_最終配列の単位の数">最終配列の縦の反復の単位の数</param>
+        /// <param name="p_ほかのkの単位の数">ほかの k の contig の縦の反復の単位の数</param>
+        /// <param name="p_Is差し替える">ほかの k の形に差し替えるはずか</param>
+        [Theory]
+        [InlineData(16, 17, true)]
+        [InlineData(17, 18, false)]
+        public void 窓で比べる_最終配列の形もリードに続けて出るときは窓で選んだほかのkの形だけに差し替える(int p_最終配列の単位の数, int p_ほかのkの単位の数, bool p_Is差し替える)
+        {
+            var l_A = V_生成_ゲノム(C_脇の長さ, C_ゲノムの種);
+            var l_単位 = V_生成_ゲノム(C_短い単位長, C_ゲノムの種 + 3);
+            var l_B = V_生成_ゲノム(C_脇の長さ, C_ゲノムの種 + 2);
+            var l_G = l_A + V_繰り返す(l_単位, C_短い単位の数) + l_B;
+            var l_元の配列 = l_A + V_繰り返す(l_単位, p_最終配列の単位の数) + l_B;
+            var l_リード = V_リードの窓(l_G);
+            var l_索引 = ReadMinimizerIndex.V_構築(() => l_リード.Concat(l_リード).ToList());
+
+            var l_結果 = OtherKRepeatReplacer.Get_差し替えた配列群([(C_ID_S1, l_元の配列)], [l_A[C_ほかのkの脇..] + V_繰り返す(l_単位, p_ほかのkの単位の数) + l_B[..C_ほかのkの脇]], l_索引, C_リード長, out var l_統計);
+
+            Assert.Equal(p_Is差し替える ? l_G : l_元の配列, l_結果[0].A_配列);
+            Assert.Equal((1, p_Is差し替える ? 1 : 0, p_Is差し替える ? 1 : 0, p_Is差し替える ? 0 : 1), (l_統計.A_対象数, l_統計.A_差し替えた数, l_統計.A_窓で選んだ数, l_統計.A_骨格がリードにある数));
         }
 
         /// <summary>

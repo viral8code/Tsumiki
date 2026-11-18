@@ -8,7 +8,8 @@ using Tsumiki.Utilities;
 namespace Tsumiki.Cores.Scaffolding
 {
     /// <summary>
-    /// 最終配列のうち、ほかの k の contig と錨の間の長さが食い違う所を、リードに続けて出てくるほうの形に差し替える<br/>
+    /// 最終配列のうち、ほかの k の contig と錨の間の長さが食い違う所を、リードに続けて出てくるほうの形に差し替える。<br/>
+    /// 最終配列の形もリードに続けて出てくる所は、ReadWindowSelector の窓で比べて、ほかの k の形が選ばれたら差し替える。<br/>
     /// 錨は、最終配列の中で両鎖を通して 1 回だけ出て、ほかの k の contig の中でも 1 回だけ出る C_錨長 の k-mer
     /// </summary>
     internal static class OtherKRepeatReplacer
@@ -68,6 +69,11 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const long C_一意でない = -1L;
 
+        /// <summary>
+        /// 差し替えなかった所のログで、窓で比べなかったか、どの形も選ばなかったときの選んだ番号
+        /// </summary>
+        private const int C_窓で選ばなかった番号 = -1;
+
         #endregion
 
         #region 公開メソッド
@@ -92,7 +98,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_窓長 = Math.Max(ReadMinimizerIndex.C_最短の問い合わせ長, p_リード長 * C_確かめる窓の分子 / C_確かめる窓の分母);
-            int l_区間数 = 0, l_片が短い数 = 0, l_骨格がリードにある数 = 0, l_決まらない数 = 0, l_錨を確かめられない数 = 0;
+            int l_区間数 = 0, l_片が短い数 = 0, l_骨格がリードにある数 = 0, l_決まらない数 = 0, l_錨を確かめられない数 = 0, l_窓で選んだ数 = 0;
             List<(string A_ID, string A_配列)> l_結果 = [];
             var l_差し替えた数 = 0;
             for (var l_番号 = 0; l_番号 < p_配列群.Count; l_番号++)
@@ -104,10 +110,33 @@ namespace Tsumiki.Cores.Scaffolding
                 foreach (var (l_始め, l_終わり, l_形群) in l_区間群)
                 {
                     l_区間数++;
-                    var l_差し替える形 = Get_差し替える形(l_配列, l_始め, l_終わり, l_形群, p_リード索引, p_リード長, l_窓長, ref l_片が短い数, ref l_骨格がリードにある数, ref l_決まらない数, ref l_錨を確かめられない数);
+                    var l_差し替える形 = Get_差し替える形(l_配列, l_始め, l_終わり, l_形群, p_リード索引, p_リード長, l_窓長, out var l_理由, out var l_窓);
                     if (l_差し替える形 is null)
                     {
+                        switch (l_理由)
+                        {
+                            case ほかのkで差し替えない理由.片が短い:
+                                l_片が短い数++;
+                                break;
+                            case ほかのkで差し替えない理由.骨格がリードにある:
+                                l_骨格がリードにある数++;
+                                break;
+                            case ほかのkで差し替えない理由.決まらない:
+                                l_決まらない数++;
+                                break;
+                            default:
+                                l_錨を確かめられない数++;
+                                break;
+                        }
+
+                        Logger.V_出力(メッセージID.ほかのkで差し替えなかった所の内訳, l_ID, l_始め, l_終わり - l_始め, l_理由, l_形群.Count, l_窓?.A_比べた数 ?? 0, l_窓?.A_条件を満たす数 ?? 0, l_窓?.A_選んだ番号 ?? C_窓で選ばなかった番号);
                         continue;
+                    }
+
+                    if (l_窓 is { } l_記録)
+                    {
+                        l_窓で選んだ数++;
+                        Logger.V_出力(メッセージID.ほかのkの形を窓で選んだ, l_ID, l_始め, l_終わり - l_始め, ReadWindowSelector.Get_窓長(p_リード長), l_記録.A_比べた数, l_記録.A_相手の窓の最少);
                     }
 
                     l_差し替えた数++;
@@ -120,7 +149,7 @@ namespace Tsumiki.Cores.Scaffolding
                 l_結果.Add((l_ID, l_出力.ToString()));
             }
 
-            p_統計 = new ほかのkで差し替えた統計(l_区間数, l_差し替えた数, l_片が短い数, l_骨格がリードにある数, l_決まらない数, l_錨を確かめられない数);
+            p_統計 = new ほかのkで差し替えた統計(l_区間数, l_差し替えた数, l_窓で選んだ数, l_片が短い数, l_骨格がリードにある数, l_決まらない数, l_錨を確かめられない数);
             return l_結果;
         }
 
@@ -321,9 +350,9 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 1 つの区間を差し替える形を求める<br/>
-        /// 両脇の片 (隣の N の列か配列の端まで) がどちらも窓長 - 1 以上あり、最終配列の形が PairBridgeFiller.Is写しがリードに続けて出る を満たさず、<br/>
-        /// ほかの k の形 (区間全体) のうち満たすものがただ 1 つで、Is錨の間がリードで確かめられる なら、それを返す
+        /// 1 つの区間を差し替える形を求める。両脇の片 (隣の N の列か配列の端まで) がどちらも窓長 - 1 以上あり、最終配列の形が PairBridgeFiller.Is写しがリードに続けて出る を満たさず、<br/>
+        /// ほかの k の形 (区間全体) のうち満たすものがただ 1 つで、Is錨の間がリードで確かめられる なら、それを返す。<br/>
+        /// 最終配列の形が満たすときは、Get_窓で選んだほかのkの形 でほかの k の形が選ばれたら、それを返す
         /// </summary>
         /// <param name="p_配列">最終配列</param>
         /// <param name="p_始め">区間の始め</param>
@@ -332,47 +361,96 @@ namespace Tsumiki.Cores.Scaffolding
         /// <param name="p_リード索引">リードの索引</param>
         /// <param name="p_リード長">代表リード長</param>
         /// <param name="p_窓長">リードで確かめる窓の長さ</param>
-        /// <param name="p_片が短い数">両脇の片が窓長 - 1 より短い数 (加算する)</param>
-        /// <param name="p_骨格がリードにある数">最終配列の形がリードに続けて出てくる数 (加算する)</param>
-        /// <param name="p_決まらない数">リードに続けて出てくるほかの k の形がただ 1 つに決まらない数 (加算する)</param>
-        /// <param name="p_錨を確かめられない数">ただ 1 つに決まったが、両端の錨の間の長さをリードで確かめられない数 (加算する)</param>
+        /// <param name="p_理由">差し替えないときの理由 (差し替えるときは既定値)</param>
+        /// <param name="p_窓">窓で比べたときの、比べた形の数、条件を満たす形の数、選んだ番号 (0 は最終配列の形、無ければ C_窓で選ばなかった番号)、ほかの形にだけある窓の数の最少 (窓で比べなければ null)</param>
         /// <returns>区間を差し替える配列、差し替えなければ null</returns>
-        private static string? Get_差し替える形(string p_配列, int p_始め, int p_終わり, List<(int A_始め, int A_終わり, string A_差し替える配列)> p_形群, ReadMinimizerIndex p_リード索引, int p_リード長, int p_窓長, ref int p_片が短い数, ref int p_骨格がリードにある数, ref int p_決まらない数, ref int p_錨を確かめられない数)
+        private static string? Get_差し替える形(string p_配列, int p_始め, int p_終わり, List<(int A_始め, int A_終わり, string A_差し替える配列)> p_形群, ReadMinimizerIndex p_リード索引, int p_リード長, int p_窓長, out ほかのkで差し替えない理由 p_理由, out (int A_比べた数, int A_条件を満たす数, int A_選んだ番号, int A_相手の窓の最少)? p_窓)
         {
+            p_理由 = default;
+            p_窓 = null;
             var l_片の長さ = p_窓長 - 1;
             var l_左の片の始め = p_配列.LastIndexOf(Consts.塩基コード.N, Math.Max(0, p_始め - 1)) + 1;
             var l_右の片の終わり = p_配列.IndexOf(Consts.塩基コード.N, p_終わり);
             l_右の片の終わり = l_右の片の終わり < 0 ? p_配列.Length : l_右の片の終わり;
             if (p_始め - l_左の片の始め < l_片の長さ || l_右の片の終わり - p_終わり < l_片の長さ)
             {
-                p_片が短い数++;
+                p_理由 = ほかのkで差し替えない理由.片が短い;
                 return null;
             }
 
             var l_左 = p_配列.Substring(p_始め - l_片の長さ, l_片の長さ);
             var l_右 = p_配列.Substring(p_終わり, l_片の長さ);
+            var l_形群 = p_形群.Select(x => (A_食い違い: x, A_形: string.Concat(p_配列.AsSpan(p_始め, x.A_始め - p_始め), x.A_差し替える配列, p_配列.AsSpan(x.A_終わり, p_終わり - x.A_終わり)))).DistinctBy(static x => x.A_形, StringComparer.Ordinal).ToList();
             if (PairBridgeFiller.Is写しがリードに続けて出る(p_リード索引, l_左, p_配列[p_始め..p_終わり], l_右, p_窓長))
             {
-                p_骨格がリードにある数++;
-                return null;
+                var l_窓で選んだ形 = Get_窓で選んだほかのkの形(p_配列, p_始め, p_終わり, l_左の片の始め, l_右の片の終わり, [.. l_形群.Select(static x => x.A_形)], p_リード索引, p_リード長, out var l_比べた数, out var l_条件を満たす数, out var l_選んだ番号, out var l_最少);
+                p_窓 = (l_比べた数, l_条件を満たす数, l_選んだ番号, l_最少);
+                if (l_窓で選んだ形 is null)
+                {
+                    p_理由 = ほかのkで差し替えない理由.骨格がリードにある;
+                    return null;
+                }
+
+                return l_窓で選んだ形;
             }
 
-            var l_形群 = p_形群.Select(x => (A_食い違い: x, A_形: string.Concat(p_配列.AsSpan(p_始め, x.A_始め - p_始め), x.A_差し替える配列, p_配列.AsSpan(x.A_終わり, p_終わり - x.A_終わり)))).DistinctBy(static x => x.A_形, StringComparer.Ordinal);
             var l_通った = l_形群.Where(x => PairBridgeFiller.Is写しがリードに続けて出る(p_リード索引, l_左, x.A_形, l_右, p_窓長)).Take(2).ToList();
             if (l_通った.Count != 1)
             {
-                p_決まらない数++;
+                p_理由 = ほかのkで差し替えない理由.決まらない;
                 return null;
             }
 
             var (l_食い違い, l_形) = l_通った[0];
             if (!Is錨の間がリードで確かめられる(l_左 + l_形 + l_右, l_左.Length + l_食い違い.A_始め - p_始め, Math.Min(l_食い違い.A_終わり - l_食い違い.A_始め, l_食い違い.A_差し替える配列.Length) + C_錨長, p_リード索引, p_リード長, p_窓長))
             {
-                p_錨を確かめられない数++;
+                p_理由 = ほかのkで差し替えない理由.錨を確かめられない;
                 return null;
             }
 
             return l_形;
+        }
+
+        /// <summary>
+        /// 最終配列の形がリードに続けて出てくる区間で、最終配列の形とほかの k の形 (最終配列の形と同じものを除く) を ReadWindowSelector.Get_選んだ番号 で比べ、<br/>
+        /// ほかの k の形が選ばれたらそれを返す。形は、区間の左の片の末尾 リード長 bp + 区間 + 右の片の先頭 リード長 bp (片は隣の N の列か配列の端まで)。<br/>
+        /// 広い形は、片を ReadWindowSelector.C_広い形の脇の長さ まで付けた形
+        /// </summary>
+        /// <param name="p_配列">最終配列</param>
+        /// <param name="p_始め">区間の始め</param>
+        /// <param name="p_終わり">区間の終わり (含まない)</param>
+        /// <param name="p_左の片の始め">左の片の始め (隣の N の列のあとか配列の先頭)</param>
+        /// <param name="p_右の片の終わり">右の片の終わり (隣の N の列の始めか配列の末尾)</param>
+        /// <param name="p_ほかのkの形群">区間全体をほかの k の形にした配列</param>
+        /// <param name="p_リード索引">リードの索引</param>
+        /// <param name="p_リード長">代表リード長</param>
+        /// <param name="p_比べた数">比べた形の数 (最終配列の形を含む)</param>
+        /// <param name="p_条件を満たす数">ReadWindowSelector の条件を満たした形の数 (比べなければ 0)</param>
+        /// <param name="p_選んだ番号">選んだ形の番号 (0 は最終配列の形、選ばなければ C_窓で選ばなかった番号)</param>
+        /// <param name="p_相手の窓の最少">選んだ形に対して、ほかの形にだけある窓の数の最少 (選ばなければ 0)</param>
+        /// <returns>選んだほかの k の形、選ばなければ null</returns>
+        private static string? Get_窓で選んだほかのkの形(string p_配列, int p_始め, int p_終わり, int p_左の片の始め, int p_右の片の終わり, IReadOnlyList<string> p_ほかのkの形群, ReadMinimizerIndex p_リード索引, int p_リード長, out int p_比べた数, out int p_条件を満たす数, out int p_選んだ番号, out int p_相手の窓の最少)
+        {
+            var l_最終配列の形 = p_配列[p_始め..p_終わり];
+            List<string> l_候補群 = [l_最終配列の形, .. p_ほかのkの形群.Where(x => !x.Equals(l_最終配列の形, StringComparison.Ordinal))];
+            p_比べた数 = l_候補群.Count;
+            p_条件を満たす数 = 0;
+            p_選んだ番号 = C_窓で選ばなかった番号;
+            p_相手の窓の最少 = 0;
+            if (l_候補群.Count < 2)
+            {
+                return null;
+            }
+
+            var l_左の脇 = p_配列[Math.Max(p_左の片の始め, p_始め - p_リード長)..p_始め];
+            var l_右の脇 = p_配列[p_終わり..Math.Min(p_右の片の終わり, p_終わり + p_リード長)];
+            var l_左の広い脇 = p_配列[Math.Max(p_左の片の始め, p_始め - ReadWindowSelector.C_広い形の脇の長さ)..p_始め];
+            var l_右の広い脇 = p_配列[p_終わり..Math.Min(p_右の片の終わり, p_終わり + ReadWindowSelector.C_広い形の脇の長さ)];
+            string[] l_形群 = [.. l_候補群.Select(x => l_左の脇 + x + l_右の脇)];
+            string[] l_広い形群 = [.. l_候補群.Select(x => l_左の広い脇 + x + l_右の広い脇)];
+            var l_番号 = ReadWindowSelector.Get_選んだ番号(l_形群, l_広い形群, ReadWindowSelector.Get_窓長(p_リード長), p_リード索引, out p_条件を満たす数, out p_相手の窓の最少);
+            p_選んだ番号 = l_番号 ?? C_窓で選ばなかった番号;
+            return l_番号 is > 0 and { } l_選んだ ? l_候補群[l_選んだ] : null;
         }
 
         /// <summary>

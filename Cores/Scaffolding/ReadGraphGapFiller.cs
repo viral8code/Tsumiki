@@ -69,22 +69,6 @@ namespace Tsumiki.Cores.Scaffolding
         /// </summary>
         private const int C_並べる回数の上限 = 100_000;
 
-        /// <summary>
-        /// 道どうしを比べる窓の長さの、リード長に対する百分率<br/>
-        /// リード長と同じだと窓を丸ごと含むリードが少なく、窓にリードが無いことが当てにならない
-        /// </summary>
-        private const int C_窓の百分率 = 85;
-
-        /// <summary>
-        /// ほかの道にだけある窓にリードが無いことで、その道を外すのに要る窓の数の下限
-        /// </summary>
-        private const int C_窓の下限数 = 10;
-
-        /// <summary>
-        /// 窓がほかの道の形にあるかを調べるとき、道の両側に付ける片の長さ
-        /// </summary>
-        private const int C_広い形の脇の長さ = 2000;
-
         #endregion
 
         #region 公開メソッド
@@ -466,9 +450,8 @@ namespace Tsumiki.Cores.Scaffolding
         }
 
         /// <summary>
-        /// 短い順に並べた道を、長さ リード長 × C_窓の百分率 / 100 の窓で比べ、条件を満たす道が 1 本だけならそれを選ぶ。並べた道に畳む形があれば選ばない<br/>
-        /// 条件は、その道の形の窓がどれもリードに C_支持数の下限 か所以上あり、ほかのどの道についても、ほかの道の形にだけある窓がリードに 1 か所も無く、<br/>
-        /// その窓が C_窓の下限数 個以上あるか、その道の形にだけある窓があること。形は、片の端 リード長 bp + 道の間 + 片の端 リード長 bp
+        /// 短い順に並べた道の形を ReadWindowSelector.Get_選んだ番号 で比べ、条件を満たす道が 1 本だけならそれを選ぶ。並べた道に畳む形があれば選ばない<br/>
+        /// 形は、片の端 リード長 bp + 道の間 + 片の端 リード長 bp。広い形は、片を ReadWindowSelector.C_広い形の脇の長さ まで付けた形
         /// </summary>
         /// <param name="p_道群">短い順に並べた道 (始まりの k-mer から終わりの k-mer まで)</param>
         /// <param name="p_Is打ち切り">並べる途中で打ち切ったか</param>
@@ -481,7 +464,7 @@ namespace Tsumiki.Cores.Scaffolding
         /// <returns>選んだ道 (選ばなければ null) と、比べた結果</returns>
         private static (string? A_道, 窓で道を選んだ記録 A_記録) Get_窓で選んだ道(List<string> p_道群, bool p_Is打ち切り, string p_左, string p_右, int p_k長, int p_削りの和, ReadMinimizerIndex p_索引, int p_リード長)
         {
-            var l_窓長 = Math.Max(ReadMinimizerIndex.C_最短の問い合わせ長, p_リード長 * C_窓の百分率 / C_百分率の分母);
+            var l_窓長 = ReadWindowSelector.Get_窓長(p_リード長);
             var l_畳む形の数 = p_道群.Count(x => x.Length - (2 * p_k長) - p_削りの和 < 0);
             if (p_道群.Count < 2 || l_畳む形の数 > 0)
             {
@@ -490,75 +473,14 @@ namespace Tsumiki.Cores.Scaffolding
 
             var l_左の脇 = p_左[^Math.Min(p_左.Length, p_リード長)..];
             var l_右の脇 = p_右[..Math.Min(p_右.Length, p_リード長)];
-            var l_左の広い脇 = p_左[^Math.Min(p_左.Length, C_広い形の脇の長さ)..];
-            var l_右の広い脇 = p_右[..Math.Min(p_右.Length, C_広い形の脇の長さ)];
+            var l_左の広い脇 = p_左[^Math.Min(p_左.Length, ReadWindowSelector.C_広い形の脇の長さ)..];
+            var l_右の広い脇 = p_右[..Math.Min(p_右.Length, ReadWindowSelector.C_広い形の脇の長さ)];
             string[] l_形群 = [.. p_道群.Select(x => string.Concat(l_左の脇, x.AsSpan(p_k長, x.Length - (2 * p_k長)), l_右の脇))];
             string[] l_広い形群 = [.. p_道群.Select(x => string.Concat(l_左の広い脇, x.AsSpan(p_k長, x.Length - (2 * p_k長)), l_右の広い脇))];
-            Dictionary<string, int> l_数の表 = [];
-            List<(int A_番号, int A_最少)> l_満たす道群 = [];
-            for (var i = 0; i < l_形群.Length; i++)
-            {
-                if (Get_窓群(l_形群[i], l_窓長).Any(x => Get_窓の出現数(x, l_数の表, p_索引) < C_支持数の下限))
-                {
-                    continue;
-                }
-
-                var l_Is満たす = true;
-                var l_最少 = int.MaxValue;
-                for (var j = 0; j < l_形群.Length && l_Is満たす; j++)
-                {
-                    if (j == i)
-                    {
-                        continue;
-                    }
-
-                    string[] l_相手だけの窓群 = [.. Get_窓群(l_形群[j], l_窓長).Where(x => !l_広い形群[i].Contains(x, StringComparison.Ordinal))];
-                    l_Is満たす = !l_相手だけの窓群.Any(x => Get_窓の出現数(x, l_数の表, p_索引) > 0)
-                        && (l_相手だけの窓群.Length >= C_窓の下限数 || Get_窓群(l_形群[i], l_窓長).Any(x => !l_広い形群[j].Contains(x, StringComparison.Ordinal)));
-                    l_最少 = Math.Min(l_最少, l_相手だけの窓群.Length);
-                }
-
-                if (l_Is満たす)
-                {
-                    l_満たす道群.Add((i, l_最少));
-                }
-            }
-
-            return l_満たす道群.Count == 1
-                ? (p_道群[l_満たす道群[0].A_番号], new 窓で道を選んだ記録(p_道群.Count, p_Is打ち切り, 0, 1, l_満たす道群[0].A_番号 + 1, l_窓長, l_満たす道群[0].A_最少))
-                : (null, new 窓で道を選んだ記録(p_道群.Count, p_Is打ち切り, 0, l_満たす道群.Count, 0, l_窓長, 0));
-        }
-
-        /// <summary>
-        /// 配列の長さ p_窓長 の窓を、先頭から 1 塩基ずつずらして並べる
-        /// </summary>
-        /// <param name="p_配列">配列</param>
-        /// <param name="p_窓長">窓の長さ</param>
-        /// <returns>窓の配列</returns>
-        private static IEnumerable<string> Get_窓群(string p_配列, int p_窓長)
-        {
-            for (var l_始め = 0; l_始め + p_窓長 <= p_配列.Length; l_始め++)
-            {
-                yield return p_配列.Substring(l_始め, p_窓長);
-            }
-        }
-
-        /// <summary>
-        /// 窓がリードかその逆相補に出てくる箇所の数を、C_支持数の下限 まで数える (表に覚えて、同じ窓は 1 回だけ問い合わせる)。A・C・G・T 以外を含む窓は 0
-        /// </summary>
-        /// <param name="p_窓">窓</param>
-        /// <param name="p_数の表">数えた窓の表</param>
-        /// <param name="p_索引">リードの索引</param>
-        /// <returns>出てくる箇所の数 (C_支持数の下限 で頭打ち)</returns>
-        private static int Get_窓の出現数(string p_窓, Dictionary<string, int> p_数の表, ReadMinimizerIndex p_索引)
-        {
-            if (!p_数の表.TryGetValue(p_窓, out var l_数))
-            {
-                l_数 = p_窓.AsSpan().IndexOfAnyExcept(Consts.塩基文字) < 0 ? p_索引.Get_出現数(p_窓, C_支持数の下限) : 0;
-                p_数の表[p_窓] = l_数;
-            }
-
-            return l_数;
+            var l_番号 = ReadWindowSelector.Get_選んだ番号(l_形群, l_広い形群, l_窓長, p_索引, out var l_満たす数, out var l_最少);
+            return l_番号 is { } l_選んだ
+                ? (p_道群[l_選んだ], new 窓で道を選んだ記録(p_道群.Count, p_Is打ち切り, 0, 1, l_選んだ + 1, l_窓長, l_最少))
+                : (null, new 窓で道を選んだ記録(p_道群.Count, p_Is打ち切り, 0, l_満たす数, 0, l_窓長, 0));
         }
 
         /// <summary>

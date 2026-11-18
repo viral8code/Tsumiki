@@ -97,7 +97,7 @@ Tsumiki.exe -1 reads_R1.fastq.gz -2 reads_R2.fastq.gz -k 31,51,71 -th 16 -mem 4G
 | S. aureus ATCC 23235 | MiSeq | 32.9 | 52x | 2 | 21 | 2,759,258 | 350,502 | 350,502 | 0 | 3 | 98.93% |
 | S. aureus ATCC 25923 | MiSeq | 32.8 | 70x | 2 | 28 | 2,773,001 | 330,410 | 330,410 | 0 | 0 | 98.95% |
 | M. luteus NCTC 2665 | NextSeq 500 | 73.0 | 101x | 1 | 95 | 2,406,628 | 73,192 | 68,913 | 11 | 0 | 95.82% |
-| M. tuberculosis H37Ra | NextSeq 500 | 65.6 | 102x | 1 | 105 | 4,361,209 | 105,931 | 105,931 | 0 | 1 | 98.57% |
+| M. tuberculosis H37Ra | NextSeq 500 | 65.6 | 102x | 1 | 105 | 4,361,431 | 105,931 | 105,931 | 0 | 1 | 98.57% |
 
 MiSeq のリード長は 2×251 bp、NextSeq 500 は 2×151 bp です。
 
