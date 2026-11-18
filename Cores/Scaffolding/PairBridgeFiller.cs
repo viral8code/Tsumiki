@@ -209,7 +209,7 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_標本.Count < C_挿入長の最少標本数)
             {
                 p_統計 = default;
-                return p_配列群.ToList();
+                return [.. p_配列群];
             }
 
             var l_挿入長 = StatsUtil.Get_中央値(l_標本);
@@ -217,7 +217,7 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_候補全体.Count == 0)
             {
                 p_統計 = new 橋渡し統計(l_挿入長, 0, 0, 0, 0, 0, 0, 0, 0);
-                return p_配列群.ToList();
+                return [.. p_配列群];
             }
 
             var l_多コピーの基準 = Get_多コピーの基準密度(l_当たり数, l_頂点);
@@ -273,7 +273,7 @@ namespace Tsumiki.Cores.Scaffolding
             if (l_候補.Count == 0 && l_短い反復の辺.Count == 0 && (l_反復の端の辺.Count == 0 || !Isほかのkを使う))
             {
                 p_統計 = new 橋渡し統計(l_挿入長, l_候補全体.Count, 0, 0, 0, 0, l_多コピーの反復の端の数 + l_反復の端の辺.Count, 0, l_多コピーの端で除いた数);
-                return p_配列群.ToList();
+                return [.. p_配列群];
             }
 
             var (l_結果, l_判定) = l_候補.Count == 0 ? (Array.Empty<string?>(), Array.Empty<ギャップ充填判定>()) : Get_局所結果群(l_頂点, l_候補, l_削り群, Get_局所リード群(l_頂点, l_表, p_ライブラリ群, l_候補, l_削り群, l_並列数));
@@ -436,7 +436,11 @@ namespace Tsumiki.Cores.Scaffolding
         {
             var l_錨表 = OtherKRepeatReplacer.Get_一意な錨の表(p_配列群);
             var l_ほかのk = string.Join(C_ほかのkの区切り, p_ほかのkの配列群);
-            string Get_名前(int p_頂点番号) => p_配列群[p_頂点番号 / 2].A_ID + (p_頂点番号 % 2 == 0 ? "+" : "-");
+            string Get_名前(int p_頂点番号)
+            {
+                return p_配列群[p_頂点番号 / 2].A_ID + (p_頂点番号 % 2 == 0 ? "+" : "-");
+            }
+
             var l_繋いだ数 = 0;
             foreach (var (l_u, l_x) in p_反復の端の辺)
             {
@@ -974,7 +978,7 @@ namespace Tsumiki.Cores.Scaffolding
             }
 
             var l_d = p_頂点[l_当たり.A_頂点].Length - l_当たり.A_位置;
-            return l_d <= 0 || l_d > C_窓長
+            return l_d is <= 0 or > C_窓長
                 ? null
                 : l_片側.A_Isu
                     ? [(l_片側.A_候補, new 読取証拠(p_当てたリード, p_ペアID), true), (l_片側.A_候補, new 読取証拠(Util.V_逆相補_曖昧塩基あり(p_相方), p_ペアID), true)]

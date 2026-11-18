@@ -332,17 +332,17 @@ namespace Tsumiki.Cores.Scaffolding
         internal static List<(int A_始め, int A_終わり, List<(int A_始め, int A_終わり, string A_差し替える配列)> A_形群)> Get_区間群(IEnumerable<(int A_配列番号, int A_始め, int A_終わり, string A_差し替える配列)> p_食い違い群)
         {
             List<(int A_始め, int A_終わり, List<(int A_始め, int A_終わり, string A_差し替える配列)> A_形群)> l_区間群 = [];
-            foreach (var l_食い違い in p_食い違い群.OrderBy(static x => x.A_始め).ThenBy(static x => x.A_終わり))
+            foreach (var (l_A_配列番号, l_A_始め, l_A_終わり, l_A_差し替える配列) in p_食い違い群.OrderBy(static x => x.A_始め).ThenBy(static x => x.A_終わり))
             {
-                if (l_区間群.Count > 0 && l_食い違い.A_始め < l_区間群[^1].A_終わり)
+                if (l_区間群.Count > 0 && l_A_始め < l_区間群[^1].A_終わり)
                 {
-                    var l_最後 = l_区間群[^1];
-                    l_最後.A_形群.Add((l_食い違い.A_始め, l_食い違い.A_終わり, l_食い違い.A_差し替える配列));
-                    l_区間群[^1] = (l_最後.A_始め, Math.Max(l_最後.A_終わり, l_食い違い.A_終わり), l_最後.A_形群);
+                    var (l_始め, l_終わり, l_形群) = l_区間群[^1];
+                    l_形群.Add((l_A_始め, l_終わり, l_A_差し替える配列));
+                    l_区間群[^1] = (l_始め, Math.Max(l_終わり, l_終わり), l_形群);
                 }
                 else
                 {
-                    l_区間群.Add((l_食い違い.A_始め, l_食い違い.A_終わり, [(l_食い違い.A_始め, l_食い違い.A_終わり, l_食い違い.A_差し替える配列)]));
+                    l_区間群.Add((l_A_始め, l_A_終わり, [(l_A_始め, l_A_終わり, l_A_差し替える配列)]));
                 }
             }
 

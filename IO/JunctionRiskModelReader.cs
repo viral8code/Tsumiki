@@ -132,17 +132,11 @@ namespace Tsumiki.IO
                 l_値群[l_項目] = l_値;
             }
 
-            if (l_名前 is null)
-            {
-                throw new InvalidDataException($"{p_出所}: missing item \"{継ぎ目モデル.C_項目_名前}\"");
-            }
-
-            if (C_値の数.Keys.FirstOrDefault(x => !l_値群.ContainsKey(x)) is { } l_欠けた項目)
-            {
-                throw new InvalidDataException($"{p_出所}: missing item \"{l_欠けた項目}\"");
-            }
-
-            return new 継ぎ目モデル(l_名前, p_出所, l_値群[継ぎ目モデル.C_項目_得点の係数], l_値群[継ぎ目モデル.C_項目_得点の平均], l_値群[継ぎ目モデル.C_項目_得点の幅], l_値群[継ぎ目モデル.C_項目_ギャップの較正], l_値群[継ぎ目モデル.C_項目_跨げる組の較正], l_値群[継ぎ目モデル.C_項目_跨げない組の較正]);
+            return l_名前 is null
+                ? throw new InvalidDataException($"{p_出所}: missing item \"{継ぎ目モデル.C_項目_名前}\"")
+                : C_値の数.Keys.FirstOrDefault(x => !l_値群.ContainsKey(x)) is { } l_欠けた項目
+                ? throw new InvalidDataException($"{p_出所}: missing item \"{l_欠けた項目}\"")
+                : new 継ぎ目モデル(l_名前, p_出所, l_値群[継ぎ目モデル.C_項目_得点の係数], l_値群[継ぎ目モデル.C_項目_得点の平均], l_値群[継ぎ目モデル.C_項目_得点の幅], l_値群[継ぎ目モデル.C_項目_ギャップの較正], l_値群[継ぎ目モデル.C_項目_跨げる組の較正], l_値群[継ぎ目モデル.C_項目_跨げない組の較正]);
         }
 
         #endregion
